@@ -21,7 +21,7 @@
 
 -include("teletype.hrl").
 
--spec id() -> ne_binary().
+-spec id() -> kz_term:ne_binary().
 id() ->
     <<"voicemail_to_email">>.
 
@@ -40,19 +40,19 @@ macros() ->
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
 
--spec subject() -> ne_binary().
+-spec subject() -> kz_term:ne_binary().
 subject() -> <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>.
 
--spec category() -> ne_binary().
+-spec category() -> kz_term:ne_binary().
 category() -> <<"voicemail">>.
 
--spec friendly_name() -> ne_binary().
+-spec friendly_name() -> kz_term:ne_binary().
 friendly_name() -> <<"Voicemail To Email">>.
 
 -spec to() -> kz_json:object().
 to() -> ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL).
 
--spec from() -> api_ne_binary().
+-spec from() -> kz_term:api_ne_binary().
 from() -> teletype_util:default_from_address().
 
 -spec cc() -> kz_json:object().
@@ -61,7 +61,7 @@ cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 -spec bcc() -> kz_json:object().
 bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to() -> api_ne_binary().
+-spec reply_to() -> kz_term:api_ne_binary().
 reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
@@ -128,7 +128,7 @@ get_owner(VMBoxJObj, DataJObj) ->
             kz_json:new()
     end.
 
--spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
+-spec maybe_add_user_email(kz_term:ne_binaries(), kz_term:api_binary(), boolean()) -> kz_term:ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail, 'false') -> lists:delete(UserEmail, BoxEmails);
 maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
@@ -169,24 +169,24 @@ do_process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
 
--spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     TemplateData = template_data(DataJObj),
     EmailAttachements = email_attachments(DataJObj, TemplateData),
     Macros = maybe_add_file_data(TemplateData, EmailAttachements),
     props:set_value(<<"attachments">>, EmailAttachements, Macros).
 
--spec template_data(kz_json:object()) -> kz_proplist().
+-spec template_data(kz_json:object()) -> kz_term:proplist().
 template_data(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
      | build_template_data(DataJObj)
     ].
 
--spec email_attachments(kz_json:object(), kz_proplist()) -> attachments().
+-spec email_attachments(kz_json:object(), kz_term:proplist()) -> attachments().
 email_attachments(DataJObj, Macros) ->
     email_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
--spec email_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
+-spec email_attachments(kz_json:object(), kz_term:proplist(), boolean()) -> attachments().
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->
     VMId = kz_json:get_value(<<"voicemail_id">>, DataJObj),
@@ -200,7 +200,7 @@ email_attachments(DataJObj, Macros, 'false') ->
 
     maybe_fetch_attachments(DataJObj, Db, VMId, get_file_name(VMJObj, Macros), kz_doc:attachments(VMJObj)).
 
--spec maybe_fetch_attachments(kz_json:object(), ne_binary(), ne_binary(), ne_binary(), api_object()) -> attachments().
+-spec maybe_fetch_attachments(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> attachments().
 maybe_fetch_attachments(_, _, _, _, 'undefined') ->
     throw({'error', 'no_attachment'});
 maybe_fetch_attachments(DataJObj, Db, VMId, FileName, Attachments) ->
@@ -211,7 +211,7 @@ maybe_fetch_attachments(DataJObj, Db, VMId, FileName, Attachments) ->
             fetch_attachments(Db, VMId, FileName, Attachments)
     end.
 
--spec fetch_attachments(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> attachments().
+-spec fetch_attachments(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> attachments().
 fetch_attachments(Db, VMId, FileName, Attachments) ->
     {[AttachmentMeta], [AttachmentId]} = kz_json:get_values(Attachments),
     ContentType = kz_json:get_value(<<"content_type">>, AttachmentMeta),
@@ -225,7 +225,7 @@ fetch_attachments(Db, VMId, FileName, Attachments) ->
             throw({'error', 'no_attachment'})
     end.
 
--spec get_file_name(kz_json:object(), kz_proplist()) -> ne_binary().
+-spec get_file_name(kz_json:object(), kz_term:proplist()) -> kz_term:ne_binary().
 get_file_name(MediaJObj, Macros) ->
     %% CallerID_Date_Time.mp3
     CallerID =
@@ -247,11 +247,11 @@ get_file_name(MediaJObj, Macros) ->
       binary:replace(kz_term:to_lower_binary(FileName), <<$\s>>, <<$_>>)
      ).
 
--spec get_extension(kz_json:object()) -> ne_binary().
+-spec get_extension(kz_json:object()) -> kz_term:ne_binary().
 get_extension(MediaJObj) ->
     kz_mime:to_extension(kz_doc:attachment_content_type(MediaJObj)).
 
--spec build_template_data(kz_json:object()) -> kz_proplist().
+-spec build_template_data(kz_json:object()) -> kz_term:proplist().
 build_template_data(DataJObj) ->
     Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"vmbox_doc">>, DataJObj)),
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
@@ -261,7 +261,7 @@ build_template_data(DataJObj) ->
      | teletype_util:build_call_data(DataJObj, Timezone)
     ].
 
--spec build_voicemail_data(kz_json:object()) -> kz_proplist().
+-spec build_voicemail_data(kz_json:object()) -> kz_term:proplist().
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"vmbox_id">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
@@ -274,7 +274,7 @@ build_voicemail_data(DataJObj) ->
       ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
 
--spec get_transcription(kz_json:object()) -> api_ne_binary().
+-spec get_transcription(kz_json:object()) -> kz_term:api_ne_binary().
 get_transcription(DataJObj) ->
     case kz_json:get_value(<<"voicemail_transcription">>, DataJObj) of
         'undefined' -> 'undefined';
@@ -282,7 +282,7 @@ get_transcription(DataJObj) ->
         JObj -> kz_json:get_ne_binary_value(<<"text">>, JObj)
     end.
 
--spec pretty_print_length(api_object() | pos_integer()) -> ne_binary().
+-spec pretty_print_length(kz_term:api_object() | pos_integer()) -> kz_term:ne_binary().
 pretty_print_length('undefined') -> <<"00:00:00">>;
 pretty_print_length(Ms) when is_integer(Ms) ->
     MilliSeconds = kz_time:milliseconds_to_seconds(Ms),
@@ -292,7 +292,7 @@ pretty_print_length(Ms) when is_integer(Ms) ->
 pretty_print_length(JObj) ->
     pretty_print_length(kz_json:get_integer_value(<<"voicemail_length">>, JObj)).
 
--spec maybe_add_file_data(kz_proplist(), attachments()) -> kz_proplist().
+-spec maybe_add_file_data(kz_term:proplist(), attachments()) -> kz_term:proplist().
 maybe_add_file_data(Macros, []) -> Macros;
 maybe_add_file_data(Macros, [{ContentType, FileName, Bin}]) ->
     Props = props:filter_undefined(

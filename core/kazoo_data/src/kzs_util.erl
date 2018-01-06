@@ -22,7 +22,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_classification(text()) -> db_classification().
+-spec db_classification(kz_term:text()) -> db_classification().
 db_classification(Db) when not is_binary(Db) ->
     db_classification(kz_term:to_binary(Db));
 db_classification(<<"_users">>) -> 'external';
@@ -93,7 +93,7 @@ db_classification(_Database) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_priority(text()) -> non_neg_integer().
+-spec db_priority(kz_term:text()) -> non_neg_integer().
 db_priority(Db) when not is_binary(Db) ->
     db_priority(kz_term:to_binary(Db));
 db_priority(?KZ_CONFIG_DB) -> 0;
@@ -143,12 +143,12 @@ get_views_json(App, Folder) ->
         {?NE_BINARY,_}=ViewListing <- [catch get_view_json(File)]
     ].
 
--spec get_view_json(atom(), text()) -> kz_datamgr:view_listing().
+-spec get_view_json(atom(), kz_term:text()) -> kz_datamgr:view_listing().
 get_view_json(App, File) ->
     Path = filename:join([code:priv_dir(App), "couchdb", File]),
     get_view_json(Path).
 
--spec get_view_json(text()) -> kz_datamgr:view_listing().
+-spec get_view_json(kz_term:text()) -> kz_datamgr:view_listing().
 get_view_json(Path) ->
     lager:debug("fetching view from ~s", [Path]),
     {'ok', Bin} = file:read_file(Path),

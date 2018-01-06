@@ -188,7 +188,7 @@ validate_directories(Context, ?HTTP_PUT) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_directory(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
+-spec validate_directory(cb_context:context(), kz_term:ne_binary(), path_token()) -> cb_context:context().
 validate_directory(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_directory(Context, Id, ?HTTP_POST) ->
@@ -220,7 +220,7 @@ get_pdf(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pdf_props(cb_context:context()) -> kz_proplist().
+-spec pdf_props(cb_context:context()) -> kz_term:proplist().
 pdf_props(Context) ->
     RespData = cb_context:resp_data(Context),
     AccountId = cb_context:account_id(Context),
@@ -242,8 +242,8 @@ pdf_props(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pdf_users(ne_binary(), ne_binary(), kz_json:objects()) -> any().
--spec pdf_users(ne_binary(), ne_binary(), kz_json:objects(), any()) -> any().
+-spec pdf_users(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> any().
+-spec pdf_users(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), any()) -> any().
 pdf_users(AccountId, SortBy, Users) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     pdf_users(AccountDb, SortBy, Users, []).
@@ -264,7 +264,7 @@ pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pdf_user(ne_binary(), ne_binary()) -> kz_proplist().
+-spec pdf_user(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 pdf_user(AccountDb, UserId) ->
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _R} ->
@@ -279,7 +279,7 @@ pdf_user(AccountDb, UserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pdf_callflow(ne_binary(), ne_binary()) -> kz_proplist().
+-spec pdf_callflow(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 pdf_callflow(AccountDb, CallflowId) ->
     case kz_datamgr:open_cache_doc(AccountDb, CallflowId) of
         {'error', _R} ->
@@ -306,7 +306,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"directory">>)),
     case cb_context:resp_status(Context1) of
@@ -315,7 +315,7 @@ read(Id, Context) ->
         _Status -> Context1
     end.
 
--spec load_directory_users(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_directory_users(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_directory_users(Id, Context) ->
     Context1 = crossbar_doc:load_view(?CB_USERS_LIST
                                      ,[{'key', Id}]
@@ -337,7 +337,7 @@ load_directory_users(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"directories">>, Context, OnSuccess).
@@ -349,7 +349,7 @@ update(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(DocId, Context) ->
     crossbar_doc:patch_and_validate(DocId, Context, fun update/2).
 
@@ -359,7 +359,7 @@ validate_patch(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_doc:set_type(cb_context:doc(Context), <<"directory">>)

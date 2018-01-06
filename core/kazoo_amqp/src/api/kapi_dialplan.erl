@@ -97,28 +97,28 @@
 -include("amqp_util.hrl").
 -include("kapi_dialplan.hrl").
 
--spec optional_bridge_req_headers() -> ne_binaries().
+-spec optional_bridge_req_headers() -> kz_term:ne_binaries().
 optional_bridge_req_headers() ->
     ?OPTIONAL_BRIDGE_REQ_HEADERS.
 
--spec optional_bridge_req_endpoint_headers() -> ne_binaries().
+-spec optional_bridge_req_endpoint_headers() -> kz_term:ne_binaries().
 optional_bridge_req_endpoint_headers() ->
     ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS.
 
--spec b_leg_events_v(ne_binaries()) -> boolean().
+-spec b_leg_events_v(kz_term:ne_binaries()) -> boolean().
 b_leg_events_v(Events) ->
     lists:all(fun(ApiEvent) ->
                       lists:member(ApiEvent, ?CALL_EVENTS)
               end, Events).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
--spec v(api_terms()) -> boolean().
+-spec v(kz_term:api_terms()) -> boolean().
 v(Prop) when is_list(Prop) ->
     v(Prop, props:get_value(<<"Application-Name">>, Prop));
 v(JObj) ->
     v(kz_json:to_proplist(JObj)).
 
--spec v(api_terms(), binary()) -> boolean().
+-spec v(kz_term:api_terms(), binary()) -> boolean().
 v(Prop, DPApp) ->
     try
         VFun = kz_term:to_atom(<<DPApp/binary, "_v">>),
@@ -136,7 +136,7 @@ v(Prop, DPApp) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec bridge(api_terms()) -> api_formatter_return().
+-spec bridge(kz_term:api_terms()) -> api_formatter_return().
 bridge(Prop) when is_list(Prop) ->
     EPs = [begin
                {'ok', EPProps} = bridge_endpoint_headers(EP),
@@ -153,7 +153,7 @@ bridge(Prop) when is_list(Prop) ->
 bridge(JObj) ->
     bridge(kz_json:to_proplist(JObj)).
 
--spec bridge_v(api_terms()) -> boolean().
+-spec bridge_v(kz_term:api_terms()) -> boolean().
 bridge_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BRIDGE_REQ_HEADERS, ?BRIDGE_REQ_VALUES, ?BRIDGE_REQ_TYPES);
 bridge_v(JObj) ->
@@ -164,7 +164,7 @@ bridge_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec unbridge(api_terms()) -> api_formatter_return().
+-spec unbridge(kz_term:api_terms()) -> api_formatter_return().
 unbridge(Prop) when is_list(Prop) ->
     case unbridge_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?UNBRIDGE_REQ_HEADERS, ?OPTIONAL_UNBRIDGE_REQ_HEADERS);
@@ -173,7 +173,7 @@ unbridge(Prop) when is_list(Prop) ->
 unbridge(JObj) ->
     unbridge(kz_json:to_proplist(JObj)).
 
--spec unbridge_v(api_terms()) -> boolean().
+-spec unbridge_v(kz_term:api_terms()) -> boolean().
 unbridge_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UNBRIDGE_REQ_HEADERS, ?UNBRIDGE_REQ_VALUES, ?UNBRIDGE_REQ_TYPES);
 unbridge_v(JObj) ->
@@ -184,8 +184,8 @@ unbridge_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_endpoint(api_terms()) ->
-                             {'ok', kz_proplist()} |
+-spec bridge_endpoint(kz_term:api_terms()) ->
+                             {'ok', kz_term:proplist()} |
                              {'error', string()}.
 bridge_endpoint(Prop) when is_list(Prop) ->
     case bridge_endpoint_v(Prop) of
@@ -195,15 +195,15 @@ bridge_endpoint(Prop) when is_list(Prop) ->
 bridge_endpoint(JObj) ->
     bridge_endpoint(kz_json:to_proplist(JObj)).
 
--spec bridge_endpoint_headers(api_terms()) ->
-                                     {'ok', kz_proplist()} |
+-spec bridge_endpoint_headers(kz_term:api_terms()) ->
+                                     {'ok', kz_term:proplist()} |
                                      {'error', string()}.
 bridge_endpoint_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
 bridge_endpoint_headers(JObj) ->
     bridge_endpoint_headers(kz_json:to_proplist(JObj)).
 
--spec bridge_endpoint_v(api_terms()) -> boolean().
+-spec bridge_endpoint_v(kz_term:api_terms()) -> boolean().
 bridge_endpoint_v(Prop) when is_list(Prop) ->
     kz_api:validate_message(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?BRIDGE_REQ_ENDPOINT_VALUES, ?BRIDGE_REQ_ENDPOINT_TYPES);
 bridge_endpoint_v(JObj) ->
@@ -214,7 +214,7 @@ bridge_endpoint_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec page(api_terms()) -> api_formatter_return().
+-spec page(kz_term:api_terms()) -> api_formatter_return().
 page(Prop) when is_list(Prop) ->
     EPs = [begin
                {'ok', EPProps} = bridge_endpoint_headers(EP),
@@ -230,13 +230,13 @@ page(Prop) when is_list(Prop) ->
     end;
 page(JObj) -> page(kz_json:to_proplist(JObj)).
 
--spec page_v(api_terms()) -> boolean().
+-spec page_v(kz_term:api_terms()) -> boolean().
 page_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PAGE_REQ_HEADERS, ?PAGE_REQ_VALUES, ?PAGE_REQ_TYPES);
 page_v(JObj) -> page_v(kz_json:to_proplist(JObj)).
 
--spec store(api_terms()) ->
-                   {'ok', kz_proplist()} |
+-spec store(kz_term:api_terms()) ->
+                   {'ok', kz_term:proplist()} |
                    {'error', string()}.
 store(Prop) when is_list(Prop) ->
     case store_v(Prop) of
@@ -245,12 +245,12 @@ store(Prop) when is_list(Prop) ->
     end;
 store(JObj) -> store(kz_json:to_proplist(JObj)).
 
--spec store_v(api_terms()) -> boolean().
+-spec store_v(kz_term:api_terms()) -> boolean().
 store_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STORE_REQ_HEADERS, ?STORE_REQ_VALUES, ?STORE_REQ_TYPES);
 store_v(JObj) -> store_v(kz_json:to_proplist(JObj)).
 
--spec store_amqp_resp(api_terms()) -> api_formatter_return().
+-spec store_amqp_resp(kz_term:api_terms()) -> api_formatter_return().
 store_amqp_resp(Prop) when is_list(Prop) ->
     case store_amqp_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?STORE_AMQP_RESP_HEADERS, ?OPTIONAL_STORE_AMQP_RESP_HEADERS);
@@ -258,12 +258,12 @@ store_amqp_resp(Prop) when is_list(Prop) ->
     end;
 store_amqp_resp(JObj) -> store_amqp_resp(kz_json:to_proplist(JObj)).
 
--spec store_amqp_resp_v(api_terms()) -> boolean().
+-spec store_amqp_resp_v(kz_term:api_terms()) -> boolean().
 store_amqp_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STORE_AMQP_RESP_HEADERS, ?STORE_AMQP_RESP_VALUES, ?STORE_AMQP_RESP_TYPES);
 store_amqp_resp_v(JObj) -> store_amqp_resp_v(kz_json:to_proplist(JObj)).
 
--spec store_http_resp(api_terms()) -> api_formatter_return().
+-spec store_http_resp(kz_term:api_terms()) -> api_formatter_return().
 store_http_resp(Prop) when is_list(Prop) ->
     case store_http_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?STORE_HTTP_RESP_HEADERS, ?OPTIONAL_STORE_HTTP_RESP_HEADERS);
@@ -271,7 +271,7 @@ store_http_resp(Prop) when is_list(Prop) ->
     end;
 store_http_resp(JObj) -> store_http_resp(kz_json:to_proplist(JObj)).
 
--spec store_http_resp_v(api_terms()) -> boolean().
+-spec store_http_resp_v(kz_term:api_terms()) -> boolean().
 store_http_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES);
 store_http_resp_v(JObj) -> store_http_resp_v(kz_json:to_proplist(JObj)).
@@ -286,7 +286,7 @@ store_media_content_v(V) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec send_dtmf(api_terms()) -> api_formatter_return() .
+-spec send_dtmf(kz_term:api_terms()) -> api_formatter_return() .
 send_dtmf(Prop) when is_list(Prop) ->
     case send_dtmf_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEND_DTMF_HEADERS, ?OPTIONAL_SEND_DTMF_HEADERS);
@@ -294,12 +294,12 @@ send_dtmf(Prop) when is_list(Prop) ->
     end;
 send_dtmf(JObj) -> send_dtmf(kz_json:to_proplist(JObj)).
 
--spec send_dtmf_v(api_terms()) -> boolean().
+-spec send_dtmf_v(kz_term:api_terms()) -> boolean().
 send_dtmf_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEND_DTMF_HEADERS, ?SEND_DTMF_VALUES, ?SEND_DTMF_TYPES);
 send_dtmf_v(JObj) -> send_dtmf_v(kz_json:to_proplist(JObj)).
 
--spec recv_dtmf(api_terms()) -> api_formatter_return() .
+-spec recv_dtmf(kz_term:api_terms()) -> api_formatter_return() .
 recv_dtmf(Prop) when is_list(Prop) ->
     case recv_dtmf_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RECV_DTMF_HEADERS, ?OPTIONAL_RECV_DTMF_HEADERS);
@@ -307,7 +307,7 @@ recv_dtmf(Prop) when is_list(Prop) ->
     end;
 recv_dtmf(JObj) -> recv_dtmf(kz_json:to_proplist(JObj)).
 
--spec recv_dtmf_v(api_terms()) -> boolean().
+-spec recv_dtmf_v(kz_term:api_terms()) -> boolean().
 recv_dtmf_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECV_DTMF_HEADERS, ?RECV_DTMF_VALUES, ?RECV_DTMF_TYPES);
 recv_dtmf_v(JObj) -> recv_dtmf_v(kz_json:to_proplist(JObj)).
@@ -317,7 +317,7 @@ recv_dtmf_v(JObj) -> recv_dtmf_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec tones(api_terms()) -> api_formatter_return() .
+-spec tones(kz_term:api_terms()) -> api_formatter_return() .
 tones(Prop) when is_list(Prop) ->
     Tones = [begin
                  {'ok', TonesProp} = tones_req_tone_headers(Tone),
@@ -332,7 +332,7 @@ tones(Prop) when is_list(Prop) ->
     end;
 tones(JObj) -> tones(kz_json:to_proplist(JObj)).
 
--spec tones_v(api_terms()) -> boolean().
+-spec tones_v(kz_term:api_terms()) -> boolean().
 tones_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES);
 tones_v(JObj) -> tones_v(kz_json:to_proplist(JObj)).
@@ -352,7 +352,7 @@ tone_timeout_v(Timeout) ->
 %% Takes proplist and returns a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec tones_req_tone(api_terms()) -> api_formatter_return().
+-spec tones_req_tone(kz_term:api_terms()) -> api_formatter_return().
 tones_req_tone(Prop) when is_list(Prop) ->
     case tones_req_tone_v(Prop) of
         'true' -> kz_api:build_message_specific(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
@@ -360,13 +360,13 @@ tones_req_tone(Prop) when is_list(Prop) ->
     end;
 tones_req_tone(JObj) -> tones_req_tone(kz_json:to_proplist(JObj)).
 
--spec tones_req_tone_v(api_terms()) -> boolean().
+-spec tones_req_tone_v(kz_term:api_terms()) -> boolean().
 tones_req_tone_v(Prop) when is_list(Prop) ->
     kz_api:validate_message(Prop, ?TONES_REQ_TONE_HEADERS, ?TONES_REQ_TONE_VALUES, ?TONES_REQ_TONE_TYPES);
 tones_req_tone_v(JObj) -> tones_req_tone_v(kz_json:to_proplist(JObj)).
 
--spec tones_req_tone_headers(api_terms()) ->
-                                    {'ok', kz_proplist()} |
+-spec tones_req_tone_headers(kz_term:api_terms()) ->
+                                    {'ok', kz_term:proplist()} |
                                     {'error', string()}.
 tones_req_tone_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
@@ -377,7 +377,7 @@ tones_req_tone_headers(JObj) -> tones_req_tone_headers(kz_json:to_proplist(JObj)
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec tone_detect(api_terms()) -> api_formatter_return().
+-spec tone_detect(kz_term:api_terms()) -> api_formatter_return().
 tone_detect(Prop) when is_list(Prop) ->
     case tone_detect_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?TONE_DETECT_REQ_HEADERS, ?OPTIONAL_TONE_DETECT_REQ_HEADERS);
@@ -385,7 +385,7 @@ tone_detect(Prop) when is_list(Prop) ->
     end;
 tone_detect(JObj) -> tone_detect(kz_json:to_proplist(JObj)).
 
--spec tone_detect_v(api_terms()) -> boolean().
+-spec tone_detect_v(kz_term:api_terms()) -> boolean().
 tone_detect_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TONE_DETECT_REQ_HEADERS, ?TONE_DETECT_REQ_VALUES, ?TONE_DETECT_REQ_TYPES);
 tone_detect_v(JObj) -> tone_detect_v(kz_json:to_proplist(JObj)).
@@ -395,7 +395,7 @@ tone_detect_v(JObj) -> tone_detect_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec queue(api_terms()) -> api_formatter_return().
+-spec queue(kz_term:api_terms()) -> api_formatter_return().
 queue(Prop) when is_list(Prop) ->
     case queue_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
@@ -403,7 +403,7 @@ queue(Prop) when is_list(Prop) ->
     end;
 queue(JObj) -> queue(kz_json:to_proplist(JObj)).
 
--spec queue_v(api_terms()) -> boolean().
+-spec queue_v(kz_term:api_terms()) -> boolean().
 queue_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES);
 queue_v(JObj) -> queue_v(kz_json:to_proplist(JObj)).
@@ -413,7 +413,7 @@ queue_v(JObj) -> queue_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec play(api_terms()) -> api_formatter_return().
+-spec play(kz_term:api_terms()) -> api_formatter_return().
 play(Prop) when is_list(Prop) ->
     case play_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
@@ -421,7 +421,7 @@ play(Prop) when is_list(Prop) ->
     end;
 play(JObj) -> play(kz_json:to_proplist(JObj)).
 
--spec play_v(api_terms()) -> boolean().
+-spec play_v(kz_term:api_terms()) -> boolean().
 play_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES);
 play_v(JObj) -> play_v(kz_json:to_proplist(JObj)).
@@ -431,7 +431,7 @@ play_v(JObj) -> play_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec break(api_terms()) -> api_formatter_return().
+-spec break(kz_term:api_terms()) -> api_formatter_return().
 break(Prop) when is_list(Prop) ->
     case break_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?BREAK_REQ_HEADERS, ?OPTIONAL_BREAK_REQ_HEADERS);
@@ -439,7 +439,7 @@ break(Prop) when is_list(Prop) ->
     end;
 break(JObj) -> break(kz_json:to_proplist(JObj)).
 
--spec break_v(api_terms()) -> boolean().
+-spec break_v(kz_term:api_terms()) -> boolean().
 break_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BREAK_REQ_HEADERS, ?BREAK_REQ_VALUES, ?BREAK_REQ_TYPES);
 break_v(JObj) -> break_v(kz_json:to_proplist(JObj)).
@@ -450,7 +450,7 @@ break_v(JObj) -> break_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec playstop(api_terms()) -> api_formatter_return().
+-spec playstop(kz_term:api_terms()) -> api_formatter_return().
 playstop(Prop) when is_list(Prop) ->
     case playstop_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PLAY_STOP_REQ_HEADERS, ?OPTIONAL_PLAY_STOP_REQ_HEADERS);
@@ -458,7 +458,7 @@ playstop(Prop) when is_list(Prop) ->
     end;
 playstop(JObj) -> playstop(kz_json:to_proplist(JObj)).
 
--spec playstop_v(api_terms()) -> boolean().
+-spec playstop_v(kz_term:api_terms()) -> boolean().
 playstop_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
 playstop_v(JObj) -> playstop_v(kz_json:to_proplist(JObj)).
@@ -468,7 +468,7 @@ playstop_v(JObj) -> playstop_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec tts(api_terms()) -> api_formatter_return().
+-spec tts(kz_term:api_terms()) -> api_formatter_return().
 tts(Prop) when is_list(Prop) ->
     case tts_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?TTS_REQ_HEADERS, ?OPTIONAL_TTS_REQ_HEADERS);
@@ -476,7 +476,7 @@ tts(Prop) when is_list(Prop) ->
     end;
 tts(JObj) -> tts(kz_json:to_proplist(JObj)).
 
--spec tts_v(api_terms()) -> boolean().
+-spec tts_v(kz_term:api_terms()) -> boolean().
 tts_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TTS_REQ_HEADERS, ?TTS_REQ_VALUES, ?TTS_REQ_TYPES);
 tts_v(JObj) -> tts_v(kz_json:to_proplist(JObj)).
@@ -486,7 +486,7 @@ tts_v(JObj) -> tts_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec record(api_terms()) -> api_formatter_return().
+-spec record(kz_term:api_terms()) -> api_formatter_return().
 record(Prop) when is_list(Prop) ->
     case record_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RECORD_REQ_HEADERS, ?OPTIONAL_RECORD_REQ_HEADERS);
@@ -494,7 +494,7 @@ record(Prop) when is_list(Prop) ->
     end;
 record(JObj) -> record(kz_json:to_proplist(JObj)).
 
--spec record_v(api_terms()) -> boolean().
+-spec record_v(kz_term:api_terms()) -> boolean().
 record_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES);
 record_v(JObj) -> record_v(kz_json:to_proplist(JObj)).
@@ -504,7 +504,7 @@ record_v(JObj) -> record_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec record_call(api_terms()) -> api_formatter_return().
+-spec record_call(kz_term:api_terms()) -> api_formatter_return().
 record_call(Prop) when is_list(Prop) ->
     case record_call_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RECORD_CALL_REQ_HEADERS, ?OPTIONAL_RECORD_CALL_REQ_HEADERS);
@@ -512,7 +512,7 @@ record_call(Prop) when is_list(Prop) ->
     end;
 record_call(JObj) -> record_call(kz_json:to_proplist(JObj)).
 
--spec record_call_v(api_terms()) -> boolean().
+-spec record_call_v(kz_term:api_terms()) -> boolean().
 record_call_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECORD_CALL_REQ_HEADERS, ?RECORD_CALL_REQ_VALUES, ?RECORD_CALL_REQ_TYPES);
 record_call_v(JObj) -> record_call_v(kz_json:to_proplist(JObj)).
@@ -522,7 +522,7 @@ record_call_v(JObj) -> record_call_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec answer(api_terms()) -> api_formatter_return().
+-spec answer(kz_term:api_terms()) -> api_formatter_return().
 answer(Prop) when is_list(Prop) ->
     case answer_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ANSWER_REQ_HEADERS, ?OPTIONAL_ANSWER_REQ_HEADERS);
@@ -530,7 +530,7 @@ answer(Prop) when is_list(Prop) ->
     end;
 answer(JObj) -> answer(kz_json:to_proplist(JObj)).
 
--spec answer_v(api_terms()) -> boolean().
+-spec answer_v(kz_term:api_terms()) -> boolean().
 answer_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES);
 answer_v(JObj) -> answer_v(kz_json:to_proplist(JObj)).
@@ -540,7 +540,7 @@ answer_v(JObj) -> answer_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec echo(api_terms()) -> api_formatter_return().
+-spec echo(kz_term:api_terms()) -> api_formatter_return().
 echo(Prop) when is_list(Prop) ->
     case echo_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ECHO_REQ_HEADERS, ?OPTIONAL_ECHO_REQ_HEADERS);
@@ -548,7 +548,7 @@ echo(Prop) when is_list(Prop) ->
     end;
 echo(JObj) -> echo(kz_json:to_proplist(JObj)).
 
--spec echo_v(api_terms()) -> boolean().
+-spec echo_v(kz_term:api_terms()) -> boolean().
 echo_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ECHO_REQ_HEADERS, ?ECHO_REQ_VALUES, ?ECHO_REQ_TYPES);
 echo_v(JObj) -> echo_v(kz_json:to_proplist(JObj)).
@@ -558,7 +558,7 @@ echo_v(JObj) -> echo_v(kz_json:to_proplist(JObj)).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec privacy(api_terms()) -> api_formatter_return().
+-spec privacy(kz_term:api_terms()) -> api_formatter_return().
 privacy(Prop) when is_list(Prop) ->
     case privacy_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PRIVACY_REQ_HEADERS, ?OPTIONAL_PRIVACY_REQ_HEADERS);
@@ -566,7 +566,7 @@ privacy(Prop) when is_list(Prop) ->
     end;
 privacy(JObj) -> privacy(kz_json:to_proplist(JObj)).
 
--spec privacy_v(api_terms()) -> boolean().
+-spec privacy_v(kz_term:api_terms()) -> boolean().
 privacy_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PRIVACY_REQ_HEADERS, ?PRIVACY_REQ_VALUES, ?PRIVACY_REQ_TYPES);
 privacy_v(JObj) -> privacy_v(kz_json:to_proplist(JObj)).
@@ -576,7 +576,7 @@ privacy_v(JObj) -> privacy_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec progress(api_terms()) -> api_formatter_return().
+-spec progress(kz_term:api_terms()) -> api_formatter_return().
 progress(Prop) when is_list(Prop) ->
     case progress_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PROGRESS_REQ_HEADERS, ?OPTIONAL_PROGRESS_REQ_HEADERS);
@@ -584,7 +584,7 @@ progress(Prop) when is_list(Prop) ->
     end;
 progress(JObj) -> progress(kz_json:to_proplist(JObj)).
 
--spec progress_v(api_terms()) -> boolean().
+-spec progress_v(kz_term:api_terms()) -> boolean().
 progress_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PROGRESS_REQ_HEADERS, ?PROGRESS_REQ_VALUES, ?PROGRESS_REQ_TYPES);
 progress_v(JObj) -> progress_v(kz_json:to_proplist(JObj)).
@@ -594,7 +594,7 @@ progress_v(JObj) -> progress_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec ring(api_terms()) -> api_formatter_return().
+-spec ring(kz_term:api_terms()) -> api_formatter_return().
 ring(Prop) when is_list(Prop) ->
     case ring_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RING_REQ_HEADERS, ?OPTIONAL_RING_REQ_HEADERS);
@@ -602,7 +602,7 @@ ring(Prop) when is_list(Prop) ->
     end;
 ring(JObj) -> ring(kz_json:to_proplist(JObj)).
 
--spec ring_v(api_terms()) -> boolean().
+-spec ring_v(kz_term:api_terms()) -> boolean().
 ring_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RING_REQ_HEADERS, ?RING_REQ_VALUES, ?RING_REQ_TYPES);
 ring_v(JObj) -> ring_v(kz_json:to_proplist(JObj)).
@@ -612,7 +612,7 @@ ring_v(JObj) -> ring_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec receive_fax(api_terms()) -> api_formatter_return().
+-spec receive_fax(kz_term:api_terms()) -> api_formatter_return().
 receive_fax(Prop) when is_list(Prop) ->
     case receive_fax_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RECV_FAX_HEADERS, ?OPTIONAL_RECV_FAX_HEADERS);
@@ -620,7 +620,7 @@ receive_fax(Prop) when is_list(Prop) ->
     end;
 receive_fax(JObj) -> receive_fax(kz_json:to_proplist(JObj)).
 
--spec receive_fax_v(api_terms()) -> boolean().
+-spec receive_fax_v(kz_term:api_terms()) -> boolean().
 receive_fax_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECV_FAX_HEADERS, ?RECV_FAX_VALUES, ?RECV_FAX_TYPES);
 receive_fax_v(JObj) -> receive_fax_v(kz_json:to_proplist(JObj)).
@@ -630,7 +630,7 @@ receive_fax_v(JObj) -> receive_fax_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec store_fax(api_terms()) -> api_formatter_return().
+-spec store_fax(kz_term:api_terms()) -> api_formatter_return().
 store_fax(Prop) when is_list(Prop) ->
     case store_fax_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?STORE_FAX_HEADERS, ?OPTIONAL_STORE_FAX_HEADERS);
@@ -639,7 +639,7 @@ store_fax(Prop) when is_list(Prop) ->
 store_fax(JObj) ->
     store_fax(kz_json:to_proplist(JObj)).
 
--spec store_fax_v(api_terms()) -> boolean().
+-spec store_fax_v(kz_term:api_terms()) -> boolean().
 store_fax_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STORE_FAX_HEADERS, ?STORE_FAX_VALUES, ?STORE_FAX_TYPES);
 store_fax_v(JObj) ->
@@ -650,7 +650,7 @@ store_fax_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec hangup(api_terms()) -> api_formatter_return().
+-spec hangup(kz_term:api_terms()) -> api_formatter_return().
 hangup(Prop) when is_list(Prop) ->
     case hangup_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?HANGUP_REQ_HEADERS, ?OPTIONAL_HANGUP_REQ_HEADERS);
@@ -659,13 +659,13 @@ hangup(Prop) when is_list(Prop) ->
 hangup(JObj) ->
     hangup(kz_json:to_proplist(JObj)).
 
--spec hangup_v(api_terms()) -> boolean().
+-spec hangup_v(kz_term:api_terms()) -> boolean().
 hangup_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?HANGUP_REQ_HEADERS, ?HANGUP_REQ_VALUES, ?HANGUP_REQ_TYPES);
 hangup_v(JObj) ->
     hangup_v(kz_json:to_proplist(JObj)).
 
--spec soft_hold(api_terms()) -> api_formatter_return().
+-spec soft_hold(kz_term:api_terms()) -> api_formatter_return().
 soft_hold(Prop) when is_list(Prop) ->
     case soft_hold_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SOFT_HOLD_REQ_HEADERS, ?OPTIONAL_SOFT_HOLD_REQ_HEADERS);
@@ -674,7 +674,7 @@ soft_hold(Prop) when is_list(Prop) ->
 soft_hold(JObj) ->
     soft_hold(kz_json:to_proplist(JObj)).
 
--spec soft_hold_v(api_terms()) -> boolean().
+-spec soft_hold_v(kz_term:api_terms()) -> boolean().
 soft_hold_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SOFT_HOLD_REQ_HEADERS, ?SOFT_HOLD_REQ_VALUES, ?SOFT_HOLD_REQ_TYPES);
 soft_hold_v(JObj) ->
@@ -685,7 +685,7 @@ soft_hold_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec hold(api_terms()) -> api_formatter_return().
+-spec hold(kz_term:api_terms()) -> api_formatter_return().
 hold(Prop) when is_list(Prop) ->
     case hold_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?HOLD_REQ_HEADERS, ?OPTIONAL_HOLD_REQ_HEADERS);
@@ -694,13 +694,13 @@ hold(Prop) when is_list(Prop) ->
 hold(JObj) ->
     hold(kz_json:to_proplist(JObj)).
 
--spec hold_v(api_terms()) -> boolean().
+-spec hold_v(kz_term:api_terms()) -> boolean().
 hold_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?HOLD_REQ_HEADERS, ?HOLD_REQ_VALUES, ?HOLD_REQ_TYPES);
 hold_v(JObj) ->
     hold_v(kz_json:to_proplist(JObj)).
 
--spec hold_control(api_terms()) -> api_formatter_return().
+-spec hold_control(kz_term:api_terms()) -> api_formatter_return().
 hold_control(Prop) when is_list(Prop) ->
     case hold_control_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?HOLD_CTL_REQ_HEADERS, ?OPTIONAL_HOLD_CTL_REQ_HEADERS);
@@ -709,7 +709,7 @@ hold_control(Prop) when is_list(Prop) ->
 hold_control(JObj) ->
     hold_control(kz_json:to_proplist(JObj)).
 
--spec hold_control_v(api_terms()) -> boolean().
+-spec hold_control_v(kz_term:api_terms()) -> boolean().
 hold_control_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?HOLD_CTL_REQ_HEADERS, ?HOLD_CTL_REQ_VALUES, ?HOLD_CTL_REQ_TYPES);
 hold_control_v(JObj) ->
@@ -720,7 +720,7 @@ hold_control_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec park(api_terms()) -> api_formatter_return().
+-spec park(kz_term:api_terms()) -> api_formatter_return().
 park(Prop) when is_list(Prop) ->
     case park_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PARK_REQ_HEADERS, ?OPTIONAL_PARK_REQ_HEADERS);
@@ -729,13 +729,13 @@ park(Prop) when is_list(Prop) ->
 park(JObj) ->
     park(kz_json:to_proplist(JObj)).
 
--spec park_v(api_terms()) -> boolean().
+-spec park_v(kz_term:api_terms()) -> boolean().
 park_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES);
 park_v(JObj) ->
     park_v(kz_json:to_proplist(JObj)).
 
--spec audio_level(api_terms()) -> api_formatter_return().
+-spec audio_level(kz_term:api_terms()) -> api_formatter_return().
 audio_level(Prop) when is_list(Prop) ->
     case audio_level_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?AUDIO_REQ_HEADERS, ?OPTIONAL_AUDIO_REQ_HEADERS);
@@ -744,7 +744,7 @@ audio_level(Prop) when is_list(Prop) ->
 audio_level(JObj) ->
     audio_level(kz_json:to_proplist(JObj)).
 
--spec audio_level_v(api_terms()) -> boolean().
+-spec audio_level_v(kz_term:api_terms()) -> boolean().
 audio_level_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AUDIO_REQ_HEADERS, ?AUDIO_REQ_VALUES, ?AUDIO_REQ_TYPES);
 audio_level_v(JObj) ->
@@ -754,7 +754,7 @@ audio_level_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec set(api_terms()) -> api_formatter_return().
+-spec set(kz_term:api_terms()) -> api_formatter_return().
 set(Prop) when is_list(Prop) ->
     case set_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SET_REQ_HEADERS, ?OPTIONAL_SET_REQ_HEADERS);
@@ -763,7 +763,7 @@ set(Prop) when is_list(Prop) ->
 set(JObj) ->
     set(kz_json:to_proplist(JObj)).
 
--spec set_v(api_terms()) -> boolean() .
+-spec set_v(kz_term:api_terms()) -> boolean() .
 set_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES);
 set_v(JObj) ->
@@ -774,7 +774,7 @@ set_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec set_terminators(api_terms()) -> api_formatter_return().
+-spec set_terminators(kz_term:api_terms()) -> api_formatter_return().
 set_terminators(Prop) when is_list(Prop) ->
     case set_terminators_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SET_TERM_HEADERS, ?OPTIONAL_SET_TERM_HEADERS);
@@ -783,7 +783,7 @@ set_terminators(Prop) when is_list(Prop) ->
 set_terminators(JObj) ->
     set_terminators(kz_json:to_proplist(JObj)).
 
--spec set_terminators_v(api_terms()) -> boolean() .
+-spec set_terminators_v(kz_term:api_terms()) -> boolean() .
 set_terminators_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SET_TERM_HEADERS, ?SET_TERM_VALUES, ?SET_TERM_TYPES);
 set_terminators_v(JObj) ->
@@ -794,7 +794,7 @@ set_terminators_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_terms()) -> api_formatter_return().
+-spec fetch(kz_term:api_terms()) -> api_formatter_return().
 fetch(Prop) when is_list(Prop) ->
     case fetch_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FETCH_REQ_HEADERS, ?OPTIONAL_FETCH_REQ_HEADERS);
@@ -803,7 +803,7 @@ fetch(Prop) when is_list(Prop) ->
 fetch(JObj) ->
     fetch(kz_json:to_proplist(JObj)).
 
--spec fetch_v(api_terms()) -> boolean().
+-spec fetch_v(kz_term:api_terms()) -> boolean().
 fetch_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FETCH_REQ_HEADERS, ?FETCH_REQ_VALUES, ?FETCH_REQ_TYPES);
 fetch_v(JObj) ->
@@ -814,7 +814,7 @@ fetch_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec play_and_collect_digits(api_terms()) -> api_formatter_return().
+-spec play_and_collect_digits(kz_term:api_terms()) -> api_formatter_return().
 play_and_collect_digits(Prop) when is_list(Prop) ->
     case play_and_collect_digits_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS);
@@ -823,7 +823,7 @@ play_and_collect_digits(Prop) when is_list(Prop) ->
 play_and_collect_digits(JObj) ->
     play_and_collect_digits(kz_json:to_proplist(JObj)).
 
--spec play_and_collect_digits_v(api_terms()) -> boolean().
+-spec play_and_collect_digits_v(kz_term:api_terms()) -> boolean().
 play_and_collect_digits_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?PLAY_COLLECT_DIGITS_REQ_VALUES, ?PLAY_COLLECT_DIGITS_REQ_TYPES);
 play_and_collect_digits_v(JObj) ->
@@ -834,7 +834,7 @@ play_and_collect_digits_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_pickup(api_terms()) -> api_formatter_return().
+-spec call_pickup(kz_term:api_terms()) -> api_formatter_return().
 call_pickup(Prop) when is_list(Prop) ->
     case call_pickup_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CALL_PICKUP_REQ_HEADERS, ?OPTIONAL_CALL_PICKUP_REQ_HEADERS);
@@ -843,7 +843,7 @@ call_pickup(Prop) when is_list(Prop) ->
 call_pickup(JObj) ->
     call_pickup(kz_json:to_proplist(JObj)).
 
--spec call_pickup_v(api_terms()) -> boolean().
+-spec call_pickup_v(kz_term:api_terms()) -> boolean().
 call_pickup_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CALL_PICKUP_REQ_HEADERS, ?CALL_PICKUP_REQ_VALUES, ?CALL_PICKUP_REQ_TYPES);
 call_pickup_v(JObj) ->
@@ -854,7 +854,7 @@ call_pickup_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec connect_leg(api_terms()) -> api_formatter_return().
+-spec connect_leg(kz_term:api_terms()) -> api_formatter_return().
 connect_leg(Prop) when is_list(Prop) ->
     case connect_leg_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CONNECT_LEG_REQ_HEADERS, ?OPTIONAL_CONNECT_LEG_REQ_HEADERS);
@@ -863,7 +863,7 @@ connect_leg(Prop) when is_list(Prop) ->
 connect_leg(JObj) ->
     connect_leg(kz_json:to_proplist(JObj)).
 
--spec connect_leg_v(api_terms()) -> boolean().
+-spec connect_leg_v(kz_term:api_terms()) -> boolean().
 connect_leg_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONNECT_LEG_REQ_HEADERS, ?CONNECT_LEG_REQ_VALUES, ?CONNECT_LEG_REQ_TYPES);
 connect_leg_v(JObj) ->
@@ -874,7 +874,7 @@ connect_leg_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec eavesdrop(api_terms()) -> api_formatter_return().
+-spec eavesdrop(kz_term:api_terms()) -> api_formatter_return().
 eavesdrop(Prop) when is_list(Prop) ->
     case eavesdrop_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?EAVESDROP_REQ_HEADERS, ?OPTIONAL_EAVESDROP_REQ_HEADERS);
@@ -883,7 +883,7 @@ eavesdrop(Prop) when is_list(Prop) ->
 eavesdrop(JObj) ->
     eavesdrop(kz_json:to_proplist(JObj)).
 
--spec eavesdrop_v(api_terms()) -> boolean().
+-spec eavesdrop_v(kz_term:api_terms()) -> boolean().
 eavesdrop_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?EAVESDROP_REQ_HEADERS, ?EAVESDROP_REQ_VALUES, ?EAVESDROP_REQ_TYPES);
 eavesdrop_v(JObj) ->
@@ -894,7 +894,7 @@ eavesdrop_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec say(api_terms()) -> api_formatter_return().
+-spec say(kz_term:api_terms()) -> api_formatter_return().
 say(Prop) when is_list(Prop) ->
     case say_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SAY_REQ_HEADERS, ?OPTIONAL_SAY_REQ_HEADERS);
@@ -903,7 +903,7 @@ say(Prop) when is_list(Prop) ->
 say(JObj) ->
     say(kz_json:to_proplist(JObj)).
 
--spec say_v(api_terms()) -> boolean().
+-spec say_v(kz_term:api_terms()) -> boolean().
 say_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SAY_REQ_HEADERS, ?SAY_REQ_VALUES, ?SAY_REQ_TYPES);
 say_v(JObj) ->
@@ -914,7 +914,7 @@ say_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec respond(api_terms()) -> api_formatter_return().
+-spec respond(kz_term:api_terms()) -> api_formatter_return().
 respond(Prop) when is_list(Prop) ->
     case respond_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESPOND_REQ_HEADERS, ?OPTIONAL_RESPOND_REQ_HEADERS);
@@ -923,7 +923,7 @@ respond(Prop) when is_list(Prop) ->
 respond(JObj) ->
     respond(kz_json:to_proplist(JObj)).
 
--spec respond_v(api_terms()) -> boolean().
+-spec respond_v(kz_term:api_terms()) -> boolean().
 respond_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESPOND_REQ_HEADERS, ?RESPOND_REQ_VALUES, ?RESPOND_REQ_TYPES);
 respond_v(JObj) ->
@@ -934,7 +934,7 @@ respond_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec redirect(api_terms()) -> api_formatter_return().
+-spec redirect(kz_term:api_terms()) -> api_formatter_return().
 redirect(Prop) when is_list(Prop) ->
     case redirect_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REDIRECT_REQ_HEADERS, ?OPTIONAL_REDIRECT_REQ_HEADERS);
@@ -943,7 +943,7 @@ redirect(Prop) when is_list(Prop) ->
 redirect(JObj) ->
     redirect(kz_json:to_proplist(JObj)).
 
--spec redirect_v(api_terms()) -> boolean().
+-spec redirect_v(kz_term:api_terms()) -> boolean().
 redirect_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REDIRECT_REQ_HEADERS, ?REDIRECT_REQ_VALUES, ?REDIRECT_REQ_TYPES);
 redirect_v(JObj) ->
@@ -954,7 +954,7 @@ redirect_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec execute_extension(api_terms()) -> api_formatter_return().
+-spec execute_extension(kz_term:api_terms()) -> api_formatter_return().
 execute_extension(Prop) when is_list(Prop) ->
     case execute_extension_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?EXECUTE_EXTENSION_REQ_HEADERS, ?OPTIONAL_EXECUTE_EXTENSION_REQ_HEADERS);
@@ -963,7 +963,7 @@ execute_extension(Prop) when is_list(Prop) ->
 execute_extension(JObj) ->
     execute_extension(kz_json:to_proplist(JObj)).
 
--spec execute_extension_v(api_terms()) -> boolean().
+-spec execute_extension_v(kz_term:api_terms()) -> boolean().
 execute_extension_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?EXECUTE_EXTENSION_REQ_HEADERS, ?EXECUTE_EXTENSION_REQ_VALUES, ?EXECUTE_EXTENSION_REQ_TYPES);
 execute_extension_v(JObj) ->
@@ -974,7 +974,7 @@ execute_extension_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec sleep(api_terms()) -> api_formatter_return().
+-spec sleep(kz_term:api_terms()) -> api_formatter_return().
 sleep(Prop) when is_list(Prop) ->
     case sleep_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SLEEP_REQ_HEADERS, ?OPTIONAL_SLEEP_REQ_HEADERS);
@@ -983,7 +983,7 @@ sleep(Prop) when is_list(Prop) ->
 sleep(JObj) ->
     sleep(kz_json:to_proplist(JObj)).
 
--spec sleep_v(api_terms()) -> boolean().
+-spec sleep_v(kz_term:api_terms()) -> boolean().
 sleep_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SLEEP_REQ_HEADERS, ?SLEEP_REQ_VALUES, ?SLEEP_REQ_TYPES);
 sleep_v(JObj) ->
@@ -994,7 +994,7 @@ sleep_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec noop(api_terms()) -> api_formatter_return().
+-spec noop(kz_term:api_terms()) -> api_formatter_return().
 noop(Prop) when is_list(Prop) ->
     case noop_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NOOP_REQ_HEADERS, ?OPTIONAL_NOOP_REQ_HEADERS);
@@ -1003,7 +1003,7 @@ noop(Prop) when is_list(Prop) ->
 noop(JObj) ->
     noop(kz_json:to_proplist(JObj)).
 
--spec noop_v(api_terms()) -> boolean().
+-spec noop_v(kz_term:api_terms()) -> boolean().
 noop_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NOOP_REQ_HEADERS, ?NOOP_REQ_VALUES, ?NOOP_REQ_TYPES);
 noop_v(JObj) ->
@@ -1014,7 +1014,7 @@ noop_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference(api_terms()) -> api_formatter_return().
+-spec conference(kz_term:api_terms()) -> api_formatter_return().
 conference(Prop) when is_list(Prop) ->
     case conference_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CONFERENCE_REQ_HEADERS, ?OPTIONAL_CONFERENCE_REQ_HEADERS);
@@ -1022,7 +1022,7 @@ conference(Prop) when is_list(Prop) ->
     end;
 conference(JObj) -> conference(kz_json:to_proplist(JObj)).
 
--spec conference_v(api_terms()) -> boolean().
+-spec conference_v(kz_term:api_terms()) -> boolean().
 conference_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES);
 conference_v(JObj) -> conference_v(kz_json:to_proplist(JObj)).
@@ -1033,7 +1033,7 @@ conference_v(JObj) -> conference_v(kz_json:to_proplist(JObj)).
 %% wait for the Requestor to respond to execute the origination
 %% @end
 %%--------------------------------------------------------------------
--spec originate_ready(api_terms()) -> api_formatter_return().
+-spec originate_ready(kz_term:api_terms()) -> api_formatter_return().
 originate_ready(Prop) when is_list(Prop) ->
     case originate_ready_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ORIGINATE_READY_HEADERS, ?OPTIONAL_ORIGINATE_READY_HEADERS);
@@ -1042,13 +1042,13 @@ originate_ready(Prop) when is_list(Prop) ->
 originate_ready(JObj) ->
     originate_ready(kz_json:to_proplist(JObj)).
 
--spec originate_ready_v(api_terms()) -> boolean().
+-spec originate_ready_v(kz_term:api_terms()) -> boolean().
 originate_ready_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ORIGINATE_READY_HEADERS, ?ORIGINATE_READY_VALUES, ?ORIGINATE_READY_TYPES);
 originate_ready_v(JObj) ->
     originate_ready_v(kz_json:to_proplist(JObj)).
 
--spec originate_execute(api_terms()) -> api_formatter_return().
+-spec originate_execute(kz_term:api_terms()) -> api_formatter_return().
 originate_execute(Prop) when is_list(Prop) ->
     case originate_execute_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ORIGINATE_EXECUTE_HEADERS, ?OPTIONAL_ORIGINATE_EXECUTE_HEADERS);
@@ -1057,7 +1057,7 @@ originate_execute(Prop) when is_list(Prop) ->
 originate_execute(JObj) ->
     originate_execute(kz_json:to_proplist(JObj)).
 
--spec originate_execute_v(api_terms()) -> boolean().
+-spec originate_execute_v(kz_term:api_terms()) -> boolean().
 originate_execute_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ORIGINATE_EXECUTE_HEADERS, ?ORIGINATE_EXECUTE_VALUES, ?ORIGINATE_EXECUTE_TYPES);
 originate_execute_v(JObj) ->
@@ -1068,7 +1068,7 @@ originate_execute_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error(api_terms()) -> api_formatter_return().
+-spec error(kz_term:api_terms()) -> api_formatter_return().
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         'true' ->  kz_api:build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
@@ -1076,7 +1076,7 @@ error(Prop) when is_list(Prop) ->
     end;
 error(JObj) -> error(kz_json:to_proplist(JObj)).
 
--spec error_v(api_terms()) -> boolean().
+-spec error_v(kz_term:api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop
                    ,?ERROR_RESP_HEADERS
@@ -1088,8 +1088,8 @@ error_v(Prop) when is_list(Prop) ->
 error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
--spec publish_command(ne_binary(), api_terms()) -> 'ok'.
--spec publish_command(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_command(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_command(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 
 publish_command(CtrlQ, Prop) when is_list(Prop) ->
     publish_command(CtrlQ, Prop, props:get_value(<<"Application-Name">>, Prop));
@@ -1100,13 +1100,13 @@ publish_command(CtrlQ, Prop, DPApp) ->
     {'ok', Payload} = build_command(Prop, DPApp),
     amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
 
--spec build_command(api_terms()) -> {'ok', api_terms()}.
+-spec build_command(kz_term:api_terms()) -> {'ok', kz_term:api_terms()}.
 build_command(Prop) when is_list(Prop) ->
     build_command(Prop, props:get_value(<<"Application-Name">>, Prop));
 build_command(JObj) ->
     build_command(kz_json:to_proplist(JObj)).
 
--spec build_command(api_terms(), ne_binary()) -> {'ok', api_terms()}.
+-spec build_command(kz_term:api_terms(), kz_term:ne_binary()) -> {'ok', kz_term:api_terms()}.
 build_command(Prop, DPApp) when is_list(Prop) ->
     try kz_term:to_atom(<<DPApp/binary>>) of
         BuildMsgFun ->
@@ -1124,15 +1124,15 @@ build_command(JObj, DPApp) ->
     build_command(kz_json:to_proplist(JObj), DPApp).
 
 %% sending DP actions to CallControl Queue
--spec publish_action(ne_binary(), iodata()) -> 'ok'.
--spec publish_action(ne_binary(), iodata(), ne_binary()) -> 'ok'.
+-spec publish_action(kz_term:ne_binary(), iodata()) -> 'ok'.
+-spec publish_action(kz_term:ne_binary(), iodata(), kz_term:ne_binary()) -> 'ok'.
 publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
 publish_action(Queue, Payload, ContentType) ->
     amqp_util:callctl_publish(Queue, Payload, ContentType).
 
--spec publish_error(ne_binary(), api_terms()) -> 'ok'.
--spec publish_error(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(CallID, JObj) ->
     publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(CallID, API, ContentType) ->
@@ -1141,33 +1141,33 @@ publish_error(CallID, API, ContentType) ->
                                                       ], fun error/1),
     amqp_util:callevt_publish(kapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
 
--spec publish_originate_ready(ne_binary(), api_terms()) -> 'ok'.
--spec publish_originate_ready(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_ready(ServerId, JObj) ->
     publish_originate_ready(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_ready(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun originate_ready/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_originate_execute(ne_binary(), api_terms()) -> 'ok'.
--spec publish_originate_execute(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_execute(ServerId, JObj) ->
     publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_execute(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun originate_execute/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec dial_method_single() -> ne_binary().
+-spec dial_method_single() -> kz_term:ne_binary().
 dial_method_single() -> ?DIAL_METHOD_SINGLE.
 
--spec dial_method_simultaneous() -> ne_binary().
+-spec dial_method_simultaneous() -> kz_term:ne_binary().
 dial_method_simultaneous() -> ?DIAL_METHOD_SIMUL.
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_callctl(Queue).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_callctl(Queue).
 
@@ -1180,13 +1180,13 @@ unbind_q(Queue, _Props) ->
 declare_exchanges() ->
     amqp_util:callctl_exchange().
 
--spec terminators(api_binary()) -> ne_binaries().
+-spec terminators(kz_term:api_binary()) -> kz_term:ne_binaries().
 terminators(Bin) when is_binary(Bin) ->
     [<<B>> || <<B>> <= Bin, lists:member(<<B>>, ?ANY_DIGIT)];
 terminators('undefined') -> ?ANY_DIGIT.
 
--spec terminators_v(api_binaries() | binary()) -> boolean().
--spec terminator_v(ne_binary()) -> boolean().
+-spec terminators_v(kz_term:api_binaries() | binary()) -> boolean().
+-spec terminator_v(kz_term:ne_binary()) -> boolean().
 terminators_v(Ts) when is_list(Ts) ->
     lists:all(fun terminator_v/1, Ts);
 terminators_v(<<>>) -> 'true';
@@ -1195,7 +1195,7 @@ terminators_v(_) -> 'false'.
 
 terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
--spec offsite_store_url(api_binary(), ne_binary()) -> ne_binary().
+-spec offsite_store_url(kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
 offsite_store_url(Url, MediaName) ->
     iolist_to_binary([kz_binary:strip_right(Url, $/), "/", MediaName]).
@@ -1205,7 +1205,7 @@ offsite_store_url(Url, MediaName) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec fax_detection(api_terms()) -> api_formatter_return().
+-spec fax_detection(kz_term:api_terms()) -> api_formatter_return().
 fax_detection(Prop) when is_list(Prop) ->
     case fax_detection_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FAX_DETECTION_REQ_HEADERS, ?OPTIONAL_FAX_DETECTION_REQ_HEADERS);
@@ -1213,13 +1213,13 @@ fax_detection(Prop) when is_list(Prop) ->
     end;
 fax_detection(JObj) -> fax_detection(kz_json:to_proplist(JObj)).
 
--spec fax_detection_v(api_terms()) -> boolean().
+-spec fax_detection_v(kz_term:api_terms()) -> boolean().
 fax_detection_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_DETECTION_REQ_HEADERS, ?FAX_DETECTION_REQ_VALUES, ?FAX_DETECTION_REQ_TYPES);
 fax_detection_v(JObj) -> fax_detection_v(kz_json:to_proplist(JObj)).
 
--spec store_vm(api_terms()) ->
-                      {'ok', kz_proplist()} |
+-spec store_vm(kz_term:api_terms()) ->
+                      {'ok', kz_term:proplist()} |
                       {'error', string()}.
 store_vm(Prop) when is_list(Prop) ->
     case store_vm_v(Prop) of
@@ -1228,12 +1228,12 @@ store_vm(Prop) when is_list(Prop) ->
     end;
 store_vm(JObj) -> store_vm(kz_json:to_proplist(JObj)).
 
--spec store_vm_v(api_terms()) -> boolean().
+-spec store_vm_v(kz_term:api_terms()) -> boolean().
 store_vm_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STORE_VM_REQ_HEADERS, ?STORE_VM_REQ_VALUES, ?STORE_VM_REQ_TYPES);
 store_vm_v(JObj) -> store_vm_v(kz_json:to_proplist(JObj)).
 
--spec transfer(api_terms()) -> api_formatter_return().
+-spec transfer(kz_term:api_terms()) -> api_formatter_return().
 transfer(Prop) when is_list(Prop) ->
     case transfer_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?TRANSFER_HEADERS, ?OPTIONAL_TRANSFER_HEADERS);
@@ -1241,12 +1241,12 @@ transfer(Prop) when is_list(Prop) ->
     end;
 transfer(JObj) -> transfer(kz_json:to_proplist(JObj)).
 
--spec transfer_v(api_terms()) -> boolean().
+-spec transfer_v(kz_term:api_terms()) -> boolean().
 transfer_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TRANSFER_HEADERS, ?TRANSFER_VALUES, ?TRANSFER_TYPES);
 transfer_v(JObj) -> transfer_v(kz_json:to_proplist(JObj)).
 
--spec media_macro(api_terms()) -> api_formatter_return().
+-spec media_macro(kz_term:api_terms()) -> api_formatter_return().
 media_macro(Prop) when is_list(Prop) ->
     case media_macro_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?MEDIA_MACRO_HEADERS, ?OPTIONAL_MEDIA_MACRO_HEADERS);
@@ -1254,12 +1254,12 @@ media_macro(Prop) when is_list(Prop) ->
     end;
 media_macro(JObj) -> media_macro(kz_json:to_proplist(JObj)).
 
--spec media_macro_v(api_terms()) -> boolean().
+-spec media_macro_v(kz_term:api_terms()) -> boolean().
 media_macro_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEDIA_MACRO_HEADERS, ?MEDIA_MACRO_VALUES, ?MEDIA_MACRO_TYPES);
 media_macro_v(JObj) -> media_macro_v(kz_json:to_proplist(JObj)).
 
--spec play_macro(api_terms()) -> api_formatter_return().
+-spec play_macro(kz_term:api_terms()) -> api_formatter_return().
 play_macro(Prop) when is_list(Prop) ->
     case play_macro_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PLAY_MACRO_HEADERS, ?OPTIONAL_PLAY_MACRO_HEADERS);
@@ -1267,12 +1267,12 @@ play_macro(Prop) when is_list(Prop) ->
     end;
 play_macro(JObj) -> play_macro(kz_json:to_proplist(JObj)).
 
--spec play_macro_v(api_terms()) -> boolean().
+-spec play_macro_v(kz_term:api_terms()) -> boolean().
 play_macro_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_MACRO_HEADERS, ?PLAY_MACRO_VALUES, ?PLAY_MACRO_TYPES);
 play_macro_v(JObj) -> play_macro_v(kz_json:to_proplist(JObj)).
 
--spec sound_touch(api_terms()) -> api_formatter_return().
+-spec sound_touch(kz_term:api_terms()) -> api_formatter_return().
 sound_touch(Prop) when is_list(Prop) ->
     case sound_touch_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SOUNDTOUCH_HEADERS, ?OPTIONAL_SOUNDTOUCH_HEADERS);
@@ -1280,7 +1280,7 @@ sound_touch(Prop) when is_list(Prop) ->
     end;
 sound_touch(JObj) -> sound_touch(kz_json:to_proplist(JObj)).
 
--spec sound_touch_v(api_terms()) -> boolean().
+-spec sound_touch_v(kz_term:api_terms()) -> boolean().
 sound_touch_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SOUNDTOUCH_HEADERS, ?SOUNDTOUCH_VALUES, ?SOUNDTOUCH_TYPES);
 sound_touch_v(JObj) -> sound_touch_v(kz_json:to_proplist(JObj)).

@@ -106,7 +106,7 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec build_template_data(kz_json:object()) -> kz_proplist().
+-spec build_template_data(kz_json:object()) -> kz_term:proplist().
 build_template_data(DataJObj) ->
     Timezone = kz_json:get_value(<<"timezone">>, DataJObj),
     props:filter_undefined(
@@ -118,7 +118,7 @@ build_template_data(DataJObj) ->
        | teletype_util:build_call_data(DataJObj, Timezone)
       ]).
 
--spec build_fax_template_data(kz_json:object()) -> kz_proplist().
+-spec build_fax_template_data(kz_json:object()) -> kz_term:proplist().
 build_fax_template_data(DataJObj) ->
     FaxJObj = kz_json:get_value(<<"fax_doc">>, DataJObj),
     FaxBoxJObj = kz_json:get_value(<<"faxbox">>, DataJObj),

@@ -42,27 +42,27 @@
 
 -include("knm.hrl").
 
--type option() :: {'assign_to', ne_binary()} |
-                  {'auth_by', ne_binary()} |
+-type option() :: {'assign_to', kz_term:ne_binary()} |
+                  {'auth_by', kz_term:ne_binary()} |
                   {'dry_run', boolean()} |
                   {'batch_run', boolean()} |
                   {mdn_run, boolean()} |
-                  {'module_name', ne_binary()} |
+                  {'module_name', kz_term:ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
-                  {'state', ne_binary()}.
+                  {'state', kz_term:ne_binary()}.
 
 -type options() :: [option()].
 
--type extra_option() :: {'account_id', ne_binary()} | %%api
+-type extra_option() :: {'account_id', kz_term:ne_binary()} | %%api
                         {'force_outbound', boolean()} |
                         {'inbound_cnam', boolean()} |
                         {'local', boolean()} |
-                        {'number', ne_binary()} | %%api
+                        {'number', kz_term:ne_binary()} | %%api
                         {'pending_port', boolean()} |
-                        {'prepend', api_binary()} | %%|false
-                        {'ringback_media', api_binary()} |
-                        {'transfer_media', api_binary()}.
+                        {'prepend', kz_term:api_binary()} | %%|false
+                        {'ringback_media', kz_term:api_binary()} |
+                        {'transfer_media', kz_term:api_binary()}.
 
 -type extra_options() :: [extra_option()].
 
@@ -124,26 +124,26 @@ mdn_run(Options) ->
         andalso lager:debug("mdn_run-ing btw"),
     R.
 
--spec assign_to(options()) -> api_binary().
--spec assign_to(options(), Default) -> ne_binary() | Default.
+-spec assign_to(options()) -> kz_term:api_binary().
+-spec assign_to(options(), Default) -> kz_term:ne_binary() | Default.
 assign_to(Options) ->
     assign_to(Options, 'undefined').
 assign_to(Options, Default) ->
     props:get_binary_value('assign_to', Options, Default).
 
--spec auth_by(options()) -> api_binary().
--spec auth_by(options(), Default) -> ne_binary() | Default.
+-spec auth_by(options()) -> kz_term:api_binary().
+-spec auth_by(options(), Default) -> kz_term:ne_binary() | Default.
 auth_by(Options) ->
     auth_by(Options, 'undefined').
 auth_by(Options, Default) ->
     props:get_binary_value('auth_by', Options, Default).
 
--spec public_fields(options()) -> api_object().
+-spec public_fields(options()) -> kz_term:api_object().
 public_fields(Options) ->
     props:get_value('public_fields', Options, kz_json:new()).
 
--spec state(options()) -> api_binary().
--spec state(options(), Default) -> ne_binary() | Default.
+-spec state(options()) -> kz_term:api_binary().
+-spec state(options(), Default) -> kz_term:ne_binary() | Default.
 state(Options) ->
     state(Options, 'undefined').
 state(Options, Default) ->
@@ -153,7 +153,7 @@ state(Options, Default) ->
 ported_in(Options) ->
     props:get_is_true('ported_in', Options, false).
 
--spec module_name(options()) -> ne_binary().
+-spec module_name(options()) -> kz_term:ne_binary().
 module_name(Options) ->
     case props:get_ne_binary_value('module_name', Options) of
         'undefined' -> knm_carriers:default_carrier();
@@ -163,11 +163,11 @@ module_name(Options) ->
 %%--------------------------------------------------------------------
 %% Public get/set extra_options()
 %%--------------------------------------------------------------------
--spec account_id(extra_options()) -> ne_binary().
+-spec account_id(extra_options()) -> kz_term:ne_binary().
 account_id(Props) when is_list(Props) ->
     props:get_ne_binary_value('account_id', Props).
 
--spec set_account_id(extra_options(), ne_binary()) -> extra_options().
+-spec set_account_id(extra_options(), kz_term:ne_binary()) -> extra_options().
 set_account_id(Props, AccountId=?MATCH_ACCOUNT_RAW(_)) when is_list(Props) ->
     props:set_value('account_id', AccountId, Props).
 
@@ -183,15 +183,15 @@ inbound_cnam_enabled(Props) when is_list(Props) ->
 is_local_number(Props) when is_list(Props) ->
     props:get_is_true('local', Props).
 
--spec number(extra_options()) -> ne_binary().
+-spec number(extra_options()) -> kz_term:ne_binary().
 number(Props) when is_list(Props) ->
     props:get_ne_binary_value('number', Props).
 
--spec prepend(extra_options()) -> api_binary().
+-spec prepend(extra_options()) -> kz_term:api_binary().
 prepend(Props) when is_list(Props) ->
     props:get_value('prepend', Props).
 
--spec ringback_media_id(extra_options()) -> api_binary().
+-spec ringback_media_id(extra_options()) -> kz_term:api_binary().
 ringback_media_id(Props) when is_list(Props) ->
     props:get_value('ringback_media', Props).
 
@@ -199,7 +199,7 @@ ringback_media_id(Props) when is_list(Props) ->
 should_force_outbound(Props) when is_list(Props) ->
     props:get_is_true('force_outbound', Props).
 
--spec transfer_media_id(extra_options()) -> api_binary().
+-spec transfer_media_id(extra_options()) -> kz_term:api_binary().
 transfer_media_id(Props) when is_list(Props) ->
     props:get_value('transfer_media', Props).
 %%--------------------------------------------------------------------

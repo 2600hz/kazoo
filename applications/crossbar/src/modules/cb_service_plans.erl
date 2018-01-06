@@ -297,7 +297,7 @@ delete_plans(Context, Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -type services_pipe() :: fun((kz_services:services()) -> kz_services:services()).
--spec pipe_services(ne_binary(), [services_pipe()]) -> kz_services:services().
+-spec pipe_services(kz_term:ne_binary(), [services_pipe()]) -> kz_services:services().
 pipe_services(AccountId, Routines) ->
     Services = kz_services:fetch(AccountId),
     lists:foldl(fun (F, S) -> F(S) end, Services, Routines).
@@ -310,8 +310,8 @@ pipe_services(AccountId, Routines) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), ne_binary()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+-spec content_types_provided(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 content_types_provided(Context) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
@@ -347,7 +347,7 @@ normalize_view_results(JObj, Acc) ->
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
--spec is_allowed(cb_context:context()) -> {'ok', ne_binary()} | 'false'.
+-spec is_allowed(cb_context:context()) -> {'ok', kz_term:ne_binary()} | 'false'.
 is_allowed(Context) ->
     ResellerId = kz_services:find_reseller_id(cb_context:account_id(Context)),
     AuthAccountId = cb_context:auth_account_id(Context),
@@ -387,8 +387,8 @@ maybe_allow_change(Context, PlanId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_plan_ids(cb_context:context(), ne_binary()) -> cb_context:context().
--spec check_plan_ids(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+-spec check_plan_ids(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+-spec check_plan_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 check_plan_ids(Context, ResellerId) ->
     ReqData = cb_context:req_data(Context),
     AddPlanIds = kz_json:get_value(<<"add">>, ReqData, []),
@@ -415,7 +415,7 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_plan_id(cb_context:context(), path_token(), ne_binary()) ->
+-spec check_plan_id(cb_context:context(), path_token(), kz_term:ne_binary()) ->
                            cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
@@ -429,7 +429,7 @@ maybe_forbid_delete(Context) ->
             maybe_forbid_delete(DeletePlansIds, Context)
     end.
 
--spec maybe_forbid_delete(ne_binaries(), cb_context:context()) -> cb_context:context().
+-spec maybe_forbid_delete(kz_term:ne_binaries(), cb_context:context()) -> cb_context:context().
 maybe_forbid_delete(DeletePlansIds, Context) ->
     case kz_services:fetch_services_doc(cb_context:account_id(Context)) of
         {'error', 'not_found'} -> Context;

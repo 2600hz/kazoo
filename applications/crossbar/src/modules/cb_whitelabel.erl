@@ -177,7 +177,7 @@ authenticate(_Nouns, _Verb) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec acceptable_content_types() -> kz_proplist().
+-spec acceptable_content_types() -> kz_term:proplist().
 acceptable_content_types() ->
     ?WHITELABEL_WELCOME_MIME_TYPES ++ ?WHITELABEL_ICON_MIME_TYPES.
 
@@ -197,7 +197,7 @@ content_types_provided_for_attachments(Context, ?WELCOME_REQ, ?HTTP_GET) ->
 content_types_provided_for_attachments(Context, _Type, _Verb) ->
     Context.
 
--spec content_types_provided_for_attachments(cb_context:context(), ne_binary()) ->
+-spec content_types_provided_for_attachments(cb_context:context(), kz_term:ne_binary()) ->
                                                     cb_context:context().
 content_types_provided_for_attachments(Context, AttachType) ->
     Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
@@ -381,7 +381,7 @@ validate_upload(Context, FileJObj) ->
         _Status -> Context1
     end.
 
--spec content_type(kz_json:object()) -> ne_binary().
+-spec content_type(kz_json:object()) -> kz_term:ne_binary().
 content_type(FileJObj) ->
     kz_json:get_value([<<"headers">>, <<"content_type">>]
                      ,FileJObj
@@ -412,9 +412,9 @@ validate_domains(Context, ?HTTP_POST) ->
 
 -spec load_domains(cb_context:context()) ->
                           cb_context:context().
--spec load_domains(cb_context:context(), api_binary()) ->
+-spec load_domains(cb_context:context(), kz_term:api_binary()) ->
                           cb_context:context().
--spec load_domains(cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec load_domains(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                           cb_context:context().
 load_domains(Context) ->
     load_domains(Context, find_domain(Context)).
@@ -441,14 +441,14 @@ missing_domain_error(Context) ->
                                    ,Context
                                    ).
 
--spec find_domain(cb_context:context()) -> api_binary().
+-spec find_domain(cb_context:context()) -> kz_term:api_binary().
 find_domain(Context) ->
     case cb_context:req_value(Context, <<"domain">>) of
         'undefined' -> find_existing_domain(Context);
         Domain -> Domain
     end.
 
--spec find_existing_domain(cb_context:context()) -> api_binary().
+-spec find_existing_domain(cb_context:context()) -> kz_term:api_binary().
 find_existing_domain(Context) ->
     Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
     case cb_context:resp_status(Context1) of
@@ -524,12 +524,12 @@ test_account_domains(Context, DomainsJObj) ->
                    ),
     crossbar_util:response(TestResults, Context).
 
--spec test_domains(ne_binary(), kz_json:object(), kz_network_utils:options()) ->
-                          {ne_binary(), kz_json:object()}.
+-spec test_domains(kz_term:ne_binary(), kz_json:object(), kz_network_utils:options()) ->
+                          {kz_term:ne_binary(), kz_json:object()}.
 test_domains(DomainType, DomainConfig, Options) ->
     {DomainType, test_domain_config(DomainType, DomainConfig, Options)}.
 
--spec test_domain_config(ne_binary(), kz_json:object(), kz_network_utils:options()) ->
+-spec test_domain_config(kz_term:ne_binary(), kz_json:object(), kz_network_utils:options()) ->
                                 kz_json:object().
 test_domain_config(DomainType, DomainConfig, Options) ->
     kz_json:map(fun(Host, HostConfig) ->
@@ -538,7 +538,7 @@ test_domain_config(DomainType, DomainConfig, Options) ->
                ,DomainConfig
                ).
 
--spec test_host(ne_binary(), kz_json:object(), ne_binary(), kz_network_utils:options()) ->
+-spec test_host(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_network_utils:options()) ->
                        kz_json:object().
 test_host(Host, HostConfig, DomainType, Options) ->
     kz_json:from_list([{<<"expected">>, kzd_domains:mappings(HostConfig)}
@@ -546,8 +546,8 @@ test_host(Host, HostConfig, DomainType, Options) ->
                       ,{<<"name">>, kzd_domains:name(HostConfig)}
                       ]).
 
--spec lookup(ne_binary(), ne_binary(), kz_network_utils:options()) ->
-                    ne_binaries().
+-spec lookup(kz_term:ne_binary(), kz_term:ne_binary(), kz_network_utils:options()) ->
+                    kz_term:ne_binaries().
 lookup(Host, DomainType, Options) ->
     Type = kz_term:to_atom(kz_term:to_lower_binary(DomainType)),
     {'ok', Lookup} = kz_network_utils:lookup_dns(Host, Type, Options),
@@ -555,11 +555,11 @@ lookup(Host, DomainType, Options) ->
     format_lookup_results(Type, Lookup).
 
 -spec format_lookup_results(atom(), [inet_res:dns_data()]) ->
-                                   ne_binaries().
+                                   kz_term:ne_binaries().
 format_lookup_results(Type, Lookup) ->
     [format_lookup_result(Type, Result) || Result <- Lookup].
 
--spec format_lookup_result(atom(), inet_res:dns_data()) -> ne_binary().
+-spec format_lookup_result(atom(), inet_res:dns_data()) -> kz_term:ne_binary().
 format_lookup_result('naptr', {_, _, _, _, _, _}=NAPTR) ->
     kz_network_utils:naptrtuple_to_binary(NAPTR);
 format_lookup_result('srv', {_, _, _, _}=Srv) ->
@@ -631,7 +631,7 @@ delete(Context) ->
 %% Load the binary attachment of a whitelabel doc (based on a domain)
 %% @end
 %%--------------------------------------------------------------------
--spec find_whitelabel(cb_context:context(), ne_binary()) ->
+-spec find_whitelabel(cb_context:context(), kz_term:ne_binary()) ->
                              cb_context:context().
 find_whitelabel(Context, Domain) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Domain)}],
@@ -664,11 +664,11 @@ find_whitelabel(Context, Domain) ->
 %% Load a whitelabel document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_whitelabel_meta(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_whitelabel_meta(Context, WhitelabelId) ->
     crossbar_doc:load(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
 
--spec find_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec find_whitelabel_meta(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 find_whitelabel_meta(Context, Domain) ->
     Context1 = find_whitelabel(Context, Domain),
     case cb_context:resp_status(Context1) of
@@ -682,7 +682,7 @@ find_whitelabel_meta(Context, Domain) ->
 %% Load a whitelabel binary attachment from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_whitelabel_binary(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_whitelabel_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_whitelabel_binary(Context, AttachType) ->
     case whitelabel_binary_meta(Context, AttachType) of
         'undefined' -> crossbar_util:response_bad_identifier(AttachType, Context);
@@ -690,7 +690,7 @@ load_whitelabel_binary(Context, AttachType) ->
             update_response_with_attachment(Context, AttachmentId, JObj)
     end.
 
--spec find_whitelabel_binary(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec find_whitelabel_binary(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 find_whitelabel_binary(Context, Domain, AttachType) ->
     Context1 = find_whitelabel_meta(Context, Domain),
     case kz_doc:id(cb_context:doc(Context)) =:= ?WHITELABEL_ID
@@ -700,8 +700,8 @@ find_whitelabel_binary(Context, Domain, AttachType) ->
         'false' -> Context1
     end.
 
--spec find_whitelabel_binary_meta(cb_context:context(), ne_binary(), ne_binary()) ->
-                                         'undefined' | {ne_binary(), kz_json:object()}.
+-spec find_whitelabel_binary_meta(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                         'undefined' | {kz_term:ne_binary(), kz_json:object()}.
 find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     Context1 = find_whitelabel_meta(Context, Domain),
     case kz_doc:id(cb_context:doc(Context)) =:= ?WHITELABEL_ID
@@ -711,8 +711,8 @@ find_whitelabel_binary_meta(Context, Domain, AttachType) ->
         'false' -> 'undefined'
     end.
 
--spec whitelabel_binary_meta(cb_context:context(), ne_binary()) ->
-                                    'undefined' | {ne_binary(), kz_json:object()}.
+-spec whitelabel_binary_meta(cb_context:context(), kz_term:ne_binary()) ->
+                                    'undefined' | {kz_term:ne_binary(), kz_json:object()}.
 whitelabel_binary_meta(Context, AttachType) ->
     case kz_doc:id(cb_context:doc(Context)) =:= ?WHITELABEL_ID
         orelse cb_context:resp_status(Context) =:= 'success'
@@ -727,12 +727,12 @@ whitelabel_binary_meta(Context, AttachType) ->
         'false' -> 'undefined'
     end.
 
--spec whitelabel_attachment_id(kz_json:object(), ne_binary()) ->
-                                      'undefined' | {ne_binary(), kz_json:object()}.
+-spec whitelabel_attachment_id(kz_json:object(), kz_term:ne_binary()) ->
+                                      'undefined' | {kz_term:ne_binary(), kz_json:object()}.
 whitelabel_attachment_id(JObj, AttachType) ->
     filter_attachment_type(kz_json:get_keys(JObj), AttachType).
 
--spec filter_attachment_type(ne_binaries(), ne_binary()) -> api_binary().
+-spec filter_attachment_type(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:api_binary().
 filter_attachment_type([], _) -> 'undefined';
 filter_attachment_type([AttachmentId], <<"logo">>) ->
     %% if there is only one attachment and it is not an icon
@@ -748,7 +748,7 @@ filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
         _Else -> filter_attachment_type(AttachmentIds, AttachType)
     end.
 
--spec update_response_with_attachment(cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec update_response_with_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                              cb_context:context().
 update_response_with_attachment(Context, AttachmentId, JObj) ->
     LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"whitelabel">>), Context),
@@ -766,11 +766,11 @@ update_response_with_attachment(Context, AttachmentId, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_request(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_request(Context, WhitelabelId) ->
     validate_unique_domain(Context, WhitelabelId).
 
--spec validate_unique_domain(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_unique_domain(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_unique_domain(Context, WhitelabelId) ->
     Domain = kz_json:get_ne_value(<<"domain">>, cb_context:req_data(Context)),
     case is_domain_unique(cb_context:account_id(Context), Domain) of
@@ -788,12 +788,12 @@ validate_unique_domain(Context, WhitelabelId) ->
             check_whitelabel_schema(Context1, WhitelabelId)
     end.
 
--spec check_whitelabel_schema(cb_context:context(), api_binary()) -> cb_context:context().
+-spec check_whitelabel_schema(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 check_whitelabel_schema(Context, WhitelabelId) ->
     OnSuccess = fun(C) -> on_successful_validation(C, WhitelabelId) end,
     cb_context:validate_request_data(<<"whitelabel">>, Context, OnSuccess).
 
--spec on_successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
+-spec on_successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"whitelabel">>}
                              ,{<<"_id">>, ?WHITELABEL_ID}
@@ -815,7 +815,7 @@ on_successful_validation(Context, WhitelabelId) ->
 %% Update the binary attachment of a whitelabel doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_whitelabel_binary(ne_binary(), path_token(), cb_context:context()) ->
+-spec update_whitelabel_binary(kz_term:ne_binary(), path_token(), cb_context:context()) ->
                                       cb_context:context().
 update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
     JObj = cb_context:doc(Context),
@@ -845,8 +845,8 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------
--spec attachment_name(ne_binary(), ne_binary()) -> ne_binary().
--spec attachment_name(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
                           case kz_term:is_empty(A) of
@@ -873,7 +873,7 @@ attachment_name(AttachType, Filename, CT) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_domain_unique(ne_binary(), ne_binary()) -> boolean().
+-spec is_domain_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_domain_unique(AccountId, Domain) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Domain)}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of

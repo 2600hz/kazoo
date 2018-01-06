@@ -45,7 +45,7 @@ flush() ->
 %% credit card
 %% @end
 %%--------------------------------------------------------------------
--spec credit(ne_binary(), text()) -> 'no_return'.
+-spec credit(kz_term:ne_binary(), kz_term:text()) -> 'no_return'.
 credit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
 
@@ -64,7 +64,7 @@ credit(AccountId, Amount) ->
 %% debit card
 %% @end
 %%--------------------------------------------------------------------
--spec debit(ne_binary(), text()) -> 'no_return'.
+-spec debit(kz_term:ne_binary(), kz_term:text()) -> 'no_return'.
 debit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
 
@@ -122,7 +122,7 @@ refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile() -> 'no_return'.
--spec reconcile(text()) -> 'no_return'.
+-spec reconcile(kz_term:text()) -> 'no_return'.
 
 reconcile() ->
     reconcile('all').
@@ -152,14 +152,14 @@ reconcile(Account) ->
 %% reseller tree (only the one account is affected)
 %% @end
 %%--------------------------------------------------------------------
--spec sync(text()) -> 'ok'.
+-spec sync(kz_term:text()) -> 'ok'.
 sync(Account) when not is_binary(Account) ->
     sync(kz_term:to_binary(Account));
 sync(Account) ->
     _ = kz_services:sync(Account),
     'ok'.
 
--spec sync_descendants(text()) -> 'ok'.
+-spec sync_descendants(kz_term:text()) -> 'ok'.
 sync_descendants(Account) when not is_binary(Account) ->
     sync_descendants(kz_term:to_binary(Account));
 sync_descendants(Account) ->
@@ -167,7 +167,7 @@ sync_descendants(Account) ->
     io:format("syncing ~p descendants of ~s", [length(Descendants), Account]),
     do_sync_descendants(Descendants).
 
--spec do_sync_descendants(ne_binaries()) -> 'ok'.
+-spec do_sync_descendants(kz_term:ne_binaries()) -> 'ok'.
 do_sync_descendants([]) -> 'ok';
 do_sync_descendants([Descendant|Descendants]) ->
     io:format("  syncing ~s, ~p accounts remaining", [Descendant, length(Descendants)]),
@@ -180,7 +180,7 @@ do_sync_descendants([Descendant|Descendants]) ->
 %% Set the reseller_id to the provided value on the provided account
 %% @end
 %%--------------------------------------------------------------------
--spec set_reseller_id(text(), text()) -> 'ok'.
+-spec set_reseller_id(kz_term:text(), kz_term:text()) -> 'ok'.
 set_reseller_id(Reseller, Account) when not is_binary(Account) ->
     set_reseller_id(Reseller, kz_term:to_binary(Account));
 set_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
@@ -195,7 +195,7 @@ set_reseller_id(Reseller, Account) ->
 %% of the provided account
 %% @end
 %%--------------------------------------------------------------------
--spec cascade_reseller_id(text(), text()) -> 'ok'.
+-spec cascade_reseller_id(kz_term:text(), kz_term:text()) -> 'ok'.
 cascade_reseller_id(Reseller, Account) when not is_binary(Account) ->
     cascade_reseller_id(Reseller, kz_term:to_binary(Account));
 cascade_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
@@ -210,7 +210,7 @@ cascade_reseller_id(Reseller, Account) ->
 %% to the next higher reseller
 %% @end
 %%--------------------------------------------------------------------
--spec demote_reseller(text()) -> 'ok'.
+-spec demote_reseller(kz_term:text()) -> 'ok'.
 demote_reseller(Account) when not is_binary(Account) ->
     demote_reseller(kz_term:to_binary(Account));
 demote_reseller(Account) ->
@@ -223,7 +223,7 @@ demote_reseller(Account) ->
 %% sub accounts
 %% @end
 %%--------------------------------------------------------------------
--spec make_reseller(text()) -> 'ok'.
+-spec make_reseller(kz_term:text()) -> 'ok'.
 make_reseller(Account) when not is_binary(Account) ->
     make_reseller(kz_term:to_binary(Account));
 make_reseller(Account) ->
@@ -307,7 +307,7 @@ log_services_backup_failures([JObj|JObjs]) ->
 find_services_backup_failures(JObjs) ->
     [JObj || JObj <- JObjs, kz_json:get_ne_value(<<"error">>, JObj) =/= 'undefined'].
 
--spec fetch_all_service_docs(ne_binary()) -> kz_json:objects().
+-spec fetch_all_service_docs(kz_term:ne_binary()) -> kz_json:objects().
 fetch_all_service_docs(Database) ->
     _ = io:format("fetching all service docs from '~s'~n", [Database]),
     {'ok', JObjs} = kz_datamgr:all_docs(Database, ['include_docs']),
@@ -333,7 +333,7 @@ remove_orphaned_services() ->
         andalso io:format("removed ~p service docs~n", [Count]),
     'no_return'.
 
--spec maybe_remove_orphan(kz_json:object() | ne_binary(), non_neg_integer()) ->
+-spec maybe_remove_orphan(kz_json:object() | kz_term:ne_binary(), non_neg_integer()) ->
                                  non_neg_integer().
 maybe_remove_orphan(<<"_design/", _/binary>>, Count) -> Count;
 maybe_remove_orphan(<<_/binary>> = AccountId, Count) ->

@@ -11,7 +11,7 @@
 
 -include("conference.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Options) ->
     'true' = kapi_conference:discovery_req_v(JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
@@ -119,7 +119,7 @@ maybe_collect_member_pin(Conference, Call, Srv) ->
             collect_conference_pin('false', Conference, Call, Srv)
     end.
 
--spec collect_conference_pin(api_boolean(), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
+-spec collect_conference_pin(kz_term:api_boolean(), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
 collect_conference_pin(Type, Conference, Call, Srv) ->
     case validate_conference_pin(Type, Conference, Call, 1) of
         {'ok', C} ->
@@ -261,13 +261,13 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
 -spec discovery_failed(kapps_call:call(), pid() | 'undefined') -> 'ok'.
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
--spec validate_conference_id(api_ne_binary(), kapps_call:call()) ->
+-spec validate_conference_id(kz_term:api_ne_binary(), kapps_call:call()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
--spec validate_conference_id(api_ne_binary(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_id(kz_term:api_ne_binary(), kapps_call:call(), pos_integer()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
@@ -314,7 +314,7 @@ validate_collected_conference_id(Call, Loop, Digits) ->
             validate_conference_id('undefined', Call, Loop + 1)
     end.
 
--spec validate_conference_pin(api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_pin(kz_term:api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
                                      {'ok', kapps_conference:conference()} |
                                      {'error', any()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
@@ -439,7 +439,7 @@ get_pin_timeout(Conference) ->
     JObj = kapps_conference:conference_doc(Conference),
     kz_json:get_value(<<"pin_timeout">>, JObj, get_account_pin_timeout(AccountId)).
 
--spec get_account_pin_timeout(ne_binary()) -> pos_integer().
+-spec get_account_pin_timeout(kz_term:ne_binary()) -> pos_integer().
 get_account_pin_timeout(AccountId) ->
     kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"pin_timeout">>, ?COLLECT_PIN_DEFAULT_TIMEOUT).
 

@@ -298,7 +298,7 @@ return_only_blacklist(Context) ->
         _ -> Context
     end.
 
--spec validate_app(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
+-spec validate_app(cb_context:context(), kz_term:ne_binary(), http_method()) -> cb_context:context().
 validate_app(Context, Id, ?HTTP_GET) ->
     Context1 = load_app(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -342,7 +342,7 @@ validate_app(Context, Id, ?HTTP_POST) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_modification(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_modification(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_modification(Context, Id) ->
     Context1 = can_modify(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -355,7 +355,7 @@ validate_modification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec can_modify(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec can_modify(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 can_modify(Context, Id) ->
     AccountId = cb_context:account_id(Context),
     case cb_apps_util:allowed_app(AccountId, Id) of
@@ -421,7 +421,7 @@ normalize_apps_result([App|Apps], Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_app(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_app(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_app(Context, AppId) ->
     AccountId = cb_context:account_id(Context),
     case cb_apps_util:allowed_app(AccountId, AppId) of
@@ -436,7 +436,7 @@ load_app(Context, AppId) ->
     end.
 
 %% @private
--spec load_app_from_master_account(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_app_from_master_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_app_from_master_account(Context, AppId) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
@@ -459,7 +459,7 @@ load_app_from_master_account(Context, AppId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec bad_app_error(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec bad_app_error(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 bad_app_error(Context, AppId) ->
     cb_context:add_system_error('bad_identifier'
                                ,kz_json:from_list([{<<"details">>, AppId}])
@@ -472,7 +472,7 @@ bad_app_error(Context, AppId) ->
 %% install a new app on the account
 %% @end
 %%--------------------------------------------------------------------
--spec install(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec install(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 install(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
@@ -498,7 +498,7 @@ install(Context, Id) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec uninstall(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec uninstall(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 uninstall(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
@@ -516,7 +516,7 @@ uninstall(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
     Apps = kzd_apps_store:apps(Doc),
@@ -552,9 +552,9 @@ get_icon(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_get_screenshot(cb_context:context(), ne_binary()) ->
+-spec maybe_get_screenshot(cb_context:context(), kz_term:ne_binary()) ->
                                   'error' |
-                                  {'ok', ne_binary(), kz_json:object()}.
+                                  {'ok', kz_term:ne_binary(), kz_json:object()}.
 maybe_get_screenshot(Context, Number) ->
     JObj = cb_context:doc(Context),
     Screenshots = kz_json:get_value(<<"screenshots">>, JObj),
@@ -574,7 +574,7 @@ maybe_get_screenshot(Context, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_screenshot(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec get_screenshot(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 get_screenshot(Context, Number) ->
     case maybe_get_screenshot(Context, Number) of
         'error' ->
@@ -615,9 +615,9 @@ load_apps_store(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachment(cb_context:context(), ne_binary()) ->
+-spec get_attachment(cb_context:context(), kz_term:ne_binary()) ->
                             cb_context:context().
--spec get_attachment(cb_context:context(), ne_binary(), kz_json:object(), kz_json:object()) ->
+-spec get_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
                             cb_context:context().
 get_attachment(Context, Id) ->
     JObj = cb_context:doc(Context),
@@ -641,7 +641,7 @@ get_attachment(Context, Id, JObj, Attachment) ->
             add_attachment(Context, Id, Attachment, AttachBin)
     end.
 
--spec add_attachment(cb_context:context(), ne_binary(), kz_json:object(), binary()) ->
+-spec add_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), binary()) ->
                             cb_context:context().
 add_attachment(Context, Id, Attachment, AttachBin) ->
     RespHeaders =

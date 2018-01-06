@@ -12,7 +12,7 @@
 
 -include("kazoo_media.hrl").
 
--spec get_uri(ne_binary(), kz_json:object()) -> ne_binary().
+-spec get_uri(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 get_uri(Id, JObj) ->
     {'ok', _TTSServer} = kz_media_cache_sup:find_tts_server(Id, JObj),
 

@@ -21,7 +21,7 @@
 
 -include("teletype.hrl").
 
--spec id() -> ne_binary().
+-spec id() -> kz_term:ne_binary().
 id() -> <<"service_added">>.
 
 -spec macros() -> kz_json:object().
@@ -37,19 +37,19 @@ macros() ->
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
 
--spec subject() -> ne_binary().
+-spec subject() -> kz_term:ne_binary().
 subject() -> <<"New VoIP services were added to sub-account '{{sub_account.name}}'">>.
 
--spec category() -> ne_binary().
+-spec category() -> kz_term:ne_binary().
 category() -> <<"account">>.
 
--spec friendly_name() -> ne_binary().
+-spec friendly_name() -> kz_term:ne_binary().
 friendly_name() -> <<"New Service Addition">>.
 
 -spec to() -> kz_json:object().
 to() -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
 
--spec from() -> api_ne_binary().
+-spec from() -> kz_term:api_ne_binary().
 from() -> teletype_util:default_from_address().
 
 -spec cc() -> kz_json:object().
@@ -58,7 +58,7 @@ cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 -spec bcc() -> kz_json:object().
 bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to() -> api_ne_binary().
+-spec reply_to() -> kz_term:api_ne_binary().
 reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
@@ -105,7 +105,7 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
 
--spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, reseller_info_data(DataJObj)}
@@ -116,12 +116,12 @@ macros(DataJObj) ->
     ,{<<"time_stamp">>, timestamp(DataJObj)} %% backward compatibility
     ].
 
--spec timestamp(kz_json:object()) -> kz_proplist().
+-spec timestamp(kz_json:object()) -> kz_term:proplist().
 timestamp(DataJObj) ->
     TS = kz_json:get_integer_value(<<"timestamp">>, DataJObj),
     teletype_util:fix_timestamp(TS, DataJObj).
 
--spec reseller_info_data(kz_json:object()) -> kz_proplist().
+-spec reseller_info_data(kz_json:object()) -> kz_term:proplist().
 reseller_info_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of
@@ -132,7 +132,7 @@ reseller_info_data(DataJObj) ->
             teletype_util:find_account_params(ResellerId)
     end.
 
--spec sub_account_data(kz_json:object()) -> kz_proplist().
+-spec sub_account_data(kz_json:object()) -> kz_term:proplist().
 sub_account_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of
@@ -142,7 +142,7 @@ sub_account_data(DataJObj) ->
             teletype_util:find_account_params(AccountId)
     end.
 
--spec service_added_data(kz_json:object()) -> kz_proplist().
+-spec service_added_data(kz_json:object()) -> kz_term:proplist().
 service_added_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of
@@ -153,7 +153,7 @@ service_added_data(DataJObj) ->
             kz_json:recursive_to_proplist(Diff)
     end.
 
--spec auth_user_data(kz_json:object()) -> kz_proplist().
+-spec auth_user_data(kz_json:object()) -> kz_term:proplist().
 auth_user_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of

@@ -294,7 +294,7 @@ is_valid_call(Context, Data) ->
             is_active_call(Context, CallId)
     end.
 
--spec is_active_call(cb_context:context(), ne_binary()) ->
+-spec is_active_call(cb_context:context(), kz_term:ne_binary()) ->
                             'true' |
                             {'false', cb_context:context()}.
 is_active_call(Context, CallId) ->
@@ -409,7 +409,7 @@ put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
            ],
     eavesdrop_req(Context, Prop).
 
--spec default_eavesdrop_req(cb_context:context()) -> kz_proplist().
+-spec default_eavesdrop_req(cb_context:context()) -> kz_term:proplist().
 default_eavesdrop_req(Context) ->
     [{<<"Eavesdrop-Mode">>, cb_context:req_value(Context, <<"mode">>, <<"listen">>)}
     ,{<<"Account-ID">>, cb_context:account_id(Context)}
@@ -420,7 +420,7 @@ default_eavesdrop_req(Context) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec eavesdrop_req(cb_context:context(), kz_proplist()) -> cb_context:context().
+-spec eavesdrop_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 eavesdrop_req(Context, Prop) ->
     case kapps_util:amqp_pool_request(props:filter_undefined(Prop)
                                      ,fun kapi_resource:publish_eavesdrop_req/1
@@ -507,7 +507,7 @@ delete_account(Context, AccountId) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"queue">>)),
     case cb_context:resp_status(Context1) of
@@ -521,7 +521,7 @@ read(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(QueueId, Context) ->
     check_queue_schema(QueueId, Context).
 
@@ -531,7 +531,7 @@ validate_request(QueueId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(QueueId, Context) ->
     crossbar_doc:patch_and_validate(QueueId, Context, fun validate_request/2).
 
@@ -605,7 +605,7 @@ add_queue_to_agents_diff(Id, Context, AgentIds) ->
         _Status -> Context1
     end.
 
--spec maybe_add_queue_to_agent(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_queue_to_agent(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_add_queue_to_agent(Id, A) ->
     Qs = case kz_json:get_value(<<"queues">>, A) of
              L when is_list(L) ->
@@ -618,7 +618,7 @@ maybe_add_queue_to_agent(Id, A) ->
     lager:debug("agent ~s adding queues: ~p", [kz_doc:id(A), Qs]),
     kz_json:set_value(<<"queues">>, Qs, A).
 
--spec maybe_rm_agents(ne_binary(), cb_context:context(), kz_json:path()) -> cb_context:context().
+-spec maybe_rm_agents(kz_term:ne_binary(), cb_context:context(), kz_json:path()) -> cb_context:context().
 maybe_rm_agents(_Id, Context, []) ->
     lager:debug("no agents to remove from the queue ~s", [_Id]),
     cb_context:set_resp_status(Context, 'success');
@@ -628,9 +628,9 @@ maybe_rm_agents(Id, Context, AgentIds) ->
     lager:debug("rm resulted in ~s", [cb_context:resp_status(RMContext1)]),
     RMContext1.
 
--spec rm_queue_from_agents(ne_binary(), cb_context:context()) ->
+-spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context()) ->
                                   cb_context:context().
--spec rm_queue_from_agents(ne_binary(), cb_context:context(), kz_json:path()) ->
+-spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context(), kz_json:path()) ->
                                   cb_context:context().
 rm_queue_from_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),
@@ -655,7 +655,7 @@ rm_queue_from_agents(_Id, Context, _Data) ->
                        ,{fun cb_context:set_doc/2, 'undefined'}
                        ]).
 
--spec maybe_rm_queue_from_agent(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_rm_queue_from_agent(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_rm_queue_from_agent(Id, A) ->
     Qs = kz_json:get_value(<<"queues">>, A, []),
     kz_json:set_value(<<"queues">>, lists:delete(Id, Qs), A).
@@ -740,7 +740,7 @@ fetch_ranged_queue_stats(Context, From, To, 'false') ->
     lager:debug("ranged query from ~b to ~b of archived stats", [From, To]),
     Context.
 
--spec fetch_from_amqp(cb_context:context(), kz_proplist()) -> cb_context:context().
+-spec fetch_from_amqp(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 fetch_from_amqp(Context, Req) ->
     case kapps_util:amqp_pool_request(Req
                                      ,fun kapi_acdc_stats:publish_current_calls_req/1
@@ -804,7 +804,7 @@ activate_account_for_acdc(Context) ->
             lager:debug("failed to check acdc activation doc: ~p", [_E])
     end.
 
--spec deactivate_account_for_acdc(ne_binary()) -> 'ok'.
+-spec deactivate_account_for_acdc(kz_term:ne_binary()) -> 'ok'.
 deactivate_account_for_acdc(AccountId) ->
     case kz_datamgr:open_doc(?KZ_ACDC_DB, AccountId) of
         {'error', _} -> 'ok';

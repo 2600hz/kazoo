@@ -1134,7 +1134,7 @@ api_definitions() ->
     ,webhook_disabled_definition()
     ].
 
--spec api_definition(atom() | text() | ne_binary()) -> kapi_definition:api().
+-spec api_definition(atom() | kz_term:text() | kz_term:ne_binary()) -> kapi_definition:api().
 api_definition(Name) when is_atom(Name) ->
     api_definition(kz_term:to_binary(Name));
 api_definition(Name) when is_list(Name) ->
@@ -1212,11 +1212,11 @@ api_definition(<<"webhook">>) ->
 api_definition(<<"webhook_disabled">>) ->
     webhook_disabled_definition().
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
--spec bind_to_q(ne_binary(), api_atoms()) -> 'ok'.
+-spec bind_to_q(kz_term:ne_binary(), kz_term:api_atoms()) -> 'ok'.
 bind_to_q(Q, 'undefined') ->
     'ok' = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, ['new_fax'|T]) ->
@@ -1249,11 +1249,11 @@ bind_to_q(Q, [RestrictTo|T]) ->
 bind_to_q(_Q, []) ->
     'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props)).
 
--spec unbind_q_from(ne_binary(), api_atoms()) -> 'ok'.
+-spec unbind_q_from(kz_term:ne_binary(), kz_term:api_atoms()) -> 'ok'.
 unbind_q_from(Q, 'undefined') ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
 unbind_q_from(Q, ['new_fax'|T]) ->
@@ -1298,12 +1298,12 @@ declare_exchanges() ->
 %%% Helpers
 %%%===================================================================
 
--spec account_id(api_terms()) -> api_ne_binary().
+-spec account_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
 account_id('undefined') -> 'undefined';
 account_id(Req) when is_list(Req) -> find_account_id(Req, fun props:get_first_defined/2);
 account_id(Req) -> find_account_id(Req, fun kz_json:get_first_defined/2).
 
--spec find_account_id(api_terms(), function()) -> api_ne_binary().
+-spec find_account_id(kz_term:api_terms(), function()) -> kz_term:api_ne_binary().
 find_account_id(Req, GetFun) ->
     Paths = [<<"account_id">>
             ,[<<"account">>, <<"_id">>]
@@ -1320,12 +1320,12 @@ find_account_id(Req, GetFun) ->
         _ -> 'undefined'
     end.
 
--spec account_db(api_terms(), boolean()) -> api_ne_binary().
+-spec account_db(kz_term:api_terms(), boolean()) -> kz_term:api_ne_binary().
 account_db('undefined', _) -> 'undefined';
 account_db(Req, StrictMODB) when is_list(Req) -> find_account_db(Req, StrictMODB, fun props:get_first_defined/2);
 account_db(Req, StrictMODB) -> find_account_db(Req, StrictMODB, fun kz_json:get_first_defined/2).
 
--spec find_account_db(api_terms(), boolean(), function()) -> api_ne_binary().
+-spec find_account_db(kz_term:api_terms(), boolean(), function()) -> kz_term:api_ne_binary().
 find_account_db(Req, StrictMODB, GetFun) ->
     Paths = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
     case GetFun(Paths, Req) of
@@ -1341,7 +1341,7 @@ find_account_db(Req, StrictMODB, GetFun) ->
         _ -> 'undefined'
     end.
 
--spec headers(ne_binary()) -> ne_binaries().
+-spec headers(kz_term:ne_binary()) -> kz_term:ne_binaries().
 headers(<<"fax_inbound_to_email">>) ->
     headers(<<"inbound_fax">>);
 headers(<<"fax_inbound_error_to_email">>) ->
@@ -1368,7 +1368,7 @@ headers(Name) ->
 %% Generic function to build API payload
 %% @end
 %%--------------------------------------------------------------------
--spec build_message(api_terms(), kapi_definition:api()) -> api_formatter_return().
+-spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
 build_message(Prop, #kapi_definition{required_headers = ReqH
                                     ,optional_headers = OptH
                                     ,validate_fun = Validate
@@ -1406,19 +1406,19 @@ validate(JObj, Definition) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec notify_update(api_terms()) -> api_formatter_return().
+-spec notify_update(kz_term:api_terms()) -> api_formatter_return().
 notify_update(Prop) ->
     build_message(Prop, notify_update_definition()).
 
--spec notify_update_v(api_terms()) -> boolean().
+-spec notify_update_v(kz_term:api_terms()) -> boolean().
 notify_update_v(Prop) ->
     validate(Prop, notify_update_definition()).
 
--spec publish_notify_update(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_notify_update(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_notify_update(RespQ, JObj) ->
     publish_notify_update(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_notify_update(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_notify_update(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_notify_update(RespQ, API, ContentType) ->
     #kapi_definition{values = Values} = notify_update_definition(),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun notify_update/1),
@@ -1430,19 +1430,19 @@ publish_notify_update(RespQ, API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec skel(api_terms()) -> api_formatter_return().
+-spec skel(kz_term:api_terms()) -> api_formatter_return().
 skel(Prop) ->
     build_message(Prop, skel_definition()).
 
--spec skel_v(api_terms()) -> boolean().
+-spec skel_v(kz_term:api_terms()) -> boolean().
 skel_v(Prop) ->
     validate(Prop, skel_definition()).
 
--spec publish_skel(api_terms()) -> 'ok'.
+-spec publish_skel(kz_term:api_terms()) -> 'ok'.
 publish_skel(JObj) ->
     publish_skel(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_skel(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_skel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_skel(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1461,19 +1461,19 @@ publish_skel(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec account_zone_change(api_terms()) -> api_formatter_return().
+-spec account_zone_change(kz_term:api_terms()) -> api_formatter_return().
 account_zone_change(Prop) ->
     build_message(Prop, account_zone_change_definition()).
 
--spec account_zone_change_v(api_terms()) -> boolean().
+-spec account_zone_change_v(kz_term:api_terms()) -> boolean().
 account_zone_change_v(Prop) ->
     validate(Prop, account_zone_change_definition()).
 
--spec publish_account_zone_change(api_terms()) -> 'ok'.
+-spec publish_account_zone_change(kz_term:api_terms()) -> 'ok'.
 publish_account_zone_change(JObj) ->
     publish_account_zone_change(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_account_zone_change(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_account_zone_change(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_account_zone_change(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1486,19 +1486,19 @@ publish_account_zone_change(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance(api_terms()) -> api_formatter_return().
+-spec low_balance(kz_term:api_terms()) -> api_formatter_return().
 low_balance(Prop) ->
     build_message(Prop, low_balance_definition()).
 
--spec low_balance_v(api_terms()) -> boolean().
+-spec low_balance_v(kz_term:api_terms()) -> boolean().
 low_balance_v(Prop) ->
     validate(Prop, low_balance_definition()).
 
--spec publish_low_balance(api_terms()) -> 'ok'.
+-spec publish_low_balance(kz_term:api_terms()) -> 'ok'.
 publish_low_balance(JObj) ->
     publish_low_balance(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_low_balance(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_low_balance(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_low_balance(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1511,19 +1511,19 @@ publish_low_balance(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec new_account(api_terms()) -> api_formatter_return().
+-spec new_account(kz_term:api_terms()) -> api_formatter_return().
 new_account(Prop) ->
     build_message(Prop, new_account_definition()).
 
--spec new_account_v(api_terms()) -> boolean().
+-spec new_account_v(kz_term:api_terms()) -> boolean().
 new_account_v(Prop) ->
     validate(Prop, new_account_definition()).
 
--spec publish_new_account(api_terms()) -> 'ok'.
+-spec publish_new_account(kz_term:api_terms()) -> 'ok'.
 publish_new_account(JObj) ->
     publish_new_account(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_new_account(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_new_account(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_new_account(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1536,19 +1536,19 @@ publish_new_account(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec service_added(api_terms()) -> api_formatter_return().
+-spec service_added(kz_term:api_terms()) -> api_formatter_return().
 service_added(Prop) ->
     build_message(Prop, service_added_definition()).
 
--spec service_added_v(api_terms()) -> boolean().
+-spec service_added_v(kz_term:api_terms()) -> boolean().
 service_added_v(Prop) ->
     validate(Prop, service_added_definition()).
 
--spec publish_service_added(api_terms()) -> 'ok'.
+-spec publish_service_added(kz_term:api_terms()) -> 'ok'.
 publish_service_added(JObj) ->
     publish_service_added(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_service_added(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_service_added(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_service_added(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1561,19 +1561,19 @@ publish_service_added(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec topup(api_terms()) -> api_formatter_return().
+-spec topup(kz_term:api_terms()) -> api_formatter_return().
 topup(Prop) ->
     build_message(Prop, topup_definition()).
 
--spec topup_v(api_terms()) -> boolean().
+-spec topup_v(kz_term:api_terms()) -> boolean().
 topup_v(Prop) ->
     validate(Prop, topup_definition()).
 
--spec publish_topup(api_terms()) -> 'ok'.
+-spec publish_topup(kz_term:api_terms()) -> 'ok'.
 publish_topup(JObj) ->
     publish_topup(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_topup(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_topup(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_topup(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1586,19 +1586,19 @@ publish_topup(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec transaction(api_terms()) -> api_formatter_return().
+-spec transaction(kz_term:api_terms()) -> api_formatter_return().
 transaction(Prop) ->
     build_message(Prop, transaction_definition()).
 
--spec transaction_v(api_terms()) -> boolean().
+-spec transaction_v(kz_term:api_terms()) -> boolean().
 transaction_v(Prop) ->
     validate(Prop, transaction_definition()).
 
--spec publish_transaction(api_terms()) -> 'ok'.
+-spec publish_transaction(kz_term:api_terms()) -> 'ok'.
 publish_transaction(JObj) ->
     publish_transaction(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_transaction(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_transaction(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_transaction(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1617,19 +1617,19 @@ publish_transaction(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec fax_inbound(api_terms()) -> api_formatter_return().
+-spec fax_inbound(kz_term:api_terms()) -> api_formatter_return().
 fax_inbound(Prop) ->
     build_message(Prop, inbound_fax_definition()).
 
--spec fax_inbound_v(api_terms()) -> boolean().
+-spec fax_inbound_v(kz_term:api_terms()) -> boolean().
 fax_inbound_v(Prop) ->
     validate(Prop, inbound_fax_definition()).
 
--spec publish_fax_inbound(api_terms()) -> 'ok'.
+-spec publish_fax_inbound(kz_term:api_terms()) -> 'ok'.
 publish_fax_inbound(JObj) ->
     publish_fax_inbound(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_fax_inbound(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_fax_inbound(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_inbound(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1642,19 +1642,19 @@ publish_fax_inbound(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec fax_inbound_error(api_terms()) -> api_formatter_return().
+-spec fax_inbound_error(kz_term:api_terms()) -> api_formatter_return().
 fax_inbound_error(Prop) ->
     build_message(Prop, inbound_fax_error_definition()).
 
--spec fax_inbound_error_v(api_terms()) -> boolean().
+-spec fax_inbound_error_v(kz_term:api_terms()) -> boolean().
 fax_inbound_error_v(Prop) ->
     validate(Prop, inbound_fax_error_definition()).
 
--spec publish_fax_inbound_error(api_terms()) -> 'ok'.
+-spec publish_fax_inbound_error(kz_term:api_terms()) -> 'ok'.
 publish_fax_inbound_error(JObj) ->
     publish_fax_inbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_fax_inbound_error(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_fax_inbound_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_inbound_error(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1667,19 +1667,19 @@ publish_fax_inbound_error(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec fax_outbound(api_terms()) -> api_formatter_return().
+-spec fax_outbound(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound(Prop) ->
     build_message(Prop, outbound_fax_definition()).
 
--spec fax_outbound_v(api_terms()) -> boolean().
+-spec fax_outbound_v(kz_term:api_terms()) -> boolean().
 fax_outbound_v(Prop) ->
     validate(Prop, outbound_fax_definition()).
 
--spec publish_fax_outbound(api_terms()) -> 'ok'.
+-spec publish_fax_outbound(kz_term:api_terms()) -> 'ok'.
 publish_fax_outbound(JObj) ->
     publish_fax_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_fax_outbound(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_fax_outbound(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1692,19 +1692,19 @@ publish_fax_outbound(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec fax_outbound_error(api_terms()) -> api_formatter_return().
+-spec fax_outbound_error(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound_error(Prop) ->
     build_message(Prop, outbound_fax_error_definition()).
 
--spec fax_outbound_error_v(api_terms()) -> boolean().
+-spec fax_outbound_error_v(kz_term:api_terms()) -> boolean().
 fax_outbound_error_v(Prop) ->
     validate(Prop, outbound_fax_error_definition()).
 
--spec publish_fax_outbound_error(api_terms()) -> 'ok'.
+-spec publish_fax_outbound_error(kz_term:api_terms()) -> 'ok'.
 publish_fax_outbound_error(JObj) ->
     publish_fax_outbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_fax_outbound_error(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_fax_outbound_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound_error(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1717,19 +1717,19 @@ publish_fax_outbound_error(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec fax_outbound_smtp_error(api_terms()) -> api_formatter_return().
+-spec fax_outbound_smtp_error(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound_smtp_error(Prop) ->
     build_message(Prop, outbound_smtp_fax_error_definition()).
 
--spec fax_outbound_smtp_error_v(api_terms()) -> boolean().
+-spec fax_outbound_smtp_error_v(kz_term:api_terms()) -> boolean().
 fax_outbound_smtp_error_v(Prop) ->
     validate(Prop, outbound_smtp_fax_error_definition()).
 
--spec publish_fax_outbound_smtp_error(api_terms()) -> 'ok'.
+-spec publish_fax_outbound_smtp_error(kz_term:api_terms()) -> 'ok'.
 publish_fax_outbound_smtp_error(JObj) ->
     publish_fax_outbound_smtp_error(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_fax_outbound_smtp_error(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_fax_outbound_smtp_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound_smtp_error(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1748,19 +1748,19 @@ publish_fax_outbound_smtp_error(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec cnam_request(api_terms()) -> api_formatter_return().
+-spec cnam_request(kz_term:api_terms()) -> api_formatter_return().
 cnam_request(Prop) ->
     build_message(Prop, cnam_request_definition()).
 
--spec cnam_request_v(api_terms()) -> boolean().
+-spec cnam_request_v(kz_term:api_terms()) -> boolean().
 cnam_request_v(Prop) ->
     validate(Prop, cnam_request_definition()).
 
--spec publish_cnam_request(api_terms()) -> 'ok'.
+-spec publish_cnam_request(kz_term:api_terms()) -> 'ok'.
 publish_cnam_request(JObj) ->
     publish_cnam_request(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_cnam_request(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_cnam_request(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_cnam_request(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1773,19 +1773,19 @@ publish_cnam_request(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec port_cancel(api_terms()) -> api_formatter_return().
+-spec port_cancel(kz_term:api_terms()) -> api_formatter_return().
 port_cancel(Prop) ->
     build_message(Prop, port_cancel_definition()).
 
--spec port_cancel_v(api_terms()) -> boolean().
+-spec port_cancel_v(kz_term:api_terms()) -> boolean().
 port_cancel_v(Prop) ->
     validate(Prop, port_cancel_definition()).
 
--spec publish_port_cancel(api_terms()) -> 'ok'.
+-spec publish_port_cancel(kz_term:api_terms()) -> 'ok'.
 publish_port_cancel(JObj) ->
     publish_port_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_port_cancel(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_port_cancel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_cancel(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1798,19 +1798,19 @@ publish_port_cancel(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec port_comment(api_terms()) -> api_formatter_return().
+-spec port_comment(kz_term:api_terms()) -> api_formatter_return().
 port_comment(Prop) ->
     build_message(Prop, port_comment_definition()).
 
--spec port_comment_v(api_terms()) -> boolean().
+-spec port_comment_v(kz_term:api_terms()) -> boolean().
 port_comment_v(Prop) ->
     validate(Prop, port_comment_definition()).
 
--spec publish_port_comment(api_terms()) -> 'ok'.
+-spec publish_port_comment(kz_term:api_terms()) -> 'ok'.
 publish_port_comment(JObj) ->
     publish_port_comment(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_port_comment(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_port_comment(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_comment(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1823,19 +1823,19 @@ publish_port_comment(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec port_pending(api_terms()) -> api_formatter_return().
+-spec port_pending(kz_term:api_terms()) -> api_formatter_return().
 port_pending(Prop) ->
     build_message(Prop, port_pending_definition()).
 
--spec port_pending_v(api_terms()) -> boolean().
+-spec port_pending_v(kz_term:api_terms()) -> boolean().
 port_pending_v(Prop) ->
     validate(Prop, port_pending_definition()).
 
--spec publish_port_pending(api_terms()) -> 'ok'.
+-spec publish_port_pending(kz_term:api_terms()) -> 'ok'.
 publish_port_pending(JObj) ->
     publish_port_pending(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_port_pending(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_port_pending(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_pending(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1848,19 +1848,19 @@ publish_port_pending(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec port_rejected(api_terms()) -> api_formatter_return().
+-spec port_rejected(kz_term:api_terms()) -> api_formatter_return().
 port_rejected(Prop) ->
     build_message(Prop, port_rejected_definition()).
 
--spec port_rejected_v(api_terms()) -> boolean().
+-spec port_rejected_v(kz_term:api_terms()) -> boolean().
 port_rejected_v(Prop) ->
     validate(Prop, port_rejected_definition()).
 
--spec publish_port_rejected(api_terms()) -> 'ok'.
+-spec publish_port_rejected(kz_term:api_terms()) -> 'ok'.
 publish_port_rejected(JObj) ->
     publish_port_rejected(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_port_rejected(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_port_rejected(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_rejected(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1873,19 +1873,19 @@ publish_port_rejected(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec port_request(api_terms()) -> api_formatter_return().
+-spec port_request(kz_term:api_terms()) -> api_formatter_return().
 port_request(Prop) ->
     build_message(Prop, port_request_definition()).
 
--spec port_request_v(api_terms()) -> boolean().
+-spec port_request_v(kz_term:api_terms()) -> boolean().
 port_request_v(Prop) ->
     validate(Prop, port_request_definition()).
 
--spec publish_port_request(api_terms()) -> 'ok'.
+-spec publish_port_request(kz_term:api_terms()) -> 'ok'.
 publish_port_request(JObj) ->
     publish_port_request(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_port_request(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_port_request(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_request(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1898,19 +1898,19 @@ publish_port_request(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec port_scheduled(api_terms()) -> api_formatter_return().
+-spec port_scheduled(kz_term:api_terms()) -> api_formatter_return().
 port_scheduled(Prop) ->
     build_message(Prop, port_scheduled_definition()).
 
--spec port_scheduled_v(api_terms()) -> boolean().
+-spec port_scheduled_v(kz_term:api_terms()) -> boolean().
 port_scheduled_v(Prop) ->
     validate(Prop, port_scheduled_definition()).
 
--spec publish_port_scheduled(api_terms()) -> 'ok'.
+-spec publish_port_scheduled(kz_term:api_terms()) -> 'ok'.
 publish_port_scheduled(JObj) ->
     publish_port_scheduled(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_port_scheduled(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_port_scheduled(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_scheduled(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1923,19 +1923,19 @@ publish_port_scheduled(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec port_unconfirmed(api_terms()) -> api_formatter_return().
+-spec port_unconfirmed(kz_term:api_terms()) -> api_formatter_return().
 port_unconfirmed(Prop) ->
     build_message(Prop, port_unconfirmed_definition()).
 
--spec port_unconfirmed_v(api_terms()) -> boolean().
+-spec port_unconfirmed_v(kz_term:api_terms()) -> boolean().
 port_unconfirmed_v(Prop) ->
     validate(Prop, port_unconfirmed_definition()).
 
--spec publish_port_unconfirmed(api_terms()) -> 'ok'.
+-spec publish_port_unconfirmed(kz_term:api_terms()) -> 'ok'.
 publish_port_unconfirmed(JObj) ->
     publish_port_unconfirmed(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_port_unconfirmed(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_port_unconfirmed(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_unconfirmed(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1948,19 +1948,19 @@ publish_port_unconfirmed(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec ported(api_terms()) -> api_formatter_return().
+-spec ported(kz_term:api_terms()) -> api_formatter_return().
 ported(Prop) ->
     build_message(Prop, ported_definition()).
 
--spec ported_v(api_terms()) -> boolean().
+-spec ported_v(kz_term:api_terms()) -> boolean().
 ported_v(Prop) ->
     validate(Prop, ported_definition()).
 
--spec publish_ported(api_terms()) -> 'ok'.
+-spec publish_ported(kz_term:api_terms()) -> 'ok'.
 publish_ported(JObj) ->
     publish_ported(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_ported(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_ported(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_ported(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -1979,19 +1979,19 @@ publish_ported(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec denied_emergency_bridge(api_terms()) -> api_formatter_return().
+-spec denied_emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
 denied_emergency_bridge(Prop) ->
     build_message(Prop, denied_emergency_bridge_definition()).
 
--spec denied_emergency_bridge_v(api_terms()) -> boolean().
+-spec denied_emergency_bridge_v(kz_term:api_terms()) -> boolean().
 denied_emergency_bridge_v(Prop) ->
     validate(Prop, denied_emergency_bridge_definition()).
 
--spec publish_denied_emergency_bridge(api_terms()) -> 'ok'.
+-spec publish_denied_emergency_bridge(kz_term:api_terms()) -> 'ok'.
 publish_denied_emergency_bridge(JObj) ->
     publish_denied_emergency_bridge(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_denied_emergency_bridge(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_denied_emergency_bridge(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_denied_emergency_bridge(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2010,19 +2010,19 @@ publish_denied_emergency_bridge(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec deregister(api_terms()) -> api_formatter_return().
+-spec deregister(kz_term:api_terms()) -> api_formatter_return().
 deregister(Prop) ->
     build_message(Prop, deregister_definition()).
 
--spec deregister_v(api_terms()) -> boolean().
+-spec deregister_v(kz_term:api_terms()) -> boolean().
 deregister_v(Prop) ->
     validate(Prop, deregister_definition()).
 
--spec publish_deregister(api_terms()) -> 'ok'.
+-spec publish_deregister(kz_term:api_terms()) -> 'ok'.
 publish_deregister(JObj) ->
     publish_deregister(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_deregister(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_deregister(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_deregister(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2035,19 +2035,19 @@ publish_deregister(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec first_occurrence(api_terms()) -> api_formatter_return().
+-spec first_occurrence(kz_term:api_terms()) -> api_formatter_return().
 first_occurrence(Prop) ->
     build_message(Prop, first_occurrence_definition()).
 
--spec first_occurrence_v(api_terms()) -> boolean().
+-spec first_occurrence_v(kz_term:api_terms()) -> boolean().
 first_occurrence_v(Prop) ->
     validate(Prop, first_occurrence_definition()).
 
--spec publish_first_occurrence(api_terms()) -> 'ok'.
+-spec publish_first_occurrence(kz_term:api_terms()) -> 'ok'.
 publish_first_occurrence(JObj) ->
     publish_first_occurrence(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_first_occurrence(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_first_occurrence(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_first_occurrence(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2060,19 +2060,19 @@ publish_first_occurrence(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec missed_call(api_terms()) -> api_formatter_return().
+-spec missed_call(kz_term:api_terms()) -> api_formatter_return().
 missed_call(Prop) ->
     build_message(Prop, missed_call_definition()).
 
--spec missed_call_v(api_terms()) -> boolean().
+-spec missed_call_v(kz_term:api_terms()) -> boolean().
 missed_call_v(Prop) ->
     validate(Prop, missed_call_definition()).
 
--spec publish_missed_call(api_terms()) -> 'ok'.
+-spec publish_missed_call(kz_term:api_terms()) -> 'ok'.
 publish_missed_call(JObj) ->
     publish_missed_call(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_missed_call(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_missed_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_missed_call(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2085,19 +2085,19 @@ publish_missed_call(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec register(api_terms()) -> api_formatter_return().
+-spec register(kz_term:api_terms()) -> api_formatter_return().
 register(Prop) ->
     build_message(Prop, register_definition()).
 
--spec register_v(api_terms()) -> boolean().
+-spec register_v(kz_term:api_terms()) -> boolean().
 register_v(Prop) ->
     validate(Prop, register_definition()).
 
--spec publish_register(api_terms()) -> 'ok'.
+-spec publish_register(kz_term:api_terms()) -> 'ok'.
 publish_register(JObj) ->
     publish_register(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_register(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_register(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2116,19 +2116,19 @@ publish_register(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec system_alert(api_terms()) -> api_formatter_return().
+-spec system_alert(kz_term:api_terms()) -> api_formatter_return().
 system_alert(Prop) ->
     build_message(Prop, system_alert_definition()).
 
--spec system_alert_v(api_terms()) -> boolean().
+-spec system_alert_v(kz_term:api_terms()) -> boolean().
 system_alert_v(Prop) ->
     validate(Prop, system_alert_definition()).
 
--spec publish_system_alert(api_terms()) -> 'ok'.
+-spec publish_system_alert(kz_term:api_terms()) -> 'ok'.
 publish_system_alert(JObj) ->
     publish_system_alert(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_system_alert(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_system_alert(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_system_alert(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2147,19 +2147,19 @@ publish_system_alert(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec customer_update(api_terms()) -> api_formatter_return().
+-spec customer_update(kz_term:api_terms()) -> api_formatter_return().
 customer_update(Prop) ->
     build_message(Prop, customer_update_definition()).
 
--spec customer_update_v(api_terms()) -> boolean().
+-spec customer_update_v(kz_term:api_terms()) -> boolean().
 customer_update_v(Prop) ->
     validate(Prop, customer_update_definition()).
 
--spec publish_customer_update(api_terms()) -> 'ok'.
+-spec publish_customer_update(kz_term:api_terms()) -> 'ok'.
 publish_customer_update(JObj) ->
     publish_customer_update(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_customer_update(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_customer_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_customer_update(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2172,19 +2172,19 @@ publish_customer_update(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec new_user(api_terms()) -> api_formatter_return().
+-spec new_user(kz_term:api_terms()) -> api_formatter_return().
 new_user(Prop) ->
     build_message(Prop, new_user_definition()).
 
--spec new_user_v(api_terms()) -> boolean().
+-spec new_user_v(kz_term:api_terms()) -> boolean().
 new_user_v(Prop) ->
     validate(Prop, new_user_definition()).
 
--spec publish_new_user(api_terms()) -> 'ok'.
+-spec publish_new_user(kz_term:api_terms()) -> 'ok'.
 publish_new_user(JObj) ->
     publish_new_user(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_new_user(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_new_user(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_new_user(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2197,19 +2197,19 @@ publish_new_user(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec password_recovery(api_terms()) -> api_formatter_return().
+-spec password_recovery(kz_term:api_terms()) -> api_formatter_return().
 password_recovery(Prop) ->
     build_message(Prop, password_recovery_definition()).
 
--spec password_recovery_v(api_terms()) -> boolean().
+-spec password_recovery_v(kz_term:api_terms()) -> boolean().
 password_recovery_v(Prop) ->
     validate(Prop, password_recovery_definition()).
 
--spec publish_password_recovery(api_terms()) -> 'ok'.
+-spec publish_password_recovery(kz_term:api_terms()) -> 'ok'.
 publish_password_recovery(JObj) ->
     publish_password_recovery(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_password_recovery(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_password_recovery(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_password_recovery(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2228,19 +2228,19 @@ publish_password_recovery(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec voicemail_full(api_terms()) -> api_formatter_return().
+-spec voicemail_full(kz_term:api_terms()) -> api_formatter_return().
 voicemail_full(Prop) ->
     build_message(Prop, voicemail_full_definition()).
 
--spec voicemail_full_v(api_terms()) -> boolean().
+-spec voicemail_full_v(kz_term:api_terms()) -> boolean().
 voicemail_full_v(Prop) ->
     validate(Prop, voicemail_full_definition()).
 
--spec publish_voicemail_full(api_terms()) -> 'ok'.
+-spec publish_voicemail_full(kz_term:api_terms()) -> 'ok'.
 publish_voicemail_full(JObj) ->
     publish_voicemail_full(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_voicemail_full(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_voicemail_full(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_full(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2253,19 +2253,19 @@ publish_voicemail_full(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec voicemail_new(api_terms()) -> api_formatter_return().
+-spec voicemail_new(kz_term:api_terms()) -> api_formatter_return().
 voicemail_new(Prop) ->
     build_message(Prop, voicemail_new_definition()).
 
--spec voicemail_new_v(api_terms()) -> boolean().
+-spec voicemail_new_v(kz_term:api_terms()) -> boolean().
 voicemail_new_v(Prop) ->
     validate(Prop, voicemail_new_definition()).
 
--spec publish_voicemail_new(api_terms()) -> 'ok'.
+-spec publish_voicemail_new(kz_term:api_terms()) -> 'ok'.
 publish_voicemail_new(JObj) ->
     publish_voicemail_new(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_voicemail_new(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_voicemail_new(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_new(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2278,19 +2278,19 @@ publish_voicemail_new(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec voicemail_saved(api_terms()) -> api_formatter_return().
+-spec voicemail_saved(kz_term:api_terms()) -> api_formatter_return().
 voicemail_saved(Prop) ->
     build_message(Prop, voicemail_saved_definition()).
 
--spec voicemail_saved_v(api_terms()) -> boolean().
+-spec voicemail_saved_v(kz_term:api_terms()) -> boolean().
 voicemail_saved_v(Prop) ->
     validate(Prop, voicemail_saved_definition()).
 
--spec publish_voicemail_saved(api_terms()) -> 'ok'.
+-spec publish_voicemail_saved(kz_term:api_terms()) -> 'ok'.
 publish_voicemail_saved(JObj) ->
     publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_voicemail_saved(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_voicemail_saved(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_saved(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2309,19 +2309,19 @@ publish_voicemail_saved(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec webhook(api_terms()) -> api_formatter_return().
+-spec webhook(kz_term:api_terms()) -> api_formatter_return().
 webhook(Prop) ->
     build_message(Prop, webhook_definition()).
 
--spec webhook_v(api_terms()) -> boolean().
+-spec webhook_v(kz_term:api_terms()) -> boolean().
 webhook_v(Prop) ->
     validate(Prop, webhook_definition()).
 
--spec publish_webhook(api_terms()) -> 'ok'.
+-spec publish_webhook(kz_term:api_terms()) -> 'ok'.
 publish_webhook(JObj) ->
     publish_webhook(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_webhook(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_webhook(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_webhook(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values
@@ -2334,19 +2334,19 @@ publish_webhook(API, ContentType) ->
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
--spec webhook_disabled(api_terms()) -> api_formatter_return().
+-spec webhook_disabled(kz_term:api_terms()) -> api_formatter_return().
 webhook_disabled(Prop) ->
     build_message(Prop, webhook_disabled_definition()).
 
--spec webhook_disabled_v(api_terms()) -> boolean().
+-spec webhook_disabled_v(kz_term:api_terms()) -> boolean().
 webhook_disabled_v(Prop) ->
     validate(Prop, webhook_disabled_definition()).
 
--spec publish_webhook_disabled(api_terms()) -> 'ok'.
+-spec publish_webhook_disabled(kz_term:api_terms()) -> 'ok'.
 publish_webhook_disabled(JObj) ->
     publish_webhook_disabled(JObj, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_webhook_disabled(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_webhook_disabled(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_webhook_disabled(API, ContentType) ->
     #kapi_definition{binding = Binding
                     ,values = Values

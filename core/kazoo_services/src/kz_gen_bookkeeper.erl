@@ -10,18 +10,18 @@
 
 -include("services.hrl").
 
--callback is_good_standing(ne_binary(), ne_binary()) ->
+-callback is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) ->
     boolean().
 
--callback sync(kz_service_items:items(), ne_binary()) ->
+-callback sync(kz_service_items:items(), kz_term:ne_binary()) ->
     bookkeeper_sync_result().
 
--callback transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+-callback transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
     {ok, kz_transaction:transactions()} |
     {error, atom()}.
 
--callback commit_transactions(ne_binary(), kz_transactions:kz_transactions()) ->
+-callback commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions()) ->
     ok | error.
 
--callback charge_transactions(ne_binary(), kz_json:objects()) ->
+-callback charge_transactions(kz_term:ne_binary(), kz_json:objects()) ->
     kz_json:objects().

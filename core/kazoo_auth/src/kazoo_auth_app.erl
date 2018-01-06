@@ -17,7 +17,7 @@
 %% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
     _ = kazoo_auth_maintenance:refresh(),
     _ = kazoo_auth_maintenance:register_common_providers(),

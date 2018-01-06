@@ -25,16 +25,16 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {request      :: kz_proplist() | 'undefined'
-               ,timer        :: api_reference()
+-record(state, {request      :: kz_term:proplist() | 'undefined'
+               ,timer        :: kz_term:api_reference()
                ,schedule     :: pos_integers() | 'undefined'
                ,check = 'true' :: check_fun()
                }).
 
 -type state() :: #state{}.
 
--spec start_link(kz_proplist(), pos_integers()) -> {'ok', pid()} | {'error', any()}.
--spec start_link(kz_proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', any()}.
+-spec start_link(kz_term:proplist(), pos_integers()) -> {'ok', pid()} | {'error', any()}.
+-spec start_link(kz_term:proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', any()}.
 start_link(Req, [_ | _] = Schedule) ->
     start_link(#state{request = Req, schedule = Schedule}).
 
@@ -124,7 +124,7 @@ check_condition(#state{check = Fun}, _) when is_function(Fun, 0) ->
             'stop'
     end.
 
--spec send_request(state(), kz_proplist()) -> routine_ret().
+-spec send_request(state(), kz_term:proplist()) -> routine_ret().
 send_request(State, Req) ->
     lager:debug("sending originate request"),
     ReqTimeout = props:get_value(<<"Timeout">>, Req) * ?MILLISECONDS_IN_SECOND,

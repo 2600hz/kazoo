@@ -26,7 +26,7 @@
 %%--------------------------------------------------------------------
 -spec available() -> {'ok', kz_json:objects()} |
                      {'error', any()}.
--spec available(api_binary()) ->
+-spec available(kz_term:api_binary()) ->
                        {'ok', kz_json:objects()} |
                        {'error', any()}.
 
@@ -34,7 +34,7 @@ available() -> available('undefined').
 
 available(Zone) -> available(Zone, 1).
 
--spec available(api_binary(), non_neg_integer()) ->
+-spec available(kz_term:api_binary(), non_neg_integer()) ->
                        {'ok', kz_json:objects()} |
                        {'error', any()}.
 available(Zone, Quantity) ->
@@ -63,7 +63,7 @@ available(Zone, Quantity) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec assigned(ne_binary()) ->
+-spec assigned(kz_term:ne_binary()) ->
                       {'ok', kz_json:objects()} |
                       {'error', any()}.
 assigned(Account) ->
@@ -88,7 +88,7 @@ sort_assigned(IPs) ->
     ZoneName = get_zone_name(),
     sort_assigned(kz_term:shuffle_list(IPs), ZoneName, []).
 
--spec sort_assigned(kz_json:objects(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec sort_assigned(kz_json:objects(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 sort_assigned([], _, Sorted) -> Sorted;
 sort_assigned([IP|IPs], ZoneName, Sorted) ->
     case kz_json:get_value(<<"zone">>, IP) =:= ZoneName of
@@ -96,7 +96,7 @@ sort_assigned([IP|IPs], ZoneName, Sorted) ->
         'false' -> sort_assigned(IPs, ZoneName, Sorted ++ [IP])
     end.
 
--spec get_zone_name() -> ne_binary().
+-spec get_zone_name() -> kz_term:ne_binary().
 get_zone_name() ->
     LocalZone = kz_term:to_binary(kz_nodes:local_zone()),
     NameMap = kapps_config:get_json(?CONFIG_CAT, <<"zone_name_map">>, kz_json:new()),
@@ -109,7 +109,7 @@ get_zone_name() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec zones() ->
-                   {'ok', ne_binaries()} |
+                   {'ok', kz_term:ne_binaries()} |
                    {'error', any()}.
 zones() ->
     ViewOptions = ['group'
@@ -138,7 +138,7 @@ zones() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec hosts() ->
-                   {'ok', ne_binaries()} |
+                   {'ok', kz_term:ne_binaries()} |
                    {'error', any()}.
 hosts() ->
     ViewOptions = ['group'
@@ -166,7 +166,7 @@ hosts() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec summary(api_binary()) ->
+-spec summary(kz_term:api_binary()) ->
                      {'ok', kz_json:objects()} |
                      {'error', any()}.
 summary(Host) ->

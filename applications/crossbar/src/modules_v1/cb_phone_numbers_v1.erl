@@ -340,7 +340,7 @@ normalize_view_results(JObj, Acc) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec identify(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec identify(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 identify(Context, Number) ->
     case knm_number:lookup_account(Number) of
         {'error', 'not_reconcilable'} ->
@@ -364,7 +364,7 @@ identify(Context, Number) ->
 %% @private
 %% @doc Load an instance from the database
 %%--------------------------------------------------------------------
--spec read(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
@@ -486,8 +486,8 @@ set_response(CollectionJObjOrUnkown, _, Context) ->
     end.
 
 -spec collection_process(cb_context:context()) -> kz_json:object().
--spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) -> kz_json:object().
--spec collection_process(cb_context:context(), ne_binary() | ne_binaries(), ne_binary()) -> kz_json:object().
+-spec collection_process(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_json:object().
+-spec collection_process(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:object().
 collection_process(Context) ->
     Numbers = kz_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     collection_process(Context, Numbers).
@@ -516,7 +516,7 @@ collection_process(Context, Numbers, Action) ->
                ,Numbers
                ).
 
--spec collection_process_action_fold(ne_binary(), kz_json:object(), cb_context:context(), ne_binary()) ->
+-spec collection_process_action_fold(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:ne_binary()) ->
                                             kz_json:object().
 collection_process_action_fold(Number, Acc, Context, Action) ->
     case collection_action(Context, cb_context:req_verb(Context), Number, Action) of
@@ -527,7 +527,7 @@ collection_process_action_fold(Number, Acc, Context, Action) ->
             kz_json:set_value([<<"error">>, Number], JObj, Acc)
     end.
 
--spec collection_process_fold(ne_binary(), kz_json:object(), cb_context:context()) ->
+-spec collection_process_fold(kz_term:ne_binary(), kz_json:object(), cb_context:context()) ->
                                      kz_json:object().
 collection_process_fold(Number, Acc, Context) ->
     case collection_action(Context, cb_context:req_verb(Context), Number) of
@@ -539,8 +539,8 @@ collection_process_fold(Number, Acc, Context) ->
             kz_json:set_value([<<"error">>, Number], JObj, Acc)
     end.
 
--spec collection_action(cb_context:context(), http_method(), ne_binary()) -> knm_number_return().
--spec collection_action(cb_context:context(), http_method(), ne_binary(), ne_binary()) ->
+-spec collection_action(cb_context:context(), http_method(), kz_term:ne_binary()) -> knm_number_return().
+-spec collection_action(cb_context:context(), http_method(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                knm_number_return() |
                                {'ok', kz_json:object()}.
 

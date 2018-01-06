@@ -14,7 +14,7 @@
 %% Internal functions
 %% ====================================================================
 
--spec register_oauth_app(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec register_oauth_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 register_oauth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
     Doc = kz_json:from_list([
                              {<<"_id">>, OAuthId}

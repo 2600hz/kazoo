@@ -39,7 +39,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(kz_amqp_connection()) -> startlink_ret().
+-spec start_link(kz_amqp_connection()) -> kz_types:startlink_ret().
 start_link(#kz_amqp_connection{}=Connection) ->
     gen_server:start_link(?SERVER, [Connection], []).
 
@@ -94,7 +94,7 @@ init([#kz_amqp_connection{}=Connection]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('get_connection', _, Connection) ->
     {'reply', Connection, Connection};
 handle_call('stop', _, Connection) ->
@@ -121,7 +121,7 @@ handle_call(_Msg, _From, Connection) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('disconnect'
            ,#kz_amqp_connection{available='false'}=Connection) ->
     {'noreply', Connection, 'hibernate'};
@@ -160,7 +160,7 @@ handle_cast(_Msg, Connection) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='false'}=Connection
            ) ->

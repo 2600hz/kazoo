@@ -46,7 +46,7 @@
                            ]
        ).
 
--spec endpoints(ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
+-spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 endpoints(Number, OffnetJObj) ->
     HuntAccountId  = maybe_get_hunt_account(OffnetJObj),
     SelectorsDb = kz_util:format_resource_selectors_db(HuntAccountId),
@@ -57,7 +57,7 @@ endpoints(Number, OffnetJObj) ->
         {'error', _E} -> []
     end.
 
--spec foldl_modules(ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:objects()) -> stepswitch_resources:resources().
+-spec foldl_modules(kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary(), kz_json:objects()) -> stepswitch_resources:resources().
 foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
     lists:foldl(fun(Rule, Resources) ->
                         rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb)
@@ -66,7 +66,7 @@ foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
                ,SelectorRules
                ).
 
--spec rule_to_resource(kz_json:object(), stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary()) ->
+-spec rule_to_resource(kz_json:object(), stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary()) ->
                               stepswitch_resources:resources().
 rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
     [Module|_] = kz_json:get_keys(Rule),
@@ -97,7 +97,7 @@ rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
             []
     end.
 
--spec maybe_get_hunt_account(kapi_offnet_resource:req()) -> api_binary().
+-spec maybe_get_hunt_account(kapi_offnet_resource:req()) -> kz_term:api_binary().
 maybe_get_hunt_account(OffnetJObj) ->
     HuntAccountId = kapi_offnet_resource:hunt_account_id(OffnetJObj),
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
@@ -109,7 +109,7 @@ maybe_get_hunt_account(OffnetJObj) ->
         'false' -> MasterAccountId
     end.
 
--spec get_selector_rules(api_binary()) ->
+-spec get_selector_rules(kz_term:api_binary()) ->
                                 {'ok', kz_json:objects()} |
                                 {'error', any()}.
 get_selector_rules(HuntAccountId) ->

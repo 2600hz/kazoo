@@ -13,8 +13,8 @@
 
 -include("conference.hrl").
 
--type name_pronounced_media() :: {atom(), ne_binary(), ne_binary()}.
--type name_pronounced_ids()   :: {atom(), ne_binary(), ne_binary()} |
+-type name_pronounced_media() :: {atom(), kz_term:ne_binary(), kz_term:ne_binary()}.
+-type name_pronounced_ids()   :: {atom(), kz_term:ne_binary(), kz_term:ne_binary()} |
                                  name_pronounced_media().
 -type name_pronounced() :: name_pronounced_ids() |
                            'undefined'.
@@ -22,7 +22,7 @@
 
 -define(PRONOUNCED_NAME_KEY, [<<"name_pronounced">>, <<"media_id">>]).
 
--spec get_user_id(kapps_call:call()) -> api_binary().
+-spec get_user_id(kapps_call:call()) -> kz_term:api_binary().
 get_user_id(Call) ->
     case kapps_call:authorizing_type(Call) of
         <<"user">> -> kapps_call:authorizing_id(Call);
@@ -31,7 +31,7 @@ get_user_id(Call) ->
         _Type -> 'undefined'
     end.
 
--spec get_user_id_from_device(kapps_call:call()) -> api_binary().
+-spec get_user_id_from_device(kapps_call:call()) -> kz_term:api_binary().
 get_user_id_from_device(Call) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
                                   ,kapps_call:authorizing_id(Call)
@@ -48,7 +48,7 @@ lookup_name(Call) ->
         UserId -> lookup_user_name(Call, UserId)
     end.
 
--spec lookup_user_name(kapps_call:call(), ne_binary()) -> name_pronounced_media() | 'undefined'.
+-spec lookup_user_name(kapps_call:call(), kz_term:ne_binary()) -> name_pronounced_media() | 'undefined'.
 lookup_user_name(Call, UserId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), UserId) of
         {'ok', UserDoc} ->
@@ -89,7 +89,7 @@ user_discards_or_not_error({'ok', Digit}) ->
 user_discards_or_not_error(_) ->
     'false'.
 
--spec record_name(ne_binary(), kapps_call:call()) -> kapps_call_command:collect_digits_return().
+-spec record_name(kz_term:ne_binary(), kapps_call:call()) -> kapps_call_command:collect_digits_return().
 record_name(RecordName, Call) ->
     lager:debug("recording name"),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
@@ -108,7 +108,7 @@ record_name(RecordName, Call) ->
             {'ok', <<"1">>}
     end.
 
--spec prepare_media_doc(ne_binary(), kapps_call:call()) -> api_binary().
+-spec prepare_media_doc(kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_binary().
 prepare_media_doc(RecordName, Call) ->
     UserId = get_user_id(Call),
     AccountDb = kapps_call:account_db(Call),
@@ -127,7 +127,7 @@ prepare_media_doc(RecordName, Call) ->
         _ -> 'undefined'
     end.
 
--spec save_recording(ne_binary(), ne_binary(), kapps_call:call()) -> name_pronounced_ids().
+-spec save_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> name_pronounced_ids().
 save_recording(RecordName, MediaDocId, Call) ->
     UserId = get_user_id(Call),
     AccountDb = kapps_call:account_db(Call),
@@ -144,14 +144,14 @@ save_recording(RecordName, MediaDocId, Call) ->
             {'temp_doc_id', AccountId, MediaDocId}
     end.
 
--spec save_pronounced_name(ne_binary(), kapps_call:call()) -> name_pronounced().
+-spec save_pronounced_name(kz_term:ne_binary(), kapps_call:call()) -> name_pronounced().
 save_pronounced_name(RecordName, Call) ->
     case prepare_media_doc(RecordName, Call) of
         'undefined' -> 'undefined';
         MediaDocId -> save_recording(RecordName, MediaDocId, Call)
     end.
 
--spec get_new_attachment_url(ne_binary(), ne_binary(), kapps_call:call()) -> ne_binary().
+-spec get_new_attachment_url(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     _ = case kz_datamgr:open_doc(AccountDb, MediaId) of
@@ -171,7 +171,7 @@ maybe_remove_attachments(Call, JObj) ->
                        )
     end.
 
--spec review(ne_binary(), kapps_call:call()) -> kapps_call_command:collect_digits_return().
+-spec review(kz_term:ne_binary(), kapps_call:call()) -> kapps_call_command:collect_digits_return().
 review(RecordName, Call) ->
     lager:debug("review record"),
     NoopId = kapps_call_command:audio_macro([{'prompt', <<"conf-your_announcment">>}

@@ -41,7 +41,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api_terms()) ->
+-spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 req(Prop) when is_list(Prop) ->
@@ -51,12 +51,12 @@ req(Prop) when is_list(Prop) ->
     end;
 req(JObj) -> req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(kz_term:api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
--spec req_event_type() -> {ne_binary(), ne_binary()}.
+-spec req_event_type() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
@@ -64,7 +64,7 @@ req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(api_terms()) ->
+-spec resp(kz_term:api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
 resp(Prop) when is_list(Prop) ->
@@ -84,7 +84,7 @@ resp(Prop) when is_list(Prop) ->
     end;
 resp(JObj) -> resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(api_terms()) -> boolean().
+-spec resp_v(kz_term:api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     Valid = kz_api:validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES),
     case props:get_value(<<"Method">>, Prop) of
@@ -97,7 +97,7 @@ resp_v(Prop) when is_list(Prop) ->
     end;
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
--spec is_actionable_resp(api_terms()) -> boolean().
+-spec is_actionable_resp(kz_term:api_terms()) -> boolean().
 is_actionable_resp(Prop) when is_list(Prop) ->
     case props:get_value(<<"Method">>, Prop) of
         <<"bridge">> -> 'true';
@@ -116,7 +116,7 @@ is_actionable_resp(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp_route(api_terms()) ->
+-spec resp_route(kz_term:api_terms()) ->
                         {'ok', iolist()} |
                         {'error', string()}.
 resp_route(Prop) when is_list(Prop) ->
@@ -126,7 +126,7 @@ resp_route(Prop) when is_list(Prop) ->
     end;
 resp_route(JObj) -> resp_route(kz_json:to_proplist(JObj)).
 
--spec resp_route_v(api_terms()) -> boolean().
+-spec resp_route_v(kz_term:api_terms()) -> boolean().
 resp_route_v(Prop) when is_list(Prop) ->
     kz_api:validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES);
 resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
@@ -136,7 +136,7 @@ resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec win(api_terms()) ->
+-spec win(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 win(Prop) when is_list(Prop) ->
@@ -146,7 +146,7 @@ win(Prop) when is_list(Prop) ->
     end;
 win(JObj) -> win(kz_json:to_proplist(JObj)).
 
--spec win_v(api_terms()) -> boolean().
+-spec win_v(kz_term:api_terms()) -> boolean().
 win_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES);
 win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
@@ -155,11 +155,11 @@ win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
 %% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_q(Queue, props:get_value('restrict_to', Props), Props).
 
--spec bind_q(ne_binary(), list() | 'undefined', kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), list() | 'undefined', kz_term:proplist()) -> 'ok'.
 bind_q(Queue, 'undefined', Props) ->
     Keys = get_all_routing_keys(Props),
     lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys);
@@ -175,11 +175,11 @@ bind_q(Queue, [_ | T], Props) ->
     bind_q(Queue, T, Props);
 bind_q(_, [], _) -> 'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q(Queue, props:get_value('restrict_to', Props), Props).
 
--spec unbind_q(ne_binary(), list() | 'undefined', kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), list() | 'undefined', kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', Props) ->
     Keys = get_all_routing_keys(Props),
     lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys);
@@ -218,15 +218,15 @@ get_account_routing_keys(Props) ->
 declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
--spec get_route_req_account_routing(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_route_req_account_routing(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_route_req_account_routing(Type, AccountId) ->
     list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(AccountId)]).
 
--spec get_route_req_realm_routing(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec get_route_req_realm_routing(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_route_req_realm_routing(Type, Realm, User) ->
     list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 
--spec get_route_req_routing(api_terms()) -> ne_binary().
+-spec get_route_req_routing(kz_term:api_terms()) -> kz_term:ne_binary().
 get_route_req_routing(Api) ->
     {User, Realm} = get_auth_user_realm(Api),
     Type = resource_type(Api),
@@ -235,24 +235,24 @@ get_route_req_routing(Api) ->
         AccountId -> get_route_req_account_routing(Type, AccountId)
     end.
 
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), binary()) -> 'ok'.
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
+-spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
--spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
     publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ROUTE_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_win(ne_binary(), api_terms()) -> 'ok'.
--spec publish_win(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_win(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_win(RespQ, JObj) ->
     publish_win(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_win(RespQ, Win, ContentType) ->
@@ -266,7 +266,7 @@ publish_win(RespQ, Win, ContentType) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm(api_terms()) -> ne_binary().
+-spec get_auth_realm(kz_term:api_terms()) -> kz_term:ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
     ReqDomain;
@@ -274,7 +274,7 @@ get_auth_realm(ApiJObj) ->
     [_ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     ReqDomain.
 
--spec get_auth_user(api_terms()) -> ne_binary().
+-spec get_auth_user(kz_term:api_terms()) -> kz_term:ne_binary().
 get_auth_user(ApiProp) when is_list(ApiProp) ->
     [ReqUser, _ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
     ReqUser;
@@ -282,7 +282,7 @@ get_auth_user(ApiJObj) ->
     [ReqUser, _ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     ReqUser.
 
--spec get_auth_user_realm(api_terms()) -> {ne_binary(), ne_binary()}.
+-spec get_auth_user_realm(kz_term:api_terms()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_auth_user_realm(ApiProp) when is_list(ApiProp) ->
     [ReqUser, ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
     {ReqUser, ReqDomain};
@@ -290,7 +290,7 @@ get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
 
--spec account_id(api_terms()) -> api_binary().
+-spec account_id(kz_term:api_terms()) -> kz_term:api_binary().
 account_id(API) when is_list(API) ->
     account_id(kz_json:from_list(API));
 account_id(API) ->
@@ -300,21 +300,21 @@ account_id(API) ->
                              ,API
                              ).
 
--spec resource_type(api_terms()) -> ne_binary().
+-spec resource_type(kz_term:api_terms()) -> kz_term:ne_binary().
 resource_type(ApiProp) when is_list(ApiProp) ->
     props:get_value(<<"Resource-Type">>, ApiProp);
 resource_type(ApiJObj) ->
     kz_json:get_value(<<"Resource-Type">>, ApiJObj).
 
--spec call_id(kz_json:object()) -> api_binary().
+-spec call_id(kz_json:object()) -> kz_term:api_binary().
 call_id(JObj) ->
     kz_json:get_value(?KEY_CALL_ID, JObj).
 
--spec fetch_id(kz_json:object()) -> api_binary().
+-spec fetch_id(kz_json:object()) -> kz_term:api_binary().
 fetch_id(JObj) ->
     kz_json:get_value(?KEY_FETCH_ID, JObj).
 
--spec control_queue(kz_json:object()) -> api_binary().
+-spec control_queue(kz_json:object()) -> kz_term:api_binary().
 control_queue(JObj) ->
     kz_json:get_value(?KEY_CONTROL_QUEUE, JObj).
 

@@ -240,7 +240,7 @@ summary(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec read(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Id) ->
     Context1 = check_comment_number(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -269,7 +269,7 @@ create(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
     Comments = kz_json:get_value(?COMMENTS, Doc, []),
@@ -292,7 +292,7 @@ update(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec remove(cb_context:context()) -> cb_context:context().
--spec remove(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec remove(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 remove(Context) ->
     Doc = kz_json:set_value(?COMMENTS, [], cb_context:doc(Context)),
     crossbar_doc:save(cb_context:set_doc(Context, Doc)).
@@ -328,7 +328,7 @@ finish_req(_Context, _Type, _Verb) -> 'ok'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_comment_number(cb_context:context(), ne_binary()) ->
+-spec check_comment_number(cb_context:context(), kz_term:ne_binary()) ->
                                   cb_context:context().
 check_comment_number(Context, Id) ->
     Context1 = load_doc(Context),
@@ -352,7 +352,7 @@ check_comment_number(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec load_doc(cb_context:context()) ->
                       cb_context:context().
--spec load_doc(cb_context:context(), ne_binary(), ne_binaries()) ->
+-spec load_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                       cb_context:context().
 load_doc(Context) ->
     {Type, Id} = cb_context:fetch(Context, 'resource'),
@@ -385,7 +385,7 @@ only_return_comments(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec only_return_comment(cb_context:context(), ne_binary()) ->
+-spec only_return_comment(cb_context:context(), kz_term:ne_binary()) ->
                                  cb_context:context().
 only_return_comment(Context, Id) ->
     Doc = cb_context:doc(Context),
@@ -400,7 +400,7 @@ only_return_comment(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id_to_number(ne_binary()) -> pos_integer().
+-spec id_to_number(kz_term:ne_binary()) -> pos_integer().
 id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 
 %%--------------------------------------------------------------------
@@ -408,7 +408,7 @@ id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_port_comment_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_port_comment_notification(Context, PortReqId) ->
     Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
             ,{<<"account_id">>, cb_context:auth_account_id(Context)}

@@ -171,24 +171,24 @@
                              #'confirm.select_ok'{} |
                              #'basic.cancel_ok'{}.
 -type command_ret() :: 'ok' |
-                       {'ok', ne_binary() | kz_command_ret_ok()} |
+                       {'ok', kz_term:ne_binary() | kz_command_ret_ok()} |
                        {'error', any()}.
 
 -define(KZ_AMQP_ETS, 'kz_amqp_ets').
 
 -type kz_amqp_type() :: 'sticky' | 'float'.
 
--record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_now() | '_'
-                            ,consumer :: api_pid() | '$2' | '_'
-                            ,consumer_ref :: api_reference() | '_'
+-record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_time:now() | '_'
+                            ,consumer :: kz_term:api_pid() | '$2' | '_'
+                            ,consumer_ref :: kz_term:api_reference() | '_'
                             ,type = 'float' :: kz_amqp_type() | 'undefined' | '_'
-                            ,channel :: api_pid() | '$1' | '_'
-                            ,channel_ref :: api_reference() | '_'
-                            ,connection :: api_pid() | '$1' | '_'
-                            ,broker :: api_binary() | '$1' | '_'
-                            ,assigned :: kz_timeout() | 'undefined' | '_'
+                            ,channel :: kz_term:api_pid() | '$1' | '_'
+                            ,channel_ref :: kz_term:api_reference() | '_'
+                            ,connection :: kz_term:api_pid() | '$1' | '_'
+                            ,broker :: kz_term:api_binary() | '$1' | '_'
+                            ,assigned :: timeout() | 'undefined' | '_'
                             ,reconnect = 'false' :: boolean() | '_'
-                            ,watchers = sets:new() :: sets:set() | pids() | '_'
+                            ,watchers = sets:new() :: sets:set() | kz_term:pids() | '_'
                             }).
 
 -type kz_amqp_assignment() :: #kz_amqp_assignment{}.
@@ -196,28 +196,28 @@
 
 -type kz_exchanges() :: [#'exchange.declare'{}].
 
--record(kz_amqp_connection, {broker :: ne_binary() | '_'
+-record(kz_amqp_connection, {broker :: kz_term:ne_binary() | '_'
                             ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{} | '_'
-                            ,manager :: api_pid() | '_'
-                            ,connection :: api_pid() | '_'
-                            ,connection_ref :: api_reference() | '_'
-                            ,channel :: api_pid() | '$1' | '_'
-                            ,channel_ref :: api_reference() | '$1' | '_'
-                            ,reconnect_ref :: api_reference() | '_'
+                            ,manager :: kz_term:api_pid() | '_'
+                            ,connection :: kz_term:api_pid() | '_'
+                            ,connection_ref :: kz_term:api_reference() | '_'
+                            ,channel :: kz_term:api_pid() | '$1' | '_'
+                            ,channel_ref :: kz_term:api_reference() | '$1' | '_'
+                            ,reconnect_ref :: kz_term:api_reference() | '_'
                             ,available = 'false' :: boolean() | '_'
                             ,exchanges_initialized = 'false' :: boolean() | '_'
                             ,prechannels_initialized = 'false' :: boolean() | '_'
-                            ,started = os:timestamp() :: kz_now() | '_'
+                            ,started = os:timestamp() :: kz_time:now() | '_'
                             ,tags = [] :: list() | '_'
                             ,hidden = 'false' :: boolean() | '_'
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 
--record(kz_amqp_connections, {connection :: api_pid() | '$1' | '_'
-                             ,connection_ref :: api_reference() | '_'
-                             ,broker :: ne_binary() | '$1' | '$2' | '_'
+-record(kz_amqp_connections, {connection :: kz_term:api_pid() | '$1' | '_'
+                             ,connection_ref :: kz_term:api_reference() | '_'
+                             ,broker :: kz_term:ne_binary() | '$1' | '$2' | '_'
                              ,available='false' :: boolean() | '$1' | '$2' | '_'
-                             ,timestamp=os:timestamp() :: kz_now() | '_'
+                             ,timestamp=os:timestamp() :: kz_time:now() | '_'
                              ,zone='local' :: atom() | '$1' | '_'
                              ,manager=self() :: pid() | '_'
                              ,tags = [] :: list() | '_'

@@ -88,7 +88,7 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec build_macros(kz_json:object()) -> kz_proplist().
+-spec build_macros(kz_json:object()) -> kz_term:proplist().
 build_macros(DataJObj) ->
     [Error | _]=Errors = kz_json:get_list_value(<<"errors">>, DataJObj),
 

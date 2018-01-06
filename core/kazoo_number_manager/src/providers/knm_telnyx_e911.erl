@@ -32,7 +32,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
@@ -126,7 +126,7 @@ maybe_update_e911(Number, 'false') ->
 %% @private
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
                          {'ok', knm_number:knm_number()} |
-                         {'error', ne_binary()}.
+                         {'error', kz_term:ne_binary()}.
 update_e911(Number, AddressJObj) ->
     remove_number_address(Number),
     case create_address(Number, AddressJObj) of
@@ -135,8 +135,8 @@ update_e911(Number, AddressJObj) ->
     end.
 
 -spec create_address(knm_number:knm_number(), kz_json:object()) ->
-                            {'ok', ne_binary()} |
-                            {'error', ne_binary() | any()}.
+                            {'ok', kz_term:ne_binary()} |
+                            {'error', kz_term:ne_binary() | any()}.
 create_address(Number, AddressJObj) ->
     Body = e911_address(Number, AddressJObj),
     try knm_telnyx_util:req('post', ["e911_addresses"], Body) of
@@ -157,9 +157,9 @@ create_address(Number, AddressJObj) ->
             {'error', Reason}
     end.
 
--spec assign_address(knm_number:knm_number(), ne_binary() | 'null') ->
+-spec assign_address(knm_number:knm_number(), kz_term:ne_binary() | 'null') ->
                             {'ok', knm_number:knm_number()} |
-                            {'error', ne_binary()}.
+                            {'error', kz_term:ne_binary()}.
 assign_address(Number, AddressId) ->
     IsEnabling = is_binary(AddressId),
     Body = kz_json:from_list([{<<"e911_enabled">>, IsEnabling}
@@ -186,7 +186,7 @@ assign_address(Number, AddressId) ->
 toogle('true') -> "enable";
 toogle('false') -> "disable".
 
--spec set_address_id(knm_number:knm_number(), ne_binary() | 'null') -> knm_number:knm_number().
+-spec set_address_id(knm_number:knm_number(), kz_term:ne_binary() | 'null') -> knm_number:knm_number().
 set_address_id(Number, AddressId) ->
     PN = knm_number:phone_number(Number),
     Data = kz_json:from_list([{?ADDRESS_ID, AddressId}]),
@@ -194,7 +194,7 @@ set_address_id(Number, AddressId) ->
     knm_number:set_phone_number(Number, NewPN).
 
 -spec remove_number(knm_number:knm_number()) -> {'ok', knm_number:knm_number()} |
-                                                {'error', ne_binary()}.
+                                                {'error', kz_term:ne_binary()}.
 remove_number(Number) ->
     CarrierData = knm_phone_number:carrier_data(knm_number:phone_number(Number)),
     case kz_json:get_ne_binary_value(?ADDRESS_ID, CarrierData) of
@@ -215,7 +215,7 @@ remove_number_address(Number) ->
             'ok'
     end.
 
--spec reason(kz_json:object()) -> ne_binary().
+-spec reason(kz_json:object()) -> kz_term:ne_binary().
 reason(RepJObj) ->
     Message = <<"message">>,
     Reasons = <<"reasons">>,
@@ -241,7 +241,7 @@ e911_address(Number, JObj) ->
         ,{<<"line_2">>, cleanse(kz_json:get_ne_binary_value(?E911_STREET2, JObj))}
         ])).
 
--spec cleanse(api_ne_binary()) -> api_binary().
+-spec cleanse(kz_term:api_ne_binary()) -> kz_term:api_binary().
 cleanse('undefined') -> 'undefined';
 cleanse(NEBin) ->
     Upper = kz_term:to_upper_binary(NEBin),

@@ -14,7 +14,7 @@
 
 -include("webhooks.hrl").
 
--spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_event(JObj, _Props) ->
     HookEvent = hook_event_name(kz_json:get_value(<<"Event-Name">>, JObj)),
     case kz_hooks_util:lookup_account_id(JObj) of
@@ -28,7 +28,7 @@ handle_event(JObj, _Props) ->
     end.
 
 %% @public
--spec maybe_handle_channel_event(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_handle_channel_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
     case webhooks_util:find_webhooks(HookEvent, AccountId) of
@@ -37,7 +37,7 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
             maybe_fire_event(AccountId, HookEvent, JObj, Hooks)
     end.
 
--spec maybe_fire_event(ne_binary(), ne_binary(), kz_json:object(), webhooks()) -> 'ok'.
+-spec maybe_fire_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), webhooks()) -> 'ok'.
 maybe_fire_event(AccountId, HookEvent, JObj, Hooks) ->
     FireAbleHooks = fireable_hooks(JObj, Hooks),
     webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), FireAbleHooks).
@@ -62,15 +62,15 @@ is_fireable_hook(JObj, #webhook{include_loopback='false'
             'false'
     end.
 
--spec is_loopback_channel_name(api_ne_binary()) -> boolean().
+-spec is_loopback_channel_name(kz_term:api_ne_binary()) -> boolean().
 is_loopback_channel_name(<<"loopback/", _/binary>>=_N) -> 'true';
 is_loopback_channel_name(_N) -> 'false'.
 
--spec hook_event_name(ne_binary()) -> ne_binary().
+-spec hook_event_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
 hook_event_name(Event) -> Event.
 
--spec format_event(kz_json:object(), api_binary(), ne_binary()) ->
+-spec format_event(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary()) ->
                           kz_json:object().
 format_event(JObj, AccountId, <<"CHANNEL_CREATE">>) ->
     kz_json:set_value(<<"hook_event">>, <<"channel_create">>
@@ -100,8 +100,8 @@ format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
                     ]
                    ).
 
--spec base_hook_event(kz_json:object(), api_binary()) -> kz_json:object().
--spec base_hook_event(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
+-spec base_hook_event(kz_json:object(), kz_term:api_binary()) -> kz_json:object().
+-spec base_hook_event(kz_json:object(), kz_term:api_binary(), kz_term:proplist()) -> kz_json:object().
 base_hook_event(JObj, AccountId) ->
     base_hook_event(JObj, AccountId, []).
 base_hook_event(JObj, AccountId, Acc) ->
@@ -135,21 +135,21 @@ base_hook_event(JObj, AccountId, Acc) ->
        | Acc
       ]).
 
--spec resource_used(boolean(), kz_json:object()) -> api_binary().
+-spec resource_used(boolean(), kz_json:object()) -> kz_term:api_binary().
 resource_used('true', _JObj) -> 'undefined';
 resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
 
 -spec ccv(kz_json:object(), kz_json:path()) ->
-                 api_binary().
+                 kz_term:api_binary().
 -spec ccv(kz_json:object(), kz_json:path(), Default) ->
-                 ne_binary() | Default.
+                 kz_term:ne_binary() | Default.
 ccv(JObj, Key) ->
     ccv(JObj, Key, 'undefined').
 ccv(JObj, Key, Default) ->
     kz_call_event:custom_channel_var(JObj, Key, Default).
 
--spec non_reserved_ccvs(kz_call_event:doc()) -> api_object().
--spec non_reserved_ccvs(kz_json:object(), api_ne_binaries()) -> api_object().
+-spec non_reserved_ccvs(kz_call_event:doc()) -> kz_term:api_object().
+-spec non_reserved_ccvs(kz_json:object(), kz_term:api_ne_binaries()) -> kz_term:api_object().
 non_reserved_ccvs(JObj) ->
     CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
     non_reserved_ccvs(CCVs, kapps_config:get_ne_binaries(<<"call_command">>, <<"reserved_ccv_keys">>)).
@@ -159,6 +159,6 @@ non_reserved_ccvs(CCVs, Keys) ->
     kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).
 
 -spec cavs(kz_json:object()) ->
-                  api_object().
+                  kz_term:api_object().
 cavs(JObj) ->
     kz_call_event:custom_application_vars(JObj).

@@ -118,7 +118,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(pid(), kz_json:object()) -> startlink_ret().
+-spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Super, QueueJObj) ->
     AccountId = kz_doc:account_id(QueueJObj),
     QueueId = kz_doc:id(QueueJObj),
@@ -130,7 +130,7 @@ start_link(Super, QueueJObj) ->
                            ,[Super, QueueJObj]
                            ).
 
--spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Super, AccountId, QueueId) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
@@ -139,7 +139,7 @@ start_link(Super, AccountId, QueueId) ->
                            ,[Super, AccountId, QueueId]
                            ).
 
--spec handle_member_call(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_member_call(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_call(JObj, Props) ->
     'true' = kapi_acdc_queue:member_call_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -159,7 +159,7 @@ handle_member_call(JObj, Props) ->
             start_queue_call(JObj, Props, Call)
     end.
 
--spec are_agents_available(server_ref()) -> boolean().
+-spec are_agents_available(kz_types:server_ref()) -> boolean().
 are_agents_available(Srv) ->
     are_agents_available(Srv, gen_listener:call(Srv, 'enter_when_empty')).
 
@@ -197,11 +197,11 @@ start_queue_call(JObj, Props, Call) ->
     %% Add member to queue for tracking position
     gen_listener:cast(props:get_value('server', Props), {'add_queue_member', JObj}).
 
--spec handle_member_call_success(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_member_call_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_call_success(JObj, Prop) ->
     gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_remove', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
--spec handle_member_call_cancel(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_member_call_cancel(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_call_cancel(JObj, Props) ->
     kz_util:put_callid(JObj),
     lager:debug("cancel call ~p", [JObj]),
@@ -212,7 +212,7 @@ handle_member_call_cancel(JObj, Props) ->
                        ),
     gen_listener:cast(props:get_value('server', Props), {'member_call_cancel', K, JObj}).
 
--spec handle_agent_change(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_agent_change(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_agent_change(JObj, Prop) ->
     'true' = kapi_acdc_queue:agent_change_v(JObj),
     Server = props:get_value('server', Prop),
@@ -227,20 +227,20 @@ handle_agent_change(JObj, Prop) ->
             gen_listener:cast(Server, {'agent_unavailable', JObj})
     end.
 
--spec handle_queue_member_add(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_queue_member_add(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_queue_member_add(JObj, Prop) ->
     gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_add', JObj}).
 
--spec handle_queue_member_remove(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_queue_member_remove(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_queue_member_remove(JObj, Prop) ->
     gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_remove', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
--spec handle_config_change(server_ref(), kz_json:object()) -> 'ok'.
+-spec handle_config_change(kz_types:server_ref(), kz_json:object()) -> 'ok'.
 handle_config_change(Srv, JObj) ->
     gen_listener:cast(Srv, {'update_queue_config', JObj}).
 
--spec should_ignore_member_call(server_ref(), kapps_call:call(), kz_json:object()) -> boolean().
--spec should_ignore_member_call(server_ref(), kapps_call:call(), ne_binary(), ne_binary()) -> boolean().
+-spec should_ignore_member_call(kz_types:server_ref(), kapps_call:call(), kz_json:object()) -> boolean().
+-spec should_ignore_member_call(kz_types:server_ref(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 should_ignore_member_call(Srv, Call, CallJObj) ->
     should_ignore_member_call(Srv
                              ,Call
@@ -251,17 +251,17 @@ should_ignore_member_call(Srv, Call, AccountId, QueueId) ->
     K = make_ignore_key(AccountId, QueueId, kapps_call:call_id(Call)),
     gen_listener:call(Srv, {'should_ignore_member_call', K}).
 
--spec up_next(pid(), ne_binary()) -> boolean().
+-spec up_next(pid(), kz_term:ne_binary()) -> boolean().
 up_next(Srv, CallId) ->
     gen_listener:call(Srv, {'up_next', CallId}).
 
--spec config(pid()) -> {ne_binary(), ne_binary()}.
+-spec config(pid()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 config(Srv) -> gen_listener:call(Srv, 'config').
 
--spec current_agents(server_ref()) -> ne_binaries().
+-spec current_agents(kz_types:server_ref()) -> kz_term:ne_binaries().
 current_agents(Srv) -> gen_listener:call(Srv, 'current_agents').
 
--spec status(pid()) -> ne_binaries().
+-spec status(pid()) -> kz_term:ne_binaries().
 status(Srv) -> gen_listener:call(Srv, 'status').
 
 -spec refresh(pid(), kz_json:object()) -> 'ok'.
@@ -285,7 +285,7 @@ pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Sr
 %% @private
 %% @doc Initializes the server
 %%--------------------------------------------------------------------
--spec init([pid() | kz_json:object() | ne_binary()]) -> {'ok', mgr_state()}.
+-spec init([pid() | kz_json:object() | kz_term:ne_binary()]) -> {'ok', mgr_state()}.
 init([Super, QueueJObj]) ->
     AccountId = kz_doc:account_id(QueueJObj),
     QueueId = kz_doc:id(QueueJObj),
@@ -338,7 +338,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), mgr_state()) -> handle_call_ret_state(mgr_state()).
+-spec handle_call(any(), kz_term:pid_ref(), mgr_state()) -> kz_types:handle_call_ret_state(mgr_state()).
 handle_call({'should_ignore_member_call', {AccountId, QueueId, CallId}=K}, _, #state{ignored_member_calls=Dict
                                                                                     ,account_id=AccountId
                                                                                     ,queue_id=QueueId
@@ -413,7 +413,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), mgr_state()) -> handle_cast_ret_state(mgr_state()).
+-spec handle_cast(any(), mgr_state()) -> kz_types:handle_cast_ret_state(mgr_state()).
 handle_cast({'update_strategy', StrategyState}, State) ->
     {'noreply', State#state{strategy_state=StrategyState}, 'hibernate'};
 
@@ -614,7 +614,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), mgr_state()) -> handle_info_ret_state(mgr_state()).
+-spec handle_info(any(), mgr_state()) -> kz_types:handle_info_ret_state(mgr_state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -669,7 +669,7 @@ start_secondary_queue(AccountId, QueueId) ->
                   ,?SECONDARY_BINDINGS(AccountId, QueueId)
                   ]).
 
--spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
+-spec lookup_priority_levels(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_integer().
 lookup_priority_levels(AccountDB, QueueId) ->
     case kz_datamgr:open_cache_doc(AccountDB, QueueId) of
         {'ok', JObj} -> kz_json:get_value(<<"max_priority">>, JObj);
@@ -679,7 +679,7 @@ lookup_priority_levels(AccountDB, QueueId) ->
 make_ignore_key(AccountId, QueueId, CallId) ->
     {AccountId, QueueId, CallId}.
 
--spec publish_queue_member_add(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
+-spec publish_queue_member_add(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 publish_queue_member_add(AccountId, QueueId, Call) ->
     Prop = [{<<"Account-ID">>, AccountId}
            ,{<<"Queue-ID">>, QueueId}
@@ -688,7 +688,7 @@ publish_queue_member_add(AccountId, QueueId, Call) ->
            ],
     kapi_acdc_queue:publish_queue_member_add(Prop).
 
--spec publish_queue_member_remove(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_queue_member_remove(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_remove(AccountId, QueueId, CallId) ->
     Prop = [{<<"Account-ID">>, AccountId}
            ,{<<"Queue-ID">>, QueueId}
@@ -697,7 +697,7 @@ publish_queue_member_remove(AccountId, QueueId, CallId) ->
            ],
     kapi_acdc_queue:publish_queue_member_remove(Prop).
 
--spec start_agent_and_worker(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec start_agent_and_worker(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
     acdc_queue_workers_sup:new_worker(WorkersSup, AccountId, QueueId),
     AgentId = kz_doc:id(AgentJObj),
@@ -714,7 +714,7 @@ start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
     end.
 
 %% Really sophisticated selection algorithm
--spec pick_winner(pid(), kz_json:objects(), queue_strategy(), api_binary()) ->
+-spec pick_winner(pid(), kz_json:objects(), queue_strategy(), kz_term:api_binary()) ->
                          'undefined' |
                          {kz_json:objects(), kz_json:objects()}.
 pick_winner(_, [], _, _) ->
@@ -736,7 +736,7 @@ pick_winner(_Mgr, CRs, 'mi', _) ->
 
     {[MostIdle|Same], Other}.
 
--spec update_strategy_with_agent(queue_strategy(), strategy_state(), ne_binary(), 'add' | 'remove', 'busy' | 'undefined') ->
+-spec update_strategy_with_agent(queue_strategy(), strategy_state(), kz_term:ne_binary(), 'add' | 'remove', 'busy' | 'undefined') ->
                                         strategy_state().
 update_strategy_with_agent('rr', #strategy_state{agents=AgentQueue}=SS, AgentId, 'add', Busy) ->
     case queue:member(AgentId, AgentQueue) of
@@ -763,7 +763,7 @@ update_strategy_with_agent('mi', #strategy_state{agents=AgentL}=SS, AgentId, 're
         'true' -> set_busy(AgentId, Busy, remove_agent('mi', AgentId, SS))
     end.
 
--spec add_agent(queue_strategy(), ne_binary(), strategy_state()) -> strategy_state().
+-spec add_agent(queue_strategy(), kz_term:ne_binary(), strategy_state()) -> strategy_state().
 add_agent('rr', AgentId, #strategy_state{agents=AgentQueue
                                         ,details=Details
                                         }=SS) ->
@@ -777,7 +777,7 @@ add_agent('mi', AgentId, #strategy_state{agents=AgentL
                      ,details=incr_agent(AgentId, Details)
                      }.
 
--spec remove_agent(queue_strategy(), ne_binary(), strategy_state()) -> strategy_state().
+-spec remove_agent(queue_strategy(), kz_term:ne_binary(), strategy_state()) -> strategy_state().
 remove_agent('rr', AgentId, #strategy_state{agents=AgentQueue
                                            ,details=Details
                                            }=SS) ->
@@ -804,19 +804,19 @@ remove_agent('mi', AgentId, #strategy_state{agents=AgentL
                              }
     end.
 
--spec incr_agent(ne_binary(), dict:dict(ne_binary(), ss_details())) ->
-                        dict:dict(ne_binary(), ss_details()).
+-spec incr_agent(kz_term:ne_binary(), dict:dict(kz_term:ne_binary(), ss_details())) ->
+                        dict:dict(kz_term:ne_binary(), ss_details()).
 incr_agent(AgentId, Details) ->
     dict:update(AgentId, fun({Count, Busy}) -> {Count + 1, Busy} end, {1, 'undefined'}, Details).
 
--spec decr_agent(ne_binary(), dict:dict(ne_binary(), ss_details())) ->
-                        dict:dict(ne_binary(), ss_details()).
+-spec decr_agent(kz_term:ne_binary(), dict:dict(kz_term:ne_binary(), ss_details())) ->
+                        dict:dict(kz_term:ne_binary(), ss_details()).
 decr_agent(AgentId, Details) ->
     dict:update(AgentId, fun({Count, Busy}) when Count > 1 -> {Count - 1, Busy};
                             ({_, Busy}) -> {0, Busy} end
                ,{0, 'undefined'}, Details).
 
--spec set_busy(ne_binary(), 'busy' | 'undefined', strategy_state()) -> strategy_state().
+-spec set_busy(kz_term:ne_binary(), 'busy' | 'undefined', strategy_state()) -> strategy_state().
 set_busy(AgentId, Busy, #strategy_state{details=Details}=SS) ->
     SS#strategy_state{details=dict:update(AgentId, fun({Count, _}) -> {Count, Busy} end, {0, Busy}, Details)}.
 
@@ -849,21 +849,21 @@ remove_unknown_agents(Mgr, CRs) ->
             ]
     end.
 
--spec split_agents(ne_binary(), kz_json:objects()) ->
+-spec split_agents(kz_term:ne_binary(), kz_json:objects()) ->
                           {kz_json:objects(), kz_json:objects()}.
 split_agents(AgentId, Rest) ->
     lists:partition(fun(R) ->
                             AgentId =:= kz_json:get_value(<<"Agent-ID">>, R)
                     end, Rest).
 
--spec get_strategy(api_binary()) -> queue_strategy().
+-spec get_strategy(kz_term:api_binary()) -> queue_strategy().
 get_strategy(<<"round_robin">>) -> 'rr';
 get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
 
 -spec create_strategy_state(queue_strategy()
                            ,strategy_state()
-                           ,ne_binary(), ne_binary()
+                           ,kz_term:ne_binary(), kz_term:ne_binary()
                            ) -> strategy_state().
 create_strategy_state(Strategy, AcctDb, QueueId) ->
     create_strategy_state(Strategy, #strategy_state{}, AcctDb, QueueId).
@@ -915,8 +915,8 @@ update_strategy_state(Srv, 'mi', #strategy_state{agents=AgentL}) ->
 update_strategy_state(Srv, L) ->
     [gen_listener:cast(Srv, {'sync_with_agent', A}) || A <- L].
 
--spec call_position(ne_binary(), [kapps_call:call()]) -> api_integer().
--spec call_position(ne_binary(), [kapps_call:call()], pos_integer()) -> pos_integer().
+-spec call_position(kz_term:ne_binary(), [kapps_call:call()]) -> kz_term:api_integer().
+-spec call_position(kz_term:ne_binary(), [kapps_call:call()], pos_integer()) -> pos_integer().
 call_position(CallId, Calls) ->
     call_position(CallId, Calls, 1).
 
@@ -961,7 +961,7 @@ update_properties(QueueJObj, State) ->
                ,announcements_config=announcements_config(QueueJObj)
      }.
 
--spec announcements_config(kz_json:object()) -> kz_proplist().
+-spec announcements_config(kz_json:object()) -> kz_term:proplist().
 announcements_config(Config) ->
     kz_json:recursive_to_proplist(
       kz_json:get_json_value(<<"announcements">>, Config, kz_json:new())).
@@ -991,7 +991,7 @@ cancel_position_announcements(Call, Pids) ->
             Pids1
     end.
 
--spec remove_queue_member(api_binary(), mgr_state()) -> mgr_state().
+-spec remove_queue_member(kz_term:api_binary(), mgr_state()) -> mgr_state().
 remove_queue_member(CallId, #state{current_member_calls=CurrentCalls
                                   ,announcements_pids=AnnouncementsPids
                                   }=State) ->

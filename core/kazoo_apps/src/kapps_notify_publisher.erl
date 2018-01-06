@@ -36,7 +36,7 @@
         kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
        ).
 
--type failure_reason() :: {ne_binary(), api_object()}.
+-type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -46,7 +46,7 @@
 %% the notification completely (e.g. new voicemail)
 %% @end
 %%--------------------------------------------------------------------
--spec call_collect(api_terms(), kz_amqp_worker:publish_fun()) -> kz_amqp_worker:request_return().
+-spec call_collect(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> kz_amqp_worker:request_return().
 call_collect(Req, PublishFun) ->
     NotifyType = notify_type(PublishFun),
     CallResp = kz_amqp_worker:call_collect(Req, PublishFun, fun collecting/1, ?TIMEOUT),
@@ -60,7 +60,7 @@ call_collect(Req, PublishFun) ->
 %% if it failed.
 %% @end
 %%--------------------------------------------------------------------
--spec cast(api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec cast(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 cast(Req, PublishFun) ->
     CallId = kz_util:get_callid(),
     Fun = fun() ->
@@ -83,7 +83,7 @@ cast(Req, PublishFun) ->
 %% handle amqp worker responses
 %% @end
 %%--------------------------------------------------------------------
--spec handle_resp(api_ne_binary(), api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
+-spec handle_resp(kz_term:api_ne_binary(), kz_term:api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
 handle_resp(NotifyType, Req, {'ok', _}=Resp) ->
     check_for_failure(NotifyType, Req, Resp);
 
@@ -102,7 +102,7 @@ handle_resp(NotifyType, Req, {'timeout', _}=Resp) ->
 %% check for notify update messages from teletype/notify apps
 %% @end
 %%--------------------------------------------------------------------
--spec check_for_failure(api_ne_binary(), api_terms(), {'ok' | 'returned' | 'timeout', kz_json:object() | kz_json:objects()}) -> 'ok'.
+-spec check_for_failure(kz_term:api_ne_binary(), kz_term:api_terms(), {'ok' | 'returned' | 'timeout', kz_json:object() | kz_json:objects()}) -> 'ok'.
 check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
     Reason = json_to_reason(Resp),
     case is_completed(Responses) of
@@ -111,7 +111,7 @@ check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
     end.
 
 %% @private
--spec maybe_log_metadata(api_ne_binary(), failure_reason()) -> 'ok'.
+-spec maybe_log_metadata(kz_term:api_ne_binary(), failure_reason()) -> 'ok'.
 maybe_log_metadata('undefined', _) -> 'ok';
 maybe_log_metadata(_, {<<"completed">>, 'undefined'}) -> 'ok';
 maybe_log_metadata(NotifyType, {<<"completed">>=Reason, Metadata}) ->
@@ -124,7 +124,7 @@ maybe_log_metadata(_, _) -> 'ok'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_handle_error(api_binary(), api_terms(), failure_reason()) -> 'ok'.
+-spec maybe_handle_error(kz_term:api_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 maybe_handle_error('undefined', _, _) ->
     lager:warning("not saving unknown notification type");
 maybe_handle_error(NotifyType, Req, Reason) ->
@@ -139,7 +139,7 @@ maybe_handle_error(NotifyType, Req, Reason) ->
 %% create document with notification payload to save in db
 %% @end
 %%--------------------------------------------------------------------
--spec handle_error(ne_binary(), api_terms(), failure_reason()) -> 'ok'.
+-spec handle_error(kz_term:ne_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 handle_error(NotifyType, Req, {Reason, Metadata}) ->
     lager:warning("attempt to publishing notification ~s was unsuccessful: ~p", [NotifyType, Reason]),
     Props = props:filter_undefined(
@@ -158,7 +158,7 @@ handle_error(NotifyType, Req, {Reason, Metadata}) ->
     save_pending_notification(NotifyType, JObj, 2).
 
 %% @private
--spec save_pending_notification(ne_binary(), kz_json:object(), integer()) -> 'ok'.
+-spec save_pending_notification(kz_term:ne_binary(), kz_json:object(), integer()) -> 'ok'.
 save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
     lager:error("max try to save payload for notification ~s publish attempt", [_NotifyType]);
 save_pending_notification(NotifyType, JObj, Loop) ->
@@ -224,7 +224,7 @@ is_completed(JObj) ->
 %% Check the reason to see if this failure should be saved or not.
 %% @end
 %%--------------------------------------------------------------------
--spec should_ignore_failure(api_ne_binary()) -> boolean().
+-spec should_ignore_failure(kz_term:api_ne_binary()) -> boolean().
 should_ignore_failure(<<"missing_from">>) -> 'true';
 should_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
 should_ignore_failure(<<"no_to_addresses">>) -> 'true';
@@ -315,7 +315,7 @@ find_reason_from_jsons(Reason, JObjs, Map) ->
     end.
 
 %% @private
--spec cast_to_binary(any()) -> ne_binary().
+-spec cast_to_binary(any()) -> kz_term:ne_binary().
 cast_to_binary(Error) ->
     try kz_term:to_binary(Error)
     catch
@@ -330,7 +330,7 @@ cast_to_binary(Error) ->
 %% Find notification type from the publish function
 %% @end
 %%--------------------------------------------------------------------
--spec notify_type(kz_amqp_worker:publish_fun() | ne_binary()) -> api_ne_binary().
+-spec notify_type(kz_amqp_worker:publish_fun() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
 notify_type(<<"publish_", NotifyType/binary>>) ->
     NotifyType;
 notify_type(NotifyType) when is_binary(NotifyType) ->
@@ -344,12 +344,12 @@ notify_type(PublishFun) ->
             'undefined'
     end.
 
--spec should_persist_notify(api_binary()) -> boolean().
+-spec should_persist_notify(kz_term:api_binary()) -> boolean().
 should_persist_notify(AccountId) ->
     ?DEFAULT_PUBLISHER_ENABLED
         andalso ?ACCOUNT_SHOULD_PRESIST(AccountId).
 
--spec should_handle_notify_type(ne_binary(), api_binary()) -> boolean().
+-spec should_handle_notify_type(kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
 should_handle_notify_type(NotifyType, AccountId) ->
     not lists:member(NotifyType, ?GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION)
         andalso not lists:member(NotifyType, ?NOTIFY_TYPE_EXCEPTION(AccountId)).

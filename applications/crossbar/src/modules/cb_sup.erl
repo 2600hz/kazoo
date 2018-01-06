@@ -48,7 +48,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     proc_lib:start_link(?SERVER, 'init_io', [self()]).
 
@@ -185,7 +185,7 @@ allowed_methods(_Module, _Function, _Args) ->
 -spec resource_exists() -> 'false'.
 -spec resource_exists(path_token()) -> boolean().
 -spec resource_exists(path_token(), path_token()) -> boolean().
--spec resource_exists(path_token(), path_token(), ne_binaries()) -> boolean().
+-spec resource_exists(path_token(), path_token(), kz_term:ne_binaries()) -> boolean().
 resource_exists() -> 'false'.
 
 resource_exists(ModuleBin) ->

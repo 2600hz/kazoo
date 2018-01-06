@@ -22,7 +22,7 @@
 
 %% @public
 %% @doc Implement the application start behaviour
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     _ = node_bindings(),
@@ -88,6 +88,6 @@ freeswitch_nodesup_unbind() ->
     _ = kazoo_bindings:unbind(<<"freeswitch.node.modules">>, ?MODULE, 'freeswitch_node_modules'),
     'ok'.
 
--spec freeswitch_node_modules() -> ne_binaries().
+-spec freeswitch_node_modules() -> kz_term:ne_binaries().
 freeswitch_node_modules() ->
     application:get_env(?APP, 'node_modules', ?NODE_MODULES).

@@ -25,7 +25,7 @@ resolve_path(#{container := Container} = Settings, AttInfo) ->
     Url = azure_format_url(Settings, AttInfo),
     {kz_term:to_list(Container), kz_term:to_list(Url)}.
 
--spec azure_default_fields() -> kz_proplist().
+-spec azure_default_fields() -> kz_term:proplist().
 azure_default_fields() ->
     [{group, [{arg, <<"id">>}
              ,<<"_">>
@@ -33,7 +33,7 @@ azure_default_fields() ->
              ]}
     ].
 
--spec azure_format_url(map(), attachment_info()) -> ne_binary().
+-spec azure_format_url(map(), attachment_info()) -> kz_term:ne_binary().
 azure_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, azure_default_fields()).
 
@@ -50,7 +50,7 @@ azure_pid(Account, Key) ->
         Pid -> Pid
     end.
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
     CT = kz_mime:from_filename(AName),
 
@@ -72,7 +72,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
     end.
 
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', iodata()} |
                               {'error', 'invalid_data' | 'not_found'}.
 fetch_attachment(HandlerProps, DbName, DocId, AName) ->

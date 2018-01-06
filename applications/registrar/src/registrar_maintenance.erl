@@ -14,7 +14,7 @@
 
 -include("reg.hrl").
 
--spec device_by_ip(text()) -> 'ok'.
+-spec device_by_ip(kz_term:text()) -> 'ok'.
 device_by_ip(IP) when not is_binary(IP) ->
     device_by_ip(kz_term:to_binary(IP));
 device_by_ip(IP) ->
@@ -26,7 +26,7 @@ device_by_ip(IP) ->
             io:format("Not found: ~p~n", [_E])
     end.
 
--spec pretty_print_device_by_ip(kz_proplist()) -> 'ok'.
+-spec pretty_print_device_by_ip(kz_term:proplist()) -> 'ok'.
 pretty_print_device_by_ip([]) -> 'ok';
 pretty_print_device_by_ip([{Key, Value}|Props]) ->
     io:format("~-39s: ~s~n", [Key, kz_term:to_binary(Value)]),

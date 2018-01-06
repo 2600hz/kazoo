@@ -93,7 +93,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     case gen_server:start_link(?SERVER, ?MODULE, [], []) of
         {'error', {'already_started', Pid}}
@@ -118,7 +118,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', state(), kz_timeout()}.
+-spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
     kz_util:put_callid(?NAME),
     lager:debug("~s has been started", [?NAME]),
@@ -135,7 +135,7 @@ running() ->
         _ -> gen_server:call(?SERVER, 'running')
     end.
 
--spec send_single(ne_binary()) -> {'ok' | 'failed', kz_json:object()} | {'error', any()}.
+-spec send_single(kz_term:ne_binary()) -> {'ok' | 'failed', kz_json:object()} | {'error', any()}.
 send_single(Id) ->
     case kz_datamgr:open_doc(?KZ_PENDING_NOTIFY_DB, Id) of
         {'ok', JObj} ->
@@ -163,7 +163,7 @@ next() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('running', _From, #state{running=Running}=State) ->
     {'reply', Running, State};
 handle_call(_Request, _From, State) ->
@@ -179,7 +179,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('next_cycle', State) ->
     {'noreply', State#state{running=[]}, ?TIME_BETWEEN_CYCLE};
 handle_cast(stop, State) ->
@@ -199,7 +199,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('timeout', State) ->
     ViewOptions = [{'startkey', 0}
                   ,{'endkey', kz_time:now_s()}
@@ -291,7 +291,7 @@ send_notification(JObj, #{ok := OK}=Map) ->
         'false' -> maybe_reschedule(NotifyType, JObj, Map)
     end.
 
--spec call_collect(api_terms(), api_atom()) -> kz_amqp_worker:request_return().
+-spec call_collect(kz_term:api_terms(), kz_term:api_atom()) -> kz_amqp_worker:request_return().
 call_collect(_API, undefined) -> 'ok';
 call_collect(undefined, _) -> 'ok';
 call_collect(API, PublishFun) ->
@@ -346,7 +346,7 @@ handle_result({'error', _Reason}) -> 'false';
 handle_result({'returned', _, Resp}) -> is_completed(Resp);
 handle_result({'timeout', Resp}) -> is_completed(Resp).
 
--spec maybe_reschedule(ne_binary(), kz_json:object(), map()) -> map().
+-spec maybe_reschedule(kz_term:ne_binary(), kz_json:object(), map()) -> map().
 maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
     J = apply_reschedule_logic(NotifyType, JObj),
     Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
@@ -361,7 +361,7 @@ maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
             Map#{ko := [kz_json:set_value(<<"max_retried">>, 'true', J)|KO]} %% attempts ++ 1
     end.
 
--spec apply_reschedule_logic(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec apply_reschedule_logic(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 apply_reschedule_logic(NotifyType, JObj) ->
     Attempts = kz_json:get_integer_value(<<"attempts">>, JObj, 0),
 
@@ -381,7 +381,7 @@ apply_reschedule_logic(NotifyType, JObj) ->
             JObj2
     end.
 
--spec apply_reschedule_rules(ne_binary(),{kz_json:objects(), kz_json:path()}, kz_json:object()) ->
+-spec apply_reschedule_rules(kz_term:ne_binary(),{kz_json:objects(), kz_json:path()}, kz_json:object()) ->
                                     {'ok', kz_json:object()} |
                                     {'no_rules', kz_json:object()}.
 apply_reschedule_rules(_NotifyType, {[], _}, JObj) -> {'no_rules', JObj};
@@ -418,7 +418,7 @@ set_default_update_fields(JObj, Attempts) ->
 fudge_retry_after(0) -> ?DEFAULT_RETRY_PERIOD;
 fudge_retry_after(Attempts) -> Attempts * ?DEFAULT_RETRY_PERIOD.
 
--spec map_to_publish_fun(api_binary()) -> api_atom().
+-spec map_to_publish_fun(kz_term:api_binary()) -> kz_term:api_atom().
 map_to_publish_fun(undefined) -> undefined;
 map_to_publish_fun(Type) ->
     kz_term:to_atom(<<"publish_", Type/binary>>, 'true').

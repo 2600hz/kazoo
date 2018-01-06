@@ -97,8 +97,8 @@ is_local() -> 'false'.
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
-                                      {error, any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
+                                              {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
@@ -108,7 +108,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
@@ -133,7 +133,7 @@ find_numbers(Search, Quanity, Options) ->
         {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end.
 
--spec process_numbers_search_resp(xml_el(), knm_search:options()) ->
+-spec process_numbers_search_resp(kz_types:xml_el(), knm_search:options()) ->
                                          {'ok', list()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
@@ -144,7 +144,7 @@ process_numbers_search_resp(Xml, Options) ->
            ]
     }.
 
--spec found_number_to_KNM(xml_el() | xml_els(), ne_binary()) -> tuple().
+-spec found_number_to_KNM(kz_types:xml_el() | kz_types:xml_els(), kz_term:ne_binary()) -> tuple().
 found_number_to_KNM(Found, QID) ->
     JObj = number_search_response_to_json(Found),
     Num = kz_json:get_value(<<"e164">>, JObj),
@@ -241,7 +241,7 @@ should_lookup_cnam() -> 'true'.
 %% given verb (purchase, search, provision, ect).
 %% @end
 %%--------------------------------------------------------------------
--spec make_numbers_request(atom(), kz_proplist()) ->
+-spec make_numbers_request(atom(), kz_term:proplist()) ->
                                   {'ok', any()} |
                                   {'error', any()}.
 
@@ -347,7 +347,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json(xml_el() | xml_els()) -> kz_json:object().
+-spec number_search_response_to_json(kz_types:xml_el() | kz_types:xml_els()) -> kz_json:object().
 number_search_response_to_json([]) ->
     kz_json:new();
 number_search_response_to_json([Xml]) ->
@@ -363,7 +363,7 @@ number_search_response_to_json(Xml) ->
       ,{<<"rate_center">>, rate_center_to_json(xmerl_xpath:string("rateCenter", Xml))}
       ]).
 
--spec get_cleaned(kz_deeplist(), xml_el()) -> api_binary().
+-spec get_cleaned(kz_term:deeplist(), kz_types:xml_el()) -> kz_term:api_binary().
 get_cleaned(Path, Xml) ->
     case kz_xml:get_value(Path, Xml) of
         'undefined' -> 'undefined';
@@ -395,9 +395,9 @@ rate_center_to_json(Xml) ->
 %% error text
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response(xml_el()) ->
-                             {'ok', xml_el()} |
-                             {'error', api_binary() | ne_binaries()}.
+-spec verify_response(kz_types:xml_el()) ->
+                             {'ok', kz_types:xml_el()} |
+                             {'error', kz_term:api_binary() | kz_term:ne_binaries()}.
 verify_response(Xml) ->
     case get_cleaned("/*/status/text()", Xml) of
         <<"success">> ->

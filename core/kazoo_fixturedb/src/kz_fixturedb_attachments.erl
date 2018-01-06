@@ -21,29 +21,29 @@
 %%% Attachment-related
 %%%===================================================================
 
--spec fetch_attachment(server_map(), ne_binary(), ne_binary(), ne_binary()) -> {ok, binary()} | fixture_error().
+-spec fetch_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | fixture_error().
 fetch_attachment(Server, DbName, DocId, AName) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
     kz_fixturedb_util:open_attachment(Db, DocId, AName).
 
--spec stream_attachment(server_map(), ne_binary(), ne_binary(), ne_binary(), pid()) -> {ok, reference()} | fixture_error().
+-spec stream_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) -> {ok, reference()} | fixture_error().
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
     AttResult = fetch_attachment(Server, DbName, DocId, AName),
     Ref = erlang:make_ref(),
     kz_util:spawn(fun relay_stream_attachment/3, [Caller, Ref, AttResult]),
     {ok, Ref}.
 
--spec put_attachment(server_map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> doc_resp().
+-spec put_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 put_attachment(Server, DbName, DocId, AName, Contents, Options) ->
     Doc = kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options),
     prepare_att_doc(Doc, AName, Contents, Options).
 
--spec delete_attachment(server_map(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> docs_resp().
+-spec delete_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 delete_attachment(Server, DbName, DocId, _AName, Options) ->
     Doc = kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options),
     del_att_response(Doc).
 
--spec attachment_url(server_map(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> ne_binary().
+-spec attachment_url(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> kz_term:ne_binary().
 attachment_url(Server, DbName, DocId, AName, _Options) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
     kz_fixturedb_util:att_path(Db, DocId, AName).
@@ -56,7 +56,7 @@ attachment_url(Server, DbName, DocId, AName, _Options) ->
 relay_stream_attachment(Caller, Ref, AttResult) ->
     Caller ! {Ref, AttResult}.
 
--spec prepare_att_doc(doc_resp(), ne_binary(), ne_binary(), kz_data:options()) -> doc_resp().
+-spec prepare_att_doc(doc_resp(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 prepare_att_doc({ok, Doc}, AName, Contents, Options) ->
     JObj = kz_fixturedb_util:update_revision(Doc),
     [RevPos|_] = kz_doc:revision(JObj),

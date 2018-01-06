@@ -44,10 +44,10 @@
 -define(STATE_READY(Trie, RatedeckDb), {'ready', Trie, RatedeckDb}).
 -define(STATE_BUILDING(Trie, RatedeckDb, PidRef), {'building', Trie, RatedeckDb, PidRef}).
 
--type state() :: ?STATE_READY(trie:trie(), ne_binary()) |
-                 ?STATE_BUILDING(trie:trie() | 'undefined', ne_binary(), pid_ref()).
+-type state() :: ?STATE_READY(trie:trie(), kz_term:ne_binary()) |
+                 ?STATE_BUILDING(trie:trie() | 'undefined', kz_term:ne_binary(), kz_term:pid_ref()).
 
--spec start_link(ne_binary()) -> {'ok', pid()}.
+-spec start_link(kz_term:ne_binary()) -> {'ok', pid()}.
 start_link(RatedeckDb) ->
     case hotornot_config:trie_module() of
         ?MODULE ->
@@ -57,7 +57,7 @@ start_link(RatedeckDb) ->
             hon_trie_lru:start_link(RatedeckDb)
     end.
 
--spec trie_proc_name(ne_binary()) -> atom().
+-spec trie_proc_name(kz_term:ne_binary()) -> atom().
 trie_proc_name(Ratedeck) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     kz_term:to_atom(<<"hon_trie_", RatedeckDb/binary>>, 'true').
@@ -75,8 +75,8 @@ match_did(ToDID, _AccountId, RatedeckId) ->
     end.
 -else.
 
--spec match_did(ne_binary(), api_ne_binary()) -> match_return().
--spec match_did(ne_binary(), api_ne_binary(), api_ne_binary()) -> match_return().
+-spec match_did(kz_term:ne_binary(), kz_term:api_ne_binary()) -> match_return().
+-spec match_did(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> match_return().
 match_did(ToDID, AccountId) ->
     match_did(ToDID, AccountId, 'undefined').
 
@@ -89,12 +89,12 @@ match_did(ToDID, AccountId, RatedeckId) ->
         {'ok', {_Prefix, RateIds}} -> load_rates(Ratedeck, RateIds)
     end.
 
--spec load_rates(ne_binary(), ne_binaries()) -> {'ok', kzd_rate:docs()}.
+-spec load_rates(kz_term:ne_binary(), kz_term:ne_binaries()) -> {'ok', kzd_rate:docs()}.
 load_rates(Ratedeck, RateIds) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     {'ok', lists:foldl(fun(R, Acc) -> load_rate(R, Acc, RatedeckDb) end, [], RateIds)}.
 
--spec load_rate(ne_binary(), kz_json:objects(), ne_binary()) -> kzd_rate:docs().
+-spec load_rate(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binary()) -> kzd_rate:docs().
 load_rate(RateId, Acc, RatedeckDb) ->
     case kz_datamgr:open_cache_doc(RatedeckDb, RateId) of
         {'error', _} -> Acc;
@@ -115,20 +115,20 @@ rebuild() ->
             {'error', E}
     end.
 
--spec init([ne_binary()]) -> {'ok', state()}.
+-spec init([kz_term:ne_binary()]) -> {'ok', state()}.
 init([RatedeckDb]) ->
     kz_util:put_callid(trie_proc_name(RatedeckDb)),
     PidRef = start_builder(RatedeckDb),
     lager:debug("building trie for ~s in ~p", [RatedeckDb, PidRef]),
     {'ok', ?STATE_BUILDING('undefined', RatedeckDb, PidRef)}.
 
--spec start_builder(ne_binary()) -> pid_ref().
+-spec start_builder(kz_term:ne_binary()) -> kz_term:pid_ref().
 start_builder(RatedeckDb) ->
     PidRef = spawn_monitor(?MODULE, 'build_trie', [self(), RatedeckDb]),
     _ = erlang:send_after(hotornot_config:trie_build_timeout_ms(), self(), {'build_timeout', PidRef}),
     PidRef.
 
--spec handle_call(any(), pid_ref(), state()) ->
+-spec handle_call(any(), kz_term:pid_ref(), state()) ->
                          {'noreply', state()} |
                          {'reply', match_return(), state()}.
 handle_call({'match_did', _DID}, _From, ?STATE_BUILDING('undefined', _RatedeckDb, _PidRef)=State) ->
@@ -196,7 +196,7 @@ terminate(_Reason, ?STATE_READY(_, _)) ->
 code_change(_Vsn, State, _Extra) ->
     {'ok', State}.
 
--spec handle_db_update(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_db_update(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_db_update(ConfUpdate, _Props) ->
     'true' = kapi_conf:doc_update_v(ConfUpdate),
 
@@ -210,7 +210,7 @@ process_conf_update(ConfUpdate, <<"database">>) ->
 process_conf_update(_ConfUpdate, _Type) ->
     lager:debug("ignoring conf update to ~s: ~p", [_Type, _ConfUpdate]).
 
--spec process_db_update(ne_binary(), ne_binary()) -> 'ok'.
+-spec process_db_update(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 process_db_update(?KZ_RATES_DB=RatedeckId, ?DB_EDITED) ->
     {'ok', Pid} = gen_server:call(trie_proc_name(RatedeckId), 'rebuild'),
     lager:info("ratedeck ~s changed, rebuilding trie in ~p", [Pid]);
@@ -230,7 +230,7 @@ process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_DELETED) ->
 process_db_update(_Db, _Action) ->
     lager:debug("ignoring ~s: ~s", [_Db, _Action]).
 
--spec maybe_start_trie_server(ne_binary()) -> 'ok'.
+-spec maybe_start_trie_server(kz_term:ne_binary()) -> 'ok'.
 maybe_start_trie_server(RatedeckDb) ->
     case hon_tries_sup:start_trie(RatedeckDb) of
         {'ok', Pid} ->
@@ -244,13 +244,13 @@ maybe_start_trie_server(RatedeckDb) ->
             lager:debug("failed to start trie for ~s: ~p", [RatedeckDb, _E])
     end.
 
--spec build_trie(pid(), ne_binary()) -> 'ok'.
+-spec build_trie(pid(), kz_term:ne_binary()) -> 'ok'.
 build_trie(Server, Database) ->
     build_trie(Server, Database, trie:new(), fetch_rates(Database, 0)).
 
 -define(LIMIT, 5000).
 
--spec build_trie(pid(), ne_binary(), trie:trie(), kazoo_data:get_results_return()) ->
+-spec build_trie(pid(), kz_term:ne_binary(), trie:trie(), kazoo_data:get_results_return()) ->
                         'ok'.
 build_trie(Server, _Database, Trie, {'ok', []}) ->
     gen_server:cast(Server, ?BUILT_TRIE(self(), Trie));
@@ -279,7 +279,7 @@ add_result(Result, Trie) ->
     Prefix = kz_term:to_list(kz_json:get_value(<<"key">>, Result)),
     trie:append(Prefix, Id, Trie).
 
--spec fetch_rates(ne_binary(), non_neg_integer()) ->
+-spec fetch_rates(kz_term:ne_binary(), non_neg_integer()) ->
                          kazoo_data:get_results_return().
 fetch_rates(Database, StartKey) ->
     Options = props:filter_undefined([{'startkey', StartKey}

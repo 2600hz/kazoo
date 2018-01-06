@@ -20,7 +20,7 @@
 -define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
 -define(ROUTE_WIN_TIMEOUT, kapps_config:get_integer(?CF_CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
     'true' = kapi_route:req_v(JObj),
@@ -51,7 +51,7 @@ handle_req(JObj, Props) ->
             lager:debug("callflow not handling fetch-id ~s", [kapi_route:fetch_id(JObj)])
     end.
 
--spec maybe_prepend_preflow(kz_json:object(), kz_proplist()
+-spec maybe_prepend_preflow(kz_json:object(), kz_term:proplist()
                            ,kapps_call:call(), kzd_callflow:doc()
                            ,boolean()
                            ) -> 'ok'.
@@ -72,7 +72,7 @@ maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
             end
     end.
 
--spec maybe_reply_to_req(kz_json:object(), kz_proplist()
+-spec maybe_reply_to_req(kz_json:object(), kz_term:proplist()
                         ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
@@ -104,14 +104,14 @@ has_tokens(Call, Flow) ->
     end.
 
 -spec bucket_info(kapps_call:call(), kz_json:object()) ->
-                         {ne_binary(), pos_integer()}.
+                         {kz_term:ne_binary(), pos_integer()}.
 bucket_info(Call, Flow) ->
     case kz_json:get_value(<<"pvt_bucket_name">>, Flow) of
         'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
         Name -> {Name, bucket_cost(Flow)}
     end.
 
--spec bucket_name_from_call(kapps_call:call(), kz_json:object()) -> ne_binary().
+-spec bucket_name_from_call(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
 bucket_name_from_call(Call, Flow) ->
     <<(kapps_call:account_id(Call))/binary, ":", (kz_doc:id(Flow))/binary>>.
 
@@ -212,7 +212,7 @@ send_route_response(Flow, JObj, Call) ->
             lager:info("callflow didn't received a route win, exiting : ~p", [_E])
     end.
 
--spec get_transfer_media(kz_json:object(), kz_json:object()) -> api_binary().
+-spec get_transfer_media(kz_json:object(), kz_json:object()) -> kz_term:api_binary().
 get_transfer_media(Flow, JObj) ->
     case kz_json:get_value([<<"ringback">>, <<"transfer">>], Flow) of
         'undefined' ->
@@ -220,7 +220,7 @@ get_transfer_media(Flow, JObj) ->
         MediaId -> MediaId
     end.
 
--spec get_ringback_media(kz_json:object(), kz_json:object()) -> api_binary().
+-spec get_ringback_media(kz_json:object(), kz_json:object()) -> kz_term:api_binary().
 get_ringback_media(Flow, JObj) ->
     case kz_json:get_value([<<"ringback">>, <<"early">>], Flow) of
         'undefined' ->
@@ -234,7 +234,7 @@ get_ringback_media(Flow, JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec pre_park_action(kapps_call:call()) -> ne_binary().
+-spec pre_park_action(kapps_call:call()) -> kz_term:ne_binary().
 pre_park_action(Call) ->
     case kapps_config:get_is_true(?CF_CONFIG_CAT, <<"ring_ready_offnet">>, 'true')
         andalso kapps_call:inception(Call) =/= 'undefined'
@@ -251,7 +251,7 @@ pre_park_action(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_call(kz_json:object(), boolean(), ne_binary(), kapps_call:call()) ->
+-spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
                          kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
     Props = [{'cf_flow_id', kz_doc:id(Flow)}
@@ -286,7 +286,7 @@ maybe_referred_call(Call) ->
 maybe_device_redirected(Call) ->
     maybe_fix_restrictions(get_redirected_by(Call), Call).
 
--spec maybe_fix_restrictions(api_binary(), kapps_call:call()) -> kapps_call:call().
+-spec maybe_fix_restrictions(kz_term:api_binary(), kapps_call:call()) -> kapps_call:call().
 maybe_fix_restrictions('undefined', Call) -> Call;
 maybe_fix_restrictions(Device, Call) ->
     case cf_util:endpoint_id_by_sip_username(kapps_call:account_db(Call), Device) of
@@ -296,17 +296,17 @@ maybe_fix_restrictions(Device, Call) ->
             kapps_call:remove_custom_channel_vars(Keys, Call)
     end.
 
--spec get_referred_by(kapps_call:call()) -> api_binary().
+-spec get_referred_by(kapps_call:call()) -> kz_term:api_binary().
 get_referred_by(Call) ->
     ReferredBy = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
     extract_sip_username(ReferredBy).
 
--spec get_redirected_by(kapps_call:call()) -> api_binary().
+-spec get_redirected_by(kapps_call:call()) -> kz_term:api_binary().
 get_redirected_by(Call) ->
     RedirectedBy = kapps_call:custom_channel_var(<<"Redirected-By">>, Call),
     extract_sip_username(RedirectedBy).
 
--spec is_valid_endpoint(api_binary(), kapps_call:call()) -> boolean().
+-spec is_valid_endpoint(kz_term:api_binary(), kapps_call:call()) -> boolean().
 is_valid_endpoint('undefined', _) -> 'false';
 is_valid_endpoint(Contact, Call) ->
     ReOptions = [{'capture', [1], 'binary'}],
@@ -319,7 +319,7 @@ is_valid_endpoint(Contact, Call) ->
         _ -> 'false'
     end.
 
--spec extract_sip_username(api_binary()) -> api_binary().
+-spec extract_sip_username(kz_term:api_binary()) -> kz_term:api_binary().
 extract_sip_username('undefined') -> 'undefined';
 extract_sip_username(Contact) ->
     ReOptions = [{'capture', [1], 'binary'}],

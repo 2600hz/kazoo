@@ -77,7 +77,7 @@ bindings_and_responders() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_bindings(ne_binary()) -> gen_listener:bindings().
+-spec account_bindings(kz_term:ne_binary()) -> gen_listener:bindings().
 account_bindings(_AccountId) -> [].
 
 %%--------------------------------------------------------------------
@@ -85,7 +85,7 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> any().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> any().
 handle_event(JObj, _Props) ->
     kz_util:put_callid(JObj),
     'true' = kapi_conf:doc_update_v(JObj),
@@ -104,7 +104,7 @@ handle_event(JObj, _Props) ->
             webhooks_util:fire_hooks(Event, Filtered)
     end.
 
--spec match_action_type(webhook(), api_binary(), api_binary()) -> boolean().
+-spec match_action_type(webhook(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
 match_action_type(#webhook{hook_event = ?HOOK_NAME
                           ,custom_data='undefined'
                           }, _Action, _Type) ->
@@ -136,7 +136,7 @@ bindings() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_event(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec format_event(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 format_event(JObj, AccountId) ->
     kz_json:from_list(
       [{<<"id">>, kapi_conf:get_id(JObj)}
@@ -150,12 +150,12 @@ format_event(JObj, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_id(kz_json:object()) -> ne_binary().
+-spec find_account_id(kz_json:object()) -> kz_term:ne_binary().
 find_account_id(JObj) ->
     DB = kapi_conf:get_database(JObj),
     find_account_id(kzs_util:db_classification(DB), DB, kapi_conf:get_id(JObj)).
 
--spec find_account_id(atom(), ne_binary(), ne_binary()) -> ne_binary().
+-spec find_account_id(atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 find_account_id(Classification, DB, _Id)
   when Classification =:= 'account';
        Classification =:= 'modb' ->

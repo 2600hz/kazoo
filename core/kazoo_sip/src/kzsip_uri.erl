@@ -35,8 +35,8 @@
 
 -type scheme() :: 'sip' | 'sips'.
 -record(sip_uri, {scheme = 'sip' :: scheme()
-                 ,user :: api_ne_binary()
-                 ,host :: api_ne_binary()
+                 ,user :: kz_term:api_ne_binary()
+                 ,host :: kz_term:api_ne_binary()
                  ,port = 5060 :: pos_integer()
                  }).
 -type sip_uri() :: #sip_uri{}.
@@ -53,7 +53,7 @@ ruri(Uri) -> nklib_unparse:uri3(Uri).
 uri(#uri{scheme='undefined'}=Uri) -> nklib_unparse:uri(Uri#uri{scheme='sip'});
 uri(Uri) -> nklib_unparse:uri(Uri).
 
--spec parse(ne_binary()) -> sip_uri().
+-spec parse(kz_term:ne_binary()) -> sip_uri().
 parse(Bin) ->
     parse_scheme(Bin, #sip_uri{}).
 
@@ -66,7 +66,7 @@ parse_scheme(<<"sips:", Bin/binary>>, Uri) ->
 parse_scheme(Bin, Uri) ->
     parse_user(Bin, Uri#sip_uri{scheme='sip'}).
 
--spec encode(sip_uri()) -> ne_binary().
+-spec encode(sip_uri()) -> kz_term:ne_binary().
 encode(#sip_uri{scheme=S, user=U, host=H, port=5060}) ->
     list_to_binary([atom_to_list(S), ":", U, "@", H]);
 encode(#sip_uri{scheme=S, user=U, host=H, port=P}) ->
@@ -95,7 +95,7 @@ parse_port(P) ->
         {Port, _} -> kz_term:to_integer(Port)
     end.
 
--spec parse_until(ne_binary(), ne_binary()) -> {binary(), binary()}.
+-spec parse_until(kz_term:ne_binary(), kz_term:ne_binary()) -> {binary(), binary()}.
 parse_until(C, Bin) ->
     case binary:split(Bin, C) of
         [B] -> {B, <<>>};
@@ -108,14 +108,14 @@ scheme(#sip_uri{scheme=S}) -> S.
 set_scheme(#sip_uri{}=Sip, S) ->
     Sip#sip_uri{scheme=S}.
 
--spec user(sip_uri()) -> ne_binary().
--spec set_user(sip_uri(), ne_binary()) -> sip_uri().
+-spec user(sip_uri()) -> kz_term:ne_binary().
+-spec set_user(sip_uri(), kz_term:ne_binary()) -> sip_uri().
 user(#sip_uri{user=U}) -> U.
 set_user(#sip_uri{}=Sip, U) ->
     Sip#sip_uri{user=U}.
 
--spec host(sip_uri()) -> ne_binary().
--spec set_host(sip_uri(), ne_binary()) -> sip_uri().
+-spec host(sip_uri()) -> kz_term:ne_binary().
+-spec set_host(sip_uri(), kz_term:ne_binary()) -> sip_uri().
 host(#sip_uri{host=H}) -> H.
 set_host(#sip_uri{}=Sip, H) ->
     Sip#sip_uri{host=H}.

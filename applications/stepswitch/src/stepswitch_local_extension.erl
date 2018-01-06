@@ -25,11 +25,11 @@
 -record(state, {number_props = [] :: knm_number_options:extra_options()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: pid()
-               ,control_queue :: api_binary()
-               ,response_queue :: api_binary()
-               ,queue :: api_binary()
-               ,timeout :: api_reference()
-               ,call_id :: api_binary()
+               ,control_queue :: kz_term:api_binary()
+               ,response_queue :: kz_term:api_binary()
+               ,queue :: kz_term:api_binary()
+               ,timeout :: kz_term:api_reference()
+               ,call_id :: kz_term:api_binary()
                }).
 -type state() :: #state{}.
 
@@ -57,7 +57,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> startlink_ret().
+-spec start_link(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> kz_types:startlink_ret().
 start_link(NumberProps, OffnetReq) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
     Bindings = [?CALL_BINDING(CallId)
@@ -115,7 +115,7 @@ init([NumberProps, OffnetReq]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -130,7 +130,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
@@ -168,7 +168,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('local_extension_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('local_extension_timeout', #state{response_queue=ResponseQ
@@ -263,14 +263,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec outbound_flags(kapi_offnet_resource:req()) -> api_binary().
+-spec outbound_flags(kapi_offnet_resource:req()) -> kz_term:api_binary().
 outbound_flags(OffnetJObj) ->
     case kapi_offnet_resource:flags(OffnetJObj) of
         [] -> 'undefined';
         Flags -> kz_binary:join(Flags, <<"|">>)
     end.
 
--spec build_local_extension(state()) -> kz_proplist().
+-spec build_local_extension(state()) -> kz_term:proplist().
 build_local_extension(#state{number_props=Props
                             ,resource_req=OffnetJObj
                             ,queue=Q
@@ -344,14 +344,14 @@ build_local_extension(#state{number_props=Props
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec get_account_realm(ne_binary()) -> ne_binary().
+-spec get_account_realm(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_account_realm(AccountId) ->
     case kz_account:fetch_realm(AccountId) of
         'undefined' -> AccountId;
         Realm -> Realm
     end.
 
--spec local_extension_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
+-spec local_extension_caller_id(kz_json:object()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 local_extension_caller_id(JObj) ->
     {kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
                                ,<<"Emergency-Caller-ID-Name">>
@@ -361,13 +361,13 @@ local_extension_caller_id(JObj) ->
                                ], JObj)
     }.
 
--spec local_extension_callee_id(kz_json:object(), ne_binary()) -> {api_binary(), api_binary()}.
+-spec local_extension_callee_id(kz_json:object(), kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 local_extension_callee_id(JObj, Number) ->
     {kz_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj, Number)
     ,kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj, Number)
     }.
 
--spec local_extension_timeout(kz_json:object()) -> kz_proplist().
+-spec local_extension_timeout(kz_json:object()) -> kz_term:proplist().
 local_extension_timeout(Request) ->
     lager:debug("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, Request)}
@@ -379,7 +379,7 @@ local_extension_timeout(Request) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec local_extension_error(kz_json:object(), kz_json:object()) -> kz_proplist().
+-spec local_extension_error(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 local_extension_error(JObj, Request) ->
     lager:debug("error during outbound request: ~s", [kz_term:to_binary(kz_json:encode(JObj))]),
     [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, Request)}
@@ -391,7 +391,7 @@ local_extension_error(JObj, Request) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec local_extension_success(kz_json:object()) -> kz_proplist().
+-spec local_extension_success(kz_json:object()) -> kz_term:proplist().
 local_extension_success(Request) ->
     lager:debug("local extension request successfully completed"),
     [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, Request)}
@@ -402,7 +402,7 @@ local_extension_success(Request) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec local_extension_failure(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
+-spec local_extension_failure(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
 local_extension_failure(JObj, OffnetReq) ->
     lager:debug("resources for outbound request failed: ~s"
                ,[kz_json:get_value(<<"Disposition">>, JObj)]
@@ -417,7 +417,7 @@ local_extension_failure(JObj, OffnetReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec get_event_type(kz_json:object()) -> {ne_binary(), ne_binary(), ne_binary()}.
+-spec get_event_type(kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 get_event_type(JObj) ->
     {C, E} = kz_util:get_event_type(JObj),
     {C, E, kz_call_event:call_id(JObj)}.

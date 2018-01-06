@@ -248,7 +248,7 @@ mark_migration_complete(MigId, AccountId, Context) ->
     {'ok', _} = kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"migrations_performed">>, NewMigs, Doc)),
     lager:debug("migrating ~s in ~s complete", [MigId, AccountId]).
 
--spec get_user_name(ne_binary(), ne_binary()) -> api_ne_binary().
+-spec get_user_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_user_name(AccountId, UserId) ->
     case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserDoc} -> kzd_user:name(UserDoc);

@@ -23,13 +23,13 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec balance(ne_binary()) -> dollars().
+-spec balance(kz_term:ne_binary()) -> dollars().
 balance(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     {'ok', Balance} = wht_util:current_balance(AccountId),
     wht_util:units_to_dollars(Balance).
 
--spec balance(ne_binary(), ne_binary(), ne_binary()) -> dollars().
+-spec balance(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> dollars().
 balance(Account, Year, Month) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     {'ok', Balance} = wht_util:previous_balance(AccountId, Year, Month),
@@ -65,7 +65,7 @@ top_up_status() ->
                 end,
     io:format("auto top up is ~s~n", [IsEnabled]).
 
--spec top_up_status(ne_binary()) -> 'ok'.
+-spec top_up_status(kz_term:ne_binary()) -> 'ok'.
 top_up_status(AccountId) ->
     {NotifyThreshold, TopupAmount, TopupThreshold} = get_topup_thresholds(AccountId),
     io:format("+-----------------+------------------+------------------+---------------+-------------------------+~n"),
@@ -80,14 +80,14 @@ top_up_status(AccountId) ->
               ]),
     io:format("+-----------------+------------------+------------------+---------------+-------------------------+~n").
 
--spec current_balance(ne_binary()) -> dollars().
+-spec current_balance(kz_term:ne_binary()) -> dollars().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', Balance} -> wht_util:units_to_dollars(Balance);
         {'error', _} -> 0
     end.
 
--spec get_topup_thresholds(ne_binary()) -> {api_integer(), integer() | string(), integer() | string()}.
+-spec get_topup_thresholds(kz_term:ne_binary()) -> {kz_term:api_integer(), integer() | string(), integer() | string()}.
 get_topup_thresholds(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'error', _Reason} ->
@@ -100,7 +100,7 @@ get_topup_thresholds(AccountId) ->
             }
     end.
 
--spec is_topup_today(ne_binary()) -> boolean().
+-spec is_topup_today(kz_term:ne_binary()) -> boolean().
 is_topup_today(AccountId) ->
     To = kz_time:now_s(),
     From = To - ?SECONDS_IN_DAY,

@@ -28,10 +28,10 @@
 -record(state, {endpoints = [] :: kz_json:objects()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: pid()
-               ,control_queue :: api_binary()
-               ,response_queue :: api_binary()
-               ,queue :: api_binary()
-               ,message = [] :: kz_proplist()
+               ,control_queue :: kz_term:api_binary()
+               ,response_queue :: kz_term:api_binary()
+               ,queue :: kz_term:api_binary()
+               ,message = [] :: kz_term:proplist()
                ,messages = queue:new() :: queue:queue()
                }).
 -type state() :: #state{}.
@@ -55,7 +55,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(kz_json:objects(), kapi_offnet_resource:req()) -> startlink_ret().
+-spec start_link(kz_json:objects(), kapi_offnet_resource:req()) -> kz_types:startlink_ret().
 start_link(Endpoints, OffnetReq) ->
     Bindings = [{'self', []}],
     gen_listener:start_link(?SERVER, [{'bindings', Bindings}
@@ -111,7 +111,7 @@ init([Endpoints, OffnetReq]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -126,7 +126,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
@@ -174,7 +174,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('sms_timeout', State) ->
     gen_listener:cast(self(), 'next_message'),
     {'noreply', State};
@@ -190,7 +190,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -225,7 +225,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec handle_message_delivery(kz_json:object(), kz_proplist()) -> no_return().
+-spec handle_message_delivery(kz_json:object(), kz_term:proplist()) -> no_return().
 handle_message_delivery(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
     Server = props:get_value('server',Props),
@@ -235,12 +235,12 @@ handle_message_delivery(JObj, Props) ->
         'false' -> gen_listener:cast(Server, {'sms_success', JObj})
     end.
 
--spec send(kz_json:object(), kz_proplist()) -> no_return().
+-spec send(kz_json:object(), kz_term:proplist()) -> no_return().
 send(Endpoint, API) ->
     Type = kz_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
     send(Type, Endpoint, API).
 
--spec send(binary(), kz_json:object(), kz_proplist()) -> no_return().
+-spec send(binary(), kz_json:object(), kz_term:proplist()) -> no_return().
 send(<<"sip">>, Endpoint, API) ->
     Options = kz_json:to_proplist(kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
@@ -275,11 +275,11 @@ send(<<"amqp">>, Endpoint, API) ->
             send_error(API, CallId, Reason)
     end.
 
--spec filter_smpp({ne_binary(), any()}) -> boolean().
+-spec filter_smpp({kz_term:ne_binary(), any()}) -> boolean().
 filter_smpp({<<"SMPP-", _/binary>>, _}) -> 'true';
 filter_smpp(_) -> 'false'.
 
--spec send_success(kz_proplist(), ne_binary()) -> 'ok'.
+-spec send_success(kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 send_success(API, CallId) ->
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">>}
                     ,{<<"Status">>, <<"Success">>}
@@ -289,7 +289,7 @@ send_success(API, CallId) ->
                     ],
     gen_listener:cast(self(), {'sms_success', kz_json:from_list(DeliveryProps)}).
 
--spec send_timeout_error(kz_proplist(), ne_binary()) -> 'ok'.
+-spec send_timeout_error(kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 send_timeout_error(API, CallId) ->
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">>}
                     ,{<<"Delivery-Failure">>, 'true'}
@@ -302,7 +302,7 @@ send_timeout_error(API, CallId) ->
                     ],
     gen_listener:cast(self(), {'sms_error', kz_json:from_list(DeliveryProps)}).
 
--spec send_error(kz_proplist(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_error(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_error(API, CallId, Reason) ->
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">>}
                     ,{<<"Delivery-Failure">>, 'true'}
@@ -315,16 +315,16 @@ send_error(API, CallId, Reason) ->
                     ],
     gen_listener:cast(self(), {'sms_error', kz_json:from_list(DeliveryProps)}).
 
--spec amqp_exchange_options(api_object()) -> kz_proplist().
+-spec amqp_exchange_options(kz_term:api_object()) -> kz_term:proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
     [{kz_term:to_atom(K, 'true'), V}
      || {K, V} <- kz_json:to_proplist(JObj)
     ].
 
--spec send_amqp_sms(kz_proplist(), atom()) ->
+-spec send_amqp_sms(kz_term:proplist(), atom()) ->
                            'ok' |
-                           {'error', ne_binary() | 'timeout'}.
+                           {'error', kz_term:ne_binary() | 'timeout'}.
 send_amqp_sms(Payload, Pool) ->
     case kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1, Pool) of
         {'returned', _JObj, Deliver} ->
@@ -332,8 +332,8 @@ send_amqp_sms(Payload, Pool) ->
         Else -> Else
     end.
 
--spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), kz_proplist(), api_binary()) -> 'ok'.
--spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), kz_proplist(), api_binary(), boolean()) -> 'ok'.
+-spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary()) -> 'ok'.
+-spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary(), boolean()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolExists = kz_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)) =/= 'undefined',
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolExists).
@@ -355,7 +355,7 @@ build_sms(#state{endpoints=Endpoints
                ,message=build_sms_base({CIDNum, CIDName}, OffnetReq, Q)
                }.
 
--spec build_sms_base({binary(), binary()}, kapi_offnet_resource:req(), binary()) -> kz_proplist().
+-spec build_sms_base({binary(), binary()}, kapi_offnet_resource:req(), binary()) -> kz_term:proplist().
 build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
     AccountRealm = kapi_offnet_resource:account_realm(OffnetReq),
@@ -385,7 +385,7 @@ build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec maybe_endpoints_format_from(kz_json:objects(), api_binary(), kapi_offnet_resource:req()) ->
+-spec maybe_endpoints_format_from(kz_json:objects(), kz_term:api_binary(), kapi_offnet_resource:req()) ->
                                          kz_json:objects().
 maybe_endpoints_format_from([], _ , _) -> [];
 maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
@@ -395,7 +395,7 @@ maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
      || Endpoint <- Endpoints
     ].
 
--spec maybe_endpoint_format_from(kz_json:object(), ne_binary(), api_binary()) ->
+-spec maybe_endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                         kz_json:object().
 maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
@@ -412,7 +412,7 @@ maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                              )
     end.
 
--spec endpoint_format_from(kz_json:object(), ne_binary(), api_binary()) -> kz_json:object().
+-spec endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) -> kz_json:object().
 endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     Realm = kz_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm),
@@ -444,7 +444,7 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     end.
 
 -spec bridge_caller_id(kz_json:objects(), kapi_offnet_resource:req()) ->
-                              {api_binary(), api_binary()}.
+                              {kz_term:api_binary(), kz_term:api_binary()}.
 bridge_caller_id(Endpoints, JObj) ->
     case contains_emergency_endpoints(Endpoints) of
         'true' -> bridge_emergency_caller_id(JObj);
@@ -452,7 +452,7 @@ bridge_caller_id(Endpoints, JObj) ->
     end.
 
 -spec bridge_emergency_caller_id(kapi_offnet_resource:req()) ->
-                                        {api_binary(), api_binary()}.
+                                        {kz_term:api_binary(), kz_term:api_binary()}.
 bridge_emergency_caller_id(OffnetReq) ->
     lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
     {maybe_emergency_cid_number(OffnetReq)
@@ -460,14 +460,14 @@ bridge_emergency_caller_id(OffnetReq) ->
     }.
 
 -spec bridge_caller_id(kapi_offnet_resource:req()) ->
-                              {ne_binary(), ne_binary()}.
+                              {kz_term:ne_binary(), kz_term:ne_binary()}.
 bridge_caller_id(OffnetReq) ->
     {stepswitch_bridge:bridge_outbound_cid_number(OffnetReq)
     ,stepswitch_bridge:bridge_outbound_cid_name(OffnetReq)
     }.
 
--spec bridge_from_uri(api_binary(), kapi_offnet_resource:req()) ->
-                             api_binary().
+-spec bridge_from_uri(kz_term:api_binary(), kapi_offnet_resource:req()) ->
+                             kz_term:api_binary().
 bridge_from_uri(CIDNum, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
     case (kapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
@@ -485,7 +485,7 @@ bridge_from_uri(CIDNum, OffnetReq) ->
     end.
 
 -spec maybe_emergency_cid_number(kapi_offnet_resource:req()) ->
-                                        api_binary().
+                                        kz_term:api_binary().
 maybe_emergency_cid_number(OffnetReq) ->
     %% NOTE: if this request had a hunt-account-id then we
     %%   are assuming it was for a local resource (at the
@@ -496,7 +496,7 @@ maybe_emergency_cid_number(OffnetReq) ->
             stepswitch_bridge:bridge_emergency_cid_number(OffnetReq)
     end.
 
--spec emergency_cid_number(kapi_offnet_resource:req()) -> ne_binary().
+-spec emergency_cid_number(kapi_offnet_resource:req()) -> kz_term:ne_binary().
 emergency_cid_number(OffnetReq) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
     Candidates = [kapi_offnet_resource:emergency_caller_id_number(OffnetReq)
@@ -507,7 +507,7 @@ emergency_cid_number(OffnetReq) ->
     EnabledNumbers = knm_numbers:emergency_enabled(AccountId),
     emergency_cid_number(Requested, Candidates, EnabledNumbers).
 
--spec emergency_cid_number(ne_binary(), api_binaries(), ne_binaries()) -> ne_binary().
+-spec emergency_cid_number(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 %% if there are no emergency enabled numbers then either use the global system default
 %% or the requested (if there isnt one)
 emergency_cid_number(Requested, _, []) ->
@@ -536,7 +536,7 @@ contains_emergency_endpoints([Endpoint|Endpoints]) ->
     kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint)
         orelse contains_emergency_endpoints(Endpoints).
 
--spec sms_timeout(kapi_offnet_resource:req()) -> kz_proplist().
+-spec sms_timeout(kapi_offnet_resource:req()) -> kz_term:proplist().
 sms_timeout(OffnetReq) ->
     lager:debug("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
@@ -548,7 +548,7 @@ sms_timeout(OffnetReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec sms_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
+-spec sms_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
 sms_error(JObj, OffnetReq) ->
     lager:debug("error during outbound request: ~s", [kz_term:to_binary(kz_json:encode(JObj))]),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
@@ -560,7 +560,7 @@ sms_error(JObj, OffnetReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec sms_success(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
+-spec sms_success(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
 sms_success(JObj, OffnetReq) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
@@ -571,7 +571,7 @@ sms_success(JObj, OffnetReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec sms_failure(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
+-spec sms_failure(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
 sms_failure(JObj, OffnetReq) ->
     lager:debug("resources for outbound request failed: ~s"
                ,[kz_json:get_value(<<"Disposition">>, JObj)]

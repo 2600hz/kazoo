@@ -48,7 +48,7 @@ add() ->
     io:format("Please use: sup kazoo_ips_maintenance add <ip> <zone> <host>~n", []),
     'no_return'.
 
--spec add(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec add(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 add(IPAddress, Zone, Host) ->
     case kz_ip:create(IPAddress, Zone, Host) of
         {'ok', _IP} ->
@@ -70,7 +70,7 @@ assign() ->
     io:format("Please use: sup kazoo_ips_maintenance assign <ip> <account>~n", []),
     'no_return'.
 
--spec assign(ne_binary(), ne_binary()) -> 'no_return'.
+-spec assign(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 assign(IP, Account) ->
     case kz_account:fetch(Account) of
         {'ok', _} -> do_assignment(Account, IP);
@@ -79,7 +79,7 @@ assign(IP, Account) ->
     end,
     'no_return'.
 
--spec do_assignment(ne_binary(), ne_binary()) -> 'ok'.
+-spec do_assignment(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 do_assignment(Account, IP) ->
     case kz_ip:assign(Account, IP) of
         {'ok', _} ->
@@ -99,7 +99,7 @@ release() ->
     io:format("Please use: sup kazoo_ips_maintenance release <ip>~n", []),
     'no_return'.
 
--spec release(ne_binary()) -> 'no_return'.
+-spec release(kz_term:ne_binary()) -> 'no_return'.
 release(IP) ->
     _ = case kz_ip:release(IP) of
             {'ok', _} ->
@@ -120,7 +120,7 @@ delete() ->
     io:format("Please use: sup kazoo_ips_maintenance delete <ip>~n", []),
     'no_return'.
 
--spec delete(ne_binary()) -> 'no_return'.
+-spec delete(kz_term:ne_binary()) -> 'no_return'.
 delete(IP) ->
     _ = case kz_ip:delete(IP) of
             {'ok', _} ->
@@ -139,7 +139,7 @@ delete(IP) ->
 -spec summary() -> 'no_return'.
 summary() -> summary('undefined').
 
--spec summary(api_binary()) -> 'no_return'.
+-spec summary(kz_term:api_binary()) -> 'no_return'.
 summary(Host) ->
     _ = case kz_ips:summary(Host) of
             {'ok', []} ->

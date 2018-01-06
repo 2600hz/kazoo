@@ -39,7 +39,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec make_doc_xml(kz_proplist(), atom()) -> char_to_bin_res().
+-spec make_doc_xml(kz_term:proplist(), atom()) -> char_to_bin_res().
 make_doc_xml(Props, Root) ->
     Xml = xmerl:export_simple([doc_xml_simple(Props, Root)]
                              ,'xmerl_xml'
@@ -166,7 +166,7 @@ error_authorization() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec error_not_found(ne_binary()) -> no_return().
+-spec error_not_found(kz_term:ne_binary()) -> no_return().
 error_not_found(Object) ->
     Error = <<Object/binary, " not found">>,
     lager:debug("~s", [Error]),
@@ -238,7 +238,7 @@ error_io_fault() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec error_min_amount(number() | ne_binary()) -> no_return().
+-spec error_min_amount(number() | kz_term:ne_binary()) -> no_return().
 error_min_amount(Amount) ->
     Error = <<"Unable to process a transaction for less than $", (kz_term:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
@@ -250,7 +250,7 @@ error_min_amount(Amount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec error_max_amount(number() | ne_binary()) -> no_return().
+-spec error_max_amount(number() | kz_term:ne_binary()) -> no_return().
 error_max_amount(Amount) ->
     Error = <<"Unable to process a transaction for more than $", (kz_term:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),

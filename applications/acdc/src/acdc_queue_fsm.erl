@@ -60,21 +60,21 @@
 -record(state, {queue_proc :: pid()
                ,manager_proc :: pid()
                ,connect_resps = [] :: kz_json:objects()
-               ,collect_ref :: api_reference()
-               ,account_id :: ne_binary()
-               ,account_db :: ne_binary()
-               ,queue_id :: ne_binary()
+               ,collect_ref :: kz_term:api_reference()
+               ,account_id :: kz_term:ne_binary()
+               ,account_db :: kz_term:ne_binary()
+               ,queue_id :: kz_term:ne_binary()
 
-               ,timer_ref :: api_reference() % for tracking timers
-               ,connection_timer_ref :: api_reference() % how long can a caller wait in the queue
-               ,agent_ring_timer_ref :: api_reference() % how long to ring an agent before moving to the next
+               ,timer_ref :: kz_term:api_reference() % for tracking timers
+               ,connection_timer_ref :: kz_term:api_reference() % how long can a caller wait in the queue
+               ,agent_ring_timer_ref :: kz_term:api_reference() % how long to ring an agent before moving to the next
 
                ,member_call :: kapps_call:call() | 'undefined'
-               ,member_call_start :: api_non_neg_integer()
-               ,member_call_winner :: api_object() %% who won the call
+               ,member_call_start :: kz_term:api_non_neg_integer()
+               ,member_call_winner :: kz_term:api_object() %% who won the call
 
                                       %% Config options
-               ,name :: ne_binary()
+               ,name :: kz_term:ne_binary()
                ,connection_timeout :: pos_integer()
                ,agent_ring_timeout = 10 :: pos_integer() % how long to ring an agent before giving up
                ,max_queue_size = 0 :: integer() % restrict the number of the queued callers
@@ -82,14 +82,14 @@
                ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
                ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
 
-               ,announce :: ne_binary() % media to play to customer when about to be connected to agent
+               ,announce :: kz_term:ne_binary() % media to play to customer when about to be connected to agent
 
-               ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
+               ,caller_exit_key :: kz_term:ne_binary() % DTMF a caller can press to leave the queue
                ,record_caller = 'false' :: boolean() % record the caller
-               ,recording_url :: api_binary() %% URL of where to POST recordings
-               ,cdr_url :: api_binary() % optional URL to request for extra CDR data
+               ,recording_url :: kz_term:api_binary() %% URL of where to POST recordings
+               ,cdr_url :: kz_term:api_binary() % optional URL to request for extra CDR data
 
-               ,notifications :: api_object()
+               ,notifications :: kz_term:api_object()
                }).
 -type state() :: #state{}.
 
@@ -106,7 +106,7 @@
 %% function does not return until Module:init/1 has returned.
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(pid(), pid(), kz_json:object()) -> startlink_ret().
+-spec start_link(pid(), pid(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_statem:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
 
@@ -153,7 +153,7 @@ member_connect_retry(ServerRef, RetryJObj) ->
 %%   for hangup events).
 %% @end
 %%--------------------------------------------------------------------
--spec call_event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec call_event(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_statem:cast(ServerRef, {'member_hungup', EvtJObj});
 call_event(ServerRef, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
@@ -169,15 +169,15 @@ call_event(_, _E, _N, _J) -> 'ok'.
 finish_member_call(ServerRef) ->
     gen_statem:cast(ServerRef, {'member_finished'}).
 
--spec current_call(pid()) -> api_object().
+-spec current_call(pid()) -> kz_term:api_object().
 current_call(ServerRef) ->
     gen_statem:call(ServerRef, 'current_call').
 
--spec status(pid()) -> kz_proplist().
+-spec status(pid()) -> kz_term:proplist().
 status(ServerRef) ->
     gen_statem:call(ServerRef, 'status').
 
--spec cdr_url(pid()) -> api_binary().
+-spec cdr_url(pid()) -> kz_term:api_binary().
 cdr_url(ServerRef) ->
     gen_statem:call(ServerRef, 'cdr_url').
 
@@ -243,7 +243,7 @@ callback_mode() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec ready(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec ready(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 ready('cast', {'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                          ,manager_proc=MgrSrv
                                                          }=State) ->
@@ -296,7 +296,7 @@ ready({'call', From}, Event, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec connect_req(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec connect_req(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 connect_req('cast', {'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member"),
     CallId = kz_json:get_value(<<"Call-ID">>, CallJObj),
@@ -444,7 +444,7 @@ connect_req('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{qu
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec connecting(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec connecting(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 connecting('cast', {'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting"),
     acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
@@ -617,7 +617,7 @@ connecting('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{que
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec handle_event(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_event({'refresh', QueueJObj}, StateName, State) ->
     lager:debug("refreshing queue configs"),
     {'next_state', StateName, update_properties(QueueJObj, State), 'hibernate'};
@@ -676,7 +676,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 start_collect_timer() ->
     erlang:start_timer(?COLLECT_RESP_TIMEOUT, self(), ?COLLECT_RESP_MESSAGE).
 
--spec connection_timeout(api_integer()) -> pos_integer().
+-spec connection_timeout(kz_term:api_integer()) -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
 connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 
@@ -684,7 +684,7 @@ connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 start_connection_timer(ConnTimeout) ->
     erlang:start_timer(ConnTimeout, self(), ?CONNECTION_TIMEOUT_MESSAGE).
 
--spec agent_ring_timeout(api_integer()) -> pos_integer().
+-spec agent_ring_timeout(kz_term:api_integer()) -> pos_integer().
 agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
 agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
@@ -692,13 +692,13 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 start_agent_ring_timer(AgentTimeout) ->
     erlang:start_timer(AgentTimeout * 1600, self(), ?AGENT_RING_TIMEOUT_MESSAGE).
 
--spec maybe_stop_timer(api_reference()) -> 'ok'.
+-spec maybe_stop_timer(kz_term:api_reference()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
     _ = erlang:cancel_timer(ConnRef),
     'ok'.
 
--spec maybe_timeout_winner(pid(), api_object()) -> 'ok'.
+-spec maybe_timeout_winner(pid(), kz_term:api_object()) -> 'ok'.
 maybe_timeout_winner(Srv, 'undefined') ->
     acdc_queue_listener:timeout_member_call(Srv);
 maybe_timeout_winner(Srv, Winner) ->
@@ -743,7 +743,7 @@ update_properties(QueueJObj, State) ->
       %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
      }.
 
--spec current_call('undefined' | kapps_call:call(), api_reference() | kz_timeout(), kz_timeout()) -> api_object().
+-spec current_call('undefined' | kapps_call:call(), kz_term:api_reference() | timeout(), timeout()) -> kz_term:api_object().
 current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}
@@ -755,7 +755,7 @@ current_call(Call, QueueTimeLeft, Start) ->
                       ,{<<"wait_time">>, elapsed(Start)}
                       ]).
 
--spec elapsed(api_reference() | kz_timeout() | integer()) -> api_integer().
+-spec elapsed(kz_term:api_reference() | timeout() | integer()) -> kz_term:api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of
@@ -813,7 +813,7 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
 %%                   state()
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_connect_re_req(pid(), pid(), state()) -> handle_fsm_ret(state()).
+-spec maybe_connect_re_req(pid(), pid(), state()) -> kz_types:handle_fsm_ret(state()).
 maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
                                                 ,queue_id=QueueId
                                                 ,member_call=Call
@@ -914,10 +914,10 @@ maybe_pick_winner(#state{connect_resps=CRs
             {'ready', clear_member_call(State)}
     end.
 
--spec have_agents_responded(kz_json:objects(), ne_binaries()) -> boolean().
+-spec have_agents_responded(kz_json:objects(), kz_term:ne_binaries()) -> boolean().
 have_agents_responded(Resps, Agents) ->
     lists:foldl(fun filter_agents/2, Agents, Resps) =:= [].
 
--spec filter_agents(kz_json:object(), ne_binaries()) -> ne_binaries().
+-spec filter_agents(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 filter_agents(Resp, AgentsAcc) ->
     lists:delete(kz_json:get_value(<<"Agent-ID">>, Resp), AgentsAcc).

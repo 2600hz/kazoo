@@ -34,7 +34,7 @@ handle(Data, Call) ->
 %%      from a resource external to kazoo
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_handle(kz_json:object(), kapps_call:call(), api_binary()) -> kapps_call:call().
+-spec maybe_add_handle(kz_json:object(), kapps_call:call(), kz_term:api_binary()) -> kapps_call:call().
 maybe_add_handle(Data, Call, 'undefined') ->
     lager:debug("inbound call from another account, adding termination handler..."),
     add_handler(Data, Call);
@@ -76,7 +76,7 @@ should_handle_termination(Call) ->
     not kapps_call:call_bridged(Call)
         andalso not kapps_call:message_left(Call).
 
--spec send_missed_alert(kapps_call:call(), kz_json:object(), api_ne_binaries()) -> 'ok'.
+-spec send_missed_alert(kapps_call:call(), kz_json:object(), kz_term:api_ne_binaries()) -> 'ok'.
 send_missed_alert(Call, Notify, Emails) ->
     lager:debug("trying to publish missed_call_alert for call-id ~s", [kapps_call:call_id_direct(Call)]),
     Props = props:filter_undefined(
@@ -103,7 +103,7 @@ send_missed_alert(Call, Notify, Emails) ->
 %% @doc Try to find email addressed using module's data object
 %% @end
 %%--------------------------------------------------------------------
--spec find_email_addresses(kapps_call:call(), kz_json:objects()) -> ne_binaries().
+-spec find_email_addresses(kapps_call:call(), kz_json:objects()) -> kz_term:ne_binaries().
 find_email_addresses(Call, Recipients) ->
     AccountDb = kz_util:format_account_db(kapps_call:account_id(Call)),
     lager:debug("call went unanswered and left no voicemail message, finding configured email addresses"),
@@ -123,7 +123,7 @@ find_email_addresses(Call, Recipients) ->
 %%              addresses from
 %% @end
 %%--------------------------------------------------------------------
--spec find_email_addresses_by_type(ne_binary(), kz_json:object(), api_binary()) -> ne_binaries().
+-spec find_email_addresses_by_type(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) -> kz_term:ne_binaries().
 find_email_addresses_by_type(AccountDb, JObj, <<"email">>) ->
     get_email_addresses(AccountDb, kz_json:get_value(<<"id">>, JObj));
 find_email_addresses_by_type(AccountDb, JObj, <<"user">>) ->
@@ -136,7 +136,7 @@ find_email_addresses_by_type(_AccountDb, _JObj, _) ->
 %% @doc an email or a list of emails
 %% @end
 %%--------------------------------------------------------------------
--spec get_email_addresses(ne_binary(), api_binary() | ne_binaries()) -> ne_binaries().
+-spec get_email_addresses(kz_term:ne_binary(), kz_term:api_binary() | kz_term:ne_binaries()) -> kz_term:ne_binaries().
 get_email_addresses(_AccountDb, 'undefined') -> [];
 get_email_addresses(_AccountDb, <<_/binary>>=Email) -> [Email];
 get_email_addresses(_AccountDb, Emails) when is_list(Emails) ->
@@ -149,13 +149,13 @@ get_email_addresses(_AccountDb, _) -> [].
 %%      addresses from
 %% @end
 %%--------------------------------------------------------------------
--spec find_users_addresses(ne_binary(), api_binary() | ne_binaries()) -> ne_binaries().
+-spec find_users_addresses(kz_term:ne_binary(), kz_term:api_binary() | kz_term:ne_binaries()) -> kz_term:ne_binaries().
 find_users_addresses(_AccountDb, 'undefined') -> [];
 find_users_addresses(AccountDb, <<_/binary>>=UserId) -> bulk_read_emails(AccountDb, [UserId]);
 find_users_addresses(AccountDb, Ids) when is_list(Ids) -> bulk_read_emails(AccountDb, Ids);
 find_users_addresses(_AccountDb, _) -> [].
 
--spec bulk_read_emails(ne_binary(), ne_binaries()) -> ne_binaries().
+-spec bulk_read_emails(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 bulk_read_emails(AccountDb, Ids) ->
     case kz_datamgr:open_docs(AccountDb, Ids) of
         {'ok', JObjs} ->

@@ -75,7 +75,7 @@ send_page(Endpoints, Timeout, CCVs, Options, Call) ->
                              ,Call
                              ).
 
--spec get_endpoints(api_objects(), kapps_call:call()) -> kz_json:objects().
+-spec get_endpoints(kz_term:api_objects(), kapps_call:call()) -> kz_json:objects().
 get_endpoints(undefined, Call) -> get_endpoints([], Call);
 get_endpoints(Members, Call) ->
     S = self(),
@@ -97,7 +97,7 @@ get_endpoints(Members, Call) ->
                 end, [], Builders).
 
 -spec resolve_endpoint_ids(kz_json:objects(), kapps_call:call()) ->
-                                  [{ne_binary(), kz_json:object()}].
+                                  [{kz_term:ne_binary(), kz_json:object()}].
 resolve_endpoint_ids(Members, Call) ->
     [{Id, kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Member)}
      || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Call)
@@ -105,7 +105,7 @@ resolve_endpoint_ids(Members, Call) ->
             ,Id =/= kapps_call:authorizing_id(Call)
     ].
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
+-type endpoint_intermediate() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()}.
 -type endpoint_intermediates() :: [endpoint_intermediate()].
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kapps_call:call()) ->
                                   endpoint_intermediates().
@@ -141,7 +141,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
             resolve_endpoint_ids(Members, [{Type, Id, Member}|EndpointIds], Call)
     end.
 
--spec get_group_members(kz_json:object(), ne_binary(), kapps_call:call()) ->
+-spec get_group_members(kz_json:object(), kz_term:ne_binary(), kapps_call:call()) ->
                                kz_json:objects().
 get_group_members(Member, Id, Call) ->
     AccountDb = kapps_call:account_db(Call),

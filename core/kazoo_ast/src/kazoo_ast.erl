@@ -53,7 +53,7 @@ walk_app(App, Options) ->
     ConfigMap = options_to_config(Options),
     result(process_app(App, ConfigMap)).
 
--spec walk_modules(atoms(), options()) -> accumulator() | 'undefined'.
+-spec walk_modules(kz_term:atoms(), options()) -> accumulator() | 'undefined'.
 walk_modules(Modules, Options) when is_list(Modules) ->
     ConfigMap = options_to_config(Options),
     result(process_modules(Modules, ConfigMap)).

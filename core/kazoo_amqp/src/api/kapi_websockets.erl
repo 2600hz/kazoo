@@ -27,7 +27,7 @@
 
 -export_type([bind_props/0]).
 
--spec get_req(api_terms()) ->{'ok', iolist()} | {'error', string()}.
+-spec get_req(kz_term:api_terms()) ->{'ok', iolist()} | {'error', string()}.
 get_req(Prop) when is_list(Prop) ->
     case get_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?WEBSOCKETS_GET_REQ_HEADERS, ?OPTIONAL_WEBSOCKETS_GET_REQ_HEADERS);
@@ -41,7 +41,7 @@ get_req(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_req_v(api_terms()) -> boolean().
+-spec get_req_v(kz_term:api_terms()) -> boolean().
 get_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBSOCKETS_GET_REQ_HEADERS, ?WEBSOCKETS_GET_REQ_VALUES, ?WEBSOCKETS_TYPES);
 get_req_v(JObj) ->
@@ -52,7 +52,7 @@ get_req_v(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec get_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?WEBSOCKETS_GET_RESP_HEADERS, ?OPTIONAL_WEBSOCKETS_GET_RESP_HEADERS);
@@ -66,15 +66,15 @@ get_resp(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_resp_v(api_terms()) -> boolean().
+-spec get_resp_v(kz_term:api_terms()) -> boolean().
 get_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBSOCKETS_GET_RESP_HEADERS, ?WEBSOCKETS_GET_RESP_VALUES, ?WEBSOCKETS_TYPES);
 get_resp_v(JObj) ->
     get_resp_v(kz_json:to_proplist(JObj)).
 
 
--spec module_req(api_terms()) -> {'ok', iolist()} |
-                                 {'error', string()}.
+-spec module_req(kz_term:api_terms()) -> {'ok', iolist()} |
+                                         {'error', string()}.
 module_req(Prop) when is_list(Prop) ->
     case module_req_v(Prop) of
         'false' -> {'error', "Proplist failed validation for module_req"};
@@ -83,14 +83,14 @@ module_req(Prop) when is_list(Prop) ->
 module_req(JObj) ->
     module_req(kz_json:to_proplist(JObj)).
 
--spec module_req_v(api_terms()) -> boolean().
+-spec module_req_v(kz_term:api_terms()) -> boolean().
 module_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MODULE_REQ_HEADERS, ?MODULE_REQ_VALUES, ?MODULE_REQ_TYPES);
 module_req_v(JObj) ->
     module_req_v(kz_json:to_proplist(JObj)).
 
--spec module_resp(api_terms()) -> {'ok', iolist()} |
-                                  {'error', string()}.
+-spec module_resp(kz_term:api_terms()) -> {'ok', iolist()} |
+                                          {'error', string()}.
 module_resp(Prop) when is_list(Prop) ->
     case module_resp_v(Prop) of
         'false' -> {'error', "Proplist failed validation for module_resp"};
@@ -99,32 +99,32 @@ module_resp(Prop) when is_list(Prop) ->
 module_resp(JObj) ->
     module_resp(kz_json:to_proplist(JObj)).
 
--spec module_resp_v(api_terms()) -> boolean().
+-spec module_resp_v(kz_term:api_terms()) -> boolean().
 module_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MODULE_RESP_HEADERS, ?MODULE_RESP_VALUES, ?MODULE_RESP_TYPES);
 module_resp_v(JObj) ->
     module_resp_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), bind_props()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), bind_props()) -> 'ok'.
 bind_q(Queue, Props) ->
     lists:foreach(fun(Restriction) -> add_restriction(Queue, Restriction) end
                  ,props:get_value('restrict_to', Props, ?DEFAULT_RESTRICTIONS)
                  ).
 
--spec add_restriction(ne_binary(), restriction()) -> 'ok'.
+-spec add_restriction(kz_term:ne_binary(), restriction()) -> 'ok'.
 add_restriction(Queue, 'get') ->
     amqp_util:bind_q_to_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
 add_restriction(Queue, 'module_req') ->
     amqp_util:bind_q_to_kapps(Queue, ?MODULE_REQ_ROUTING_KEY).
 
 
--spec unbind_q(ne_binary(), bind_props()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), bind_props()) -> 'ok'.
 unbind_q(Queue, Props) ->
     lists:foreach(fun(Restriction) -> remove_restriction(Queue, Restriction) end
                  ,props:get_value('restrict_to', Props, ?DEFAULT_RESTRICTIONS)
                  ).
 
--spec remove_restriction(ne_binary(), restriction()) -> 'ok'.
+-spec remove_restriction(kz_term:ne_binary(), restriction()) -> 'ok'.
 remove_restriction(Queue, 'get') ->
     amqp_util:unbind_q_from_sysconf(Queue, ?KEY_WEBSOCKETS_GET_REQ);
 remove_restriction(Queue, 'module_req') ->
@@ -136,16 +136,16 @@ declare_exchanges() ->
     amqp_util:targeted_exchange(),
     amqp_util:sysconf_exchange().
 
--spec publish_module_req(api_terms()) -> 'ok'.
--spec publish_module_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_module_req(kz_term:api_terms()) -> 'ok'.
+-spec publish_module_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_req(API) ->
     publish_module_req(API, ?DEFAULT_CONTENT_TYPE).
 publish_module_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MODULE_REQ_VALUES, fun module_req/1),
     amqp_util:kapps_publish(?MODULE_REQ_ROUTING_KEY, Payload, ContentType).
 
--spec publish_module_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_module_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_module_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_module_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_resp(ServerId, API) ->
     publish_module_resp(ServerId, API, ?DEFAULT_CONTENT_TYPE).
 publish_module_resp(ServerId, API, ContentType) ->
@@ -157,8 +157,8 @@ publish_module_resp(ServerId, API, ContentType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec publish_get_req(api_terms()) -> 'ok'.
--spec publish_get_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_get_req(kz_term:api_terms()) -> 'ok'.
+-spec publish_get_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_req(Api, ContentType) ->
@@ -170,8 +170,8 @@ publish_get_req(Api, ContentType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec publish_get_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_get_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->

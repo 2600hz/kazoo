@@ -84,7 +84,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(CNAMJObj)
     end.
 
--spec cnam_data(kz_json:object()) -> api_object().
+-spec cnam_data(kz_json:object()) -> kz_term:api_object().
 cnam_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'false' ->

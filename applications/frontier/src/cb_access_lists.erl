@@ -86,7 +86,7 @@ validate_acls(Context, ?HTTP_DELETE) ->
     validate_delete_acls(thing_doc(Context)).
 
 -spec thing_doc(cb_context:context()) -> cb_context:context().
--spec thing_doc(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
+-spec thing_doc(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 thing_doc(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"access_lists">>, []}, {<<"accounts">>, [AccountId]} | _] ->
@@ -111,7 +111,7 @@ thing_doc(Context, ThingId, Type) ->
             thing_id_not_found(Context1, ThingId)
     end.
 
--spec thing_id_not_found(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec thing_id_not_found(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 thing_id_not_found(Context, ThingId) ->
     cb_context:add_system_error('bad_identifier'
                                ,kz_json:from_list([{<<"cause">>, <<"Identifier was not found">>}
@@ -133,7 +133,7 @@ validate_get_acls(Context, Doc) ->
     crossbar_util:response(AccessLists, Context).
 
 -spec validate_delete_acls(cb_context:context()) -> cb_context:context().
--spec validate_delete_acls(cb_context:context(), api_object()) -> cb_context:context().
+-spec validate_delete_acls(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_delete_acls(Context) ->
     case cb_context:resp_status(Context) of
         'success' -> validate_delete_acls(Context, cb_context:doc(Context));
@@ -150,7 +150,7 @@ validate_delete_acls(Context, Doc) ->
 
 -spec validate_set_acls(cb_context:context()) ->
                                cb_context:context().
--spec validate_set_acls(cb_context:context(), kz_json:object(), api_object()) ->
+-spec validate_set_acls(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
                                cb_context:context().
 validate_set_acls(Context) ->
     lager:debug("access lists data is valid, setting on thing"),

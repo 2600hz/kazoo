@@ -35,7 +35,7 @@ migrate_prompts() ->
     io:format("Now updating existing system_media docs to be internationalizable!~n", []),
     'no_return'.
 
--spec set_account_language(ne_binary(), ne_binary()) -> 'ok'.
+-spec set_account_language(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_account_language(Account, Language) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     OldLang = kz_media_util:prompt_language(AccountId),
@@ -55,7 +55,7 @@ set_account_language(Account, Language) ->
     end.
 
 -spec import_prompts(file:filename_all()) -> 'ok'.
--spec import_prompts(file:filename_all(), text()) -> 'ok'.
+-spec import_prompts(file:filename_all(), kz_term:text()) -> 'ok'.
 import_prompts(DirPath) ->
     import_prompts(DirPath, kz_media_util:default_prompt_language()).
 
@@ -72,7 +72,7 @@ import_prompts(DirPath, Lang) ->
             end
     end.
 
--spec import_files(file:filename_all(), ne_binary(), [file:filename_all()]) -> 'ok'.
+-spec import_files(file:filename_all(), kz_term:ne_binary(), [file:filename_all()]) -> 'ok'.
 import_files(Path, Lang, Files) ->
     io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
     case import_prompts_from_files(Files, Lang) of
@@ -83,7 +83,7 @@ import_files(Path, Lang, Files) ->
             'ok'
     end.
 
--spec import_prompts_from_files([file:filename_all()], ne_binary()) ->
+-spec import_prompts_from_files([file:filename_all()], kz_term:ne_binary()) ->
                                        [{file:filename_all(), {'error', _}}].
 import_prompts_from_files(Files, Lang) ->
     [{File, Err}
@@ -92,8 +92,8 @@ import_prompts_from_files(Files, Lang) ->
     ].
 
 -spec import_prompt(file:filename_all()) -> 'ok' | {'error', any()}.
--spec import_prompt(file:filename_all(), text()) -> 'ok' | {'error', any()}.
--spec import_prompt(file:filename_all(), text(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec import_prompt(file:filename_all(), kz_term:text()) -> 'ok' | {'error', any()}.
+-spec import_prompt(file:filename_all(), kz_term:text(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 
 import_prompt(Path) ->
     import_prompt(Path, kz_media_util:default_prompt_language()).
@@ -138,7 +138,7 @@ import_prompt(Path0, Lang0, Contents) ->
             Error
     end.
 
--spec media_meta_doc(file:filename_all(), ne_binary(), pos_integer()) ->
+-spec media_meta_doc(file:filename_all(), kz_term:ne_binary(), pos_integer()) ->
                             kz_json:object().
 media_meta_doc(Path, Lang, ContentLength) ->
     MediaDoc = base_media_doc(Path, Lang, ContentLength),
@@ -149,7 +149,7 @@ media_meta_doc(Path, Lang, ContentLength) ->
                                  ]
                                 ).
 
--spec base_media_doc(file:filename_all(), ne_binary(), pos_integer()) ->
+-spec base_media_doc(file:filename_all(), kz_term:ne_binary(), pos_integer()) ->
                             kz_json:object().
 base_media_doc(Path, Lang, ContentLength) ->
     PromptName = prompt_name_from_path(Path),
@@ -171,24 +171,24 @@ base_media_doc(Path, Lang, ContentLength) ->
       ]
      ).
 
--spec prompt_name_from_path(file:filename_all()) -> ne_binary().
+-spec prompt_name_from_path(file:filename_all()) -> kz_term:ne_binary().
 prompt_name_from_path(Path) ->
     Extension = filename:extension(Path),
     kz_term:to_binary(filename:basename(Path, Extension)).
 
--spec content_type_from_path(file:filename_all()) -> ne_binary().
+-spec content_type_from_path(file:filename_all()) -> kz_term:ne_binary().
 content_type_from_path(Path) ->
     {Category, Type, _} = cow_mimetypes:all(Path),
     filename:join([Category, Type]).
 
--spec media_description(ne_binary(), ne_binary()) -> ne_binary().
+-spec media_description(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 media_description(PromptName, Lang) ->
     <<"System prompt in ", Lang/binary, " for ", PromptName/binary>>.
 
--spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec upload_prompt(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                            'ok' |
                            {'error', any()}.
--spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) ->
+-spec upload_prompt(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), non_neg_integer()) ->
                            'ok' |
                            {'error', any()}.
 upload_prompt(ID, AttachmentName, Contents, Options) ->
@@ -209,7 +209,7 @@ upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
             maybe_cleanup_metadoc(ID, E)
     end.
 
--spec maybe_cleanup_metadoc(ne_binary(), any()) -> {'error', any()}.
+-spec maybe_cleanup_metadoc(kz_term:ne_binary(), any()) -> {'error', any()}.
 maybe_cleanup_metadoc(ID, E) ->
     io:format("  deleting metadata from ~s~n", [?KZ_MEDIA_DB]),
     case kz_datamgr:del_doc(?KZ_MEDIA_DB, ID) of
@@ -221,7 +221,7 @@ maybe_cleanup_metadoc(ID, E) ->
             Error
     end.
 
--spec maybe_retry_upload(ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) ->
+-spec maybe_retry_upload(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), non_neg_integer()) ->
                                 'ok' |
                                 {'error', any()}.
 maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
@@ -253,8 +253,8 @@ refresh() ->
                                    ),
     'ok'.
 
--spec maybe_migrate_system_config(ne_binary()) -> 'ok'.
--spec maybe_migrate_system_config(ne_binary(), boolean()) -> 'ok'.
+-spec maybe_migrate_system_config(kz_term:ne_binary()) -> 'ok'.
+-spec maybe_migrate_system_config(kz_term:ne_binary(), boolean()) -> 'ok'.
 maybe_migrate_system_config(ConfigId) ->
     maybe_migrate_system_config(ConfigId, 'false').
 
@@ -266,7 +266,7 @@ maybe_migrate_system_config(ConfigId, DeleteAfter) ->
             maybe_delete_system_config(ConfigId, DeleteAfter)
     end.
 
--spec maybe_delete_system_config(ne_binary(), boolean()) -> 'ok'.
+-spec maybe_delete_system_config(kz_term:ne_binary(), boolean()) -> 'ok'.
 maybe_delete_system_config(_ConfigId, 'false') -> 'ok';
 maybe_delete_system_config(ConfigId, 'true') ->
     {'ok', _} = kz_datamgr:del_doc(?KZ_CONFIG_DB, ConfigId),
@@ -292,7 +292,7 @@ get_media_config_doc() ->
             {'ok', kz_json:from_list([{<<"_id">>, ?CONFIG_CAT}])}
     end.
 
--spec migrate_system_config_fold(ne_binary(), kz_json:json_term(), kz_json:object()) ->
+-spec migrate_system_config_fold(kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
                                         kz_json:object().
 migrate_system_config_fold(<<"default">> = Node, Settings, MediaJObj) ->
     io:format("migrating node '~s' settings~n", [Node]),
@@ -307,7 +307,7 @@ migrate_system_config_fold(Node, Settings, MediaJObj) ->
             MediaJObj
     end.
 
--spec migrate_node_config(ne_binary(), kz_json:object(), kz_json:object(), kz_proplist()) -> kz_json:object().
+-spec migrate_node_config(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> kz_json:object().
 migrate_node_config(_Node, _Settings, MediaJObj, []) -> MediaJObj;
 migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
     case kz_json:get_value(K, Settings) of
@@ -320,14 +320,14 @@ migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
             migrate_node_config(Node, Settings, set_node_value(Node, K, NodeV, MediaJObj), KVs)
     end.
 
--spec set_node_value(ne_binary(), kz_json:path(), ne_binary(), kz_json:object()) ->
+-spec set_node_value(kz_term:ne_binary(), kz_json:path(), kz_term:ne_binary(), kz_json:object()) ->
                             kz_json:object().
 set_node_value(Node, <<_/binary>> = K, V, MediaJObj) ->
     set_node_value(Node, [K], V, MediaJObj);
 set_node_value(Node, K, V, MediaJObj) ->
     kz_json:set_value([Node | K], V, MediaJObj).
 
--spec maybe_update_media_config(ne_binary(), kz_json:path(), api_binary(), kz_json:object()) ->
+-spec maybe_update_media_config(kz_term:ne_binary(), kz_json:path(), kz_term:api_binary(), kz_json:object()) ->
                                        kz_json:object().
 maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
     io:format("    no value to set for ~p~n", [_K]),
@@ -366,12 +366,12 @@ remove_empty_system_media([JObj|JObjs]) ->
         'false' -> remove_empty_system_media(JObjs)
     end.
 
--spec remove_empty_media_docs(ne_binary()) -> 'ok'.
+-spec remove_empty_media_docs(kz_term:ne_binary()) -> 'ok'.
 remove_empty_media_docs(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     remove_empty_media_docs(AccountId, AccountDb).
 
--spec remove_empty_media_docs(ne_binary(), ne_binary()) -> 'ok'.
+-spec remove_empty_media_docs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 remove_empty_media_docs(AccountId, AccountDb) ->
     case kz_datamgr:get_results(AccountDb, <<"media/crossbar_listing">>, ['include_docs']) of
         {'ok', []} ->
@@ -387,19 +387,19 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("error looking up media docs in account ~s: ~p~n", [AccountId, _E])
     end.
 
--spec media_doc_filename(ne_binary(), non_neg_integer()) -> file:name().
+-spec media_doc_filename(kz_term:ne_binary(), non_neg_integer()) -> file:name().
 media_doc_filename(AccountId, Timestamp) ->
     Path = ["/tmp/empty_media_", AccountId, "_", kz_term:to_binary(Timestamp), ".json"],
     binary_to_list(list_to_binary(Path)).
 
--spec remove_empty_media_docs(ne_binary(), ne_binary(), file:io_device(), kz_json:objects()) -> 'ok'.
+-spec remove_empty_media_docs(kz_term:ne_binary(), kz_term:ne_binary(), file:io_device(), kz_json:objects()) -> 'ok'.
 remove_empty_media_docs(AccountId, _AccountDb, _Filename, []) ->
     io:format("finished cleaning up empty media docs for account ~s~n", [AccountId]);
 remove_empty_media_docs(AccountId, AccountDb, File, [Media|MediaDocs]) ->
     maybe_remove_media_doc(AccountDb, File, kz_json:get_value(<<"doc">>, Media)),
     remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs).
 
--spec maybe_remove_media_doc(ne_binary(), file:io_device(), kz_json:object()) -> 'ok'.
+-spec maybe_remove_media_doc(kz_term:ne_binary(), file:io_device(), kz_json:object()) -> 'ok'.
 maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
     DocId = kz_doc:id(MediaJObj),
     case kz_doc:attachments(MediaJObj) of
@@ -412,7 +412,7 @@ maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
             io:format("media doc ~s has attachments, leaving alone~n", [kz_doc:id(MediaJObj)])
     end.
 
--spec remove_media_doc(ne_binary(), kz_json:object()) -> 'ok'.
+-spec remove_media_doc(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 remove_media_doc(AccountDb, MediaJObj) ->
     {'ok', _Doc} = kz_datamgr:del_doc(AccountDb, MediaJObj),
     io:format("removed media doc ~s~n", [kz_doc:id(MediaJObj)]).

@@ -240,7 +240,7 @@ error_max_credit(Context, MaxCredit, FutureAmount) ->
                                    ,Context
                                    ).
 
--spec current_account_dollars(ne_binary()) -> dollars().
+-spec current_account_dollars(kz_term:ne_binary()) -> dollars().
 current_account_dollars(AccountId) ->
     case wht_util:current_account_dollars(AccountId) of
         {'ok', Dollars} -> Dollars;
@@ -433,7 +433,7 @@ create_credits(Context) ->
             crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
     end.
 
--spec reset_low_balance_notification(ne_binary()) -> 'ok'.
+-spec reset_low_balance_notification(kz_term:ne_binary()) -> 'ok'.
 reset_low_balance_notification(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'error', _} -> 'ok';
@@ -543,7 +543,7 @@ charge_billing_id(Amount, Context) ->
             crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
--spec send_transaction_notify(ne_binary(), #bt_transaction{}) -> 'ok'.
+-spec send_transaction_notify(kz_term:ne_binary(), #bt_transaction{}) -> 'ok'.
 send_transaction_notify(AccountId, Transaction) ->
     Props = [{<<"Account-ID">>, AccountId}
              | braintree_transaction:record_to_notification_props(Transaction)
@@ -551,7 +551,7 @@ send_transaction_notify(AccountId, Transaction) ->
             ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_transaction/1).
 
--spec add_credit_to_account(kz_json:object(), integer(), ne_binary(), ne_binary(), api_binary()) ->
+-spec add_credit_to_account(kz_json:object(), integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                    {'ok', kz_transaction:transaction()} |
                                    {'error', any()}.
 add_credit_to_account(BraintreeData, Units, LedgerId, AccountId, OrderId) ->

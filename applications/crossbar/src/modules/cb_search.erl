@@ -114,10 +114,10 @@ validate(Context, ?MULTI) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_search(cb_context:context(), api_binary()) -> cb_context:context().
--spec validate_search(cb_context:context(), ne_binary(), api_binary()) ->
+-spec validate_search(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
+-spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
                              cb_context:context().
--spec validate_search(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
+-spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
                              cb_context:context().
 validate_search(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"search needs a document type to search on">>}
@@ -159,7 +159,7 @@ validate_search(Context, Type, Query, Value) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_multi(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_multi(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_multi(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}
                                 ,{<<"target">>, ?SEARCHABLE}
@@ -170,7 +170,7 @@ validate_multi(Context, <<"account">>=Type) ->
 validate_multi(Context, Type) ->
     validate_multi(Context, Type, kz_json:to_proplist(cb_context:query_string(Context))).
 
--spec validate_multi(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
+-spec validate_multi(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
 validate_multi(Context, Type, Query) ->
     Context1 = validate_query(Context, Query),
     case cb_context:resp_status(Context1) of
@@ -183,8 +183,8 @@ validate_multi(Context, Type, Query) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_query(cb_context:context(), kz_proplist() | ne_binary()) -> cb_context:context().
--spec validate_query(cb_context:context(), kz_proplist(), kz_proplist() | ne_binary()) -> cb_context:context().
+-spec validate_query(cb_context:context(), kz_term:proplist() | kz_term:ne_binary()) -> cb_context:context().
+-spec validate_query(cb_context:context(), kz_term:proplist(), kz_term:proplist() | kz_term:ne_binary()) -> cb_context:context().
 validate_query(Context, Query) ->
     QueryOptions = available_query_options(cb_context:account_db(Context)),
     validate_query(Context, QueryOptions, Query).
@@ -222,7 +222,7 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec available_query_options(api_ne_binary()) -> ne_binaries().
+-spec available_query_options(kz_term:api_ne_binary()) -> kz_term:ne_binaries().
 available_query_options(AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, <<"_design/search">>) of
         {'ok', JObj} ->
@@ -238,8 +238,8 @@ available_query_options(AccountDb) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_query_options(ne_binaries()) -> ne_binaries().
--spec format_query_option(ne_binary()) -> ne_binary().
+-spec format_query_options(kz_term:ne_binaries()) -> kz_term:ne_binaries().
+-spec format_query_option(kz_term:ne_binary()) -> kz_term:ne_binary().
 format_query_options(Views) ->
     [format_query_option(View) || View <- Views].
 
@@ -253,7 +253,7 @@ format_query_option(Name) -> Name.
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec search(cb_context:context(), ne_binary(), ne_binary(), binary(), kz_proplist()) -> cb_context:context().
+-spec search(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist()) -> cb_context:context().
 search(Context, Type, Query, Val, Opts) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
     Value = maybe_normalize_value(Type, Val),
@@ -272,8 +272,8 @@ search(Context, Type, Query, Val, Opts) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec multi_search(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
--spec multi_search(cb_context:context(), ne_binary(), kz_proplist(), kz_json:object()) -> cb_context:context().
+-spec multi_search(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
+-spec multi_search(cb_context:context(), kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) -> cb_context:context().
 multi_search(Context, Type, Props) ->
     Context1 = cb_context:set_should_paginate(Context, 'false'),
     multi_search(Context1, Type, Props , kz_json:new()).
@@ -298,7 +298,7 @@ multi_search(Context, Type, [_|Props], Acc) ->
 %% Normalize search term for using in accounts search view
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_normalize_value(ne_binary(), ne_binary()) -> ne_binary().
+-spec maybe_normalize_value(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_normalize_value(<<"account">>, Value) ->
     cb_modules_util:normalize_alphanum_name(Value);
 maybe_normalize_value(_, Value) ->
@@ -310,7 +310,7 @@ maybe_normalize_value(_, Value) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec get_start_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
+-spec get_start_key(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_start_key(Context, <<"account">>=Type, Value) ->
     [cb_context:auth_account_id(Context), Type, cb_context:req_value(Context, <<"start_key">>, Value)];
 get_start_key(Context, Type, Value) ->
@@ -322,7 +322,7 @@ get_start_key(Context, Type, Value) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec get_end_key(cb_context:context(), ne_binary(), binary()) -> ne_binaries().
+-spec get_end_key(cb_context:context(), kz_term:ne_binary(), binary()) -> kz_term:ne_binaries().
 get_end_key(Context, <<"account">>=Type, Value) ->
     [cb_context:auth_account_id(Context), Type, next_binary_key(Value)];
 get_end_key(_, Type, Value) ->
@@ -334,7 +334,7 @@ get_end_key(_, Type, Value) ->
 %% replaces last character in binary with next character
 %% @end
 %%--------------------------------------------------------------------
--spec next_binary_key(binary()) -> ne_binary().
+-spec next_binary_key(binary()) -> kz_term:ne_binary().
 next_binary_key(<<>>) ->
     <<"\ufff0">>;
 next_binary_key(Bin) ->

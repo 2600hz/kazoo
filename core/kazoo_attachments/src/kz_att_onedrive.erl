@@ -58,12 +58,12 @@
 %% API functions
 %% ====================================================================
 
--spec resolve_put_url(map(), attachment_info()) -> ne_binary().
+-spec resolve_put_url(map(), attachment_info()) -> kz_term:ne_binary().
 resolve_put_url(Settings, AttInfo) ->
     Url = onedrive_format_url(Settings, AttInfo),
     kz_binary:join(?GRAPH_ME_UPLOAD_URL(Url), <<"/">>).
 
--spec onedrive_default_fields() -> kz_proplist().
+-spec onedrive_default_fields() -> kz_term:proplist().
 onedrive_default_fields() ->
     [{group, [{arg, <<"id">>}
              ,<<"_">>
@@ -71,16 +71,16 @@ onedrive_default_fields() ->
              ]}
     ].
 
--spec onedrive_format_url(map(), attachment_info()) -> ne_binary().
+-spec onedrive_format_url(map(), attachment_info()) -> kz_term:ne_binary().
 onedrive_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, onedrive_default_fields()).
 
--spec onedrive_token(map(), map()) -> ne_binary().
+-spec onedrive_token(map(), map()) -> kz_term:ne_binary().
 onedrive_token(#{oauth_doc_id := TokenDocId}, Options) ->
     {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, Options),
     Authorization.
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
     Authorization = onedrive_token(Settings, ?DRV_PUT_TOKEN_OPTIONS),
     Headers = [{<<"Authorization">>, Authorization}
@@ -97,7 +97,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
         Else -> Else
     end.
 
--spec onedrive_put(binary(), kz_proplist(), binary()) -> graph_result().
+-spec onedrive_put(binary(), kz_term:proplist(), binary()) -> graph_result().
 onedrive_put(Url, Headers, Body) ->
     case kz_http:put(Url, Headers, Body, ?GRAPH_HTTP_OPTIONS) of
         {'ok', Code, ResponseHeaders, ResponseBody}
@@ -118,7 +118,7 @@ onedrive_put(Url, Headers, Body) ->
             {'error', 'graph_drive_error'}
     end.
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', iodata()} |
                               {'error', 'invalid_data' | 'not_found'}.
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->

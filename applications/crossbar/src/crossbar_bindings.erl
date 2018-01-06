@@ -45,10 +45,10 @@
 -type payload() :: path_tokens() | % mapping over path tokens in URI
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
-                   {cb_context:context(), kz_proplist()} | % v1_resource:rest_init/2
+                   {cb_context:context(), kz_term:proplist()} | % v1_resource:rest_init/2
                    {'error', _} | % v1_util:execute_request/2
                    {kz_json:path(), cb_context:context(), path_tokens()} |
-                   {kz_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
+                   {kz_time:datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
 %%%===================================================================
@@ -66,12 +66,12 @@
                         http_methods() |
                         {boolean() | 'stop', cb_context:context()}
                        ].
--spec map(ne_binary(), payload()) -> map_results().
+-spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     lager:debug("mapping ~s", [Routing]),
     kazoo_bindings:map(Routing, Payload).
 
--spec pmap(ne_binary(), payload()) -> map_results().
+-spec pmap(kz_term:ne_binary(), payload()) -> map_results().
 pmap(Routing, Payload) ->
     lager:debug("pmapping ~s", [Routing]),
     kazoo_bindings:pmap(Routing, Payload).
@@ -84,7 +84,7 @@ pmap(Routing, Payload) ->
 %% @end
 %%--------------------------------------------------------------------
 -type fold_results() :: payload().
--spec fold(ne_binary(), payload()) -> fold_results().
+-spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     lager:debug("folding ~s", [Routing]),
     kazoo_bindings:fold(Routing, Payload).
@@ -94,11 +94,11 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any(kz_proplist()) -> boolean().
+-spec any(kz_term:proplist()) -> boolean().
 any(Res) when is_list(Res) ->
     kazoo_bindings:any(Res, fun check_bool/1).
 
--spec all(kz_proplist()) -> boolean().
+-spec all(kz_term:proplist()) -> boolean().
 all(Res) when is_list(Res) ->
     kazoo_bindings:all(Res, fun check_bool/1).
 
@@ -114,7 +114,7 @@ succeeded(Res) when is_list(Res) ->
 failed(Res) when is_list(Res) ->
     kazoo_bindings:failed(Res, fun filter_out_succeeded/1).
 
--spec matches(ne_binaries(), ne_binaries()) -> boolean().
+-spec matches(kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean().
 matches([], _) -> 'false';
 matches([R|Restrictions], Tokens) ->
     Restriction = [cow_qs:urldecode(T) || T <- binary:split(R, <<"/">>, ['global', 'trim'])],
@@ -162,7 +162,7 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
--spec bind(ne_binary(), atom(), atom()) ->
+-spec bind(kz_term:ne_binary(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind(Binding=?NE_BINARY, Module, Fun) ->
     kazoo_bindings:bind(Binding, Module, Fun).
@@ -171,20 +171,20 @@ bind(Binding=?NE_BINARY, Module, Fun) ->
 flush() ->
     lists:foreach(fun kazoo_bindings:flush_mod/1, modules_loaded()).
 
--spec flush(ne_binary()) -> 'ok'.
+-spec flush(kz_term:ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(Binding).
 
 -spec flush_mod(atom()) -> 'ok'.
 flush_mod(CBMod) -> kazoo_bindings:flush_mod(CBMod).
 
--spec modules_loaded() -> atoms().
+-spec modules_loaded() -> kz_term:atoms().
 modules_loaded() ->
     lists:usort(
       [Mod || Mod <- kazoo_bindings:modules_loaded(),
               is_cb_module(Mod)
       ]).
 
--spec is_cb_module(ne_binary() | atom()) -> boolean().
+-spec is_cb_module(kz_term:ne_binary() | atom()) -> boolean().
 is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _/binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
@@ -204,7 +204,7 @@ init() ->
     AutoloadModules = crossbar_config:autoload_modules(?DEFAULT_MODULES),
     lists:foreach(fun maybe_init_mod/1, AutoloadModules).
 
--spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
+-spec maybe_init_mod(kz_term:ne_binary() | atom()) -> 'ok'.
 maybe_init_mod(Mod) ->
     case crossbar_init:start_mod(Mod) of
         'ok' -> 'ok';

@@ -69,41 +69,41 @@
                                 ]).
 -define(DOC_TYPE_UPDATE_TYPES, []).
 
--spec get_account_id(api_terms()) -> api_binary().
+-spec get_account_id(kz_term:api_terms()) -> kz_term:api_binary().
 get_account_id(API) ->
     get_value(API, <<"Account-ID">>).
 
--spec get_action(api_terms()) -> api_binary().
+-spec get_action(kz_term:api_terms()) -> kz_term:api_binary().
 get_action(API) ->
     get_value(API, <<"Action">>).
 
--spec get_account_db(api_terms()) -> api_binary().
+-spec get_account_db(kz_term:api_terms()) -> kz_term:api_binary().
 get_account_db(API) ->
     get_value(API, <<"Account-DB">>).
 
--spec get_database(api_terms()) -> ne_binary().
+-spec get_database(kz_term:api_terms()) -> kz_term:ne_binary().
 get_database(API) ->
     get_value(API, <<"Database">>).
 
 %% returns the public fields of the document
--spec get_doc(api_terms()) -> api_object().
+-spec get_doc(kz_term:api_terms()) -> kz_term:api_object().
 get_doc(API) ->
     get_value(API, <<"Doc">>).
 
--spec get_id(api_terms()) -> api_binary().
+-spec get_id(kz_term:api_terms()) -> kz_term:api_binary().
 get_id(API) ->
     get_value(API, <<"ID">>).
 
 %% returns the pvt_type field
--spec get_type(api_terms()) -> api_binary().
+-spec get_type(kz_term:api_terms()) -> kz_term:api_binary().
 get_type(API) ->
     get_value(API, <<"Type">>).
 
--spec get_is_soft_deleted(api_terms()) -> boolean().
+-spec get_is_soft_deleted(kz_term:api_terms()) -> boolean().
 get_is_soft_deleted(API) ->
     kz_term:is_true(get_value(API, <<"Is-Soft-Deleted">>)).
 
--spec get_value(api_terms(), ne_binary()) -> any().
+-spec get_value(kz_term:api_terms(), kz_term:ne_binary()) -> any().
 get_value(Prop, Key) when is_list(Prop) ->
     props:get_value(Key, Prop);
 get_value(JObj, Key) ->
@@ -115,7 +115,7 @@ get_value(JObj, Key) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec doc_update(api_terms()) ->
+-spec doc_update(kz_term:api_terms()) ->
                         {'ok', iolist()} |
                         {'error', string()}.
 doc_update(Prop) when is_list(Prop) ->
@@ -126,7 +126,7 @@ doc_update(Prop) when is_list(Prop) ->
 doc_update(JObj) ->
     doc_update(kz_json:to_proplist(JObj)).
 
--spec doc_update_v(api_terms()) -> boolean().
+-spec doc_update_v(kz_term:api_terms()) -> boolean().
 doc_update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONF_DOC_UPDATE_HEADERS, ?CONF_DOC_UPDATE_VALUES, ?CONF_DOC_UPDATE_TYPES);
 doc_update_v(JObj) ->
@@ -137,7 +137,7 @@ doc_update_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec doc_type_update(api_terms()) ->
+-spec doc_type_update(kz_term:api_terms()) ->
                              {'ok', iolist()} |
                              {'error', string()}.
 doc_type_update(Prop) when is_list(Prop) ->
@@ -148,14 +148,14 @@ doc_type_update(Prop) when is_list(Prop) ->
 doc_type_update(JObj) ->
     doc_type_update(kz_json:to_proplist(JObj)).
 
--spec doc_type_update_v(api_terms()) -> boolean().
+-spec doc_type_update_v(kz_term:api_terms()) -> boolean().
 doc_type_update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DOC_TYPE_UPDATE_HEADERS, ?DOC_TYPE_UPDATE_VALUES, ?DOC_TYPE_UPDATE_TYPES);
 doc_type_update_v(JObj) ->
     doc_type_update_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(binary(), kz_proplist()) -> 'ok'.
--spec bind_q(binary(), kz_proplist(), api_atoms()) -> 'ok'.
+-spec bind_q(binary(), kz_term:proplist()) -> 'ok'.
+-spec bind_q(binary(), kz_term:proplist(), kz_term:api_atoms()) -> 'ok'.
 bind_q(Q, Props) ->
     bind_q(Q, Props, props:get_value('restrict_to', Props)).
 
@@ -171,7 +171,7 @@ bind_q(Q, Props, [_|Restrict]) ->
     bind_q(Q, Props, Restrict);
 bind_q(_Q, _Props, []) -> 'ok'.
 
--spec bind_for_doc_changes(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_for_doc_changes(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_for_doc_changes(Q, Props) ->
     case props:get_value('keys', Props) of
         'undefined' ->
@@ -183,7 +183,7 @@ bind_for_doc_changes(Q, Props) ->
             'ok'
     end.
 
--spec bind_for_doc_type_changes(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_for_doc_type_changes(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
         'undefined' -> bind_for_doc_types(Q, Props);
@@ -191,7 +191,7 @@ bind_for_doc_type_changes(Q, Props) ->
             amqp_util:bind_q_to_configuration(Q, doc_type_update_routing_key(Type))
     end.
 
--spec bind_for_doc_types(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_for_doc_types(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_for_doc_types(Q, Props) ->
     case props:get_value('types', Props) of
         'undefined' ->
@@ -203,8 +203,8 @@ bind_for_doc_types(Q, Props) ->
             'ok'
     end.
 
--spec unbind_q(binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(binary(), kz_proplist(), api_atoms()) -> 'ok'.
+-spec unbind_q(binary(), kz_term:proplist()) -> 'ok'.
+-spec unbind_q(binary(), kz_term:proplist(), kz_term:api_atoms()) -> 'ok'.
 unbind_q(Q, Props) ->
     unbind_q(Q, Props, props:get_value('restrict_to', Props)).
 
@@ -220,7 +220,7 @@ unbind_q(Q, Props, [_|Restrict]) ->
     unbind_q(Q, Props, Restrict);
 unbind_q(_Q, _Props, []) -> 'ok'.
 
--spec unbind_for_doc_changes(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_for_doc_changes(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_for_doc_changes(Q, Props) ->
     case props:get_value('keys', Props) of
         'undefined' ->
@@ -232,7 +232,7 @@ unbind_for_doc_changes(Q, Props) ->
             'ok'
     end.
 
--spec unbind_for_doc_type_changes(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_for_doc_type_changes(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_for_doc_type_changes(Q, Props) ->
     case props:get_value('type', Props) of
         'undefined' -> unbind_for_doc_types(Q, Props);
@@ -240,7 +240,7 @@ unbind_for_doc_type_changes(Q, Props) ->
             amqp_util:unbind_q_from_configuration(Q, doc_type_update_routing_key(Type))
     end.
 
--spec unbind_for_doc_types(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_for_doc_types(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_for_doc_types(Q, Props) ->
     case props:get_value('types', Props) of
         'undefined' -> 'ok';
@@ -259,7 +259,7 @@ unbind_for_doc_types(Q, Props) ->
 declare_exchanges() ->
     amqp_util:configuration_exchange().
 
--spec get_routing_key(kz_proplist()) -> binary().
+-spec get_routing_key(kz_term:proplist()) -> binary().
 get_routing_key(Props) ->
     Action = props:get_binary_value('action', Props, <<"*">>),
     Db = props:get_binary_value('db', Props, <<"*">>),
@@ -271,31 +271,31 @@ get_routing_key(Props) ->
                                ),
     amqp_util:document_routing_key(Action, Db, Type, Id).
 
--spec publish_doc_update(action(), ne_binary(), ne_binary(), ne_binary(), api_terms()) -> 'ok'.
--spec publish_doc_update(action(), ne_binary(), ne_binary(), ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, JObj) ->
     publish_doc_update(Action, Db, Type, Id, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
     amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).
 
--spec publish_db_update(action(), ne_binary(), api_terms()) -> 'ok'.
--spec publish_db_update(action(), ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_db_update(action(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_db_update(action(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_db_update(Action, Db, JObj) ->
     publish_db_update(Action, Db, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_db_update(Action, Db, Change, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
     amqp_util:document_change_publish(Action, Db, <<"database">>, Db, Payload, ContentType).
 
--spec publish_doc_type_update(api_terms()) -> 'ok'.
--spec publish_doc_type_update(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_doc_type_update(kz_term:api_terms()) -> 'ok'.
+-spec publish_doc_type_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_type_update(JObj) ->
     publish_doc_type_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_doc_type_update(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?DOC_TYPE_UPDATE_VALUES, fun doc_type_update/1),
     amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).
 
--spec doc_type_update_routing_key(api_terms() | ne_binary()) -> ne_binary().
+-spec doc_type_update_routing_key(kz_term:api_terms() | kz_term:ne_binary()) -> kz_term:ne_binary().
 doc_type_update_routing_key(<<_/binary>> = Type) ->
     <<"configuration.doc_type_update.", Type/binary>>;
 doc_type_update_routing_key(API) ->

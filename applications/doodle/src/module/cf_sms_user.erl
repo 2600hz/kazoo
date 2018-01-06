@@ -53,7 +53,7 @@ handle_result(JObj, Call1) ->
     Call = doodle_util:set_flow_status(Status, Call1),
     handle_result_status(Call, Status).
 
--spec handle_result_status(kapps_call:call(), ne_binary()) -> 'ok'.
+-spec handle_result_status(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 handle_result_status(Call, <<"pending">>) ->
     doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
@@ -78,7 +78,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 %% Send to endpoint in determined order
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
+-spec get_endpoints(kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
                            {kz_json:objects(), non_neg_integer()}.
 get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->

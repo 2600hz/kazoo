@@ -49,7 +49,7 @@
 
 -include("knm.hrl").
 
--type num() :: ne_binary().  %%TODO: support ranges?
+-type num() :: kz_term:ne_binary().  %%TODO: support ranges?
 -type nums() :: [num()].
 -type ok() :: knm_number:knm_number().
 -type oks() :: [ok()].
@@ -92,7 +92,7 @@
 -type services() :: kz_services:services() | undefined.
 -type transaction() :: kz_transaction:transaction().
 -type transactions() :: kz_transaction:transactions().
--type charges() :: [{ne_binary(), non_neg_integer()}].
+-type charges() :: [{kz_term:ne_binary(), non_neg_integer()}].
 
 -export_type([options/0
              ,plan/0
@@ -126,7 +126,7 @@ todo(#{todo := ToDo}) -> ToDo.
 %% Set of numbers' assigned_to fields.
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to(t()) -> api_ne_binary().
+-spec assigned_to(t()) -> kz_term:api_ne_binary().
 assigned_to(#{todo := Ns}) ->
     F = fun (N, S) ->
                 case knm_phone_number:assigned_to(knm_number:phone_number(N)) of
@@ -145,7 +145,7 @@ assigned_to(#{todo := Ns}) ->
 %% Set of numbers' prev_assigned_to fields.
 %% @end
 %%--------------------------------------------------------------------
--spec prev_assigned_to(t()) -> api_ne_binary().
+-spec prev_assigned_to(t()) -> kz_term:api_ne_binary().
 prev_assigned_to(#{todo := Ns}) ->
     F = fun (N, S) ->
                 case knm_phone_number:prev_assigned_to(knm_number:phone_number(N)) of
@@ -193,8 +193,8 @@ charges(#{charges := V}) -> V.
 charges(V, T) -> T#{charges => V}.
 
 %% @public
--spec charge(ne_binary(), t()) -> non_neg_integer().
--spec charge(ne_binary(), non_neg_integer(), t()) -> t().
+-spec charge(kz_term:ne_binary(), t()) -> non_neg_integer().
+-spec charge(kz_term:ne_binary(), non_neg_integer(), t()) -> t().
 charge(K, #{charges := Vs}) -> props:get_value(K, Vs, 0).
 charge(K, V, T=#{charges := Vs}) -> T#{charges => [{K, V} | Vs]}.
 
@@ -232,12 +232,12 @@ ko(N, Reason, T) ->
 %% Note: each number in `Nums' has to be normalized.
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binaries()) -> ret().
--spec get(ne_binaries(), knm_number_options:options()) -> ret().
+-spec get(kz_term:ne_binaries()) -> ret().
+-spec get(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 get(Nums) -> get(Nums, knm_number_options:default()).
 get(Nums, Options) -> ret(do_get(Nums, Options)).
 
--spec do_get(ne_binaries(), knm_number_options:options()) -> t().
+-spec do_get(kz_term:ne_binaries(), knm_number_options:options()) -> t().
 do_get(Nums, Options) ->
     {Yes, No} = are_reconcilable(Nums),
     pipe(new(Options, Yes, No)
@@ -245,8 +245,8 @@ do_get(Nums, Options) ->
          ,fun knm_number:new/1
          ]).
 
--spec do_get_pn(ne_binaries(), knm_number_options:options()) -> t_pn().
--spec do_get_pn(ne_binaries(), knm_number_options:options(), reason_t()) -> t_pn().
+-spec do_get_pn(kz_term:ne_binaries(), knm_number_options:options()) -> t_pn().
+-spec do_get_pn(kz_term:ne_binaries(), knm_number_options:options(), reason_t()) -> t_pn().
 do_get_pn(Nums, Options) ->
     {Yes, No} = are_reconcilable(Nums),
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No)).
@@ -293,7 +293,7 @@ from_jobjs(JObjs) ->
 %%   attempt to create them with state in_service.
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binaries(), knm_number_options:options()) -> ret().
+-spec create(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
     T0 = pipe(do_get_pn(Nums
                        ,?OPTIONS_FOR_LOAD(Nums, props:delete(state, Options))
@@ -326,8 +326,8 @@ create(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move(ne_binaries(), ne_binary()) -> ret().
--spec move(ne_binaries(), ne_binary(), knm_number_options:options()) -> ret().
+-spec move(kz_term:ne_binaries(), kz_term:ne_binary()) -> ret().
+-spec move(kz_term:ne_binaries(), kz_term:ne_binary(), knm_number_options:options()) -> ret().
 move(Nums, MoveTo) ->
     move(Nums, MoveTo, knm_number_options:default()).
 
@@ -347,8 +347,8 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
 %% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binaries(), knm_phone_number:set_functions()) -> ret().
--spec update(ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
+-spec update(kz_term:ne_binaries(), knm_phone_number:set_functions()) -> ret().
+-spec update(kz_term:ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
 update(Nums, Routines) ->
     update(Nums, Routines, knm_number_options:default()).
 
@@ -382,8 +382,8 @@ do_update(T0, Routines) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec release(ne_binaries()) -> ret().
--spec release(ne_binaries(), knm_number_options:options()) -> ret().
+-spec release(kz_term:ne_binaries()) -> ret().
+-spec release(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 release(Nums) ->
     release(Nums, knm_number_options:default()).
 
@@ -403,7 +403,7 @@ release(Nums, Options) ->
 %% Sounds too harsh for you? You are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binaries(), knm_number_options:options()) -> ret().
+-spec delete(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 delete(Nums, Options) ->
     case knm_phone_number:is_admin(knm_number_options:auth_by(Options)) of
         false ->
@@ -422,7 +422,7 @@ delete(Nums, Options) ->
 %% Note: option 'assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile(ne_binaries(), knm_number_options:options()) -> ret().
+-spec reconcile(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 reconcile(Nums, Options0) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY} | Options0],
     T0 = pipe(do_get(Nums, Options)
@@ -440,7 +440,7 @@ reconcile(Nums, Options0) ->
 %% Fetches then transitions existing numbers to the reserved state.
 %% @end
 %%--------------------------------------------------------------------
--spec reserve(ne_binaries(), knm_number_options:options()) -> ret().
+-spec reserve(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 reserve(Nums, Options) ->
     ret(pipe(do_get(Nums, Options)
             ,[fun fail_if_assign_to_is_not_an_account_id/1
@@ -452,8 +452,8 @@ reserve(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_to_app(ne_binaries(), api_ne_binary()) -> ret().
--spec assign_to_app(ne_binaries(), api_ne_binary(), knm_number_options:options()) -> ret().
+-spec assign_to_app(kz_term:ne_binaries(), kz_term:api_ne_binary()) -> ret().
+-spec assign_to_app(kz_term:ne_binaries(), kz_term:api_ne_binary(), knm_number_options:options()) -> ret().
 assign_to_app(Nums, App) ->
     assign_to_app(Nums, App, knm_number_options:default()).
 
@@ -470,7 +470,7 @@ assign_to_app(Nums, App, Options) ->
 %% @doc Release all of an account's numbers
 %% @end
 %%--------------------------------------------------------------------
--spec free(ne_binary()) -> 'ok'.
+-spec free(kz_term:ne_binary()) -> 'ok'.
 free(Account=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
     {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
@@ -488,7 +488,7 @@ free(Account=?NE_BINARY) ->
 %% Find an account's phone numbers that have emergency services enabled
 %% @end
 %%--------------------------------------------------------------------
--spec emergency_enabled(ne_binary()) -> ne_binaries().
+-spec emergency_enabled(kz_term:ne_binary()) -> kz_term:ne_binaries().
 emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     AccountDb = kz_util:format_account_db(AccountId),
     [Num || {Num, JObj} <- account_listing(AccountDb),
@@ -503,7 +503,7 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
 %% Does not go through sub accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec account_listing(ne_binary()) -> [{ne_binary(), kz_json:object()}].
+-spec account_listing(kz_term:ne_binary()) -> [{kz_term:ne_binary(), kz_json:object()}].
 account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
     case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>) of
         {'ok', []} ->
@@ -788,7 +788,7 @@ can_release(T0=#{todo := PNs}) ->
         end,
     lists:foldl(F, T0, PNs).
 
--spec can_release(ne_binary(), ne_binary()) -> boolean().
+-spec can_release(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 can_release(?NUMBER_STATE_RELEASED, _) -> true;
 can_release(?NUMBER_STATE_RESERVED, _) -> true;
 can_release(?NUMBER_STATE_PORT_IN, _) -> true;

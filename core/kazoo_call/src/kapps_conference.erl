@@ -107,22 +107,22 @@
 %%  caller_controls          caller controls (config settings)
 %%
 
--record(kapps_conference, {id :: api_ne_binary()
-                          ,name :: api_ne_binary()
-                          ,focus :: api_ne_binary()
-                          ,profile = 'undefined' :: api_binary()
-                          ,controller_q :: api_ne_binary()
-                          ,bridge_username = ?BRIDGE_USER :: ne_binary()
-                          ,bridge_password = ?BRIDGE_PWD :: ne_binary()
-                          ,member_pins = [] :: ne_binaries()
-                          ,moderator_pins = [] :: ne_binaries()
-                          ,moderator :: api_boolean()
+-record(kapps_conference, {id :: kz_term:api_ne_binary()
+                          ,name :: kz_term:api_ne_binary()
+                          ,focus :: kz_term:api_ne_binary()
+                          ,profile = 'undefined' :: kz_term:api_binary()
+                          ,controller_q :: kz_term:api_ne_binary()
+                          ,bridge_username = ?BRIDGE_USER :: kz_term:ne_binary()
+                          ,bridge_password = ?BRIDGE_PWD :: kz_term:ne_binary()
+                          ,member_pins = [] :: kz_term:ne_binaries()
+                          ,moderator_pins = [] :: kz_term:ne_binaries()
+                          ,moderator :: kz_term:api_boolean()
                           ,member_join_muted = 'false' :: boolean()
                           ,member_join_deaf = 'false' :: boolean()
                           ,moderator_join_muted = 'false' :: boolean()
                           ,moderator_join_deaf = 'false' :: boolean()
                           ,max_participants = 0 :: non_neg_integer()
-                          ,max_members_media :: api_ne_binary()
+                          ,max_members_media :: kz_term:api_ne_binary()
                           ,require_moderator = 'false' :: boolean()
                           ,wait_for_moderator = 'false' :: boolean()
                           ,play_name_on_join = 'false' :: boolean()
@@ -130,17 +130,17 @@
                           ,play_exit_tone = 'true' :: tone()
                           ,play_entry_tone = 'true' :: tone()
                           ,play_welcome = 'true' :: boolean()
-                          ,conference_doc :: api_object()
-                          ,app_name = <<"kapps_conference">> :: ne_binary()
-                          ,app_version = <<"1.0.0">> :: ne_binary()
+                          ,conference_doc :: kz_term:api_object()
+                          ,app_name = <<"kapps_conference">> :: kz_term:ne_binary()
+                          ,app_version = <<"1.0.0">> :: kz_term:ne_binary()
                           ,kvs = orddict:new() :: orddict:orddict()
                           ,call :: kapps_call:call() | 'undefined'
-                          ,account_id :: api_ne_binary()
-                          ,moderator_controls = <<"moderator-default">> :: ne_binary()
-                          ,caller_controls = <<"caller-default">> :: ne_binary()
+                          ,account_id :: kz_term:api_ne_binary()
+                          ,moderator_controls = <<"moderator-default">> :: kz_term:ne_binary()
+                          ,caller_controls = <<"caller-default">> :: kz_term:ne_binary()
                           }).
 
--type tone() :: boolean() | ne_binary().
+-type tone() :: boolean() | kz_term:ne_binary().
 -export_type([tone/0]).
 
 -opaque conference() :: #kapps_conference{}.
@@ -209,7 +209,7 @@ to_json(#kapps_conference{}=Conference) ->
                           kz_json:is_json_term(V)
                       ]).
 
--spec to_proplist(conference()) -> kz_proplist().
+-spec to_proplist(conference()) -> kz_term:proplist().
 to_proplist(#kapps_conference{}=Conference) ->
     [{<<"Conference-ID">>, id(Conference)}
     ,{<<"Conference-Name">>, name(Conference)}
@@ -295,123 +295,123 @@ update_fold({Fun, Value}, Conference) when is_function(Fun, 2) ->
 update_fold(Fun, Conference) when is_function(Fun, 1) ->
     Fun(Conference).
 
--spec id(conference()) -> api_binary().
+-spec id(conference()) -> kz_term:api_binary().
 id(#kapps_conference{id=Id}) -> Id.
 
--spec set_id(api_binary(), conference()) -> conference().
+-spec set_id(kz_term:api_binary(), conference()) -> conference().
 set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#kapps_conference{id=Id}.
 
--spec set_name(ne_binary(), conference()) -> conference().
+-spec set_name(kz_term:ne_binary(), conference()) -> conference().
 set_name(Name, Conference) when is_binary(Name) ->
     Conference#kapps_conference{name=Name}.
 
--spec name(conference()) -> ne_binary().
+-spec name(conference()) -> kz_term:ne_binary().
 name(#kapps_conference{name=Name}) ->
     Name.
 
--spec set_account_id(ne_binary(), conference()) -> conference().
+-spec set_account_id(kz_term:ne_binary(), conference()) -> conference().
 set_account_id(AccountId, Conference) when is_binary(AccountId) ->
     Conference#kapps_conference{account_id=AccountId}.
 
--spec account_id(conference()) -> ne_binary().
+-spec account_id(conference()) -> kz_term:ne_binary().
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec set_moderator_controls(ne_binary(), conference()) -> conference().
+-spec set_moderator_controls(kz_term:ne_binary(), conference()) -> conference().
 set_moderator_controls(ModeratorCtrls, Conference) when is_binary(ModeratorCtrls) ->
     Conference#kapps_conference{moderator_controls=ModeratorCtrls}.
 
--spec moderator_controls(conference()) -> ne_binary().
+-spec moderator_controls(conference()) -> kz_term:ne_binary().
 moderator_controls(#kapps_conference{moderator_controls=ModeratorCtrls}) ->
     ModeratorCtrls.
 
--spec set_caller_controls(ne_binary(), conference()) -> conference().
+-spec set_caller_controls(kz_term:ne_binary(), conference()) -> conference().
 set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
     Conference#kapps_conference{caller_controls=CallerCtrls}.
 
--spec caller_controls(conference()) -> ne_binary().
+-spec caller_controls(conference()) -> kz_term:ne_binary().
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
--spec profile(conference()) -> api_binary().
+-spec profile(conference()) -> kz_term:api_binary().
 profile(#kapps_conference{profile='undefined'}=Conference) ->
     id(Conference);
 profile(#kapps_conference{profile=P}) -> P.
 
--spec set_profile(api_binary(), conference()) -> conference().
+-spec set_profile(kz_term:api_binary(), conference()) -> conference().
 set_profile(P, Conference) when is_binary(P); P =:= 'undefined' ->
     Conference#kapps_conference{profile=P}.
 
--spec application_name(conference()) -> ne_binary().
+-spec application_name(conference()) -> kz_term:ne_binary().
 application_name(#kapps_conference{app_name=AppName}) ->
     AppName.
 
--spec set_application_name(ne_binary(), conference()) -> conference().
+-spec set_application_name(kz_term:ne_binary(), conference()) -> conference().
 set_application_name(AppName, #kapps_conference{}=Conference) when is_binary(AppName) ->
     Conference#kapps_conference{app_name=AppName}.
 
--spec application_version(conference()) -> ne_binary().
+-spec application_version(conference()) -> kz_term:ne_binary().
 application_version(#kapps_conference{app_version=AppVersion}) ->
     AppVersion.
 
--spec set_application_version(ne_binary(), conference()) -> conference().
+-spec set_application_version(kz_term:ne_binary(), conference()) -> conference().
 set_application_version(AppVersion, #kapps_conference{}=Conference) when is_binary(AppVersion) ->
     Conference#kapps_conference{app_version=AppVersion}.
 
--spec focus(conference()) -> api_binary().
+-spec focus(conference()) -> kz_term:api_binary().
 focus(#kapps_conference{focus=Focus}) ->
     Focus.
 
--spec set_focus(ne_binary(), conference()) -> conference().
+-spec set_focus(kz_term:ne_binary(), conference()) -> conference().
 set_focus(Focus, Conference) when is_binary(Focus) ->
     Conference#kapps_conference{focus=Focus}.
 
--spec controller_queue(conference()) -> api_binary().
+-spec controller_queue(conference()) -> kz_term:api_binary().
 controller_queue(#kapps_conference{controller_q=ControllerQ}) ->
     ControllerQ.
 
--spec set_controller_queue(ne_binary(), conference()) -> conference().
+-spec set_controller_queue(kz_term:ne_binary(), conference()) -> conference().
 set_controller_queue(ControllerQ, Conference) when is_binary(ControllerQ) ->
     Conference#kapps_conference{controller_q=ControllerQ}.
 
--spec bridge_username(conference()) -> ne_binary().
+-spec bridge_username(conference()) -> kz_term:ne_binary().
 bridge_username(#kapps_conference{bridge_username=BridgeUsername}) ->
     BridgeUsername.
 
--spec set_bridge_username(ne_binary(), conference()) -> conference().
+-spec set_bridge_username(kz_term:ne_binary(), conference()) -> conference().
 set_bridge_username(BridgeUsername, Conference) when is_binary(BridgeUsername) ->
     Conference#kapps_conference{bridge_username=BridgeUsername}.
 
--spec bridge_password(conference()) -> ne_binary().
+-spec bridge_password(conference()) -> kz_term:ne_binary().
 bridge_password(#kapps_conference{bridge_password=BridgePassword}) ->
     BridgePassword.
 
--spec set_bridge_password(ne_binary(), conference()) -> conference().
+-spec set_bridge_password(kz_term:ne_binary(), conference()) -> conference().
 set_bridge_password(BridgePassword, Conference) when is_binary(BridgePassword) ->
     Conference#kapps_conference{bridge_password=BridgePassword}.
 
--spec member_pins(conference()) -> ne_binaries().
+-spec member_pins(conference()) -> kz_term:ne_binaries().
 member_pins(#kapps_conference{member_pins=MemberPins}) ->
     MemberPins.
 
--spec set_member_pins([ne_binary()], conference()) -> conference().
+-spec set_member_pins([kz_term:ne_binary()], conference()) -> conference().
 set_member_pins(MemberPins, Conference) when is_list(MemberPins) ->
     Conference#kapps_conference{member_pins=MemberPins}.
 
--spec moderator_pins(conference()) -> [ne_binary()].
+-spec moderator_pins(conference()) -> [kz_term:ne_binary()].
 moderator_pins(#kapps_conference{moderator_pins=ModeratorPins}) ->
     ModeratorPins.
 
--spec set_moderator_pins([ne_binary()], conference()) -> conference().
+-spec set_moderator_pins([kz_term:ne_binary()], conference()) -> conference().
 set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
     Conference#kapps_conference{moderator_pins=ModeratorPins}.
 
--spec moderator(conference()) -> api_boolean().
+-spec moderator(conference()) -> kz_term:api_boolean().
 moderator(#kapps_conference{moderator=Moderator}) ->
     Moderator.
 
--spec set_moderator(api_boolean(), conference()) -> conference().
+-spec set_moderator(kz_term:api_boolean(), conference()) -> conference().
 set_moderator('undefined', Conference) ->
     Conference#kapps_conference{moderator='undefined'};
 set_moderator(Moderator, Conference) when is_boolean(Moderator) ->
@@ -457,10 +457,10 @@ max_participants(#kapps_conference{max_participants=MaxParticipants}) ->
 set_max_participants(MaxParticipants, Conference) when is_integer(MaxParticipants) ->
     Conference#kapps_conference{max_participants=MaxParticipants}.
 
--spec max_members_media(conference()) -> api_binary().
+-spec max_members_media(conference()) -> kz_term:api_binary().
 max_members_media(#kapps_conference{max_members_media = Value}) -> Value.
 
--spec set_max_members_media(ne_binary(), conference()) -> conference().
+-spec set_max_members_media(kz_term:ne_binary(), conference()) -> conference().
 set_max_members_media(Value, Conference) when is_binary(Value) ->
     Conference#kapps_conference{max_members_media = Value}.
 
@@ -517,7 +517,7 @@ play_welcome(#kapps_conference{play_welcome=ShouldPlay}) ->
 set_play_welcome(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#kapps_conference{play_welcome=ShouldPlay}.
 
--spec conference_doc(conference()) -> api_object().
+-spec conference_doc(conference()) -> kz_term:api_object().
 conference_doc(#kapps_conference{conference_doc=JObj}) -> JObj.
 
 -spec set_conference_doc(kz_json:object(), conference()) -> conference().
@@ -559,7 +559,7 @@ kvs_find(Key, #kapps_conference{kvs=Dict}) ->
 kvs_fold(Fun, Acc0, #kapps_conference{kvs=Dict}) ->
     orddict:fold(Fun, Acc0, Dict).
 
--spec kvs_from_proplist(kz_proplist(), conference()) -> conference().
+-spec kvs_from_proplist(kz_term:proplist(), conference()) -> conference().
 kvs_from_proplist(List, #kapps_conference{kvs=Dict}=Conference) ->
     L = orddict:from_list([{kz_term:to_binary(K), V} || {K, V} <- List]),
     Conference#kapps_conference{kvs=orddict:merge(fun(_, V, _) -> V end, L, Dict)}.
@@ -576,13 +576,13 @@ kvs_map(Pred, #kapps_conference{kvs=Dict}=Conference) ->
 kvs_store(Key, Value, #kapps_conference{kvs=Dict}=Conference) ->
     Conference#kapps_conference{kvs=orddict:store(kz_term:to_binary(Key), Value, Dict)}.
 
--spec kvs_store_proplist(kz_proplist(), conference()) -> conference().
+-spec kvs_store_proplist(kz_term:proplist(), conference()) -> conference().
 kvs_store_proplist(List, #kapps_conference{kvs=Dict}=Conference) ->
     Conference#kapps_conference{kvs=lists:foldr(fun({K, V}, D) ->
                                              orddict:store(kz_term:to_binary(K), V, D)
                                      end, Dict, List)}.
 
--spec kvs_to_proplist(conference()) -> kz_proplist().
+-spec kvs_to_proplist(conference()) -> kz_term:proplist().
 kvs_to_proplist(#kapps_conference{kvs=Dict}) ->
     orddict:to_list(Dict).
 
@@ -611,7 +611,7 @@ cache(#kapps_conference{id=ConferenceId}=Conference, Expires) ->
     CacheProps = [{'expires', Expires}],
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}, Conference, CacheProps).
 
--spec retrieve(ne_binary()) -> {'ok', conference()} |
+-spec retrieve(kz_term:ne_binary()) -> {'ok', conference()} |
                                {'error', 'not_found'}.
 retrieve(ConferenceId) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).

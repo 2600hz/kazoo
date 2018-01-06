@@ -45,9 +45,9 @@ cleanup_arg(Arg) -> Arg.
 
 
 -spec run_counterexample(module()) ->
-                                {ne_binary(), 'postcondition_failed'} |
-                                {ne_binary(), atom(), any(), [erlang:stack_item()]} |
-                                {'ok', ne_binary()}.
+                                {kz_term:ne_binary(), 'postcondition_failed'} |
+                                {kz_term:ne_binary(), atom(), any(), [erlang:stack_item()]} |
+                                {'ok', kz_term:ne_binary()}.
 run_counterexample(PQC) ->
     PQC:cleanup(),
     io:format("cleaned up, running counterexample~n", []),

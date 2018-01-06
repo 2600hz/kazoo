@@ -16,7 +16,7 @@
 init() ->
     ok.
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = dth_api:blacklist_req_v(JObj),
 

@@ -73,7 +73,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj, AccountId)
     end.
 
--spec process_req(kz_json:object(), ne_binary()) -> template_response().
+-spec process_req(kz_json:object(), kz_term:ne_binary()) -> template_response().
 process_req(DataJObj, AccountId) ->
     HookId = kz_json:get_value(<<"hook_id">>, DataJObj),
 
@@ -112,7 +112,7 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec hook_data(kzd_webhook:doc()) -> kz_proplist().
+-spec hook_data(kzd_webhook:doc()) -> kz_term:proplist().
 hook_data(HookJObj) ->
     props:filter_undefined(
       [{<<"id">>, kz_doc:id(HookJObj)}

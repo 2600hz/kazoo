@@ -45,14 +45,14 @@
 -spec new() -> diversion().
 new() -> kz_json:new().
 
--spec reason(diversion()) -> api_binary().
+-spec reason(diversion()) -> kz_term:api_binary().
 -spec counter(diversion()) -> non_neg_integer().
--spec limit(diversion()) -> api_integer().
--spec privacy(diversion()) -> api_binary().
--spec screen(diversion()) -> api_binary().
--spec extensions(diversion()) -> api_list().
--spec address(diversion()) -> api_binary().
--spec user(diversion()) -> api_binary().
+-spec limit(diversion()) -> kz_term:api_integer().
+-spec privacy(diversion()) -> kz_term:api_binary().
+-spec screen(diversion()) -> kz_term:api_binary().
+-spec extensions(diversion()) -> kz_term:api_list().
+-spec address(diversion()) -> kz_term:api_binary().
+-spec user(diversion()) -> kz_term:api_binary().
 
 user(JObj) ->
     kzsip_uri:user(kzsip_uri:parse(address(JObj))).
@@ -75,16 +75,16 @@ extensions(JObj) ->
             lists:foldl(fun extensions_fold/2, [], kz_json:to_proplist(Extensions))
     end.
 
--spec extensions_fold({ne_binary(), ne_binary()}, kz_proplist()) ->
-                             kz_proplist().
+-spec extensions_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) ->
+                             kz_term:proplist().
 extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
     [K | Acc];
 extensions_fold({_K, _V}=Extention, Acc) ->
     [Extention | Acc].
 
--spec set_user(diversion(), ne_binary()) -> diversion().
--spec set_address(diversion(), ne_binary()) -> diversion().
--spec set_reason(diversion(), ne_binary()) -> diversion().
+-spec set_user(diversion(), kz_term:ne_binary()) -> diversion().
+-spec set_address(diversion(), kz_term:ne_binary()) -> diversion().
+-spec set_reason(diversion(), kz_term:ne_binary()) -> diversion().
 -spec set_counter(diversion(), non_neg_integer()) -> diversion().
 
 set_user(JObj, User) ->
@@ -98,7 +98,7 @@ set_reason(JObj, Reason) ->
 set_counter(JObj, Counter) ->
     kz_json:set_value(?PARAM_COUNTER, Counter, JObj).
 
--spec from_binary(ne_binary()) -> kz_json:object().
+-spec from_binary(kz_term:ne_binary()) -> kz_json:object().
 from_binary(<<"Diversion:", Header/binary>>) ->
     from_binary(Header);
 from_binary(Header) ->
@@ -109,12 +109,12 @@ from_binary(Header) ->
             parse_params(Rest, kz_json:set_value(?PARAM_ADDRESS, Name, kz_json:new()))
     end.
 
--spec parse_name_addr_header(ne_binary()) -> {binary(), ne_binary()}.
+-spec parse_name_addr_header(kz_term:ne_binary()) -> {binary(), kz_term:ne_binary()}.
 parse_name_addr_header(Header) ->
     Start = lists:foldl(fun name_addr_start/2, Header, [$\n, $\s]),
     parse_name_addr({Start, []}).
 
--spec parse_name_addr({binary(), list()}) -> {binary(), ne_binary()}.
+-spec parse_name_addr({binary(), list()}) -> {binary(), kz_term:ne_binary()}.
 parse_name_addr({<<"<", Header/binary>>, Acc}) ->
     parse_name_addr(parse_name_addr_angle(Header, [$< | Acc]));
 parse_name_addr({<<"\"", Header/binary>>, Acc}) ->
@@ -130,40 +130,40 @@ parse_name_addr({<<>>, Acc}) ->
 parse_name_addr({<<C, Header/binary>>, Acc}) ->
     parse_name_addr({Header, [C | Acc]}).
 
--spec parse_name_addr_angle(ne_binary(), iolist()) ->
+-spec parse_name_addr_angle(kz_term:ne_binary(), iolist()) ->
                                    {binary(), iolist()}.
 parse_name_addr_angle(<<">", Header/binary>>, Acc) ->
     {kz_binary:strip(Header), [$> | Acc]};
 parse_name_addr_angle(<<C, Header/binary>>, Acc) ->
     parse_name_addr_angle(Header, [C | Acc]).
 
--spec parse_name_addr_double_quote(ne_binary(), iolist()) ->
+-spec parse_name_addr_double_quote(kz_term:ne_binary(), iolist()) ->
                                           {binary(), iolist()}.
 parse_name_addr_double_quote(<<"\"", Header/binary>>, Acc) ->
     {Header, [$" | Acc]};
 parse_name_addr_double_quote(<<C, Header/binary>>, Acc) ->
     parse_name_addr_double_quote(Header, [C | Acc]).
 
--spec parse_name_addr_single_quote(ne_binary(), iolist()) ->
+-spec parse_name_addr_single_quote(kz_term:ne_binary(), iolist()) ->
                                           {binary(), iolist()}.
 parse_name_addr_single_quote(<<"'", Header/binary>>, Acc) ->
     {Header, [$' | Acc]};
 parse_name_addr_single_quote(<<C, Header/binary>>, Acc) ->
     parse_name_addr_single_quote(Header, [C | Acc]).
 
--spec name_addr_start(char(), ne_binary()) -> ne_binary().
+-spec name_addr_start(char(), kz_term:ne_binary()) -> kz_term:ne_binary().
 name_addr_start(Char, Bin) ->
     kz_binary:strip_left(Bin, Char).
 
--spec parse_params(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec parse_params(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 parse_params(Params, JObj) ->
     case binary:split(Params, <<";">>, ['trim']) of
         [Param] -> parse_param(Param, JObj);
         [Param, Rest] -> parse_params(Rest, parse_param(Param, JObj))
     end.
 
--spec parse_param(ne_binary(), kz_json:object()) -> kz_json:object().
--spec parse_param(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec parse_param(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+-spec parse_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 parse_param(Param, JObj) ->
     case binary:split(Param, <<"=">>, ['trim']) of
         [Name, Value] ->
@@ -198,7 +198,7 @@ add_extension(Extension, JObj) ->
                      ,JObj
                      ).
 
--spec add_extension(ne_binary(), ne_binary(), kz_json:object()) ->
+-spec add_extension(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                            kz_json:object().
 add_extension(Extension, Value, JObj) ->
     Extensions = kz_json:get_value(?PARAM_EXTENSION, JObj, kz_json:new()),
@@ -237,7 +237,7 @@ parse_privacy_param(Privacy) ->
 parse_screen_param(Screen) ->
     parse_param_value(Screen, ?PARAM_SCREEN_LITERALS).
 
--spec parse_param_value(ne_binary(), ne_binaries()) -> ne_binary().
+-spec parse_param_value(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 parse_param_value(<<"\"", _/binary>> = Param, _Literals) ->
     parse_quoted_param(Param);
 parse_param_value(<<"'", _/binary>> = Param, _Literals) ->
@@ -251,7 +251,7 @@ parse_param_value(Param, [Literal | Literals]) ->
 parse_param_value(Param, []) ->
     parse_token_param(Param).
 
--spec parse_token_param(ne_binary(), iolist()) -> binary().
+-spec parse_token_param(kz_term:ne_binary(), iolist()) -> binary().
 parse_token_param(Token) ->
     parse_token_param(Token, []).
 parse_token_param(<<$\s, _/binary>>, Acc) ->
@@ -263,46 +263,46 @@ parse_token_param(<<>>, Acc) ->
 parse_token_param(<<C, Token/binary>>, Acc) ->
     parse_token_param(Token, [C | Acc]).
 
--spec parse_quoted_param(ne_binary()) -> ne_binary().
+-spec parse_quoted_param(kz_term:ne_binary()) -> kz_term:ne_binary().
 parse_quoted_param(<<"\"", Quoted/binary>>) ->
     parse_double_quoted_param(Quoted, []);
 parse_quoted_param(<<"'", Quoted/binary>>) ->
     parse_single_quoted_param(Quoted, []).
 
--spec parse_double_quoted_param(ne_binary(), iolist()) -> ne_binary().
+-spec parse_double_quoted_param(kz_term:ne_binary(), iolist()) -> kz_term:ne_binary().
 parse_double_quoted_param(<<"\"", _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
 parse_double_quoted_param(<<C, Quoted/binary>>, Acc) ->
     parse_double_quoted_param(Quoted, [C | Acc]).
 
--spec parse_single_quoted_param(ne_binary(), iolist()) -> ne_binary().
+-spec parse_single_quoted_param(kz_term:ne_binary(), iolist()) -> kz_term:ne_binary().
 parse_single_quoted_param(<<"'", _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
 parse_single_quoted_param(<<C, Quoted/binary>>, Acc) ->
     parse_single_quoted_param(Quoted, [C | Acc]).
 
--spec maybe_unquote(ne_binary()) -> ne_binary().
+-spec maybe_unquote(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_unquote(<<"\"", Value/binary>>) ->
     kz_binary:truncate_right(Value, byte_size(Value)-1);
 maybe_unquote(Value) -> Value.
 
--spec to_binary(kz_json:object()) -> ne_binary().
+-spec to_binary(kz_json:object()) -> kz_term:ne_binary().
 to_binary(JObj) ->
     Address = kz_json:get_value(?PARAM_ADDRESS, JObj),
     maybe_add_params(JObj, fix_address(Address)).
 
--spec fix_address(ne_binary()) -> ne_binary().
+-spec fix_address(kz_term:ne_binary()) -> kz_term:ne_binary().
 fix_address(<<$", _Rest/binary>> = Address) -> Address;
 fix_address(<<"<sip", _Rest/binary>> = Address) -> Address;
 fix_address(<<"sip", _Rest/binary>> = Address) ->
     list_to_binary([$<, Address, $>]);
 fix_address(Address) -> Address.
 
--spec maybe_add_params(kz_json:object(), ne_binary()) -> ne_binary().
+-spec maybe_add_params(kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_add_params(JObj, Address) ->
     kz_json:foldl(fun maybe_add_param/3, Address, JObj).
 
--spec maybe_add_param(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec maybe_add_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_add_param(?PARAM_REASON, Reason, Acc) ->
     <<Acc/binary, ";", ?PARAM_REASON/binary, "=", (encode_reason_param(kz_binary:strip(Reason)))/binary>>;
 maybe_add_param(?PARAM_COUNTER, Count, Acc) ->
@@ -317,7 +317,7 @@ maybe_add_param(?PARAM_EXTENSION, Extensions, Acc) ->
     lists:foldl(fun maybe_add_extension/2, Acc, kz_json:to_proplist(Extensions));
 maybe_add_param(_, _, Acc) -> Acc.
 
--spec maybe_add_extension({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
+-spec maybe_add_extension({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_add_extension({Key, ?SOLO_EXTENSION}, Acc) ->
     <<Acc/binary, ";", (kz_term:to_binary(Key))/binary>>;
 maybe_add_extension({Key, Value}, Acc) ->
@@ -325,7 +325,7 @@ maybe_add_extension({Key, Value}, Acc) ->
 maybe_add_extension(Key, Acc) ->
     <<Acc/binary, ";", (kz_term:to_binary(Key))/binary>>.
 
--spec encode_reason_param(ne_binary()) -> ne_binary().
+-spec encode_reason_param(kz_term:ne_binary()) -> kz_term:ne_binary().
 encode_reason_param(Reason) ->
     encode_param(Reason, ?PARAM_REASON_LITERALS).
 encode_privacy_param(Privacy) ->
@@ -333,13 +333,13 @@ encode_privacy_param(Privacy) ->
 encode_screen_param(Screen) ->
     encode_param(Screen, ?PARAM_SCREEN_LITERALS).
 
--spec encode_param(ne_binary(), ne_binaries()) -> ne_binary().
+-spec encode_param(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 encode_param(Param, Literals) ->
     case lists:member(Param, Literals) of
         'true' -> Param;
         'false' -> quote_param(Param)
     end.
 
--spec quote_param(ne_binary()) -> ne_binary().
+-spec quote_param(kz_term:ne_binary()) -> kz_term:ne_binary().
 quote_param(Param) ->
     <<"\"", Param/binary, "\"">>.

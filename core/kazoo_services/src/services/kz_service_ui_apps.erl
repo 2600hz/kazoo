@@ -24,7 +24,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), ne_binary()) -> kz_services:services().
+-spec reconcile(kz_services:services(), kz_term:ne_binary()) -> kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     case kz_datamgr:open_doc(?ACCOUNTS_DB, AccountId) of

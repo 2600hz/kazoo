@@ -23,7 +23,7 @@
 %% route
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(OffnetJObj, _Props) ->
     'true' = kapi_offnet_resource:req_v(OffnetJObj),
     OffnetReq = kapi_offnet_resource:jobj_to_req(OffnetJObj),
@@ -41,7 +41,7 @@ handle_req(OffnetJObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_audio_req(kapi_offnet_resource:req()) -> any().
--spec handle_audio_req(ne_binary(), kapi_offnet_resource:req()) -> any().
+-spec handle_audio_req(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_audio_req(OffnetReq) ->
     Number = stepswitch_util:get_outbound_destination(OffnetReq),
     lager:debug("received outbound audio resource request for ~s: ~p", [Number, OffnetReq]),
@@ -67,7 +67,7 @@ handle_originate_req(OffnetReq) ->
                ),
     handle_originate_req(Number, maybe_add_call_id(kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq) , OffnetReq)).
 
--spec handle_originate_req(ne_binary(), kapi_offnet_resource:req()) -> any().
+-spec handle_originate_req(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_originate_req(Number, OffnetReq) ->
     case knm_number:lookup_account(Number) of
         {'ok', _AccountId, Props} ->
@@ -75,7 +75,7 @@ handle_originate_req(Number, OffnetReq) ->
         _ -> maybe_originate(Number, OffnetReq)
     end.
 
--spec maybe_add_call_id(api_binary(), kapi_offnet_resource:req()) -> kz_json:object().
+-spec maybe_add_call_id(kz_term:api_binary(), kapi_offnet_resource:req()) -> kz_json:object().
 maybe_add_call_id('undefined', OffnetReq) ->
     kz_json:set_value(<<"Outbound-Call-ID">>, kz_binary:rand_hex(8), OffnetReq);
 maybe_add_call_id(_, OffnetReq) -> OffnetReq.
@@ -144,7 +144,7 @@ maybe_force_outbound_sms(Props, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_bridge(ne_binary(), kapi_offnet_resource:req()) -> any().
+-spec maybe_bridge(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_bridge(Number, OffnetReq) ->
     RouteBy = stepswitch_util:route_by(),
     case RouteBy:endpoints(Number, OffnetReq) of
@@ -152,7 +152,7 @@ maybe_bridge(Number, OffnetReq) ->
         Endpoints -> stepswitch_request_sup:bridge(Endpoints, OffnetReq)
     end.
 
--spec maybe_correct_shortdial(ne_binary(), kapi_offnet_resource:req()) -> any().
+-spec maybe_correct_shortdial(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_correct_shortdial(Number, OffnetReq) ->
     case stepswitch_util:correct_shortdial(Number, OffnetReq) of
         'undefined' ->
@@ -172,7 +172,7 @@ maybe_correct_shortdial(Number, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_sms(ne_binary(), kapi_offnet_resource:req()) -> any().
+-spec maybe_sms(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_sms(Number, OffnetReq) ->
     RouteBy = stepswitch_util:route_by(),
     case RouteBy:endpoints(Number, OffnetReq) of
@@ -187,7 +187,7 @@ maybe_sms(Number, OffnetReq) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
-                             sup_startchild_ret().
+                             kz_types:sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     stepswitch_request_sup:local_extension(Props, OffnetReq).
 
@@ -207,7 +207,7 @@ local_sms(Props, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_originate(ne_binary(), kapi_offnet_resource:req()) -> any().
+-spec maybe_originate(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_originate(Number, OffnetReq) ->
     RouteBy = stepswitch_util:route_by(),
     case RouteBy:endpoints(Number, OffnetReq) of
@@ -224,7 +224,7 @@ local_originate(Props, OffnetReq) ->
     lager:debug("originate local request"),
     stepswitch_request_sup:originate(Endpoints, J).
 
--spec local_originate_caller_id(kapi_offnet_resource:req()) -> {api_binary(), api_binary()}.
+-spec local_originate_caller_id(kapi_offnet_resource:req()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 local_originate_caller_id(OffnetReq) ->
     {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                ,<<"Emergency-Caller-ID-Number">>
@@ -234,7 +234,7 @@ local_originate_caller_id(OffnetReq) ->
                                ], OffnetReq)
     }.
 
--spec get_account_realm(ne_binary()) -> ne_binary().
+-spec get_account_realm(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_account_realm(AccountId) ->
     case kz_account:fetch_realm(AccountId) of
         'undefined' -> AccountId;
@@ -289,7 +289,7 @@ publish_no_resources(OffnetReq) ->
             kapi_offnet_resource:publish_resp(ResponseQ, no_resources(OffnetReq))
     end.
 
--spec no_resources(kapi_offnet_resource:req()) -> kz_proplist().
+-spec no_resources(kapi_offnet_resource:req()) -> kz_term:proplist().
 no_resources(OffnetReq) ->
     ToDID = kapi_offnet_resource:to_did(OffnetReq),
     lager:info("no available resources for ~s", [ToDID]),

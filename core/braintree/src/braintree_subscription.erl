@@ -37,7 +37,7 @@
 
 -include("bt.hrl").
 
--type changes() :: [{atom(), kz_proplist(), [kz_proplist()]}].
+-type changes() :: [{atom(), kz_term:proplist(), [kz_term:proplist()]}].
 -type subscription() :: bt_subscription().
 -type subscriptions() :: bt_subscriptions().
 
@@ -52,8 +52,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec url() -> string().
--spec url(ne_binary()) -> string().
--spec url(ne_binary(), ne_binary()) -> string().
+-spec url(kz_term:ne_binary()) -> string().
+-spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 
 url() ->
     "/subscriptions/".
@@ -74,8 +74,8 @@ url(SubscriptionId, Options) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary()) -> subscription().
--spec new(ne_binary(), ne_binary(), ne_binary()) -> subscription().
+-spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
+-spec new(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 
 new(PlanId, PaymentToken) ->
     new(new_subscription_id(), PlanId, PaymentToken).
@@ -88,7 +88,7 @@ new(SubscriptionId, PlanId, PaymentToken) ->
                     }.
 
 %% @private
--spec new_subscription_id() -> ne_binary().
+-spec new_subscription_id() -> kz_term:ne_binary().
 new_subscription_id() ->
     kz_binary:rand_hex(16).
 
@@ -98,7 +98,7 @@ new_subscription_id() ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id(subscription()) -> api_binary().
+-spec get_id(subscription()) -> kz_term:api_binary().
 get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
 
@@ -108,7 +108,7 @@ get_id(#bt_subscription{id=SubscriptionId}) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec get_addon(subscription(), ne_binary()) -> #bt_addon{}.
+-spec get_addon(subscription(), kz_term:ne_binary()) -> #bt_addon{}.
 get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
@@ -125,7 +125,7 @@ get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Get the quantity of addons
 %% @end
 %%--------------------------------------------------------------------
--spec get_addon_quantity(subscription(), ne_binary()) -> integer().
+-spec get_addon_quantity(subscription(), kz_term:ne_binary()) -> integer().
 get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
@@ -142,7 +142,7 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_amount(subscription(), ne_binary(), api_binary() | number()) -> subscription().
+-spec update_addon_amount(subscription(), kz_term:ne_binary(), kz_term:api_binary() | number()) -> subscription().
 update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amount) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
@@ -165,7 +165,7 @@ update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amou
 %% Find a specific discount
 %% @end
 %%--------------------------------------------------------------------
--spec get_discount(subscription(), ne_binary()) -> #bt_discount{}.
+-spec get_discount(subscription(), kz_term:ne_binary()) -> #bt_discount{}.
 get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
         'false' ->
@@ -182,7 +182,7 @@ get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
 %% Update the amount of a specific discount
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_amount(subscription(), ne_binary(), ne_binary() | number()) -> subscription().
+-spec update_discount_amount(subscription(), kz_term:ne_binary(), kz_term:ne_binary() | number()) -> subscription().
 update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Amount) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
         'false' ->
@@ -200,7 +200,7 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
     end.
 
 %% @public
--spec get_payment_token(subscription()) -> api_binary().
+-spec get_payment_token(subscription()) -> kz_term:api_binary().
 get_payment_token(#bt_subscription{payment_token = PT}) -> PT.
 
 %%--------------------------------------------------------------------
@@ -209,7 +209,7 @@ get_payment_token(#bt_subscription{payment_token = PT}) -> PT.
 %% Find a subscription by id
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary()) -> subscription().
+-spec find(kz_term:ne_binary()) -> subscription().
 find(SubscriptionId) ->
     XML = braintree_request:get(url(SubscriptionId)),
     xml_to_record(XML).
@@ -254,7 +254,7 @@ update(#bt_subscription{id=SubscriptionId}=Subscription) ->
 %% Deletes a subscription id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec cancel(subscription() | ne_binary()) -> subscription().
+-spec cancel(subscription() | kz_term:ne_binary()) -> subscription().
 cancel(#bt_subscription{id=SubscriptionId}) ->
     cancel(SubscriptionId);
 cancel(SubscriptionId) ->
@@ -301,7 +301,7 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer() | api_binary()) ->
+-spec update_addon_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary(), integer() | kz_term:api_binary()) ->
                                    subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, kz_term:to_integer(Quantity));
@@ -335,7 +335,7 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec increment_addon_quantity(subscription() | ne_binary(), ne_binary()) -> subscription().
+-spec increment_addon_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 increment_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         'false' ->
@@ -361,7 +361,7 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %% Really ugly function to update a discount for a given subscription
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), api_integer()) -> subscription().
+-spec update_discount_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> subscription().
 update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
     update_discount_quantity(Subscription, DiscountId, kz_term:to_integer(Quantity));
 update_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Quantity) ->
@@ -389,7 +389,7 @@ update_discount_quantity(SubscriptionId, DiscountId, Quantity) ->
 %% Really ugly function to increment a discount for a given subscription
 %% @end
 %%--------------------------------------------------------------------
--spec increment_discount_quantity(subscription() | ne_binary(), ne_binary()) -> subscription().
+-spec increment_discount_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 increment_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
         'false' ->
@@ -415,7 +415,7 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %% Update payment token and reset fields to be able to push update back
 %% @end
 %%--------------------------------------------------------------------
--spec update_payment_token(subscription(), ne_binary()) -> subscription().
+-spec update_payment_token(subscription(), kz_term:ne_binary()) -> subscription().
 update_payment_token(#bt_subscription{id=Id}, PaymentToken) ->
     %% Fixes: 91920: Cannot edit price changing fields on past due subscription.
     %% For reference:
@@ -459,7 +459,7 @@ is_expired(#bt_subscription{}) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> subscription().
--spec xml_to_record(bt_xml(), kz_deeplist()) -> subscription().
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> subscription().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
@@ -506,8 +506,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(subscription()) -> kz_proplist() | bt_xml().
--spec record_to_xml(subscription(), boolean()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(subscription()) -> kz_term:proplist() | bt_xml().
+-spec record_to_xml(subscription(), boolean()) -> kz_term:proplist() | bt_xml().
 
 record_to_xml(Subscription) ->
     record_to_xml(Subscription, 'false').
@@ -605,7 +605,7 @@ record_to_json(Subscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec should_prorate(subscription(), kz_proplist()) -> kz_proplist().
+-spec should_prorate(subscription(), kz_term:proplist()) -> kz_term:proplist().
 should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"should_prorate">>, 'true') of
         'true' -> update_options('prorate-charges', Value, Props);
@@ -618,7 +618,7 @@ should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec update_options(any(), any(), kz_proplist()) -> kz_proplist().
+-spec update_options(any(), any(), kz_term:proplist()) -> kz_term:proplist().
 update_options(_, 'undefined', Props) -> Props;
 update_options(Key, Value, Props) ->
     case props:get_value('options', Props) of
@@ -722,7 +722,7 @@ create_discount_fold(#bt_discount{existing_id=Id
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec append_items(atom(), ne_binary() | kz_proplist(), changes()) -> changes().
+-spec append_items(atom(), kz_term:ne_binary() | kz_term:proplist(), changes()) -> changes().
 append_items(Change, Item, Changes) ->
     case lists:keyfind(Change, 1, Changes) of
         'false' ->

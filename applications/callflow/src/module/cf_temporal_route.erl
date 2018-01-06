@@ -137,14 +137,14 @@ get_temporal_rules(#temporal{local_sec=LSec
                             }, Call) ->
     get_temporal_rules(Routes, LSec, kapps_call:account_db(Call), TZ, []).
 
--spec get_temporal_rules(kz_json:path(), non_neg_integer(), ne_binary(), ne_binary(), rules()) -> rules().
+-spec get_temporal_rules(kz_json:path(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), rules()) -> rules().
 get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
                                 ,kz_term:to_list(TZ)
                                 ),
     get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
 
--spec get_temporal_rules(routes(), non_neg_integer(), ne_binary(), ne_binary(), kz_datetime(), rules()) ->
+-spec get_temporal_rules(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules()) ->
                                 rules().
 get_temporal_rules([], _, _, _, _, Rules) -> lists:reverse(Rules);
 get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
@@ -156,7 +156,7 @@ get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
             maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, JObj)
     end.
 
--spec maybe_build_rule(routes(), non_neg_integer(), ne_binary(), ne_binary(), kz_datetime(), rules(), ne_binary(), kz_json:object()) -> rules().
+-spec maybe_build_rule(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules(), kz_term:ne_binary(), kz_json:object()) -> rules().
 maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, JObj) ->
     StartDate = kz_date:from_gregorian_seconds(kz_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ),
     RuleName = kz_json:get_ne_binary_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME),
@@ -169,7 +169,7 @@ maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, JObj) ->
             get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [build_rule(Id, JObj, StartDate, RuleName) | Rules])
     end.
 
--spec build_rule(ne_binary(), kz_json:object(), kz_date(), ne_binary()) -> rule().
+-spec build_rule(kz_term:ne_binary(), kz_json:object(), kz_time:date(), kz_term:ne_binary()) -> rule().
 build_rule(Id, JObj, StartDate, RuleName) ->
     #rule{cycle = kz_json:get_binary_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
          ,days = days_in_rule(JObj)
@@ -274,7 +274,7 @@ interdigit_timeout(Data) ->
 %% Loads rules set from account db.
 %% @end
 %%--------------------------------------------------------------------
--spec get_rule_set(route() | ne_binary(), kapps_call:call()) -> ne_binaries().
+-spec get_rule_set(route() | kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 get_rule_set({Id, Id}, Call) ->
     get_rule_set(Id, Call);
 
@@ -454,7 +454,7 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %%   - 1,2,3..31
 %% @end
 %%--------------------------------------------------------------------
--spec next_rule_date(rule(), kz_date()) -> kz_date().
+-spec next_rule_date(rule(), kz_time:date()) -> kz_time:date().
 next_rule_date(#rule{cycle = <<"date">>
                     ,start_date=Date0
                     }
@@ -615,7 +615,7 @@ next_rule_date(#rule{cycle = <<"monthly">>
             Date;
         %% false:
         %%   In an 'inactive' month
-        %% {kz_date(), integer()}:
+        %% {kz_time:date(), integer()}:
         %%   We have already passed the last occurance of the DOW
         _ ->
             find_ordinal_weekday(Y0, M0 + Offset + I0, Weekday, Ordinal)
@@ -755,7 +755,7 @@ next_rule_date(#rule{cycle = <<"yearly">>
 %% It is possible for this function to cross month/year boundaries.
 %% @end
 %%--------------------------------------------------------------------
--spec find_ordinal_weekday(kz_year(), improper_month(), wday(), strict_ordinal()) -> kz_date().
+-spec find_ordinal_weekday(kz_time:year(), improper_month(), wday(), strict_ordinal()) -> kz_time:date().
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 =:= 13 ->
     find_ordinal_weekday(Y1 + 1, 1, Weekday, Ordinal);
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 > 12 ->
@@ -783,7 +783,7 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
 %% occurance MUST be in the third week.
 %% @end
 %%--------------------------------------------------------------------
--spec find_last_weekday(improper_date(), wday()) -> kz_date().
+-spec find_last_weekday(improper_date(), wday()) -> kz_time:date().
 find_last_weekday({Y, M, D}, Weekday) when M =:= 13 ->
     find_last_weekday({Y + 1, 1, D}, Weekday);
 find_last_weekday({Y, M, D}, Weekday) when M > 12 ->
@@ -803,7 +803,7 @@ find_last_weekday({Y, M, _}, Weekday) ->
 %% function will explode on occasion.
 %% @end
 %%--------------------------------------------------------------------
--spec date_of_dow(kz_year(), improper_month(), wday(), strict_ordinal()) -> kz_date().
+-spec date_of_dow(kz_time:year(), improper_month(), wday(), strict_ordinal()) -> kz_time:date().
 date_of_dow(Year, 1, Weekday, Ordinal) ->
     date_of_dow(Year - 1, 13, Weekday, Ordinal);
 date_of_dow(Year, Month, Weekday, Ordinal) ->
@@ -836,13 +836,13 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %% All while remaining ISO 8601 compliant.
 %% @end
 %%--------------------------------------------------------------------
--spec iso_week_difference(kz_date(), kz_date()) -> non_neg_integer().
+-spec iso_week_difference(kz_time:date(), kz_time:date()) -> non_neg_integer().
 iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
     DS0 = calendar:date_to_gregorian_days(kz_date:from_iso_week(calendar:iso_week_number({Y0, M0, D0}))),
     DS1 = calendar:date_to_gregorian_days(kz_date:from_iso_week(calendar:iso_week_number({Y1, M1, D1}))),
     trunc( abs( DS0 - DS1 ) / 7 ).
 
--spec find_active_days(ne_binaries(), kz_day()) -> [kz_daynum()].
+-spec find_active_days(kz_term:ne_binaries(), kz_time:day()) -> [kz_time:daynum()].
 find_active_days(Weekdays, DOW0) ->
     [DOW1
      || DOW1 <- [kz_date:wday_to_dow(D) || D <- Weekdays],

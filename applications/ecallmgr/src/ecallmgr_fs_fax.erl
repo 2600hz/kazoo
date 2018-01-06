@@ -13,7 +13,7 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--spec receive_fax(atom(), ne_binary(), kz_json:object()) -> kz_proplist().
+-spec receive_fax(atom(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 receive_fax(Node, UUID, JObj) ->
     Sets = props:filter_undefined(
              lists:foldl(fun(Header, Acc) ->

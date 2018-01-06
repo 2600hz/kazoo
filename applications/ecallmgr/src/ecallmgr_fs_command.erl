@@ -26,7 +26,7 @@
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec set(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec set(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 set(_, _, []) -> 'ok';
 set(_Node, 'undefined', _Props) ->
     lager:warning("no UUID for setting on node ~s: ~p", [_Node, _Props]);
@@ -44,7 +44,7 @@ set(Node, UUID, Props) ->
 %% set channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
--spec bg_set(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bg_set(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_set(_, _, []) -> 'ok';
 bg_set(_Node, 'undefined', _Props) ->
     lager:warning("no UUID for setting on node ~s: ~p", [_Node, _Props]);
@@ -62,7 +62,7 @@ bg_set(Node, UUID, Props) ->
 %% unset channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec unset(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec unset(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 unset(_, _, []) -> 'ok';
 unset(_Node, 'undefined', _Props) ->
     lager:warning("no UUID for unsetting on node ~s: ~p", [_Node, _Props]);
@@ -76,7 +76,7 @@ unset(Node, UUID, Props) ->
 %% unset channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
--spec bg_unset(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bg_unset(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_unset(_, _, []) -> 'ok';
 bg_unset(_Node, 'undefined', _Props) ->
     lager:warning("no UUID for unsetting on node ~s: ~p", [_Node, _Props]);
@@ -90,7 +90,7 @@ bg_unset(Node, UUID, Props) ->
 %% export channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec export(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec export(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
 export(_Node, 'undefined', _Props) ->
     lager:warning("no UUID for exporting on node ~s: ~p", [_Node, _Props]);
@@ -109,7 +109,7 @@ export(Node, UUID, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_export(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bridge_export(atom(), kz_term:ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 bridge_export(_, _, []) -> 'ok';
 bridge_export(_Node, 'undefined', _Props) ->
     lager:warning("no UUID for bridge_export on node ~s: ~p", [_Node, _Props]);
@@ -128,7 +128,7 @@ bridge_export(Node, UUID, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_call(atom(), ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec record_call(atom(), kz_term:ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 record_call(Node, UUID, Args) ->
     lager:debug("execute on node ~p: uuid_record(~p)", [Node, Args]),
     case freeswitch:api(Node, 'uuid_record', Args) of
@@ -154,7 +154,7 @@ record_call(Node, UUID, Args) ->
             Error
     end.
 
--spec maybe_export_vars(atom(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec maybe_export_vars(atom(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 maybe_export_vars(Node, UUID, Props) ->
     lists:foldl(fun({<<"Hold-Media">> = K, V}, Acc) ->
                         _ = export(Node, UUID, [{K, V}]),
@@ -169,7 +169,7 @@ maybe_export_vars(Node, UUID, Props) ->
 api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
--spec api(atom(), ne_binary(), atom(), list()) -> ecallmgr_util:send_cmd_ret().
+-spec api(atom(), kz_term:ne_binary(), atom(), list()) -> ecallmgr_util:send_cmd_ret().
 api(_, _, _, []) -> 'ok';
 api(Node, UUID, Cmd, Args)
   when is_list(Args)->
@@ -179,7 +179,7 @@ api(Node, UUID, Cmd, Args)
 bgapi(Node, Cmd, Args) ->
     freeswitch:bgapi(Node, Cmd, Args).
 
--spec bgapi(atom(), ne_binary(), atom(), list()) -> ecallmgr_util:send_cmd_ret().
+-spec bgapi(atom(), kz_term:ne_binary(), atom(), list()) -> ecallmgr_util:send_cmd_ret().
 bgapi(_, _, _, []) -> 'ok';
 bgapi(Node, UUID, Cmd, Args)
   when is_list(Args)->

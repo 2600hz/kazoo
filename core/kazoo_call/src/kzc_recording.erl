@@ -49,30 +49,30 @@
 
 -type store_url() :: 'false' |
                      {'true', 'local'} |
-                     {'true', 'other', ne_binary()}.
+                     {'true', 'other', kz_term:ne_binary()}.
 
--record(state, {url                       :: api_ne_binary()
-               ,format                    :: api_ne_binary()
-               ,sample_rate               :: api_integer()
+-record(state, {url                       :: kz_term:api_ne_binary()
+               ,format                    :: kz_term:api_ne_binary()
+               ,sample_rate               :: kz_term:api_integer()
                ,media                     :: media()
-               ,doc_db                    :: api_ne_binary()
-               ,doc_id                    :: api_ne_binary()
-               ,cdr_id                    :: api_ne_binary()
-               ,interaction_id            :: api_ne_binary()
+               ,doc_db                    :: kz_term:api_ne_binary()
+               ,doc_id                    :: kz_term:api_ne_binary()
+               ,cdr_id                    :: kz_term:api_ne_binary()
+               ,interaction_id            :: kz_term:api_ne_binary()
                ,call                      :: kapps_call:call() | 'undefined'
-               ,record_on_answer          :: api_boolean()
-               ,record_on_bridge          :: api_boolean()
+               ,record_on_answer          :: kz_term:api_boolean()
+               ,record_on_bridge          :: kz_term:api_boolean()
                ,should_store              :: store_url()
-               ,time_limit                :: api_pos_integer()
-               ,record_min_sec            :: api_pos_integer()
+               ,time_limit                :: kz_term:api_pos_integer()
+               ,record_min_sec            :: kz_term:api_pos_integer()
                ,store_attempted = 'false' :: boolean()
                ,is_recording = 'false'    :: boolean()
                ,stop_received = 'false'   :: boolean()
                ,retries = 0               :: non_neg_integer()
                ,verb = 'put'              :: atom()
-               ,account_id                :: api_ne_binary()
+               ,account_id                :: kz_term:api_ne_binary()
                ,event = 'undefined'       :: kz_call_event:doc() | 'undefined'
-               ,origin                    :: api_ne_binary()
+               ,origin                    :: kz_term:api_ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -114,7 +114,7 @@
 -define(CHECK_CHANNEL_STATUS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 -define(RECORDING_ID_KEY, <<"media_name">>).
 
--spec start_link(kapps_call:call(), kz_json:object()) -> startlink_ret().
+-spec start_link(kapps_call:call(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Call, Data) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
@@ -131,7 +131,7 @@ get_response_media(JObj) ->
     Filename = kz_call_event:application_response(JObj),
     {filename:dirname(Filename), filename:basename(Filename)}.
 
--spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     kz_util:put_callid(JObj),
     Pid = props:get_value('server', Props),
@@ -219,7 +219,7 @@ init(Call, Data) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -233,7 +233,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
                                                 ,is_recording='true'
                                                 }=State) ->
@@ -381,7 +381,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -394,7 +394,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -429,7 +429,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_timelimit(api_object() | integer()) -> pos_integer().
+-spec get_timelimit(kz_term:api_object() | integer()) -> pos_integer().
 get_timelimit('undefined') ->
     kz_media_util:max_recording_time_limit();
 get_timelimit(TL) when is_integer(TL) ->
@@ -442,7 +442,7 @@ get_timelimit(TL) when is_integer(TL) ->
 get_timelimit(Data) ->
     get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)).
 
--spec get_format(api_ne_binary()) -> ne_binary().
+-spec get_format(kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_format('undefined') -> kz_media_config:call_recording_extension();
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"mp4">> = MP4) -> MP4;
@@ -513,14 +513,14 @@ maybe_store_recording_meta(#state{doc_db=Db
         _ -> store_recording_meta(State)
     end.
 
--spec get_media_name(ne_binary(), api_ne_binary()) -> ne_binary().
+-spec get_media_name(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_media_name(Name, Ext) ->
     case filename:extension(Name) of
         Ext -> Name;
         _ -> <<Name/binary, ".", Ext/binary>>
     end.
 
--spec store_url(state(), kzd_call_recording:doc()) -> ne_binary().
+-spec store_url(state(), kzd_call_recording:doc()) -> kz_term:ne_binary().
 store_url(#state{doc_db=Db
                 ,doc_id=MediaId
                 ,media={_,MediaName}
@@ -547,13 +547,13 @@ store_url(#state{doc_db=Db
     Options = [{'plan_override', Handler}],
     kz_media_url:store(Db, {kzd_call_recording:type(), MediaId}, MediaName, Options).
 
--spec handler_fields(ne_binary(), state()) ->
+-spec handler_fields(kz_term:ne_binary(), state()) ->
                             kz_att_util:format_fields().
 handler_fields(Url, State) ->
     {Protocol, _, _, _, _} = kz_http_util:urlsplit(Url),
     handler_fields_for_protocol(Protocol, Url, State).
 
--spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) ->
+-spec handler_fields_for_protocol(kz_term:ne_binary(), kz_term:ne_binary(), state()) ->
                                          kz_att_util:format_fields().
 handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #state{format=Ext}) ->
     [<<"call_recording_">>
@@ -594,18 +594,18 @@ handler_fields_for_protocol(<<"http", _/binary>>
     ,{'field', <<"duration_ms">>}
     ].
 
--spec check_url(ne_binary()) -> {binary(), ne_binary()}.
+-spec check_url(kz_term:ne_binary()) -> {binary(), kz_term:ne_binary()}.
 check_url(Url) ->
     case kz_http_util:urlsplit(Url) of
         {_, _, _, <<>>, _} -> {<<>>, <<"?">>};
         {_, _, _, Params, _} -> {check_url_query(Params), <<"&">>}
     end.
 
--spec check_url_query(ne_binary()) -> binary().
+-spec check_url_query(kz_term:ne_binary()) -> binary().
 check_url_query(Query) ->
     check_url_param(lists:last(binary:split(Query, <<"&">>, ['global']))).
 
--spec check_url_param(ne_binary()) -> binary().
+-spec check_url_param(kz_term:ne_binary()) -> binary().
 check_url_param(Param) ->
     case binary:split(Param, <<"=">>) of
         [_] -> <<"=">>;
@@ -613,7 +613,7 @@ check_url_param(Param) ->
         _ -> <<"&recording=">>
     end.
 
--spec handler_from_url(ne_binary()) -> 'kz_att_ftp' | 'kz_att_http' | 'undefined'.
+-spec handler_from_url(kz_term:ne_binary()) -> 'kz_att_ftp' | 'kz_att_http' | 'undefined'.
 handler_from_url(Url) ->
     case kz_http_util:urlsplit(Url) of
         {<<"ftp">>, _, _, _, _} -> 'kz_att_ftp';
@@ -623,7 +623,7 @@ handler_from_url(Url) ->
         _ -> 'undefined'
     end.
 
--spec should_store_recording(ne_binary(), api_binary()) -> store_url().
+-spec should_store_recording(kz_term:ne_binary(), kz_term:api_binary()) -> store_url().
 should_store_recording(AccountId, Url) ->
     case kz_term:is_empty(Url) of
         'true' -> maybe_storage_plan(AccountId);
@@ -636,7 +636,7 @@ should_store_recording(AccountId, Url) ->
             end
     end.
 
--spec maybe_storage_plan(ne_binary()) -> store_url().
+-spec maybe_storage_plan(kz_term:ne_binary()) -> store_url().
 maybe_storage_plan(AccountId) ->
     AccountDb = kz_util:format_account_mod_id(AccountId),
     Plan = kzs_plan:get_dataplan(AccountDb, <<"call_recording">>),
@@ -669,7 +669,7 @@ save_recording(#state{call=Call
             store_recording(Media, StoreUrl, Call)
     end.
 
--spec start_recording(kapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer(), api_integer()) -> 'ok'.
+-spec start_recording(kapps_call:call(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), kz_term:api_integer(), kz_term:api_integer()) -> 'ok'.
 start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec) ->
     lager:debug("starting recording of ~s", [MediaName]),
     FollowTransfer = kapps_call:kvs_fetch('recording_follow_transfer', 'true', Call),
@@ -683,13 +683,13 @@ start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec
     kapps_call_command:start_record_call(Props, TimeLimit, Call),
     gen_server:cast(self(), 'recording_started').
 
--spec store_recording({ne_binary(), ne_binary()}, kapps_call_command:store_fun(), kapps_call:call()) ->
+-spec store_recording({kz_term:ne_binary(), kz_term:ne_binary()}, kapps_call_command:store_fun(), kapps_call:call()) ->
                              pid().
 store_recording({DirName, MediaName}, StoreUrl, Call) ->
     Filename = filename:join(DirName, MediaName),
     kz_util:spawn(fun store_recording/4, [self(), Filename, StoreUrl, Call]).
 
--spec store_recording(pid(), ne_binary(), kapps_call_command:store_fun(), kapps_call:call()) -> 'ok'.
+-spec store_recording(pid(), kz_term:ne_binary(), kapps_call_command:store_fun(), kapps_call:call()) -> 'ok'.
 store_recording(Pid, Filename, StoreUrl, Call) ->
     case kapps_call_command:store_file(Filename, StoreUrl, Call) of
         {'error', Error} ->

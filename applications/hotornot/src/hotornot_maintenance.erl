@@ -55,10 +55,10 @@ wait_for_rebuild(Pid, Ref) ->
             io:format("trie failed to build in ~p under ~p ms~n", [Pid, Timeout])
     end.
 
--spec rates_for_did(ne_binary()) -> 'ok'.
--spec rates_for_did(ne_binary(), ne_binary()) -> 'ok'.
--spec rates_for_did(ne_binary(), api_ne_binary(), trunking_options()) -> 'ok'.
--spec rates_for_did(ne_binary(), api_ne_binary(), api_ne_binary(), trunking_options()) -> 'ok'.
+-spec rates_for_did(kz_term:ne_binary()) -> 'ok'.
+-spec rates_for_did(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec rates_for_did(kz_term:ne_binary(), kz_term:api_ne_binary(), trunking_options()) -> 'ok'.
+-spec rates_for_did(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), trunking_options()) -> 'ok'.
 rates_for_did(DID) ->
     rates_for_did(DID, 'undefined', 'undefined', []).
 rates_for_did(DID, AccountId) ->
@@ -99,7 +99,7 @@ print_matching(Matching) ->
                    | Sorted
                   ]).
 
--spec rates_between(ne_binary(), ne_binary()) -> 'ok'.
+-spec rates_between(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 rates_between(Pre, Post) ->
     ViewOpts = [{'startkey', kz_term:to_binary(Pre)}
                ,{'endkey', kz_term:to_binary(Post)}
@@ -128,9 +128,9 @@ print_rate(Rate) ->
               ,kz_term:to_binary(kzd_rate:version(Rate, <<>>))
               ]).
 
--spec get_rate_version() -> api_binary().
+-spec get_rate_version() -> kz_term:api_binary().
 get_rate_version() -> hotornot_config:rate_version().
 
--spec set_rate_version(ne_binary()) -> 'ok'.
+-spec set_rate_version(kz_term:ne_binary()) -> 'ok'.
 set_rate_version(Version) ->
     hotornot_config:set_rate_version(Version).

@@ -92,7 +92,7 @@ to_json(#webhook{}=Hook) ->
       ,{<<"modifiers">>, Hook#webhook.modifiers}
       ]).
 
--spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
+-spec find_webhooks(kz_term:ne_binary(), kz_term:api_binary()) -> webhooks().
 find_webhooks(_HookEvent, 'undefined') -> [];
 find_webhooks(HookEvent, AccountId) ->
     case kz_account:fetch(AccountId, 'accounts') of
@@ -157,7 +157,7 @@ maybe_fire_hook(JObj, #webhook{modifiers=Modifiers}=Hook) ->
     end.
 
 -type maybe_fire_acc() :: {boolean(), kz_json:object()}.
--spec maybe_fire_foldl(ne_binary(), any(), maybe_fire_acc()) -> maybe_fire_acc().
+-spec maybe_fire_foldl(kz_term:ne_binary(), any(), maybe_fire_acc()) -> maybe_fire_acc().
 
 maybe_fire_foldl(_Key, _Value, {'false', _}=Acc) ->
     Acc;
@@ -185,7 +185,7 @@ fire_hook(JObj, #webhook{custom_data = CustomData
     EventId = kz_binary:rand_hex(5),
     do_fire(Hook, EventId, kz_json:merge_jobjs(CustomData, JObj)).
 
--spec do_fire(webhook(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec do_fire(webhook(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 do_fire(#webhook{uri = ?NE_BINARY = URI
                 ,http_verb = 'get'
                 ,retries = Retries
@@ -218,7 +218,7 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
 
     handle_resp(Hook, EventId, JObj, Debug, Fired).
 
--spec handle_resp(webhook(), ne_binary(), kz_json:object(), kz_proplist(), kz_http:ret()) -> 'ok'.
+-spec handle_resp(webhook(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), kz_http:ret()) -> 'ok'.
 handle_resp(#webhook{hook_event = _HookEvent
                     ,hook_id = _HookId
                     } = Hook, _EventId, _JObj, Debug, {'ok', 200, _, _} = Resp) ->
@@ -238,7 +238,7 @@ handle_resp(#webhook{hook_event = _HookEvent
     _ = failed_hook(Hook, Debug, Resp),
     retry_hook(Hook, EventId, JObj).
 
--spec retry_hook(webhook(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec retry_hook(webhook(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 retry_hook(#webhook{uri = _URI
                    ,retries = 1
                    ,hook_id = _HookId
@@ -249,8 +249,8 @@ retry_hook(#webhook{retries = Retries} = Hook, EventId, JObj) ->
     timer:sleep(2000),
     do_fire(Hook#webhook{retries = Retries - 1}, EventId, JObj).
 
--spec successful_hook(webhook(), kz_proplist(), kz_http:ret()) -> 'ok'.
--spec successful_hook(webhook(), kz_proplist(), kz_http:ret(), boolean()) -> 'ok'.
+-spec successful_hook(webhook(), kz_term:proplist(), kz_http:ret()) -> 'ok'.
+-spec successful_hook(webhook(), kz_term:proplist(), kz_http:ret(), boolean()) -> 'ok'.
 successful_hook(Hook, Debug, Resp) ->
     successful_hook(Hook, Debug, Resp, ?SHOULD_LOG_SUCCESS).
 
@@ -259,7 +259,7 @@ successful_hook(#webhook{account_id = AccountId}, Debug, Resp, 'true') ->
     DebugJObj = debug_resp(Resp, Debug, 'undefined'),
     save_attempt(AccountId, DebugJObj).
 
--spec failed_hook(webhook(), kz_proplist(), kz_http:ret()) -> 'ok'.
+-spec failed_hook(webhook(), kz_term:proplist(), kz_http:ret()) -> 'ok'.
 failed_hook(#webhook{hook_id = HookId
                     ,account_id = AccountId
                     ,retries = Retries
@@ -272,7 +272,7 @@ failed_hook(#webhook{hook_id = HookId
 %%% Internal functions
 %%%===================================================================
 
--spec save_attempt(api_binary(), kz_json:object()) -> 'ok'.
+-spec save_attempt(kz_term:api_binary(), kz_json:object()) -> 'ok'.
 save_attempt(AccountId, Attempt) ->
     Now = kz_time:now_s(),
     ModDb = kz_util:format_account_mod_id(AccountId, Now),
@@ -288,8 +288,8 @@ save_attempt(AccountId, Attempt) ->
     _ = kazoo_modb:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
     'ok'.
 
--spec debug_req(webhook(), ne_binary(), ne_binary(), kz_proplist(), iodata()) ->
-                       kz_proplist().
+-spec debug_req(webhook(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), iodata()) ->
+                       kz_term:proplist().
 debug_req(#webhook{hook_id=HookId
                   ,hook_event = HookEvent
                   ,http_verb = Method
@@ -309,7 +309,7 @@ debug_req(#webhook{hook_id=HookId
     ,{<<"req_body">>, ReqBody}
     ].
 
--spec debug_resp(kz_http:ret(), kz_proplist(), hook_retries() | 'undefined') ->
+-spec debug_resp(kz_http:ret(), kz_term:proplist(), hook_retries() | 'undefined') ->
                         kz_json:object().
 debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
     Headers = kz_json:from_list(
@@ -358,11 +358,11 @@ debug_resp({'error', E}, Debug, Retries) ->
        | Debug
       ]).
 
--spec fix_value(number() | list()) -> number() | ne_binary().
+-spec fix_value(number() | list()) -> number() | kz_term:ne_binary().
 fix_value(N) when is_number(N) -> N;
 fix_value(O) -> kz_term:to_lower_binary(O).
 
--spec fix_error_value(atom() | {atom(), atom()}) -> ne_binary().
+-spec fix_error_value(atom() | {atom(), atom()}) -> kz_term:ne_binary().
 fix_error_value({E, R}) ->
     <<(kz_term:to_binary(E))/binary
       ,": "
@@ -371,8 +371,8 @@ fix_error_value({E, R}) ->
 fix_error_value(E) ->
     kz_term:to_binary(E).
 
--spec hook_id(kz_json:object()) -> ne_binary().
--spec hook_id(ne_binary(), ne_binary()) -> ne_binary().
+-spec hook_id(kz_json:object()) -> kz_term:ne_binary().
+-spec hook_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 hook_id(JObj) ->
     hook_id(kz_json:get_first_defined([<<"pvt_account_id">>
                                       ,<<"Account-ID">>
@@ -385,10 +385,10 @@ hook_id(JObj) ->
 hook_id(AccountId, Id) ->
     <<AccountId/binary, ".", Id/binary>>.
 
--spec hook_event(ne_binary()) -> ne_binary().
+-spec hook_event(kz_term:ne_binary()) -> kz_term:ne_binary().
 hook_event(Bin) -> hook_event_lowered(kz_term:to_lower_binary(Bin)).
 
--spec hook_event_lowered(ne_binary()) -> ne_binary().
+-spec hook_event_lowered(kz_term:ne_binary()) -> kz_term:ne_binary().
 hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
 hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
 hook_event_lowered(<<"channel_destroy">>) -> <<"CHANNEL_DESTROY">>;
@@ -451,7 +451,7 @@ update_hook_docs([JObj|JObjs], Acc) ->
     Hook = kz_json:get_value(<<"doc">>, JObj),
     update_hook_docs(JObjs, update_hook_doc(Hook, kzd_webhook:event(Hook), Acc)).
 
--spec update_hook_doc(kz_json:object(), ne_binary(), map()) -> map().
+-spec update_hook_doc(kz_json:object(), kz_term:ne_binary(), map()) -> map().
 update_hook_doc(WebHook, <<"callflow">>, #{update := Update}=Acc) ->
     Acc#{update => [set_as_notifications_webhook(WebHook, <<"callflow">>, kz_doc:id(WebHook), 'undefined', kz_doc:revision(WebHook))
                     | Update
@@ -476,7 +476,7 @@ update_hook_doc(WebHook, <<"outbound_fax">>, #{update := Update, extra := Extra}
                   ]
         }.
 
--spec set_as_notifications_webhook(kz_json:object(), ne_binary(), ne_binary(), api_ne_binary(), api_ne_binary()) -> kz_json:object().
+-spec set_as_notifications_webhook(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
 set_as_notifications_webhook(WebHook, Type, Id, OtherId, Rev) ->
     kz_json:set_values([{<<"_id">>, Id}
                        ,{<<"_rev">>, Rev}
@@ -577,7 +577,7 @@ jobj_to_rec(Hook) ->
 
 -spec init_webhooks() -> 'ok'.
 -spec init_webhooks(kz_json:objects()) -> 'ok'.
--spec init_webhooks(kz_json:objects(), kz_year(), kz_month()) -> 'ok'.
+-spec init_webhooks(kz_json:objects(), kz_time:year(), kz_time:month()) -> 'ok'.
 init_webhooks() ->
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
@@ -597,13 +597,13 @@ init_webhooks(WebHooks, Year, Month) ->
     _ = [init_webhook(WebHook, Year, Month) || WebHook <- WebHooks],
     'ok'.
 
--spec init_webhook(kz_json:object(), kz_year(), kz_month()) -> 'ok'.
+-spec init_webhook(kz_json:object(), kz_time:year(), kz_time:month()) -> 'ok'.
 init_webhook(WebHook, Year, Month) ->
     Db = kz_util:format_account_id(kz_json:get_value(<<"key">>, WebHook), Year, Month),
     kazoo_modb:maybe_create(Db),
     lager:debug("updated account_modb ~s", [Db]).
 
--spec note_failed_attempt(ne_binary(), ne_binary()) -> 'ok'.
+-spec note_failed_attempt(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 note_failed_attempt(AccountId, HookId) ->
     kz_cache:store_local(?CACHE_NAME
                         ,?FAILURE_CACHE_KEY(AccountId, HookId, kz_time:now_s())
@@ -611,7 +611,7 @@ note_failed_attempt(AccountId, HookId) ->
                         ,[{'expires', account_expires_time(AccountId)}]
                         ).
 
--spec account_expires_time(ne_binary()) -> pos_integer().
+-spec account_expires_time(kz_term:ne_binary()) -> pos_integer().
 account_expires_time(AccountId) ->
     Expiry = kapps_account_config:get_global(AccountId
                                             ,?APP_NAME
@@ -628,13 +628,13 @@ account_expires_time(AccountId) ->
 system_expires_time() ->
     kapps_config:get_integer(?APP_NAME, ?ATTEMPT_EXPIRY_KEY, ?MILLISECONDS_IN_MINUTE).
 
--spec reenable(ne_binary(), ne_binary()) -> 'ok'.
+-spec reenable(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 reenable(AccountId, <<"account">>) ->
     enable_account_hooks(AccountId);
 reenable(AccountId, <<"descendants">>) ->
     enable_descendant_hooks(AccountId).
 
--spec enable_account_hooks(ne_binary()) -> 'ok'.
+-spec enable_account_hooks(kz_term:ne_binary()) -> 'ok'.
 enable_account_hooks(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
 
@@ -670,7 +670,7 @@ hooks_to_reenable(Hooks) ->
         kzd_webhook:is_auto_disabled(Hook = kz_json:get_value(<<"doc">>, View))
     ].
 
--spec enable_descendant_hooks(ne_binary()) -> 'ok'.
+-spec enable_descendant_hooks(kz_term:ne_binary()) -> 'ok'.
 enable_descendant_hooks(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB
@@ -691,20 +691,20 @@ enable_descendant_hooks(Account) ->
             io:format("failed to find descendants for account ~s: ~p~n", [AccountId, _E])
     end.
 
--spec maybe_enable_descendants_hooks(ne_binaries()) -> 'ok'.
+-spec maybe_enable_descendants_hooks(kz_term:ne_binaries()) -> 'ok'.
 maybe_enable_descendants_hooks(Accounts) ->
     lists:foreach(fun maybe_enable_descendant_hooks/1, Accounts).
 
--spec maybe_enable_descendant_hooks(ne_binary()) -> 'ok'.
+-spec maybe_enable_descendant_hooks(kz_term:ne_binary()) -> 'ok'.
 maybe_enable_descendant_hooks(Account) ->
     io:format("## checking account ~s for hooks to enable ##~n", [Account]),
     enable_account_hooks(Account).
 
--spec init_metadata(ne_binary(), kz_json:object()) -> 'ok'.
+-spec init_metadata(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 init_metadata(Id, JObj) ->
     init_metadata(Id, JObj, kapps_util:get_master_account_db()).
 
--spec init_metadata(ne_binary(), kz_json:object(), {'ok', ne_binary()} | {'error', any()}) -> 'ok'.
+-spec init_metadata(kz_term:ne_binary(), kz_json:object(), {'ok', kz_term:ne_binary()} | {'error', any()}) -> 'ok'.
 init_metadata(_, _, {'error', _}) ->
     lager:warning("master account not available"),
     'ok';
@@ -721,7 +721,7 @@ init_metadata(Id, JObj, {'ok', MasterAccountDb}) ->
             end
     end.
 
--spec save_metadata(ne_binary(), kz_json:object()) -> 'ok'.
+-spec save_metadata(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 save_metadata(MasterAccountDb, JObj) ->
     Metadata =  kz_doc:update_pvt_parameters(JObj, MasterAccountDb, [{'type', <<"webhook_meta">>}]),
     case kz_datamgr:save_doc(MasterAccountDb, Metadata) of
@@ -733,7 +733,7 @@ save_metadata(MasterAccountDb, JObj) ->
             lager:warning("failed to load metadata for ~s: ~p", [kz_doc:id(JObj), _E])
     end.
 
--spec available_events() -> ne_binaries().
+-spec available_events() -> kz_term:ne_binaries().
 available_events() ->
     case kz_cache:fetch_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY) of
         {'error', 'not_found'} ->
@@ -742,7 +742,7 @@ available_events() ->
             Events
     end.
 
--spec fetch_available_events() -> ne_binaries().
+-spec fetch_available_events() -> kz_term:ne_binaries().
 fetch_available_events() ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     case kz_datamgr:get_results(MasterAccountDb, ?WEBHOOK_META_LIST) of

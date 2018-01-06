@@ -42,7 +42,7 @@ handle_result(JObj, Call) ->
     Call1 = doodle_util:set_flow_status(Status, Call),
     handle_result_status(Call1, Status).
 
--spec handle_result_status(kapps_call:call(), ne_binary()) -> 'ok'.
+-spec handle_result_status(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 handle_result_status(Call, <<"pending">>) ->
     doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
@@ -64,9 +64,9 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 %% Attempts to build the endpoints to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoint(ne_binary(), kz_json:object(), kapps_call:call()) ->
+-spec build_endpoint(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
                             {'error', atom() | kz_json:object()} |
-                            {'fail', ne_binary() | kz_json:object()} |
+                            {'fail', kz_term:ne_binary() | kz_json:object()} |
                             {'ok', kz_json:object()}.
 build_endpoint(EndpointId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),

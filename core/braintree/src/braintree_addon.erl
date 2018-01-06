@@ -33,7 +33,7 @@ get_quantity(#bt_addon{quantity=Quantity}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> bt_addon().
--spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_addon().
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_addon().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/add-on").
@@ -53,8 +53,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_addon()) -> kz_proplist() | bt_xml().
--spec record_to_xml(bt_addon(), boolean()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_addon()) -> kz_term:proplist() | bt_xml().
+-spec record_to_xml(bt_addon(), boolean()) -> kz_term:proplist() | bt_xml().
 
 record_to_xml(Addon) ->
     record_to_xml(Addon, false).
@@ -93,7 +93,7 @@ record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
 %% Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> bt_addon() | 'undefined'.
+-spec json_to_record(kz_term:api_object()) -> bt_addon() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_addon{id = kz_doc:id(JObj)

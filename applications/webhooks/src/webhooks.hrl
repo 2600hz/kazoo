@@ -10,17 +10,17 @@
 -type http_verb() :: 'get' | 'post'.
 -type hook_retries() :: 1..5.
 
--record(webhook, {id :: api_ne_binary() | '_'
-                 ,uri :: api_ne_binary() | '_'
+-record(webhook, {id :: kz_term:api_ne_binary() | '_'
+                 ,uri :: kz_term:api_ne_binary() | '_'
                  ,http_verb = 'get' :: http_verb() | '_'
-                 ,hook_event :: api_ne_binary() | '_' | '$1' | '$2'
-                 ,hook_id :: api_ne_binary() | '_'
+                 ,hook_event :: kz_term:api_ne_binary() | '_' | '$1' | '$2'
+                 ,hook_id :: kz_term:api_ne_binary() | '_'
                  ,retries = 3 :: hook_retries() | '_'
-                 ,account_id :: api_ne_binary() | '_' | '$1'
+                 ,account_id :: kz_term:api_ne_binary() | '_' | '$1'
                  ,include_subaccounts = 'false' :: boolean() | '_' | '$3'
                  ,include_loopback = 'true' :: boolean() | '_'
-                 ,custom_data :: api_object() | '_'
-                 ,modifiers :: api_object() | '_'
+                 ,custom_data :: kz_term:api_object() | '_'
+                 ,modifiers :: kz_term:api_object() | '_'
                  }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook()].

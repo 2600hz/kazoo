@@ -10,21 +10,21 @@
 
 -define(CCCP_CONFIG_CAT, <<"cccp">>).
 
--record(state, {a_leg_name :: api_ne_binary()
-               ,a_leg_number :: api_ne_binary()
-               ,b_leg_number :: api_ne_binary()
+-record(state, {a_leg_name :: kz_term:api_ne_binary()
+               ,a_leg_number :: kz_term:api_ne_binary()
+               ,b_leg_number :: kz_term:api_ne_binary()
                ,call = kapps_call:new() :: kapps_call:call()
-               ,account_id :: api_ne_binary()
-               ,authorizing_id :: api_ne_binary()
-               ,queue :: api_binary()
-               ,parked_call_id :: api_ne_binary()
-               ,offnet_ctl_q :: api_ne_binary()
-               ,auth_doc_id :: api_ne_binary()
-               ,media_id :: api_ne_binary()
-               ,retain_cid :: api_ne_binary()
+               ,account_id :: kz_term:api_ne_binary()
+               ,authorizing_id :: kz_term:api_ne_binary()
+               ,queue :: kz_term:api_binary()
+               ,parked_call_id :: kz_term:api_ne_binary()
+               ,offnet_ctl_q :: kz_term:api_ne_binary()
+               ,auth_doc_id :: kz_term:api_ne_binary()
+               ,media_id :: kz_term:api_ne_binary()
+               ,retain_cid :: kz_term:api_ne_binary()
                ,self = self() :: pid()
-               ,consumer_pid :: api_pid()
-               ,callback_delay :: api_integer()
+               ,consumer_pid :: kz_term:api_pid()
+               ,callback_delay :: kz_term:api_integer()
                }).
 
 -type state() :: #state{}.

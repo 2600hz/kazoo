@@ -89,8 +89,8 @@ validate_metaflows(Context, ?HTTP_POST) ->
 validate_metaflows(Context, ?HTTP_DELETE) ->
     validate_delete_metaflows(Context, thing_doc(Context)).
 
--spec thing_doc(cb_context:context()) -> api_object().
--spec thing_doc(cb_context:context(), ne_binary()) -> api_object().
+-spec thing_doc(cb_context:context()) -> kz_term:api_object().
+-spec thing_doc(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_object().
 thing_doc(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"metaflows">>, []}, {_Thing, [ThingId]} | _] ->
@@ -108,7 +108,7 @@ thing_doc(Context, ThingId) ->
             'undefined'
     end.
 
--spec validate_get_metaflows(cb_context:context(), api_object()) -> cb_context:context().
+-spec validate_get_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_get_metaflows(Context, 'undefined') ->
     {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_get_metaflows(Context, AccountDoc);
@@ -116,7 +116,7 @@ validate_get_metaflows(Context, Doc) ->
     Metaflows = kz_json:get_value(<<"metaflows">>, Doc, kz_json:new()),
     crossbar_util:response(Metaflows, Context).
 
--spec validate_delete_metaflows(cb_context:context(), api_object()) -> cb_context:context().
+-spec validate_delete_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_delete_metaflows(Context, 'undefined') ->
     {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_delete_metaflows(Context, AccountDoc);
@@ -128,7 +128,7 @@ validate_delete_metaflows(Context, Doc) ->
 
 -spec validate_set_metaflows(cb_context:context()) ->
                                     cb_context:context().
--spec validate_set_metaflows(cb_context:context(), kz_json:object(), api_object()) ->
+-spec validate_set_metaflows(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
                                     cb_context:context().
 validate_set_metaflows(Context) ->
     lager:debug("metaflow data is valid, setting on thing"),
@@ -154,8 +154,8 @@ post(Context) ->
     lager:debug("saving ~p", [Doc]),
     after_post(crossbar_doc:save(Context), kz_doc:type(Doc)).
 
--spec after_post(cb_context:context(), ne_binary()) -> cb_context:context().
--spec after_post(cb_context:context(), ne_binary(), crossbar_status()) -> cb_context:context().
+-spec after_post(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+-spec after_post(cb_context:context(), kz_term:ne_binary(), crossbar_status()) -> cb_context:context().
 after_post(Context, DocType) ->
     after_post(Context, DocType, cb_context:resp_status(Context)).
 

@@ -51,7 +51,7 @@
 init() ->
     init(get_notifications_definition(), []).
 
--spec init(kapi_definition:apis(), [{ne_binary(), kz_json:object()}]) -> 'ok'.
+-spec init(kapi_definition:apis(), [{kz_term:ne_binary(), kz_json:object()}]) -> 'ok'.
 init([], Acc) ->
     _ = webhooks_util:init_metadata(?ID, ?METADATA(Acc)),
     'ok';
@@ -92,7 +92,7 @@ bindings() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_bindings(ne_binary()) -> gen_listener:bindings().
+-spec account_bindings(kz_term:ne_binary()) -> gen_listener:bindings().
 account_bindings(_AccountId) -> [].
 
 %%--------------------------------------------------------------------
@@ -100,7 +100,7 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_event(JObj, _Props) ->
     kz_util:put_callid(JObj),
 
@@ -122,7 +122,7 @@ handle_event(JObj, _Props) ->
             webhooks_util:fire_hooks(Event, Filtered)
     end.
 
--spec match_action_type(webhook(), api_binary()) -> boolean().
+-spec match_action_type(webhook(), kz_term:api_binary()) -> boolean().
 match_action_type(#webhook{hook_event = ?HOOK_NAME
                           ,custom_data='undefined'
                           }, _Type) ->

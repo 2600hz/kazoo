@@ -76,7 +76,7 @@ handle_req(JObj, 'true') ->
             process_req(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID, TemplateMetaJObj)
     end.
 
--spec process_req(kz_json:object(), ne_binary(), kz_json:object()) -> template_response().
+-spec process_req(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> template_response().
 process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
     TemplateData = build_template_data(DataJObj),
     {Macros, EmailAttachements} = teletype_fax_util:add_attachments(DataJObj, TemplateData, 'false'),
@@ -105,7 +105,7 @@ process_req(DataJObj, TemplateId, TemplateMetaJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(TemplateId, Reason)
     end.
 
--spec build_template_data(kz_json:object()) -> kz_proplist().
+-spec build_template_data(kz_json:object()) -> kz_term:proplist().
 build_template_data(DataJObj) ->
     Timezone = kz_json:get_value(<<"timezone">>, DataJObj),
     props:filter_undefined(
@@ -117,7 +117,7 @@ build_template_data(DataJObj) ->
        | teletype_util:build_call_data(DataJObj, Timezone)
       ]).
 
--spec build_fax_template_data(kz_json:object()) -> kz_proplist().
+-spec build_fax_template_data(kz_json:object()) -> kz_term:proplist().
 build_fax_template_data(DataJObj) ->
     FaxJObj = kz_json:get_value(<<"fax_doc">>, DataJObj),
     FaxBoxJObj = kz_json:get_value(<<"faxbox">>, DataJObj),

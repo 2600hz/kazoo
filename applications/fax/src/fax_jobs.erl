@@ -39,8 +39,8 @@
                     ,numbers => #{}
                     }).
 
--record(state, {account_id :: ne_binary()
-               ,queue = 'undefined' :: api_binary()
+-record(state, {account_id :: kz_term:ne_binary()
+               ,queue = 'undefined' :: kz_term:api_binary()
                ,jobs = #{}
                ,limits = #{}
                ,stale = 0 :: integer()
@@ -66,7 +66,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(ne_binary()) -> startlink_ret().
+-spec start_link(kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(AccountId) ->
     case gen_listener:start_link(?SERVER(AccountId)
                                 ,?MODULE
@@ -101,7 +101,7 @@ start_link(AccountId) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([ne_binary()]) -> {'ok', state(), kz_timeout()}.
+-spec init([kz_term:ne_binary()]) -> {'ok', state(), timeout()}.
 init([AccountId]) ->
     _ = kz_util:spawn(fun cleanup_jobs/1, [AccountId]),
     State = #state{account_id=AccountId
@@ -124,7 +124,7 @@ init([AccountId]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State, ?POLLING_INTERVAL}.
 
@@ -138,7 +138,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending := Pending
                                                                         ,running := Running
                                                                         }=Jobs
@@ -186,7 +186,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('timeout', #state{queue='undefined'}=State) ->
     {'noreply', State, ?POLLING_INTERVAL};
 handle_info('timeout', #state{account_id=AccountId
@@ -293,7 +293,7 @@ invalidate_job(Job, #state{account_id=AccountId}=State) ->
     kz_datamgr:del_doc(?KZ_FAXES_DB, kz_doc:id(Job)),
     State.
 
--spec distribute_job(ne_binary(), kz_json:object(), state()) -> state().
+-spec distribute_job(kz_term:ne_binary(), kz_json:object(), state()) -> state().
 distribute_job(ToNumber, Job, #state{account_id=AccountId
                                     ,queue=Q
                                     ,jobs=#{pending := Pending
@@ -320,7 +320,7 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
                                                  }})
     end.
 
--spec handle_start_account(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_start_account(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_start_account(JObj, _Props) ->
     'true' = kapi_fax:start_account_v(JObj),
     AccountId = kapi_fax:account_id(JObj),
@@ -331,17 +331,17 @@ handle_start_account(JObj, _Props) ->
             'ok'
     end.
 
--spec is_running(ne_binary()) -> boolean().
+-spec is_running(kz_term:ne_binary()) -> boolean().
 is_running(AccountId) ->
     kz_globals:where_is(?FAX_OUTBOUND_SERVER(AccountId)) =/= 'undefined'.
 
--spec is_number_valid(api_binary(), ne_binary()) -> boolean().
+-spec is_number_valid(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
 is_number_valid('undefined', _AccountId) -> 'false';
 is_number_valid(<<>>, _AccountId) -> 'false';
 is_number_valid(Number, AccountId) ->
     knm_converters:is_reconcilable(Number, AccountId).
 
--spec number(kz_json:object()) -> api_binary().
+-spec number(kz_json:object()) -> kz_term:api_binary().
 number(JObj) ->
     case kz_json:get_value([<<"value">>, <<"to">>], JObj) of
         'undefined' -> 'undefined';
@@ -349,7 +349,7 @@ number(JObj) ->
         Number -> Number
     end.
 
--spec check_pending(ne_binary(), map(), map()) -> map().
+-spec check_pending(kz_term:ne_binary(), map(), map()) -> map().
 check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending, numbers := Numbers} = Map) ->
     case kz_time:now_ms() - Start > ?MAX_WAIT_FOR_PENDING of
         'true'  ->
@@ -361,7 +361,7 @@ check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending
             Map
     end.
 
--spec check_running(ne_binary(), map(), map()) -> map().
+-spec check_running(kz_term:ne_binary(), map(), map()) -> map().
 check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running, numbers := Numbers} = Map) ->
     case kz_time:now_ms() - Start > ?MAX_WAIT_FOR_RUNNING of
         'true'  ->
@@ -373,7 +373,7 @@ check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running
             Map
     end.
 
--spec get_account_jobs(ne_binary()) -> kz_json:objects().
+-spec get_account_jobs(kz_term:ne_binary()) -> kz_json:objects().
 get_account_jobs(AccountId) ->
     Upto = kz_time:now_s(),
     ViewOptions = [{'limit', 100}
@@ -414,7 +414,7 @@ lock_account_job(Doc, JObj, Jobs) ->
             Jobs
     end.
 
--spec cleanup_jobs(ne_binary()) -> 'ok'.
+-spec cleanup_jobs(kz_term:ne_binary()) -> 'ok'.
 cleanup_jobs(AccountId) ->
     ViewOptions = [{'key', AccountId}
                   ],

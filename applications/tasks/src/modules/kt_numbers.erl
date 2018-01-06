@@ -98,7 +98,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".ported_in">>, ?MODULE, 'ported_in'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(ne_binary()) -> kz_tasks:output_header().
+-spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
 output_header(<<"list">>) ->
     list_output_header();
 output_header(<<"list_all">>) ->
@@ -110,7 +110,7 @@ output_header(<<"dump_", _/binary>>) ->
 output_header(?NE_BINARY) ->
     result_output_header().
 
--spec cleanup(ne_binary(), any()) -> any().
+-spec cleanup(kz_term:ne_binary(), any()) -> any().
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
@@ -157,7 +157,7 @@ list_output_header() ->
     ,<<"failover.sip">>
     ].
 
--spec list_doc() -> ne_binary().
+-spec list_doc() -> kz_term:ne_binary().
 list_doc() ->
     <<"For each number found, returns fields:\n"
       "* `e164`: phone number represented as E164 (with a leading `+` sign).\n"
@@ -204,15 +204,15 @@ optional_public_fields() ->
 -spec help(kz_json:object()) -> kz_json:object().
 help(JObj) -> help(JObj, <<?CATEGORY>>).
 
--spec help(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category) ->
     lists:foldl(fun(Action, J) -> help(J, Category, Action) end, JObj, ?ACTIONS).
 
--spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category, Action) ->
     kz_json:set_value([Category, Action], kz_json:from_map(action(Action)), JObj).
 
--spec action(ne_binary()) -> map().
+-spec action(kz_term:ne_binary()) -> map().
 action(<<"list">>) ->
     #{<<"description">> => <<"List all numbers assigned to the account starting the task">>
      ,<<"doc">> => list_doc()
@@ -334,43 +334,43 @@ action(<<"delete">>) ->
 
 %%% Verifiers
 
--spec e164(ne_binary()) -> boolean().
+-spec e164(kz_term:ne_binary()) -> boolean().
 e164(<<"+", _/binary>>) -> 'true';
 e164(_) -> 'false'.
 
--spec account_id(ne_binary()) -> boolean().
+-spec account_id(kz_term:ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
 account_id(_) -> 'false'.
 
--spec carrier_module(ne_binary()) -> boolean().
+-spec carrier_module(kz_term:ne_binary()) -> boolean().
 carrier_module(Data) ->
     lists:member(Data, knm_carriers:all_modules()).
 
--spec state(ne_binary()) -> boolean().
+-spec state(kz_term:ne_binary()) -> boolean().
 state(Data) ->
     knm_phone_number:is_state(Data).
 
--spec ported_in(ne_binary()) -> boolean().
+-spec ported_in(kz_term:ne_binary()) -> boolean().
 ported_in(Cell) -> is_cell_boolean(Cell).
 
--spec 'cnam.inbound'(ne_binary()) -> boolean().
+-spec 'cnam.inbound'(kz_term:ne_binary()) -> boolean().
 'cnam.inbound'(Cell) -> is_cell_boolean(Cell).
 
--spec 'prepend.enabled'(ne_binary()) -> boolean().
+-spec 'prepend.enabled'(kz_term:ne_binary()) -> boolean().
 'prepend.enabled'(Cell) -> is_cell_boolean(Cell).
 
--spec force_outbound(ne_binary()) -> boolean().
+-spec force_outbound(kz_term:ne_binary()) -> boolean().
 force_outbound(Cell) -> is_cell_boolean(Cell).
 
 
 %% @private
--spec is_cell_boolean(ne_binary()) -> boolean().
+-spec is_cell_boolean(kz_term:ne_binary()) -> boolean().
 is_cell_boolean(<<"true">>) -> 'true';
 is_cell_boolean(<<"false">>) -> 'true';
 is_cell_boolean(_) -> 'false'.
 
 %% @private
--spec is_cell_true(api_ne_binary()) -> boolean().
+-spec is_cell_true(kz_term:api_ne_binary()) -> boolean().
 is_cell_true('undefined') -> 'undefined';
 is_cell_true(<<"true">>) -> 'true';
 is_cell_true(_) -> 'false'.
@@ -385,7 +385,7 @@ list(_, []) -> 'stop';
 list(#{auth_account_id := AuthBy}, Todo) ->
     list_assigned_to(AuthBy, Todo).
 
--spec list_numbers(ne_binary(), ne_binaries()) -> [kz_csv:row()].
+-spec list_numbers(kz_term:ne_binary(), kz_term:ne_binaries()) -> [kz_csv:row()].
 list_numbers(AuthBy, E164s) ->
     Options = [{'auth_by', AuthBy}
               ,{'batch_run', 'true'}
@@ -441,14 +441,14 @@ list_number(N) ->
      ,<<"failover.sip">> => quote(kz_json:get_ne_binary_value(?FAILOVER_SIP, Failover))
      }.
 
--spec account_name(api_ne_binary()) -> api_ne_binary().
+-spec account_name(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 account_name(MaybeAccountId) ->
     case kz_account:fetch_name(MaybeAccountId) of
         'undefined' -> 'undefined';
         Name -> quote(Name)
     end.
 
--spec quote(api_ne_binary()) -> api_ne_binary().
+-spec quote(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 quote('undefined') -> 'undefined';
 quote(Bin) -> <<$\", Bin/binary, $\">>.
 
@@ -622,7 +622,7 @@ ringback(Props) -> maybe_nest(?FEATURE_RINGBACK, Props).
 failover(Props) -> maybe_nest(?FEATURE_FAILOVER, Props).
 
 %% @private
--spec maybe_nest(ne_binary(), kz_proplist()) -> kz_proplist().
+-spec maybe_nest(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 maybe_nest(_, []) -> [];
 maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
@@ -755,15 +755,15 @@ handle_result(Args, {error, KNMError}) ->
              end,
     format_result(Args, kz_term:to_binary(Reason)).
 
--spec format_result(kz_tasks:args(), ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
+-spec format_result(kz_tasks:args(), kz_term:ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
 format_result(Args, Reason=?NE_BINARY) ->
     Args#{?OUTPUT_CSV_HEADER_ERROR => Reason};
 format_result(_, N) ->
     Map = list_number(N),
     Map#{?OUTPUT_CSV_HEADER_ERROR => undefined}.
 
--type accountid_or_startkey_and_numberdbs() :: [{ne_binary() | ne_binaries(), ne_binary()}].
--spec list_assigned_to(ne_binary(), accountid_or_startkey_and_numberdbs()) ->
+-type accountid_or_startkey_and_numberdbs() :: [{kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()}].
+-spec list_assigned_to(kz_term:ne_binary(), accountid_or_startkey_and_numberdbs()) ->
                               {ok | error  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
 list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
     ViewOptions = [{limit,?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
@@ -777,7 +777,7 @@ list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
             {Rows, [{lists:last(Keys),NumberDb}|Rest]}
     end.
 
--spec view_for_list_assigned(ne_binary() | ne_binaries()) -> kz_datamgr:view_options().
+-spec view_for_list_assigned(kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_datamgr:view_options().
 view_for_list_assigned(?MATCH_ACCOUNT_RAW(AccountId)) ->
     [{startkey, [AccountId]}
     ,{endkey, [AccountId, kz_json:new()]}
@@ -788,8 +788,8 @@ view_for_list_assigned(StartKey=[AccountId,_]) ->
     ,{skip, 1}
     ].
 
--type startkey_or_numberdb() :: ne_binary() | ne_binaries().
--spec dump_next(fun((startkey_or_numberdb()) -> {ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
+-type startkey_or_numberdb() :: kz_term:ne_binary() | kz_term:ne_binaries().
+-spec dump_next(fun((startkey_or_numberdb()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
                        {ok | error | [kz_csv:row()], [startkey_or_numberdb()]}.
 dump_next(ViewFun, [Next|Rest]) ->
     {NumberDb, MoreViewOptions} = ViewFun(Next),
@@ -804,7 +804,7 @@ dump_next(ViewFun, [Next|Rest]) ->
             {Rows, [lists:last(Keys)|Rest]}
     end.
 
--spec db_and_view_for_dump(ne_binary() | ne_binaries()) -> {ne_binary(), kz_datamgr:view_options()}.
+-spec db_and_view_for_dump(kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
 db_and_view_for_dump(NumberDb=?NE_BINARY) -> {NumberDb, []};
 db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
     ViewOpts = [{startkey, StartKey}
@@ -812,7 +812,7 @@ db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
                ],
     {knm_converters:to_db(LastNum), ViewOpts}.
 
--spec db_and_view_for_dump_by_state(ne_binary(), ne_binary() | ne_binaries()) -> {ne_binary(), kz_datamgr:view_options()}.
+-spec db_and_view_for_dump_by_state(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
 db_and_view_for_dump_by_state(State, NumberDb=?NE_BINARY) ->
     ViewOptions = [{startkey, [State]}
                   ,{endkey, [State, kz_json:new()]}

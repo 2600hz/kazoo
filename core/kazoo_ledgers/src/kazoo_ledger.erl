@@ -56,7 +56,7 @@ save(Ledger) ->
     LedgerId = account_id(Ledger),
     save(Ledger, LedgerId).
 
--spec save(ledger(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
+-spec save(ledger(), kz_term:ne_binary()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger, LedgerId) ->
     Props = [{<<"pvt_type">>, ?PVT_TYPE}
             ,{<<"pvt_modified">>, kz_time:now_s()}
@@ -65,7 +65,7 @@ save(Ledger, LedgerId) ->
             ],
     kazoo_modb:save_doc(LedgerId, kz_json:set_values(Props, Ledger)).
 
--spec maybe_add_id(ledger()) -> kz_proplist().
+-spec maybe_add_id(ledger()) -> kz_term:proplist().
 maybe_add_id(Ledger) ->
     case kz_doc:id(Ledger) of
         'undefined' ->
@@ -80,7 +80,7 @@ maybe_add_id(Ledger) ->
         _ -> []
     end.
 
--spec create_hash(ledger()) -> ne_binary().
+-spec create_hash(ledger()) -> kz_term:ne_binary().
 create_hash(Ledger) ->
     Props = [{<<"source">>, source(Ledger)}
             ,{<<"account">>, account(Ledger)}
@@ -96,11 +96,11 @@ create_hash(Ledger) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec type(ledger()) -> ne_binary().
+-spec type(ledger()) -> kz_term:ne_binary().
 type(Ledger) ->
     kz_json:get_ne_binary_value(?PVT_LEDGER_TYPE, Ledger).
 
--spec set_type(ledger(), ne_binary()) -> ledger().
+-spec set_type(ledger(), kz_term:ne_binary()) -> ledger().
 set_type(L, Type) ->
     kz_json:set_value(?PVT_LEDGER_TYPE, Type, L).
 
@@ -124,11 +124,11 @@ set_amount(L, Amount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec description(ledger()) -> ne_binary().
+-spec description(ledger()) -> kz_term:ne_binary().
 description(Ledger) ->
     kz_json:get_ne_binary_value(?DESC, Ledger).
 
--spec set_description(ledger(), ne_binary()) -> ledger().
+-spec set_description(ledger(), kz_term:ne_binary()) -> ledger().
 set_description(L, Desc) ->
     kz_json:set_value(?DESC, Desc, L).
 
@@ -148,11 +148,11 @@ source(Ledger) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec source_service(ledger()) -> ne_binary().
+-spec source_service(ledger()) -> kz_term:ne_binary().
 source_service(Ledger) ->
     kz_json:get_ne_binary_value(?SRC_SERVICE, Ledger).
 
--spec set_source_service(ledger(), ne_binary()) -> ledger().
+-spec set_source_service(ledger(), kz_term:ne_binary()) -> ledger().
 set_source_service(L, Service) ->
     kz_json:set_value(?SRC_SERVICE, Service, L).
 
@@ -162,11 +162,11 @@ set_source_service(L, Service) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec source_id(ledger()) -> ne_binary().
+-spec source_id(ledger()) -> kz_term:ne_binary().
 source_id(Ledger) ->
     kz_json:get_ne_binary_value(?SRC_ID, Ledger).
 
--spec set_source_id(ledger(), ne_binary()) -> ledger().
+-spec set_source_id(ledger(), kz_term:ne_binary()) -> ledger().
 set_source_id(L, Id) ->
     kz_json:set_value(?SRC_ID, Id, L).
 
@@ -186,11 +186,11 @@ usage(Ledger) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec usage_type(ledger()) -> ne_binary().
+-spec usage_type(ledger()) -> kz_term:ne_binary().
 usage_type(Ledger) ->
     kz_json:get_ne_binary_value(?USAGE_TYPE, Ledger).
 
--spec set_usage_type(ledger(), ne_binary()) -> ledger().
+-spec set_usage_type(ledger(), kz_term:ne_binary()) -> ledger().
 set_usage_type(L, Type) ->
     kz_json:set_value(?USAGE_TYPE, Type, L).
 
@@ -214,11 +214,11 @@ set_usage_quantity(L, Quantity) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec usage_unit(ledger()) -> ne_binary().
+-spec usage_unit(ledger()) -> kz_term:ne_binary().
 usage_unit(Ledger) ->
     kz_json:get_ne_binary_value(?USAGE_UNIT, Ledger).
 
--spec set_usage_unit(ledger(), ne_binary()) -> ledger().
+-spec set_usage_unit(ledger(), kz_term:ne_binary()) -> ledger().
 set_usage_unit(L, Unit) ->
     kz_json:set_value(?USAGE_UNIT, Unit, L).
 
@@ -276,11 +276,11 @@ account(Ledger) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_id(ledger()) -> ne_binary().
+-spec account_id(ledger()) -> kz_term:ne_binary().
 account_id(Ledger) ->
     kz_json:get_ne_binary_value(?ACCOUNT_ID, Ledger).
 
--spec set_account_id(ledger(), ne_binary()) -> ledger().
+-spec set_account_id(ledger(), kz_term:ne_binary()) -> ledger().
 set_account_id(L, Start) ->
     kz_json:set_value(?ACCOUNT_ID, Start, L).
 
@@ -290,11 +290,11 @@ set_account_id(L, Start) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_name(ledger()) -> ne_binary().
+-spec account_name(ledger()) -> kz_term:ne_binary().
 account_name(Ledger) ->
     kz_json:get_ne_binary_value(?ACCOUNT_NAME, Ledger).
 
--spec set_account_name(ledger(), ne_binary()) -> ledger().
+-spec set_account_name(ledger(), kz_term:ne_binary()) -> ledger().
 set_account_name(L, End) ->
     kz_json:set_value(?ACCOUNT_NAME, End, L).
 
@@ -308,7 +308,7 @@ set_account_name(L, End) ->
 metadata(Ledger) ->
     kz_json:get_value(?METADATA, Ledger).
 
--spec metadata(ledger(), ne_binary() | ne_binaries()) -> ledger().
+-spec metadata(ledger(), kz_term:ne_binary() | kz_term:ne_binaries()) -> ledger().
 metadata(Ledger, Key)
   when is_binary(Key)->
     kz_json:get_value(?METADATA_KEY(Key), Ledger);
@@ -316,14 +316,14 @@ metadata(Ledger, Keys)
   when is_list(Keys)->
     kz_json:get_value(?METADATA_KEYS(Keys), Ledger).
 
--spec set_metadata(ledger(), kz_json:object() | kz_proplist()) -> ledger().
+-spec set_metadata(ledger(), kz_json:object() | kz_term:proplist()) -> ledger().
 set_metadata(Ledger, List)
   when is_list(List) ->
     kz_json:set_values([{?METADATA_KEY(K), V} || {K,V} <- List], Ledger);
 set_metadata(Ledger, JObj) ->
     kz_json:set_value(?METADATA, JObj, Ledger).
 
--spec set_metadata(ledger(), ne_binary(), kz_json:json_term()) -> ledger().
+-spec set_metadata(ledger(), kz_term:ne_binary(), kz_json:json_term()) -> ledger().
 set_metadata(Ledger, Key, Value) ->
     kz_json:set_value(?METADATA_KEY(Key), Value, Ledger).
 

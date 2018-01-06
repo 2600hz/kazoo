@@ -28,7 +28,7 @@
 %% API functions
 %% ====================================================================
 
--spec gstorage_default_fields() -> kz_proplist().
+-spec gstorage_default_fields() -> kz_term:proplist().
 gstorage_default_fields() ->
     [{group, [{arg, <<"id">>}
              ,<<"_">>
@@ -36,16 +36,16 @@ gstorage_default_fields() ->
              ]}
     ].
 
--spec gstorage_format_url(map(), attachment_info()) -> ne_binary().
+-spec gstorage_format_url(map(), attachment_info()) -> kz_term:ne_binary().
 gstorage_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, gstorage_default_fields()).
 
--spec resolve_path(map(), attachment_info()) -> {ne_binary(), ne_binary()}.
+-spec resolve_path(map(), attachment_info()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 resolve_path(#{bucket := Bucket} = Settings, AttInfo) ->
     Url = gstorage_format_url(Settings, AttInfo),
     {Bucket, Url}.
 
--spec gstorage_token(map()) -> ne_binary().
+-spec gstorage_token(map()) -> kz_term:ne_binary().
 gstorage_token(#{oauth_doc_id := TokenDocId}) ->
     {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
     Authorization;
@@ -53,7 +53,7 @@ gstorage_token(#{oauth_app_id := AppId}) ->
     {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_app(AppId, ?DRV_TOKEN_OPTIONS),
     Authorization.
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
     Authorization = gstorage_token(Settings),
     CT = kz_mime:from_filename(AName),
@@ -75,8 +75,8 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
         Else -> Else
     end.
 
--spec send_attachment(binary(), ne_binary(), ne_binary(), binary(), kz_proplist(), binary()) ->
-                             {ok, kz_proplist()} | {'error', 'gstorage_drive_error'}.
+-spec send_attachment(binary(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist(), binary()) ->
+                             {ok, kz_term:proplist()} | {'error', 'gstorage_drive_error'}.
 send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(
@@ -117,7 +117,7 @@ send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
             {'error', 'google_storage_error'}
     end.
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', iodata()} |
                               {'error', 'invalid_data' | 'not_found'}.
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->

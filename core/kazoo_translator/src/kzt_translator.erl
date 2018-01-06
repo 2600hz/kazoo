@@ -17,7 +17,7 @@
 -include("kzt.hrl").
 
 -spec exec(kapps_call:call(), binary()) -> exec_return().
--spec exec(kapps_call:call(), binary(), api_binary() | list()) -> exec_return().
+-spec exec(kapps_call:call(), binary(), kz_term:api_binary() | list()) -> exec_return().
 exec(Call, Cmds) ->
     exec(Call, Cmds, <<"text/xml">>).
 
@@ -33,7 +33,7 @@ exec(Call, Cmds, CT) ->
         [{Translator, Cmds1}|_] -> Translator:exec(Call, Cmds1)
     end.
 
--spec just_the_type(ne_binary()) -> ne_binary().
+-spec just_the_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 just_the_type(ContentType) ->
     case binary:split(ContentType, <<";">>) of
         [ContentType] -> kz_binary:strip(ContentType);
@@ -43,7 +43,7 @@ just_the_type(ContentType) ->
     end.
 
 -spec get_user_vars(kapps_call:call()) -> kz_json:object().
--spec set_user_vars(kz_proplist(), kapps_call:call()) -> kapps_call:call().
+-spec set_user_vars(kz_term:proplist(), kapps_call:call()) -> kapps_call:call().
 get_user_vars(Call) ->
     ReqVars = kzt_util:get_request_vars(Call),
     UserVars = kapps_call:kvs_fetch(?KZT_USER_VARS, kz_json:new(), Call),
@@ -52,7 +52,7 @@ set_user_vars(Prop, Call) ->
     UserVars = get_user_vars(Call),
     kapps_call:kvs_store(?KZT_USER_VARS, kz_json:set_values(Prop, UserVars), Call).
 
--spec find_candidate_translators(ne_binary()) -> atoms().
+-spec find_candidate_translators(kz_term:ne_binary()) -> kz_term:atoms().
 find_candidate_translators(<<"text/xml">>) ->
     ['kzt_twiml'];
 find_candidate_translators(<<"application/xml">>) ->

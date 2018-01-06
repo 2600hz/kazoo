@@ -16,7 +16,7 @@
 
 -define(SERVER, ?MODULE).
 
--spec start_link(kz_json:object()) -> startlink_ret().
+-spec start_link(kz_json:object()) -> kz_types:startlink_ret().
 start_link(RouteReqJObj) ->
     proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
 
@@ -78,14 +78,14 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
     State2 = ts_callflow:set_endpoint_data(State1, Endpoint),
     send_park(State2, Command).
 
--spec send_park(ts_callflow:state(), kz_proplist()) -> 'ok'.
+-spec send_park(ts_callflow:state(), kz_term:proplist()) -> 'ok'.
 send_park(State, Command) ->
     case ts_callflow:send_park(State) of
         {'lost', _} -> 'ok';
         {'won', State1} -> route_call(State1, Command)
     end.
 
--spec route_call(ts_callflow:state(), kz_proplist()) -> 'ok'.
+-spec route_call(ts_callflow:state(), kz_term:proplist()) -> 'ok'.
 route_call(State, Command) ->
     lager:info("route won, sending command"),
     send_onnet(State, Command),
@@ -94,20 +94,20 @@ route_call(State, Command) ->
 
     wait_for_bridge(State, Timeout).
 
--spec endpoint_timeout(kz_proplist()) -> api_integer().
+-spec endpoint_timeout(kz_term:proplist()) -> kz_term:api_integer().
 endpoint_timeout(Command) when is_list(Command) ->
     kz_json:get_integer_value([<<"Endpoints">>, 1, <<"Endpoint-Timeout">>]
                              ,kz_json:from_list(Command)
                              ).
 
--spec send_onnet(ts_callflow:state(), kz_proplist()) -> 'ok'.
+-spec send_onnet(ts_callflow:state(), kz_term:proplist()) -> 'ok'.
 send_onnet(State, Command) ->
     lager:info("sending onnet command: ~p", [Command]),
     'ok' = maybe_send_privacy(State),
 
     send_bridge(State, Command).
 
--spec send_bridge(ts_callflow:state(), kz_proplist()) -> 'ok'.
+-spec send_bridge(ts_callflow:state(), kz_term:proplist()) -> 'ok'.
 send_bridge(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
     ts_callflow:send_command(State
@@ -139,7 +139,7 @@ send_privacy(State) ->
                             ,fun(API) ->  kapi_dialplan:publish_command(CtlQ, API) end
                             ).
 
--spec wait_for_bridge(ts_callflow:state(), api_integer()) -> 'ok'.
+-spec wait_for_bridge(ts_callflow:state(), kz_term:api_integer()) -> 'ok'.
 wait_for_bridge(State, Timeout) ->
     case ts_callflow:wait_for_bridge(State, Timeout) of
         {'bridged', _} -> lager:info("channel bridged, we're done");
@@ -178,7 +178,7 @@ failover(State, Failover) ->
             try_failover_e164(State, DID)
     end.
 
--spec try_failover_sip(ts_callflow:state(), api_ne_binary()) -> 'ok'.
+-spec try_failover_sip(ts_callflow:state(), kz_term:api_ne_binary()) -> 'ok'.
 try_failover_sip(_, 'undefined') ->
     lager:info("SIP failover undefined");
 try_failover_sip(State, SIPUri) ->
@@ -204,7 +204,7 @@ try_failover_sip(State, SIPUri) ->
                             ),
     wait_for_bridge(ts_callflow:set_failover(State, kz_json:new()), 20).
 
--spec try_failover_e164(ts_callflow:state(), ne_binary()) -> 'ok'.
+-spec try_failover_e164(ts_callflow:state(), kz_term:ne_binary()) -> 'ok'.
 try_failover_e164(State, ToDID) ->
     RouteReq = ts_callflow:get_request_data(State),
     OriginalCIdNumber = kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, RouteReq),
@@ -263,7 +263,7 @@ get_endpoint_data(State) ->
             throw('unknown_account')
     end.
 
--spec get_endpoint_data(ts_callflow:state(), kz_json:object(), ne_binary(), ne_binary(), knm_number_options:extra_options()) ->
+-spec get_endpoint_data(ts_callflow:state(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:extra_options()) ->
                                {'endpoint', kz_json:object()}.
 get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     ForceOut = knm_number_options:should_force_outbound(NumberProps),
@@ -288,7 +288,7 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     Endpoint = lists:foldl(fun(F, E) -> F(E) end, Invite, Routines),
     {'endpoint', kz_json:from_list(Endpoint)}.
 
--spec get_endpoint_ccvs(kz_proplist(), api_binary(), api_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec get_endpoint_ccvs(kz_term:proplist(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 get_endpoint_ccvs(Endpoint, AuthUser, AuthRealm, AccountId, AuthzId) ->
     Props = props:filter_undefined([{<<"Auth-User">>, AuthUser}
                                    ,{<<"Auth-Realm">>, AuthRealm}
@@ -299,15 +299,15 @@ get_endpoint_ccvs(Endpoint, AuthUser, AuthRealm, AccountId, AuthzId) ->
                                    ]),
     [{<<"Custom-Channel-Vars">>, kz_json:from_list(Props)} | Endpoint].
 
--spec get_endpoint_sip_headers(kz_proplist(), api_binary(), api_binary()) -> kz_proplist().
+-spec get_endpoint_sip_headers(kz_term:proplist(), kz_term:api_binary(), kz_term:api_binary()) -> kz_term:proplist().
 get_endpoint_sip_headers(Endpoint, 'undefined', _) -> Endpoint;
 get_endpoint_sip_headers(Endpoint, _, 'undefined') -> Endpoint;
 get_endpoint_sip_headers(Endpoint, AuthUser, AuthRealm) ->
     Props = [{<<"X-KAZOO-AOR">>, <<"sip:", AuthUser/binary, "@", AuthRealm/binary>>}],
     [{<<"Custom-SIP-Headers">>, kz_json:from_list(Props)} | Endpoint].
 
--spec routing_data(ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>, any()}].
--spec routing_data(ne_binary(), ne_binary(), kz_json:object()) -> [{<<_:48,_:_*8>>, any()}].
+-spec routing_data(kz_term:ne_binary(), kz_term:ne_binary()) -> [{<<_:48,_:_*8>>, any()}].
+-spec routing_data(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> [{<<_:48,_:_*8>>, any()}].
 routing_data(ToDID, AccountId) ->
     case ts_util:lookup_did(ToDID, AccountId) of
         {'ok', Settings} ->
@@ -420,7 +420,7 @@ routing_data(ToDID, AccountId, Settings) ->
            V =/= <<>>
     ].
 
--spec build_ip(api_binary(), api_binary() | integer()) -> api_binary().
+-spec build_ip(kz_term:api_binary(), kz_term:api_binary() | integer()) -> kz_term:api_binary().
 build_ip('undefined', _) -> 'undefined';
 build_ip(IP, 'undefined') -> IP;
 build_ip(IP, <<_/binary>> = PortBin) -> build_ip(IP, kz_term:to_integer(PortBin));
@@ -445,8 +445,8 @@ callee_id([JObj | T]) ->
             end
     end.
 
--spec maybe_anonymize_caller_id(ts_callflow:state(), {ne_binary(), ne_binary()}, api_object()) ->
-                                       kz_proplist().
+-spec maybe_anonymize_caller_id(ts_callflow:state(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:api_object()) ->
+                                       kz_term:proplist().
 maybe_anonymize_caller_id(State, DefaultCID, CidFormat) ->
     AccountId = ts_callflow:get_account_id(State),
     CCVs = ts_callflow:get_custom_channel_vars(State),

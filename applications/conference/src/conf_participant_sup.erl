@@ -30,11 +30,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_participant(kapps_call:call()) -> sup_startchild_ret().
+-spec start_participant(kapps_call:call()) -> kz_types:sup_startchild_ret().
 start_participant(Call) ->
     supervisor:start_child(?SERVER, [Call]).
 
@@ -51,7 +51,7 @@ start_participant(Call) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,

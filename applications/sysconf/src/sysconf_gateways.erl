@@ -11,7 +11,7 @@
 
 -include("sysconf.hrl").
 
--spec build(ne_binary()) -> kz_json:object().
+-spec build(kz_term:ne_binary()) -> kz_json:object().
 build(_Node) ->
     get_gateways().
 

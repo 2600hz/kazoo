@@ -33,7 +33,7 @@
 %% API functions
 %% ====================================================================
 
--spec get_json_from_url(ne_binary(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec get_json_from_url(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
     case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{ssl, [{versions, ['tlsv1.2']}]}]) of
         {'ok', 200, _RespHeaders, Body} ->
@@ -83,7 +83,7 @@ resolve_id(Name, Parent, Authorization) ->
     end.
 
 
--spec resolve_ids(binaries(), binaries(), binary()) -> binaries().
+-spec resolve_ids(kz_term:binaries(), kz_term:binaries(), binary()) -> kz_term:binaries().
 resolve_ids([], Acc, _Authorization) ->
     lists:reverse(Acc);
 resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
@@ -96,7 +96,7 @@ resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
             end
     end.
 
--spec resolve_folder(map(), ne_binaries(), binary()) -> ne_binaries().
+-spec resolve_folder(map(), kz_term:ne_binaries(), binary()) -> kz_term:ne_binaries().
 resolve_folder(Settings, PathTokens, Authorization) ->
     case maps:get(folder_id, Settings, undefined) of
         undefined ->
@@ -105,7 +105,7 @@ resolve_folder(Settings, PathTokens, Authorization) ->
         Path -> [Path]
     end.
 
--spec resolve_path(map(), attachment_info(), binary()) -> {ne_binaries(), ne_binary()}.
+-spec resolve_path(map(), attachment_info(), binary()) -> {kz_term:ne_binaries(), kz_term:ne_binary()}.
 resolve_path(Settings, AttInfo, Authorization) ->
     Url = gdrive_format_url(Settings, AttInfo),
     PathTokens = binary:split(Url, <<"/">>, ['global', 'trim_all']),
@@ -113,7 +113,7 @@ resolve_path(Settings, AttInfo, Authorization) ->
     Folder = resolve_folder(Settings, lists:droplast(PathTokens), Authorization),
     {Folder, Name}.
 
--spec gdrive_default_fields() -> kz_proplist().
+-spec gdrive_default_fields() -> kz_term:proplist().
 gdrive_default_fields() ->
     [{group, [{arg, <<"id">>}
              ,<<"_">>
@@ -121,11 +121,11 @@ gdrive_default_fields() ->
              ]}
     ].
 
--spec gdrive_format_url(map(), attachment_info()) -> ne_binary().
+-spec gdrive_format_url(map(), attachment_info()) -> kz_term:ne_binary().
 gdrive_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, gdrive_default_fields()).
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(#{oauth_doc_id := TokenDocId}=Settings, DbName, DocId, AName, Contents, Options) ->
     {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
     CT = kz_mime:from_filename(AName),
@@ -136,7 +136,7 @@ put_attachment(#{oauth_doc_id := TokenDocId}=Settings, DbName, DocId, AName, Con
         Else -> Else
     end.
 
--spec gdrive_post(binary(), kz_proplist(), binary()) -> gdrive_result().
+-spec gdrive_post(binary(), kz_term:proplist(), binary()) -> gdrive_result().
 gdrive_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
@@ -151,8 +151,8 @@ gdrive_post(Url, Headers, Body) ->
     end.
 
 
--spec send_attachment(binary(), binaries(), binary(), binary(), binary(), kz_proplist(), binary()) ->
-                             {ok, kz_proplist()} | {'error', 'google_drive_error'}.
+-spec send_attachment(binary(), kz_term:binaries(), binary(), binary(), binary(), kz_term:proplist(), binary()) ->
+                             {ok, kz_term:proplist()} | {'error', 'google_drive_error'}.
 send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(
@@ -191,7 +191,7 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
         Else -> Else
     end.
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', iodata()} |
                               {'error', 'invalid_data' | 'not_found'}.
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->

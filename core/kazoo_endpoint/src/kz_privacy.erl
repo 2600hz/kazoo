@@ -37,8 +37,8 @@
 -define(CALLER_PRIVACY_NAME, <<"Caller-Privacy-Hide-Name">>).
 -define(CALLER_PRIVACY_NUMBER, <<"Caller-Privacy-Hide-Number">>).
 
--type cid_name() :: api_binary().
--type cid_number() :: api_binary().
+-type cid_name() :: kz_term:api_binary().
+-type cid_number() :: kz_term:api_binary().
 -type cid() :: {cid_name(), cid_number()}.
 
 %%--------------------------------------------------------------------
@@ -49,7 +49,7 @@
 %% caller id or both or bot hiding at all.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_cid_privacy(kz_proplist() | kz_json:object(), cid()) -> cid().
+-spec maybe_cid_privacy(kz_term:proplist() | kz_json:object(), cid()) -> cid().
 maybe_cid_privacy(Props, Default) when is_list(Props) ->
     maybe_cid_privacy(kz_json:from_list(Props), Default);
 maybe_cid_privacy(JObj, Default) ->
@@ -62,7 +62,7 @@ maybe_cid_privacy(JObj, Default) ->
             maybe_anonymize_cid(PrivacyMode, HideMode, JObj, Default)
     end.
 
--spec flags(kz_proplist() | kz_json:object()) -> kz_proplist().
+-spec flags(kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 flags(Props) when is_list(Props) ->
     flags(kz_json:from_list(Props));
 flags(JObj) ->
@@ -71,7 +71,7 @@ flags(JObj) ->
     ,{?CALLER_PRIVACY_NUMBER, caller_privacy_number(JObj)}
     ].
 
--spec has_flags(kz_proplist() | kz_json:object()) -> boolean().
+-spec has_flags(kz_term:proplist() | kz_json:object()) -> boolean().
 has_flags(Props) when is_list(Props) ->
     has_flags(kz_json:from_list(Props));
 has_flags(JObj) ->
@@ -129,21 +129,21 @@ is_anonymous(JObj) ->
 %% Default anonymous Caller IDs from System wide config, or Account
 %% @end
 %%--------------------------------------------------------------------
--spec anonymous_caller_id_name() -> ne_binary().
+-spec anonymous_caller_id_name() -> kz_term:ne_binary().
 anonymous_caller_id_name() ->
     kapps_config:get_binary(?PRIVACY_CAT, ?KEY_ANON_NAME, ?ANON_NAME).
 
--spec anonymous_caller_id_name(api_binary()) -> ne_binary().
+-spec anonymous_caller_id_name(kz_term:api_binary()) -> kz_term:ne_binary().
 anonymous_caller_id_name('undefined') ->
     anonymous_caller_id_name();
 anonymous_caller_id_name(AccountId) ->
     kapps_account_config:get_global(AccountId, ?PRIVACY_CAT, ?KEY_ANON_NAME, ?ANON_NAME).
 
--spec anonymous_caller_id_number() -> ne_binary().
+-spec anonymous_caller_id_number() -> kz_term:ne_binary().
 anonymous_caller_id_number() ->
     kapps_config:get_binary(?PRIVACY_CAT, ?KEY_ANON_NUMBER, ?ANON_NUMBER).
 
--spec anonymous_caller_id_number(api_binary()) -> ne_binary().
+-spec anonymous_caller_id_number(kz_term:api_binary()) -> kz_term:ne_binary().
 anonymous_caller_id_number('undefined') ->
     anonymous_caller_id_number();
 anonymous_caller_id_number(AccountId) ->
@@ -155,12 +155,12 @@ anonymous_caller_id_number(AccountId) ->
 %% Checks for screen bits and caller id hide parameters
 %% @end
 %%--------------------------------------------------------------------
--spec caller_privacy_mode(kz_json:object()) -> ne_binary() | 'false'.
+-spec caller_privacy_mode(kz_json:object()) -> kz_term:ne_binary() | 'false'.
 caller_privacy_mode(JObj) ->
     caller_screen_bit(JObj)
         andalso caller_privacy_mode(caller_privacy_name(JObj), caller_privacy_number(JObj)).
 
--spec caller_privacy_mode(boolean(), boolean()) -> ne_binary().
+-spec caller_privacy_mode(boolean(), boolean()) -> kz_term:ne_binary().
 caller_privacy_mode('true', 'true') -> ?HIDE_BOTH;
 caller_privacy_mode('true', 'false') -> ?HIDE_NAME;
 caller_privacy_mode('false', 'true') -> ?HIDE_NUMBER;
@@ -172,7 +172,7 @@ caller_privacy_mode('false', 'false') -> ?NO_HIDE_MODE.
 %% Make some/all/no part of caller id anonymous base on system config
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_anonymize_cid(api_binary(), ne_binary(), kz_json:object(), cid()) -> cid().
+-spec maybe_anonymize_cid(kz_term:api_binary(), kz_term:ne_binary(), kz_json:object(), cid()) -> cid().
 maybe_anonymize_cid('undefined', HideMode, JObj, Default) ->
     maybe_anonymize_cid(get_default_privacy_mode(JObj), HideMode, JObj, Default);
 maybe_anonymize_cid(?NO_HIDE_MODE, _, _, Default) ->
@@ -187,7 +187,7 @@ maybe_anonymize_cid(PrivacyMode, HideMode, JObj, Default) ->
     AccountId = get_value(<<"Account-ID">>, JObj),
     anonymize_cid(AccountId, Default, Mode).
 
--spec hide_mode(ne_binary(), ne_binary()) -> ne_binary().
+-spec hide_mode(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 hide_mode(?HIDE_NAME, ?HIDE_NAME) ->
     lager:info("overriding caller id name to maintain privacy"),
     ?HIDE_NAME;
@@ -201,7 +201,7 @@ hide_mode(?HIDE_NUMBER, _HideMode) ->
     lager:debug("ignoring ccv's caller privacy hide name, just overriding caller id number: ~s", [_HideMode]),
     ?HIDE_NUMBER.
 
--spec anonymize_cid(ne_binary(), cid(), ne_binary()) -> cid().
+-spec anonymize_cid(kz_term:ne_binary(), cid(), kz_term:ne_binary()) -> cid().
 anonymize_cid(_AccountId, Default, ?NO_HIDE_MODE) ->
     Default;
 anonymize_cid(AccountId, _Default, ?HIDE_BOTH) ->
@@ -220,7 +220,7 @@ anonymize_cid(AccountId, {Name, _}, ?HIDE_NUMBER) ->
 %% legacy anonymizer setting on account's document
 %% @end
 %%--------------------------------------------------------------------
--spec get_default_privacy_mode(kz_json:object()) -> ne_binary().
+-spec get_default_privacy_mode(kz_json:object()) -> kz_term:ne_binary().
 get_default_privacy_mode(JObj) ->
     AccountId = get_value(<<"Account-ID">>, JObj, get_master_account()),
     case get_legacy_anonymizer(kz_account:fetch(AccountId)) of
@@ -235,12 +235,12 @@ get_default_privacy_mode(JObj) ->
     end.
 
 -spec get_legacy_anonymizer({'ok', kz_json:object()} | {'error', any()}) ->
-                                   api_ne_binary().
+                                   kz_term:api_ne_binary().
 get_legacy_anonymizer({'error', _}) -> 'undefined';
 get_legacy_anonymizer({'ok', JObj}) ->
     kz_json:get_ne_binary_value(?KEY_LEGACY_ANONYMIZER, JObj).
 
--spec get_master_account() -> api_binary().
+-spec get_master_account() -> kz_term:api_binary().
 get_master_account() ->
     case kapps_util:get_master_account_id() of
         {'ok', AccountId} -> AccountId;
@@ -269,7 +269,7 @@ caller_privacy_number(JObj) -> kz_term:is_true(get_value(?CALLER_PRIVACY_NUMBER,
 %% (a common way to make caller id number anonymous)
 %% @end
 %%--------------------------------------------------------------------
--spec is_zero(api_ne_binary()) -> boolean().
+-spec is_zero(kz_term:api_ne_binary()) -> boolean().
 is_zero(?NE_BINARY=Number) ->
     case re:run(erlang:binary_to_list(Number), "^\\+?00+\$", ['global']) of
         {'match', _} -> 'true';
@@ -283,11 +283,11 @@ is_zero(_) -> 'false'.
 %% Get Key from JObj, if not found look into CCV
 %% @end
 %%--------------------------------------------------------------------
--spec get_value(ne_binary(), kz_json:object()) -> any().
+-spec get_value(kz_term:ne_binary(), kz_json:object()) -> any().
 get_value(Key, JObj) ->
     get_value(Key, JObj, 'undefined').
 
--spec get_value(ne_binary(), kz_json:object(), any()) -> any().
+-spec get_value(kz_term:ne_binary(), kz_json:object(), any()) -> any().
 get_value(Key, JObj, Default) ->
     case kz_json:get_first_defined([Key, ?CCV(Key)], JObj) of
         'undefined' -> Default;

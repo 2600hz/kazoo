@@ -6,16 +6,16 @@
 -include_lib("kazoo/include/kz_system_config.hrl").
 
 -type server_options() :: #{test_app => atom()
-                           ,test_db => ne_binary()
+                           ,test_db => kz_term:ne_binary()
                            ,test_db_subdir => atom()
                            }.
 
--type server_map() :: #{url => text()
+-type server_map() :: #{url => kz_term:text()
                        ,options => server_options()
                        }.
 
 -type db_map() :: #{server => server_map()
-                   ,name => ne_binary()
+                   ,name => kz_term:ne_binary()
                    }.
 
 -type fixture_errors() :: not_found | timeout |

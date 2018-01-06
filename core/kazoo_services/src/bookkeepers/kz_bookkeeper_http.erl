@@ -18,12 +18,12 @@
 
 -define(DEFAULT_SYNC_CONTENT_TYPE, ?DEFAULT_CONTENT_TYPE).
 
--record(sync, {id :: api_ne_binary()
-              ,account_id :: api_ne_binary()
+-record(sync, {id :: kz_term:api_ne_binary()
+              ,account_id :: kz_term:api_ne_binary()
               ,items :: kz_service_items:items()
-              ,url :: api_ne_binary()
-              ,method :: api_ne_binary()
-              ,content_type = ?DEFAULT_SYNC_CONTENT_TYPE :: ne_binary() | '_'
+              ,url :: kz_term:api_ne_binary()
+              ,method :: kz_term:api_ne_binary()
+              ,content_type = ?DEFAULT_SYNC_CONTENT_TYPE :: kz_term:ne_binary() | '_'
               }).
 -type sync() :: #sync{}.
 
@@ -47,7 +47,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_good_standing(ne_binary(), ne_binary()) -> boolean().
+-spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_good_standing(_AccountId, Status) ->
     Status =:= kzd_services:status_good().
 
@@ -57,7 +57,7 @@ is_good_standing(_AccountId, Status) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
+-spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     Sync = #sync{id = get_sync_id(AccountId)
                 ,account_id = AccountId
@@ -95,7 +95,7 @@ handle_resp({'error', _E}, _Sync) ->
     lager:debug("http billing sync failed: ~p", [_E]),
     'retry'.
 
--spec get_sync_id(ne_binary()) -> ne_binary().
+-spec get_sync_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_sync_id(AccountId) ->
     {'ok', JObj} = kz_services:fetch_services_doc(AccountId),
     kz_doc:revision(JObj).
@@ -110,7 +110,7 @@ http_payload(#sync{content_type = <<"application/json">>} = Sync) ->
         ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
         ])).
 
--spec http_headers(sync()) -> kz_proplist().
+-spec http_headers(sync()) -> kz_term:proplist().
 http_headers(Sync) ->
     props:filter_empty(
       [{"X-Sync-ID", to_list(Sync#sync.id)}
@@ -119,7 +119,7 @@ http_headers(Sync) ->
       ]
      ).
 
--spec to_list(api_binary()) -> 'undefined' | list().
+-spec to_list(kz_term:api_binary()) -> 'undefined' | list().
 to_list('undefined') -> 'undefined';
 to_list(Value) ->
     case kz_term:is_empty(Value) of
@@ -133,7 +133,7 @@ to_list(Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
+-spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
 commit_transactions(_BillingId, Transactions) ->
     kz_transactions:save(Transactions),
     'ok'.
@@ -144,7 +144,7 @@ commit_transactions(_BillingId, Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), kz_json:objects()) -> [].
+-spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> [].
 charge_transactions(_BillingId, _Transactions) -> [].
 
 %%--------------------------------------------------------------------
@@ -153,7 +153,7 @@ charge_transactions(_BillingId, _Transactions) -> [].
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+-spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
                           {'error', atom()}.
 transactions(AccountId, From, To) ->
@@ -170,7 +170,7 @@ transactions(AccountId, From, To) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_topup(ne_binary(), kz_transactions:transactions()) -> 'ok'.
+-spec handle_topup(kz_term:ne_binary(), kz_transactions:transactions()) -> 'ok'.
 handle_topup(_, []) -> 'ok';
 handle_topup(BillingId, [Transaction|Transactions]) ->
     case kz_transaction:code(Transaction) =:= ?CODE_TOPUP of
@@ -180,7 +180,7 @@ handle_topup(BillingId, [Transaction|Transactions]) ->
             send_topup_notification(BillingId, Transaction)
     end.
 
--spec send_topup_notification(ne_binary(), kz_transaction:transaction()) -> 'ok'.
+-spec send_topup_notification(kz_term:ne_binary(), kz_transaction:transaction()) -> 'ok'.
 send_topup_notification(BillingId, Transaction) ->
     Props = [{<<"Account-ID">>, BillingId}
             ,{<<"Amount">>, wht_util:units_to_dollars(kz_transaction:amount(Transaction))}

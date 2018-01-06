@@ -106,7 +106,7 @@ prop_normalize() ->
 
 safe_date() ->
     ?LET({Y, M}
-        ,{kz_year(), kz_month()}
+        ,{kz_time:year(), kz_time:month()}
         ,{Y, M, range(1, kz_date:days_in_month(Y, M))}
         ).
 
@@ -121,7 +121,7 @@ funky_date({Y, M, D}, MonthsBack) ->
 
 prop_iso_week() ->
     ?FORALL(ISOWeek
-           ,{kz_year(), kz_weeknum()}
+           ,{kz_time:year(), kz_time:weeknum()}
            ,begin
                 RoundTrip = kz_date:to_iso_week(kz_date:from_iso_week(ISOWeek)),
                 ?WHENFAIL(io:format("failed to convert to/from iso week for ~p <=> ~p~n"

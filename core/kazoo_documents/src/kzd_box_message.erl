@@ -89,7 +89,7 @@
 %% we are moving the message to MODB.
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), kz_proplist()) -> doc().
+-spec new(kz_term:ne_binary(), kz_term:proplist()) -> doc().
 new(AccountId, Props) ->
     UtcSeconds = props:get_integer_value(<<"Message-Timestamp">>, Props, kz_time:now_s()),
     Timestamp  = props:get_integer_value(<<"Document-Timestamp">>, Props, UtcSeconds),
@@ -127,7 +127,7 @@ new(AccountId, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_message_name(ne_binary(), api_binary(), gregorian_seconds()) -> ne_binary().
+-spec create_message_name(kz_term:ne_binary(), kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:ne_binary().
 create_message_name(BoxNum, 'undefined', UtcSeconds) ->
     create_message_name(BoxNum, kz_account:default_timezone(), UtcSeconds);
 create_message_name(BoxNum, Timezone, UtcSeconds) ->
@@ -142,7 +142,7 @@ create_message_name(BoxNum, Timezone, UtcSeconds) ->
             message_name(BoxNum, LocalDateTime, "")
     end.
 
--spec message_name(ne_binary(), kz_datetime(), string()) -> ne_binary().
+-spec message_name(kz_term:ne_binary(), kz_time:datetime(), string()) -> kz_term:ne_binary().
 message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
     list_to_binary(["mailbox ", BoxNum, " message "
                    ,kz_term:to_binary(M), "-"
@@ -158,7 +158,7 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
 %% @doc Build message metadata
 %% @end
 %%--------------------------------------------------------------------
--spec build_metadata_object(pos_integer(), kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
+-spec build_metadata_object(pos_integer(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:gregorian_seconds()) ->
                                    doc().
 build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
     kz_json:from_list(
@@ -173,7 +173,7 @@ build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
       ,{?KEY_MEDIA_ID, MediaId}
       ]).
 
--spec get_msg_id(kz_json:object()) -> api_ne_binary().
+-spec get_msg_id(kz_json:object()) -> kz_term:api_ne_binary().
 get_msg_id(JObj) ->
     Paths = [<<"_id">>
             ,<<"media_id">>
@@ -186,10 +186,10 @@ get_msg_id(JObj) ->
 %% @doc Accessors methods
 %% @end
 %%--------------------------------------------------------------------
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
--spec folder(doc()) -> api_ne_binary().
+-spec folder(doc()) -> kz_term:api_ne_binary().
 folder(Metadata) ->
     folder(Metadata, 'undefined').
 
@@ -197,7 +197,7 @@ folder(Metadata) ->
 folder(Metadata, Default) ->
     kz_json:get_first_defined([[?KEY_METADATA, ?VM_KEY_FOLDER], ?VM_KEY_FOLDER], Metadata, Default).
 
--spec set_folder(api_ne_binary(), doc()) -> doc().
+-spec set_folder(kz_term:api_ne_binary(), doc()) -> doc().
 set_folder(Folder, Metadata) ->
     kz_json:set_value(?VM_KEY_FOLDER, Folder, Metadata).
 
@@ -234,35 +234,35 @@ apply_folder(Folder, Doc) ->
     Metadata = set_folder(Folder, metadata(Doc)),
     set_metadata(Metadata, Doc).
 
--spec message_history(doc()) -> ne_binaries().
+-spec message_history(doc()) -> kz_term:ne_binaries().
 message_history(JObj) ->
     kz_json:get_value(?KEY_HISTORY, JObj, []).
 
--spec add_message_history(ne_binary(), doc()) -> doc().
+-spec add_message_history(kz_term:ne_binary(), doc()) -> doc().
 add_message_history(History, JObj) ->
     kz_json:set_value(?KEY_HISTORY, message_history(JObj) ++ [History], JObj).
 
--spec message_name(doc()) -> api_binary().
+-spec message_name(doc()) -> kz_term:api_binary().
 message_name(JObj) ->
     message_name(JObj, 'undefined').
 
--spec message_name(doc(), Default) -> api_binary() | Default.
+-spec message_name(doc(), Default) -> kz_term:api_binary() | Default.
 message_name(JObj, Default) ->
     kz_json:get_value(?KEY_NAME, JObj, Default).
 
--spec set_message_name(api_binary(), doc()) -> doc().
+-spec set_message_name(kz_term:api_binary(), doc()) -> doc().
 set_message_name(Name, JObj) ->
     kz_json:set_value(?KEY_NAME, Name, JObj).
 
--spec media_id(doc()) -> api_binary().
+-spec media_id(doc()) -> kz_term:api_binary().
 media_id(Metadata) ->
     kz_json:get_value(?KEY_MEDIA_ID, Metadata).
 
--spec set_media_id(ne_binary(), doc()) -> doc().
+-spec set_media_id(kz_term:ne_binary(), doc()) -> doc().
 set_media_id(MediaId, Metadata) ->
     kz_json:set_value(?KEY_MEDIA_ID, MediaId, Metadata).
 
--spec update_media_id(ne_binary(), doc()) -> doc().
+-spec update_media_id(kz_term:ne_binary(), doc()) -> doc().
 update_media_id(MediaId, JObj) ->
     Metadata = set_media_id(MediaId, metadata(JObj)),
     set_metadata(Metadata, JObj).
@@ -279,15 +279,15 @@ metadata(JObj, Default) ->
 set_metadata(Metadata, JObj) ->
     kz_json:set_value(?KEY_METADATA, Metadata, JObj).
 
--spec to_sip(doc()) -> api_binary().
+-spec to_sip(doc()) -> kz_term:api_binary().
 to_sip(JObj) ->
     to_sip(JObj, 'undefined').
 
--spec to_sip(doc(), Default) -> api_binary() | Default.
+-spec to_sip(doc(), Default) -> kz_term:api_binary() | Default.
 to_sip(JObj, Default) ->
     kz_json:get_first_defined([[?KEY_METADATA, ?KEY_META_TO], ?KEY_META_TO], JObj, Default).
 
--spec set_to_sip(api_binary(), doc()) -> doc().
+-spec set_to_sip(kz_term:api_binary(), doc()) -> doc().
 set_to_sip(To, Metadata) ->
     kz_json:set_value(?KEY_META_TO, To, Metadata).
 
@@ -295,11 +295,11 @@ set_to_sip(To, Metadata) ->
 utc_seconds(JObj) ->
     kz_json:get_integer_value(?KEY_UTC_SEC, JObj, 0).
 
--spec source_id(doc()) -> api_ne_binary().
+-spec source_id(doc()) -> kz_term:api_ne_binary().
 source_id(JObj) ->
     kz_json:get_ne_binary_value(?KEY_SOURCE_ID, JObj).
 
--spec set_source_id(api_ne_binary(), doc()) -> doc().
+-spec set_source_id(kz_term:api_ne_binary(), doc()) -> doc().
 set_source_id(SourceId, JObj) ->
     kz_json:set_value(?KEY_SOURCE_ID, SourceId, JObj).
 
@@ -308,7 +308,7 @@ set_source_id(SourceId, JObj) ->
 %% @doc Filter messages based on specific folder
 %% @end
 %%--------------------------------------------------------------------
--spec filter_folder(kz_json:objects(), ne_binary()) -> kz_json:objects().
+-spec filter_folder(kz_json:objects(), kz_term:ne_binary()) -> kz_json:objects().
 filter_folder(Messages, Folder) ->
     [M || M <- Messages, folder(M) =:= Folder].
 
@@ -317,7 +317,7 @@ filter_folder(Messages, Folder) ->
 %% @doc Count message list in specific folder(s)
 %% @end
 %%--------------------------------------------------------------------
--spec count_folder(kz_json:objects(), ne_binary() | ne_binaries()) -> non_neg_integer().
+-spec count_folder(kz_json:objects(), kz_term:ne_binary() | kz_term:ne_binaries()) -> non_neg_integer().
 count_folder(Messages, Folders) when is_list(Folders) ->
     lists:sum([1 || Message <- Messages,
                     begin
@@ -347,7 +347,7 @@ change_message_name(NBoxJ, MsgJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_to_sip_field(ne_binary(), doc(), doc()) -> doc().
+-spec change_to_sip_field(kz_term:ne_binary(), doc(), doc()) -> doc().
 change_to_sip_field(AccountId, NBoxJ, MsgJObj) ->
     Realm = kz_account:fetch_realm(AccountId),
     BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),

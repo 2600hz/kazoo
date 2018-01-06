@@ -49,34 +49,34 @@ format_error(Other) -> Other.
 %%% API
 %%%===================================================================
 
--spec open_json(db_map(), ne_binary()) -> doc_resp().
+-spec open_json(db_map(), kz_term:ne_binary()) -> doc_resp().
 open_json(Db, DocId) ->
     read_json(doc_path(Db, DocId)).
 
--spec open_attachment(db_map(), ne_binary(), ne_binary()) -> {ok, binary()} | {error, not_found}.
+-spec open_attachment(db_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, not_found}.
 open_attachment(Db, DocId, AName) ->
     read_file(att_path(Db, DocId, AName)).
 
--spec open_view(db_map(), ne_binary(), kz_data:options()) -> docs_resp().
+-spec open_view(db_map(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 open_view(Db, Design, Options) ->
     %% ?LOG_DEBUG("~nDb ~p~n Design ~p~n Options ~p~n Path ~p~n"
     %%           ,[Db, Design, Options, view_path(Db, Design, Options)]),
     read_json(view_path(Db, Design, Options)).
 
--spec doc_path(db_map(), ne_binary()) -> file:filename_all().
+-spec doc_path(db_map(), kz_term:ne_binary()) -> file:filename_all().
 doc_path(#{server := #{url := Url}, name := DbName}, DocId) ->
     filename:join(kz_term:to_list(Url) ++ "/" ++ kz_term:to_list(DbName)
                  ,["docs/", http_uri:encode(kz_term:to_list(DocId)), ".json"]
                  ).
 
--spec att_path(db_map(), ne_binary(), ne_binary()) -> file:filename_all().
+-spec att_path(db_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 att_path(#{server := #{url := Url}, name := DbName}, DocId, AName) ->
     AttName = kz_binary:hexencode(crypto:hash(md5, <<DocId/binary, AName/binary>>)),
     filename:join(kz_term:to_list(Url) ++ "/" ++ kz_term:to_list(DbName)
                  ,["docs/", kz_term:to_list(AttName), ".att"]
                  ).
 
--spec view_path(db_map(), ne_binary(), kz_data:options()) -> file:filename_all().
+-spec view_path(db_map(), kz_term:ne_binary(), kz_data:options()) -> file:filename_all().
 view_path(#{server := #{url := Url}, name := DbName}, Design, Options) ->
     filename:join(kz_term:to_list(Url) ++ "/" ++ kz_term:to_list(DbName)
                  ,["views/", encode_query_filename(Design, Options)]
@@ -85,15 +85,15 @@ view_path(#{server := #{url := Url}, name := DbName}, Design, Options) ->
 %% @doc
 %% The idea is to encode file name based on view options so you can
 %% write JSON file specifically for each of your view queries
--spec encode_query_filename(ne_binary(), kz_data:options()) -> text().
+-spec encode_query_filename(kz_term:ne_binary(), kz_data:options()) -> kz_term:text().
 encode_query_filename(Design, Options) ->
     encode_query_options(Design, ?DANGEROUS_VIEW_OPTS, Options, []).
 
--spec docs_dir(db_map()) -> text().
+-spec docs_dir(db_map()) -> kz_term:text().
 docs_dir(#{server := #{url := Url}, name := DbName}) ->
     kz_term:to_list(<<Url/binary, "/", DbName/binary, "/docs">>).
 
--spec views_dir(db_map()) -> text().
+-spec views_dir(db_map()) -> kz_term:text().
 views_dir(#{server := #{url := Url}, name := DbName}) ->
     kz_term:to_list(<<Url/binary, "/", DbName/binary, "/views">>).
 
@@ -120,39 +120,39 @@ update_revision(JObj) ->
 %%% Handy functions to use from shell to managing files
 %%%===================================================================
 
--spec get_doc_path(ne_binary(), ne_binary()) -> file:filename_all().
+-spec get_doc_path(kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_doc_path(DbName, DocId) ->
     Plan = kzs_plan:plan(DbName),
     get_doc_path(Plan, DbName, DocId).
 
--spec get_doc_path(map(), ne_binary(), ne_binary()) -> file:filename_all().
+-spec get_doc_path(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_doc_path(#{server := {_, Conn}}=_Plan, DbName, DocId) ->
     doc_path(kz_fixturedb_server:get_db(Conn, DbName), DocId).
 
--spec get_att_path(ne_binary(), ne_binary(), ne_binary()) -> file:filename_all().
+-spec get_att_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_att_path(DbName, DocId, AName) ->
     Plan = kzs_plan:plan(DbName),
     get_att_path(Plan, DbName, DocId, AName).
 
--spec get_att_path(map(), ne_binary(), ne_binary(), ne_binary()) -> file:filename_all().
+-spec get_att_path(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_att_path(#{server := {_, Conn}}=_Plan, DbName, DocId, AName) ->
     att_path(kz_fixturedb_server:get_db(Conn, DbName), DocId, AName).
 
--spec get_view_path(ne_binary(), ne_binary(), kz_proplist()) -> file:filename_all().
+-spec get_view_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
 get_view_path(DbName, Design, Options) ->
     Plan = kzs_plan:plan(DbName),
     get_view_path(Plan, DbName, Design, Options).
 
--spec get_view_path(map(), ne_binary(), ne_binary(), kz_proplist()) -> file:filename_all().
+-spec get_view_path(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
 get_view_path(#{server := {_, Conn}}=_Plan, DbName, Design, Options) ->
     view_path(kz_fixturedb_server:get_db(Conn, DbName), Design, Options).
 
--spec add_att_path_to_index(ne_binary(), ne_binary(), ne_binary()) -> {ok, binary()} | {error, any()}.
+-spec add_att_path_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, any()}.
 add_att_path_to_index(DbName, DocId, AName) ->
     Plan = kzs_plan:plan(DbName),
     add_att_path_to_index(Plan, DbName, DocId, AName).
 
--spec add_att_path_to_index(map(), ne_binary(), ne_binary(), ne_binary()) -> {ok, binary()} | {error, any()}.
+-spec add_att_path_to_index(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, any()}.
 add_att_path_to_index(#{server := {_, Conn}}=_Plan, DbName, DocId, AName) ->
     #{server := #{url := Url}} = Db = kz_fixturedb_server:get_db(Conn, DbName),
     AttPath = att_path(Db, DocId, AName),
@@ -164,12 +164,12 @@ add_att_path_to_index(#{server := {_, Conn}}=_Plan, DbName, DocId, AName) ->
         false -> write_append_file(IndexPath, <<Header/binary, Row/binary>>)
     end.
 
--spec add_view_path_to_index(ne_binary(), ne_binary(), kz_proplist()) -> {ok, binary()} | {error, any()}.
+-spec add_view_path_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {ok, binary()} | {error, any()}.
 add_view_path_to_index(DbName, Design, Options) ->
     Plan = kzs_plan:plan(DbName),
     add_view_path_to_index(Plan, DbName, Design, Options).
 
--spec add_view_path_to_index(map(), ne_binary(), ne_binary(), kz_proplist()) -> {ok, binary()} | {error, any()}.
+-spec add_view_path_to_index(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {ok, binary()} | {error, any()}.
 add_view_path_to_index(#{server := {_, Conn}}=_Plan, DbName, Design, Options) ->
     #{server := #{url := Url}} = Db = kz_fixturedb_server:get_db(Conn, DbName),
     ViewPath = view_path(Db, Design, Options),
@@ -181,11 +181,11 @@ add_view_path_to_index(#{server := {_, Conn}}=_Plan, DbName, Design, Options) ->
         false -> write_append_file(IndexPath, <<Header/binary, Row/binary>>)
     end.
 
--spec index_file_path(text(), ne_binary(), ne_binary()) -> text().
+-spec index_file_path(kz_term:text(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:text().
 index_file_path(Mode, Url, DbName) ->
     kz_term:to_list(Url) ++ "/" ++ kz_term:to_list(DbName) ++ "/" ++ Mode ++ "-index.csv".
 
--spec index_has_header(text()) -> boolean().
+-spec index_has_header(kz_term:text()) -> boolean().
 index_has_header(Path) ->
     case file:read_file(Path) of
         {ok, <<>>} -> false;
@@ -199,7 +199,7 @@ update_pvt_doc_hash() ->
     _ = [update_pvt_doc_hash(Path) || Path <- Paths],
     ok.
 
--spec update_pvt_doc_hash(text() | ne_binary()) -> ok | {error, any()}.
+-spec update_pvt_doc_hash(kz_term:text() | kz_term:ne_binary()) -> ok | {error, any()}.
 update_pvt_doc_hash(Path) ->
     case read_json(Path) of
         {ok, JObj} ->
@@ -233,7 +233,7 @@ write_append_file(Path, Contents) ->
         {error, _}=Error -> Error
     end.
 
--spec encode_query_options(ne_binary(), list(), kz_data:options(), list()) -> text().
+-spec encode_query_options(kz_term:ne_binary(), list(), kz_data:options(), list()) -> kz_term:text().
 encode_query_options(Design, [], _, []) ->
     DesignView = design_view(Design),
     kz_term:to_list(<<DesignView/binary, ".json">>);
@@ -248,7 +248,7 @@ encode_query_options(Design, [Key|Keys], Options, Acc) ->
         Value -> encode_query_options(Design, Keys, Options, ["&", Key, "=", Value | Acc])
     end.
 
--spec design_view(ne_binary()) -> ne_binary().
+-spec design_view(kz_term:ne_binary()) -> kz_term:ne_binary().
 design_view(Design) ->
     case binary:split(Design, <<"/">>) of
         [DesignName] -> DesignName;

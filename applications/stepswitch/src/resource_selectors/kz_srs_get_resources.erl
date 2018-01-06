@@ -11,7 +11,7 @@
 
 -include("stepswitch.hrl").
 
--spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_proplist()) ->
+-spec handle_req(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary(), kz_term:proplist()) ->
                         stepswitch_resources:resources().
 handle_req(Resources, _Number, OffnetJObj, _DB, _Params) ->
     NewResources = case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
@@ -22,7 +22,7 @@ handle_req(Resources, _Number, OffnetJObj, _DB, _Params) ->
                    end,
     Resources ++ NewResources.
 
--spec maybe_get_local_resources(ne_binary(), ne_binary()) -> stepswitch_resources:resources().
+-spec maybe_get_local_resources(kz_term:ne_binary(), kz_term:ne_binary()) -> stepswitch_resources:resources().
 maybe_get_local_resources(HuntAccount, AccountId) ->
     case kz_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
@@ -35,7 +35,7 @@ maybe_get_local_resources(HuntAccount, AccountId) ->
             get_resources(HuntAccount)
     end.
 
--spec get_resources(api_binary()) -> stepswitch_resources:resources().
+-spec get_resources(kz_term:api_binary()) -> stepswitch_resources:resources().
 get_resources('undefined') ->
     case kz_cache:fetch_local(?CACHE_NAME, 'global_resources') of
         {'ok', Resources} -> Resources;

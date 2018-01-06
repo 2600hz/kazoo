@@ -41,7 +41,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:port_request_v(JObj),
     kz_util:put_callid(JObj),
@@ -92,7 +92,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(api_binary(), kz_json:object(), kz_json:object()) -> kz_proplist().
+-spec create_template_props(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> kz_term:proplist().
 create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(kz_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
@@ -143,7 +143,7 @@ create_template_props(_, NotifyJObj, AccountJObj) ->
     ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
     ].
 
--spec get_send_from(kz_json:object(), kz_json:object()) -> ne_binary().
+-spec get_send_from(kz_json:object(), kz_json:object()) -> kz_term:ne_binary().
 get_send_from(PortDoc, Admin) ->
     case kz_json:get_first_defined([<<"email">>
                                    ,[<<"Port">>, <<"email">>]
@@ -153,19 +153,19 @@ get_send_from(PortDoc, Admin) ->
         Email -> Email
     end.
 
--spec get_admin_send_from(kz_json:object()) -> ne_binary().
+-spec get_admin_send_from(kz_json:object()) -> kz_term:ne_binary().
 get_admin_send_from(Admin) ->
     case kz_json:get_ne_value(<<"email">>, Admin) of
         'undefined' -> get_default_from();
         Email -> Email
     end.
 
--spec get_default_from() -> ne_binary().
+-spec get_default_from() -> kz_term:ne_binary().
 get_default_from() ->
     DefaultFrom = kz_term:to_binary(node()),
     kapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
 
--spec find_numbers(kz_proplist(), kz_json:object()) -> ne_binaries().
+-spec find_numbers(kz_term:proplist(), kz_json:object()) -> kz_term:ne_binaries().
 find_numbers(PortData, NotifyJObj) ->
     Numbers = case props:get_value(<<"numbers">>, PortData) of
                   'undefined' -> find_numbers(NotifyJObj);
@@ -173,7 +173,7 @@ find_numbers(PortData, NotifyJObj) ->
               end,
     [normalize_find_numbers(Number) || Number <- Numbers].
 
--spec find_numbers(kz_json:object()) -> ne_binaries() | kz_proplists().
+-spec find_numbers(kz_json:object()) -> kz_term:ne_binaries() | kz_term:proplists().
 find_numbers(NotifyJObj) ->
     [kz_json:get_value(<<"Number">>, NotifyJObj)].
 
@@ -186,14 +186,14 @@ find_port_info(NotifyJObj) ->
             kz_json:set_value(<<"port_id">>, PortRequestId, Doc)
     end.
 
--spec find_port_doc(ne_binary()) -> kz_json:object().
+-spec find_port_doc(kz_term:ne_binary()) -> kz_json:object().
 find_port_doc(PortRequestId) ->
     case kz_datamgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortDoc} -> PortDoc;
         {'error', _} -> kz_json:new()
     end.
 
--spec normalize_find_numbers(kz_proplist() | ne_binary()) -> ne_binary().
+-spec normalize_find_numbers(kz_term:proplist() | kz_term:ne_binary()) -> kz_term:ne_binary().
 normalize_find_numbers({Number, _}) -> Number;
 normalize_find_numbers(Number) -> Number.
 
@@ -203,7 +203,7 @@ normalize_find_numbers(Number) -> Number.
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist(), list()) -> send_email_return().
+-spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist(), list()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) when is_list(To)->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Attachements) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
@@ -231,7 +231,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--type attachment() :: {ne_binary(), ne_binary(), kz_proplist(), kz_proplist(), ne_binary()}.
+-type attachment() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist(), kz_term:ne_binary()}.
 -type attachments() :: [attachment()].
 
 -spec get_attachments(kz_json:object()) -> attachments().
@@ -252,7 +252,7 @@ get_number_attachments(JObj) ->
         _ -> []
     end.
 
--spec get_port_attachments(ne_binary()) -> attachments().
+-spec get_port_attachments(kz_term:ne_binary()) -> attachments().
 get_port_attachments(PortRequestId) ->
     case kz_datamgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortJObj} ->
@@ -261,11 +261,11 @@ get_port_attachments(PortRequestId) ->
         _ -> []
     end.
 
--spec fetch_attachments(kz_proplist(), ne_binary(), ne_binary()) -> attachments().
+-spec fetch_attachments(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary()) -> attachments().
 fetch_attachments(Attachments, Db, Id) ->
     fetch_attachments(Attachments, Db, Id, []).
 
--spec fetch_attachments(kz_proplist(), ne_binary(), ne_binary(), attachments()) -> attachments().
+-spec fetch_attachments(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), attachments()) -> attachments().
 fetch_attachments([], _, _, EmailAttachments) -> EmailAttachments;
 fetch_attachments([{AttachmentName, AttachmentJObj}|Attachments], Db, Id, EmailAttachments) ->
     case kz_datamgr:fetch_attachment(Db, Id, fix_attachment_name(AttachmentName)) of
@@ -277,7 +277,7 @@ fetch_attachments([{AttachmentName, AttachmentJObj}|Attachments], Db, Id, EmailA
             fetch_attachments(Attachments, Db, Id, EmailAttachments)
     end.
 
--spec create_attachment(ne_binary(), kz_json:object(), ne_binary()) -> attachment().
+-spec create_attachment(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> attachment().
 create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
     [Type, Subtype] =
         binary:split(kz_json:get_ne_value(<<"content_type">>, AttachmentJObj, <<"application/octet-stream">>), <<"/">>),
@@ -296,7 +296,7 @@ create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fix_attachment_name(ne_binary() | list()) -> ne_binary().
+-spec fix_attachment_name(kz_term:ne_binary() | list()) -> kz_term:ne_binary().
 fix_attachment_name(Name) when is_binary(Name) ->
     fix_attachment_name(kz_term:to_list(Name));
 fix_attachment_name(Name) ->

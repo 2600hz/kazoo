@@ -35,7 +35,7 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:voicemail_new_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -65,7 +65,7 @@ handle_req(JObj, _Props) ->
         end,
     notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
--spec continue_processing(kz_json:object(), ne_binary(), kz_json:object(), ne_binaries()) -> send_email_return().
+-spec continue_processing(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> send_email_return().
 continue_processing(JObj, AccountDb, VMBox, Emails) ->
     AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
@@ -88,12 +88,12 @@ continue_processing(JObj, AccountDb, VMBox, Emails) ->
 
     build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_undefined(Props)).
 
--spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
+-spec maybe_add_user_email(kz_term:ne_binaries(), kz_term:api_binary(), boolean()) -> kz_term:ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
 maybe_add_user_email(BoxEmails, _UserEmail, 'false') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
--spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api_binary()) ->
+-spec get_owner(kz_term:ne_binary(), kzd_voicemail_box:doc(), kz_term:api_binary()) ->
                        {'ok', kzd_user:doc()}.
 get_owner(AccountDb, VMBox) ->
     get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
@@ -113,7 +113,7 @@ get_owner(AccountDb, _VMBox, OwnerId) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(kz_json:object(), ne_binary(), kz_json:object()) -> kz_proplist().
+-spec create_template_props(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 create_template_props(Event, Timezone, Account) ->
     CIDName = kz_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = kz_json:get_value(<<"Caller-ID-Number">>, Event),
@@ -146,7 +146,7 @@ create_template_props(Event, Timezone, Account) ->
     ,{<<"account_id">>, kz_doc:account_id(Account)}
     ].
 
--spec magic_hash(kz_json:object()) -> api_binary().
+-spec magic_hash(kz_json:object()) -> kz_term:api_binary().
 magic_hash(Event) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, Event),
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, Event),
@@ -167,7 +167,7 @@ magic_hash(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binaries(), kz_proplist()) -> send_email_return().
+-spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     Service = props:get_value(<<"service">>, Props),
@@ -236,7 +236,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %% create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
--spec get_file_name(kz_json:object(), kz_proplist()) -> ne_binary().
+-spec get_file_name(kz_json:object(), kz_term:proplist()) -> kz_term:ne_binary().
 get_file_name(MediaJObj, Props) ->
     %% CallerID_Date_Time.mp3
     Voicemail = props:get_value(<<"voicemail">>, Props),
@@ -256,7 +256,7 @@ get_file_name(MediaJObj, Props) ->
 
     binary:replace(kz_term:to_lower_binary(FName), <<" ">>, <<"_">>).
 
--spec get_extension(kz_json:object()) -> ne_binary().
+-spec get_extension(kz_json:object()) -> kz_term:ne_binary().
 get_extension(MediaJObj) ->
     case kz_json:get_value(<<"media_type">>, MediaJObj) of
         'undefined' ->
@@ -265,20 +265,20 @@ get_extension(MediaJObj) ->
         MediaType -> MediaType
     end.
 
--spec attachment_to_extension(kz_json:object()) -> ne_binary().
+-spec attachment_to_extension(kz_json:object()) -> kz_term:ne_binary().
 attachment_to_extension(AttachmentsJObj) ->
     kz_json:get_value(<<"extension">>
                      ,kz_json:map(fun attachment_to_extension/2, AttachmentsJObj)
                      ,kapps_config:get_ne_binary(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
                      ).
 
--spec attachment_to_extension(ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.
+-spec attachment_to_extension(kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 attachment_to_extension(_Id, Meta) ->
     CT = kz_json:get_value(<<"content_type">>, Meta),
     Ext = mime_to_extension(CT),
     {<<"extension">>, Ext}.
 
--spec mime_to_extension(ne_binary()) -> ne_binary().
+-spec mime_to_extension(kz_term:ne_binary()) -> kz_term:ne_binary().
 mime_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
 mime_to_extension(_) -> <<"wav">>.
 
@@ -288,7 +288,7 @@ mime_to_extension(_) -> <<"wav">>.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec preaty_print_length(integer() | api_object()) -> ne_binary().
+-spec preaty_print_length(integer() | kz_term:api_object()) -> kz_term:ne_binary().
 preaty_print_length('undefined') ->
     <<"00:00">>;
 preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->

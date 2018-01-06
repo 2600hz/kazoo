@@ -16,7 +16,7 @@
 -define(DEFAULT_DESC_WEIGHT, 0).
 -define(DEFAULT_ASC_WEIGHT, 9999).
 
--spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:object()) ->
+-spec handle_req(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary(), kz_json:object()) ->
                         stepswitch_resources:resources().
 handle_req([], _Number, _OffnetJObj, _DB, _Params) ->
     lager:warning("empty resource list", []),
@@ -32,7 +32,7 @@ handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     SortOrder = kz_json:get_ne_value(<<"direction">>, Params, ?DEFAULT_SORT_ORDER),
     order_by(Resources, Values, SortOrder).
 
--spec order_by(stepswitch_resources:resources(), kz_json:object(), ne_binary()) ->
+-spec order_by(stepswitch_resources:resources(), kz_json:object(), kz_term:ne_binary()) ->
                       stepswitch_resources:resources().
 order_by(Resources, Values, SortOrder) ->
     lists:sort(fun(R1, R2) ->
@@ -45,7 +45,7 @@ order_by(Resources, Values, SortOrder) ->
               ,Resources
               ).
 
--spec default_weight(ne_binary()) -> integer().
+-spec default_weight(kz_term:ne_binary()) -> integer().
 default_weight(<<"ascend">>) -> ?DEFAULT_ASC_WEIGHT;
 default_weight(<<"descend">>) -> ?DEFAULT_DESC_WEIGHT.
 
@@ -54,6 +54,6 @@ check_source({'database', _}) -> 'ok';
 check_source({'resource', _}) -> 'ok';
 check_source(Source) -> throw({invalid_source, Source}).
 
--spec sort(integer(), integer(), ne_binary()) -> boolean().
+-spec sort(integer(), integer(), kz_term:ne_binary()) -> boolean().
 sort(Lesser, Greater, <<"ascend">>) -> Lesser =< Greater;
 sort(Greater, Lesser, <<"descend">>) -> Lesser =< Greater.

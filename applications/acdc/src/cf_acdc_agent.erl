@@ -53,7 +53,7 @@ handle(Data, Call) ->
     lager:info("finished with acdc agent callflow"),
     cf_exe:continue(Call).
 
--spec find_agent_status(kapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
+-spec find_agent_status(kapps_call:call() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 find_agent_status(?NE_BINARY = AcctId, AgentId) ->
     fix_agent_status(acdc_agent_util:most_recent_status(AcctId, AgentId));
 find_agent_status(Call, AgentId) ->
@@ -120,8 +120,8 @@ maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     lager:info("unable to go from ~s to paused", [FromStatus]),
     play_agent_invalid(Call).
 
--spec login_agent(kapps_call:call(), ne_binary()) -> api_ne_binary().
--spec login_agent(kapps_call:call(), ne_binary(), kz_json:object()) -> api_ne_binary().
+-spec login_agent(kapps_call:call(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec login_agent(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_ne_binary().
 login_agent(Call, AgentId) ->
     login_agent(Call, AgentId, kz_json:new()).
 login_agent(Call, AgentId, Data) ->
@@ -144,8 +144,8 @@ login_agent(Call, AgentId, Data) ->
             <<"failed">>
     end.
 
--spec logout_agent(kapps_call:call(), ne_binary()) -> 'ok'.
--spec logout_agent(kapps_call:call(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec logout_agent(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
+-spec logout_agent(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 logout_agent(Call, AgentId) ->
     logout_agent(Call, AgentId, kz_json:new()).
 logout_agent(Call, AgentId, Data) ->
@@ -170,7 +170,7 @@ update_agent_status(Call, AgentId, Data, PubFun) ->
 update_agent_status(Call, AgentId, Data, PubFun, Timeout) ->
     send_new_status(Call, AgentId, Data, PubFun, Timeout).
 
--spec send_new_status(kapps_call:call(), ne_binary(), kz_json:object(), kz_amqp_worker:publish_fun(), api_integer()) -> 'ok'.
+-spec send_new_status(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), kz_amqp_worker:publish_fun(), kz_term:api_integer()) -> 'ok'.
 send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, kapps_call:account_id(Call)}
@@ -182,10 +182,10 @@ send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
                ]),
     PubFun(Update).
 
--spec presence_id(kz_json:object()) -> api_ne_binary().
+-spec presence_id(kz_json:object()) -> kz_term:api_ne_binary().
 presence_id(Data) -> kz_json:get_ne_binary_value(<<"presence_id">>, Data).
 
--spec presence_state(kz_json:object()) -> api_ne_binary().
+-spec presence_state(kz_json:object()) -> kz_term:api_ne_binary().
 presence_state(Data) ->
     format_presence_state(kz_json:get_ne_binary_value(<<"presence_state">>, Data)).
 
@@ -199,7 +199,7 @@ format_presence_state(_) -> 'undefined'.
 
 -type find_agent_error() :: 'unknown_endpoint' | 'multiple_owners'.
 -spec find_agent(kapps_call:call()) ->
-                        {'ok', api_binary()} |
+                        {'ok', kz_term:api_binary()} |
                         {'error', find_agent_error()}.
 find_agent(Call) ->
     find_agent(Call, kapps_call:authorizing_id(Call)).

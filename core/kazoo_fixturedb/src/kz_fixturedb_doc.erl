@@ -23,7 +23,7 @@
 %%% Document operations
 %%%===================================================================
 
--spec open_doc(server_map(), ne_binary(), api_ne_binary(), kz_data:options()) -> doc_resp().
+-spec open_doc(server_map(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_data:options()) -> doc_resp().
 open_doc(Server, DbName, DocId, _Options) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
     case kz_term:is_empty(DocId) of
@@ -31,14 +31,14 @@ open_doc(Server, DbName, DocId, _Options) ->
         'false' -> kz_fixturedb_util:open_json(Db, DocId)
     end.
 
--spec lookup_doc_rev(server_map(), ne_binary(), ne_binary()) -> {ok, ne_binary()} | fixture_error().
+-spec lookup_doc_rev(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, kz_term:ne_binary()} | fixture_error().
 lookup_doc_rev(Server, DbName, DocId) ->
     case open_doc(Server, DbName, DocId, []) of
         {'ok', Doc} -> {'ok', kz_doc:revision(Doc)};
         {'error', _}=Error -> Error
     end.
 
--spec save_doc(server_map(), ne_binary(), kz_data:document(), kz_data:options()) -> doc_resp().
+-spec save_doc(server_map(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> doc_resp().
 save_doc(Server, DbName, Doc, Options) when not is_list(Doc) ->
     case open_doc(Server, DbName, kz_doc:id(Doc), Options) of
         {'ok', JObj} ->
@@ -57,7 +57,7 @@ save_doc(Server, DbName, Doc, Options) when not is_list(Doc) ->
             end
     end.
 
--spec save_docs(server_map(), ne_binary(), kz_data:documents(), kz_data:options()) -> docs_resp().
+-spec save_docs(server_map(), kz_term:ne_binary(), kz_data:documents(), kz_data:options()) -> docs_resp().
 save_docs(Server, DbName, Docs, Options) ->
     case kz_fixturedb_db:db_exists(Server, DbName) of
         'false' -> {'error', 'not_found'};
@@ -65,15 +65,15 @@ save_docs(Server, DbName, Docs, Options) ->
             {'ok', [perform_save_doc(Server, DbName, Doc, Options) || Doc <- Docs]}
     end.
 
--spec del_doc(server_map(), ne_binary(), kz_data:document(), kz_data:options()) -> {'ok', kz_json:objects()}.
+-spec del_doc(server_map(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> {'ok', kz_json:objects()}.
 del_doc(Server, DbName, Doc, Options) ->
     del_docs(Server, DbName, [Doc], Options).
 
--spec del_docs(server_map(), ne_binary(), kz_data:documents(), kz_data:options()) -> {'ok', kz_json:objects()}.
+-spec del_docs(server_map(), kz_term:ne_binary(), kz_data:documents(), kz_data:options()) -> {'ok', kz_json:objects()}.
 del_docs(Server, DbName, Docs, Options) ->
     {'ok', [perform_save_doc(Server, DbName, Doc, Options) || Doc <- Docs]}.
 
--spec ensure_saved(server_map(), ne_binary(), kz_data:document(), kz_data:options()) -> doc_resp().
+-spec ensure_saved(server_map(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> doc_resp().
 ensure_saved(Server, DbName, Doc, Options) ->
     case save_doc(Server, DbName, Doc, Options) of
         {'ok', _}=OK -> OK;
@@ -89,7 +89,7 @@ ensure_saved(Server, DbName, Doc, Options) ->
 %%% Internal functions
 %%%===================================================================
 
--spec perform_save_doc(server_map(), ne_binary(), kz_json:object(), kz_data:options()) ->
+-spec perform_save_doc(server_map(), kz_term:ne_binary(), kz_json:object(), kz_data:options()) ->
                               kz_json:object().
 perform_save_doc(Server, DbName, JObj, Options) ->
     prepare_bulk_save_response(save_doc(Server, DbName, JObj, Options), JObj).

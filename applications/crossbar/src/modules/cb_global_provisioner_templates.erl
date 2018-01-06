@@ -75,7 +75,7 @@ init_db() ->
 %% Add content types provided by this module
 %% @end
 %%--------------------------------------------------------------------
--spec acceptable_content_types() -> kz_proplist().
+-spec acceptable_content_types() -> kz_term:proplist().
 acceptable_content_types() -> ?MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
@@ -97,7 +97,7 @@ content_types_provided_for_provisioner(Context, _, _, _) ->
     Context.
 
 %% @private
--spec get_content_type(kz_json:object()) -> ne_binary().
+-spec get_content_type(kz_json:object()) -> kz_term:ne_binary().
 get_content_type(JObj) ->
     kz_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>).
 
@@ -182,8 +182,8 @@ validate_verb(Context, ?HTTP_POST, DocId) ->
 validate_verb(Context, ?HTTP_DELETE, DocId) ->
     load_provisioner_template(DocId, cb_context:set_account_db(Context, ?KZ_PROVISIONER_DB)).
 
--spec validate(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
--spec validate_verb(cb_context:context(), http_method(), path_token(), ne_binary()) ->
+-spec validate(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
+-spec validate_verb(cb_context:context(), http_method(), path_token(), kz_term:ne_binary()) ->
                            cb_context:context().
 validate(Context, DocId, Noun) ->
     validate_verb(Context, cb_context:req_verb(Context), DocId, Noun).
@@ -326,7 +326,7 @@ create_provisioner_template(Context) ->
 %% Load a provision template document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_provisioner_template(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_provisioner_template(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_provisioner_template(DocId, Context) ->
     %% see note at top of file
     Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"provisioner_template">>)),
@@ -350,7 +350,7 @@ load_provisioner_template(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_provisioner_template(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update_provisioner_template(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_provisioner_template(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
@@ -361,7 +361,7 @@ update_provisioner_template(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     C = cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
                                                        ,{<<"pvt_provider">>, <<"provisioner.net">>}

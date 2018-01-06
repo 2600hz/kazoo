@@ -128,7 +128,12 @@ do_warn_path({'beams', Beams}, {N, PLT}) ->
 do_warn_path({'app', Beams}, {N, PLT}) ->
     {N + scan_and_print(PLT, Beams), PLT}.
 
-scan_and_print(PLT, Beams) ->
+scan_and_print(PLT, Bs) ->
+    %% explicitly adding `kz_types' so dialyzer knows about `sup_init_ret', `handle_call_ret_state' and other supervisor,
+    %% gen_server, ... critical types defined in `kz_types'. Dialyzer is strict about types for these `init', `handle_*'
+    %% functions and if we don't add `kz_types' here, dialyzer thinks their types are `any()' and will warn about it.
+    Beams = Bs ++ [fix_path("core/kazoo_stdlib/ebin/kz_types.beam")],
+
     io:format("scanning ~s~n", [string:join(Beams, " ")]),
     length([print(W)
             || W <- scan(PLT, Beams),

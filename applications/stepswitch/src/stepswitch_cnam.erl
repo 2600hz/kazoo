@@ -66,12 +66,12 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(any()) -> startlink_ret().
+-spec start_link(any()) -> kz_types:startlink_ret().
 start_link(_) ->
     _ = ssl:start(),
     gen_server:start_link(?SERVER, [], []).
 
--spec lookup(kz_json:object() | ne_binary()) -> kz_json:object().
+-spec lookup(kz_json:object() | kz_term:ne_binary()) -> kz_json:object().
 lookup(<<_/binary>> = Number) ->
     Num = case ?DISABLE_NORMALIZE of
               'false' -> knm_converters:normalize(Number);
@@ -97,11 +97,11 @@ lookup(JObj) ->
             update_request(JObj, CNAM, 'false')
     end.
 
--spec set_phone_number(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec set_phone_number(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_phone_number(Num, JObj) ->
     kz_json:set_value(<<"phone_number">>, kz_util:uri_encode(Num), JObj).
 
--spec update_request(kz_json:object(), api_binary(), boolean()) -> kz_json:object().
+-spec update_request(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_json:object().
 update_request(JObj, 'undefined', _) -> JObj;
 update_request(JObj, CNAM, FromCache) ->
     Props = [{<<"Caller-ID-Name">>, CNAM}
@@ -152,7 +152,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'render', Props, Template}, _, TemplateName) ->
     {'ok', TemplateName} = kz_template:compile(Template, TemplateName),
     {'ok', Result} = kz_template:render(TemplateName, Props),
@@ -170,7 +170,7 @@ handle_call(_Request, _From, TemplateName) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, TemplateName) ->
     {'noreply', TemplateName}.
 
@@ -184,7 +184,7 @@ handle_cast(_Msg, TemplateName) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, TemplateName) ->
     {'noreply', TemplateName}.
 
@@ -196,7 +196,7 @@ handle_info(_Info, TemplateName) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _TemplateName) ->
     {'reply', []}.
 
@@ -236,7 +236,7 @@ code_change(_OldVsn, TemplateName, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api_object()) -> 'undefined' | kz_proplist().
+-spec json_to_template_props(kz_term:api_object()) -> 'undefined' | kz_term:proplist().
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(kz_json:recursive_to_proplist(JObj)).
@@ -247,12 +247,12 @@ json_to_template_props(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_proplist(kz_proplist()) -> kz_proplist().
+-spec normalize_proplist(kz_term:proplist()) -> kz_term:proplist().
 normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
 
--spec normalize_proplist_element({kz_proplist_key(), kz_proplist_value()}) ->
-                                        {kz_proplist_key(), kz_proplist_value()}.
+-spec normalize_proplist_element({kz_term:proplist_key(), kz_term:proplist_value()}) ->
+                                        {kz_term:proplist_key(), kz_term:proplist_value()}.
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->
@@ -266,10 +266,10 @@ normalize_proplist_element(Else) ->
 normalize_value(Value) ->
     binary:replace(kz_term:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
--spec cache_key(ne_binary()) -> {'cnam', ne_binary()}.
+-spec cache_key(kz_term:ne_binary()) -> {'cnam', kz_term:ne_binary()}.
 cache_key(Number) -> ?CACHE_KEY(Number).
 
--spec fetch_cnam(ne_binary(), kz_json:object()) -> api_binary().
+-spec fetch_cnam(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 fetch_cnam(Number, JObj) ->
     case make_request(Number, JObj) of
         'undefined' -> 'undefined';
@@ -279,7 +279,7 @@ fetch_cnam(Number, JObj) ->
             CNAM
     end.
 
--spec make_request(ne_binary(), kz_json:object()) -> api_binary().
+-spec make_request(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 make_request(Number, JObj) ->
     Timeout = 2.99 * ?MILLISECONDS_IN_SECOND,
     case kz_util:runs_in(Timeout, fun request/2, [Number, JObj]) of
@@ -287,7 +287,7 @@ make_request(Number, JObj) ->
         timeout -> undefined
     end.
 
--spec request(ne_binary(), kz_json:object()) -> api_binary().
+-spec request(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 request(Number, JObj) ->
     Url = kz_term:to_list(get_http_url(JObj)),
     case kz_http:req(get_http_method()
@@ -314,7 +314,7 @@ request(Number, JObj) ->
             'undefined'
     end.
 
--spec get_http_url(kz_json:object()) -> ne_binary().
+-spec get_http_url(kz_json:object()) -> kz_term:ne_binary().
 get_http_url(JObj) ->
     Template = kapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
     {'ok', SrcUrl} = render(JObj, Template),
@@ -349,14 +349,14 @@ get_http_headers() ->
               ],
     maybe_enable_auth(Headers).
 
--spec get_http_options(nonempty_string()) -> kz_proplist().
+-spec get_http_options(nonempty_string()) -> kz_term:proplist().
 get_http_options(Url) ->
     Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
                ,{'timeout', 1500}
                ],
     maybe_enable_ssl(Url, Defaults).
 
--spec maybe_enable_ssl(nonempty_string(), kz_proplist()) -> kz_proplist().
+-spec maybe_enable_ssl(nonempty_string(), kz_term:proplist()) -> kz_term:proplist().
 maybe_enable_ssl("https://" ++ _, Props) ->
     [{'ssl', [{'verify', 'verify_none'}]}|Props];
 maybe_enable_ssl(_Url, Props) -> Props.
@@ -387,8 +387,8 @@ get_http_method() ->
         _Else -> 'get'
     end.
 
--spec render(kz_json:object(), ne_binary()) -> {'ok', iolist()} |
-                                               {'error', 'timeout'}.
+-spec render(kz_json:object(), kz_term:ne_binary()) -> {'ok', iolist()} |
+                                                       {'error', 'timeout'}.
 render(JObj, Template) ->
     case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, 'false', 1000) of
         W when is_pid(W) ->

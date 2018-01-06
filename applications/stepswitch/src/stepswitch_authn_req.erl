@@ -18,7 +18,7 @@
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_authn:req_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -47,7 +47,7 @@ maybe_send_auth_resp(JObj) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_resp(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec send_auth_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 send_auth_resp(JObj, Props) ->
     Category = kz_json:get_value(<<"Event-Category">>, JObj),
     Username = props:get_value('username', Props),

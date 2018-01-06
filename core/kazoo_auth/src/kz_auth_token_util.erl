@@ -105,11 +105,11 @@ create_claims(#{}=Token) -> Token.
 
 -type claim_map_input() :: map() | kz_json:objects().
 
--spec build_claims(kz_proplist(), claim_map_input()) -> kz_proplist().
+-spec build_claims(kz_term:proplist(), claim_map_input()) -> kz_term:proplist().
 build_claims(ClaimsMap, BuildFrom) ->
     build_claims(ClaimsMap, BuildFrom, []).
 
--spec build_claims(kz_proplist(), claim_map_input(), kz_proplist()) -> kz_proplist().
+-spec build_claims(kz_term:proplist(), claim_map_input(), kz_term:proplist()) -> kz_term:proplist().
 build_claims([], _, Claims) -> Claims;
 build_claims([{K1, K2} | KVs], Map, Claims)
   when is_map(Map) ->

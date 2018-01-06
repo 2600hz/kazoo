@@ -59,7 +59,7 @@ init() ->
 %%     WsdlModel = props:get_value(wsdl, Props),
 %%     detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = kapi_call:event_v(JObj),
     CallID = kz_json:get_value(<<"Call-ID">>, JObj),
@@ -143,7 +143,7 @@ get_from_user(JObj) ->
             From
     end.
 
--spec get_account_code(kz_json:object()) -> ne_binary().
+-spec get_account_code(kz_json:object()) -> kz_term:ne_binary().
 get_account_code(JObj) ->
     AccountID = kz_binary:truncate_left(
                   kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)

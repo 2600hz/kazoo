@@ -31,7 +31,7 @@ init() ->
                             'maybe_test_for_initial_occurrences').
 
 %% Triggerables
--spec maybe_test_for_initial_occurrences(ne_binary(), kz_account:doc()) -> 'ok'.
+-spec maybe_test_for_initial_occurrences(kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_initial_occurrences(AccountId, AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
     case ?SHOULD_CRAWL_FOR_FIRST_OCCURRENCE of
@@ -45,7 +45,7 @@ maybe_test_for_initial_occurrences(AccountId, AccountJObj) ->
 %%% Internal functions
 %%%=============================================================================
 %% First Registration
--spec maybe_test_for_registrations(ne_binary(), kz_account:doc()) -> 'ok'.
+-spec maybe_test_for_registrations(kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_registrations(AccountId, AccountJObj) ->
     Realm = kz_account:realm(AccountJObj),
     case Realm =:= 'undefined'
@@ -55,7 +55,7 @@ maybe_test_for_registrations(AccountId, AccountJObj) ->
         'false' -> test_for_registrations(AccountId, Realm)
     end.
 
--spec test_for_registrations(ne_binary(), ne_binary()) -> 'ok'.
+-spec test_for_registrations(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 test_for_registrations(AccountId, Realm) ->
     lager:debug("looking for any registrations in realm ~s", [Realm]),
     Reg = [{<<"Realm">>, Realm}
@@ -77,7 +77,7 @@ test_for_registrations(AccountId, Realm) ->
             end
     end.
 
--spec handle_initial_registration(ne_binary()) -> 'ok'.
+-spec handle_initial_registration(kz_term:ne_binary()) -> 'ok'.
 handle_initial_registration(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} -> notify_initial_registration(AccountJObj);
@@ -95,7 +95,7 @@ notify_initial_registration(AccountJObj) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
 
 %% First Call
--spec maybe_test_for_initial_call(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
+-spec maybe_test_for_initial_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj) ->
     case kz_account:sent_initial_call(AccountJObj) of
         'true' -> 'ok';
@@ -104,7 +104,7 @@ maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj) ->
             test_for_initial_call(AccountId, AccountDb)
     end.
 
--spec test_for_initial_call(ne_binary(), ne_binary()) -> 'ok'.
+-spec test_for_initial_call(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 test_for_initial_call(AccountId, AccountDb) ->
     ViewOptions = [{'key', <<"cdr">>}
                   ,{'limit', 1}
@@ -116,7 +116,7 @@ test_for_initial_call(AccountId, AccountDb) ->
         _Else -> 'ok'
     end.
 
--spec handle_initial_call(ne_binary()) -> 'ok'.
+-spec handle_initial_call(kz_term:ne_binary()) -> 'ok'.
 handle_initial_call(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} -> notify_initial_call(AccountJObj);

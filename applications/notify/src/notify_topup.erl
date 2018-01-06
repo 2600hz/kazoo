@@ -40,7 +40,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:topup_v(JObj),
 
@@ -74,7 +74,7 @@ handle_req(JObj, _Props) ->
 %% NOTE: amount is expected to be in dollars
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(kz_json:object(), kz_json:object()) -> kz_proplist().
+-spec create_template_props(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 create_template_props(_, AccountJObj) ->
     Amount = kz_json:get_value([<<"topup">>, <<"amount">>], AccountJObj),
     Threshold = kz_json:get_value([<<"topup">>, <<"threshold">>], AccountJObj),
@@ -90,7 +90,7 @@ create_template_props(_, AccountJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_dollars(float()) -> ne_binary().
+-spec pretty_print_dollars(float()) -> kz_term:ne_binary().
 pretty_print_dollars(Amount) ->
     kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
@@ -100,7 +100,7 @@ pretty_print_dollars(Amount) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], kz_proplist()) -> send_email_return().
+-spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | [kz_term:ne_binary(),...], kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->

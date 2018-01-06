@@ -19,7 +19,7 @@
 
 -define(SERVER, ?MODULE).
 
--spec start_link(kz_json:object()) -> startlink_ret().
+-spec start_link(kz_json:object()) -> kz_types:startlink_ret().
 start_link(RouteReqJObj) ->
     proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
 
@@ -167,7 +167,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
         ts_callflow:cleanup_amqp(State)
     end.
 
--spec get_flags(kz_json:object(), kz_json:object(), kz_json:object(), ts_callflow:state()) -> ne_binaries().
+-spec get_flags(kz_json:object(), kz_json:object(), kz_json:object(), ts_callflow:state()) -> kz_term:ne_binaries().
 get_flags(DIDOptions, ServerOptions, AccountOptions, State) ->
     Call = ts_callflow:get_kapps_call(State),
     Flags = kz_attributes:get_flags(?APP_NAME, Call),
@@ -176,7 +176,7 @@ get_flags(DIDOptions, ServerOptions, AccountOptions, State) ->
                ],
     lists:foldl(fun(F, A) -> F(DIDOptions, ServerOptions, AccountOptions, Call, A) end, Flags, Routines).
 
--spec get_offnet_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
+-spec get_offnet_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 get_offnet_flags(DIDOptions, ServerOptions, AccountOptions, _, Flags) ->
     case ts_util:offnet_flags([kz_json:get_value(<<"DID_Opts">>, DIDOptions)
                               ,kz_json:get_value(<<"flags">>, ServerOptions)
@@ -187,7 +187,7 @@ get_offnet_flags(DIDOptions, ServerOptions, AccountOptions, _, Flags) ->
         DIDFlags -> Flags ++ DIDFlags
     end.
 
--spec get_offnet_dynamic_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
+-spec get_offnet_dynamic_flags(kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 get_offnet_dynamic_flags(_, ServerOptions, AccountOptions, Call, Flags) ->
     case ts_util:offnet_flags([kz_json:get_value(<<"dynamic_flags">>, ServerOptions)
                               ,kz_json:get_value(<<"dynamic_flags">>, AccountOptions)
@@ -249,24 +249,24 @@ maybe_fix_request({Username, Realm}, JObj) ->
         _ -> JObj
     end.
 
--spec fix_request_values(binary(), binary()) -> [{kz_json:path(), ne_binary()}].
+-spec fix_request_values(binary(), binary()) -> [{kz_json:path(), kz_term:ne_binary()}].
 fix_request_values(Username, Realm) ->
     [{[<<"Custom-Channel-Vars">>, <<"Username">>], Username}
     ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], Realm}
     ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], <<"sys_info">>}
     ].
 
--spec get_referred_by(kz_json:object()) -> api_binary().
+-spec get_referred_by(kz_json:object()) -> kz_term:api_binary().
 get_referred_by(JObj) ->
     ReferredBy = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-By">>], JObj),
     extract_sip_username(ReferredBy).
 
--spec get_redirected_by(kz_json:object()) -> api_binary().
+-spec get_redirected_by(kz_json:object()) -> kz_term:api_binary().
 get_redirected_by(JObj) ->
     RedirectedBy = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Redirected-By">>], JObj),
     extract_sip_username(RedirectedBy).
 
--spec extract_sip_username(api_binary()) -> api_binary().
+-spec extract_sip_username(kz_term:api_binary()) -> kz_term:api_binary().
 extract_sip_username('undefined') -> 'undefined';
 extract_sip_username(Contact) ->
     ReOptions = [{'capture', 'all_but_first', 'binary'}],

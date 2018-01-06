@@ -15,8 +15,8 @@
 
 -define(STREAM_TYPE_STORE, kz_json:from_list([{<<"Stream-Type">>, <<"store">>}])).
 
--type build_media_url() :: api_binary() | binaries() | kz_json:object().
--type build_media_url_ret() :: ne_binary() | {'error', atom()}.
+-type build_media_url() :: kz_term:api_binary() | kz_term:binaries() | kz_json:object().
+-type build_media_url_ret() :: kz_term:ne_binary() | {'error', atom()}.
 
 -spec playback(build_media_url()) -> build_media_url_ret().
 -spec playback(build_media_url(), kz_json:object()) -> build_media_url_ret().
@@ -54,11 +54,11 @@ playback(Doc, JObj) ->
         Error -> Error
     end.
 
--spec store(kz_json:object(), ne_binary()) ->
+-spec store(kz_json:object(), kz_term:ne_binary()) ->
                    build_media_url_ret().
--spec store(ne_binary(), kazoo_data:docid(), ne_binary()) ->
+-spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary()) ->
                    build_media_url_ret().
--spec store(ne_binary(), kazoo_data:docid(), ne_binary(), kz_proplist()) ->
+-spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kz_term:proplist()) ->
                    build_media_url_ret().
 store(JObj, AName) ->
     Media = kz_media_util:store_path_from_doc(JObj, AName),

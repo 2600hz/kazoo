@@ -117,7 +117,7 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
     maybe_load_profile(Token#{access_token => Original});
 maybe_load_profile(#{} = Token) -> Token#{profile => kz_json:new()}.
 
--spec profile_authorization(map(), ne_binary()) -> binary().
+-spec profile_authorization(map(), kz_term:ne_binary()) -> binary().
 profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
     case maps:get(profile_access_auth_type, Provider, <<"token">>) of
         <<"token">> ->
@@ -131,7 +131,7 @@ profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
         <<"url">> -> <<>>
     end.
 
--spec profile_authorization_headers(map(), ne_binary()) -> kz_proplist().
+-spec profile_authorization_headers(map(), kz_term:ne_binary()) -> kz_term:proplist().
 profile_authorization_headers(Provider, AccessToken) ->
     case profile_authorization(Provider, AccessToken) of
         <<>> -> [];
@@ -152,14 +152,14 @@ profile_url(#{auth_provider := #{profile_url := ProfileURL} = Provider
 -define(PROFILE_URL_REGEX_OPTIONS, [{'capture', 'all_but_first', 'binary'}, 'global']).
 -define(PROFILE_URL_REPLACE_OPTIONS, ['global', {'return', 'binary'}]).
 
--spec maybe_compose_profile_url(ne_binary(), map()) -> binary().
+-spec maybe_compose_profile_url(kz_term:ne_binary(), map()) -> binary().
 maybe_compose_profile_url(Url, Token) ->
     case re:run(Url, ?PROFILE_URL_REGEX, ?PROFILE_URL_REGEX_OPTIONS) of
         {match, [_ | _] = Fields} -> compose_profile_url(Url, lists:flatten(Fields), Token);
         _ -> Url
     end.
 
--spec compose_profile_url(ne_binary(), ne_binaries(), map()) -> binary().
+-spec compose_profile_url(kz_term:ne_binary(), kz_term:ne_binaries(), map()) -> binary().
 compose_profile_url(Url, Fields, Token) ->
     Payload = maps:get(payload, Token, #{}),
     lists:foldl(fun(Field, Acc) ->
@@ -297,7 +297,7 @@ maybe_add_user(#{} = Token) ->
     lager:debug("identity not set, skip adding user"),
     Token.
 
--spec ensure_profile_properties(ne_binary(), kz_proplist(), kz_proplist(), map()) -> map().
+-spec ensure_profile_properties(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist(), map()) -> map().
 ensure_profile_properties(DocId, Missing, Props, #{} = Token) ->
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DocId) of
         {'ok', Doc} ->
@@ -312,7 +312,7 @@ ensure_profile_properties(DocId, Missing, Props, #{} = Token) ->
             Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
     end.
 
--spec update_user(ne_binary(), kz_proplist(), map()) -> map().
+-spec update_user(kz_term:ne_binary(), kz_term:proplist(), map()) -> map().
 update_user(DocId, Props, #{auth_provider := #{profile_required_props := RequiredProps}} = Token) ->
     case RequiredProps -- props:get_keys(Props) of
         [] -> do_update_user(DocId, Props, Token);
@@ -321,7 +321,7 @@ update_user(DocId, Props, #{auth_provider := #{profile_required_props := Require
 update_user(DocId, Props, Token) ->
     do_update_user(DocId, Props, Token).
 
--spec do_update_user(ne_binary(), kz_proplist(), map()) -> map().
+-spec do_update_user(kz_term:ne_binary(), kz_term:proplist(), map()) -> map().
 do_update_user(DocId, Props, Token) ->
     case kz_datamgr:update_doc(?KZ_AUTH_DB, DocId, Props) of
         {'ok', DocObj} -> maybe_cache_user(Token#{user_doc => DocObj
@@ -334,7 +334,7 @@ do_update_user(DocId, Props, Token) ->
             Token#{profile_error_code => {500, 'datastore_fault'}, profile => kz_json:new()}
     end.
 
--spec maybe_cache_user(map(), ne_binary()) -> map().
+-spec maybe_cache_user(map(), kz_term:ne_binary()) -> map().
 maybe_cache_user(#{auth_provider := #{profile_cache_timer := Timer}
                   ,user_identity := Identity
                   } = Token
@@ -346,7 +346,7 @@ maybe_cache_user(#{auth_provider := #{profile_cache_timer := Timer}
     Token;
 maybe_cache_user(Token, _DocId) -> Token.
 
--spec maybe_update_user(ne_binary(), kz_json:object(), map()) -> map().
+-spec maybe_update_user(kz_term:ne_binary(), kz_json:object(), map()) -> map().
 maybe_update_user(DocId, JObj, Token) ->
     Props = format_user_doc(Token),
     case updates_needed(JObj, Props) of
@@ -354,7 +354,7 @@ maybe_update_user(DocId, JObj, Token) ->
         Updates -> update_user(DocId, Updates, Token)
     end.
 
--spec maybe_required_properties_missing(map(), kz_proplist(), kz_json:object()) -> map().
+-spec maybe_required_properties_missing(map(), kz_term:proplist(), kz_json:object()) -> map().
 maybe_required_properties_missing(#{auth_provider := #{profile_required_props := RequiredProps}
                                    } = Token, Props, JObj) ->
     case RequiredProps -- props:get_keys(Props) of
@@ -370,7 +370,7 @@ maybe_required_properties_missing(Token, _Props, JObj) ->
           ,user_map => kz_json:to_map(JObj)
           }.
 
--spec updates_needed(kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec updates_needed(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 updates_needed(JObj, Props) ->
     lists:foldl(fun(K, KVs) ->
                         case {props:get_value(K, Props)
@@ -386,7 +386,7 @@ updates_needed(JObj, Props) ->
                ,?UPDATE_CHK_FIELDS
                ).
 
--spec format_user_doc(map()) -> kz_proplist().
+-spec format_user_doc(map()) -> kz_term:proplist().
 format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
                  ,profile := Profile
                  ,user_identity := Identity

@@ -30,8 +30,8 @@
 
 -export_type([req/0, resp/0]).
 
--type req() :: api_terms().
--type resp() :: api_terms().
+-type req() :: kz_term:api_terms().
+-type resp() :: kz_term:api_terms().
 
 -include_lib("amqp_util.hrl").
 
@@ -62,7 +62,7 @@
                    ,{?KEY_DATABASE, fun is_binary/1}
                    ]).
 
--spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REQ_HEADERS, ?OPTIONAL_REQ_HEADERS);
@@ -71,7 +71,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(kz_term:api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REQ_HEADERS, ?REQ_VALUES, ?REQ_TYPES);
 req_v(JObj) ->
@@ -86,7 +86,7 @@ req_v(JObj) ->
                     ,{<<"Code">>, fun is_integer/1}
                     ]).
 
--spec resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESP_HEADERS, ?OPTIONAL_RESP_HEADERS);
@@ -95,7 +95,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(api_terms()) -> boolean().
+-spec resp_v(kz_term:api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESP_HEADERS, ?RESP_VALUES, ?RESP_TYPES);
 resp_v(JObj) ->
@@ -107,16 +107,16 @@ resp_v(JObj) ->
 -define(REFRESH_VIEWS_TYPE(Type), {'refresh_views', 'type', Type}).
 -define(CLEAN_SERVICES_ID(AccountId), {'clean_services', AccountId}).
 
--type db_type() :: kz_datamgr:db_classification() | ne_binary().
--type binding() :: ?REFRESH_DB_DB(ne_binary()) |
+-type db_type() :: kz_datamgr:db_classification() | kz_term:ne_binary().
+-type binding() :: ?REFRESH_DB_DB(kz_term:ne_binary()) |
                    ?REFRESH_DB_TYPE(db_type()) |
-                   ?REFRESH_VIEWS_DB(ne_binary()) |
+                   ?REFRESH_VIEWS_DB(kz_term:ne_binary()) |
                    ?REFRESH_VIEWS_TYPE(db_type()) |
-                   ?CLEAN_SERVICES_ID(ne_binary()).
+                   ?CLEAN_SERVICES_ID(kz_term:ne_binary()).
 -type bind_prop() :: {'restrict_to', [binding()]}.
 -type binds() :: [bind_prop()].
 
--spec restrict_to_db(ne_binary()) -> ?REFRESH_DB_DB(ne_binary()).
+-spec restrict_to_db(kz_term:ne_binary()) -> ?REFRESH_DB_DB(kz_term:ne_binary()).
 restrict_to_db(<<_/binary>>=Db) ->
     ?REFRESH_DB_DB(Db).
 
@@ -124,7 +124,7 @@ restrict_to_db(<<_/binary>>=Db) ->
 restrict_to_classification(Classification) ->
     ?REFRESH_DB_TYPE(Classification).
 
--spec restrict_to_views_db(ne_binary()) -> ?REFRESH_VIEWS_DB(ne_binary()).
+-spec restrict_to_views_db(kz_term:ne_binary()) -> ?REFRESH_VIEWS_DB(kz_term:ne_binary()).
 restrict_to_views_db(Db) ->
     ?REFRESH_VIEWS_DB(Db).
 
@@ -132,22 +132,22 @@ restrict_to_views_db(Db) ->
 restrict_to_views_classification(Classification) ->
     ?REFRESH_VIEWS_TYPE(Classification).
 
--spec restrict_to_clean_services(ne_binary()) -> ?CLEAN_SERVICES_ID(ne_binary()).
+-spec restrict_to_clean_services(kz_term:ne_binary()) -> ?CLEAN_SERVICES_ID(kz_term:ne_binary()).
 restrict_to_clean_services(AccountId) ->
     ?CLEAN_SERVICES_ID(AccountId).
 
--spec refresh_routing_db(ne_binary(), ne_binary()) -> ne_binary().
+-spec refresh_routing_db(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 refresh_routing_db(RefreshWhat, <<_/binary>>=Db) ->
     refresh_routing(RefreshWhat, kz_datamgr:db_classification(Db), Db).
 
--spec refresh_routing_classification(ne_binary(), db_type()) -> ne_binary().
+-spec refresh_routing_classification(kz_term:ne_binary(), db_type()) -> kz_term:ne_binary().
 refresh_routing_classification(RefreshWhat, Classification) ->
     refresh_routing(RefreshWhat, Classification, <<"*">>).
 
 refresh_routing_clean_services(AccountId) ->
     refresh_routing(?CLEAN_SERVICES, 'account', AccountId).
 
--spec refresh_routing(ne_binary(), db_type(), ne_binary()) -> ne_binary().
+-spec refresh_routing(kz_term:ne_binary(), db_type(), kz_term:ne_binary()) -> kz_term:ne_binary().
 refresh_routing(RefreshWhat, Classification, Database) ->
     kz_binary:join([?EVENT_CAT
                    ,RefreshWhat
@@ -157,8 +157,8 @@ refresh_routing(RefreshWhat, Classification, Database) ->
                   ,$.
                   ).
 
--spec bind_q(ne_binary(), binds()) -> 'ok'.
--spec bind_to_q(ne_binary(), 'undefined' | [binding()], kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), binds()) -> 'ok'.
+-spec bind_to_q(kz_term:ne_binary(), 'undefined' | [binding()], kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
@@ -181,8 +181,8 @@ bind_to_q(Queue, [?CLEAN_SERVICES_ID(AccountId)|Rest], Props) ->
     bind_to_q(Queue, Rest, Props);
 bind_to_q(_Queue, [], _Props) -> 'ok'.
 
--spec unbind_q(ne_binary(), binds()) -> 'ok'.
--spec unbind_from_q(ne_binary(), 'undefined' | [binding()], kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), binds()) -> 'ok'.
+-spec unbind_from_q(kz_term:ne_binary(), 'undefined' | [binding()], kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_from_q(Queue, props:get_value('restrict_to', Props), Props).
 
@@ -209,16 +209,16 @@ unbind_from_q(_Queue, [], _Props) -> 'ok'.
 declare_exchanges() ->
     amqp_util:sysconf_exchange().
 
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REQ_VALUES, fun req/1),
     amqp_util:sysconf_publish(routing_key(Req), Payload, ContentType).
 
--spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
     publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(TargetQ, Resp, ContentType) ->
@@ -245,11 +245,11 @@ routing_key(Req, Get, ?REFRESH_VIEWS) ->
                    ).
 
 
--spec refresh_database(ne_binary()) ->
+-spec refresh_database(kz_term:ne_binary()) ->
                               kz_amqp_worker:request_return().
--spec refresh_database(ne_binary(), pid() | kz_datamgr:db_classification()) ->
+-spec refresh_database(kz_term:ne_binary(), pid() | kz_datamgr:db_classification()) ->
                               kz_amqp_worker:request_return().
--spec refresh_database(ne_binary(), pid(), kz_datamgr:db_classification()) ->
+-spec refresh_database(kz_term:ne_binary(), pid(), kz_datamgr:db_classification()) ->
                               kz_amqp_worker:request_return().
 refresh_database(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
@@ -282,15 +282,15 @@ refresh_database(Database, Worker, Classification) ->
     kz_util:put_callid(OldCallId),
     Resp.
 
--spec msg_id(ne_binary()) -> ne_binary().
+-spec msg_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 msg_id(Database) ->
     kz_binary:join([<<"refresh">>, Database, kz_binary:rand_hex(8)], $-).
 
--spec refresh_views(ne_binary()) ->
+-spec refresh_views(kz_term:ne_binary()) ->
                            kz_amqp_worker:request_return().
--spec refresh_views(ne_binary(), pid() | kz_datamgr:db_classification()) ->
+-spec refresh_views(kz_term:ne_binary(), pid() | kz_datamgr:db_classification()) ->
                            kz_amqp_worker:request_return().
--spec refresh_views(ne_binary(), pid(), kz_datamgr:db_classification()) ->
+-spec refresh_views(kz_term:ne_binary(), pid(), kz_datamgr:db_classification()) ->
                            kz_amqp_worker:request_return().
 refresh_views(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
@@ -326,8 +326,8 @@ refresh_views(Database, Worker, Classification) ->
     kz_util:put_callid(OldCallId),
     Resp.
 
--spec clean_services(ne_binary()) -> kz_amqp_worker:request_return().
--spec clean_services(ne_binary(), pid()) -> kz_amqp_worker:request_return().
+-spec clean_services(kz_term:ne_binary()) -> kz_amqp_worker:request_return().
+-spec clean_services(kz_term:ne_binary(), pid()) -> kz_amqp_worker:request_return().
 clean_services(AccountId) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     kz_amqp_worker:relay_to(Worker, self()),
@@ -352,9 +352,9 @@ clean_services(AccountId, Worker) ->
     kz_util:put_callid(OldCallId),
     Resp.
 
--spec wait_for_response(ne_binary(), kz_timeout()) ->
+-spec wait_for_response(kz_term:ne_binary(), timeout()) ->
                                kz_amqp_worker:request_return().
--spec wait_for_response(ne_binary(), kz_timeout(), kz_json:objects()) ->
+-spec wait_for_response(kz_term:ne_binary(), timeout(), kz_json:objects()) ->
                                kz_amqp_worker:request_return().
 wait_for_response(MsgId, Timeout) ->
     wait_for_response(MsgId, Timeout, []).
@@ -381,7 +381,7 @@ wait_for_response(MsgId, Timeout, Resps) ->
         Timeout -> wait_for_response(MsgId, 0, Resps)
     end.
 
--spec clear_mailbox(ne_binary(), kz_json:objects()) ->
+-spec clear_mailbox(kz_term:ne_binary(), kz_json:objects()) ->
                            {'ok', kz_json:objects()}.
 clear_mailbox(MsgId, Resps) ->
     receive
@@ -397,14 +397,14 @@ clear_mailbox(MsgId, Resps) ->
     end.
 
 
--spec req_action(req()) -> api_ne_binary().
+-spec req_action(req()) -> kz_term:api_ne_binary().
 req_action(Req) ->
     kz_json:get_ne_binary_value(?KEY_ACTION, Req).
 
--spec req_database(req()) -> api_ne_binary().
+-spec req_database(req()) -> kz_term:api_ne_binary().
 req_database(Req) ->
     kz_json:get_ne_binary_value(?KEY_DATABASE, Req).
 
--spec req_classification(req()) -> api_ne_binary().
+-spec req_classification(req()) -> kz_term:api_ne_binary().
 req_classification(Req) ->
     kz_json:get_ne_binary_value(?KEY_CLASSIFICATION, Req).

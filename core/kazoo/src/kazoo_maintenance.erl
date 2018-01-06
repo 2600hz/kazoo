@@ -122,19 +122,19 @@ start_debug_file(File) ->
     Timestamp = kz_time:current_unix_tstamp(),
     file:write_file(File, io_lib:format("Created: ~p~n~n", [Timestamp])).
 
--spec syslog_level(text()) -> 'ok'.
+-spec syslog_level(kz_term:text()) -> 'ok'.
 syslog_level(Level) ->
     kz_util:change_syslog_log_level(kz_term:to_atom(Level)).
 
--spec error_level(text()) -> 'ok'.
+-spec error_level(kz_term:text()) -> 'ok'.
 error_level(Level) ->
     kz_util:change_error_log_level(kz_term:to_atom(Level)).
 
--spec console_level(text()) -> 'ok'.
+-spec console_level(kz_term:text()) -> 'ok'.
 console_level(Level) ->
     kz_util:change_console_log_level(kz_term:to_atom(Level)).
 
--spec hotload(text() | atom()) -> 'ok' | 'no_return'.
+-spec hotload(kz_term:text() | atom()) -> 'ok' | 'no_return'.
 hotload(Module) when is_atom(Module) ->
     _ = code:soft_purge(Module),
     case code:load_file(Module) of
@@ -146,7 +146,7 @@ hotload(Module) when is_atom(Module) ->
 hotload(Module) ->
     hotload(kz_term:to_atom(Module, 'true')).
 
--spec hotload_app(text() | atom()) -> 'ok'.
+-spec hotload_app(kz_term:text() | atom()) -> 'ok'.
 hotload_app(App) when is_atom(App) ->
     case application:get_key(App, 'modules') of
         {'ok', Modules} ->
@@ -174,7 +174,7 @@ gc_top_mem_consumers(N) ->
     {Top, _} = top_mem_consumers(N),
     gc_pids([P || {P,_} <- Top]).
 
--type consumers() :: {kz_proplist_kv(pid(), integer()), kz_proplist_kv(pid(), integer())}.
+-type consumers() :: {kz_term:proplist_kv(pid(), integer()), kz_term:proplist_kv(pid(), integer())}.
 -spec top_mem_consumers() -> consumers().
 -spec top_mem_consumers(pos_integer()) -> consumers().
 top_mem_consumers() ->

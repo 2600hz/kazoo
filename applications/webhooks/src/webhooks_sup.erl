@@ -44,25 +44,25 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec listener() -> api_pid().
+-spec listener() -> kz_term:api_pid().
 listener() ->
     case child_of_type(?SERVER, 'webhooks_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec shared_listener() -> api_pid().
+-spec shared_listener() -> kz_term:api_pid().
 shared_listener() ->
     case child_of_type(?SERVER, 'webhooks_shared_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec child_of_type(pid() | atom(), atom()) -> pids().
+-spec child_of_type(pid() | atom(), atom()) -> kz_term:pids().
 child_of_type(S, T) ->
     [P || {Ty, P, 'worker', _} <- supervisor:which_children(S),
           T =:= Ty
@@ -81,7 +81,7 @@ child_of_type(S, T) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

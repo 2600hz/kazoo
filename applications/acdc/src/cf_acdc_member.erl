@@ -23,8 +23,8 @@
 -define(MEMBER_HANGUP, <<"member_hangup">>).
 
 -record(member_call, {call             :: kapps_call:call()
-                     ,queue_id         :: api_binary()
-                     ,config_data = [] :: kz_proplist()
+                     ,queue_id         :: kz_term:api_binary()
+                     ,config_data = [] :: kz_term:proplist()
                      ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
                      }).
 -type member_call() :: #member_call{}.
@@ -69,7 +69,7 @@ handle(Data, Call) ->
                      ,is_queue_full(MaxQueueSize, CurrQueueSize)
                      ).
 
--spec lookup_priority(kz_json:object(), kapps_call:call()) -> api_binary().
+-spec lookup_priority(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
 lookup_priority(Data, Call) ->
     FromData = kz_json:get_integer_value(<<"priority">>, Data),
     FromCall = kapps_call:custom_channel_var(<<"Call-Priority">>, Call),
@@ -98,7 +98,7 @@ maybe_enter_queue(#member_call{call=Call
                    ).
 
 -spec wait_for_bridge(member_call(), max_wait()) -> 'ok'.
--spec wait_for_bridge(member_call(), max_wait(), kz_now()) -> 'ok'.
+-spec wait_for_bridge(member_call(), max_wait(), kz_time:now()) -> 'ok'.
 wait_for_bridge(MC, Timeout) ->
     wait_for_bridge(MC, Timeout, os:timestamp()).
 wait_for_bridge(#member_call{call=Call}, Timeout, _Start) when Timeout < 0 ->
@@ -119,9 +119,9 @@ end_member_call(Call) ->
     stop_hold_music(Call),
     cf_exe:continue(Call).
 
--spec process_message(member_call(), max_wait(), kz_now()
-                     ,kz_now(), kz_json:object()
-                     ,{ne_binary(), ne_binary()}
+-spec process_message(member_call(), max_wait(), kz_time:now()
+                     ,kz_time:now(), kz_json:object()
+                     ,{kz_term:ne_binary(), kz_term:ne_binary()}
                      ) -> 'ok'.
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
     lager:info("member was bridged to agent, yay! took ~b s", [kz_time:elapsed_s(Start)]),
@@ -177,7 +177,7 @@ max_queue_size(_) -> 0.
 is_queue_full(0, _) -> 'false';
 is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
 
--spec cancel_member_call(kapps_call:call(), ne_binary()) -> 'ok'.
+-spec cancel_member_call(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 cancel_member_call(Call, <<"timeout">>) ->
     lager:info("update reason from `timeout` to `member_timeout`"),
     cancel_member_call(Call, ?MEMBER_TIMEOUT);

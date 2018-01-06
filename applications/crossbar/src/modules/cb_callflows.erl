@@ -162,7 +162,7 @@ load_callflow_summary(Context) ->
 %% Load a callflow document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_callflow(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_callflow(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_callflow(CallflowId, Context) ->
     Context1 = crossbar_doc:load(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflow:type())),
     case cb_context:resp_status(Context1) of
@@ -176,11 +176,11 @@ load_callflow(CallflowId, Context) ->
         _Status -> Context1
     end.
 
--spec request_numbers(cb_context:context()) -> ne_binaries() | kz_json:json_term().
+-spec request_numbers(cb_context:context()) -> kz_term:ne_binaries() | kz_json:json_term().
 request_numbers(Context) ->
     kz_json:get_ne_value(<<"numbers">>, cb_context:req_data(Context), []).
 
--spec request_patterns(cb_context:context()) -> ne_binaries() | kz_json:json_term().
+-spec request_patterns(cb_context:context()) -> kz_term:ne_binaries() | kz_json:json_term().
 request_patterns(Context) ->
     kz_json:get_ne_value(<<"patterns">>, cb_context:req_data(Context), []).
 
@@ -190,7 +190,7 @@ request_patterns(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(CallflowId, Context) ->
     case request_numbers(Context) of
         [] -> validate_patterns(CallflowId, Context);
@@ -205,7 +205,7 @@ validate_request(CallflowId, Context) ->
             cb_context:add_validation_error(<<"numbers">>, <<"type">>, Msg, Context)
     end.
 
--spec normalize_numbers(cb_context:context(), ne_binaries()) -> cb_context:context().
+-spec normalize_numbers(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
 normalize_numbers(Context, Nums) ->
     Normalized = knm_converters:normalize(Nums, cb_context:account_id(Context)),
     NewReqData = kz_json:set_value(<<"numbers">>, Normalized, cb_context:req_data(Context)),
@@ -217,11 +217,11 @@ normalize_numbers(Context, Nums) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(CallflowId, Context) ->
     crossbar_doc:patch_and_validate(CallflowId, Context, fun validate_request/2).
 
--spec validate_patterns(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patterns(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patterns(CallflowId, Context) ->
     case request_patterns(Context) of
         [] ->
@@ -240,18 +240,18 @@ validate_patterns(CallflowId, Context) ->
             cb_context:add_validation_error(<<"patterns">>, <<"type">>, Msg, Context)
     end.
 
--spec validate_uniqueness(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_uniqueness(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_uniqueness(CallflowId, Context) ->
     Setters = [{fun validate_unique_numbers/2, CallflowId}
               ,{fun validate_unique_patterns/2, CallflowId}
               ],
     cb_context:setters(Context, Setters).
 
--spec validate_unique_numbers(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_unique_numbers(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_unique_numbers(Context, CallflowId) ->
     validate_unique_numbers(Context, CallflowId, request_numbers(Context)).
 
--spec validate_unique_numbers(cb_context:context(), api_binary(), ne_binaries()) -> cb_context:context().
+-spec validate_unique_numbers(cb_context:context(), kz_term:api_binary(), kz_term:ne_binaries()) -> cb_context:context().
 validate_unique_numbers(Context, _CallflowId, []) -> Context;
 validate_unique_numbers(Context, CallflowId, Numbers) ->
     Options = [{'keys', Numbers}],
@@ -263,7 +263,7 @@ validate_unique_numbers(Context, CallflowId, Numbers) ->
             validate_number_conflicts(Context, CallflowId, JObjs)
     end.
 
--spec validate_number_conflicts(cb_context:context(), api_binary(), kz_json:objects()) -> cb_context:context().
+-spec validate_number_conflicts(cb_context:context(), kz_term:api_binary(), kz_json:objects()) -> cb_context:context().
 validate_number_conflicts(Context, 'undefined', JObjs) ->
     add_number_conflicts(Context, JObjs);
 validate_number_conflicts(Context, CallflowId, JObjs) ->
@@ -285,11 +285,11 @@ add_number_conflict(Context, JObj) ->
             ]),
     cb_context:add_validation_error(<<"numbers">>, <<"unique">>, Msg, Context).
 
--spec validate_unique_patterns(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_unique_patterns(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_unique_patterns(Context, CallflowId) ->
     validate_unique_patterns(Context, CallflowId, request_patterns(Context)).
 
--spec validate_unique_patterns(cb_context:context(), api_binary(), ne_binaries()) -> cb_context:context().
+-spec validate_unique_patterns(cb_context:context(), kz_term:api_binary(), kz_term:ne_binaries()) -> cb_context:context().
 validate_unique_patterns(Context, _CallflowId, []) -> Context;
 validate_unique_patterns(Context, CallflowId, Patterns) ->
     Options = [{'keys', Patterns}],
@@ -301,7 +301,7 @@ validate_unique_patterns(Context, CallflowId, Patterns) ->
             validate_pattern_conflicts(Context, CallflowId, JObjs)
     end.
 
--spec validate_pattern_conflicts(cb_context:context(), api_binary(), kz_json:objects()) -> cb_context:context().
+-spec validate_pattern_conflicts(cb_context:context(), kz_term:api_binary(), kz_json:objects()) -> cb_context:context().
 validate_pattern_conflicts(Context, 'undefined', JObjs) ->
     add_pattern_conflicts(Context, JObjs);
 validate_pattern_conflicts(Context, CallflowId, JObjs) ->
@@ -323,7 +323,7 @@ add_pattern_conflict(Context, JObj) ->
             ]),
     cb_context:add_validation_error(<<"patterns">>, <<"unique">>, Msg, Context).
 
--spec validate_callflow_schema(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_callflow_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_callflow_schema(CallflowId, Context) ->
     OnSuccess = fun(C) ->
                         C1 = validate_uniqueness(CallflowId, on_successful_validation(CallflowId, C)),
@@ -334,7 +334,7 @@ validate_callflow_schema(CallflowId, Context) ->
                 end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_doc:set_type(cb_context:doc(Context), kzd_callflow:type())
@@ -419,7 +419,7 @@ track_assignment('delete', Context) ->
     Updates = cb_modules_util:apply_assignment_updates(Unassigned, Context),
     cb_modules_util:log_assignment_updates(Updates).
 
--spec filter_callflow_list(api_binary(), kz_json:objects()) -> kz_json:objects().
+-spec filter_callflow_list(kz_term:api_binary(), kz_json:objects()) -> kz_json:objects().
 filter_callflow_list('undefined', JObjs) -> JObjs;
 filter_callflow_list(CallflowId, JObjs) ->
     [JObj
@@ -434,12 +434,12 @@ filter_callflow_list(CallflowId, JObjs) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec ids_in_flow(kz_json:object()) -> ne_binaries().
+-spec ids_in_flow(kz_json:object()) -> kz_term:ne_binaries().
 ids_in_flow(FlowJObj) ->
     ids_in_data(kz_json:get_values(<<"data">>, FlowJObj)).
 
--spec ids_in_data({kz_json:json_terms(), kz_json:keys()}) -> ne_binaries().
--spec ids_in_data({kz_json:json_terms(), kz_json:keys()}, ne_binaries()) -> ne_binaries().
+-spec ids_in_data({kz_json:json_terms(), kz_json:keys()}) -> kz_term:ne_binaries().
+-spec ids_in_data({kz_json:json_terms(), kz_json:keys()}, kz_term:ne_binaries()) -> kz_term:ne_binaries().
 ids_in_data(Values) ->
     ids_in_data(Values, []).
 
@@ -454,8 +454,8 @@ ids_in_data({[V|Vs], [K|Ks]}, IDs) ->
         'true' -> ids_in_data({Vs, Ks}, [V | IDs])
     end.
 
--spec get_metadata(api_object(), ne_binary()) -> kz_json:object().
--spec get_metadata(kz_json:object(), ne_binary(), kz_json:object()) ->
+-spec get_metadata(kz_term:api_object(), kz_term:ne_binary()) -> kz_json:object().
+-spec get_metadata(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
                           kz_json:object().
 get_metadata('undefined', _Db) -> kz_json:new();
 get_metadata(Flow, Db) -> get_metadata(Flow, Db, kz_json:new()).
@@ -488,7 +488,7 @@ get_metadata(Flow, Db, Metadata) ->
 %% exists in metadata.
 %% @end
 %%--------------------------------------------------------------------
--spec create_metadata(ne_binary(), ne_binary(), kz_json:object()) ->
+-spec create_metadata(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                              kz_json:object().
 create_metadata(_, <<"_">>, Metadata) -> Metadata;
 create_metadata(_, Id, Metadata) when byte_size(Id) < 2 -> Metadata;
@@ -501,7 +501,7 @@ create_metadata(Db, Id, Metadata) ->
         {'error', _E} -> Metadata
     end.
 
--spec fetch_id_from_db(ne_binary(), ne_binary()) ->
+-spec fetch_id_from_db(kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', kz_json:object()} |
                               kz_datamgr:data_error().
 -ifdef(TEST).

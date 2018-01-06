@@ -148,7 +148,7 @@ create_menu(Context) ->
 %% Load a menu document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_menu(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_menu(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_menu(DocId, Context) ->
     crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
 
@@ -159,7 +159,7 @@ load_menu(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_menu(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update_menu(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_menu(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
@@ -171,7 +171,7 @@ update_menu(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(DocId, Context) ->
     crossbar_doc:patch_and_validate(DocId, Context, fun update_menu/2).
 
@@ -181,7 +181,7 @@ validate_patch(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) ->
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"menu">>}

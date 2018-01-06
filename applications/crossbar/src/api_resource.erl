@@ -46,12 +46,12 @@
 %%%===================================================================
 %%% Startup and shutdown of request
 %%%===================================================================
--spec init(cowboy_req:req(), kz_proplist()) ->
+-spec init(cowboy_req:req(), kz_term:proplist()) ->
                   {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
     rest_init(Req, Opts).
 
--spec rest_init(cowboy_req:req(), kz_proplist()) ->
+-spec rest_init(cowboy_req:req(), kz_term:proplist()) ->
                        {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 rest_init(Req, Opts) ->
     maybe_trace(Req),
@@ -101,7 +101,7 @@ rest_init(Req, Opts) ->
             }
     end.
 
--spec get_request_id(cowboy_req:req()) -> ne_binary().
+-spec get_request_id(cowboy_req:req()) -> kz_term:ne_binary().
 get_request_id(Req) ->
     ReqId = case cowboy_req:header(<<"x-request-id">>, Req) of
                 'undefined' -> kz_datamgr:get_uuid();
@@ -110,14 +110,14 @@ get_request_id(Req) ->
     kz_util:put_callid(ReqId),
     ReqId.
 
--spec get_profile_id(cowbow_req:req()) -> api_ne_binary().
+-spec get_profile_id(cowbow_req:req()) -> kz_term:api_ne_binary().
 get_profile_id(Req) ->
     case cowboy_req:header(<<"x-profile-id">>, Req) of
         'undefined' -> 'undefined';
         ProfId -> kz_term:to_binary(ProfId)
     end.
 
--spec get_client_ip(cowboy_req:req()) -> ne_binary().
+-spec get_client_ip(cowboy_req:req()) -> kz_term:ne_binary().
 get_client_ip(Req) ->
     {Peer, _PeerPort} = cowboy_req:peer(Req),
     case cowboy_req:header(<<"x-forwarded-for">>, Req) of
@@ -172,9 +172,9 @@ maybe_decode_start_key(Context) ->
 metrics() ->
     {kz_util:bin_usage(), kz_util:mem_usage()}.
 
--spec find_version(ne_binary()) -> ne_binary().
--spec find_version(ne_binary(), cowboy_req:req()) ->
-                          ne_binary().
+-spec find_version(kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec find_version(kz_term:ne_binary(), cowboy_req:req()) ->
+                          kz_term:ne_binary().
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of
         'undefined' -> find_version(Path);
@@ -189,7 +189,7 @@ find_version(Path) ->
         [Ver | _] -> to_version(Ver)
     end.
 
--spec to_version(ne_binary()) -> ne_binary().
+-spec to_version(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_version(<<"v", Int/binary>>=Version) ->
     try kz_term:to_integer(Int) of
         _ -> Version
@@ -198,12 +198,12 @@ to_version(<<"v", Int/binary>>=Version) ->
     end;
 to_version(_) -> ?VERSION_1.
 
--spec maybe_allow_proxy_req(ne_binary(), ne_binary()) -> ne_binary().
+-spec maybe_allow_proxy_req(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_allow_proxy_req(Peer, ForwardIP) ->
     ShouldCheck = kapps_config:get_is_true(?APP_NAME, <<"check_reverse_proxies">>, 'true'),
     maybe_allow_proxy_req(Peer, ForwardIP, ShouldCheck).
 
--spec maybe_allow_proxy_req(ne_binary(), ne_binary(), boolean()) -> ne_binary().
+-spec maybe_allow_proxy_req(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
 maybe_allow_proxy_req(_Peer, ForwardIP, 'false') ->
     ForwardIP;
 maybe_allow_proxy_req(Peer, ForwardIP, 'true') ->
@@ -218,8 +218,8 @@ maybe_allow_proxy_req(Peer, ForwardIP, 'true') ->
             Peer
     end.
 
--spec is_proxied(ne_binary()) -> boolean().
--spec is_proxied(ne_binary(), ne_binaries()) -> boolean().
+-spec is_proxied(kz_term:ne_binary()) -> boolean().
+-spec is_proxied(kz_term:ne_binary(), kz_term:ne_binaries()) -> boolean().
 is_proxied(Peer) ->
     Proxies = kapps_config:get_ne_binaries(?APP_NAME, <<"reverse_proxies">>, [<<"127.0.0.1">>]),
     is_proxied(Peer, Proxies).
@@ -229,7 +229,7 @@ is_proxied(Peer, [Proxy|Rest]) ->
     kz_network_utils:verify_cidr(Peer, kz_network_utils:to_cidr(Proxy))
         orelse is_proxied(Peer, Rest).
 
--spec find_path(cowboy_req:req(), kz_proplist()) -> ne_binary().
+-spec find_path(cowboy_req:req(), kz_term:proplist()) -> kz_term:ne_binary().
 find_path(Req, Opts) ->
     case props:get_value('magic_path', Opts) of
         'undefined' -> cowboy_req:path(Req);
@@ -262,8 +262,8 @@ rest_terminate(Req, Context, Verb) ->
     _ = api_util:finish_request(Req, Context),
     'ok'.
 
--spec pretty_metric(integer()) -> ne_binary().
--spec pretty_metric(integer(), boolean()) -> ne_binary().
+-spec pretty_metric(integer()) -> kz_term:ne_binary().
+-spec pretty_metric(integer(), boolean()) -> kz_term:ne_binary().
 pretty_metric(N) ->
     pretty_metric(N, kapps_config:get_is_true(?CONFIG_CAT, <<"pretty_metrics">>, 'true')).
 
@@ -470,8 +470,8 @@ options(Req0, Context) ->
             {'ok', Req0, Context}
     end.
 
--type content_type_callbacks() :: [{{ne_binary(), ne_binary(), kz_proplist()}, atom()} |
-                                   {ne_binary(), atom()}
+-type content_type_callbacks() :: [{{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()}, atom()} |
+                                   {kz_term:ne_binary(), atom()}
                                   ].
 -spec content_types_provided(cowboy_req:req(), cb_context:context()) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
@@ -604,7 +604,7 @@ content_type_accepted_fold({_,_,_}=EncType, Acc, Fun, _CT) ->
     [{EncType, Fun} | Acc].
 
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
-                                {ne_binaries(), cowboy_req:req(), cb_context:context()}.
+                                {kz_term:ne_binaries(), cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
     lager:debug("run: languages_provided"),
 
@@ -757,7 +757,7 @@ from_form(Req0, Context0) ->
 
 -spec create_from_response(cowboy_req:req(), cb_context:context()) ->
                                   {boolean(), cowboy_req:req(), cb_context:context()}.
--spec create_from_response(cowboy_req:req(), cb_context:context(), api_binary()) ->
+-spec create_from_response(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
                                   {boolean(), cowboy_req:req(), cb_context:context()}.
 create_from_response(Req, Context) ->
     create_from_response(Req, Context, cb_context:req_header(Context, <<"accept">>)).
@@ -779,7 +779,7 @@ create_from_response(Req, Context, Accept) ->
     end.
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
-                     {iolist() | ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+                     {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_json(Req, Context) ->
     to_json(Req, Context, accept_override(Context)).
 
@@ -808,7 +808,7 @@ to_json(Req, Context, Accept) ->
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
--spec to_binary(cowboy_req:req(), cb_context:context(), api_ne_binary()) ->
+-spec to_binary(cowboy_req:req(), cb_context:context(), kz_term:api_ne_binary()) ->
                        {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
     to_binary(Req, Context, accept_override(Context)).
@@ -848,9 +848,9 @@ to_binary(Req, Context, Accept) ->
             (?MODULE):Fun(Req, Context)
     end.
 
--type range_response() :: {ne_binary(), pos_integer(), pos_integer(), pos_integer(), pos_integer()}.
+-type range_response() :: {kz_term:ne_binary(), pos_integer(), pos_integer(), pos_integer(), pos_integer()}.
 
--spec get_range(ne_binary(), binary()) -> range_response().
+-spec get_range(kz_term:ne_binary(), binary()) -> range_response().
 get_range(Data, <<>>) ->
     FileLength = size(Data),
     {Data, 0, FileLength-1, FileLength, FileLength};
@@ -877,8 +877,8 @@ send_file(Req, Context) ->
     lager:debug("run: send_file"),
     api_util:create_pull_response(Req, Context, fun api_util:create_resp_file/2).
 
--spec to_fun(cb_context:context(), ne_binary(), atom()) -> atom().
--spec to_fun(cb_context:context(), ne_binary(), ne_binary(), atom()) -> atom().
+-spec to_fun(cb_context:context(), kz_term:ne_binary(), atom()) -> atom().
+-spec to_fun(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Accept, Default) ->
     case binary:split(Accept, <<"/">>) of
         [Major, Minor] -> to_fun(Context, Major, Minor, Default);
@@ -894,7 +894,7 @@ to_fun(Context, Major, Minor, Default) ->
         [F|_] -> F
     end.
 
--spec accept_matches_provided(ne_binary(), ne_binary(), kz_proplist()) -> boolean().
+-spec accept_matches_provided(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> boolean().
 accept_matches_provided(Major, Minor, CTPs) ->
     lists:any(fun({Pri, Sec}) ->
                       Pri =:= Major
@@ -937,8 +937,8 @@ to_pdf(Req, Context, RespData) ->
     ,Context
     }.
 
--spec to_chunk(ne_binary(), cowboy_req:req(), cb_context:context()) ->
-                      {iolist() | ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+-spec to_chunk(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
+                      {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_chunk(ToFun, Req, Context) ->
     EventName = to_fun_event_name(ToFun, Context),
     next_chunk_fold(#{start_key => 'undefined'
@@ -953,7 +953,7 @@ to_chunk(ToFun, Req, Context) ->
                      ,event_name => EventName
                      }).
 
--spec next_chunk_fold(map()) -> {iolist() | ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+-spec next_chunk_fold(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 next_chunk_fold(#{chunking_finished := 'true'
                  ,chunking_started := StartedChunk
                  ,context := Context
@@ -1017,7 +1017,7 @@ next_chunk_fold(#{chunking_started := StartedChunk
 %%       (<<Headers/binary, "\r\n", FirstRow/binary>>) of you're response.
 %% @end
 %%--------------------------------------------------------------------
--spec process_chunk(map()) -> {iolist() | ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+-spec process_chunk(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 process_chunk(#{context := Context
                ,cowboy_req := Req
                ,chunk_response_type := ToFun
@@ -1057,7 +1057,7 @@ reset_context_between_chunks(Context, StartedChunk) ->
                        ]
                       ).
 
--spec send_chunk_response(ne_binary(), cowboy_req:req(), cb_context:context()) ->
+-spec send_chunk_response(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
                                  {boolean(), cowboy_req:req()}.
 send_chunk_response(<<"to_json">>, Req, Context) ->
     api_util:create_json_chunk_response(Req, Context);
@@ -1073,7 +1073,7 @@ send_chunk_response(<<"to_csv">>, Req, Context) ->
 %% handling  the errors in the Context.
 %% @end
 %%--------------------------------------------------------------------
--spec finish_chunked_response(map()) -> {iolist() | ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+-spec finish_chunked_response(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 %% chunk is not started, return whatever error's or response data in Context
 finish_chunked_response(#{chunking_started := 'false'
                          ,context := Context
@@ -1105,13 +1105,13 @@ finish_chunked_response(#{total_queried := TotalQueried
     api_util:close_chunk_json_envelope(Req, cb_context:set_resp_envelope(Context, Paging)),
     {'stop', Req, Context}.
 
--spec to_fun_event_name(ne_binary(), cb_contextL:context()) -> ne_binary().
+-spec to_fun_event_name(kz_term:ne_binary(), cb_contextL:context()) -> kz_term:ne_binary().
 to_fun_event_name(ToThing, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     api_util:create_event_name(Context, [ToThing, kz_term:to_lower_binary(Verb), Mod]).
 
--spec accept_override(cb_context:context()) -> api_ne_binary().
+-spec accept_override(cb_context:context()) -> kz_term:api_ne_binary().
 accept_override(Context) ->
     cb_context:req_value(Context, <<"accept">>).
 
@@ -1121,7 +1121,7 @@ multiple_choices(Req, Context) ->
     {'false', Req, Context}.
 
 -spec generate_etag(cowboy_req:req(), cb_context:context()) ->
-                           {api_ne_binary(), cowboy_req:req(), cb_context:context()}.
+                           {kz_term:api_ne_binary(), cowboy_req:req(), cb_context:context()}.
 generate_etag(Req0, Context0) ->
     Event = api_util:create_event_name(Context0, <<"etag">>),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
@@ -1137,7 +1137,7 @@ generate_etag(Req0, Context0) ->
     end.
 
 -spec expires(cowboy_req:req(), cb_context:context()) ->
-                     {kz_datetime(), cowboy_req:req(), cb_context:context()}.
+                     {kz_time:datetime(), cowboy_req:req(), cb_context:context()}.
 expires(Req, Context) ->
     Event = api_util:create_event_name(Context, <<"expires">>),
     crossbar_bindings:fold(Event, {cb_context:resp_expires(Context), Req, Context}).

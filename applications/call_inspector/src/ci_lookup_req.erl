@@ -12,7 +12,7 @@
 
 -include("call_inspector.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> ok.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> ok.
 handle_req(JObj, _) ->
     true = kapi_inspector:lookup_req_v(JObj),
     Props = ci_datastore:lookup_callid(kz_json:get_value(<<"Call-ID">>, JObj)),

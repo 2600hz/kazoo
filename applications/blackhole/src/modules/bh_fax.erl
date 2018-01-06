@@ -55,8 +55,8 @@ bindings(_Context, #{account_id := AccountId
         ,listeners => Listeners
         }.
 
--spec fax_status_bind_options(ne_binary(), ne_binary()) ->
-                                     kz_proplist().
+-spec fax_status_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                     kz_term:proplist().
 fax_status_bind_options(AccountId, FaxId) ->
     [{'restrict_to', ['status']}
     ,{'account_id', AccountId}
@@ -64,8 +64,8 @@ fax_status_bind_options(AccountId, FaxId) ->
     ,'federate'
     ].
 
--spec fax_object_bind_options(ne_binary(), ne_binary()) ->
-                                     kz_proplist().
+-spec fax_object_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                     kz_term:proplist().
 fax_object_bind_options(MODB, Action) ->
     [{'keys', [[{'action', Action}
                ,{'db', MODB}

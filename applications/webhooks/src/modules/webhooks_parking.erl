@@ -58,7 +58,7 @@ bindings_and_responders() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
@@ -69,7 +69,7 @@ handle(JObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_event(api_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_send_event(kz_term:api_binary(), kz_json:object()) -> 'ok'.
 maybe_send_event('undefined', _JObj) -> 'ok';
 maybe_send_event(AccountId, JObj) ->
     case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of

@@ -156,7 +156,7 @@ resource_exists(?OUTGOING, _Id) -> 'true'.
 resource_exists(?INBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true'.
 
--spec acceptable_content_types() -> kz_proplist().
+-spec acceptable_content_types() -> kz_term:proplist().
 acceptable_content_types() ->
     ?ACCEPTED_MIME_TYPES.
 
@@ -169,7 +169,7 @@ content_types_accepted(Context, ?OUTGOING) ->
     maybe_add_types_accepted(Context, cb_context:req_verb(Context));
 content_types_accepted(Context, _) -> Context.
 
--spec maybe_add_types_accepted(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_add_types_accepted(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_add_types_accepted(Context, ?HTTP_PUT) ->
     cb_context:add_content_types_accepted(Context, ?ACCEPTED_TYPES);
 maybe_add_types_accepted(Context, _) -> Context.
@@ -200,7 +200,7 @@ content_types_provided(Context, ?OUTBOX, FaxId, ?ATTACHMENT) ->
 content_types_provided(Context, _, _, _) ->
     Context.
 
--spec content_types_provided_for_fax(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+-spec content_types_provided_for_fax(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
                                             cb_context:context().
 content_types_provided_for_fax(Context, FaxId, Folder, ?HTTP_GET) ->
     Context1 = load_fax_meta(FaxId, Folder, Context),
@@ -297,7 +297,7 @@ validate_modb_fax_attachment(Context, Id, Folder, ?HTTP_GET) ->
 validate_modb_fax_attachment(Context, Id, Folder, ?HTTP_DELETE) ->
     load_modb_fax_doc(Id, Folder, Context).
 
--spec validate_outbox_fax_action(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_outbox_fax_action(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_outbox_fax_action('undefined', _Id, Context) ->
     cb_context:add_system_error(<<"action required">>, Context);
 validate_outbox_fax_action(Action, Id, Context) ->
@@ -306,7 +306,7 @@ validate_outbox_fax_action(Action, Id, Context) ->
         'false' -> cb_context:add_system_error(<<"invalid action">>, Context)
     end.
 
--spec validate_inbox_fax_action(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_inbox_fax_action(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_inbox_fax_action('undefined', _Id, Context) ->
     cb_context:add_system_error(<<"action required">>, Context);
 validate_inbox_fax_action(Action, Id, Context) ->
@@ -392,7 +392,7 @@ maybe_add_faxbox_data(FaxBoxDoc, Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Type, Context) ->
     Year  = kz_term:to_integer(YYYY),
     Month = kz_term:to_integer(MM),
@@ -400,11 +400,11 @@ read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Type, Context) ->
 read(Id, Type, Context) ->
     crossbar_doc:load({Type, Id}, Context, ?TYPE_CHECK_OPTION(Type)).
 
--spec load_modb_fax_doc(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_modb_fax_doc(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_modb_fax_doc(Id, Folder, Context) ->
     validate_fax_doc_folder(Folder, read(Id, ?FAX_TYPE, Context)).
 
--spec validate_fax_doc_folder(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_fax_doc_folder(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_fax_doc_folder(Folder, Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
@@ -414,22 +414,22 @@ validate_fax_doc_folder(Folder, Context) ->
             Context
     end.
 
--spec validate_fax_doc_folder(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_fax_doc_folder(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_fax_doc_folder(Folder, Folder, Context) ->
     Context;
 validate_fax_doc_folder(Folder, _DocFolder, Context) ->
     cb_context:add_system_error(<<"document is not in folder ", Folder/binary>>, Context).
 
--spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_smtp_log_doc(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_smtp_log_doc(Id, Context) ->
     read(Id, ?SMTP_TYPE, Context).
 
--spec load_outgoing_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_outgoing_fax_doc(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_outgoing_fax_doc(Id, Context) ->
     Ctx = read(Id, ?FAX_TYPE, Context),
     crossbar_util:apply_response_map(Ctx, ?OUTGOING_FAX_DOC_MAP).
 
--spec get_delivered_date(kz_json:object()) -> api_integer().
+-spec get_delivered_date(kz_json:object()) -> kz_term:api_integer().
 get_delivered_date(JObj) ->
     case kz_json:get_value(<<"pvt_delivered_date">>, JObj) of
         'undefined' ->
@@ -440,7 +440,7 @@ get_delivered_date(JObj) ->
         Date -> Date
     end.
 
--spec get_execution_status(ne_binary(), kz_json:object()) -> api_binary().
+-spec get_execution_status(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 get_execution_status(Id, JObj) ->
     case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         <<"processing">> = S ->
@@ -451,7 +451,7 @@ get_execution_status(Id, JObj) ->
         Status -> Status
     end.
 
--spec get_fax_running_status(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_fax_running_status(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_fax_running_status(Id, Q) ->
     Api = [{<<"Job-ID">>, Id} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
     case kapps_util:amqp_pool_request(Api
@@ -469,7 +469,7 @@ get_fax_running_status(Id, Q) ->
 %% Load a fax document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_fax_meta(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_fax_meta(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_fax_meta(FaxId, Folder, Context) ->
     validate_fax_doc_folder(Folder, crossbar_doc:load({<<"fax">>, FaxId}, Context, ?TYPE_CHECK_OPTION(<<"fax">>))).
 
@@ -479,7 +479,7 @@ load_fax_meta(FaxId, Folder, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     case cb_context:req_files(Context) =:= []
         andalso kzd_fax:document_url(cb_context:doc(Context)) =:= 'undefined'
@@ -533,11 +533,11 @@ on_success(Context) ->
                                          )
                       ).
 
--spec maybe_add_timezone(cb_context:context()) -> kz_proplist().
+-spec maybe_add_timezone(cb_context:context()) -> kz_term:proplist().
 maybe_add_timezone(Context) ->
     maybe_add_timezone(Context, kz_json:get_value(<<"timezone">>, cb_context:doc(Context))).
 
--spec maybe_add_timezone(cb_context:context(), api_binary()) -> kz_proplist().
+-spec maybe_add_timezone(cb_context:context(), kz_term:api_binary()) -> kz_term:proplist().
 maybe_add_timezone(Context, 'undefined') ->
     AuthDoc = cb_context:auth_doc(Context),
     OwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
@@ -546,7 +546,7 @@ maybe_add_timezone(Context, 'undefined') ->
 maybe_add_timezone(_Context, Timezone) ->
     [{<<"fax_timezone">>, Timezone}].
 
--spec initial_job_status(req_files()) -> ne_binary().
+-spec initial_job_status(req_files()) -> kz_term:ne_binary().
 initial_job_status([]) -> <<"pending">>;
 initial_job_status(_) -> <<"attaching_files">>.
 
@@ -563,7 +563,7 @@ inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
 -spec outbox_summary(cb_context:context()) -> cb_context:context().
 outbox_summary(Context) -> fax_modb_summary(Context, ?OUTBOX).
 
--spec fax_modb_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec fax_modb_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 fax_modb_summary(Context, Folder) ->
     {ViewName, Opts} = get_view_and_filter(Context, get_filter_doc(Context), Folder),
     Options = [{'mapper', fun normalize_modb_view_results/2}
@@ -572,8 +572,8 @@ fax_modb_summary(Context, Folder) ->
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
 
--spec get_view_and_filter(cb_context:context(), {api_ne_binary(), api_ne_binary()}, api_ne_binary()) ->
-                                 {ne_binary(), crossbar_view:options()}.
+-spec get_view_and_filter(cb_context:context(), {kz_term:api_ne_binary(), kz_term:api_ne_binary()}, kz_term:api_ne_binary()) ->
+                                 {kz_term:ne_binary(), crossbar_view:options()}.
 get_view_and_filter(_, {?NE_BINARY=Id, <<"faxbox">>}, ?NE_BINARY=Folder) ->
     {?CB_LIST_BY_FAXBOX
     ,[{'range_keymap', [Id, Folder]}]
@@ -599,14 +599,14 @@ get_view_and_filter(Context, {_, _}, 'undefined') ->
      ]
     }.
 
--spec get_filter_doc(cb_context:context()) -> {api_ne_binary(), api_ne_binary()}.
+-spec get_filter_doc(cb_context:context()) -> {kz_term:api_ne_binary(), kz_term:api_ne_binary()}.
 get_filter_doc(Context) ->
     case cb_context:fetch(Context, <<"faxbox">>) of
         'undefined' -> maybe_user_filter_doc(Context);
         JObj -> {kz_doc:id(JObj), kz_doc:type(JObj)}
     end.
 
--spec maybe_user_filter_doc(cb_context:context()) -> {api_ne_binary(), api_ne_binary()}.
+-spec maybe_user_filter_doc(cb_context:context()) -> {kz_term:api_ne_binary(), kz_term:api_ne_binary()}.
 maybe_user_filter_doc(Context) ->
     case cb_context:user_id(Context) of
         'undefined' -> {'undefined', 'undefined'};
@@ -645,7 +645,7 @@ do_load_fax_binary(FaxId, Folder, Context) ->
         _Status -> Context1
     end.
 
--spec set_fax_binary(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_fax_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 set_fax_binary(Context, AttachmentId) ->
     Disposition = cb_context:req_param(Context, <<"disposition">>, <<"attachment">>),
     cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"fax">>), Context)
@@ -724,7 +724,7 @@ set_pending(Context, DocId) ->
           ],
     crossbar_doc:save(cb_context:set_doc(Ctx1, kz_json:set_values(KVs, cb_context:doc(Ctx1)))).
 
--spec do_put_action(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec do_put_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
     ReqData = kz_doc:public_fields(cb_context:req_data(Context)),
     Fun = fun(_Source, Target) -> set_resubmit_data(kz_json:merge_jobjs(ReqData, Target)) end,

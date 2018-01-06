@@ -26,7 +26,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary(), ne_binary()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(N) ->
     PN = knm_number:phone_number(N),
     State = kz_json:get_ne_binary_value(?PVT_STATE, knm_phone_number:doc(PN)),

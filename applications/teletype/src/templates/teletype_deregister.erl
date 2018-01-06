@@ -21,7 +21,7 @@
 
 -include("teletype.hrl").
 
--spec id() -> ne_binary().
+-spec id() -> kz_term:ne_binary().
 id() -> <<"deregister">>.
 
 -spec macros() -> kz_json:object().
@@ -46,19 +46,19 @@ macros() ->
        | ?COMMON_TEMPLATE_MACROS
       ]).
 
--spec subject() -> ne_binary().
+-spec subject() -> kz_term:ne_binary().
 subject() -> <<"Loss of Registration for '{{last_registration.username}}'">>.
 
--spec category() -> ne_binary().
+-spec category() -> kz_term:ne_binary().
 category() -> <<"registration">>.
 
--spec friendly_name() -> ne_binary().
+-spec friendly_name() -> kz_term:ne_binary().
 friendly_name() -> <<"Deregister Notice">>.
 
 -spec to() -> kz_json:object().
 to() -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
 
--spec from() -> api_ne_binary().
+-spec from() -> kz_term:api_ne_binary().
 from() -> teletype_util:default_from_address().
 
 -spec cc() -> kz_json:object().
@@ -67,7 +67,7 @@ cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 -spec bcc() -> kz_json:object().
 bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to() -> api_ne_binary().
+-spec reply_to() -> kz_term:api_ne_binary().
 reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
@@ -114,11 +114,11 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
 
--spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     macros(DataJObj, teletype_util:account_params(DataJObj)).
 
--spec macros(kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec macros(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 macros(DataJObj, []) ->
     lager:info("no account data available for deregister, not sending notification"),
     teletype_util:send_update(DataJObj, <<"failed">>, <<"missing account">>),

@@ -36,7 +36,7 @@ init() ->
 clean_expired() ->
     clean_expired(kz_time:now_s() - ?LOOP_TIMEOUT).
 
--spec clean_expired(gregorian_seconds()) -> 'ok'.
+-spec clean_expired(kz_time:gregorian_seconds()) -> 'ok'.
 clean_expired(CreatedBefore) ->
     ViewOpts = [{'startkey', 0}
                ,{'endkey', CreatedBefore}

@@ -35,12 +35,12 @@
 -define(JSON_HEADERS, [{"content-type", "application/json"} | ?BASE_HEADERS]).
 -define(FORM_HEADERS, [{"content-type", "application/x-www-form-urlencoded"} | ?BASE_HEADERS]).
 
--spec get_mac_address(cb_context:context()) -> api_binary().
+-spec get_mac_address(cb_context:context()) -> kz_term:api_binary().
 get_mac_address(Context) ->
     MACAddress = kz_json:get_ne_binary_value(<<"mac_address">>, cb_context:doc(Context)),
     cleanse_mac_address(MACAddress).
 
--spec get_old_mac_address(cb_context:context()) -> api_binary().
+-spec get_old_mac_address(cb_context:context()) -> kz_term:api_binary().
 get_old_mac_address(Context) ->
     MACAddress =
         case cb_context:fetch(Context, 'db_doc') of
@@ -50,7 +50,7 @@ get_old_mac_address(Context) ->
         end,
     cleanse_mac_address(MACAddress).
 
--spec cleanse_mac_address(api_ne_binary()) -> api_ne_binary().
+-spec cleanse_mac_address(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 cleanse_mac_address('undefined') -> 'undefined';
 cleanse_mac_address(MACAddress) ->
     ReOptions = ['global'
@@ -95,7 +95,7 @@ maybe_provision(Context, 'success') ->
     end;
 maybe_provision(_Context, _Status) -> 'false'.
 
--spec maybe_provision_v5(cb_context:context(), ne_binary()) -> 'ok'.
+-spec maybe_provision_v5(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 maybe_provision_v5(Context, ?HTTP_PUT) ->
     AuthToken = cb_context:auth_token(Context),
     NewDevice = cb_context:doc(Context),
@@ -215,7 +215,7 @@ maybe_send_contact_list(_Context, _Status) -> 'ok'.
 do_full_provisioner_provider(Context) ->
     do_full_provision_contact_list(cb_context:account_id(Context)).
 
--spec do_full_provision_contact_list(ne_binary() | cb_context:context()) -> boolean().
+-spec do_full_provision_contact_list(kz_term:ne_binary() | cb_context:context()) -> boolean().
 do_full_provision_contact_list(AccountId) when is_binary(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', JObj} ->
@@ -305,7 +305,7 @@ get_provision_defaults(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_mac_address_in_use(cb_context:context(), ne_binary()) -> boolean().
+-spec is_mac_address_in_use(cb_context:context(), kz_term:ne_binary()) -> boolean().
 is_mac_address_in_use(Context, MacAddress) ->
     case cb_context:is_context(Context)
         andalso get_provisioning_type()
@@ -323,7 +323,7 @@ is_mac_address_in_use(Context, MacAddress) ->
 %% post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
--spec do_simple_provision(ne_binary(), cb_context:context()) -> boolean().
+-spec do_simple_provision(kz_term:ne_binary(), cb_context:context()) -> boolean().
 do_simple_provision(MACAddress, Context) ->
     JObj = cb_context:doc(Context),
     case kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
@@ -352,21 +352,21 @@ do_simple_provision(MACAddress, Context) ->
 %% post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
--spec delete_account(ne_binary() | cb_context:context()) -> boolean().
+-spec delete_account(kz_term:ne_binary() | cb_context:context()) -> boolean().
 delete_account(<<_/binary>> = AccountId) ->
     maybe_send_to_full_provisioner(AccountId);
 delete_account(Context) ->
     delete_account(cb_context:account_id(Context)).
 
 
--spec delete_full_provision(ne_binary(), cb_context:context()) -> boolean().
+-spec delete_full_provision(kz_term:ne_binary(), cb_context:context()) -> boolean().
 delete_full_provision(MACAddress, Context) ->
     {'ok', Context1} = get_merged_device(MACAddress, Context),
     AccountId = kz_json:get_binary_value(<<"account_id">>, cb_context:doc(Context1)),
     PartialURL = <<AccountId/binary, "/", MACAddress/binary>>,
     maybe_send_to_full_provisioner(PartialURL).
 
--spec do_full_provision(ne_binary(), cb_context:context()) -> boolean().
+-spec do_full_provision(kz_term:ne_binary(), cb_context:context()) -> boolean().
 do_full_provision(MACAddress, Context) ->
     {'ok', Context1} = get_merged_device(MACAddress, Context),
     OldMACAddress = get_old_mac_address(Context),
@@ -381,8 +381,8 @@ do_full_provision(MACAddress, Context) ->
     PartialURL = <<AccountId/binary, "/", MACAddress/binary>>,
     maybe_send_to_full_provisioner(PartialURL, JObj).
 
--spec maybe_send_to_full_provisioner(ne_binary()) -> boolean().
--spec maybe_send_to_full_provisioner(ne_binary(), kz_json:object()) -> boolean().
+-spec maybe_send_to_full_provisioner(kz_term:ne_binary()) -> boolean().
+-spec maybe_send_to_full_provisioner(kz_term:ne_binary(), kz_json:object()) -> boolean().
 maybe_send_to_full_provisioner(PartialURL) ->
     case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
@@ -445,13 +445,13 @@ do_awesome_provision(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_merged_device(ne_binary(), cb_context:context()) ->
+-spec get_merged_device(kz_term:ne_binary(), cb_context:context()) ->
                                {'ok', cb_context:context()}.
 get_merged_device(MACAddress, Context) ->
     {'ok', Data} = merge_device(MACAddress, Context),
     {'ok', cb_context:set_doc(Context, Data)}.
 
--spec merge_device(ne_binary(), cb_context:context()) ->
+-spec merge_device(kz_term:ne_binary(), cb_context:context()) ->
                           {'ok', kz_json:object()}.
 merge_device(MACAddress, Context) ->
     JObj = cb_context:doc(Context),
@@ -469,7 +469,7 @@ merge_device(MACAddress, Context) ->
     MergedDevice = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
     {'ok', kz_doc:public_fields(MergedDevice)}.
 
--spec get_owner(api_binary(), ne_binary()) -> kz_json:object().
+-spec get_owner(kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
 get_owner('undefined', _) -> kz_json:new();
 get_owner(OwnerId, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -709,7 +709,7 @@ set_device_overrides(Context) ->
 %% Send awesome provisioning request
 %% @end
 %%--------------------------------------------------------------------
--spec send_provisioning_request(kz_json:object(), ne_binary()) -> 'ok'.
+-spec send_provisioning_request(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_provisioning_request(Template, MACAddress) ->
     ProvisionRequest = kz_json:encode(Template),
     UrlTmpl = kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>),
@@ -729,7 +729,7 @@ send_provisioning_request(Template, MACAddress) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_provisioning_type() -> api_ne_binary().
+-spec get_provisioning_type() -> kz_term:api_ne_binary().
 get_provisioning_type() ->
     case kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
         'undefined' ->
@@ -800,7 +800,7 @@ maybe_sync_sip_data(Context, 'user', 'force') ->
     end.
 
 %% @private
--spec send_check_sync(api_binary(), api_binary(), api_binary()) -> 'ok'.
+-spec send_check_sync(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 send_check_sync('undefined', _Realm, _MsgId) ->
     lager:warning("did not send check sync: username is undefined");
 send_check_sync(_Username, 'undefined', _MsgId) ->
@@ -813,8 +813,8 @@ send_check_sync(Username, Realm, MsgId) ->
                                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                               ]).
 
--spec publish_check_sync(kz_proplist()) -> 'ok'.
--spec publish_check_sync(api_binary(), kz_proplist()) -> 'ok'.
+-spec publish_check_sync(kz_term:proplist()) -> 'ok'.
+-spec publish_check_sync(kz_term:api_binary(), kz_term:proplist()) -> 'ok'.
 publish_check_sync('undefined', Req) ->
     publish_check_sync(Req);
 publish_check_sync(MsgId, Req) ->

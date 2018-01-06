@@ -108,7 +108,7 @@ validate(Context) ->
             load_chunk_view(Context, ViewName, Options)
     end.
 
--spec load_chunk_view(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
+-spec load_chunk_view(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
 load_chunk_view(Context, ViewName, Options0) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     IsReseller = kz_services:is_reseller(AuthAccountId),
@@ -131,7 +131,7 @@ validate(Context, CallId) ->
 %%% Internal functions
 %%%===================================================================
 
--spec inspect_call_id(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec inspect_call_id(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 inspect_call_id(CallId, Context) ->
     Req = [{<<"Call-ID">>, CallId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -171,7 +171,7 @@ sanitize(JObjs) ->
 %% Generate specific view options for the path.
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_options(req_nouns()) -> {api_ne_binary(), crossbar_view:options()}.
+-spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
 get_view_options([{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     {?CB_LIST, []};
 get_view_options([{<<"call_inspector">>, []}, {<<"users">>, [OwnerId]}|_]) ->
@@ -189,7 +189,7 @@ get_view_options(_) ->
 %% Loads CDR docs from database and normalized the them.
 %% @end
 %%--------------------------------------------------------------------
--spec load_chunked_cdrs(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_chunked_cdrs(Context, RespType) ->
     Ids = get_cdr_ids(cb_context:resp_data(Context)),
     cb_cdrs:load_chunked_cdr_ids(Context, RespType, Ids).
@@ -200,7 +200,7 @@ load_chunked_cdrs(Context, RespType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_cdr_ids(kz_json:objects()) -> ne_binaries().
+-spec get_cdr_ids(kz_json:objects()) -> kz_term:ne_binaries().
 get_cdr_ids(JObjs) ->
     Ids = [kz_doc:id(JObj) || JObj <- JObjs],
     %% Remove leading year, month and dash
@@ -222,7 +222,7 @@ get_cdr_ids(JObjs) ->
 %% which cdr_id is on call_inspector data store
 %% @end
 %%--------------------------------------------------------------------
--spec filter_callids(ne_binaries()) -> ne_binaries().
+-spec filter_callids(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 filter_callids([]) -> [];
 filter_callids(CallIds) ->
     Req = [{<<"Call-IDs">>, CallIds}

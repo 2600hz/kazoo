@@ -9,8 +9,8 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 
--type account_id() :: ne_binary().
--type account_db() :: ne_binary().
+-type account_id() :: kz_term:ne_binary().
+-type account_db() :: kz_term:ne_binary().
 
 -define(CDR_HRL, 'true').
 -endif.

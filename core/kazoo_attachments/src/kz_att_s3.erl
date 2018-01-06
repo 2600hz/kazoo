@@ -23,7 +23,7 @@
 -spec bucket(map()) -> string().
 bucket(#{bucket := Bucket}) -> kz_term:to_list(Bucket).
 
--spec fix_scheme(ne_binary()) -> ne_binary().
+-spec fix_scheme(kz_term:ne_binary()) -> kz_term:ne_binary().
 fix_scheme(<<"https://">> = Scheme) -> Scheme;
 fix_scheme(<<"http://">> = Scheme) -> Scheme;
 fix_scheme(<<"https">> = Scheme) -> <<Scheme/binary, "://">>;
@@ -63,7 +63,7 @@ aws_config(#{'key' := Key
                }.
 
 
--spec aws_default_fields() -> kz_proplist().
+-spec aws_default_fields() -> kz_term:proplist().
 aws_default_fields() ->
     [{arg, <<"db">>}
     ,{group, [{arg, <<"id">>}
@@ -72,11 +72,11 @@ aws_default_fields() ->
              ]}
     ].
 
--spec aws_format_url(map(), attachment_info()) -> ne_binary().
+-spec aws_format_url(map(), attachment_info()) -> kz_term:ne_binary().
 aws_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, aws_default_fields()).
 
--spec merge_params(map() | ne_binary(), map() | undefined) -> map().
+-spec merge_params(map() | kz_term:ne_binary(), map() | undefined) -> map().
 merge_params(#{bucket := Bucket, host := Host} = M1, #{bucket := Bucket, host := Host} = M2) ->
     kz_maps:merge(M1, M2);
 merge_params(#{bucket := Bucket} = M1, #{bucket := Bucket} = M2) ->
@@ -90,20 +90,20 @@ merge_params(S3, M2)
     M1 = decode_retrieval(S3),
     merge_params(M1, M2).
 
--spec aws_bpc(map(), attachment_info()) -> {string(), api_ne_binary(), aws_config()}.
+-spec aws_bpc(map(), attachment_info()) -> {string(), kz_term:api_ne_binary(), aws_config()}.
 aws_bpc(Map, AttInfo) ->
     {bucket(Map), aws_format_url(Map, AttInfo), aws_config(Map)}.
 
--spec aws_bpc(ne_binary(), map() | undefined, attachment_info()) -> {string(), api_ne_binary(), aws_config()}.
+-spec aws_bpc(kz_term:ne_binary(), map() | undefined, attachment_info()) -> {string(), kz_term:api_ne_binary(), aws_config()}.
 aws_bpc(S3, Handler, Attinfo) ->
     aws_bpc(merge_params(S3, Handler), Attinfo).
 
 
--spec encode_retrieval(map(), ne_binary()) -> ne_binary().
+-spec encode_retrieval(map(), kz_term:ne_binary()) -> kz_term:ne_binary().
 encode_retrieval(Map, FilePath) ->
     base64:encode(term_to_binary({Map, FilePath})).
 
--spec decode_retrieval(ne_binary()) -> map().
+-spec decode_retrieval(kz_term:ne_binary()) -> map().
 decode_retrieval(S3) ->
     case binary_to_term(base64:decode(S3)) of
         {Key, Secret, Bucket, Path} ->
@@ -134,7 +134,7 @@ decode_retrieval(S3) ->
         #{} = Map -> Map
     end.
 
--spec put_attachment(map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
     {Bucket, FilePath, Config} = aws_bpc(Params, {DbName, DocId, AName}),
     case put_object(Bucket, FilePath, Contents, Config) of
@@ -149,7 +149,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
         _E -> _E
     end.
 
--spec fetch_attachment(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'error', 'invalid_data'} |
                               {'ok', binary()}.
 fetch_attachment(Conn, DbName, DocId, AName) ->
@@ -178,7 +178,7 @@ convert_kv({<<"etag">> = K, V}) ->
     {K, binary:replace(V, <<$">>, <<>>, ['global'])};
 convert_kv(KV) -> KV.
 
--spec put_object(string(), string() | ne_binary(), binary(), aws_config()) -> {ok, kz_proplist()} | {error, any()}.
+-spec put_object(string(), string() | kz_term:ne_binary(), binary(), aws_config()) -> {ok, kz_term:proplist()} | {error, any()}.
 put_object(Bucket, FilePath, Contents,Config)
   when is_binary(FilePath) ->
     put_object(Bucket, kz_term:to_list(FilePath), Contents,Config);
@@ -196,7 +196,7 @@ put_object(Bucket, FilePath, Contents, #aws_config{s3_host=Host} = Config) ->
             {error, Reason}
     end.
 
--spec get_object(string(), string() | ne_binary(), aws_config()) -> {ok, kz_proplist()} | {error, any()}.
+-spec get_object(string(), string() | kz_term:ne_binary(), aws_config()) -> {ok, kz_term:proplist()} | {error, any()}.
 get_object(Bucket, FilePath, Config)
   when is_binary(FilePath) ->
     get_object(Bucket, kz_term:to_list(FilePath), Config);

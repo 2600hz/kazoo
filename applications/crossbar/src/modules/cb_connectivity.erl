@@ -181,12 +181,12 @@ track_assignment('delete', Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  get_numbers(kz_json:object()) -> ne_binaries().
+-spec  get_numbers(kz_json:object()) -> kz_term:ne_binaries().
 get_numbers(JObj) ->
     Servers = kz_json:get_value(<<"servers">>, JObj, []),
     lists:foldl(fun get_numbers_fold/2, [], Servers).
 
--spec get_numbers_fold(kz_json:object(), ne_binaries()) -> ne_binaries().
+-spec get_numbers_fold(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 get_numbers_fold(Server, Acc) ->
     kz_json:get_keys(kz_json:get_value(<<"DIDs">>, Server, kz_json:new())) ++ Acc.
 
@@ -213,7 +213,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
 
@@ -224,7 +224,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) ->
                         C1 = on_successful_validation(Id, C),
@@ -242,7 +242,7 @@ update(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
@@ -252,7 +252,7 @@ validate_patch(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
 on_successful_validation(Id, Context) ->

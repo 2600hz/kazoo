@@ -12,11 +12,11 @@
 
 -include("kazoo_media.hrl").
 
--type build_uri_args() :: [ne_binary() | kz_proplist() | atom()].
--type build_uri() :: build_uri_args() | ne_binary() | media_store_path().
+-type build_uri_args() :: [kz_term:ne_binary() | kz_term:proplist() | atom()].
+-type build_uri() :: build_uri_args() | kz_term:ne_binary() | media_store_path().
 
 -spec get_uri(build_uri(), kz_json:object()) ->
-                     ne_binary() |
+                     kz_term:ne_binary() |
                      {'error', 'not_found'} |
                      {'error', 'no_data'} |
                      {'error', 'no_stream_strategy'}.
@@ -35,7 +35,7 @@ get_uri(Paths, JObj) ->
         {'ok', #media_store_path{}=Store} -> maybe_proxy(JObj, Store)
     end.
 
--spec maybe_prepare_proxy(ne_binary(), media_store_path()) -> 'ok' | 'error'.
+-spec maybe_prepare_proxy(kz_term:ne_binary(), media_store_path()) -> 'ok' | 'error'.
 maybe_prepare_proxy(<<"single">>, Store) -> prepare_proxy(Store);
 maybe_prepare_proxy(<<"continuous">>, Store) -> prepare_proxy(Store);
 maybe_prepare_proxy(_, _ ) -> 'ok'.
@@ -50,7 +50,7 @@ prepare_proxy(#media_store_path{db = Db
         'false' -> lager:debug("existing file server for ~s/~s/~s", [Db, Id, Attachment])
     end.
 
--spec start_media_file_cache(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec start_media_file_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 start_media_file_cache(Db, Id, Attachment) ->
     case kz_media_cache_sup:start_file_server(Db, Id, Attachment) of
         {'ok', _FileServer} ->
@@ -61,7 +61,7 @@ start_media_file_cache(Db, Id, Attachment) ->
     end.
 
 -spec maybe_proxy(kz_json:object(), media_store_path()) ->
-                         ne_binary() | {'error', 'no_stream_strategy'}.
+                         kz_term:ne_binary() | {'error', 'no_stream_strategy'}.
 maybe_proxy(JObj, #media_store_path{db = Db
                                    ,id = Id
                                    ,att = Attachment
@@ -76,7 +76,7 @@ maybe_proxy(JObj, #media_store_path{db = Db
     end.
 
 -spec proxy_uri(kz_json:object(), media_store_path()) ->
-                       ne_binary() | {'error', 'no_stream_strategy'}.
+                       kz_term:ne_binary() | {'error', 'no_stream_strategy'}.
 proxy_uri(JObj, #media_store_path{db = Db
                                  ,id = Id
                                  ,att = Attachment
@@ -101,7 +101,7 @@ proxy_uri(JObj, #media_store_path{db = Db
       ,"/", File/binary
     >>.
 
--spec find_attachment(build_uri_args() | ne_binary()) ->
+-spec find_attachment(build_uri_args() | kz_term:ne_binary()) ->
                              {'ok', media_store_path()} |
                              {'error', 'not_found'}.
 find_attachment(Media) when is_binary(Media) ->
@@ -152,11 +152,11 @@ find_attachment([Db, Id, Attachment, Options]) ->
                             }
     }.
 
--spec maybe_find_attachment(ne_binary(), ne_binary()) ->
-                                   {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
+-spec maybe_find_attachment(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                   {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
                                    {'error', 'not_found' | 'no_data'}.
--spec maybe_find_attachment(ne_binary(), ne_binary(), kz_json:object()) ->
-                                   {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
+-spec maybe_find_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                   {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
                                    {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment(?MEDIA_DB = Db, Id) ->
     maybe_find_attachment_in_db(Db, Id);
@@ -164,8 +164,8 @@ maybe_find_attachment(Db, Id) ->
     AccountDb = kz_util:format_account_id(Db, 'encoded'),
     maybe_find_attachment_in_db(AccountDb, Id).
 
--spec maybe_find_attachment_in_db(ne_binary(), ne_binary()) ->
-                                         {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
+-spec maybe_find_attachment_in_db(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                         {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
                                          {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment_in_db(Db, Id) ->
     case kz_datamgr:open_cache_doc(Db, Id, [{'cache_failures', ['not_found']}]) of

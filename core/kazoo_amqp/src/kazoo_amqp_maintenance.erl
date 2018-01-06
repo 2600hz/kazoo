@@ -38,11 +38,11 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_broker(ne_binary()) -> 'ok' | 'no_return'.
+-spec add_broker(kz_term:ne_binary()) -> 'ok' | 'no_return'.
 add_broker(Broker) ->
     add_broker(Broker, 'local').
 
--spec add_broker(ne_binary(), atom()) -> 'ok' | 'no_return'.
+-spec add_broker(kz_term:ne_binary(), atom()) -> 'ok' | 'no_return'.
 add_broker(Broker, Zone) when not is_binary(Broker) ->
     add_broker(kz_term:to_binary(Broker), Zone);
 add_broker(Broker, Zone) when not is_atom(Zone) ->
@@ -71,7 +71,7 @@ add_broker(Broker, Zone) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_broker(ne_binary()) -> 'ok'.
+-spec remove_broker(kz_term:ne_binary()) -> 'ok'.
 remove_broker(Broker) when not is_binary(Broker) ->
     remove_broker(kz_term:to_binary(Broker));
 remove_broker(Broker) ->
@@ -83,11 +83,11 @@ remove_broker(Broker) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_connection(ne_binary()) -> 'ok' | 'no_return'.
+-spec add_connection(kz_term:ne_binary()) -> 'ok' | 'no_return'.
 add_connection(Broker) ->
     add_connection(Broker, 'local').
 
--spec add_connection(ne_binary(), atom()) -> 'ok' | 'no_return'.
+-spec add_connection(kz_term:ne_binary(), atom()) -> 'ok' | 'no_return'.
 add_connection(Broker, Zone) when not is_binary(Broker) ->
     add_connection(kz_term:to_binary(Broker), Zone);
 add_connection(Broker, Zone) when not is_atom(Zone) ->
@@ -445,11 +445,11 @@ consumer_details() ->
                  }],
     print_consumer_details(ets:select(?ASSIGNMENTS, MatchSpec, 1)).
 
--spec consumer_details(ne_binary()) -> 'ok'.
+-spec consumer_details(kz_term:ne_binary()) -> 'ok'.
 consumer_details(ProcessUpper) ->
     consumer_details(<<"0">>, ProcessUpper, <<"0">>).
 
--spec consumer_details(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec consumer_details(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(NodeNumber) ->
     consumer_details(kz_term:to_binary(NodeNumber), ProcessUpper, ProcessLower);
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessUpper) ->
@@ -528,7 +528,7 @@ gc_pools() ->
     _ = [gc_pool(Pool, Pid) || {Pool, Pid} <- kz_amqp_sup:pools()],
     'ok'.
 
--spec gc_pool(text()) -> 'ok'.
+-spec gc_pool(kz_term:text()) -> 'ok'.
 gc_pool(Pool) when is_atom(Pool) ->
     case [P || {Name, _}=P <- kz_amqp_sup:pools(), Pool =:= Name] of
         [] -> io:format("no pool named ~p found~n", [Pool]);

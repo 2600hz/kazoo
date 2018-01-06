@@ -15,7 +15,7 @@
 %% @public
 %% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     _ = declare_exchanges(),
     Dispatch = cowboy_router:compile([

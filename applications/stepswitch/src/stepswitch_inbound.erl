@@ -16,7 +16,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     _ = kz_util:put_callid(JObj),
     'true' = kapi_route:req_v(JObj),
@@ -131,7 +131,7 @@ maybe_find_resource(_, JObj) ->
                        )
     end.
 
--spec add_resource_id(kz_json:object(), kz_proplist()) -> kz_json:object().
+-spec add_resource_id(kz_json:object(), kz_term:proplist()) -> kz_json:object().
 add_resource_id(JObj, ResourceProps) ->
     ResourceId = props:get_value('resource_id', ResourceProps),
     kz_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
@@ -146,7 +146,7 @@ add_resource_id(JObj, ResourceProps) ->
                       ,JObj
                       ).
 
--spec maybe_add_t38_settings(kz_json:object(), kz_proplist()) -> kz_json:object().
+-spec maybe_add_t38_settings(kz_json:object(), kz_term:proplist()) -> kz_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
     case props:get_value('fax_option', ResourceProps) of
         'true' ->
@@ -268,7 +268,7 @@ maybe_transition_port_in(NumberProps, JObj) ->
         'true' -> transition_port_in(knm_number_options:number(NumberProps), JObj)
     end.
 
--spec transition_port_in(ne_binary(), api_object()) -> any().
+-spec transition_port_in(kz_term:ne_binary(), kz_term:api_object()) -> any().
 transition_port_in(Number, JObj) ->
     {ok, MasterAccountId} = kapps_util:get_master_account_id(),
     Comment = <<(?APP_NAME)/binary, "-", (?APP_VERSION)/binary, " automagic">>,
@@ -314,8 +314,8 @@ is_number_blacklisted(Blacklist, JObj) ->
             'true'
     end.
 
--spec get_blacklists(ne_binary()) ->
-                            {'ok', ne_binaries()} |
+-spec get_blacklists(kz_term:ne_binary()) ->
+                            {'ok', kz_term:ne_binaries()} |
                             {'error', any()}.
 get_blacklists(AccountId) ->
     case kz_account:fetch(AccountId) of
@@ -330,7 +330,7 @@ get_blacklists(AccountId) ->
             end
     end.
 
--spec get_blacklist(ne_binary(), ne_binaries()) -> kz_json:object().
+-spec get_blacklist(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 get_blacklist(AccountId, Blacklists) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     lists:foldl(

@@ -14,7 +14,7 @@
 
 -include("ecallmgr.hrl").
 
--spec redirect(ne_binary(), atom() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
+-spec redirect(kz_term:ne_binary(), atom() | kz_term:ne_binary()) -> ecallmgr_util:send_cmd_ret().
 redirect(UUID, DestinationNode) ->
     URL = ecallmgr_fs_node:sip_url(DestinationNode),
     case ecallmgr_config:get_boolean(<<"redirect_via_proxy">>, 'true') of
@@ -22,7 +22,7 @@ redirect(UUID, DestinationNode) ->
         'false' -> redirect_via_endpoint(URL, UUID)
     end.
 
--spec redirect_remote(ne_binary(), kz_json:object()) -> ecallmgr_util:send_cmd_ret().
+-spec redirect_remote(kz_term:ne_binary(), kz_json:object()) -> ecallmgr_util:send_cmd_ret().
 redirect_remote(UUID, ChannelStatusJObj) ->
     URL = kz_json:get_value(<<"Switch-URL">>, ChannelStatusJObj),
 
@@ -31,7 +31,7 @@ redirect_remote(UUID, ChannelStatusJObj) ->
         'false' -> redirect_via_endpoint(URL, UUID)
     end.
 
--spec redirect_via_proxy(ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
+-spec redirect_via_proxy(kz_term:ne_binary(), kz_term:ne_binary()) -> ecallmgr_util:send_cmd_ret().
 redirect_via_proxy(DestNodeURL, UUID) ->
     {'ok', #channel{destination=ToUser
                    ,realm=Realm
@@ -42,13 +42,13 @@ redirect_via_proxy(DestNodeURL, UUID) ->
     RedirectURL = binary:replace(DestNodeURL, <<"mod_sofia@">>, <<>>),
     send_redirect(RedirectURL, Contact, Channel).
 
--spec redirect_via_endpoint(ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
+-spec redirect_via_endpoint(kz_term:ne_binary(), kz_term:ne_binary()) -> ecallmgr_util:send_cmd_ret().
 redirect_via_endpoint(DestNodeURL, UUID) ->
     {'ok', #channel{destination=ToUser}=Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
     Contact = binary:replace(DestNodeURL, <<"mod_sofia">>, ToUser),
     send_redirect('undefined', Contact, Channel).
 
--spec send_redirect(api_binary(), ne_binary(), channel()) ->
+-spec send_redirect(kz_term:api_binary(), kz_term:ne_binary(), channel()) ->
                            ecallmgr_util:send_cmd_ret().
 send_redirect('undefined', Contact, #channel{node=Node
                                             ,uuid=UUID
@@ -62,6 +62,6 @@ send_redirect(RedirectUrl, Contact, #channel{node=Node
     _ = ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectUrl}]),
     ecallmgr_util:send_cmd(Node, UUID, redirect_app(IsAnswered), Contact).
 
--spec redirect_app(boolean()) -> ne_binary().
+-spec redirect_app(boolean()) -> kz_term:ne_binary().
 redirect_app('true') -> <<"deflect">>;
 redirect_app('false') -> <<"redirect">>.

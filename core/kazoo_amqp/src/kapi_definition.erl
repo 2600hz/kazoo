@@ -29,28 +29,28 @@
 
 -export_type([api/0, apis/0]).
 
--spec name(api()) -> ne_binary().
+-spec name(api()) -> kz_term:ne_binary().
 name(#kapi_definition{name = Name}) -> Name.
 
--spec friendly_name(api()) -> ne_binary().
+-spec friendly_name(api()) -> kz_term:ne_binary().
 friendly_name(#kapi_definition{friendly_name = FreindlyName}) -> FreindlyName.
 
--spec description(api()) -> ne_binary().
+-spec description(api()) -> kz_term:ne_binary().
 description(#kapi_definition{description = Description}) -> Description.
 
--spec build_fun(api()) -> fun((api_terms()) -> api_formatter_return()).
+-spec build_fun(api()) -> fun((kz_term:api_terms()) -> api_formatter_return()).
 build_fun(#kapi_definition{build_fun = BuildFun}) -> BuildFun.
 
--spec validate_fun(api()) -> fun((api_terms()) -> boolean()).
+-spec validate_fun(api()) -> fun((kz_term:api_terms()) -> boolean()).
 validate_fun(#kapi_definition{validate_fun = ValidateFun}) -> ValidateFun.
 
--spec publish_fun(api()) -> fun((api_terms()) -> api_formatter_return()).
+-spec publish_fun(api()) -> fun((kz_term:api_terms()) -> api_formatter_return()).
 publish_fun(#kapi_definition{publish_fun = PublishFun}) -> PublishFun.
 
--spec binding(api()) -> api_ne_binary().
+-spec binding(api()) -> kz_term:api_ne_binary().
 binding(#kapi_definition{binding = Binding}) -> Binding.
 
--spec restrict_to(api()) -> api_atom().
+-spec restrict_to(api()) -> kz_term:api_atom().
 restrict_to(#kapi_definition{restrict_to = RestrictTo}) -> RestrictTo.
 
 -spec required_headers(api()) -> api_headers().

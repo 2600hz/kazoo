@@ -27,9 +27,9 @@
 -record(state, {parser_id :: atom()
                ,logfile :: file:name()
                ,iodevice :: file:io_device()
-               ,logip :: ne_binary()
+               ,logip :: kz_term:ne_binary()
                ,logport :: pos_integer()
-               ,timer :: api_reference()
+               ,timer :: kz_term:api_reference()
                ,counter :: pos_integer()
                }).
 -type state() :: #state{}.
@@ -41,7 +41,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(ne_binary() | list()) -> startlink_ret().
+-spec start_link(kz_term:ne_binary() | list()) -> kz_types:startlink_ret().
 start_link(Args) ->
     ServerName = ci_parsers_util:make_name(Args),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
@@ -61,7 +61,7 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init({'parser_args', file:filename_all(), ne_binary(), pos_integer()}) ->
+-spec init({'parser_args', file:filename_all(), kz_term:ne_binary(), pos_integer()}) ->
                   {'ok', state()} |
                   {'stop', any()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
@@ -97,7 +97,7 @@ init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(atom(), any(), state()) -> handle_call_ret().
+-spec handle_call(atom(), any(), state()) -> kz_types:handle_call_ret().
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',
@@ -113,7 +113,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
@@ -128,7 +128,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('start_parsing', State=#state{parser_id = ParserId
                                          ,iodevice = IoDevice
                                          ,logip = LogIP
@@ -184,7 +184,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec extract_chunks(atom(), file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
+-spec extract_chunks(atom(), file:io_device(), kz_term:ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
 extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev) of
         [] -> Counter;
@@ -199,11 +199,11 @@ extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
             lists:foldl(StoreEach, Counter, Buffers)
     end.
 
--type key() :: {'callid', ne_binary()}.
--type datum() :: ne_binary() | {'timestamp', ne_binary()}.
+-type key() :: {'callid', kz_term:ne_binary()}.
+-type datum() :: kz_term:ne_binary() | {'timestamp', kz_term:ne_binary()}.
 -type data() :: [datum()].
 
--spec make_and_store_chunk(atom(), ne_binary(), pos_integer(), ne_binary(), pos_integer(), data()) ->
+-spec make_and_store_chunk(atom(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), pos_integer(), data()) ->
                                   pos_integer().
 make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0) ->
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
@@ -254,7 +254,7 @@ extract_chunk(Dev) ->
             end
     end.
 
--spec acc(ne_binary(), data(), file:io_device(), key()) -> {key(), data()}.
+-spec acc(kz_term:ne_binary(), data(), file:io_device(), key()) -> {key(), data()}.
 acc(<<"start|",_/binary>>=Logged, Buffer, Dev, Key) ->
     put(Key, [Logged]),
     case Buffer of
@@ -282,7 +282,7 @@ acc(<<"stop|",_/binary>>=Logged, Buffer, _Dev, Key) ->
     erase(Key),
     {Key, [Logged|Buffer]}.
 
--type cleanse_acc() :: {ne_binaries(), api_number()}.
+-type cleanse_acc() :: {kz_term:ne_binaries(), kz_term:api_number()}.
 
 -spec cleanse_data_and_get_timestamp(data()) -> cleanse_acc().
 cleanse_data_and_get_timestamp(Data0) ->
@@ -324,19 +324,19 @@ dump_buffers() ->
             {'buffers', Buffers}
     end.
 
--spec unwrap(ne_binary()) -> ne_binary().
+-spec unwrap(kz_term:ne_binary()) -> kz_term:ne_binary().
 unwrap(Bin0) ->
     case binary:split(Bin0, <<"|">>) of
         [_Tag, Bin] -> Bin;
         [RawTimestamp] -> RawTimestamp
     end.
 
--spec rm_newline(ne_binary()) -> ne_binary().
+-spec rm_newline(kz_term:ne_binary()) -> kz_term:ne_binary().
 rm_newline(Line0) ->
     [Line, <<>>] = binary:split(Line0, <<"\n">>),
     Line.
 
--spec label(ne_binary()) -> api_binary().
+-spec label(kz_term:ne_binary()) -> kz_term:api_binary().
 label(<<"received internal reply ", Label/binary>>) -> Label;
 label(<<"received ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
 label(<<"external reply ", Label/binary>>) -> Label;
@@ -344,7 +344,7 @@ label(<<"received failure reply ", Label/binary>>) -> Label;
 label(<<"received ", Label/binary>>) -> Label;
 label(_Other) -> 'undefined'.
 
--spec from(ne_binaries(), Default) -> ne_binary() | Default.
+-spec from(kz_term:ne_binaries(), Default) -> kz_term:ne_binary() | Default.
 from([], Default) -> Default;
 from([<<"start|received internal reply", _/binary>>|_Data], Default) -> Default;
 from([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
@@ -353,14 +353,14 @@ from([<<"log|source ", From/binary>>|_Data], Default) ->
 from([_Line|Lines], Default) ->
     from(Lines, Default).
 
--spec get_ip(ne_binary(), Default) -> ne_binary() | Default.
+-spec get_ip(kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
 get_ip(Bin, Default) ->
     case binary:split(Bin, <<":">>) of
         [IP, _Port] -> IP;
         _Else -> Default  %% Unexpected case
     end.
 
--spec to(ne_binaries(), Default) -> ne_binary() | Default.
+-spec to(kz_term:ne_binaries(), Default) -> kz_term:ne_binary() | Default.
 to([], Default) -> Default;
 to([<<"start|received internal reply",_/binary>>|Data], Default) ->
     to(Data, Default);
@@ -370,7 +370,7 @@ to([<<"pass|",To/binary>>|_Data], Default) ->
 to([_Datum|Data], Default) ->
     to(Data, Default).
 
--spec from_port(ne_binaries(), Default) -> ne_binary() | Default.
+-spec from_port(kz_term:ne_binaries(), Default) -> kz_term:ne_binary() | Default.
 from_port([], Default) -> Default;
 from_port([<<"start|received internal reply", _/binary>>|_Data], Default) -> Default;
 from_port([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
@@ -379,14 +379,14 @@ from_port([<<"log|source ", From/binary>>|_Data], Default) ->
 from_port([_Line|Lines], Default) ->
     from_port(Lines, Default).
 
--spec get_port(ne_binary(), Default) -> ne_binary() | Default.
+-spec get_port(kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
 get_port(Bin, Default) ->
     case binary:split(Bin, <<":">>) of
         [_IP, Port] -> Port;
         _Else -> Default  %% Unexpected case
     end.
 
--spec to_port(ne_binaries(), Default) -> ne_binary() | Default.
+-spec to_port(kz_term:ne_binaries(), Default) -> kz_term:ne_binary() | Default.
 to_port([], Default) -> Default;
 to_port([<<"start|received internal reply",_/binary>>|Data], Default) ->
     to_port(Data, Default);
@@ -397,7 +397,7 @@ to_port([_Datum|Data], Default) ->
     to(Data, Default).
 
 
--spec c_seq(ne_binaries()) -> api_binary().
+-spec c_seq(kz_term:ne_binaries()) -> kz_term:api_binary().
 c_seq([<<"cseq ", CSeq/binary>>|_Data]) -> CSeq;
 c_seq([]) -> 'undefined';
 c_seq([_Datum|Data]) -> c_seq(Data).

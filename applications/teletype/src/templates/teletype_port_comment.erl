@@ -114,11 +114,11 @@ handle_port_request(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec user_data(kz_json:object()) -> kz_proplist().
+-spec user_data(kz_json:object()) -> kz_term:proplist().
 user_data(DataJObj) ->
     user_data(DataJObj, teletype_util:is_preview(DataJObj)).
 
--spec user_data(kz_json:object(), boolean()) -> kz_proplist().
+-spec user_data(kz_json:object(), boolean()) -> kz_term:proplist().
 user_data(DataJObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     teletype_util:user_params(teletype_util:find_account_admin(AccountId));

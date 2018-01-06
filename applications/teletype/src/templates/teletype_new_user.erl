@@ -21,7 +21,7 @@
 
 -include("teletype.hrl").
 
--spec id() -> ne_binary().
+-spec id() -> kz_term:ne_binary().
 id() -> <<"new_user">>.
 
 -spec macros() -> kz_json:object().
@@ -32,19 +32,19 @@ macros() ->
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
 
--spec subject() -> ne_binary().
+-spec subject() -> kz_term:ne_binary().
 subject() -> <<"Your new VoIP services user profile has been created">>.
 
--spec category() -> ne_binary().
+-spec category() -> kz_term:ne_binary().
 category() -> <<"user">>.
 
--spec friendly_name() -> ne_binary().
+-spec friendly_name() -> kz_term:ne_binary().
 friendly_name() -> <<"New User">>.
 
 -spec to() -> kz_json:object().
 to() -> ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL).
 
--spec from() -> api_ne_binary().
+-spec from() -> kz_term:api_ne_binary().
 from() -> teletype_util:default_from_address().
 
 -spec cc() -> kz_json:object().
@@ -53,7 +53,7 @@ cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 -spec bcc() -> kz_json:object().
 bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to() -> api_ne_binary().
+-spec reply_to() -> kz_term:api_ne_binary().
 reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
@@ -100,11 +100,11 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
 
--spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     macros(DataJObj, 'false').
 
--spec macros(kz_json:object(), boolean()) -> {kz_json:object(), kz_proplist()} | kz_proplist().
+-spec macros(kz_json:object(), boolean()) -> {kz_json:object(), kz_term:proplist()} | kz_term:proplist().
 macros(DataJObj, 'true') ->
     ReqData = get_user_doc(DataJObj),
     {ReqData, create_macros(ReqData)};
@@ -112,7 +112,7 @@ macros(DataJObj, 'false') ->
     ReqData = get_user_doc(DataJObj),
     create_macros(ReqData).
 
--spec create_macros(kz_json:object()) -> kz_proplist().
+-spec create_macros(kz_json:object()) -> kz_term:proplist().
 create_macros(DataJObj) ->
     UserDoc = kz_json:get_value(<<"user">>, DataJObj, kz_json:new()),
     UserParams = case kz_json:get_value(<<"password">>, UserDoc) of

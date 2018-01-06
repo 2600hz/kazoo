@@ -20,22 +20,22 @@
 new() ->
     kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
--spec type() -> ne_binary().
--spec type(doc()) -> ne_binary().
+-spec type() -> kz_term:ne_binary().
+-spec type(doc()) -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
 type(Doc) ->
     kz_doc:type(Doc, ?PVT_TYPE).
 
--spec flat_rate_whitelist(doc()) -> api_ne_binary().
--spec flat_rate_whitelist(doc(), Default) -> ne_binary() | Default.
+-spec flat_rate_whitelist(doc()) -> kz_term:api_ne_binary().
+-spec flat_rate_whitelist(doc(), Default) -> kz_term:ne_binary() | Default.
 flat_rate_whitelist(Doc) ->
     flat_rate_whitelist(Doc, 'undefined').
 flat_rate_whitelist(Doc, Default) ->
     kz_json:get_ne_binary_value(<<"flat_rate_whitelist">>, Doc, Default).
 
--spec flat_rate_blacklist(doc()) -> api_ne_binary().
--spec flat_rate_blacklist(doc(), Default) -> ne_binary() | Default.
+-spec flat_rate_blacklist(doc()) -> kz_term:api_ne_binary().
+-spec flat_rate_blacklist(doc(), Default) -> kz_term:ne_binary() | Default.
 flat_rate_blacklist(Doc) ->
     flat_rate_blacklist(Doc, 'undefined').
 flat_rate_blacklist(Doc, Default) ->

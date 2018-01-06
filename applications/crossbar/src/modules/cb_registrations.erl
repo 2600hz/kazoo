@@ -132,7 +132,7 @@ validate_count(Context) ->
                           ,Context
      ).
 
--spec validate_sip_username(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_sip_username(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_sip_username(Context, Username) ->
     case sip_username_exists(Context, Username) of
         'true' ->
@@ -141,7 +141,7 @@ validate_sip_username(Context, Username) ->
             crossbar_util:response_bad_identifier(Username, Context)
     end.
 
--spec sip_username_exists(cb_context:context(), ne_binary()) -> boolean().
+-spec sip_username_exists(cb_context:context(), kz_term:ne_binary()) -> boolean().
 sip_username_exists(Context, Username) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
     case kz_datamgr:get_results(cb_context:account_db(Context)
@@ -201,7 +201,7 @@ merge_response(JObj, Regs) ->
                         end
                 end, Regs, kz_json:get_value(<<"Fields">>, JObj, [])).
 
--spec maybe_default_port(integer(), nklib:scheme(), api_binary()) -> integer().
+-spec maybe_default_port(integer(), nklib:scheme(), kz_term:api_binary()) -> integer().
 maybe_default_port(0, 'sips', _) -> 5061;
 maybe_default_port(0, 'sip', <<"TLS">>) -> 5061;
 maybe_default_port(0, 'sip', <<"tls">>) -> 5061;
@@ -240,7 +240,7 @@ count_registrations(Context) ->
         {'timeout', _} -> lager:debug("timed out query for counting regs"), 0
     end.
 
--spec get_realm(cb_context:context()) -> ne_binary().
+-spec get_realm(cb_context:context()) -> kz_term:ne_binary().
 get_realm(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> <<"all">>;

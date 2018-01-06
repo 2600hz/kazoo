@@ -32,7 +32,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec maybe_migrate(ne_binary()) -> 'ok'.
+-spec maybe_migrate(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
@@ -41,7 +41,7 @@ maybe_migrate(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec migrate(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec migrate(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate(AccountDb, [List | Lists]) ->
     DocId = kz_json:get_value(<<"id">>, List),
     Entries = kz_json:to_proplist(kz_json:get_value([<<"doc">>, <<"entries">>], List, kz_json:new())),
@@ -196,7 +196,7 @@ validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
     RespData = kzd_user:to_vcard(JObj4),
     cb_context:set_resp_data(Context1, [RespData, "\n"]).
 
--spec validate_doc(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_doc(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_doc(Id, Type, Context) ->
     OnSuccess = fun(C) -> on_successfull_validation(Id, Type, C) end,
     cb_context:validate_request_data(type_schema_name(Type), Context, OnSuccess).
@@ -234,11 +234,11 @@ save(Context, _, ?ENTRIES, EntryId, ?PHOTO) ->
     %% May be move code from cb_users_v2 to crossbar_doc?
     cb_users_v2:post(Context, EntryId, ?PHOTO).
 
--spec type_schema_name(ne_binary()) -> ne_binary().
+-spec type_schema_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 type_schema_name(?TYPE_LIST) -> <<"lists">>;
 type_schema_name(?TYPE_LIST_ENTRY) -> <<"list_entries">>.
 
--spec on_successfull_validation(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successfull_validation(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 on_successfull_validation('undefined', Type, Context) ->
     Doc = kz_json:set_values([{<<"pvt_type">>, Type}], cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);
@@ -251,7 +251,7 @@ set_org(JObj, Context) ->
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     set_org(JObj, Context1, cb_context:resp_status(Context1), ListId).
 
--spec set_org(kz_json:object(), cb_context:context(), crossbar_status(), ne_binary()) -> kz_json:object().
+-spec set_org(kz_json:object(), cb_context:context(), crossbar_status(), kz_term:ne_binary()) -> kz_json:object().
 set_org(JObj, Context, 'success', _) ->
     case kz_json:get_value(<<"org">>, cb_context:doc(Context)) of
         'undefined' -> JObj;

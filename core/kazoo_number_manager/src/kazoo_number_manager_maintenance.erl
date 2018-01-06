@@ -74,12 +74,12 @@
 carrier_module_usage() ->
     carrier_module_usage(knm_util:get_all_number_dbs(), dict:new()).
 
--spec carrier_module_usage(text()) -> 'ok'.
+-spec carrier_module_usage(kz_term:text()) -> 'ok'.
 carrier_module_usage(Prefix) ->
     Database = knm_converters:to_db(Prefix),
     carrier_module_usage([Database], dict:new()).
 
--spec carrier_module_usage(ne_binaries(), dict:dict()) -> 'ok'.
+-spec carrier_module_usage(kz_term:ne_binaries(), dict:dict()) -> 'ok'.
 carrier_module_usage([], Totals) ->
     io:format("Totals:~n", []),
     F = fun (Module, Count) -> io:format("    ~s: ~p~n", [Module, Count]) end,
@@ -89,14 +89,14 @@ carrier_module_usage([Database|Databases], Totals0) ->
     Totals1 = get_carrier_module_usage(Database, Totals0),
     carrier_module_usage(Databases, Totals1).
 
--spec get_carrier_module_usage(ne_binary(), dict:dict()) -> dict:dict().
+-spec get_carrier_module_usage(kz_term:ne_binary(), dict:dict()) -> dict:dict().
 get_carrier_module_usage(Database, Totals) ->
     io:format("~s:~n", [Database]),
     ViewOptions = ['reduce', 'group'],
     {'ok', JObjs} = kz_datamgr:get_results(Database, <<"numbers/module_name">>, ViewOptions),
     log_carrier_module_usage(JObjs, Database, Totals).
 
--spec log_carrier_module_usage(kz_json:objects(), ne_binary(), dict:dict()) -> dict:dict().
+-spec log_carrier_module_usage(kz_json:objects(), kz_term:ne_binary(), dict:dict()) -> dict:dict().
 log_carrier_module_usage([], _, Totals) -> Totals;
 log_carrier_module_usage([JObj|JObjs], Database, Totals0) ->
     Module = kz_json:get_value(<<"key">>, JObj),
@@ -111,16 +111,16 @@ log_carrier_module_usage([JObj|JObjs], Database, Totals0) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_carrier_module(ne_binary(), ne_binary()) -> 'ok'.
+-spec convert_carrier_module(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 convert_carrier_module(Source, Target) ->
     convert_carrier_module_database(Source, Target, knm_util:get_all_number_dbs()).
 
--spec convert_carrier_module(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec convert_carrier_module(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 convert_carrier_module(Source, Target, Prefix) ->
     Database = knm_converters:to_db(Prefix),
     convert_carrier_module_database(Source, Target, [Database]).
 
--spec convert_carrier_module_database(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec convert_carrier_module_database(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 convert_carrier_module_database(_, _, []) -> 'ok';
 convert_carrier_module_database(Source, Target, [Database|Databases]) ->
     io:format("attempt to convert numbers with carrier module ~s to ~s in database ~s~n"
@@ -130,7 +130,7 @@ convert_carrier_module_database(Source, Target, [Database|Databases]) ->
     convert_carrier_module_numbers([kz_doc:id(JObj) || JObj <- JObjs], Target),
     convert_carrier_module_database(Source, Target, Databases).
 
--spec convert_carrier_module_numbers(ne_binaries(), ne_binary()) -> 'ok'.
+-spec convert_carrier_module_numbers(kz_term:ne_binaries(), kz_term:ne_binary()) -> 'ok'.
 convert_carrier_module_numbers(Nums, Target) ->
     case lists:member(Target, knm_carriers:all_modules()) of
         'false' -> io:format("Bad carrier module: ~s\n", [Target]);
@@ -142,14 +142,14 @@ convert_carrier_module_numbers(Nums, Target) ->
             print_convert_carrier_failure(Target, TotalLength, KOs)
     end.
 
--spec print_convert_carrier_success(ne_binary(), non_neg_integer(), ne_binaries()) -> 'ok'.
+-spec print_convert_carrier_success(kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binaries()) -> 'ok'.
 print_convert_carrier_success(_, _, []) -> 'ok';
 print_convert_carrier_success(Target, TotalLength, Converted) ->
     io:format("updated carrier module to ~s for ~b/~b number(s):\n", [Target, length(Converted), TotalLength]),
     F = fun (N) -> io:format("\t~s\n", [knm_phone_number:number(knm_number:phone_number(N))]) end,
     lists:foreach(F, Converted).
 
--spec print_convert_carrier_failure(ne_binary(), non_neg_integer(), map()) -> 'ok'.
+-spec print_convert_carrier_failure(kz_term:ne_binary(), non_neg_integer(), map()) -> 'ok'.
 print_convert_carrier_failure(Target, TotalLength, KOs) ->
     case maps:size(KOs) of
         0 -> 'ok';
@@ -160,7 +160,7 @@ print_convert_carrier_failure(Target, TotalLength, KOs) ->
             'ok'
     end.
 
--spec convert_carrier_module_number(ne_binary(), ne_binary()) -> 'ok'.
+-spec convert_carrier_module_number(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 convert_carrier_module_number(Num, Target) ->
     convert_carrier_module_numbers([Num], Target).
 
@@ -175,14 +175,14 @@ refresh_numbers_dbs() ->
     NumberDbs = knm_util:get_all_number_dbs(),
     refresh_numbers_dbs(NumberDbs, length(NumberDbs)).
 
--spec refresh_numbers_dbs(ne_binaries(), non_neg_integer()) -> 'ok'.
+-spec refresh_numbers_dbs(kz_term:ne_binaries(), non_neg_integer()) -> 'ok'.
 refresh_numbers_dbs([], _) -> 'ok';
 refresh_numbers_dbs([NumberDb|NumberDbs], Total) ->
     ?SUP_LOG_DEBUG("(~p/~p) updating number db ~s", [length(NumberDbs) + 1, Total, NumberDb]),
     _ = refresh_numbers_db(NumberDb),
     refresh_numbers_dbs(NumberDbs, Total).
 
--spec refresh_numbers_db(ne_binary()) -> 'ok'.
+-spec refresh_numbers_db(kz_term:ne_binary()) -> 'ok'.
 refresh_numbers_db(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
     {'ok', _} = kz_datamgr:revise_doc_from_file(NumberDb
                                                ,'kazoo_number_manager'
@@ -198,7 +198,7 @@ refresh_numbers_db(_Thing) ->
     ?SUP_LOG_DEBUG("skipping badly formed ~s", [_Thing]).
 
 %% @public
--spec update_number_services_view(ne_binary()) -> no_return.
+-spec update_number_services_view(kz_term:ne_binary()) -> no_return.
 update_number_services_view(?MATCH_ACCOUNT_RAW(AccountId)) ->
     update_number_services_view(kz_util:format_account_db(AccountId));
 update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
@@ -234,8 +234,8 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     end.
 
 %% @public
--spec fix_accounts_numbers([ne_binary()]) -> 'ok'.
--spec fix_account_numbers(ne_binary()) -> 'ok'.
+-spec fix_accounts_numbers([kz_term:ne_binary()]) -> 'ok'.
+-spec fix_account_numbers(kz_term:ne_binary()) -> 'ok'.
 fix_accounts_numbers(Accounts) ->
     AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
     _ = purge_discovery(),
@@ -285,7 +285,7 @@ fix_account_numbers(Account = ?NE_BINARY) ->
 log_alien(_AccountDb, _DID) ->
     ?SUP_LOG_DEBUG("########## found alien [~s] doc: ~s ##########", [_AccountDb, _DID]).
 
--spec fix_number(ne_binary(), ne_binary(), ne_binary()) -> knm_number_return().
+-spec fix_number(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
     UsedBy = app_using(knm_converters:normalize(Num), AccountDb),
     Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
@@ -304,7 +304,7 @@ migrate() ->
     pforeach(fun migrate/1, kapps_util:get_all_accounts()),
     migrate_unassigned_numbers().
 
--spec migrate(ne_binary()) -> 'ok'.
+-spec migrate(kz_term:ne_binary()) -> 'ok'.
 migrate(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     fix_account_numbers(AccountDb),
@@ -312,13 +312,13 @@ migrate(Account) ->
     'ok'.
 
 -spec migrate_unassigned_numbers() -> 'ok'.
--spec migrate_unassigned_numbers(ne_binary(), integer()) -> 'ok'.
+-spec migrate_unassigned_numbers(kz_term:ne_binary(), integer()) -> 'ok'.
 migrate_unassigned_numbers() ->
     ?SUP_LOG_DEBUG("********** fixing unassigned numbers **********", []),
     pforeach(fun migrate_unassigned_numbers/1, knm_util:get_all_number_dbs()),
     ?SUP_LOG_DEBUG("********** finished fixing unassigned numbers **********", []).
 
--spec migrate_unassigned_numbers(ne_binary()) -> ok.
+-spec migrate_unassigned_numbers(kz_term:ne_binary()) -> ok.
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
     ?SUP_LOG_DEBUG("########## start fixing ~s ##########", [NumberDb]),
     migrate_unassigned_numbers(NumberDb, 0),
@@ -362,7 +362,7 @@ escape(?NE_BINARY=Bin0) ->
     <<Start:StartSz/binary, Escaped:SizeOfWhatIWant/binary, End:EndSz/binary>> = Bin,
     Escaped.
 
--spec number_services_map(ne_binaries(), ne_binaries()) -> ne_binary().
+-spec number_services_map(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 number_services_map(Classifications, Regexs) ->
     iolist_to_binary(
       ["function(doc) {"
@@ -387,7 +387,7 @@ number_services_map(Classifications, Regexs) ->
        "}"
       ]).
 
--spec number_services_red() -> ne_binary().
+-spec number_services_red() -> kz_term:ne_binary().
 number_services_red() ->
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
@@ -438,7 +438,7 @@ pforeach(Fun, Arg1s)
            ],
     plists:foreach(Fun, Arg1s, Malt).
 
--spec fix_docs(ne_binary(), ne_binary(), ne_binary()) -> ok.
+-spec fix_docs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 fix_docs(AccountDb, NumberDb, DID) ->
     Res = kz_datamgr:open_doc(AccountDb, DID),
     fix_docs(Res, AccountDb, NumberDb, DID).
@@ -504,7 +504,7 @@ account_db_from_number_doc(NumDoc) ->
         AccountId -> kz_util:format_account_db(AccountId)
     end.
 
--spec fix_unassign_doc(ne_binary()) -> 'ok'.
+-spec fix_unassign_doc(kz_term:ne_binary()) -> 'ok'.
 fix_unassign_doc(DID) ->
     Setters = [{fun knm_phone_number:set_used_by/2, undefined}
               ,fun knm_phone_number:remove_denied_features/1
@@ -514,11 +514,11 @@ fix_unassign_doc(DID) ->
         {error, _R} -> ?SUP_LOG_DEBUG("failed fixing unassigned ~s: ~p", [DID, _R])
     end.
 
--type dids() :: gb_sets:set(ne_binary()).
--spec get_DIDs(ne_binary(), ne_binary()) -> dids().
+-type dids() :: gb_sets:set(kz_term:ne_binary()).
+-spec get_DIDs(kz_term:ne_binary(), kz_term:ne_binary()) -> dids().
 get_DIDs(AccountDb, View) ->
     get_DIDs(AccountDb, View, []).
--spec get_DIDs(ne_binary(), ne_binary(), kz_proplist()) -> dids().
+-spec get_DIDs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
 get_DIDs(AccountDb, View, ViewOptions) ->
     ?SUP_LOG_DEBUG("[~s] getting numbers from ~s", [AccountDb, View]),
     case kz_datamgr:get_result_keys(AccountDb, View, ViewOptions) of
@@ -537,7 +537,7 @@ get_DIDs_callflow(AccountDb, ViewOptions) ->
 get_DIDs_trunkstore(AccountDb, ViewOptions) ->
     get_DIDs(AccountDb, <<"trunkstore/lookup_did">>, ViewOptions).
 
--spec get_DIDs_assigned_to(ne_binary(), ne_binary()) -> dids().
+-spec get_DIDs_assigned_to(kz_term:ne_binary(), kz_term:ne_binary()) -> dids().
 get_DIDs_assigned_to(NumberDb, AssignedTo) ->
     ViewOptions = [{startkey, [AssignedTo]}
                   ,{endkey, [AssignedTo, kz_json:new()]}
@@ -568,7 +568,7 @@ cleanse(JObj) ->
                        ).
 
 
--spec app_using(ne_binary(), ne_binary()) -> api_ne_binary().
+-spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 -ifdef(TEST).
 app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
 app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> undefined.
@@ -577,7 +577,7 @@ app_using(Num, AccountDb) ->
     app_using(Num, AccountDb, get(callflow_DIDs), get(trunkstore_DIDs)).
 
 -type api_dids() :: undefined | dids().
--spec app_using(ne_binary(), ne_binary(), api_dids(), api_dids()) -> api_ne_binary().
+-spec app_using(kz_term:ne_binary(), kz_term:ne_binary(), api_dids(), api_dids()) -> kz_term:api_ne_binary().
 app_using(Num, AccountDb, undefined, TrunkstoreNums) ->
     CallflowNums = get_DIDs_callflow(AccountDb, [{key, Num}]),
     app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
@@ -595,7 +595,7 @@ app_using(Num, _, CallflowNums, TrunkstoreNums) ->
     end.
 -endif.
 
--spec is_assigned_to(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_assigned_to(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_assigned_to(AccountDb, DID, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, DID) of
         {error, _R} ->
@@ -606,14 +606,14 @@ is_assigned_to(AccountDb, DID, AccountId) ->
     end.
 
 
--spec generate_numbers(ne_binary(), ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
+-spec generate_numbers(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
 generate_numbers(Type, AccountId, StartingNumber, Quantity) ->
     M = kz_term:to_atom(<<"knm_", Type/binary>>, 'true'),
     M:generate_numbers(AccountId, kz_term:to_integer(StartingNumber), kz_term:to_integer(Quantity)).
 
 
 %% @public
--spec delete(ne_binary()) -> 'no_return'.
+-spec delete(kz_term:ne_binary()) -> 'no_return'.
 delete(Num) ->
     case knm_number:delete(Num, knm_number_options:default()) of
         {'ok', _} -> io:format("Removed ~s\n", [Num]);
@@ -630,7 +630,7 @@ purge_discovery() ->
     'no_return'.
 
 %% @public
--spec purge_deleted(ne_binary()) -> 'no_return'.
+-spec purge_deleted(kz_term:ne_binary()) -> 'no_return'.
 purge_deleted(Prefix) ->
     purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DELETED),
     'no_return'.
@@ -643,12 +643,12 @@ purge_deleted() ->
     'no_return'.
 
 %% @public
--spec purge_discovery(ne_binary()) -> 'no_return'.
+-spec purge_discovery(kz_term:ne_binary()) -> 'no_return'.
 purge_discovery(Prefix) ->
     purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DISCOVERY),
     'no_return'.
 
--spec purge_number_db(ne_binary(), ne_binary()) -> 'ok'.
+-spec purge_number_db(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 purge_number_db(NumberDb, State) ->
     ViewOptions = [{'startkey', [State]}
                   ,{'endkey', [State, kz_json:new()]}
@@ -674,7 +674,7 @@ is_feature_valid(Thing) ->
     lists:member(Thing, ?ALL_KNM_FEATURES).
 
 %% @private
--spec invalid_feature(ne_binary()) -> no_return.
+-spec invalid_feature(kz_term:ne_binary()) -> no_return.
 invalid_feature(Feature) ->
     io:format("Feature '~s' is not a known feature.\n", [Feature]),
     all_features().
@@ -686,12 +686,12 @@ all_features() ->
     no_return.
 
 %% @private
--spec list_features(ne_binaries()) -> iodata().
+-spec list_features(kz_term:ne_binaries()) -> iodata().
 list_features(Features) ->
     kz_util:iolist_join($\s, Features).
 
 %% @private
--spec error_with_number(ne_binary(), any()) -> no_return.
+-spec error_with_number(kz_term:ne_binary(), any()) -> no_return.
 error_with_number(Num, Error) ->
     Reason = case kz_json:is_json_object(Error) of
                  false -> Error;
@@ -701,7 +701,7 @@ error_with_number(Num, Error) ->
     no_return.
 
 %% @private
--spec print_feature_permissions(ne_binaries(), ne_binaries()) -> no_return.
+-spec print_feature_permissions(kz_term:ne_binaries(), kz_term:ne_binaries()) -> no_return.
 print_feature_permissions(Allowed, Denied) ->
     io:format("\tFeatures allowed: ~s\n"
               "\tFeatures denied: ~s\n"
@@ -720,7 +720,7 @@ list_number_feature_permissions(N) ->
     print_feature_permissions(Allowed, Denied).
 
 %% @private
--spec edit_feature_permissions_on_number(ne_binary(), fun(), ne_binary()) -> no_return.
+-spec edit_feature_permissions_on_number(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
 edit_feature_permissions_on_number(Num, Fun, Feature) ->
     case is_feature_valid(Feature) of
         false -> invalid_feature(Feature);
@@ -733,7 +733,7 @@ edit_feature_permissions_on_number(Num, Fun, Feature) ->
     end.
 
 %% @public
--spec feature_permissions_on_number(ne_binary()) -> no_return.
+-spec feature_permissions_on_number(kz_term:ne_binary()) -> no_return.
 feature_permissions_on_number(Num) ->
     case knm_number:get(Num) of
         {error, Error} -> error_with_number(Num, Error);
@@ -741,27 +741,27 @@ feature_permissions_on_number(Num) ->
     end.
 
 %% @public
--spec add_allowed_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+-spec add_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:add_allowed_feature/2, Feature).
 
 %% @public
--spec remove_allowed_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+-spec remove_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_allowed_feature/2, Feature).
 
 %% @public
--spec add_denied_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+-spec add_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:add_denied_feature/2, Feature).
 
 %% @public
--spec remove_denied_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+-spec remove_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_denied_feature/2, Feature).
 
 %% @public
--spec feature_permissions_on_reseller_of(ne_binary()) -> no_return.
+-spec feature_permissions_on_reseller_of(kz_term:ne_binary()) -> no_return.
 feature_permissions_on_reseller_of(?MATCH_ACCOUNT_RAW(AccountId)) ->
     Allowed = empty_list_when_undefined(?FEATURES_ALLOWED_RESELLER(AccountId)),
     Denied = empty_list_when_undefined(?FEATURES_DENIED_RESELLER(AccountId)),
@@ -770,12 +770,12 @@ feature_permissions_on_reseller_of(?MATCH_ACCOUNT_RAW(AccountId)) ->
     print_feature_permissions(Allowed, Denied).
 
 %% @private
--spec empty_list_when_undefined(api_list()) -> ne_binaries().
+-spec empty_list_when_undefined(kz_term:api_list()) -> kz_term:ne_binaries().
 empty_list_when_undefined(undefined) -> [];
 empty_list_when_undefined(NeBinaries) -> NeBinaries.
 
 %% @private
--spec edit_allowed_feature_permissions_on_reseller_of(ne_binary(), fun(), ne_binary()) -> no_return.
+-spec edit_allowed_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
 edit_allowed_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     case is_feature_valid(Feature) of
         false -> invalid_feature(Feature);
@@ -788,7 +788,7 @@ edit_allowed_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     end.
 
 %% @private
--spec edit_denied_feature_permissions_on_reseller_of(ne_binary(), fun(), ne_binary()) -> no_return.
+-spec edit_denied_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
 edit_denied_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     case is_feature_valid(Feature) of
         false -> invalid_feature(Feature);
@@ -801,24 +801,24 @@ edit_denied_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     end.
 
 %% @public
--spec add_allowed_feature_on_reseller_of(ne_binary(), ne_binary()) -> no_return.
+-spec add_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_allowed_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_allowed_feature_permissions_on_reseller_of(AccountId, Cons, Feature).
 
 %% @public
--spec remove_allowed_feature_on_reseller_of(ne_binary(), ne_binary()) -> no_return.
+-spec remove_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_allowed_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     edit_allowed_feature_permissions_on_reseller_of(AccountId, fun lists:delete/2, Feature).
 
 %% @public
--spec add_denied_feature_on_reseller_of(ne_binary(), ne_binary()) -> no_return.
+-spec add_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_denied_feature_permissions_on_reseller_of(AccountId, Cons, Feature).
 
 %% @public
--spec remove_denied_feature_on_reseller_of(ne_binary(), ne_binary()) -> no_return.
+-spec remove_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     edit_denied_feature_permissions_on_reseller_of(AccountId, fun lists:delete/2, Feature).
 
@@ -835,13 +835,13 @@ reset_allowed_features_to_defaults_on_system_config() ->
     set_features_on_system_config(?DEFAULT_FEATURES_ALLOWED_SYSTEM).
 
 %% @private
--spec set_features_on_system_config(ne_binaries()) -> no_return.
+-spec set_features_on_system_config(kz_term:ne_binaries()) -> no_return.
 set_features_on_system_config(Features) ->
     _ = kapps_config:set(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, lists:usort(Features)),
     feature_permissions_on_system_config().
 
 %% @private
--spec edit_allowed_feature_permissions_on_system_config(fun(), ne_binary()) -> no_return.
+-spec edit_allowed_feature_permissions_on_system_config(fun(), kz_term:ne_binary()) -> no_return.
 edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
     case is_feature_valid(Feature) of
         false -> invalid_feature(Feature);
@@ -851,13 +851,13 @@ edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
     end.
 
 %% @public
--spec add_allowed_feature_on_system_config(ne_binary()) -> no_return.
+-spec add_allowed_feature_on_system_config(kz_term:ne_binary()) -> no_return.
 add_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_allowed_feature_permissions_on_system_config(Cons, Feature).
 
 %% @public
--spec remove_allowed_feature_on_system_config(ne_binary()) -> no_return.
+-spec remove_allowed_feature_on_system_config(kz_term:ne_binary()) -> no_return.
 remove_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
     edit_allowed_feature_permissions_on_system_config(fun lists:delete/2, Feature).
 

@@ -35,9 +35,9 @@
 
 -record(state, {callflow :: kz_json:object()
                ,is_no_match :: boolean()
-               ,id :: api_ne_binary()
-               ,type :: api_ne_binary()
-               ,number :: ne_binary()
+               ,id :: kz_term:api_ne_binary()
+               ,type :: kz_term:api_ne_binary()
+               ,number :: kz_term:ne_binary()
                ,channels = [] :: kz_json:objects()
                ,config :: kz_json:object()
                }).
@@ -153,8 +153,8 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec get_sip_usernames_for_target(ne_binary(), ne_binary(), kapps_call:call()) ->
-                                          ne_binaries().
+-spec get_sip_usernames_for_target(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
+                                          kz_term:ne_binaries().
 get_sip_usernames_for_target(TargetId, TargetType, Call) ->
     Targets = case TargetType of
                   <<"user">> -> kz_attributes:owned_by(TargetId, <<"device">>, Call);
@@ -170,7 +170,7 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
         'undefined' =/= SIPUsername
     ].
 
--spec get_device_sip_username(ne_binary(), ne_binary()) -> api_ne_binary().
+-spec get_device_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_device_sip_username(AccountDb, DeviceId) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, DeviceId),
     kz_device:sip_username(JObj).

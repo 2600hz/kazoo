@@ -12,7 +12,7 @@
 
 -export([start/3]).
 
--spec start(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+-spec start(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 start(MCall, AcctId, AgentCallId) ->
     Prop = [{<<"Eavesdrop-Mode">>, <<"listen">>}
            ,{<<"Account-ID">>, AcctId}

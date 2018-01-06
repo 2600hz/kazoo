@@ -170,7 +170,7 @@ validate_rate(Context, Id, ?HTTP_PATCH) ->
 validate_rate(Context, Id, ?HTTP_DELETE) ->
     read(Id, cb_context:set_account_db(Context, ratedeck_db(Context))).
 
--spec ratedeck_db(cb_context:context()) -> ne_binary().
+-spec ratedeck_db(cb_context:context()) -> kz_term:ne_binary().
 ratedeck_db(Context) ->
     RatedeckId = cb_context:req_value(Context, <<"ratedeck_id">>, ?KZ_RATES_DB),
     kzd_ratedeck:format_ratedeck_db(RatedeckId).
@@ -196,7 +196,7 @@ put(Context) ->
 delete(Context, _RateId) ->
     crossbar_doc:delete(Context).
 
--spec validate_number(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_number(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_number(Phonenumber, Context) ->
     case knm_converters:is_reconcilable(Phonenumber) of
         'true' ->
@@ -229,7 +229,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
 
@@ -240,7 +240,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
@@ -252,7 +252,7 @@ update(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
@@ -262,7 +262,7 @@ validate_patch(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = lists:foldl(fun doc_updates/2
                      ,cb_context:doc(Context)
@@ -274,7 +274,7 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
 
--spec doc_updates({fun(), ne_binary()} | fun(), kz_json:object()) ->
+-spec doc_updates({fun(), kz_term:ne_binary()} | fun(), kz_json:object()) ->
                          kz_json:object().
 doc_updates({Fun, Value}, Doc) when is_function(Fun, 2) ->
     Fun(Doc, Value);
@@ -282,7 +282,7 @@ doc_updates(Fun, Doc) when is_function(Fun, 1) ->
     Fun(Doc).
 
 -spec ensure_routes_set(kz_json:object()) -> kz_json:object().
--spec ensure_routes_set(kz_json:object(), api_binaries()) -> kz_json:object().
+-spec ensure_routes_set(kz_json:object(), kz_term:api_binaries()) -> kz_json:object().
 ensure_routes_set(Doc) ->
     ensure_routes_set(Doc, kz_json:get_value(<<"routes">>, Doc)).
 
@@ -293,7 +293,7 @@ ensure_routes_set(Doc, []) ->
 ensure_routes_set(Doc, _) ->
     Doc.
 
--spec add_default_route(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec add_default_route(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 add_default_route(Doc, Prefix) ->
     kz_json:set_value(<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>], Doc).
 
@@ -377,7 +377,7 @@ process_upload_file(Context, [{_Name, File}|_]) ->
 process_upload_file(Context, _ReqFiles) ->
     error_no_file(Context).
 
--spec convert_file(ne_binary(), ne_binary(), cb_context:context()) ->
+-spec convert_file(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
                           {'ok', {non_neg_integer(), kz_json:objects()}}.
 convert_file(<<"text/csv">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
@@ -390,7 +390,7 @@ convert_file(ContentType, _, _) ->
     lager:debug("unknown content type: ~s", [ContentType]),
     throw({'unknown_content_type', ContentType}).
 
--spec csv_to_rates(ne_binary(), cb_context:context()) ->
+-spec csv_to_rates(kz_term:ne_binary(), cb_context:context()) ->
                           {'ok', {integer(), kz_json:objects()}}.
 csv_to_rates(CSV, Context) ->
     BulkInsert = kz_datamgr:max_bulk_insert(),
@@ -461,7 +461,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             {Count + 1, [kz_json:set_values(Setters, kz_json:new()) | JObjs]}
     end.
 
--spec get_row_prefix(rate_row()) -> api_binary().
+-spec get_row_prefix(rate_row()) -> kz_term:api_binary().
 get_row_prefix([Prefix | _]=_R) ->
     try kz_term:to_integer(Prefix)
     catch
@@ -473,27 +473,27 @@ get_row_prefix(_R) ->
     lager:info("prefix not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_iso(rate_row()) -> ne_binary().
+-spec get_row_iso(rate_row()) -> kz_term:ne_binary().
 get_row_iso([_, ISO | _]) -> strip_quotes(kz_term:to_binary(ISO));
 get_row_iso(_R) ->
     lager:info("iso not found on row: ~p", [_R]),
     <<"XX">>.
 
--spec get_row_description(rate_row()) -> api_binary().
+-spec get_row_description(rate_row()) -> kz_term:api_binary().
 get_row_description([_, _, Description | _]) ->
     strip_quotes(kz_term:to_binary(Description));
 get_row_description(_R) ->
     lager:info("description not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_internal_surcharge(rate_row()) -> api_float().
+-spec get_row_internal_surcharge(rate_row()) -> kz_term:api_float().
 get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) ->
     kz_term:to_float(InternalSurcharge);
 get_row_internal_surcharge(_R) ->
     lager:info("internal surcharge not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_surcharge(rate_row()) -> api_float().
+-spec get_row_surcharge(rate_row()) -> kz_term:api_float().
 get_row_surcharge([_, _, _, Surcharge, _, _]) ->
     kz_term:to_float(Surcharge);
 get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
@@ -502,7 +502,7 @@ get_row_surcharge([_|_]=_R) ->
     lager:info("surcharge not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_internal_rate(rate_row()) -> api_float().
+-spec get_row_internal_rate(rate_row()) -> kz_term:api_float().
 get_row_internal_rate([_, _, _, Rate]) ->
     kz_term:to_float(Rate);
 get_row_internal_rate([_, _, _, InternalRate, _]) ->
@@ -515,7 +515,7 @@ get_row_internal_rate([_|_]=_R) ->
     lager:info("internal rate not found on row: ~p", [_R]),
     'undefined'.
 
--spec get_row_rate(rate_row()) -> api_float().
+-spec get_row_rate(rate_row()) -> kz_term:api_float().
 get_row_rate([_, _, _, Rate]) -> kz_term:to_float(Rate);
 get_row_rate([_, _, _, _, Rate]) -> kz_term:to_float(Rate);
 get_row_rate([_, _, _, _, _, Rate]) -> kz_term:to_float(Rate);
@@ -550,7 +550,7 @@ get_row_direction([_, _, _, _, _, _, _, _, _, _, Direction | _]) ->
 get_row_direction([_|_]) ->
     'undefined'.
 
--spec strip_quotes(ne_binary()) -> ne_binary().
+-spec strip_quotes(kz_term:ne_binary()) -> kz_term:ne_binary().
 strip_quotes(Bin) ->
     binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, ['global']).
 
@@ -564,7 +564,7 @@ save_processed_rates(Context, Count) ->
               lager:debug("saved up to ~b docs (took ~b ms)", [Count, kz_time:elapsed_ms(Now)])
       end).
 
--spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec rate_for_number(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->
     Request = props:filter_undefined(
                 [{<<"To-DID">>, Phonenumber}
@@ -589,7 +589,7 @@ rate_for_number(Phonenumber, Context) ->
             cb_context:add_system_error(<<"No rate found for this number">>, Context)
     end.
 
--spec maybe_handle_rate(ne_binary(), cb_context:context(), kz_json:object()) ->
+-spec maybe_handle_rate(kz_term:ne_binary(), cb_context:context(), kz_json:object()) ->
                                cb_context:context().
 maybe_handle_rate(Phonenumber, Context, Rate) ->
     case kz_json:get_value(<<"Base-Cost">>, Rate) of

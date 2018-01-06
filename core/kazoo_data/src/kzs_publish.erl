@@ -18,7 +18,7 @@
 -include("kz_data.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
--spec maybe_publish_docs(ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
+-spec maybe_publish_docs(kz_term:ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 -ifdef(TEST).
 maybe_publish_docs(_, _, _) -> 'ok'.
 -else.
@@ -28,7 +28,7 @@ maybe_publish_docs(Db, Docs, JObjs) ->
         andalso publish_docs(Db, Docs, JObjs),
     kzs_cache:flush_cache_docs(Db, JObjs).
 
--spec publish_docs(ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
+-spec publish_docs(kz_term:ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 publish_docs(Db, Docs, JObjs) ->
     _ = kz_util:spawn(
           fun() ->
@@ -40,7 +40,7 @@ publish_docs(Db, Docs, JObjs) ->
     'ok'.
 -endif.
 
--spec maybe_publish_doc(ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec maybe_publish_doc(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
 -ifdef(TEST).
 maybe_publish_doc(_, _, _) -> 'ok'.
 -else.
@@ -52,7 +52,7 @@ maybe_publish_doc(Db, Doc, JObj) ->
     kzs_cache:flush_cache_doc(Db, JObj).
 -endif.
 
--spec publish_db(ne_binary(), kapi_conf:action()) -> boolean().
+-spec publish_db(kz_term:ne_binary(), kapi_conf:action()) -> boolean().
 -ifdef(TEST).
 publish_db(_, _) -> 'true'.
 -else.
@@ -69,13 +69,13 @@ should_publish_doc(Doc) ->
         _Else -> 'true'
     end.
 
--spec should_publish_db_changes(ne_binary()) -> boolean().
+-spec should_publish_db_changes(kz_term:ne_binary()) -> boolean().
 should_publish_db_changes(DbName) ->
     Key = <<"publish_", (kz_term:to_binary(kzs_util:db_classification(DbName)))/binary, "_changes">>,
     kazoo_data_config:get_is_true(Key, 'true').
 -endif.
 
--spec publish_doc(ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
+-spec publish_doc(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
 publish_doc(DbName, Doc, JObj) ->
     case kz_doc:is_soft_deleted(Doc)
         orelse kz_doc:is_deleted(Doc)
@@ -90,7 +90,7 @@ publish_doc(DbName, Doc, JObj) ->
     end.
 
 -ifndef(TEST).
--spec do_publish_db(ne_binary(), kapi_conf:action()) -> 'ok'.
+-spec do_publish_db(kz_term:ne_binary(), kapi_conf:action()) -> 'ok'.
 do_publish_db(DbName, Action) ->
     Props =
         [{<<"Type">>, 'database'}
@@ -106,7 +106,7 @@ do_publish_db(DbName, Action) ->
     kz_amqp_worker:cast(Props, Fun).
 -endif.
 
--spec publish_fields(kz_json:object()) -> kz_proplist().
+-spec publish_fields(kz_json:object()) -> kz_term:proplist().
 -spec publish_fields(kz_json:object(), kz_json:object()) -> kz_json:object().
 publish_fields(Doc) ->
     [{Key, V} ||
@@ -117,7 +117,7 @@ publish_fields(Doc) ->
 publish_fields(Doc, JObj) ->
     kz_json:set_values(publish_fields(Doc), JObj).
 
--spec publish(kapi_conf:action(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec publish(kapi_conf:action(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 publish(Action, Db, Doc) ->
     Type = kz_doc:type(Doc),
     Id = kz_doc:id(Doc),
@@ -146,20 +146,20 @@ publish(Action, Db, Doc) ->
     Fun = fun(P) -> kapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     kz_amqp_worker:cast(Props, Fun).
 
--spec doc_change_event_name(kapi_conf:action(), boolean()) -> ne_binary().
+-spec doc_change_event_name(kapi_conf:action(), boolean()) -> kz_term:ne_binary().
 doc_change_event_name(_Action, 'true') ->
     ?DOC_DELETED;
 doc_change_event_name(Action, 'false') ->
     <<"doc_", (kz_term:to_binary(Action))/binary>>.
 
--spec doc_acct_id(ne_binary(), kz_json:object()) -> ne_binary().
+-spec doc_acct_id(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 doc_acct_id(Db, Doc) ->
     case kz_doc:account_id(Doc) of
         ?MATCH_ACCOUNT_RAW(AccountId) -> AccountId;
         _ -> maybe_account_id_from_db(kzs_util:db_classification(Db), Db)
     end.
 
--spec maybe_account_id_from_db(atom(), ne_binary()) -> api_binary().
+-spec maybe_account_id_from_db(atom(), kz_term:ne_binary()) -> kz_term:api_binary().
 maybe_account_id_from_db('account', Db) ->
     kz_util:format_account_id(Db);
 maybe_account_id_from_db('modb', Db) ->

@@ -74,7 +74,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     TransactionProps = transaction_data(DataJObj),
     [{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -102,11 +102,11 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec transaction_data(kz_json:object()) -> kz_proplist().
+-spec transaction_data(kz_json:object()) -> kz_term:proplist().
 transaction_data(DataJObj) ->
     transaction_data(DataJObj, teletype_util:is_preview(DataJObj)).
 
--spec transaction_data(kz_json:object(), boolean()) -> kz_proplist().
+-spec transaction_data(kz_json:object(), boolean()) -> kz_term:proplist().
 transaction_data(DataJObj, 'true') ->
     {'ok', JObj} = teletype_util:read_preview_doc(<<"transaction">>),
     Props = kz_json:recursive_to_proplist(JObj),
@@ -140,7 +140,7 @@ transaction_data(DataJObj, 'false') ->
       ]
      ).
 
--spec get_balance(kz_json:object()) -> ne_binary().
+-spec get_balance(kz_json:object()) -> kz_term:ne_binary().
 get_balance(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case wht_util:current_account_dollars(AccountId) of

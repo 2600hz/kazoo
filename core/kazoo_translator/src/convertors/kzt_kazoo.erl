@@ -38,7 +38,7 @@ resume_callflow(Call, FlowJObj) ->
     'ok' = kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
     {'usurp', Call}.
 
--spec parse_cmds(ne_binary()) ->
+-spec parse_cmds(kz_term:ne_binary()) ->
                         {'ok', kz_json:object()} |
                         {'error', 'not_parsed'}.
 parse_cmds(<<_/binary>> = JSON) ->
@@ -61,7 +61,7 @@ parse_cmds(<<_/binary>> = JSON) ->
             {'error', 'not_parsed'}
     end.
 
--spec req_params(kapps_call:call()) -> kz_proplist().
+-spec req_params(kapps_call:call()) -> kz_term:proplist().
 req_params(Call) ->
     Owners = case kz_attributes:owner_ids(kapps_call:authorizing_id(Call), Call) of
                  [] -> 'undefined';

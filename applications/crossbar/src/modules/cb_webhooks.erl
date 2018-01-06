@@ -74,7 +74,7 @@ init_master_account_db() ->
             lager:warning("master account not set yet, unable to load view and revise schema: ~p", [_E])
     end.
 
--spec maybe_revise_schema(ne_binary()) -> 'ok'.
+-spec maybe_revise_schema(kz_term:ne_binary()) -> 'ok'.
 maybe_revise_schema(MasterAccountDb) ->
     case kz_json_schema:load(<<"webhooks">>) of
         {'ok', SchemaJObj} -> maybe_revise_schema(MasterAccountDb, SchemaJObj);
@@ -82,7 +82,7 @@ maybe_revise_schema(MasterAccountDb) ->
             lager:warning("failed to find webhooks schema: ~p", [_E])
     end.
 
--spec maybe_revise_schema(ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_revise_schema(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_revise_schema(MasterDb, SchemaJObj) ->
     case kz_datamgr:get_results(MasterDb, ?AVAILABLE_HOOKS) of
         {'ok', []} ->
@@ -101,7 +101,7 @@ maybe_revise_schema(MasterDb, SchemaJObj) ->
                                       ])
     end.
 
--spec revise_schema(kz_json:object(), ne_binaries()) -> 'ok'.
+-spec revise_schema(kz_json:object(), kz_term:ne_binaries()) -> 'ok'.
 revise_schema(SchemaJObj, HNs) ->
     HookNames = [<<"all">> | HNs],
     Updated = kz_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
@@ -215,7 +215,7 @@ validate_webhook(Context, WebhookId, ?HTTP_DELETE) ->
 validate(Context, WebhookId=?NE_BINARY, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, WebhookId).
 
--spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_patch(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_patch(Context, WebhookId) ->
     case cb_context:resp_status(Context) of
         'success' ->
@@ -247,13 +247,13 @@ patch(Context, WebhookId) ->
 delete(Context, _) ->
     crossbar_doc:delete(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
--spec delete_account(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec delete_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 delete_account(Context, AccountId) ->
     lager:debug("account ~s deleted, removing any webhooks", [AccountId]),
     kz_util:spawn(fun delete_account_webhooks/1, [AccountId]),
     Context.
 
--spec delete_account_webhooks(ne_binary()) -> 'ok'.
+-spec delete_account_webhooks(kz_term:ne_binary()) -> 'ok'.
 delete_account_webhooks(AccountId) ->
     case fetch_account_hooks(AccountId) of
         {'ok', []} -> 'ok';
@@ -264,7 +264,7 @@ delete_account_webhooks(AccountId) ->
             lager:debug("deleted ~p hooks from account ~s", [length(ViewJObjs), AccountId])
     end.
 
--spec fetch_account_hooks(ne_binary()) -> kazoo_data:get_results_return().
+-spec fetch_account_hooks(kz_term:ne_binary()) -> kazoo_data:get_results_return().
 fetch_account_hooks(AccountId) ->
     ViewOptions = [{'key', AccountId}, {'reduce', 'false'}],
     kz_datamgr:get_results(?KZ_WEBHOOKS_DB, <<"webhooks/accounts_listing">>, ViewOptions).
@@ -289,7 +289,7 @@ create(Context) ->
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
 -spec validate_collection_patch(cb_context:context()) -> cb_context:context().
--spec validate_collection_patch(cb_context:context(), api_boolean()) ->
+-spec validate_collection_patch(cb_context:context(), kz_term:api_boolean()) ->
                                        cb_context:context().
 validate_collection_patch(Context) ->
     validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).
@@ -316,7 +316,7 @@ reenable_validation_error(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhook:type())),
     case cb_context:resp_status(Context1) of
@@ -337,7 +337,7 @@ maybe_leak_pvt_fields(Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
@@ -373,7 +373,7 @@ summary_available(Context) ->
 normalize_available(Context, JObj, Acc) ->
     maybe_filter_non_admin_hooks(Context, kz_doc:id(JObj), kz_json:get_value(<<"doc">>, JObj), Acc).
 
--spec maybe_filter_non_admin_hooks(cb_context:context(), ne_binary(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+-spec maybe_filter_non_admin_hooks(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
 maybe_filter_non_admin_hooks(_, <<"webhooks_skel">>, _, Acc) -> Acc;
 maybe_filter_non_admin_hooks(Context, <<"webhooks_notifications">>, JObj, Acc) ->
     [kz_doc:set_id(maybe_filter_non_admin_notifications(Context, JObj), <<"notifications">>) | Acc];
@@ -395,7 +395,7 @@ filter_non_admin_notifications({_, _}, 'true') ->
 filter_non_admin_notifications({Name, _}, 'false') ->
     not lists:member(Name, ?NOTIFY_SUPER_ADMIN_ONLY).
 
--spec summary_attempts(cb_context:context(), api_ne_binary()) -> cb_context:context().
+-spec summary_attempts(cb_context:context(), kz_term:api_ne_binary()) -> cb_context:context().
 summary_attempts(Context, HookId) ->
     ViewName = get_view_name(HookId),
     Options = [{'mapper', fun normalize_attempt_results/2}
@@ -404,7 +404,7 @@ summary_attempts(Context, HookId) ->
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
 
--spec get_view_name(api_ne_binary()) -> ne_binary().
+-spec get_view_name(kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_view_name('undefined') -> ?ATTEMPTS_BY_ACCOUNT;
 get_view_name(_) -> ?ATTEMPTS_BY_HOOK.
 
@@ -422,7 +422,7 @@ normalize_attempt_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) ->
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_webhook:type()}
@@ -443,13 +443,13 @@ check_modifiers(Context) ->
             check_modifiers(Context, JObj, kz_json:get_value(<<"modifiers">>, HookDefinition))
     end.
 
--spec check_modifiers(cb_context:context(), kz_json:object(), api_object()) -> cb_context:context().
+-spec check_modifiers(cb_context:context(), kz_json:object(), kz_term:api_object()) -> cb_context:context().
 check_modifiers(Context, _, 'undefined') ->
     Context;
 check_modifiers(Context, JObj, Modifiers) ->
     kz_json:foldl(fun(K, V, Acc) -> check_modifiers(JObj, K, V, Acc) end, Context, Modifiers).
 
--spec check_modifiers(kz_json:object(), ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
+-spec check_modifiers(kz_json:object(), kz_term:ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
 check_modifiers(Hook, ModifierKey, ModifierValue, Context) ->
     case kz_json:get_value([<<"custom_data">>, ModifierKey], Hook) of
         'undefined' ->
@@ -460,7 +460,7 @@ check_modifiers(Hook, ModifierKey, ModifierValue, Context) ->
             check_modifier_values(CustomValue, ModifierKey, ModifierValue, Type, Context)
     end.
 
--spec check_modifier_values(ne_binary(), ne_binary(), kz_json:object(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec check_modifier_values(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 check_modifier_values(CustomValue, ModifierKey, ModifierValue, <<"array">>, Context) ->
     Items = kz_json:get_value(<<"items">>, ModifierValue, []),
     case lists:member(CustomValue, Items) of
@@ -490,14 +490,14 @@ check_modifier_values(CustomValue, ModifierKey, ModifierValue, <<"object">>, Con
             Context
     end.
 
--spec get_hook_definition(ne_binary()) -> api_object().
+-spec get_hook_definition(kz_term:ne_binary()) -> kz_term:api_object().
 get_hook_definition(HookEvent) ->
     case kapps_util:get_master_account_db() of
         {'ok', MasterDb} -> get_hook_definition(HookEvent, MasterDb);
         {'error', _} -> 'undefined'
     end.
 
--spec get_hook_definition(ne_binary(), ne_binary()) -> api_object().
+-spec get_hook_definition(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_hook_definition(HookEvent, MasterDb) ->
     case kz_datamgr:open_doc(MasterDb, <<"webhooks_", HookEvent/binary>>) of
         {'ok', JObj} -> JObj;
@@ -523,7 +523,7 @@ maybe_update_hook(Context) ->
 
 -spec reenable_hooks(cb_context:context()) ->
                             cb_context:context().
--spec reenable_hooks(cb_context:context(), ne_binaries()) ->
+-spec reenable_hooks(cb_context:context(), kz_term:ne_binaries()) ->
                             cb_context:context().
 reenable_hooks(Context) ->
     reenable_hooks(Context, props:get_value(<<"accounts">>, cb_context:req_nouns(Context))).
@@ -533,7 +533,7 @@ reenable_hooks(Context, [AccountId]) ->
 reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
     handle_resp(Context, send_reenable_req(Context, AccountId, ?DESCENDANTS)).
 
--spec send_reenable_req(cb_context:context(), ne_binary(), ne_binary()) ->
+-spec send_reenable_req(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                kz_amqp_worker:request_return().
 send_reenable_req(Context, AccountId, Action) ->
     Req = [{<<"Type">>, kzd_webhook:type()}

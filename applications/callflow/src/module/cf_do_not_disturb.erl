@@ -18,7 +18,7 @@
 
 -record(dnd, {enabled = 'false' :: boolean()
              ,jobj = kz_json:new() :: kz_json:object()
-             ,account_db :: api_binary()
+             ,account_db :: kz_term:api_binary()
              }).
 -type dnd() :: #dnd{}.
 
@@ -59,7 +59,7 @@ maybe_build_dnd_record(Data, Call) ->
                        }}
     end.
 
--spec maybe_get_data_id(ne_binary(), kz_json:object(), kapps_call:call()) -> kz_jobj_return().
+-spec maybe_get_data_id(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> kz_term:jobj_return().
 maybe_get_data_id(AccountDb, Data, Call) ->
     Id = kz_json:get_ne_binary_value(<<"id">>, Data),
     case maybe_get_doc(AccountDb, Id) of
@@ -69,7 +69,7 @@ maybe_get_data_id(AccountDb, Data, Call) ->
         {'ok', _}=Ok -> Ok
     end.
 
--spec maybe_get_owner(ne_binary(), kapps_call:call()) -> kz_jobj_return().
+-spec maybe_get_owner(kz_term:ne_binary(), kapps_call:call()) -> kz_term:jobj_return().
 maybe_get_owner(AccountDb, Call) ->
     OwnerId = kapps_call:owner_id(Call),
     case maybe_get_doc(AccountDb, OwnerId) of
@@ -79,12 +79,12 @@ maybe_get_owner(AccountDb, Call) ->
         {'ok', _}=Ok -> Ok
     end.
 
--spec maybe_get_authorizing_device(ne_binary(), kapps_call:call()) -> kz_jobj_return().
+-spec maybe_get_authorizing_device(kz_term:ne_binary(), kapps_call:call()) -> kz_term:jobj_return().
 maybe_get_authorizing_device(AccountDb, Call) ->
     AuthorizingId = kapps_call:authorizing_id(Call),
     maybe_get_doc(AccountDb, AuthorizingId).
 
--spec maybe_get_doc(api_binary(), api_binary()) -> kz_jobj_return().
+-spec maybe_get_doc(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:jobj_return().
 maybe_get_doc(_, 'undefined') ->
     {'error', 'no_device_id'};
 maybe_get_doc('undefined', _) ->
@@ -104,7 +104,7 @@ maybe_get_doc(AccountDb, Id) ->
             E
     end.
 
--spec maybe_execute_action(ne_binary(), dnd(), kapps_call:call()) -> any().
+-spec maybe_execute_action(kz_term:ne_binary(), dnd(), kapps_call:call()) -> any().
 maybe_execute_action(<<"activate">>, #dnd{enabled='true'}, Call) ->
     lager:info("dnd is already enabled on this document", []),
     kapps_call_command:b_prompt(<<"dnd-activated">>, Call);
@@ -141,7 +141,7 @@ deactivate_dnd(#dnd{jobj=JObj
         {'ok', _} -> kapps_call_command:b_prompt(<<"dnd-deactivated">>, Call)
     end.
 
--spec maybe_update_doc(boolean(), kz_json:object(), ne_binary()) -> kz_jobj_return().
+-spec maybe_update_doc(boolean(), kz_json:object(), kz_term:ne_binary()) -> kz_term:jobj_return().
 maybe_update_doc(Enabled, JObj, AccountDb) ->
     Updated = kz_json:set_value([<<"do_not_disturb">>, <<"enabled">>], Enabled, JObj),
     case kz_datamgr:save_doc(AccountDb, Updated) of

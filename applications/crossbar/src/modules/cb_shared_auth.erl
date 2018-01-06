@@ -126,7 +126,7 @@ authenticate(_, _) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate_request(cb_context:context(), http_method(), api_object()) -> cb_context:context().
+-spec validate_request(cb_context:context(), http_method(), kz_term:api_object()) -> cb_context:context().
 validate(Context) ->
     validate_request(Context, cb_context:req_verb(Context), cb_context:auth_doc(Context)).
 
@@ -232,7 +232,7 @@ create_local_token(Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token(api_binary(), nonempty_string()) ->
+-spec authenticate_shared_token(kz_term:api_binary(), nonempty_string()) ->
                                        {'ok', string() | binary()} |
                                        {'error', atom()} |
                                        {'forbidden', atom()}.
@@ -277,7 +277,7 @@ import_missing_data(Account, User) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_ne_binary(), kz_json:object()) -> boolean().
+-spec import_missing_account(kz_term:api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
@@ -337,7 +337,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(ne_binary(), api_ne_binary(), kz_json:object()) -> boolean().
+-spec import_missing_user(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';

@@ -62,26 +62,26 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
--spec handle_kamailio_subscribe(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_kamailio_subscribe(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_kamailio_subscribe(JObj, _Props) ->
     'true' = kapi_omnipresence:subscribe_v(JObj),
     gen_server:cast(?SERVER, {'subscribe', JObj}).
 
--spec handle_kamailio_notify(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_kamailio_notify(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_kamailio_notify(JObj, _Props) ->
     'true' = kapi_omnipresence:notify_v(JObj),
     gen_server:cast(?SERVER, {'notify', JObj}).
 
--spec handle_mwi_update(kz_json:object(), kz_proplist()) -> any().
+-spec handle_mwi_update(kz_json:object(), kz_term:proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
     'true' = kapi_presence:mwi_update_v(JObj),
     gen_server:cast(?SERVER, {'mwi', JObj}).
 
--spec handle_dialog_update(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_dialog_update(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_dialog_update(JObj, _Props) ->
     'true' = kapi_presence:dialog_v(JObj),
     gen_server:cast(?SERVER, {'dialog', JObj}).
@@ -89,7 +89,7 @@ handle_dialog_update(JObj, _Props) ->
 -spec table_id() -> 'omnipresence_subscriptions'.
 table_id() -> 'omnipresence_subscriptions'.
 
--spec table_config() -> kz_proplist().
+-spec table_config() -> kz_term:proplist().
 table_config() ->
     ['protected', 'named_table', 'set'
     ,{'keypos', #omnip_subscription.call_id}
@@ -129,7 +129,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("omnipresence subscriptions unhandled call : ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -144,7 +144,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'sync', {<<"Start">>, Node}}, #state{sync_nodes=Nodes}=State) ->
     {'noreply', State#state{sync_nodes=[Node | Nodes]}};
 handle_cast({'sync', {<<"End">>, Node}}, #state{sync_nodes=Nodes} = State) ->
@@ -197,7 +197,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='true'}=State) ->
     case expire_old_subscriptions() of
         0 -> 'ok';
@@ -353,7 +353,7 @@ expire_old_subscriptions() ->
                                    ,['true']
                                    }]).
 
--spec find_subscription(ne_binary()) ->
+-spec find_subscription(kz_term:ne_binary()) ->
                                {'ok', subscription()} |
                                {'error', 'not_found'}.
 find_subscription(CallId) ->
@@ -362,7 +362,7 @@ find_subscription(CallId) ->
         [#omnip_subscription{}=Sub] -> {'ok', Sub}
     end.
 
--spec find_user_subscriptions(ne_binary(), ne_binary()) ->
+-spec find_user_subscriptions(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      {'ok', subscriptions()} |
                                      {'error', 'not_found'}.
 find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) ->
@@ -396,8 +396,8 @@ find_subscriptions(MatchSpec) ->
                  {'error', 'not_found'}
     end.
 
--spec search_for_subscriptions(ne_binary() | '_', ne_binary()) -> subscriptions().
--spec search_for_subscriptions(ne_binary() | '_', ne_binary(), ne_binary() | '_') -> subscriptions().
+-spec search_for_subscriptions(kz_term:ne_binary() | '_', kz_term:ne_binary()) -> subscriptions().
+-spec search_for_subscriptions(kz_term:ne_binary() | '_', kz_term:ne_binary(), kz_term:ne_binary() | '_') -> subscriptions().
 search_for_subscriptions(Event, Realm) ->
     MatchSpec =
         #omnip_subscription{realm=kz_term:to_lower_binary(Realm)
@@ -501,7 +501,7 @@ notify(JObj) ->
             lager:debug("notify received for unexistent subscription ~s", [CallId])
     end.
 
--type msg() :: {ne_binary(), ne_binary(), ne_binary(), ne_binary()}.
+-type msg() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 -type exec_fun() :: fun((atom(), msg()) -> 'ok').
 
 -spec on_subscribe(msg()) -> 'ok'.

@@ -33,7 +33,7 @@ add_data(DataJObj) ->
           ]),
     kz_json:set_values(Values, DataJObj).
 
--spec add_attachments(kz_json:object(), kz_proplist(), boolean()) -> {kz_proplist(), attachments()}.
+-spec add_attachments(kz_json:object(), kz_term:proplist(), boolean()) -> {kz_term:proplist(), attachments()}.
 add_attachments(DataJObj, Macros, ShouldTerminate) ->
     IsPreview = teletype_util:is_preview(DataJObj),
     FaxDoc = kz_json:get_value(<<"fax_doc">>, DataJObj),
@@ -46,7 +46,7 @@ add_attachments(DataJObj, Macros, ShouldTerminate) ->
         Attachments -> {add_document_data(FaxDoc, Macros, Attachments), Attachments}
     end.
 
--spec maybe_terminate(kz_proplist(), boolean(), boolean()) -> {kz_proplist(), attachments()}.
+-spec maybe_terminate(kz_term:proplist(), boolean(), boolean()) -> {kz_term:proplist(), attachments()}.
 maybe_terminate(Macros, _, 'true') ->
     lager:debug("this is a preview, no attachments"),
     {Macros, []};
@@ -57,7 +57,7 @@ maybe_terminate(Macros, 'false', 'false') ->
     lager:debug("No attachments were found for this fax"),
     {Macros, []}.
 
--spec add_document_data(kz_json:object(), kz_proplist(), attachments()) -> kz_proplist().
+-spec add_document_data(kz_json:object(), kz_term:proplist(), attachments()) -> kz_term:proplist().
 add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
     FaxDocProps = kz_json:to_proplist(kz_doc:public_fields(FaxDoc)),
     Values =
@@ -70,7 +70,7 @@ add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
     FaxMacros = props:set_values(Values, props:get_value(<<"fax">>, Macros, [])),
     props:set_value(<<"fax">>, FaxMacros, Macros).
 
--spec to_email_addresses(kz_json:object(), ne_binary()) -> api_binaries().
+-spec to_email_addresses(kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binaries().
 to_email_addresses(DataJObj, TemplateId) ->
     BoxEmailPath = case TemplateId of
                        <<"fax_inbound", _/binary>> ->
@@ -93,7 +93,7 @@ to_email_addresses(DataJObj, TemplateId) ->
     lager:debug("found emails: ~p", [Found]),
     Found.
 
--spec to_email_addresses(kz_json:object(), ne_binary(), ne_binary() | api_binaries()) -> api_binaries().
+-spec to_email_addresses(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary() | kz_term:api_binaries()) -> kz_term:api_binaries().
 to_email_addresses(_, _, ?NE_BINARY=Email) ->
     [Email];
 to_email_addresses(_, _, Emails)
@@ -156,7 +156,7 @@ maybe_get_fax_doc(DataJObj, 'false') ->
         {'error', _} -> kz_json:new()
     end.
 
--spec get_fax_doc(ne_binary(), api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec get_fax_doc(kz_term:ne_binary(), kz_term:api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_fax_doc(_, 'undefined') ->
     lager:debug("undefined fax_id"),
     {'error', 'not_found'};
@@ -170,7 +170,7 @@ get_fax_doc(Db, Id) ->
             Error
     end.
 
--spec find_timezone(api_ne_binary() | kz_json:object(), kz_json:object()) -> ne_binary().
+-spec find_timezone(kz_term:api_ne_binary() | kz_json:object(), kz_json:object()) -> kz_term:ne_binary().
 find_timezone('undefined', FaxBoxJObj) ->
     kzd_fax_box:timezone(FaxBoxJObj);
 find_timezone(Timezone, _FaxBoxJObj) when is_binary(Timezone) ->
@@ -187,7 +187,7 @@ find_timezone(DataJObj, FaxBoxJObj) ->
 %%% Attachment Utilities
 %%%===================================================================
 
--spec fax_db(kz_json:object(), api_ne_binary()) -> ne_binary().
+-spec fax_db(kz_json:object(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 fax_db(DataJObj, FaxId) ->
     case kapi_notifications:account_db(DataJObj, 'true') of
         'undefined' ->
@@ -195,13 +195,13 @@ fax_db(DataJObj, FaxId) ->
         Db -> maybe_get_fax_db_from_id(Db, FaxId)
     end.
 
--spec maybe_get_fax_db_from_id(api_ne_binary(), api_ne_binary()) -> ne_binary().
+-spec maybe_get_fax_db_from_id(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 maybe_get_fax_db_from_id('undefined', _) -> ?KZ_FAXES_DB;
 maybe_get_fax_db_from_id(?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db, _) -> Db;
 maybe_get_fax_db_from_id(Db, ?MATCH_MODB_PREFIX(Year, Month, _)) -> kazoo_modb:get_modb(kz_util:format_account_id(Db), Year, Month);
 maybe_get_fax_db_from_id(Db, _) -> Db.
 
--spec maybe_fetch_attachments(kz_json:object(), kz_json:object(), kz_proplist(), boolean()) -> attachments().
+-spec maybe_fetch_attachments(kz_json:object(), kz_json:object(), kz_term:proplist(), boolean()) -> attachments().
 maybe_fetch_attachments(_, _, _, 'true') ->
     [];
 maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
@@ -221,7 +221,7 @@ maybe_fetch_attachments(DataJObj, FaxJObj, Macros, 'false') ->
             []
     end.
 
--spec maybe_convert_attachment(kz_json:object(), kz_proplist(), api_binary(), binary()) -> attachments().
+-spec maybe_convert_attachment(kz_json:object(), kz_term:proplist(), kz_term:api_binary(), binary()) -> attachments().
 maybe_convert_attachment(DataJObj, Macros, ContentType, Bin) ->
     ToFormat = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
     FromFormat = from_format_from_content_type(ContentType),
@@ -236,7 +236,7 @@ maybe_convert_attachment(DataJObj, Macros, ContentType, Bin) ->
             []
     end.
 
--spec from_format_from_content_type(ne_binary()) -> ne_binary().
+-spec from_format_from_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 from_format_from_content_type(<<"application/pdf">>) -> <<"pdf">>;
 from_format_from_content_type(<<"image/tiff">>) -> <<"tif">>;
 from_format_from_content_type('undefined') -> <<"tif">>;
@@ -244,12 +244,12 @@ from_format_from_content_type(ContentType) ->
     [_Type, SubType] = binary:split(ContentType, <<"/">>),
     SubType.
 
--spec content_type_from_extension(ne_binary()) -> ne_binary().
+-spec content_type_from_extension(kz_term:ne_binary()) -> kz_term:ne_binary().
 content_type_from_extension(Ext) ->
     {Type, SubType, _} = cow_mimetypes:all(Ext),
     <<Type/binary, "/", SubType/binary>>.
 
--spec get_file_name(kz_proplist(), ne_binary()) -> ne_binary().
+-spec get_file_name(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_file_name(Macros, Ext) ->
     CallerIdMacros = props:get_value(<<"caller_id">>, Macros),
     CallerID =
@@ -265,7 +265,7 @@ get_file_name(Macros, Ext) ->
     FName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Ext]),
     re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
--spec convert(kz_json:object(), ne_binary(), ne_binary(), binary()) -> {ok, binary()} | {error, atom() | string()}.
+-spec convert(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> {ok, binary()} | {error, atom() | string()}.
 convert(_, FromFormat, FromFormat, Bin) ->
     {'ok', Bin};
 convert(DataJObj, FromFormat0, ToFormat0, Bin) ->
@@ -289,7 +289,7 @@ convert(DataJObj, FromFormat0, ToFormat0, Bin) ->
     _ = kz_util:delete_file(ToFile),
     Response.
 
--spec run_convert_command(string(), ne_binary(), ne_binary()) -> {ok, binary()} | {error, atom() | string()}.
+-spec run_convert_command(string(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, atom() | string()}.
 run_convert_command(Cmd, FromFile, ToFile) ->
     lager:debug("running conversion command: ~s", [Cmd]),
     case os:cmd(Cmd) of
@@ -307,6 +307,6 @@ run_convert_command(Cmd, FromFile, ToFile) ->
             {'error', Else}
     end.
 
--spec valid_format(ne_binary()) -> ne_binary().
+-spec valid_format(kz_term:ne_binary()) -> kz_term:ne_binary().
 valid_format(<<"tiff">>) -> <<"tif">>;
 valid_format(Format) -> Format.

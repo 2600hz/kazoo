@@ -59,7 +59,7 @@ handle_resp(_Error) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec req_uri(ne_binaries()) -> api_list().
+-spec req_uri(kz_term:ne_binaries()) -> kz_term:api_list().
 req_uri(ExplodedPath) ->
     case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"url">>) of
         'undefined' -> 'undefined';
@@ -74,7 +74,7 @@ req_uri(ExplodedPath) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec req_headers(ne_binary()) -> kz_proplist().
+-spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(AuthToken) ->
     props:filter_undefined(
       [{"content-type", "application/json"}

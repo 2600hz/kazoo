@@ -35,7 +35,7 @@ init() ->
                             'maybe_test_for_low_balance').
 
 %% Triggerables
--spec maybe_test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
+-spec maybe_test_for_low_balance(kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_low_balance(AccountId, AccountJObj) ->
     case ?SHOULD_CRAWL_FOR_LOW_BALANCE of
         'false' -> 'ok';
@@ -45,7 +45,7 @@ maybe_test_for_low_balance(AccountId, AccountJObj) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
--spec test_for_low_balance(ne_binary(), kz_account:doc(), 0..3) -> 'ok'.
+-spec test_for_low_balance(kz_term:ne_binary(), kz_account:doc(), 0..3) -> 'ok'.
 test_for_low_balance(_AccountId, _AccountJObj, 0) ->
     lager:debug("max try to get account ~s current balance", [_AccountId]);
 test_for_low_balance(AccountId, AccountJObj, Loop) ->

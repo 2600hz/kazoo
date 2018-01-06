@@ -12,7 +12,7 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--spec connect(kapps_call:call(), ne_binary()) -> 'ok'.
+-spec connect(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 connect(_Call, _QueueId) ->
     %% no!
     ok.

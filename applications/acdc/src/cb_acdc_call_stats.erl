@@ -144,13 +144,13 @@ load_stats_summary(Context, _Nouns) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_acdc_stats(cb_context:context(), ne_binary()) -> ne_binaries() | kz_json:objects().
+-spec normalize_acdc_stats(cb_context:context(), kz_term:ne_binary()) -> kz_term:ne_binaries() | kz_json:objects().
 normalize_acdc_stats(Context, <<"csv">>) ->
     [normalize_stat_to_csv(Context, JObj) || JObj <- cb_context:resp_data(Context)];
 normalize_acdc_stats(Context, <<"json">>) ->
     [kz_json:from_list([{K, F(JObj)} || {K, F} <- ?COLUMNS]) || JObj <- cb_context:resp_data(Context)].
 
--spec normalize_stat_to_csv(cb_context:context(), kz_json:object()) -> ne_binary().
+-spec normalize_stat_to_csv(cb_context:context(), kz_json:object()) -> kz_term:ne_binary().
 normalize_stat_to_csv(Context, JObj) ->
     CSV = kz_binary:join([F(JObj) || {_, F} <- ?COLUMNS], <<",">>),
     case cb_context:fetch(Context, 'chunking_started') of

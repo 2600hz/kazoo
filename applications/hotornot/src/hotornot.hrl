@@ -11,10 +11,10 @@
 
 -define(CACHE_NAME, 'hotornot_cache').
 
--type trunking_options() :: ne_binaries().
+-type trunking_options() :: kz_term:ne_binaries().
 -type prefix() :: string().
 -type match_return() :: {'error', any()} |
-                        {'ok', {prefix(), ne_binaries()}}.
+                        {'ok', {prefix(), kz_term:ne_binaries()}}.
 
 -define(HOTORNOT_HRL, 'true').
 -endif.

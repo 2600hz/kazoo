@@ -99,18 +99,18 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec build_missed_call_data(kz_json:object()) -> kz_proplist().
+-spec build_missed_call_data(kz_json:object()) -> kz_term:proplist().
 build_missed_call_data(DataJObj) ->
     [{<<"reason">>, missed_call_reason(DataJObj)}
     ,{<<"is_bridged">>, kz_term:is_true(kz_json:get_value(<<"call_bridged">>, DataJObj))}
     ,{<<"is_message_left">>, kz_term:is_true(kz_json:get_value(<<"message_left">>, DataJObj))}
     ].
 
--spec missed_call_reason(kz_json:object()) -> ne_binary().
+-spec missed_call_reason(kz_json:object()) -> kz_term:ne_binary().
 missed_call_reason(DataJObj) ->
     missed_call_reason(DataJObj, kz_json:get_ne_binary_value([<<"notify">>, <<"hangup_cause">>], DataJObj)).
 
--spec missed_call_reason(kz_json:object(), api_ne_binary()) -> ne_binary().
+-spec missed_call_reason(kz_json:object(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 missed_call_reason(_DataJObj, 'undefined') -> <<"no voicemail message was left">>;
 missed_call_reason(_DataJObj, HangupCause) ->
     <<"No voicemail message was left (", HangupCause/binary, ")">>.

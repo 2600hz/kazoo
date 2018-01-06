@@ -60,8 +60,8 @@ pad_left(Bin, _Size, _Value) -> Bin.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec join([text()]) -> binary().
--spec join([text()], iodata() | char()) -> binary().
+-spec join([kz_term:text()]) -> binary().
+-spec join([kz_term:text()], iodata() | char()) -> binary().
 
 join(Bins) -> join(Bins, <<", ">>).
 join([], _) -> <<>>;
@@ -71,10 +71,10 @@ join([Bin|Bins], Sep) ->
       [kz_term:to_binary(Bin)] ++ [[Sep, kz_term:to_binary(B)] || B <- Bins]
      ).
 
--spec md5(text()) -> ne_binary().
+-spec md5(kz_term:text()) -> kz_term:ne_binary().
 md5(Text) -> kz_term:to_hex_binary(erlang:md5(kz_term:to_binary(Text))).
 
--spec remove_white_spaces(binary(), kz_proplist()) -> binary().
+-spec remove_white_spaces(binary(), kz_term:proplist()) -> binary().
 remove_white_spaces(Bin, Opts) ->
     case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
         'false' -> Bin;
@@ -86,7 +86,7 @@ remove_white_spaces(Bin) ->
     << <<X>> || <<X>> <= Bin, X =/= $\s >>.
 
 -spec clean(binary()) -> binary().
--spec clean(binary(), kz_proplist()) -> binary().
+-spec clean(binary(), kz_term:proplist()) -> binary().
 clean(Bin) ->
     clean(Bin, []).
 
@@ -159,7 +159,7 @@ suffix(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
         _:_ -> 'false'
     end.
 
--spec hexencode(text()) -> binary().
+-spec hexencode(kz_term:text()) -> binary().
 hexencode(<<_/binary>> = Bin) ->
     hexencode(Bin, <<>>);
 hexencode(S) ->
@@ -196,17 +196,17 @@ hex_char_to_binary(B) when B < 58 ->
 hex_char_to_binary(B) ->
     kz_term:to_lower_char(B) - ($a - 10).
 
--spec rand_hex(pos_integer() | binary() | string()) -> ne_binary().
+-spec rand_hex(pos_integer() | binary() | string()) -> kz_term:ne_binary().
 rand_hex(Size) when not is_integer(Size) ->
     rand_hex(kz_term:to_integer(Size));
 rand_hex(Size) when is_integer(Size)
                     andalso Size > 0 ->
     kz_term:to_hex_binary(crypto:strong_rand_bytes(Size)).
 
--spec ucfirst(ne_binary()) -> ne_binary().
+-spec ucfirst(kz_term:ne_binary()) -> kz_term:ne_binary().
 ucfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_upper_char(F)):8, Bin/binary>>.
 
--spec lcfirst(ne_binary()) -> ne_binary().
+-spec lcfirst(kz_term:ne_binary()) -> kz_term:ne_binary().
 lcfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_lower_char(F)):8, Bin/binary>>.
 
 -spec pos(char(), binary()) -> non_neg_integer() | -1.

@@ -41,7 +41,7 @@ init() ->
 %% @doc
 %% Cleanup expired port requests
 %% @end
--spec cleanup(ne_binary()) -> 'ok'.
+-spec cleanup(kz_term:ne_binary()) -> 'ok'.
 cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
     ModifiedBefore = kz_time:now_s() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
     ViewOpts = [{'startkey', [0]}
@@ -56,7 +56,7 @@ cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
     end;
 cleanup(_) -> 'ok'.
 
--spec unconfirmed_port_reminder(ne_binary()) -> 'ok'.
+-spec unconfirmed_port_reminder(kz_term:ne_binary()) -> 'ok'.
 unconfirmed_port_reminder(AccountDb) ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     ViewOpts = [{'startkey', [AccountId, ?PORT_UNCONFIRMED, kz_json:new()]}
@@ -73,7 +73,7 @@ unconfirmed_port_reminder(AccountDb) ->
 %%% Internal functions
 %%%===================================================================
 
--spec cleanup(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec cleanup(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 cleanup(Db, OldPortRequests) ->
     lager:debug("checking ~b old port requests", [length(OldPortRequests)]),
     Deletable = [kz_json:get_value(<<"doc">>, OldPortRequest)
@@ -84,18 +84,18 @@ cleanup(Db, OldPortRequests) ->
     kz_datamgr:del_docs(Db, Deletable),
     'ok'.
 
--spec should_delete_port_request([pos_integer() | ne_binary(),...]) -> boolean().
+-spec should_delete_port_request([pos_integer() | kz_term:ne_binary(),...]) -> boolean().
 should_delete_port_request([_Modified, ?PORT_SUBMITTED]) -> false;
 should_delete_port_request([_Modified, ?PORT_SCHEDULED]) -> false;
 should_delete_port_request(_) -> true.
 
--spec unconfirmed_port_reminder(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec unconfirmed_port_reminder(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 unconfirmed_port_reminder(AccountId, UnfinishedPorts) ->
     lager:debug("found ~p unfinished port requests, sending notifications", [length(UnfinishedPorts)]),
     F = fun (Port) -> send_port_unconfirmed_notification(AccountId, kz_doc:id(Port)) end,
     lists:foreach(F, UnfinishedPorts).
 
--spec send_port_unconfirmed_notification(ne_binary(), ne_binary()) -> 'ok'.
+-spec send_port_unconfirmed_notification(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_port_unconfirmed_notification(?NE_BINARY = AccountId, Id) ->
     Req = [{<<"Account-ID">>, AccountId}
           ,{<<"Port-Request-ID">>, Id}

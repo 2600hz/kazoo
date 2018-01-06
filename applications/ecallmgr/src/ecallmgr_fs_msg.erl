@@ -24,7 +24,7 @@
 -export([process_fs_event/2]).
 
 -record(state, {node :: atom()
-               ,options :: kz_proplist()
+               ,options :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -55,8 +55,8 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom()) -> kz_types:startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     NodeBin = kz_term:to_binary(Node),
@@ -80,7 +80,7 @@ start_link(Node, Options) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
@@ -103,7 +103,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -117,7 +117,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind_to_msg_events', #state{node=Node}=State) ->
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"KZ::DELIVERY_REPORT">>)}),
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"SMS::DELIVERY_REPORT">>)}),
@@ -136,7 +136,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'event', Props}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};
@@ -191,7 +191,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec handle_message_route(kz_json:object(), kz_proplist()) -> no_return().
+-spec handle_message_route(kz_json:object(), kz_term:proplist()) -> no_return().
 handle_message_route(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
     Node = props:get_value('node', Props),
@@ -202,7 +202,7 @@ handle_message_route(JObj, Props) ->
         'true' -> send_message(JObj, Props, Endpoints)
     end.
 
--spec send_message(kz_json:object(), kz_proplist(), kz_json:objects()) -> no_return().
+-spec send_message(kz_json:object(), kz_term:proplist(), kz_json:objects()) -> no_return().
 send_message(JObj, Props, [Endpoint]) ->
     Node = props:get_value('node', Props),
     case format_endpoint(Endpoint, Props, JObj) of
@@ -214,7 +214,7 @@ send_message(JObj, Props, [Endpoint]) ->
             freeswitch:sendevent_custom(Node, 'SMS::SEND_MESSAGE', EvtProps)
     end.
 
--spec build_message_headers(kz_json:object(), kz_json:object()) -> kz_proplist().
+-spec build_message_headers(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 build_message_headers(JObj, Endpoint) ->
     Body = kz_json:get_value(<<"Body">>, JObj),
     MessageId = kz_json:get_value(<<"Message-ID">>, JObj),
@@ -255,11 +255,11 @@ build_message_headers(JObj, Endpoint) ->
                ]),
     kz_json:foldl(fun headers_foldl/3, Header, CCVs).
 
--spec headers_foldl(kz_json:path(), kz_json:json_term(), kz_proplist()) -> kz_proplist().
+-spec headers_foldl(kz_json:path(), kz_json:json_term(), kz_term:proplist()) -> kz_term:proplist().
 headers_foldl(K, V, Acc) ->
     [{kz_term:to_list(?GET_CCV(K)), kz_term:to_list(V)} | Acc].
 
--spec get_uri(api_binary()) -> api_binary().
+-spec get_uri(kz_term:api_binary()) -> kz_term:api_binary().
 get_uri('undefined') -> 'undefined';
 get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
 get_uri(<<"sip", _/binary>>=Uri) -> Uri;
@@ -283,12 +283,12 @@ send_error(Node, JObj, Err) ->
         ],
     kz_amqp_worker:cast(Payload, fun(A) -> kapi_sms:publish_targeted_delivery(ServerId, A) end).
 
--spec format_endpoint(kz_json:object(), kz_proplist(), kz_json:object()) ->
-                             {'ok', kz_proplist()} |
-                             {'error', ne_binary()}.
--spec format_endpoint(kz_json:object(), kz_proplist(), kz_json:object(), ne_binary()) ->
-                             {'ok', kz_proplist()} |
-                             {'error', ne_binary()}.
+-spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object()) ->
+                             {'ok', kz_term:proplist()} |
+                             {'error', kz_term:ne_binary()}.
+-spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary()) ->
+                             {'ok', kz_term:proplist()} |
+                             {'error', kz_term:ne_binary()}.
 format_endpoint(Endpoint, Props, JObj) ->
     format_endpoint(
       Endpoint
@@ -323,9 +323,9 @@ format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
             E
     end.
 
--spec format_route_endpoint(kz_json:object(), kz_proplist(), kz_json:object()) ->
-                                   {'ok', kz_proplist()} |
-                                   {'error', ne_binary()}.
+-spec format_route_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object()) ->
+                                   {'ok', kz_term:proplist()} |
+                                   {'error', kz_term:ne_binary()}.
 format_route_endpoint(Endpoint, _Props, _JObj) ->
     ToURI = kz_json:get_value(<<"Route">>, Endpoint),
     [#uri{user=_ToUser
@@ -338,7 +338,7 @@ format_route_endpoint(Endpoint, _Props, _JObj) ->
              ,{"to_sip_port", kz_term:to_list(ToPort)}
              ])}.
 
--spec format_bounce_endpoint(kz_json:object(), kz_proplist(), kz_json:object()) -> {'ok', kz_proplist()} | {'error', ne_binary()}.
+-spec format_bounce_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object()) -> {'ok', kz_term:proplist()} | {'error', kz_term:ne_binary()}.
 format_bounce_endpoint(Endpoint, Props, JObj) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     ToDID = kz_json:get_value(<<"To-DID">>, Endpoint),
@@ -356,7 +356,7 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
              ,{"to_sip_port", kz_term:to_list(ToPort)}
              ])}.
 
--spec process_fs_event(atom(), kz_proplist()) -> any().
+-spec process_fs_event(atom(), kz_term:proplist()) -> any().
 process_fs_event(Node, Props) ->
     process_fs_event(
       props:get_value(<<"Event-Name">>, Props),
@@ -364,7 +364,7 @@ process_fs_event(Node, Props) ->
       Node,
       lists:usort(Props)).
 
--spec process_fs_event(ne_binary(), ne_binary(), atom(), kz_proplist()) -> any().
+-spec process_fs_event(kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:proplist()) -> any().
 process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
     process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props);
 process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
@@ -396,7 +396,7 @@ get_event_uris(Props, EventProps) ->
                         Acc ++ get_event_uris_props(T, Props)
                 end, EventProps, Uris).
 
--spec get_event_uris_props(tuple() | ne_binary(), kz_proplist() | ne_binary()) -> kz_proplist().
+-spec get_event_uris_props(tuple() | kz_term:ne_binary(), kz_term:proplist() | kz_term:ne_binary()) -> kz_term:proplist().
 get_event_uris_props({K, F}, Props) ->
     get_event_uris_props( get_uri( props:get_value(F, Props) ), K);
 get_event_uris_props('undefined', _) -> [];
@@ -410,6 +410,6 @@ get_event_uris_props(Uri, Base) ->
 is_ccv({?GET_CCV(_K), _V}) -> 'true';
 is_ccv(_) -> 'false'.
 
--spec get_ccvs(kz_proplist()) -> kz_proplist().
+-spec get_ccvs(kz_term:proplist()) -> kz_term:proplist().
 get_ccvs(Props) ->
     [{K, V} || {?GET_CCV(K), V} <- [P || P <- Props, is_ccv(P)]].

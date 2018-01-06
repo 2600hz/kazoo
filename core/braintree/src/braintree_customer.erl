@@ -41,7 +41,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec url() -> string().
--spec url(ne_binary()) -> string().
+-spec url(kz_term:ne_binary()) -> string().
 
 url() ->
     "/customers/".
@@ -55,7 +55,7 @@ url(CustomerId) ->
 %% Creates a new customer record
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary()) -> customer().
+-spec new(kz_term:ne_binary()) -> customer().
 new(CustomerId) ->
     #bt_customer{id=CustomerId}.
 
@@ -65,7 +65,7 @@ new(CustomerId) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new_subscription(ne_binary(), customer()) -> braintree_subscription:subscription().
+-spec new_subscription(kz_term:ne_binary(), customer()) -> braintree_subscription:subscription().
 new_subscription(PlanId, Customer) ->
     PaymentToken = default_payment_token(Customer),
     braintree_subscription:new(PlanId, PaymentToken).
@@ -76,13 +76,13 @@ new_subscription(PlanId, Customer) ->
 %% Given a customer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token(ne_binary() | customer()) -> api_binary().
+-spec default_payment_token(kz_term:ne_binary() | customer()) -> kz_term:api_binary().
 default_payment_token(#bt_customer{}=Customer) ->
     braintree_card:default_payment_token(get_cards(Customer));
 default_payment_token(CustomerId) ->
     default_payment_token(find(CustomerId)).
 
--spec default_payment_card(ne_binary() | customer()) -> bt_card().
+-spec default_payment_card(kz_term:ne_binary() | customer()) -> bt_card().
 default_payment_card(#bt_customer{}=Customer) ->
     braintree_card:default_payment_card(get_cards(Customer));
 default_payment_card(CustomerId) ->
@@ -94,7 +94,7 @@ default_payment_card(CustomerId) ->
 %% Get the customer id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id(customer()) -> api_binary().
+-spec get_id(customer()) -> kz_term:api_binary().
 get_id(#bt_customer{id=CustomerId}) ->
     CustomerId.
 
@@ -124,7 +124,7 @@ get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
 %% Get a subscription
 %% @end
 %%--------------------------------------------------------------------
--spec get_subscription(ne_binary(), customer() | bt_subscriptions()) ->
+-spec get_subscription(kz_term:ne_binary(), customer() | bt_subscriptions()) ->
                               bt_subscription().
 get_subscription(PlanId, #bt_customer{subscriptions=Subscriptions}) ->
     get_subscription(PlanId, Subscriptions);
@@ -160,7 +160,7 @@ all() ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary() | customer()) -> customer().
+-spec find(kz_term:ne_binary() | customer()) -> customer().
 find(#bt_customer{id = CustomerId}) -> find(CustomerId);
 find(CustomerId) ->
     Url = url(CustomerId),
@@ -173,7 +173,7 @@ find(CustomerId) ->
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create(customer() | ne_binary()) -> customer().
+-spec create(customer() | kz_term:ne_binary()) -> customer().
 create(#bt_customer{}=Customer) ->
     Url = url(),
     Request = record_to_xml(Customer, 'true'),
@@ -226,7 +226,7 @@ update_card(Customer, Card) ->
     NewPaymentToken = braintree_card:payment_token(Card),
     update_subsciption(NewPaymentToken, UpdatedCustomer).
 
--spec update_subsciption(ne_binary(), bt_customer()) -> bt_customer().
+-spec update_subsciption(kz_term:ne_binary(), bt_customer()) -> bt_customer().
 update_subsciption(NewPaymentToken, UpdatedCustomer) ->
     %% NewCard = Card with updated fields
     {[NewCard], OldCards} =
@@ -249,8 +249,8 @@ update_subsciption(NewPaymentToken, UpdatedCustomer) ->
     %%get all the new user info
     find(UpdatedCustomer).
 
--spec update_subsciption_with_token(bt_subscription(), ne_binary()) -> 'ok'.
--spec update_subsciption_with_token(bt_subscription(), ne_binary(), boolean()) -> 'ok'.
+-spec update_subsciption_with_token(bt_subscription(), kz_term:ne_binary()) -> 'ok'.
+-spec update_subsciption_with_token(bt_subscription(), kz_term:ne_binary(), boolean()) -> 'ok'.
 update_subsciption_with_token(Sub, NewPaymentToken) ->
     ShouldUpdate = not braintree_subscription:is_cancelled(Sub)
         andalso not braintree_subscription:is_expired(Sub),
@@ -268,7 +268,7 @@ delete_old_cards_and_addresses(OldCards, #bt_card{billing_address_id=NewAddressI
                  ,OldCards
                  ).
 
--spec delete_old_stuff(bt_card(), ne_binary()) -> bt_card().
+-spec delete_old_stuff(bt_card(), kz_term:ne_binary()) -> bt_card().
 delete_old_stuff(#bt_card{billing_address_id='undefined'}=OldCard, _NewAddressId) ->
     braintree_card:delete(OldCard);
 delete_old_stuff(#bt_card{billing_address_id=NewAddressId}=OldCard, NewAddressId) ->
@@ -290,7 +290,7 @@ do_update(#bt_customer{id=CustomerId}=Customer) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete(customer() | ne_binary()) -> customer().
+-spec delete(customer() | kz_term:ne_binary()) -> customer().
 delete(#bt_customer{id=CustomerId}) ->
     delete(CustomerId);
 delete(CustomerId) ->
@@ -305,7 +305,7 @@ delete(CustomerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> customer().
--spec xml_to_record(bt_xml(), kz_deeplist()) -> customer().
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> customer().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").
@@ -341,8 +341,8 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(customer()) -> kz_proplist() | bt_xml().
--spec record_to_xml(customer(), boolean()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(customer()) -> kz_term:proplist() | bt_xml().
+-spec record_to_xml(customer(), boolean()) -> kz_term:proplist() | bt_xml().
 
 record_to_xml(Customer) ->
     record_to_xml(Customer, 'false').
@@ -373,7 +373,7 @@ record_to_xml(Customer, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> customer().
+-spec json_to_record(kz_term:api_object()) -> customer().
 json_to_record('undefined') -> #bt_customer{};
 json_to_record(JObj) ->
     #bt_customer{id = kz_doc:id(JObj)
@@ -388,7 +388,7 @@ json_to_record(JObj) ->
                 ,credit_cards = maybe_add_credit_card(JObj)
                 }.
 
--spec maybe_add_credit_card(api_object()) -> bt_cards().
+-spec maybe_add_credit_card(kz_term:api_object()) -> bt_cards().
 maybe_add_credit_card(JObj) ->
     case kz_json:get_value(<<"credit_card">>, JObj) of
         'undefined' -> [];

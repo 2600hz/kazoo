@@ -22,7 +22,7 @@
 -include("teletype.hrl").
 
 
--spec id() -> ne_binary().
+-spec id() -> kz_term:ne_binary().
 id() -> <<"system_alert">>.
 
 -spec macros() -> kz_json:object().
@@ -33,19 +33,19 @@ macros() ->
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
 
--spec subject() -> ne_binary().
+-spec subject() -> kz_term:ne_binary().
 subject() -> <<"System Alert: '{{request.level}}' from '{{request.node}}'">>.
 
--spec category() -> ne_binary().
+-spec category() -> kz_term:ne_binary().
 category() -> <<"system">>.
 
--spec friendly_name() -> ne_binary().
+-spec friendly_name() -> kz_term:ne_binary().
 friendly_name() -> <<"System Notifications">>.
 
 -spec to() -> kz_json:object().
 to() -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
 
--spec from() -> api_ne_binary().
+-spec from() -> kz_term:api_ne_binary().
 from() -> teletype_util:default_from_address().
 
 -spec cc() -> kz_json:object().
@@ -54,7 +54,7 @@ cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 -spec bcc() -> kz_json:object().
 bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to() -> api_ne_binary().
+-spec reply_to() -> kz_term:api_ne_binary().
 reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
@@ -86,7 +86,7 @@ handle_req(JObj, 'true') ->
             ]
     end.
 
--spec process_req_as_http(kz_json:object(), api_binary()) -> template_response().
+-spec process_req_as_http(kz_json:object(), kz_term:api_binary()) -> template_response().
 process_req_as_http(_JObj, 'undefined') ->
     teletype_util:notification_ignored(<<(id())/binary, "_http">>);
 process_req_as_http(JObj, Url) ->
@@ -145,7 +145,7 @@ process_req_as_email(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(<<(id())/binary, "_email">>, Reason)
     end.
 
--spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -155,7 +155,7 @@ macros(DataJObj) ->
      | details_macros(DataJObj)
     ].
 
--spec details_macros(kz_json:object()) -> kz_proplist().
+-spec details_macros(kz_json:object()) -> kz_term:proplist().
 details_macros(DataJObj) ->
     case kz_json:get_value(<<"details">>, DataJObj) of
         'undefined' -> [];
@@ -164,12 +164,12 @@ details_macros(DataJObj) ->
         Details -> details_groups(kz_json:recursive_to_proplist(Details))
     end.
 
--spec details_groups(kz_proplist()) -> kz_proplist().
+-spec details_groups(kz_term:proplist()) -> kz_term:proplist().
 details_groups(Details) ->
     details_groups(Details, {<<"details">>, []}).
 
--spec details_groups(kz_proplist(), {ne_binary(), kz_proplist()}) ->
-                            kz_proplist().
+-spec details_groups(kz_term:proplist(), {kz_term:ne_binary(), kz_term:proplist()}) ->
+                            kz_term:proplist().
 details_groups([], {_, Acc}) -> Acc;
 
 details_groups([{<<"key_value_store">>, V} | KS], {Group, Acc}) ->
@@ -189,15 +189,15 @@ details_groups([{<<"cf_", _/binary>>,_}=KV | KS], {Group, Acc}) ->
 details_groups([KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(Group, KV, Acc)}).
 
--spec add_to_group(ne_binary(), {kz_json:path(), kz_json:json_term()}, kz_proplist()) ->
-                          kz_proplist().
+-spec add_to_group(kz_term:ne_binary(), {kz_json:path(), kz_json:json_term()}, kz_term:proplist()) ->
+                          kz_term:proplist().
 add_to_group(Group, KV, Acc) ->
     case props:get_value(Group, Acc) of
         'undefined' -> props:set_value(Group,[KV], Acc);
         Props -> props:set_value(Group, props:insert_value(KV, Props), Acc)
     end.
 
--spec request_macros(kz_json:object()) -> kz_proplist().
+-spec request_macros(kz_json:object()) -> kz_term:proplist().
 request_macros(DataJObj) ->
     kz_json:recursive_to_proplist(
       kz_json:delete_keys([<<"details">>
@@ -224,7 +224,7 @@ request_macros(DataJObj) ->
                          )
      ).
 
--spec admin_user_data(kz_json:object()) -> kz_proplist().
+-spec admin_user_data(kz_json:object()) -> kz_term:proplist().
 admin_user_data(DataJObj) ->
     AccountId = kapi_notifications:account_id(DataJObj),
     case teletype_util:find_account_admin(AccountId) of

@@ -32,39 +32,39 @@
 -include("webseq.hrl").
 
 -record(state, {type :: diagram_type()
-               ,name :: ne_binary()
+               ,name :: kz_term:ne_binary()
                ,io_device :: 'undefined' | file:io_device()
                ,who_registry :: dict:dict()
                }).
 -type state() :: #state{}.
 
--spec start(diagram_type()) -> startlink_ret().
+-spec start(diagram_type()) -> kz_types:startlink_ret().
 start(Type) ->
     gen_server:start(?MODULE, [Type], []).
 
--spec stop(server_ref()) -> 'ok'.
+-spec stop(kz_types:server_ref()) -> 'ok'.
 stop(Pid) ->
     gen_server:call(Pid, 'stop').
 
--spec title(server_ref(), what()) -> 'ok'.
+-spec title(kz_types:server_ref(), what()) -> 'ok'.
 title(Srv, Title) ->
     gen_server:cast(Srv, {'write', "title ~s~n", [what(Title)]}).
 
--spec evt(server_ref(), who(), who(), what()) -> 'ok'.
+-spec evt(kz_types:server_ref(), who(), who(), what()) -> 'ok'.
 evt(Srv, From, To, Desc) ->
     gen_server:cast(Srv, {'write', "~s->~s: ~s~n", [who(Srv, From), who(Srv, To), what(Desc)]}).
 
--spec note(server_ref(), who(), 'right' | 'left', what()) -> 'ok'.
+-spec note(kz_types:server_ref(), who(), 'right' | 'left', what()) -> 'ok'.
 note(Srv, Who, Dir, Note) ->
     gen_server:cast(Srv, {'write', "note ~s of ~s: ~s~n", [Dir, who(Srv, Who), what(Note)]}).
 
--spec trunc(server_ref()) -> 'ok'.
+-spec trunc(kz_types:server_ref()) -> 'ok'.
 trunc(Srv) -> gen_server:cast(Srv, 'trunc').
 
--spec rotate(server_ref()) -> 'ok'.
+-spec rotate(kz_types:server_ref()) -> 'ok'.
 rotate(Srv) -> gen_server:cast(Srv, 'rotate').
 
--spec process_pid(kz_json:object()) -> api_binary().
+-spec process_pid(kz_json:object()) -> kz_term:api_binary().
 process_pid(P) ->
     ProcId = kz_json:get_value(<<"Process-ID">>, P),
     case re:run(ProcId, <<".*(<.*>)">>, [{'capture', [1], 'binary'}]) of
@@ -73,10 +73,10 @@ process_pid(P) ->
         _ -> ProcId
     end.
 
--spec reg_who(server_ref(), pid(), ne_binary()) -> 'ok'.
+-spec reg_who(kz_types:server_ref(), pid(), kz_term:ne_binary()) -> 'ok'.
 reg_who(Srv, P, W) -> gen_server:cast(Srv, {'reg_who', P, W}).
 
--spec who(server_ref(), ne_binary() | pid()) -> ne_binary().
+-spec who(kz_types:server_ref(), kz_term:ne_binary() | pid()) -> kz_term:ne_binary().
 who(Srv, P) ->
     case catch gen_server:call(Srv, {'who', P}) of
         {'EXIT', _} when is_pid(P) -> kz_term:to_binary(pid_to_list(P));
@@ -86,7 +86,7 @@ who(Srv, P) ->
         W -> W
     end.
 
--spec what(what()) -> ne_binary().
+-spec what(what()) -> kz_term:ne_binary().
 what(B) when is_binary(B) -> B;
 what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
@@ -157,7 +157,7 @@ init({'db', Name, Database}=Type) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('stop', _, State) ->
     {'stop', 'normal', 'ok', State};
 handle_call({'who', P}, _, #state{who_registry=Who}=State) when is_pid(P) ->
@@ -184,7 +184,7 @@ handle_call(_,_,S) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'write', Str, Args}, #state{type={'file', _Name, _Filename}
                                         ,io_device=IO
                                         }=State) ->
@@ -231,7 +231,7 @@ handle_cast(_Msg, S) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, S) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', S}.
@@ -268,14 +268,14 @@ terminate(_Reason, #state{io_device=IO}) ->
     gproc:goodbye(),
     lager:debug("webseq terminating: ~p", [_Reason]).
 
--spec webseq_doc(ne_binary(), text(), text()) -> kz_json:object().
+-spec webseq_doc(kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> kz_json:object().
 webseq_doc(Name, Str, Args) ->
     Line = iolist_to_binary(io_lib:format(Str, Args)),
     kz_json:from_list([{<<"line">>, Line}
                       ,{<<"name">>, Name}
                       ]).
 
--spec write_to_db(ne_binary(), ne_binary(), text(), text()) -> 'ok'.
+-spec write_to_db(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> 'ok'.
 write_to_db(Database, Name, Str, Args) ->
     Doc = kz_doc:update_pvt_parameters(
             webseq_doc(Name, Str, Args)
@@ -289,14 +289,14 @@ write_to_db(Database, Name, Str, Args) ->
             throw(E)
     end.
 
--spec start_file(ne_binary()) ->
+-spec start_file(kz_term:ne_binary()) ->
                         {'ok', file:io_device()} |
                         {'error', any()}.
 start_file(Filename) ->
     _ = file:rename(Filename, iolist_to_binary([Filename, ".", kz_term:to_binary(kz_time:now_s())])),
     file:open(Filename, ['append', 'raw', 'delayed_write']).
 
--spec trunc_database(ne_binary(), ne_binary()) -> 'ok'.
+-spec trunc_database(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 trunc_database(Database, Name) ->
     case get_docs_by_name(Database, Name) of
         {'ok', []} -> 'ok';
@@ -312,7 +312,7 @@ trunc_database(Database, Name) ->
             throw(E)
     end.
 
--spec get_docs_by_name(ne_binary(), ne_binary()) ->
+-spec get_docs_by_name(kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', kz_json:objects()} |
                               {'error', any()}.
 get_docs_by_name(Database, Name) ->
@@ -321,7 +321,7 @@ get_docs_by_name(Database, Name, Opts) ->
     Options = props:insert_value('key', Name, Opts),
     kz_datamgr:get_results(Database, <<"webseq/listing_by_name">>, Options).
 
--spec rotate_db(ne_binary(), ne_binary()) -> 'ok'.
+-spec rotate_db(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 rotate_db(Database, Name) ->
     case get_docs_by_name(Database, Name, ['include_docs']) of
         {'ok', []} -> 'ok';
@@ -336,19 +336,19 @@ rotate_db(Database, Name) ->
             throw(E)
     end.
 
--spec rotate_db(ne_binary(), ne_binary(), kz_json:objects()) -> {'ok', kz_json:objects()}.
+-spec rotate_db(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> {'ok', kz_json:objects()}.
 rotate_db(Database, Name, Docs) ->
     RotatedName = <<Name/binary, ".", (kz_binary:rand_hex(3))/binary>>,
     Rotated = [rotate_doc(RotatedName, kz_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
     {'ok', _} = kz_datamgr:save_docs(Database, Rotated).
 
--spec rotate_doc(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec rotate_doc(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 rotate_doc(RotatedName, Doc) ->
     kz_json:set_value(<<"name">>, RotatedName
                      ,kz_doc:update_pvt_parameters(Doc, 'undefined')
                      ).
 
--spec init_db(ne_binary()) -> 'ok'.
+-spec init_db(kz_term:ne_binary()) -> 'ok'.
 init_db(Database) ->
     lager:debug("refreshing ~s", [Database]),
     Views = kapps_util:get_views_json('webseq', "views"),

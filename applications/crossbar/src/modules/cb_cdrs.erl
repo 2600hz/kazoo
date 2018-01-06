@@ -87,7 +87,7 @@
         ,{<<"reseller_call_type">>, fun col_reseller_call_type/2}
         ]).
 
--type csv_column_fun() :: fun((kz_json:object(), gregorian_seconds()) -> ne_binary()).
+-type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds()) -> kz_term:ne_binary()).
 
 %%%===================================================================
 %%% API
@@ -225,7 +225,7 @@ validate_chunk_view(Context) ->
             load_chunk_view(Context, ViewName, Options)
     end.
 
--spec load_chunk_view(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
+-spec load_chunk_view(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
 load_chunk_view(Context, ViewName, Options0) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     IsReseller = kz_services:is_reseller(AuthAccountId),
@@ -281,7 +281,7 @@ normalize_summary_results(JObj, Acc) -> [JObj|Acc].
 %% Generate specific view options for the path.
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_options(req_nouns()) -> {api_ne_binary(), crossbar_view:options()}.
+-spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
 get_view_options([{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     {?CB_LIST, []};
 get_view_options([{<<"cdrs">>, []}, {<<"users">>, [OwnerId]}|_]) ->
@@ -325,7 +325,7 @@ maybe_add_stale_to_options('false') ->[].
 %% Loads CDR docs from database and normalized the them.
 %% @end
 %%--------------------------------------------------------------------
--spec load_chunked_cdrs(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_chunked_cdrs(Context, RespType) ->
     Fun = fun(JObj, Acc) -> split_to_modbs(cb_context:account_id(Context), kz_doc:id(JObj), Acc) end,
     MapIds = lists:foldl(Fun, #{}, cb_context:resp_data(Context)),
@@ -333,20 +333,20 @@ load_chunked_cdrs(Context, RespType) ->
     maps:fold(fun(Db, Ids, C) -> load_chunked_cdr_ids(C, RespType, Db, Ids) end, C1, MapIds).
 
 %% if request is not chunked, map Ids to MODBs
--spec split_to_modbs(ne_binary(), ne_binary(), map()) -> map().
+-spec split_to_modbs(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
 split_to_modbs(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, Map) ->
     Db = kazoo_modb:get_modb(AccountId, Year, Month),
     maps:update_with(Db, fun(List) -> List ++ [Id] end, [Id], Map).
 
 %% @public
--spec load_chunked_cdr_ids(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+-spec load_chunked_cdr_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 load_chunked_cdr_ids(Context, RespType, Ids) ->
     Fun = fun(Id, Acc) -> split_to_modbs(cb_context:account_id(Context), Id, Acc) end,
     MapIds = lists:foldl(Fun, #{}, Ids),
     C1 = cb_context:set_resp_data(Context, []),
     maps:fold(fun(Db, DbIds, C) -> load_chunked_cdr_ids(C, RespType, Db, DbIds) end, C1, MapIds).
 
--spec load_chunked_cdr_ids(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) -> cb_context:context().
+-spec load_chunked_cdr_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
     case cb_context:resp_status(Context) =:= 'success'
         andalso kz_datamgr:open_docs(Db, Ids, [{'doc_type', <<"cdr">>}])
@@ -399,7 +399,7 @@ normalize_cdr_to_csv(JObj, Context) ->
 
     end.
 
--spec csv_rows(cb_context:context()) -> [{ne_binary(), csv_column_fun()}].
+-spec csv_rows(cb_context:context()) -> [{kz_term:ne_binary(), csv_column_fun()}].
 csv_rows(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case kz_services:is_reseller(AuthAccountId) of
@@ -452,7 +452,7 @@ col_call_priority(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"call_prio
 col_reseller_cost(JObj, _Timestamp) -> kz_term:to_binary(reseller_cost(JObj)).
 col_reseller_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
 
--spec pretty_print_datetime(kz_datetime() | integer()) -> ne_binary().
+-spec pretty_print_datetime(kz_time:datetime() | integer()) -> kz_term:ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
@@ -460,7 +460,7 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
                                   ,[Y, Mo, D, H, Mi, S]
                                   )).
 
--spec format_recordings(kz_json:object()) -> binaries().
+-spec format_recordings(kz_json:object()) -> kz_term:binaries().
 format_recordings(JObj) ->
     case kz_json:get_value([?KEY_CCV, <<"media_recordings">>], JObj, []) of
         Recordings when is_list(Recordings) -> Recordings;
@@ -507,7 +507,7 @@ reseller_cost(JObj) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_cdr(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
@@ -523,7 +523,7 @@ load_cdr(CDRId, Context) ->
 %% Load Legs for a cdr interaction from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_legs(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_legs(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),

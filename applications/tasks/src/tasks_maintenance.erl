@@ -28,21 +28,21 @@
 help() ->
     print_json(kz_tasks_help:help()).
 
--spec help(text()) -> 'no_return'.
+-spec help(kz_term:text()) -> 'no_return'.
 help(Category) ->
     case kz_tasks_help:help(Category) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec help(text(), text()) -> 'no_return'.
+-spec help(kz_term:text(), kz_term:text()) -> 'no_return'.
 help(Category, Action) ->
     case kz_tasks_help:help(Category, Action) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec add(text(), text(), text(), text(), text()) -> 'no_return'.
+-spec add(kz_term:text(), kz_term:text(), kz_term:text(), kz_term:text(), kz_term:text()) -> 'no_return'.
 add(AuthAccount, Account, Category, Action, CSVFile) ->
     AuthAccountId = kz_util:format_account_id(AuthAccount),
     AccountId = kz_util:format_account_id(Account),
@@ -58,7 +58,7 @@ add(AuthAccount, Account, Category, Action, CSVFile) ->
             print_error(Reason)
     end.
 
--spec add(text(), text(), text(), text()) -> 'no_return'.
+-spec add(kz_term:text(), kz_term:text(), kz_term:text(), kz_term:text()) -> 'no_return'.
 add(AuthAccount, Account, Category, Action) ->
     AuthAccountId = kz_util:format_account_id(AuthAccount),
     AccountId = kz_util:format_account_id(Account),
@@ -80,42 +80,42 @@ tasks() ->
     Tasks = kz_tasks:all(),
     print_json(Tasks).
 
--spec tasks(text()) -> 'no_return'.
+-spec tasks(kz_term:text()) -> 'no_return'.
 tasks(Account) ->
     AccountId = kz_util:format_account_id(Account),
     Tasks = kz_tasks:all(AccountId),
     print_json(Tasks).
 
--spec task(text()) -> 'no_return'.
+-spec task(kz_term:text()) -> 'no_return'.
 task(TaskId) ->
     case kz_tasks:read(TaskId) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec task_input(text()) -> 'no_return'.
+-spec task_input(kz_term:text()) -> 'no_return'.
 task_input(TaskId) ->
     attachment(TaskId, ?KZ_TASKS_ANAME_IN).
 
--spec task_output(text()) -> 'no_return'.
+-spec task_output(kz_term:text()) -> 'no_return'.
 task_output(TaskId) ->
     attachment(TaskId, ?KZ_TASKS_ANAME_OUT).
 
--spec start(text()) -> 'no_return'.
+-spec start(kz_term:text()) -> 'no_return'.
 start(TaskId) ->
     case kz_tasks_scheduler:start(TaskId) of
         {'ok', StartedTask} -> print_json(StartedTask);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec restart(text()) -> 'no_return'.
+-spec restart(kz_term:text()) -> 'no_return'.
 restart(TaskId) ->
     case kz_tasks_scheduler:restart(TaskId) of
         {'ok', RestartedTask} -> print_json(RestartedTask);
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec remove(text()) -> 'no_return'.
+-spec remove(kz_term:text()) -> 'no_return'.
 remove(TaskId) ->
     case kz_tasks_scheduler:remove(TaskId) of
         {'ok', RemovedTask} -> print_json(RemovedTask);
@@ -127,7 +127,7 @@ start_cleanup_pass() ->
     _ = kz_tasks_trigger:browse_dbs_for_triggers(?MODULE),
     no_return.
 
--spec cleanup_soft_deletes(text()) -> no_return.
+-spec cleanup_soft_deletes(kz_term:text()) -> no_return.
 cleanup_soft_deletes(Account) ->
     _ = kt_cleanup:cleanup_soft_deletes(Account),
     no_return.
@@ -148,7 +148,7 @@ print_error(Reason) ->
     io:format("ERROR: ~p\n", [Reason]),
     'no_return'.
 
--spec attachment(kz_tasks:id(), ne_binary()) -> no_return.
+-spec attachment(kz_tasks:id(), kz_term:ne_binary()) -> no_return.
 attachment(TaskId, AName) ->
     case kz_tasks:read(TaskId) of
         {'ok', _JObj} ->
@@ -161,7 +161,7 @@ attachment(TaskId, AName) ->
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec new_task(ne_binary(), ne_binary(), ne_binary(), ne_binary(), pos_integer(), ne_binary(), ne_binary()) ->
+-spec new_task(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                       'no_return'.
 new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName) ->
     case kz_tasks:new(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName) of
@@ -181,7 +181,7 @@ new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName)
             handle_new_task_error(Reason, Category, Action)
     end.
 
--spec handle_new_task_error(atom() | kz_json:object(), ne_binary(), ne_binary()) -> 'no_return'.
+-spec handle_new_task_error(atom() | kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 handle_new_task_error('unknown_category_action', Category, Action) ->
     print_error(<<"No such category / action: ", Category/binary, " ", Action/binary>>);
 handle_new_task_error(JObj, _, _) ->

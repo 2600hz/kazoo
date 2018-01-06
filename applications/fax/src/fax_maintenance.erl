@@ -36,7 +36,7 @@ migrate() ->
     migrate_outbound_faxes(),
     'ok'.
 
--spec migrate(ne_binaries() | ne_binary()) -> 'ok'.
+-spec migrate(kz_term:ne_binaries() | kz_term:ne_binary()) -> 'ok'.
 migrate([]) -> 'ok';
 migrate(<<"override_existing_documents">>) ->
     Accounts = kapps_util:get_all_accounts(),
@@ -49,7 +49,7 @@ migrate([Account|Accounts]) ->
 migrate(Account) ->
     migrate_faxes(Account, ?DEFAULT_MIGRATE_OPTIONS).
 
--spec migrate(ne_binaries() | ne_binary(), ne_binary() | kz_proplist()) -> 'ok'.
+-spec migrate(kz_term:ne_binaries() | kz_term:ne_binary(), kz_term:ne_binary() | kz_term:proplist()) -> 'ok'.
 migrate([], _) -> 'ok';
 migrate(Accounts, <<"override_existing_documents">>) ->
     migrate(Accounts, ?OVERRIDE_DOCS);
@@ -66,7 +66,7 @@ migrate_faxes_fold(AccountDb, Current, Total, Options) ->
     _ = migrate_faxes(AccountDb, Options),
     Current + 1.
 
--spec migrate_faxes(atom() | string() | binary(),  kz_proplist()) -> 'ok'.
+-spec migrate_faxes(atom() | string() | binary(),  kz_term:proplist()) -> 'ok'.
 migrate_faxes(Account, Options) when not is_binary(Account) ->
     migrate_faxes(kz_term:to_binary(Account), Options);
 migrate_faxes(Account, Options) ->
@@ -74,9 +74,9 @@ migrate_faxes(Account, Options) ->
     recover_private_media(Account),
     migrate_faxes_to_modb(Account, Options).
 
--spec migrate_private_media(ne_binary()) -> 'ok'.
--spec migrate_private_media(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
--spec maybe_migrate_private_media(ne_binary(), kz_json:object()) -> 'ok'.
+-spec migrate_private_media(kz_term:ne_binary()) -> 'ok'.
+-spec migrate_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec maybe_migrate_private_media(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 
 migrate_private_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
@@ -108,9 +108,9 @@ migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
     'ok';
 migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
 
--spec recover_private_media(ne_binary()) -> 'ok'.
--spec recover_private_media(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
--spec maybe_recover_private_media(ne_binary(), kz_json:object()) -> 'ok'.
+-spec recover_private_media(kz_term:ne_binary()) -> 'ok'.
+-spec recover_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec maybe_recover_private_media(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 
 recover_private_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
@@ -137,9 +137,9 @@ recover_private_media(AccountDb, Doc, _MediaType) ->
     {'ok', _ } = kz_datamgr:ensure_saved(AccountDb, kz_doc:set_type(Doc, <<"private_media">>)),
     'ok'.
 
--spec migrate_faxes_to_modb(ne_binary(),  kz_proplist()) -> 'ok'.
--spec maybe_migrate_fax_to_modb(ne_binary(), kz_json:object(),  kz_proplist()) -> 'ok'.
--spec migrate_fax_to_modb(ne_binary(), ne_binary(), kz_json:object(),  kz_proplist()) -> 'ok'.
+-spec migrate_faxes_to_modb(kz_term:ne_binary(),  kz_term:proplist()) -> 'ok'.
+-spec maybe_migrate_fax_to_modb(kz_term:ne_binary(), kz_json:object(),  kz_term:proplist()) -> 'ok'.
+-spec migrate_fax_to_modb(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(),  kz_term:proplist()) -> 'ok'.
 
 migrate_faxes_to_modb(Account, Options) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
@@ -200,8 +200,8 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 -spec flush() -> 'ok'.
 flush() -> kz_cache:flush_local(?CACHE_NAME).
 
--spec account_jobs(ne_binary()) -> 'no_return'.
--spec account_jobs(ne_binary(), ne_binary()) -> 'no_return'.
+-spec account_jobs(kz_term:ne_binary()) -> 'no_return'.
+-spec account_jobs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 account_jobs(AccountId) ->
     account_jobs(AccountId, <<"pending">>).
 
@@ -234,8 +234,8 @@ account_jobs(AccountId, State) ->
     io:format("+--------------------------------+-------------------+-----------------+----------------------------------+----------------------------------+----------------------+----------------------+~n", []),
     'no_return'.
 
--spec faxbox_jobs(ne_binary()) -> 'no_return'.
--spec faxbox_jobs(ne_binary(), ne_binary()) -> 'no_return'.
+-spec faxbox_jobs(kz_term:ne_binary()) -> 'no_return'.
+-spec faxbox_jobs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 faxbox_jobs(FaxboxId) ->
     faxbox_jobs(FaxboxId, <<"pending">>).
 
@@ -354,7 +354,7 @@ update_job(JobID, State, JObj) ->
 migrate_outbound_faxes() ->
     migrate_outbound_faxes(?DEFAULT_BATCH_SIZE).
 
--spec migrate_outbound_faxes(ne_binary() | integer() | kz_proplist()) -> 'ok'.
+-spec migrate_outbound_faxes(kz_term:ne_binary() | integer() | kz_term:proplist()) -> 'ok'.
 migrate_outbound_faxes(Number) when is_binary(Number) ->
     migrate_outbound_faxes(kz_term:to_integer(Number));
 migrate_outbound_faxes(Number) when is_integer(Number) ->
@@ -373,14 +373,14 @@ migrate_outbound_faxes(Options) ->
                                    ])
     end.
 
--spec migrate_outbound_faxes(kz_json:objects(), api_binary()) -> api_binary().
+-spec migrate_outbound_faxes(kz_json:objects(), kz_term:api_binary()) -> kz_term:api_binary().
 migrate_outbound_faxes([], Acc) -> Acc;
 migrate_outbound_faxes([JObj | JObjs], _Acc) ->
     DocId = kz_doc:id(JObj),
     maybe_migrate_outbound_fax(DocId),
     migrate_outbound_faxes(JObjs, DocId).
 
--spec maybe_migrate_outbound_fax(ne_binary()) -> 'ok'.
+-spec maybe_migrate_outbound_fax(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate_outbound_fax(<<"_design/", _/binary>>) -> 'ok';
 maybe_migrate_outbound_fax(DocId) ->
     case kz_datamgr:open_doc(?KZ_FAXES_DB, DocId) of
@@ -388,7 +388,7 @@ maybe_migrate_outbound_fax(DocId) ->
         {'error', _E} -> io:format("error opening document ~s in faxes db~n", [DocId])
     end.
 
--spec maybe_migrate_outbound_fax(api_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_migrate_outbound_fax(kz_term:api_binary(), kz_json:object()) -> 'ok'.
 maybe_migrate_outbound_fax(<<"fax">>, JObj) ->
     case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         <<"failed">> -> migrate_outbound_fax(JObj);
@@ -413,14 +413,14 @@ migrate_outbound_fax(JObj) ->
         {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])
     end.
 
--spec next_key(binary()) -> ne_binary().
+-spec next_key(binary()) -> kz_term:ne_binary().
 next_key(<<>>) ->
     <<"\ufff0">>;
 next_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
--spec load_smtp_attachment(ne_binary(), ne_binary()) -> 'ok'.
--spec load_smtp_attachment(ne_binary(), ne_binary(), binary()) -> 'ok'.
+-spec load_smtp_attachment(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec load_smtp_attachment(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> 'ok'.
 load_smtp_attachment(DocId, Filename) ->
     case file:read_file(Filename) of
         {'ok', FileContents} ->

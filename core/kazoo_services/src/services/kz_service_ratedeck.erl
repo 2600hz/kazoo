@@ -23,7 +23,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), api_binary()) -> kz_services:services().
+-spec reconcile(kz_services:services(), kz_term:api_binary()) -> kz_services:services().
 reconcile(Services) ->
     ServicePlanJObj = kz_services:service_plan_json(Services),
     %% TODO: resolve conflict when there is more than one ratedeck
@@ -43,7 +43,7 @@ reconcile(Services) ->
 reconcile(Services, 'undefined') -> kz_services:reset_category(?SERVICE_CATEGORY, Services);
 reconcile(Services, RatedeckId) -> kz_services:update(?SERVICE_CATEGORY, RatedeckId, 1, Services).
 
--spec get_ratedeck(api_binary() | kzd_service_plan:doc()) -> api_binary().
+-spec get_ratedeck(kz_term:api_binary() | kzd_service_plan:doc()) -> kz_term:api_binary().
 get_ratedeck('undefined') -> 'undefined';
 get_ratedeck(<<_/binary>> = AccountId) ->
     get_ratedeck(kz_services:service_plan_json(AccountId));

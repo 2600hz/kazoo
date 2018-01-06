@@ -17,7 +17,7 @@
 %% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     _ = stepswitch_maintenance:refresh(),

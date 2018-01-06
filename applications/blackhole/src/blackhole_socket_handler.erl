@@ -19,7 +19,7 @@
 -include("blackhole.hrl").
 
 -spec init(cowboy_req:req(), State) ->
-                  {'ok' | 'cowboy_websocket', cowboy_req:req(), State | {inet:ip_address(), ne_binary()}}.
+                  {'ok' | 'cowboy_websocket', cowboy_req:req(), State | {inet:ip_address(), kz_term:ne_binary()}}.
 init(Req, HandlerOpts) ->
     lager:info("handling socket init"),
     case cowboy_req:parse_header(<<"sec-websocket-protocol">>, Req) of
@@ -36,7 +36,7 @@ init(Req, HandlerOpts) ->
 terminate(_Reason, _Req, _State) ->
     lager:info("bh socket going down: ~p", [_Reason]).
 
--spec websocket_init({inet:ip_address(), ne_binary()}) -> {'ok', bh_context:context()}.
+-spec websocket_init({inet:ip_address(), kz_term:ne_binary()}) -> {'ok', bh_context:context()}.
 websocket_init({RemoteIP, SessionsId}) ->
     lager:info("init from ~p(~p)", [RemoteIP, SessionsId]),
     {'ok', _State} = blackhole_socket_callback:open(self(), SessionsId, RemoteIP).

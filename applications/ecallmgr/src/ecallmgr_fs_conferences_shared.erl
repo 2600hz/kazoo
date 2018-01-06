@@ -41,7 +41,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?MODULE}, ?MODULE,
                             [{'responders', ?RESPONDERS}
@@ -81,7 +81,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Req, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Req]),
     {'noreply', State}.
@@ -96,7 +96,7 @@ handle_call(_Req, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
@@ -111,7 +111,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {'noreply', State}.
@@ -154,7 +154,7 @@ terminate(_Reason, _State) ->
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 
--spec handle_dial_req(kapi_conference:doc(), kz_proplist()) -> 'ok'.
+-spec handle_dial_req(kapi_conference:doc(), kz_term:proplist()) -> 'ok'.
 handle_dial_req(JObj, _Props) ->
     'true' = kapi_conference:dial_v(JObj),
     ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
@@ -166,7 +166,7 @@ handle_dial_req(JObj, _Props) ->
     end,
     lager:debug("finished dialing").
 
--spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc()) -> 'ok'.
+-spec maybe_exec_dial(atom(), kz_term:ne_binary(), kapi_conference:doc()) -> 'ok'.
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj) ->
     {Loopbacks, Endpoints} = lists:splitwith(fun is_loopback/1, kz_json:get_list_value(<<"Endpoints">>, JObj, [])),
 
@@ -176,7 +176,7 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj) ->
 is_loopback(Endpoint) ->
     <<"loopback">> =:= kz_json:get_ne_binary_value(<<"Invite-Format">>, Endpoint).
 
--spec maybe_exec_dial(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects(), kz_json:objects()) -> 'ok'.
+-spec maybe_exec_dial(atom(), kz_term:ne_binary(), kapi_conference:doc(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
     _ = (catch gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(ConferenceNode, <<"conference::maintenance">>)})),
@@ -186,9 +186,9 @@ maybe_exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints, Loopbacks) ->
 
     handle_responses(ConferenceNode, JObj, EPResps ++ LBResps).
 
--type exec_response() :: {ne_binary(), {'ok' | 'error', kz_proplist()}}.
+-type exec_response() :: {kz_term:ne_binary(), {'ok' | 'error', kz_term:proplist()}}.
 -type exec_responses() :: [exec_response()].
--spec exec_endpoints(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
+-spec exec_endpoints(atom(), kz_term:ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
                             exec_responses().
 exec_endpoints(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no endpoints to dial out to"),
@@ -201,7 +201,7 @@ exec_endpoints(ConferenceNode, ConferenceId, JObj, Endpoints) ->
                    ),
     Resps.
 
--type exec_acc() :: {atom(), ne_binary(), kapi_conference:doc(), exec_responses()}.
+-type exec_acc() :: {atom(), kz_term:ne_binary(), kapi_conference:doc(), exec_responses()}.
 
 update_endpoint(Endpoint, EndpointCallId) ->
     Updates = [{fun kz_json:insert_value/3, <<"Outbound-Call-ID">>, EndpointCallId}
@@ -242,7 +242,7 @@ exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, JObj, Resps}) ->
             {ConferenceNode, ConferenceId, JObj, [{EndpointCallId, error_resp(EndpointId, Msg)} | Resps]}
     end.
 
--spec exec_loopbacks(atom(), ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
+-spec exec_loopbacks(atom(), kz_term:ne_binary(), kapi_conference:doc(), kz_json:objects()) ->
                             exec_responses().
 exec_loopbacks(_ConferenceNode, _ConferenceId, _JObj, []) ->
     lager:debug("no loopbacks to dial out to"),
@@ -271,7 +271,7 @@ exec_loopback(Loopback, {ConferenceNode, ConferenceId, JObj, Resps}) ->
                                  ),
     exec_endpoint(Endpoint, {ConferenceNode, ConferenceId, kz_json:delete_key(<<"Outbound-Call-ID">>, JObj), Resps}).
 
--spec success_resp(ne_binary()) -> {'ok', kz_proplist()}.
+-spec success_resp(kz_term:ne_binary()) -> {'ok', kz_term:proplist()}.
 success_resp(EndpointId) ->
     {'ok'
     ,[{<<"Message">>, <<"dialing endpoints">>}
@@ -280,7 +280,7 @@ success_resp(EndpointId) ->
      ]
     }.
 
--spec error_resp(ne_binary(), ne_binary()) -> {'error', kz_proplist()}.
+-spec error_resp(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', kz_term:proplist()}.
 error_resp(EndpointId, Error) ->
     {'error'
     ,[{<<"Status">>, <<"error">>}
@@ -297,15 +297,15 @@ handle_responses(ConferenceNode, JObj, Responses) ->
 
     publish_resp(JObj, BaseResponses).
 
--spec handle_response(atom(), kapi_conference:doc(), exec_response()) -> kz_proplist().
+-spec handle_response(atom(), kapi_conference:doc(), exec_response()) -> kz_term:proplist().
 handle_response(_ConferenceNode, _JObj, {_CallId, {'error', Resp}}) ->
     Resp;
 handle_response(ConferenceNode, JObj, {LoopbackCallId, {'ok', Resp}}) ->
     BuiltResp = handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp),
     props:insert_value(<<"Call-ID">>, LoopbackCallId, BuiltResp).
 
--spec handle_call_startup(atom(), kapi_conference:doc(), ne_binary(), kz_proplist()) ->
-                                 kz_proplist().
+-spec handle_call_startup(atom(), kapi_conference:doc(), kz_term:ne_binary(), kz_term:proplist()) ->
+                                 kz_term:proplist().
 handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
     case wait_for_bowout(LoopbackCallId
                         ,'undefined'
@@ -332,14 +332,14 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
                             )
     end.
 
--spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer()) ->
-                             {'ok', ne_binary(), ne_binary(), kz_proplist()} |
+-spec wait_for_bowout(kz_term:ne_binary(), kz_term:api_ne_binary(), pos_integer()) ->
+                             {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()} |
                              {'error', 'timeout'} |
-                             {'error', ne_binary(), ne_binary()}.
--spec wait_for_bowout(ne_binary(), api_ne_binary(), pos_integer(), kz_proplist()) ->
-                             {'ok', ne_binary(), ne_binary(), kz_proplist()} |
+                             {'error', kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec wait_for_bowout(kz_term:ne_binary(), kz_term:api_ne_binary(), pos_integer(), kz_term:proplist()) ->
+                             {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()} |
                              {'error', 'timeout'} |
-                             {'error', ne_binary(), ne_binary()}.
+                             {'error', kz_term:ne_binary(), kz_term:ne_binary()}.
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
     wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, []).
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps) ->
@@ -414,7 +414,7 @@ handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) -
             wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
     end.
 
--spec register_for_events(atom(), ne_binary()) -> 'ok'.
+-spec register_for_events(atom(), kz_term:ne_binary()) -> 'ok'.
 register_for_events(ConferenceNode, EndpointCallId) ->
     _ = [(catch gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(ConferenceNode, EndpointCallId)}))
         ,(catch gproc:reg({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(ConferenceNode, EndpointCallId)}))
@@ -422,7 +422,7 @@ register_for_events(ConferenceNode, EndpointCallId) ->
         ],
     'ok'.
 
--spec start_call_handlers(atom(), kapi_conference:doc(), ne_binary()) -> api_ne_binary().
+-spec start_call_handlers(atom(), kapi_conference:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 start_call_handlers(Node, JObj, CallId) ->
     FetchId = kz_api:msg_id(JObj),
     CCVs = kz_json:new(),
@@ -432,7 +432,7 @@ start_call_handlers(Node, JObj, CallId) ->
 
     get_control_queue(CtlPid).
 
--spec get_control_queue(pid()) -> api_ne_binary().
+-spec get_control_queue(pid()) -> kz_term:api_ne_binary().
 get_control_queue(CtlPid) ->
     try erlang:is_process_alive(CtlPid)
              andalso ecallmgr_call_control:queue_name(CtlPid)
@@ -459,7 +459,7 @@ get_control_queue(CtlPid) ->
             get_control_queue(CtlPid)
     end.
 
--spec add_participant(kapi_conference:doc(), ne_binary(), api_ne_binary(), kz_proplist()) -> 'ok'.
+-spec add_participant(kapi_conference:doc(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:proplist()) -> 'ok'.
 add_participant(_JObj, _CallId, 'undefined', _ChannelProps) ->
     lager:info("not adding participant, no control queue");
 add_participant(JObj, CallId, ControlQueue, ChannelProps) ->
@@ -492,7 +492,7 @@ publish_resp(JObj, BaseResps) ->
                        ,fun(P) -> kapi_conference:publish_dial_resp(kz_api:server_id(JObj), P) end
                        ).
 
--spec maybe_start_conference(kapi_conference:doc(), ne_binary()) -> 'ok'.
+-spec maybe_start_conference(kapi_conference:doc(), kz_term:ne_binary()) -> 'ok'.
 maybe_start_conference(JObj, ConferenceId) ->
     lager:info("conference ~s is not running yet", [ConferenceId]),
     case find_media_server(kz_json:get_ne_binary_value(<<"Target-Call-ID">>, JObj), kz_api:node(JObj)) of
@@ -502,7 +502,7 @@ maybe_start_conference(JObj, ConferenceId) ->
             maybe_exec_dial(MediaServer, ConferenceId, JObj)
     end.
 
--spec find_media_server(api_ne_binary(), ne_binary()) -> atom().
+-spec find_media_server(kz_term:api_ne_binary(), kz_term:ne_binary()) -> atom().
 find_media_server('undefined', IssuerNode) ->
     IssuerNodeInfo = kz_nodes:node_to_json(IssuerNode),
     MyZone = kz_config:zone('binary'),
@@ -527,7 +527,7 @@ find_media_server(TargetCallId, IssuerNode) ->
             end
     end.
 
--spec find_media_server_from_statuses(ne_binary(), ne_binary(), kz_json:objects()) -> atom().
+-spec find_media_server_from_statuses(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> atom().
 find_media_server_from_statuses(TargetCallId, IssuerNode, []) ->
     lager:info("no one has record of ~s", [TargetCallId]),
     find_media_server('undefined', IssuerNode);
@@ -551,8 +551,8 @@ find_media_server_from_statuses(TargetCallId, IssuerNode, [Status|Statuses]) ->
             end
     end.
 
--spec query_cluster_for_call(ne_binary()) -> {'ok', kz_json:objects()} |
-                                             {'error', any()}.
+-spec query_cluster_for_call(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
+                                                     {'error', any()}.
 query_cluster_for_call(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
           ,{<<"Fields">>, <<"all">>}

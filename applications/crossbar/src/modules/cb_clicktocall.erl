@@ -217,11 +217,11 @@ load_c2c_summary(Context) ->
                           ,fun normalize_view_results/2
                           ).
 
--spec load_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c(C2CId, Context) ->
     crossbar_doc:load(C2CId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)).
 
--spec load_c2c_history(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_c2c_history(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c_history(C2CId, Context) ->
     Options = ['include_docs'
               ,{'startkey', [C2CId]}
@@ -237,16 +237,16 @@ load_c2c_history(C2CId, Context) ->
 create_c2c(Context) ->
     cb_context:validate_request_data(<<"clicktocall">>, Context, fun clear_history_set_type/1).
 
--spec update_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_c2c(C2CId, Context) ->
     OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C, ?TYPE_CHECK_OPTION(?PVT_TYPE)) end,
     cb_context:validate_request_data(<<"clicktocall">>, Context, OnSuccess).
 
--spec validate_patch_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch_c2c(C2CId, Context) ->
     crossbar_doc:patch_and_validate(C2CId, Context, fun update_c2c/2).
 
--spec establish_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec establish_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 establish_c2c(C2CId, Context) ->
     Context1 = crossbar_doc:load(C2CId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
     case cb_context:resp_status(Context1) of
@@ -254,7 +254,7 @@ establish_c2c(C2CId, Context) ->
         _Status -> Context1
     end.
 
--spec maybe_migrate_history(ne_binary()) -> 'ok'.
+-spec maybe_migrate_history(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate_history(Account) ->
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(Account),
@@ -265,12 +265,12 @@ maybe_migrate_history(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec migrate_histories(ne_binary(), ne_binary(), kz_json:objects()) -> 'ok'.
+-spec migrate_histories(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate_histories(AccountId, AccountDb, C2Cs) ->
     _ = [migrate_history(AccountId, AccountDb, kz_json:get_value(<<"doc">>, C2C)) || C2C <- C2Cs],
     'ok'.
 
--spec migrate_history(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec migrate_history(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 migrate_history(AccountId, AccountDb, C2C) ->
     case kz_json:get_value(<<"pvt_history">>, C2C, []) of
         [] -> 'ok';
@@ -284,7 +284,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
                                                                  ])
     end.
 
--spec save_history_item(ne_binary(), kz_json:object(), ne_binary()) -> any().
+-spec save_history_item(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> any().
 save_history_item(AccountId, HistoryItem, C2CId) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, HistoryItem, kz_time:now_s()),
     AccountModb = kz_util:format_account_mod_id(AccountId, Timestamp),
@@ -311,9 +311,9 @@ clear_history_set_type(Context) ->
 %%
 %% @end
 %%-------------------------------------------------------------------
--spec originate_call(ne_binary(), cb_context:context()) -> cb_context:context().
--spec originate_call(ne_binary(), cb_context:context(), api_binary()) -> cb_context:context().
--spec originate_call(ne_binary(), cb_context:context(), api_binary(), boolean()) -> cb_context:context().
+-spec originate_call(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+-spec originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
+-spec originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), boolean()) -> cb_context:context().
 originate_call(C2CId, Context) ->
     originate_call(C2CId, Context, get_c2c_contact(cb_context:req_value(Context, <<"contact">>))).
 
@@ -340,7 +340,7 @@ originate_call(C2CId, Context, Contact, 'true') ->
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec do_originate_call(ne_binary(), cb_context:context(), api_binary(), kz_proplist()) -> 'ok'.
+-spec do_originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:proplist()) -> 'ok'.
 do_originate_call(C2CId, Context, Contact, Request) ->
     ReqId = cb_context:req_id(Context),
     kz_util:put_callid(ReqId),
@@ -359,7 +359,7 @@ do_originate_call(C2CId, Context, Contact, Request) ->
     _ = kazoo_modb:save_doc(AccountId, HistoryItem),
     'ok'.
 
--spec match_regexps(binaries(), ne_binary()) -> boolean().
+-spec match_regexps(kz_term:binaries(), kz_term:ne_binary()) -> boolean().
 match_regexps([Pattern | Rest], Number) ->
     case re:run(Number, Pattern) of
         {'match', _} -> 'true';
@@ -367,9 +367,9 @@ match_regexps([Pattern | Rest], Number) ->
     end;
 match_regexps([], _Number) -> 'false'.
 
--spec exec_originate(api_terms()) ->
-                            {'success', ne_binary()} |
-                            {'error', ne_binary()}.
+-spec exec_originate(kz_term:api_terms()) ->
+                            {'success', kz_term:ne_binary()} |
+                            {'error', kz_term:ne_binary()}.
 exec_originate(Request) ->
     handle_originate_resp(
       kz_amqp_worker:call_collect(Request
@@ -384,8 +384,8 @@ exec_originate(Request) ->
                             {'error', _} |
                             {'timeout', _}
                            ) ->
-                                   {'success', ne_binary()} |
-                                   {'error', ne_binary()}.
+                                   {'success', kz_term:ne_binary()} |
+                                   {'error', kz_term:ne_binary()}.
 handle_originate_resp({'ok', [Resp|_]}) ->
     AppResponse = kz_json:get_first_defined([<<"Application-Response">>
                                             ,<<"Hangup-Cause">>
@@ -419,12 +419,12 @@ handle_originate_resp({'timeout', _T}) ->
     lager:debug("timed out while originating: ~p", [_T]),
     {'error', <<"timed out">>}.
 
--record(contact, {route :: ne_binary()
-                 ,number :: ne_binary()
-                 ,name :: ne_binary()
+-record(contact, {route :: kz_term:ne_binary()
+                 ,number :: kz_term:ne_binary()
+                 ,name :: kz_term:ne_binary()
                  }).
 
--spec build_originate_req(ne_binary(), cb_context:context()) -> kz_proplist().
+-spec build_originate_req(kz_term:ne_binary(), cb_context:context()) -> kz_term:proplist().
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
     JObj = cb_context:doc(Context),
@@ -502,7 +502,7 @@ build_originate_req(Contact, Context) ->
        | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec get_caller_callee(ne_binary(), #contact{}, #contact{}) -> {#contact{}, #contact{}}.
+-spec get_caller_callee(kz_term:ne_binary(), #contact{}, #contact{}) -> {#contact{}, #contact{}}.
 get_caller_callee(<<"extension">>, Contact, Extension) -> {Contact, Extension};
 get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
@@ -516,12 +516,12 @@ is_resp(JObj) ->
     kapi_resource:originate_resp_v(JObj)
         orelse kz_api:error_resp_v(JObj).
 
--spec get_c2c_contact(api_binary()) -> api_binary().
+-spec get_c2c_contact(kz_term:api_binary()) -> kz_term:api_binary().
 get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
     knm_converters:normalize(kz_http_util:urlencode(Contact)).
 
--spec create_c2c_history_item({'success' | 'error', ne_binary()}, ne_binary(), ne_binary()) -> kz_proplist().
+-spec create_c2c_history_item({'success' | 'error', kz_term:ne_binary()}, kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 create_c2c_history_item({'success', CallId}, C2CId, Contact) ->
     [{<<"timestamp">>, kz_time:now_s()}
     ,{<<"contact">>, Contact}

@@ -23,13 +23,13 @@
 
 -record(call_waiting, {enabled = 'true' :: boolean()
                       ,jobj = kz_json:new() :: kz_json:object()
-                      ,account_db :: api_binary()
-                      ,action :: ne_binary()
+                      ,account_db :: kz_term:api_binary()
+                      ,action :: kz_term:ne_binary()
                       }).
 -type call_waiting() :: #call_waiting{}.
 
 -type switch_fun() :: fun((boolean()) -> boolean()).
--spec actions() -> kz_proplist_kv(ne_binary(), switch_fun()).
+-spec actions() -> kz_term:proplist_kv(kz_term:ne_binary(), switch_fun()).
 actions() ->
     [{<<"toggle">>, fun (Enabled) -> not Enabled end}
     ,{<<"activate">>, fun (_Enabled) -> 'true' end}
@@ -75,13 +75,13 @@ maybe_build_call_waiting_record(Data, Call) ->
             }
     end.
 
--spec get_doc_id(ne_binary(), kapps_call:call()) -> api_binary().
+-spec get_doc_id(kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_binary().
 get_doc_id(<<"user">>, Call) ->
     kapps_call:owner_id(Call);
 get_doc_id(<<"device">>, Call) ->
     kapps_call:authorizing_id(Call).
 
--spec maybe_get_doc(api_binary(), api_binary()) -> kz_jobj_return().
+-spec maybe_get_doc(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:jobj_return().
 maybe_get_doc(_, 'undefined') ->
     {'error', 'no_device_id'};
 maybe_get_doc('undefined', _) ->

@@ -53,7 +53,7 @@ from_json(JObj) -> JObj.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), ne_binary(), ne_binary()) ->
+-spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                     {'ok', ip()} |
                     {'error', any()}.
 create(IP, Zone, Host) ->
@@ -90,7 +90,7 @@ create(IP, Zone, Host) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary()) ->
+-spec fetch(kz_term:ne_binary()) ->
                    {'ok', ip()} |
                    {'error', any()}.
 fetch(IP) ->
@@ -109,7 +109,7 @@ fetch(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec assign(ne_binary(), ne_binary() | ip()) ->
+-spec assign(kz_term:ne_binary(), kz_term:ne_binary() | ip()) ->
                     {'ok', ip()} |
                     {'error', any()}.
 assign(Account, <<_/binary>> = RawIP) ->
@@ -138,7 +138,7 @@ assign(Account, IPDoc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec release(ne_binary() | ip()) ->
+-spec release(kz_term:ne_binary() | ip()) ->
                      {'ok', ip()} |
                      {'error', any()}.
 release(<<_/binary>> = Ip) ->
@@ -161,7 +161,7 @@ release(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binary() | ip()) ->
+-spec delete(kz_term:ne_binary() | ip()) ->
                     {'ok', ip()} |
                     {'error', any()}.
 delete(<<_/binary>> = IP) ->
@@ -179,7 +179,7 @@ delete(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec ip(ip()) -> ne_binary().
+-spec ip(ip()) -> kz_term:ne_binary().
 ip(IP) -> kz_doc:id(IP).
 
 %%--------------------------------------------------------------------
@@ -188,7 +188,7 @@ ip(IP) -> kz_doc:id(IP).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec zone(ip()) -> ne_binary().
+-spec zone(ip()) -> kz_term:ne_binary().
 zone(IP) -> kz_json:get_value(<<"pvt_zone">>, IP).
 
 %%--------------------------------------------------------------------
@@ -197,7 +197,7 @@ zone(IP) -> kz_json:get_value(<<"pvt_zone">>, IP).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec modified(ip()) -> api_integer().
+-spec modified(ip()) -> kz_term:api_integer().
 modified(IP) -> kz_doc:modified(IP).
 
 %%--------------------------------------------------------------------
@@ -206,7 +206,7 @@ modified(IP) -> kz_doc:modified(IP).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec created(ip()) -> api_integer().
+-spec created(ip()) -> kz_term:api_integer().
 created(IP) -> kz_doc:created(IP).
 
 %%--------------------------------------------------------------------
@@ -215,7 +215,7 @@ created(IP) -> kz_doc:created(IP).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec host(ip()) -> ne_binary().
+-spec host(ip()) -> kz_term:ne_binary().
 host(IP) -> kz_json:get_value(<<"pvt_host">>, IP).
 
 %%--------------------------------------------------------------------
@@ -224,7 +224,7 @@ host(IP) -> kz_json:get_value(<<"pvt_host">>, IP).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to(ip()) -> ne_binary().
+-spec assigned_to(ip()) -> kz_term:ne_binary().
 assigned_to(IP) -> kz_json:get_value(<<"pvt_assigned_to">>, IP).
 
 %%--------------------------------------------------------------------
@@ -243,7 +243,7 @@ is_dedicated_ip(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_available(ip() | ne_binary()) -> boolean() | {'error', any()}.
+-spec is_available(ip() | kz_term:ne_binary()) -> boolean() | {'error', any()}.
 is_available(Ip) when is_binary(Ip) ->
     case fetch(Ip) of
         {'ok', IP} -> is_available(IP);

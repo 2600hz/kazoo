@@ -34,20 +34,20 @@
 
 -record(state, {call :: kapps_call:call() | 'undefined'
                ,action = 'receive' :: 'receive' | 'transmit'
-               ,owner_id :: api_ne_binary()
-               ,faxbox_id :: api_ne_binary()
-               ,fax_doc :: api_object()
+               ,owner_id :: kz_term:api_ne_binary()
+               ,faxbox_id :: kz_term:api_ne_binary()
+               ,fax_doc :: kz_term:api_object()
                ,storage :: fax_storage()
-               ,fax_option :: api_ne_binary()
-               ,fax_result :: api_object()
-               ,fax_notify = 'undefined' :: api_object()
+               ,fax_option :: kz_term:api_ne_binary()
+               ,fax_result :: kz_term:api_object()
+               ,fax_notify = 'undefined' :: kz_term:api_object()
                ,fax_store_count = 0 :: integer()
-               ,fax_id = 'undefined' :: api_ne_binary()
-               ,account_id = 'undefined' :: api_ne_binary()
-               ,fax_status :: api_object()
+               ,fax_id = 'undefined' :: kz_term:api_ne_binary()
+               ,account_id = 'undefined' :: kz_term:api_ne_binary()
+               ,fax_status :: kz_term:api_object()
                ,page = 0  ::integer()
-               ,status :: api_ne_binary()
-               ,monitor :: pid_ref() | 'undefined'
+               ,status :: kz_term:api_ne_binary()
+               ,monitor :: kz_term:pid_ref() | 'undefined'
                }).
 -type state() :: #state{}.
 
@@ -77,7 +77,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(kapps_call:call(), kz_json:object(), fax_storage()) -> startlink_ret().
+-spec start_link(kapps_call:call(), kz_json:object(), fax_storage()) -> kz_types:startlink_ret().
 start_link(Call, JObj, Storage) ->
     gen_listener:start_link({'local', kz_term:to_atom(Storage#fax_storage.id, 'true')}
                            ,?MODULE
@@ -87,13 +87,13 @@ start_link(Call, JObj, Storage) ->
                            ,[Call, JObj, Storage]
                            ).
 
--spec handle_fax_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_fax_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_fax_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     Event = kz_json:get_value(<<"Application-Event">>, JObj),
     gen_server:cast(Srv, {'fax_status', Event , JObj}).
 
--spec handle_channel_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_channel_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_channel_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     Event = kz_api:event_name(JObj),
@@ -142,7 +142,7 @@ init([Call, JObj, Storage]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -241,7 +241,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{monitor={Pid, Ref}}=State) ->
     {'noreply', State, ?POLL_INTERVAL};
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{monitor={Pid, Ref}}=State) ->
@@ -361,7 +361,7 @@ maybe_update_fax_settings(#state{call=Call
         {'error', _} -> maybe_update_fax_settings_from_account(State)
     end.
 
--spec get_faxbox_notify_list(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec get_faxbox_notify_list(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
     DefaultNotify = default_notify(FaxBoxDoc),
     case kz_json:get_value(<<"owner_id">>, FaxBoxDoc) of
@@ -380,7 +380,7 @@ get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
 default_notify(FaxBoxDoc) ->
     kz_json:get_value([<<"notifications">>,<<"inbound">>], FaxBoxDoc, kz_json:new()).
 
--spec maybe_add_owner_to_notify_list(list(), api_binary()) -> kz_json:object().
+-spec maybe_add_owner_to_notify_list(list(), kz_term:api_binary()) -> kz_json:object().
 maybe_add_owner_to_notify_list(List, 'undefined') ->
     kz_json:set_value([<<"email">>, <<"send_to">>], List, kz_json:new());
 maybe_add_owner_to_notify_list(List, OwnerEmail) ->
@@ -404,7 +404,7 @@ update_fax_settings(Call, JObj) ->
     ChannelVars = build_fax_settings(Call, JObj),
     kapps_call_command:set(kz_json:from_list(ChannelVars), 'undefined', Call).
 
--spec build_fax_settings(kapps_call:call(), kz_json:object()) -> kz_proplist().
+-spec build_fax_settings(kapps_call:call(), kz_json:object()) -> kz_term:proplist().
 build_fax_settings(Call, JObj) ->
     props:filter_undefined(
       [case kz_json:is_true(<<"override_fax_identity">>, JObj, 'true') of
@@ -428,13 +428,13 @@ build_fax_settings(Call, JObj) ->
       ,{<<"Origination-Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
--spec callee_name(kz_json:object()) -> ne_binary().
+-spec callee_name(kz_json:object()) -> kz_term:ne_binary().
 callee_name(JObj) ->
     kz_term:to_binary(
       kz_json:get_first_defined([<<"caller_name">>,<<"name">>], JObj)
      ).
 
--spec overridden_callee_id(kapps_call:call(), kz_json:object()) -> ne_binary().
+-spec overridden_callee_id(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
 overridden_callee_id(Call, JObj) ->
     kz_term:to_binary(
       kz_json:get_first_defined([<<"caller_id">>,<<"fax_identity">>], JObj
@@ -442,7 +442,7 @@ overridden_callee_id(Call, JObj) ->
                                )
      ).
 
--spec overridden_fax_identity(kapps_call:call(), kz_json:object()) -> ne_binary().
+-spec overridden_fax_identity(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
 overridden_fax_identity(Call, JObj) ->
     kz_term:to_binary(
       kz_json:get_first_defined([<<"fax_identity">>,<<"caller_id">>], JObj
@@ -464,7 +464,7 @@ end_receive_fax(JObj, #state{call=Call}=State) ->
 end_receive_fax(#state{}=State) ->
     {'noreply', State#state{monitor=store_document(State)}}.
 
--spec store_document(state()) -> pid_ref().
+-spec store_document(state()) -> kz_term:pid_ref().
 store_document(#state{}=State) ->
     kz_util:spawn_monitor(fun store_document/2, [self(), State]).
 
@@ -481,7 +481,7 @@ store_document(Pid, #state{fax_result=JObj
             gen_server:cast(Pid, 'store_document')
     end.
 
--spec store_attachment(state()) -> pid_ref().
+-spec store_attachment(state()) -> kz_term:pid_ref().
 store_attachment(#state{}=State) ->
     kz_util:spawn_monitor(fun store_attachment/2, [self(), State]).
 
@@ -500,7 +500,7 @@ store_attachment(Pid, #state{call=Call
         {'error', _} -> gen_server:cast(Pid, 'store_attachment')
     end.
 
--spec get_fs_filename(state()) -> ne_binary().
+-spec get_fs_filename(state()) -> kz_term:ne_binary().
 get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
     LocalPath = kapps_config:get_binary(?CONFIG_CAT, <<"fax_file_path">>, <<"/tmp/">>),
     <<LocalPath/binary, AttachmentId/binary>>.
@@ -570,7 +570,7 @@ fax_fields(JObj) ->
        || {<<"Fax-", _/binary>> = K, V} <- kz_json:to_proplist(JObj)
       ]).
 
--spec notify_fields(kapps_call:call(), kz_json:object()) -> kz_proplist().
+-spec notify_fields(kapps_call:call(), kz_json:object()) -> kz_term:proplist().
 notify_fields(Call, JObj) ->
     props:filter_empty(
       [{<<"From-User">>, kapps_call:from_user(Call)}
@@ -643,15 +643,15 @@ notify_success(#state{call=Call
                 ]),
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_inbound/1).
 
--spec send_error_status(state(), ne_binary(), api_object()) -> 'ok'.
+-spec send_error_status(state(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
 send_error_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_ERROR, FaxInfo).
 
--spec send_status(state(), ne_binary(), api_object()) -> 'ok'.
+-spec send_status(state(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_RECEIVE, FaxInfo).
 
--spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
+-spec send_status(state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
 send_status(#state{call=Call
                   ,account_id=AccountId
                   ,page=Page
@@ -677,7 +677,7 @@ send_status(#state{call=Call
                 ]),
     kapi_fax:publish_status(Payload).
 
--spec new_request(kz_json:object(), kz_proplist()) -> sup_startchild_ret().
+-spec new_request(kz_json:object(), kz_term:proplist()) -> kz_types:sup_startchild_ret().
 new_request(JObj, _Props) ->
     'true' = kapi_fax:req_v(JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
@@ -688,7 +688,7 @@ new_request(JObj, _Props) ->
     NewCall = kapps_call:kvs_store_proplist(Props, Call),
     fax_requests_sup:new(NewCall, JObj, Storage).
 
--spec cancel(ne_binary()) -> 'ok'.
+-spec cancel(kz_term:ne_binary()) -> 'ok'.
 cancel(Id) ->
     case whereis(kz_term:to_atom(Id, 'true')) of
         'undefined' -> io:format("job ~s not found", [Id]);

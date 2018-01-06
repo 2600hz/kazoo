@@ -11,7 +11,7 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _) ->
     'true' = kapi_authz:authz_req_v(JObj),
     kz_util:put_callid(JObj),
@@ -31,7 +31,7 @@ determine_account_id(Request) ->
         IP -> determine_account_id_from_ip(Request, IP)
     end.
 
--spec determine_account_id_from_ip(j5_request:request(), ne_binary()) -> 'ok'.
+-spec determine_account_id_from_ip(j5_request:request(), kz_term:ne_binary()) -> 'ok'.
 determine_account_id_from_ip(Request, IP) ->
     case kapps_util:get_ccvs_by_ip(IP) of
         {'ok', AccountCCVs} ->
@@ -41,7 +41,7 @@ determine_account_id_from_ip(Request, IP) ->
             determine_account_id_from_number(Request)
     end.
 
--spec maybe_inbound_account_by_ip(j5_request:request(), ne_binary()) -> 'ok'.
+-spec maybe_inbound_account_by_ip(j5_request:request(), kz_term:ne_binary()) -> 'ok'.
 maybe_inbound_account_by_ip(Request, IP) ->
     AuthorizingType =
         kz_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
@@ -54,7 +54,7 @@ maybe_inbound_account_by_ip(Request, IP) ->
             maybe_account_limited(Request)
     end.
 
--spec inbound_account_by_ip(j5_request:request(), ne_binary()) -> 'ok'.
+-spec inbound_account_by_ip(j5_request:request(), kz_term:ne_binary()) -> 'ok'.
 inbound_account_by_ip(Request, IP) ->
     AccountId = j5_request:account_id(Request),
     lager:debug("source IP ~s belongs to account ~s, allowing"
@@ -88,7 +88,7 @@ determine_account_id_from_number(Request) ->
             'ok'
     end.
 
--spec maybe_local_resource(ne_binary(), knm_number_options:extra_options(), j5_request:request()) -> 'ok'.
+-spec maybe_local_resource(kz_term:ne_binary(), knm_number_options:extra_options(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
     case knm_number_options:is_local_number(Props) of
         'true' -> maybe_authz_local_resource(AccountId, Request);
@@ -98,7 +98,7 @@ maybe_local_resource(AccountId, Props, Request) ->
              )
     end.
 
--spec maybe_authz_local_resource(ne_binary(), j5_request:request()) -> 'ok'.
+-spec maybe_authz_local_resource(kz_term:ne_binary(), j5_request:request()) -> 'ok'.
 maybe_authz_local_resource(AccountId, Request) ->
     case should_authz_local(Request) of
         'false' -> allow_local_resource(AccountId, Request);
@@ -109,7 +109,7 @@ maybe_authz_local_resource(AccountId, Request) ->
              )
     end.
 
--spec allow_local_resource(ne_binary(), j5_request:request()) -> 'ok'.
+-spec allow_local_resource(kz_term:ne_binary(), j5_request:request()) -> 'ok'.
 allow_local_resource(AccountId, Request) ->
     Number = j5_request:number(Request),
     lager:debug("number ~s is a local number for account ~s, allowing"
@@ -172,7 +172,7 @@ maybe_reseller_limited(Request) ->
             check_reseller_limits(Request, ResellerId)
     end.
 
--spec check_reseller_limits(j5_request:request(), ne_binary()) -> 'ok'.
+-spec check_reseller_limits(j5_request:request(), kz_term:ne_binary()) -> 'ok'.
 check_reseller_limits(Request, ResellerId) ->
     Limits = j5_limits:get(ResellerId),
     R = maybe_authorize(Request, Limits),
@@ -213,7 +213,7 @@ maybe_authorize_exception(Request, Limits) ->
         _Else -> maybe_hard_limit(Request, Limits)
     end.
 
--spec is_authorizing_mobile(api_ne_binary()) -> boolean().
+-spec is_authorizing_mobile(kz_term:api_ne_binary()) -> boolean().
 is_authorizing_mobile(<<"mobile">>) -> 'true';
 is_authorizing_mobile(_) -> 'false'.
 
@@ -279,7 +279,7 @@ maybe_inbound_soft_limit(Request, Limits) ->
                                   ,<<"mobile">>
                                   ]).
 
--spec maybe_get_outbound_flags(api_binary(), api_binary(), ne_binary()) -> api_binary().
+-spec maybe_get_outbound_flags(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 maybe_get_outbound_flags('undefined', _AuthId, _AccountDb) -> 'undefined';
 maybe_get_outbound_flags(_AuthType, 'undefined', _AccountDb) -> 'undefined';
 maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
@@ -290,7 +290,7 @@ maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
         _ -> 'undefined'
     end.
 
--spec get_outbound_flags(kz_json:object()) -> api_binary().
+-spec get_outbound_flags(kz_json:object()) -> kz_term:api_binary().
 get_outbound_flags(Endpoint) ->
 %%% TODO: without a kapps_call we can not support dynamic
 %%%     flags yet
@@ -338,7 +338,7 @@ send_response(Request) ->
     end.
 
 %% @private
--spec trunk_usage(ne_binary()) -> ne_binary().
+-spec trunk_usage(kz_term:ne_binary()) -> kz_term:ne_binary().
 trunk_usage(Id) ->
     Limits = j5_limits:get(Id),
     <<

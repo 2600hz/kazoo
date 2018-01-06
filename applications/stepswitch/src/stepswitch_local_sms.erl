@@ -32,7 +32,7 @@ local_message_handling(Props, OffnetReq) ->
             send_route_win(FetchId, CallId, JObjResp)
     end.
 
--spec sms_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
+-spec sms_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
 sms_error(JObj, OffnetReq) ->
     lager:debug("error during outbound request: ~s"
                ,[kz_json:encode(kapi_offnet_resource:req_to_jobj(OffnetReq))]
@@ -46,7 +46,7 @@ sms_error(JObj, OffnetReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec sms_success(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
+-spec sms_success(kz_json:object(), kapi_offnet_resource:req()) -> kz_term:proplist().
 sms_success(JObj, OffnetReq) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
@@ -57,11 +57,11 @@ sms_success(JObj, OffnetReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec send_sms_response(kz_json:object() | kz_proplist(), ne_binary()) -> 'ok'.
+-spec send_sms_response(kz_json:object() | kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 send_sms_response(JObj, ServerID) ->
     kz_amqp_worker:cast(JObj, fun(A) -> kapi_offnet_resource:publish_resp(ServerID, A) end).
 
--spec send_route_win(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec send_route_win(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_route_win(_FetchId, CallId, JObj) ->
     ServerQ = kz_api:server_id(JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
@@ -74,7 +74,7 @@ send_route_win(_FetchId, CallId, JObj) ->
     lager:debug("sending route_win to ~s", [ServerQ]),
     kz_amqp_worker:cast(Win, fun(Payload)-> kapi_route:publish_win(ServerQ, Payload) end).
 
--spec delivery_from_req(kapi_offnet_resource:req(), binary(), api_binary(), api_boolean()) ->
+-spec delivery_from_req(kapi_offnet_resource:req(), binary(), kz_term:api_binary(), kz_term:api_boolean()) ->
                                kz_json:object().
 delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
     OffnetJObj = kapi_offnet_resource:req_to_jobj(OffnetReq),
@@ -96,7 +96,7 @@ delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
                       ,kz_json:delete_keys(Keys, OffnetJObj)
      ).
 
--spec request_caller_id(kapi_offnet_resource:req()) -> {ne_binary(), ne_binary()}.
+-spec request_caller_id(kapi_offnet_resource:req()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 request_caller_id(OffnetReq) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
     {kapi_offnet_resource:outbound_caller_id_number(OffnetReq
@@ -107,7 +107,7 @@ request_caller_id(OffnetReq) ->
                                                  )
     }.
 
--spec route_req(ne_binary(), ne_binary(), knm_number_options:extra_options(), kapi_offnet_resource:req()) -> kz_proplist().
+-spec route_req(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:extra_options(), kapi_offnet_resource:req()) -> kz_term:proplist().
 route_req(CallId, FetchId, Props, OffnetReq) ->
     TargetAccountId = knm_number_options:account_id(Props),
     TargetAccountRealm = kz_account:fetch_realm(TargetAccountId),

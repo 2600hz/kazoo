@@ -70,7 +70,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj)
     end.
 
--spec build_macro_data(kz_json:object()) -> kz_proplist().
+-spec build_macro_data(kz_json:object()) -> kz_term:proplist().
 build_macro_data(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     [{<<"system">>, teletype_util:system_params()}

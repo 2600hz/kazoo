@@ -15,7 +15,7 @@
 -export([start/0]).
 
 
--spec start() -> {'ok', atoms()}.
+-spec start() -> {'ok', kz_term:atoms()}.
 start() ->
     {'ok', _Apps} = application:ensure_all_started(?APP).
 
@@ -23,7 +23,7 @@ start() ->
 
 %% @public
 %% @doc Implement the application start behaviour
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     kazoo_apps_sup:start_link().
 

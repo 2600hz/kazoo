@@ -52,10 +52,10 @@
                           ,<<"update_url">>
                           ]).
 
--type fax_field_name() :: ne_binary().
--type fax_file_name() :: ne_binary().
+-type fax_field_name() :: kz_term:ne_binary().
+-type fax_file_name() :: kz_term:ne_binary().
 -type fax_file_content() :: binary() | iolist().
--type fax_content_type() :: ne_binary().
+-type fax_content_type() :: kz_term:ne_binary().
 
 -type fax_file() :: {fax_field_name(), fax_file_name(), fax_file_content(), fax_content_type()}.
 -type fax_files() :: [fax_file()].
@@ -260,7 +260,7 @@ create_faxbox(Context) ->
     OnSuccess = fun(C) -> on_faxbox_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"faxbox">>, Context, OnSuccess).
 
--spec delete_faxbox(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec delete_faxbox(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 delete_faxbox(Id, Context) ->
     read(Id, Context).
 
@@ -270,7 +270,7 @@ delete_faxbox(Id, Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Ctx1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())),
     case cb_context:doc(Ctx1) of
@@ -283,7 +283,7 @@ leak_private_fields(JObj) ->
     J = kz_json:set_value(<<"id">>, kz_doc:id(JObj), JObj),
     lists:foldl(fun leak_private_field/2, J, ?LEAKED_FIELDS).
 
--spec leak_private_field(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec leak_private_field(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 leak_private_field(<<"pvt_", K1/binary>> = K, Acc) ->
     case kz_json:get_value(K, Acc) of
         'undefined' -> Acc;
@@ -291,7 +291,7 @@ leak_private_field(<<"pvt_", K1/binary>> = K, Acc) ->
     end;
 leak_private_field(_K, Acc) -> Acc.
 
--spec leak_private_field_value(ne_binary(), ne_binary(), kz_json:json_term(), kz_json:object()) ->
+-spec leak_private_field_value(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
                                       kz_json:object().
 leak_private_field_value(?CLOUD_CLAIM_URL_FIELD, K1, V, Acc) ->
     case kz_json:get_value(?CLOUD_STATE_FIELD, Acc) of
@@ -309,7 +309,7 @@ remove_private_fields(Context) ->
                        ),
     cb_context:set_req_data(Context, JObj1).
 
--spec remove_private_fields_fold(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec remove_private_fields_fold(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 remove_private_fields_fold(<<"pvt_", K1/binary>>, Acc) ->
     case kz_json:get_value(K1, Acc) of
         'undefined' -> Acc;
@@ -323,7 +323,7 @@ remove_private_fields_fold(<<"pvt_", K1/binary>>, Acc) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_faxbox(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update_faxbox(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_faxbox(Id, Context) ->
     OnSuccess = fun(C) -> on_faxbox_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"faxbox">>, Context, OnSuccess).
@@ -334,7 +334,7 @@ update_faxbox(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_faxbox_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_faxbox_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_faxbox_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_json:set_values([{<<"pvt_type">>, kzd_fax_box:type()}
@@ -350,7 +350,7 @@ on_faxbox_successful_validation('undefined', Context) ->
 on_faxbox_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())).
 
--spec generate_email_address(cb_context:context()) -> ne_binary().
+-spec generate_email_address(cb_context:context()) -> kz_term:ne_binary().
 generate_email_address(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
     Domain = kapps_account_config:get_global(ResellerId, <<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
@@ -377,7 +377,7 @@ faxbox_listing(Context) ->
 normalize_view_results(JObj, Acc) ->
     [leak_private_fields(kz_json:get_value(<<"doc">>, JObj)) | Acc].
 
--spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
+-spec is_faxbox_email_global_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Email)}],
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
@@ -388,7 +388,7 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
     end.
 
 -spec maybe_reregister_cloud_printer(cb_context:context()) -> cb_context:context().
--spec maybe_reregister_cloud_printer(api_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_reregister_cloud_printer(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_reregister_cloud_printer(Context) ->
     CurrentState = kz_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Context)),
     Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
@@ -427,7 +427,7 @@ maybe_register_cloud_printer(Context, JObj) ->
         _PrinterId -> Context
     end.
 
--spec register_cloud_printer(cb_context:context(), ne_binary()) -> kz_proplist().
+-spec register_cloud_printer(cb_context:context(), kz_term:ne_binary()) -> kz_term:proplist().
 register_cloud_printer(Context, FaxboxId) ->
     ResellerId =  cb_context:reseller_id(Context),
     Boundary = <<"------", (kz_binary:rand_hex(16))/binary>>,
@@ -455,7 +455,7 @@ register_cloud_printer(Context, FaxboxId) ->
             []
     end.
 
--spec get_cloud_registered_properties(kz_json:object()) -> kz_proplist().
+-spec get_cloud_registered_properties(kz_json:object()) -> kz_term:proplist().
 get_cloud_registered_properties(JObj) ->
     [PrinterDoc] = kz_json:get_value(<<"printers">>, JObj),
     [{<<"pvt_cloud_printer_id">>, kz_doc:id(PrinterDoc)}
@@ -469,7 +469,7 @@ get_cloud_registered_properties(JObj) ->
     ,{<<"pvt_cloud_oauth_scope">>, kz_json:get_value(<<"oauth_scope">>, JObj)}
     ].
 
--spec register_body(ne_binary(), ne_binary(), ne_binary()) -> iolist().
+-spec register_body(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> iolist().
 register_body(ResellerId, FaxboxId, Boundary) ->
     {'ok', DefaultFields} = file:consult(
                               [filename:join(
@@ -501,14 +501,14 @@ register_body(ResellerId, FaxboxId, Boundary) ->
                              ,Files
                              ).
 
--spec format_multipart_formdata(ne_binary(), kz_proplist(), fax_files()) -> iolist().
+-spec format_multipart_formdata(kz_term:ne_binary(), kz_term:proplist(), fax_files()) -> iolist().
 format_multipart_formdata(Boundary, Fields, Files) ->
     EndingParts = [<<"--", Boundary/binary, "--">>, <<"">>],
     FileParts = build_file_parts(Boundary, Files, EndingParts),
     FieldParts = build_field_parts(Boundary, Fields, FileParts),
     lists:foldr(fun join_formdata_fold/2, [], FieldParts).
 
--spec build_field_parts(ne_binary(), kz_proplist(), iolist()) -> iolist().
+-spec build_field_parts(kz_term:ne_binary(), kz_term:proplist(), iolist()) -> iolist().
 build_field_parts(Boundary, Fields, Acc0) ->
     lists:foldr(fun({FieldName, FieldContent}, Acc) ->
                         [<<"--", Boundary/binary>>
@@ -522,7 +522,7 @@ build_field_parts(Boundary, Fields, Acc0) ->
                ,Fields
                ).
 
--spec build_file_parts(ne_binary(), fax_files(), iolist()) -> iolist().
+-spec build_file_parts(kz_term:ne_binary(), fax_files(), iolist()) -> iolist().
 build_file_parts(Boundary, Files, Acc0) ->
     lists:foldr(fun({FieldName, FileName, FileContent, FileContentType}, Acc) ->
                         [<<"--", Boundary/binary>>
@@ -537,17 +537,17 @@ build_file_parts(Boundary, Files, Acc0) ->
                ,Files
                ).
 
--spec join_formdata_fold(ne_binary(), iolist()) -> iolist().
+-spec join_formdata_fold(kz_term:ne_binary(), iolist()) -> iolist().
 join_formdata_fold(Bin, Acc) ->
     string:join([binary_to_list(Bin), Acc], "\r\n").
 
--spec maybe_oauth_req(kz_json:object(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_oauth_req(kz_json:object(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_oauth_req(_Doc, 'undefined', Context) ->
     maybe_reregister_cloud_printer(Context);
 maybe_oauth_req(Doc, _, Context) ->
     oauth_req(Doc, kz_json:get_value(<<"pvt_cloud_refresh_token">>, Doc), Context).
 
--spec oauth_req(kz_json:object(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec oauth_req(kz_json:object(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 oauth_req(Doc, 'undefined', Context) ->
     cb_context:set_resp_data(Context, kz_doc:public_fields(leak_private_fields(Doc)));
 oauth_req(Doc, OAuthRefresh, Context) ->
@@ -572,7 +572,7 @@ faxbox_doc_save(Context) ->
         _ -> Ctx3
     end.
 
--spec faxbox_doc_delete(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec faxbox_doc_delete(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 faxbox_doc_delete(Context, Id) ->
     Ctx2 = crossbar_doc:delete(Context),
     _ = crossbar_doc:delete(

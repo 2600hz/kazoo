@@ -137,7 +137,7 @@ get_caller_groups(Groups, JObj, Call) ->
                         get_group_associations(Id, Groups, Set)
                 end, sets:new(), Ids).
 
--spec maybe_device_groups_intersect(ne_binary(), sets:set(), kz_json:objects(), kapps_call:call()) -> boolean().
+-spec maybe_device_groups_intersect(kz_term:ne_binary(), sets:set(), kz_json:objects(), kapps_call:call()) -> boolean().
 maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
     CalleeGroups = get_group_associations(CalleeId, Groups),
     case sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0 of
@@ -152,11 +152,11 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
             sets:size(sets:intersection(CallerGroups, UsersGroups)) =:= 0
     end.
 
--spec get_group_associations(ne_binary(), kz_json:objects()) -> sets:set().
+-spec get_group_associations(kz_term:ne_binary(), kz_json:objects()) -> sets:set().
 get_group_associations(Id, Groups) ->
     get_group_associations(Id, Groups, sets:new()).
 
--spec get_group_associations(ne_binary(), kz_json:objects(), sets:set()) -> sets:set().
+-spec get_group_associations(kz_term:ne_binary(), kz_json:objects(), sets:set()) -> sets:set().
 get_group_associations(Id, Groups, Set) ->
     lists:foldl(fun(Group, S) ->
                         case kz_json:get_value([<<"value">>, Id], Group) of
@@ -167,7 +167,7 @@ get_group_associations(Id, Groups, Set) ->
                         end
                 end, Set, Groups).
 
--spec get_callee_extension_info(kapps_call:call()) -> {ne_binary(), ne_binary()} | 'undefined'.
+-spec get_callee_extension_info(kapps_call:call()) -> {kz_term:ne_binary(), kz_term:ne_binary()} | 'undefined'.
 get_callee_extension_info(Call) ->
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     FirstModule = kz_json:get_value(<<"module">>, Flow),
@@ -235,7 +235,7 @@ update_ccvs(Call) ->
               ]),
     kapps_call:set_custom_channel_vars(Props, Call).
 
--spec get_incoming_security(kapps_call:call()) -> kz_proplist().
+-spec get_incoming_security(kapps_call:call()) -> kz_term:proplist().
 get_incoming_security(Call) ->
     case kz_endpoint:get(Call) of
         {'error', _R} -> [];

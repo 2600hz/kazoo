@@ -251,7 +251,7 @@ maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 validate(Context) ->
     validate_phone_numbers(Context, cb_context:req_verb(Context), cb_context:account_id(Context)).
 
--spec validate_phone_numbers(cb_context:context(), http_method(), api_binary()) ->
+-spec validate_phone_numbers(cb_context:context(), http_method(), kz_term:api_binary()) ->
                                     cb_context:context().
 validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     maybe_find_numbers(Context);
@@ -338,13 +338,13 @@ unclassified_number(Context, Number) ->
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ]).
 
--spec base_classified_number(cb_context:context(), ne_binary()) -> kz_proplist().
+-spec base_classified_number(cb_context:context(), kz_term:ne_binary()) -> kz_term:proplist().
 base_classified_number(_Context, Number) ->
     [{<<"number">>, Number}
     ,{<<"e164">>, knm_converters:normalize(Number)}
     ].
 
--spec classified_number(cb_context:context(), path_token(), api_binary()) -> cb_context:context().
+-spec classified_number(cb_context:context(), path_token(), kz_term:api_binary()) -> cb_context:context().
 classified_number(Context, Number, Classifier) ->
     ClassifierJObj = kz_json:get_value(Classifier, knm_converters:available_classifiers()),
     BaseData = base_classified_number(Context, Number),
@@ -481,7 +481,7 @@ delete(Context, Number) ->
 %% Lists number on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{DID}}
 %% @end
 %%--------------------------------------------------------------------
--spec summary(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 summary(Context, Number) ->
     case knm_number:get(Number, [{auth_by, cb_context:auth_account_id(Context)}]) of
         {'ok', KNMNumber} ->
@@ -490,7 +490,7 @@ summary(Context, Number) ->
             maybe_find_port_number(Context, Number, should_include_ports(Context))
     end.
 
--spec maybe_find_port_number(cb_context:context(), ne_binary(), boolean()) ->
+-spec maybe_find_port_number(cb_context:context(), kz_term:ne_binary(), boolean()) ->
                                     cb_context:context().
 maybe_find_port_number(Context, _Number, 'false') ->
     reply_number_not_found(Context);
@@ -517,7 +517,7 @@ port_number_summary(PhoneNumber, Context, 'true') ->
 port_number_summary(_PhoneNumber, Context, 'false') ->
     reply_number_not_found(Context).
 
--spec normalize_port_number(kz_json:object(), ne_binary(), ne_binary()) ->
+-spec normalize_port_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    knm_phone_number_return().
 normalize_port_number(JObj, Num, AuthBy) ->
     knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{auth_by, AuthBy}])
@@ -642,8 +642,8 @@ maybe_find_numbers(Context) ->
             find_numbers(Context, AccountId, ResellerId)
     end.
 
--spec pick_account_and_reseller_id(cb_context:context()) -> {ok, ne_binary(), api_ne_binary()} |
-                                                            {error, ne_binary()}.
+-spec pick_account_and_reseller_id(cb_context:context()) -> {ok, kz_term:ne_binary(), kz_term:api_ne_binary()} |
+                                                            {error, kz_term:ne_binary()}.
 pick_account_and_reseller_id(Context) ->
     case kz_json:get_value(<<"reseller_id">>, cb_context:query_string(Context)) of
         'undefined' ->
@@ -658,7 +658,7 @@ pick_account_and_reseller_id(Context) ->
             maybe_reseller_id_lookup(ReqResellerId)
     end.
 
--spec find_numbers(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec find_numbers(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 find_numbers(Context, AccountId, ResellerId) ->
     QS = cb_context:query_string(Context),
     Country = kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY),
@@ -692,8 +692,8 @@ find_numbers(Context, AccountId, ResellerId) ->
     Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
 
--spec maybe_reseller_id_lookup(ne_binary()) -> {ok, ne_binary(), ne_binary()} |
-                                               {error, ne_binary()}.
+-spec maybe_reseller_id_lookup(kz_term:ne_binary()) -> {ok, kz_term:ne_binary(), kz_term:ne_binary()} |
+                                                       {error, kz_term:ne_binary()}.
 maybe_reseller_id_lookup(ReqResellerId) ->
     try
         ?UNAUTHORIZED_NUMBERS_LOOKUP(ReqResellerId)
@@ -768,8 +768,8 @@ validate_collection_request(Context, _E) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_prefix(ne_binary()) -> {'ok', kz_json:object()} |
-                                 {'error', any()}.
+-spec get_prefix(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                         {'error', any()}.
 get_prefix(City) ->
     case kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, ?KEY_PHONEBOOK_FREE_URL) of
         'undefined' ->
@@ -816,7 +816,7 @@ maybe_update_locality(Context) ->
     update_locality(Context, ToUpdate).
 
 %% @private
--spec update_locality(cb_context:context(), ne_binaries()) ->
+-spec update_locality(cb_context:context(), kz_term:ne_binaries()) ->
                              cb_context:context().
 update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
@@ -834,7 +834,7 @@ update_context_locality(Context, Localities) ->
     JObj = kz_json:foldl(fun update_context_locality_fold/3, cb_context:resp_data(Context), Localities),
     cb_context:set_resp_data(Context, JObj).
 
--spec update_context_locality_fold(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec update_context_locality_fold(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
 update_context_locality_fold(Key, Value, JObj) ->
     case kz_json:get_value(<<"status">>, Value) of
         <<"success">> ->
@@ -861,7 +861,7 @@ update_phone_numbers_locality(Context, Localities) ->
     end.
 
 %% @private
--spec update_phone_numbers_locality_fold(ne_binary(), kz_json:object(), kz_json:object(), cb_context:context()) ->
+-spec update_phone_numbers_locality_fold(kz_term:ne_binary(), kz_json:object(), kz_json:object(), cb_context:context()) ->
                                                 kz_json:object().
 update_phone_numbers_locality_fold(Key, Value, JObj, Context) ->
     case kz_json:get_value(<<"status">>, Value) of
@@ -881,7 +881,7 @@ update_phone_numbers_locality_fold(Key, Value, JObj, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec identify(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec identify(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 identify(Context, Num) ->
     case knm_number:lookup_account(Num) of
         {'ok', AccountId, ExtraOptions} ->
@@ -1015,7 +1015,7 @@ reply_number_not_found(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collection_process(cb_context:context(), ne_binary() | http_method()) -> knm_numbers:ret().
+-spec collection_process(cb_context:context(), kz_term:ne_binary() | http_method()) -> knm_numbers:ret().
 collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     Numbers = kz_json:get_value(<<"numbers">>, ReqData),
@@ -1023,7 +1023,7 @@ collection_process(Context, Action) ->
     numbers_action(Context1, Action, Numbers).
 
 %% @private
--spec numbers_action(cb_context:context(), ne_binary() | http_method(), ne_binaries()) -> knm_numbers:ret().
+-spec numbers_action(cb_context:context(), kz_term:ne_binary() | http_method(), kz_term:ne_binaries()) -> knm_numbers:ret().
 numbers_action(Context, ?ACTIVATE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
@@ -1071,7 +1071,7 @@ pick_release_or_delete(Context, Options) ->
     Pick.
 
 %% @private
--spec maybe_ask_for_state(api_ne_binary()) -> [{state, ne_binary()}].
+-spec maybe_ask_for_state(kz_term:api_ne_binary()) -> [{state, kz_term:ne_binary()}].
 maybe_ask_for_state(undefined) -> [];
 maybe_ask_for_state(StateAskedFor) -> [{state, StateAskedFor}].
 

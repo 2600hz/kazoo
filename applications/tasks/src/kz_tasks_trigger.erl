@@ -40,7 +40,7 @@
 %%% API
 %%%===================================================================
 
--spec status() -> kz_proplist().
+-spec status() -> kz_term:proplist().
 status() ->
     gen_server:call(?SERVER, 'status').
 
@@ -49,7 +49,7 @@ status() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     case gen_server:start_link(?SERVER, ?MODULE, [], []) of
         {'error', {'already_started', Pid}} ->
@@ -82,7 +82,7 @@ init([]) ->
 %% Handling call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('status', _From, #state{minute_ref = Minute
                                    ,hour_ref = Hour
                                    ,day_ref = Day
@@ -105,7 +105,7 @@ handle_call(_Request, _From, State) ->
 %% Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'cleanup_finished', Ref}, #state{browse_dbs_ref = Ref}=State) ->
     lager:debug("cleanup finished for ~p, starting timer", [Ref]),
     {'noreply', State#state{browse_dbs_ref = browse_dbs_timer()}, 'hibernate'};
@@ -120,7 +120,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'EXIT', _Pid, normal}, State) ->
     lager:debug("job ~p terminated normally", [_Pid]),
     {noreply, State};
@@ -195,7 +195,7 @@ browse_dbs_timer() ->
     erlang:start_timer(Expiry * ?MILLISECONDS_IN_SECOND, self(), ok).
 
 
--spec spawn_jobs(reference(), ne_binary()) -> ok.
+-spec spawn_jobs(reference(), kz_term:ne_binary()) -> ok.
 spawn_jobs(Ref, Binding) ->
     CallId = make_callid(Ref, Binding),
     _Pid = erlang:spawn_link(fun () ->
@@ -204,7 +204,7 @@ spawn_jobs(Ref, Binding) ->
                              end),
     lager:debug("binding ~s triggered ~p via ~p", [Binding, _Pid, Ref]).
 
--spec make_callid(reference(), ne_binary()) -> ne_binary().
+-spec make_callid(reference(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_callid(Ref, Binding) ->
     Key = lists:last(binary:split(Binding, <<$.>>, [global])),
     Id = ref_to_id(Ref),
@@ -229,12 +229,12 @@ browse_dbs_for_triggers(Ref) ->
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 
--spec cleanup_pass(ne_binary()) -> boolean().
+-spec cleanup_pass(kz_term:ne_binary()) -> boolean().
 cleanup_pass(Db) ->
     _ = tasks_bindings:map(db_to_trigger(Db), Db),
     erlang:garbage_collect(self()).
 
--spec db_to_trigger(ne_binary()) -> ne_binary().
+-spec db_to_trigger(kz_term:ne_binary()) -> kz_term:ne_binary().
 db_to_trigger(Db) ->
     Classifiers = [{fun kapps_util:is_account_db/1, ?TRIGGER_ACCOUNT}
                   ,{fun kapps_util:is_account_mod/1, ?TRIGGER_ACCOUNT_MOD}
@@ -249,7 +249,7 @@ db_to_trigger(Db, [{Classifier, Trigger} | Classifiers]) ->
         'false' -> db_to_trigger(Db, Classifiers)
     end.
 
--spec is_system_db(ne_binary()) -> boolean().
+-spec is_system_db(kz_term:ne_binary()) -> boolean().
 is_system_db(Db) ->
     lists:member(Db, ?KZ_SYSTEM_DBS).
 

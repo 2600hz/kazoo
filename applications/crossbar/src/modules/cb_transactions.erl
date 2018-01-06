@@ -347,7 +347,7 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_credit(cb_context:context()) -> cb_context:context().
--spec validate_credit(cb_context:context(), api_float()) -> cb_context:context().
+-spec validate_credit(cb_context:context(), kz_term:api_float()) -> cb_context:context().
 validate_credit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
@@ -374,7 +374,7 @@ validate_credit(Context, _) ->
     cb_context:set_resp_status(Context, 'success').
 
 -spec validate_debit(cb_context:context()) -> cb_context:context().
--spec validate_debit(cb_context:context(), api_float()) -> cb_context:context().
+-spec validate_debit(cb_context:context(), kz_term:api_float()) -> cb_context:context().
 validate_debit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
 
@@ -423,7 +423,7 @@ validate_debit(Context, Amount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
+-spec fetch_transactions(cb_context:context(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:api_binary()) ->
                                 cb_context:context().
 
 fetch_transactions(Context, From, To, 'undefined') ->
@@ -466,7 +466,7 @@ fetch_transactions(Context, From, To, Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_monthly_recurring(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
+-spec fetch_monthly_recurring(cb_context:context(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:api_binary()) ->
                                      cb_context:context().
 fetch_monthly_recurring(Context, From, To, Reason) ->
     case kz_bookkeeper_braintree:transactions(cb_context:account_id(Context), From, To) of
@@ -550,7 +550,7 @@ correct_date_braintree_subscription(BSubscription) ->
            ],
     lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
 
--spec correct_date_braintree_subscription_fold(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec correct_date_braintree_subscription_fold(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 correct_date_braintree_subscription_fold(Key, BSub) ->
     case kz_json:get_value(Key, BSub, 'null') of
         'null' -> BSub;

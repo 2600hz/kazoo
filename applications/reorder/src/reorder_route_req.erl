@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     case kz_term:is_empty(AccountId) of
@@ -23,7 +23,7 @@ handle_req(JObj, Props) ->
             maybe_known_number(ControllerQ, JObj)
     end.
 
--spec maybe_known_number(ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_known_number(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_known_number(ControllerQ, JObj) ->
     Number = get_dest_number(JObj),
     case knm_number:lookup_account(Number) of
@@ -34,7 +34,7 @@ maybe_known_number(ControllerQ, JObj) ->
             choose_response(ControllerQ, JObj, Reconcilable, <<"unknown_number">>)
     end.
 
--spec choose_response(ne_binary(), kz_json:object(), boolean(), ne_binary()) -> 'ok'.
+-spec choose_response(kz_term:ne_binary(), kz_json:object(), boolean(), kz_term:ne_binary()) -> 'ok'.
 choose_response(ControllerQ, JObj, Reconcilable, Type) ->
     case kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"action">>], <<"respond">>) of
         <<"respond">> -> send_response(JObj, ControllerQ, Reconcilable, Type);
@@ -42,7 +42,7 @@ choose_response(ControllerQ, JObj, Reconcilable, Type) ->
         <<"bridge">> -> maybe_send_bridge(JObj, ControllerQ, Reconcilable, Type)
     end.
 
--spec send_response(kz_json:object(), ne_binary(), boolean(), ne_binary()) -> 'ok'.
+-spec send_response(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
 send_response(JObj, ControllerQ, Reconcilable, <<"unknown_number">> = Type) ->
     Code = kapps_config:get_binary(?APP_NAME, [Type, <<"response_code">>], <<"604">>),
     Message = kapps_config:get_binary(?APP_NAME, [Type, <<"response_message">>], <<"Nope Nope Nope">>),
@@ -52,7 +52,7 @@ send_response(JObj, ControllerQ, Reconcilable, <<"known_number">> = Type) ->
     Message = kapps_config:get_binary(?APP_NAME, [Type, <<"response_message">>], <<"PICNIC">>),
     send_response(JObj, ControllerQ, Reconcilable, Code, Message).
 
--spec send_response(kz_json:object(), ne_binary(), boolean(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_response(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 send_response(JObj, ControllerQ, Reconcilable, Code, Message) ->
     lager:debug("sending response: ~s ~s", [Code, Message]),
     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
@@ -64,14 +64,14 @@ send_response(JObj, ControllerQ, Reconcilable, Code, Message) ->
            ],
     kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec maybe_send_transfer(kz_json:object(), ne_binary(), boolean(), ne_binary()) -> 'ok'.
+-spec maybe_send_transfer(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
 maybe_send_transfer(JObj, ControllerQ, Reconcilable, Type) ->
     case kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"transfer_target">>]) of
         'undefined' -> send_response(JObj, ControllerQ, Reconcilable, Type);
         Number -> send_transfer(JObj, ControllerQ, Reconcilable, Number)
     end.
 
--spec send_transfer(kz_json:object(), ne_binary(), boolean(), ne_binary()) -> 'ok'.
+-spec send_transfer(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
 send_transfer(JObj, ControllerQ, Reconcilable, Number) ->
     lager:debug("sending transfer to ~s", [Number]),
     Route = kz_json:from_list([{<<"Invite-Format">>, <<"loopback">>}
@@ -86,7 +86,7 @@ send_transfer(JObj, ControllerQ, Reconcilable, Number) ->
            ],
     kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec maybe_send_bridge(kz_json:object(), ne_binary(), boolean(), ne_binary()) -> 'ok'.
+-spec maybe_send_bridge(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
 maybe_send_bridge(JObj, ControllerQ, Reconcilable, Type) ->
     AccountId = kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"bridge_account_id">>]),
     EndpointId = kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"bridge_endpoint_id">>]),
@@ -101,7 +101,7 @@ maybe_send_bridge(JObj, ControllerQ, Reconcilable, Type) ->
             send_bridge(JObj, ControllerQ, Reconcilable, Type, Endpoint)
     end.
 
--spec send_bridge(kz_json:object(), ne_binary(), boolean(), ne_binary(), kz_jobjs_return()) -> 'ok'.
+-spec send_bridge(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary(), kz_term:jobjs_return()) -> 'ok'.
 send_bridge(JObj, ControllerQ, Reconcilable, _Type, {'ok', Routes}) ->
     lager:debug("sending bridge to endpoint", []),
     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
@@ -114,7 +114,7 @@ send_bridge(JObj, ControllerQ, Reconcilable, _Type, {'ok', Routes}) ->
 send_bridge(JObj, ControllerQ, Type, Reconcilable, _) ->
     send_response(JObj, ControllerQ, Type, Reconcilable).
 
--spec get_dest_number(kz_json:object()) -> ne_binary().
+-spec get_dest_number(kz_json:object()) -> kz_term:ne_binary().
 get_dest_number(JObj) ->
     {User, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     case kapps_config:get_is_true(?CONFIG_CAT, <<"assume_inbound_e164">>, false) of
@@ -128,7 +128,7 @@ get_dest_number(JObj) ->
             Number
     end.
 
--spec assume_e164(ne_binary()) -> ne_binary().
+-spec assume_e164(kz_term:ne_binary()) -> kz_term:ne_binary().
 assume_e164(<<$+, _/binary>> = Number) -> Number;
 assume_e164(Number) -> <<$+, Number/binary>>.
 

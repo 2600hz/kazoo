@@ -102,16 +102,16 @@
 response(JTerm, Context) ->
     create_response('success', 'undefined', 'undefined', JTerm, Context).
 
--spec response_202(api_ne_binary(), cb_context:context()) ->
+-spec response_202(kz_term:api_ne_binary(), cb_context:context()) ->
                           cb_context:context().
--spec response_202(api_ne_binary(), kz_json:json_term(), cb_context:context()) ->
+-spec response_202(kz_term:api_ne_binary(), kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_202(Msg, Context) ->
     response_202(Msg, Msg, Context).
 response_202(Msg, JTerm, Context) ->
     create_response('success', Msg, 202, JTerm, Context).
 
--spec response_400(ne_binary(), kz_json:json_term(), cb_context:context()) ->
+-spec response_400(kz_term:ne_binary(), kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_400(Message, Data, Context) ->
     create_response('error', Message, 400, Data, Context).
@@ -132,7 +132,7 @@ response_402(Data, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), api_ne_binary(), cb_context:context()) ->
+-spec response(fails(), kz_term:api_ne_binary(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Context) ->
     create_response('error', Msg, 500, kz_json:new(), Context);
@@ -146,7 +146,7 @@ response('fatal', Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), api_ne_binary(), api_integer(), cb_context:context()) ->
+-spec response(fails(), kz_term:api_ne_binary(), kz_term:api_integer(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Code, Context) ->
     create_response('error', Msg, Code, kz_json:new(), Context);
@@ -160,7 +160,7 @@ response('fatal', Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), api_ne_binary(), api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(fails(), kz_term:api_ne_binary(), kz_term:api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
 response('error', Msg, Code, JTerm, Context) ->
     create_response('error', Msg, Code, JTerm, Context);
 response('fatal', Msg, Code, JTerm, Context) ->
@@ -174,7 +174,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response(crossbar_status(), api_ne_binary(), api_integer()
+-spec create_response(crossbar_status(), kz_term:api_ne_binary(), kz_term:api_integer()
                      ,kz_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->
@@ -218,9 +218,9 @@ response_faulty_request(Context) ->
 response_deprecated(Context) ->
     create_response('error', <<"deprecated">>, 410, kz_json:new(), Context).
 
--spec response_deprecated_redirect(cb_context:context(), ne_binary()) ->
+-spec response_deprecated_redirect(cb_context:context(), kz_term:ne_binary()) ->
                                           cb_context:context().
--spec response_deprecated_redirect(cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec response_deprecated_redirect(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                           cb_context:context().
 response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, kz_json:new()).
@@ -229,12 +229,12 @@ response_deprecated_redirect(Context, RedirectUrl, JObj) ->
                    ,cb_context:add_resp_header(Context, <<"Location">>, RedirectUrl)
                    ).
 
--spec response_redirect(cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec response_redirect(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                cb_context:context().
 response_redirect(Context, RedirectUrl, JObj) ->
     response_redirect(Context, RedirectUrl, JObj, 301).
 
--spec response_redirect(cb_context:context(), ne_binary(), kz_json:object(), pos_integer()) ->
+-spec response_redirect(cb_context:context(), kz_term:ne_binary(), kz_json:object(), pos_integer()) ->
                                cb_context:context().
 response_redirect(Context, RedirectUrl, JObj, Redirect) ->
     create_response('error', <<"redirect">>, Redirect, JObj
@@ -249,7 +249,7 @@ response_redirect(Context, RedirectUrl, JObj, Redirect) ->
 %% a softer not found now.
 %% @end
 %%--------------------------------------------------------------------
--spec response_bad_identifier(atom() | ne_binary(), cb_context:context()) ->
+-spec response_bad_identifier(atom() | kz_term:ne_binary(), cb_context:context()) ->
                                      cb_context:context().
 response_bad_identifier(Id, Context) when is_atom(Id) ->
     response('error', <<"bad identifier">>, 404, [kz_term:to_binary(Id)], Context);
@@ -334,7 +334,7 @@ response_db_missing(Context) ->
 response_db_fatal(Context) ->
     response('fatal', <<"datastore fatal error">>, 503, Context).
 
--spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
+-spec flush_registrations(kz_term:ne_binary() | cb_context:context()) -> 'ok'.
 flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -343,7 +343,7 @@ flush_registrations(<<_/binary>> = Realm) ->
 flush_registrations(Context) ->
     flush_registrations(kz_account:fetch_realm(cb_context:account_id(Context))).
 
--spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
+-spec flush_registration(kz_term:api_binary(), kz_term:ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) ->
     lager:debug("did not flush registration: username is undefined");
 flush_registration(Username, <<_/binary>> = Realm) ->
@@ -378,7 +378,7 @@ flush_registration(Context) ->
     _ = lists:foldl(Fun, 'next', Routins),
     'ok'.
 
--spec maybe_flush_registration_on_password(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
+-spec maybe_flush_registration_on_password(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
     case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
         'true' -> 'next';
@@ -387,7 +387,7 @@ maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
             flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
--spec maybe_flush_registration_on_username(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
+-spec maybe_flush_registration_on_username(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
     OldUsername = kz_device:sip_username(OldDevice),
 
@@ -399,7 +399,7 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
             flush_registration(NewUsername, Realm)
     end.
 
--spec maybe_flush_registration_on_ownerid(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
+-spec maybe_flush_registration_on_ownerid(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
     OldOwnerId = kz_device:owner_id(OldDevice),
 
@@ -410,7 +410,7 @@ maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
             flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
--spec maybe_flush_registration_on_enabled(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
+-spec maybe_flush_registration_on_enabled(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
     OldEnabled = kz_device:enabled(OldDevice),
 
@@ -421,7 +421,7 @@ maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
             flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
--spec maybe_flush_registration_on_deleted(api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
+-spec maybe_flush_registration_on_deleted(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_deleted(Realm, _OldDevice, NewDevice) ->
     case kz_doc:is_soft_deleted(NewDevice)
         orelse kz_doc:is_deleted(NewDevice)
@@ -437,10 +437,10 @@ maybe_flush_registration_on_deleted(Realm, _OldDevice, NewDevice) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_account(ne_binary(), ne_binary()) ->
+-spec move_account(kz_term:ne_binary(), kz_term:ne_binary()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
--spec move_account(ne_binary(), kz_json:object(), ne_binary(), ne_binaries()) ->
+-spec move_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_account(?MATCH_ACCOUNT_RAW(AccountId), ToAccount=?NE_BINARY) ->
@@ -473,9 +473,9 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_move(ne_binary(), ne_binary()) ->
+-spec validate_move(kz_term:ne_binary(), kz_term:ne_binary()) ->
                            {'error', any()} |
-                           {'ok', kz_json:object(), ne_binaries()}.
+                           {'ok', kz_json:object(), kz_term:ne_binaries()}.
 validate_move(AccountId, ToAccount) ->
     case kz_account:fetch(AccountId) of
         {'error', _E}=Error -> Error;
@@ -492,13 +492,13 @@ validate_move(AccountId, ToAccount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_descendants(ne_binary(), ne_binaries(), ne_binary()) ->
+-spec move_descendants(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
                               {'ok', 'done'} |
                               {'error', any()}.
 move_descendants(?MATCH_ACCOUNT_RAW(AccountId), Tree, NewResellerId) ->
     update_descendants_tree(get_descendants(AccountId), Tree, NewResellerId, AccountId).
 
--spec update_descendants_tree(ne_binaries(), ne_binaries(), ne_binary(), ne_binary()) ->
+-spec update_descendants_tree(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      {'ok', 'done'} |
                                      {'error', any()}.
 update_descendants_tree([], _, _, _) -> {'ok', 'done'};
@@ -531,7 +531,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_service(ne_binary(), ne_binaries(), ne_binary(), api_boolean()) ->
+-spec move_service(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:api_boolean()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_service(AccountId, NewTree, NewResellerId, Dirty) ->
@@ -555,7 +555,7 @@ move_service(AccountId, NewTree, NewResellerId, Dirty) ->
 %% Return all descendants of the account id
 %% @end
 %%--------------------------------------------------------------------
--spec get_descendants(ne_binary()) -> ne_binaries().
+-spec get_descendants(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
     kapps_util:account_descendants(AccountId) -- [AccountId].
 
@@ -564,7 +564,7 @@ get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_tree(ne_binary()) -> ne_binaries().
+-spec get_tree(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_tree(<<_/binary>> = Account) ->
     case kz_account:fetch(Account) of
         {'ok', JObj} -> kz_account:tree(JObj);
@@ -595,7 +595,7 @@ replicate_account_definition(JObj) ->
 %% Flag all descendants of the account id as disabled
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(api_binary()) -> 'ok' | {'error', any()}.
+-spec disable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
 disable_account('undefined') -> 'ok';
 disable_account(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
@@ -616,7 +616,7 @@ disable_account(AccountId) ->
 %% Flag all descendants of the account id as enabled
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account(api_binary()) -> 'ok' | {'error', any()}.
+-spec enable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
 enable_account('undefined') -> ok;
 enable_account(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
@@ -639,9 +639,9 @@ enable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec response_auth(kz_json:object()) ->
                            kz_json:object().
--spec response_auth(kz_json:object(), api_binary()) ->
+-spec response_auth(kz_json:object(), kz_term:api_binary()) ->
                            kz_json:object().
--spec response_auth(kz_json:object(), api_binary(), api_binary()) ->
+-spec response_auth(kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) ->
                            kz_json:object().
 response_auth(JObj) ->
     AccountId = kz_json:get_first_defined([<<"account_id">>, <<"pvt_account_id">>], JObj),
@@ -655,7 +655,7 @@ response_auth(JObj, AccountId) ->
 response_auth(JObj, AccountId, UserId) ->
     populate_resp(JObj, AccountId, UserId).
 
--spec populate_resp(kz_json:object(), api_binary(), api_binary()) -> kz_json:object().
+-spec populate_resp(kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) -> kz_json:object().
 populate_resp(JObj, 'undefined', _UserId) -> JObj;
 populate_resp(JObj, AccountId, UserId) ->
     Language = get_language(AccountId, UserId),
@@ -673,12 +673,12 @@ populate_resp(JObj, AccountId, UserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_apps(ne_binary(), ne_binary()) -> kz_json:objects().
+-spec load_apps(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 load_apps(AccountId, UserId) ->
     Language = get_language(AccountId, UserId),
     load_apps(AccountId, UserId, Language).
 
--spec load_apps(ne_binary(), ne_binary(), ne_binary()) -> kz_json:objects().
+-spec load_apps(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 load_apps(AccountId, UserId, Language) ->
     AppJObjs = cb_apps_util:authorized_apps(AccountId, UserId),
     [format_app(Language, AppJObj)
@@ -690,7 +690,7 @@ load_apps(AccountId, UserId, Language) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_app(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec format_app(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 format_app(Lang, AppJObj) ->
     I18N = kzd_app:i18n(AppJObj),
     DefaultLabel = kz_json:get_value([?DEFAULT_LANGUAGE, <<"label">>], I18N),
@@ -708,7 +708,7 @@ format_app(Lang, AppJObj) ->
 %% Update all descendants of the account id pvt_enabled flag with State
 %% @end
 %%--------------------------------------------------------------------
--spec change_pvt_enabled(boolean(), api_ne_binary()) -> ok | {error, any()}.
+-spec change_pvt_enabled(boolean(), kz_term:api_ne_binary()) -> ok | {error, any()}.
 change_pvt_enabled(_, 'undefined') -> 'ok';
 change_pvt_enabled(State, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -738,8 +738,8 @@ change_pvt_enabled(State, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_language(ne_binary()) -> ne_binary().
--spec get_language(ne_binary(), api_binary()) -> ne_binary().
+-spec get_language(kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec get_language(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_language(AccountId) ->
     case get_account_lang(AccountId) of
         {'ok', Lang} -> Lang;
@@ -761,7 +761,7 @@ get_language(AccountId, UserId) ->
             end
     end.
 
--spec get_user_lang(ne_binary(), ne_binary()) -> 'error' | {'ok', ne_binary()}.
+-spec get_user_lang(kz_term:ne_binary(), kz_term:ne_binary()) -> 'error' | {'ok', kz_term:ne_binary()}.
 get_user_lang(AccountId, UserId) ->
     case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserJObj} ->
@@ -774,7 +774,7 @@ get_user_lang(AccountId, UserId) ->
             'error'
     end.
 
--spec get_account_lang(ne_binary()) -> 'error' | {'ok', ne_binary()}.
+-spec get_account_lang(kz_term:ne_binary()) -> 'error' | {'ok', kz_term:ne_binary()}.
 get_account_lang(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} ->
@@ -787,14 +787,14 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(api_ne_binary(), api_ne_binary()) -> ne_binary().
+-spec get_user_timezone(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_user_timezone(AccountId, UserId) ->
     case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
         {'error', _E} -> kz_account:timezone(AccountId)
     end.
 
--spec apply_response_map(cb_context:context(), kz_proplist()) -> cb_context:context().
+-spec apply_response_map(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 apply_response_map(Context, Map) ->
     JObj = cb_context:doc(Context),
     RespData = lists:foldl(fun(MapItem, J) ->
@@ -815,7 +815,7 @@ apply_response_map_item({Key, Fun}, J, JObj) when is_function(Fun, 2) ->
 apply_response_map_item({Key, ExistingKey}, J, JObj) ->
     kz_json:set_value(Key, kz_json:get_value(ExistingKey, JObj), J).
 
--spec get_path(cowboy_req:req() | ne_binary(), ne_binary()) -> ne_binary().
+-spec get_path(cowboy_req:req() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_path(<<_/binary>> = RawPath, Relative) ->
     kz_util:resolve_uri(RawPath, Relative);
 get_path(Req, Relative) ->
@@ -880,8 +880,8 @@ create_auth_token(Context, AuthModule, JObj) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
--spec get_token_restrictions(atom(), ne_binary(), ne_binary()) ->
-                                    api_object().
+-spec get_token_restrictions(atom(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                    kz_term:api_object().
 get_token_restrictions(AuthModule, AccountId, OwnerId) ->
     case kz_util:is_system_admin(AccountId) of
         'true' -> 'undefined';
@@ -895,7 +895,7 @@ get_token_restrictions(AuthModule, AccountId, OwnerId) ->
             get_priv_level_restrictions(Restrictions, PrivLevel)
     end.
 
--spec get_priv_level(ne_binary(), ne_binary()) -> api_binary().
+-spec get_priv_level(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 %% for api_auth tokens we force "admin" priv_level
 get_priv_level(_AccountId, 'undefined') ->
     cb_token_restrictions:default_priv_level();
@@ -906,14 +906,14 @@ get_priv_level(AccountId, OwnerId) ->
         {'error', _} -> cb_token_restrictions:default_priv_level()
     end.
 
--spec get_system_token_restrictions(atom()) -> api_object().
+-spec get_system_token_restrictions(atom()) -> kz_term:api_object().
 get_system_token_restrictions(AuthModule) ->
     case cb_token_restrictions:method_restrictions(AuthModule) of
         'undefined' -> cb_token_restrictions:default_method_restrictions();
         MethodRestrictions -> MethodRestrictions
     end.
 
--spec get_account_token_restrictions(ne_binary(), atom()) -> api_object().
+-spec get_account_token_restrictions(kz_term:ne_binary(), atom()) -> kz_term:api_object().
 get_account_token_restrictions(AccountId, AuthModule) ->
     AccountDB = kz_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
@@ -926,7 +926,7 @@ get_account_token_restrictions(AccountId, AuthModule) ->
                                      )
     end.
 
--spec get_priv_level_restrictions(api_object(), ne_binary()) -> api_object().
+-spec get_priv_level_restrictions(kz_term:api_object(), kz_term:ne_binary()) -> kz_term:api_object().
 get_priv_level_restrictions('undefined', _PrivLevel) ->
     'undefined';
 get_priv_level_restrictions(Restrictions, PrivLevel) ->
@@ -943,7 +943,7 @@ get_priv_level_restrictions(Restrictions, PrivLevel) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec descendants_count() -> 'ok'.
--spec descendants_count(kz_proplist() | ne_binary()) -> 'ok'.
+-spec descendants_count(kz_term:proplist() | kz_term:ne_binary()) -> 'ok'.
 descendants_count() ->
     Limit = kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000),
     ViewOptions = [{'limit', Limit}
@@ -968,7 +968,7 @@ descendants_count(Opts) ->
             handle_descendant_counts(ViewOptions, Counts)
     end.
 
--spec handle_descendant_counts(kz_proplist(), kz_proplist()) -> 'ok'.
+-spec handle_descendant_counts(kz_term:proplist(), kz_term:proplist()) -> 'ok'.
 handle_descendant_counts(ViewOptions, Counts) ->
     _ = [maybe_update_descendants_count(AccountId, Count)
          || {AccountId, Count} <- Counts
@@ -981,7 +981,7 @@ handle_descendant_counts(ViewOptions, Counts) ->
             descendants_count(props:set_value('skip', Skip+Limit, ViewOptions))
     end.
 
--spec handle_no_descendants(kz_proplist()) -> 'ok'.
+-spec handle_no_descendants(kz_term:proplist()) -> 'ok'.
 handle_no_descendants(ViewOptions) ->
     case props:get_value('key', ViewOptions) of
         'undefined' -> 'ok';
@@ -1093,7 +1093,7 @@ servers_changed(Servers1, Servers2) ->
                ,Servers1
                ).
 
--spec server_changed(kz_json:object(), api_object()) -> boolean().
+-spec server_changed(kz_json:object(), kz_term:api_object()) -> boolean().
 server_changed(_Server, 'undefined') ->
     lager:debug("server ~s existence has changed", [kz_json:get_value(<<"server_name">>, _Server)]),
     'true';
@@ -1126,7 +1126,7 @@ refresh_fs_xml(Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     refresh_fs_xml(Realm, DbDoc).
 
--spec refresh_fs_xml(ne_binary(), kz_json:object()) -> 'ok'.
+-spec refresh_fs_xml(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 refresh_fs_xml(Realm, Doc) ->
     case kz_device:sip_username(Doc, kz_json:get_value(<<"username">>, Doc)) of
         'undefined' -> 'ok';
@@ -1140,7 +1140,7 @@ refresh_fs_xml(Realm, Doc) ->
     end.
 
 %% @public
--spec get_devices_by_owner(ne_binary(), api_binary()) -> ne_binaries().
+-spec get_devices_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binaries().
 get_devices_by_owner(_AccountDb, 'undefined') -> [];
 get_devices_by_owner(AccountDb, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]},
@@ -1153,7 +1153,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
             []
     end.
 
--spec get_account_devices(api_binary()) -> ne_binaries().
+-spec get_account_devices(kz_term:api_binary()) -> kz_term:ne_binaries().
 get_account_devices('undefined') -> [];
 get_account_devices(Account) ->
     AccountDb = kz_util:format_account_db(Account),
@@ -1170,8 +1170,8 @@ get_account_devices(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_descendants_count(kz_proplist()) ->
-                                    {'ok', kz_proplist()} |
+-spec load_descendants_count(kz_term:proplist()) ->
+                                    {'ok', kz_term:proplist()} |
                                     {'error', any()}.
 load_descendants_count(ViewOptions) ->
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
@@ -1191,10 +1191,10 @@ load_descendants_count(ViewOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_descendants_count(ne_binary(), integer()) -> 'ok'.
--spec maybe_update_descendants_count(ne_binary(), integer(), integer()) -> 'ok'.
--spec maybe_update_descendants_count(ne_binary(), kz_json:object(), integer(), integer()) -> 'ok'.
--spec maybe_update_descendants_count(ne_binary(), kz_json:object(), integer(), integer(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(kz_term:ne_binary(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(kz_term:ne_binary(), integer(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer()) -> 'ok'.
+-spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer(), integer()) -> 'ok'.
 
 maybe_update_descendants_count(AccountId, NewCount) ->
     maybe_update_descendants_count(AccountId, NewCount, 3).
@@ -1227,7 +1227,7 @@ maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_descendants_count(ne_binary(), kz_json:object(), integer()) -> 'ok' | 'error'.
+-spec update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer()) -> 'ok' | 'error'.
 update_descendants_count(AccountId, JObj, NewCount) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Doc = kz_json:set_value(<<"descendants_count">>, NewCount, JObj),

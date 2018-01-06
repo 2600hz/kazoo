@@ -17,7 +17,7 @@
 
 -include("kazoo_media.hrl").
 
--type shout_header() :: {non_neg_integer(), ne_binary()}.
+-type shout_header() :: {non_neg_integer(), kz_term:ne_binary()}.
 -export_type([shout_header/0]).
 
 -spec stream_body(cowboy_req:req(), pos_integer(), binary(), shout_header() | 'undefined', boolean()) -> 'ok'.
@@ -73,7 +73,7 @@ the_header({K, H}) ->
         _ -> <<0>>
     end.
 
--spec get_shout_header(ne_binary(), ne_binary()) -> shout_header().
+-spec get_shout_header(kz_term:ne_binary(), kz_term:ne_binary()) -> shout_header().
 get_shout_header(MediaName, Url) ->
     Bin = list_to_binary(["StreamTitle='",MediaName
                          ,"';StreamUrl='",Url,"';"
@@ -83,13 +83,13 @@ get_shout_header(MediaName, Url) ->
     Extra = lists:duplicate(NPad, 0),
     {0, list_to_binary([Nblocks, Bin, Extra])}.
 
--spec resp_headers(ne_binary()) -> cowboy:http_headers().
+-spec resp_headers(kz_term:ne_binary()) -> cowboy:http_headers().
 resp_headers(ContentType) ->
     #{<<"content-type">> => ContentType
      ,<<"server">> => list_to_binary([?APP_NAME, "/", ?APP_VERSION])
      }.
 
--spec resp_headers(pos_integer(), ne_binary(), binary(), binary()) -> cowboy:http_headers().
+-spec resp_headers(pos_integer(), kz_term:ne_binary(), binary(), binary()) -> cowboy:http_headers().
 resp_headers(ChunkSize, ContentType, MediaName, Url) ->
     #{<<"content-type">> => ContentType
      ,<<"icy-br">> => <<"8">>

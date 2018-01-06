@@ -281,8 +281,8 @@ json_to_querystring(JObj, Prefix) ->
     {Vs, Ks} = kz_json:get_values(JObj),
     fold_kvs(Ks, Vs, Prefix, []).
 
--spec props_to_querystring(kz_proplist()) -> iolist().
--spec props_to_querystring(kz_proplist(), binary() | ne_binaries()) -> iolist().
+-spec props_to_querystring(kz_term:proplist()) -> iolist().
+-spec props_to_querystring(kz_term:proplist(), binary() | kz_term:ne_binaries()) -> iolist().
 props_to_querystring(Props) ->
     props_to_querystring(Props, <<>>).
 
@@ -318,11 +318,11 @@ encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) -> json_to_querystring(JObj, [K]);
 %% if a prefix is defined, nest the key in square brackets
 encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) -> json_to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
 
--spec encode_kv(iolist() | binary(), key(), ne_binary(), string() | binary()) -> iolist().
+-spec encode_kv(iolist() | binary(), key(), kz_term:ne_binary(), string() | binary()) -> iolist().
 encode_kv(<<>>, K, Sep, V) -> [kz_term:to_binary(K), Sep, kz_term:to_binary(V)];
 encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, kz_term:to_binary(K), <<"]">>, Sep, kz_term:to_binary(V)].
 
--spec encode_kv(iolist() | binary(), key(), [string()], ne_binary(), iolist()) -> iolist().
+-spec encode_kv(iolist() | binary(), key(), [string()], kz_term:ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
     lists:reverse([encode_kv(Prefix, K, Sep, urlencode(V)) | Acc]);
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->

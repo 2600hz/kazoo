@@ -29,7 +29,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     _ = kz_util:spawn(fun initialize_kapps/0),
     'ignore'.
@@ -38,8 +38,8 @@ start_link() ->
 start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_KAPPS].
 
--spec start_app(atom() | nonempty_string() | ne_binary()) ->
-                       {'ok', atoms()} |
+-spec start_app(atom() | nonempty_string() | kz_term:ne_binary()) ->
+                       {'ok', kz_term:atoms()} |
                        {'error', any()}.
 start_app(App) when is_atom(App) ->
     case application:ensure_all_started(App) of
@@ -53,7 +53,7 @@ start_app(App) when is_atom(App) ->
 start_app(App) ->
     start_app(kz_term:to_atom(App, 'true')).
 
--spec stop_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
+-spec stop_app(atom() | nonempty_string() | kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 stop_app(App) when is_atom(App) ->
     case application:stop(App) of
         'ok' ->
@@ -68,7 +68,7 @@ stop_app(App) when is_atom(App) ->
 stop_app(App) ->
     stop_app(kz_term:to_atom(App)).
 
--spec restart_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
+-spec restart_app(atom() | nonempty_string() | kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 restart_app(App) when is_atom(App) ->
     lager:info("restarting kazoo application ~s", [App]),
     _ = stop_app(App),
@@ -76,8 +76,8 @@ restart_app(App) when is_atom(App) ->
 restart_app(App) ->
     restart_app(kz_term:to_atom(App, 'true')).
 
--spec running_apps() -> atoms() | string().
--spec running_apps(boolean()) -> atoms() | string().
+-spec running_apps() -> kz_term:atoms() | string().
+-spec running_apps(boolean()) -> kz_term:atoms() | string().
 running_apps() ->
     running_apps('false').
 
@@ -87,7 +87,7 @@ running_apps(Verbose) ->
         'false' -> running_apps_list()
     end.
 
--spec running_apps_verbose() -> atoms() | string().
+-spec running_apps_verbose() -> kz_term:atoms() | string().
 running_apps_verbose() ->
     case get_running_apps() of
         [] -> "kapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
@@ -106,7 +106,7 @@ get_running_apps() ->
         is_kapp(App)
     ].
 
--spec running_apps_list() -> atoms() | string().
+-spec running_apps_list() -> kz_term:atoms() | string().
 running_apps_list() ->
     case get_running_apps() of
         [] -> "kapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
@@ -125,7 +125,7 @@ initialize_kapps() ->
               ],
     lager:notice("auto-started kapps ~p", [lists:sort(Started)]).
 
--spec start_which_kapps() -> [ne_binary() | atom() | nonempty_string()].
+-spec start_which_kapps() -> [kz_term:ne_binary() | atom() | nonempty_string()].
 start_which_kapps() ->
     Routines = [fun maybe_start_from_env/0
                ,fun maybe_start_from_node_config/0
@@ -149,7 +149,7 @@ maybe_start_from_env() ->
             string:tokens(KazooApps, ", ")
     end.
 
--spec maybe_start_from_node_name() -> 'false' | atoms().
+-spec maybe_start_from_node_name() -> 'false' | kz_term:atoms().
 maybe_start_from_node_name() ->
     KApp = kapp_from_node_name(),
     case is_kapp(KApp) of
@@ -159,7 +159,7 @@ maybe_start_from_node_name() ->
             [KApp]
     end.
 
--spec maybe_start_from_node_config() -> 'false' | [ne_binary() | atom()].
+-spec maybe_start_from_node_config() -> 'false' | [kz_term:ne_binary() | atom()].
 maybe_start_from_node_config() ->
     case kapps_config:get_node_value(?MODULE, <<"kapps">>) of
         'undefined' -> 'false';
@@ -170,7 +170,7 @@ maybe_start_from_node_config() ->
             KazooApps
     end.
 
--spec start_from_default_config() -> 'false' | [ne_binary() | atom()].
+-spec start_from_default_config() -> 'false' | [kz_term:ne_binary() | atom()].
 start_from_default_config() ->
     lager:info("starting applications from default configuration"),
     kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS).
@@ -184,7 +184,7 @@ sysconf_first('sysconf', _) -> 'true';
 sysconf_first(_, 'sysconf') -> 'false';
 sysconf_first(_, _) -> 'true'.
 
--spec list_apps() -> atoms().
+-spec list_apps() -> kz_term:atoms().
 list_apps() ->
     [App || {App, _, _} <- get_running_apps()].
 

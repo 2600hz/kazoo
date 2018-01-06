@@ -21,7 +21,7 @@
          | Options
         ]).
 
--type template() :: nonempty_string() | ne_binary().
+-type template() :: nonempty_string() | kz_term:ne_binary().
 
 -type template_result() :: {'ok', iolist() | atom()} |
                            {'error', any()}.
@@ -45,9 +45,9 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec render(atom(), kz_proplist()) -> template_result().
--spec render(template(), atom(), kz_proplist()) -> template_result().
--spec render(template(), atom(), kz_proplist(), kz_proplist()) -> template_result().
+-spec render(atom(), kz_term:proplist()) -> template_result().
+-spec render(template(), atom(), kz_term:proplist()) -> template_result().
+-spec render(template(), atom(), kz_term:proplist(), kz_term:proplist()) -> template_result().
 render(Module, TemplateData) ->
     render_template(Module, TemplateData).
 
@@ -62,7 +62,7 @@ render(Template, Module, TemplateData, CompileOpts) ->
 
 
 -spec compile(template(), atom()) -> template_result().
--spec compile(template(), atom(), kz_proplist()) -> template_result().
+-spec compile(template(), atom(), kz_term:proplist()) -> template_result().
 compile(Template, Module) ->
     compile(Template, Module, []).
 
@@ -94,7 +94,7 @@ compile(Path, Module, CompileOpts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec render_template(atom(), kz_proplist()) -> template_result().
+-spec render_template(atom(), kz_term:proplist()) -> template_result().
 render_template(Module, TemplateData) ->
     lager:debug("rendering using ~s", [Module]),
     try Module:render(props:filter_empty(TemplateData)) of

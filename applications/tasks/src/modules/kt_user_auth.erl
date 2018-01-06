@@ -32,7 +32,7 @@ init() ->
 %%% Triggerables
 
 %% @public
--spec cleanup_reset_ids(ne_binary()) -> 'ok'.
+-spec cleanup_reset_ids(kz_term:ne_binary()) -> 'ok'.
 cleanup_reset_ids(AccountDb) ->
     ViewOptions = [{'key', ?RESET_PVT_TYPE}
                   ,'include_docs'
@@ -49,7 +49,7 @@ cleanup_reset_ids(AccountDb) ->
 %%% Internal functions
 %%%===================================================================
 
--spec maybe_delete_doc(ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_delete_doc(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_delete_doc(AccountDb, ResetIdDoc) ->
     TwoDaysAgo = kz_time:now_s() - 2 * ?SECONDS_IN_DAY,
     Created = kz_doc:created(ResetIdDoc),

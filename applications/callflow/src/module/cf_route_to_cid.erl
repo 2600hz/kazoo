@@ -39,7 +39,7 @@ handle(Data, Call) ->
 endpoints_lookup(Data, Call) ->
     cid_type_based_lookup(Data, Call, kz_json:get_list_value(<<"cid_types">>, Data, [])).
 
--spec cid_type_based_lookup(kz_json:object(), kapps_call:call(), ne_binaries()) ->
+-spec cid_type_based_lookup(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
                                    kz_json:objects().
 cid_type_based_lookup(Data, Call, []) ->
     lager:info("no CID type restrictions"),
@@ -70,7 +70,7 @@ maybe_filter_results(Data, JObjs) ->
                     )
     ].
 
--spec endpoint_format(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec endpoint_format(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 endpoint_format(EndpointId, EndpointType, Data) ->
     Values = [{<<"endpoint_type">>, EndpointType}
              ,{<<"id">>, EndpointId}

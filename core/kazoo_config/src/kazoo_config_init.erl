@@ -19,7 +19,7 @@
 %% @public
 %% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     set_env(),
     'ignore'.
@@ -31,11 +31,11 @@ ini_files() ->
         File    -> [File]
     end.
 
--spec load_file() -> kz_proplist().
+-spec load_file() -> kz_term:proplist().
 load_file() ->
     maybe_load_file(ini_files()).
 
--spec maybe_load_file(list(file:name())) -> kz_proplist().
+-spec maybe_load_file(list(file:name())) -> kz_term:proplist().
 maybe_load_file([]) ->
     lager:warning("out of config files to attempt, loading defaults..."),
     ?SECTION_DEFAULTS;

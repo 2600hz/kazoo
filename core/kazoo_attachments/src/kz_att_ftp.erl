@@ -17,7 +17,7 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
     #{url := BaseUrlParam} = Params,
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
@@ -37,7 +37,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
             Error
     end.
 
--spec send_request(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
         {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
@@ -96,14 +96,14 @@ url_fields(DocUrlField, Url) ->
     ,{'document', [{DocUrlField, Url}]}
     ].
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};
         Url -> fetch_attachment(Url)
     end.
 
--spec fetch_attachment(ne_binary()) -> {'ok', binary()} | {'error', any()}.
+-spec fetch_attachment(kz_term:ne_binary()) -> {'ok', binary()} | {'error', any()}.
 fetch_attachment(Url) ->
     {_, Host, File, _, _} = kz_http_util:urlsplit(Url),
     try ftp:open(kz_term:to_list(Host)) of

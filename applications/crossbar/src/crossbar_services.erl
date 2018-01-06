@@ -23,7 +23,7 @@
 -type callback() :: fun(() -> cb_context:context()).
 
 -spec maybe_dry_run(cb_context:context(), callback()) -> cb_context:context().
--spec maybe_dry_run(cb_context:context(), callback(), ne_binary() | kz_proplist()) ->
+-spec maybe_dry_run(cb_context:context(), callback(), kz_term:ne_binary() | kz_term:proplist()) ->
                            cb_context:context().
 maybe_dry_run(Context, Callback) ->
     Type = kz_doc:type(cb_context:doc(Context)),
@@ -35,7 +35,7 @@ maybe_dry_run(Context, Callback, Props) ->
     Type = props:get_ne_binary_value(<<"type">>, Props),
     maybe_dry_run(Context, Callback, Type, Props, cb_context:accepting_charges(Context)).
 
--spec maybe_dry_run(cb_context:context(), callback(), ne_binary(), kz_proplist(), boolean()) ->
+-spec maybe_dry_run(cb_context:context(), callback(), kz_term:ne_binary(), kz_term:proplist(), boolean()) ->
                            cb_context:context().
 maybe_dry_run(Context, Callback, Type, Props, 'true') ->
     UpdatedServices = calc_service_updates(Context, Type, Props),
@@ -166,9 +166,9 @@ dry_run(Services) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec calc_service_updates(cb_context:context(), ne_binary()) ->
+-spec calc_service_updates(cb_context:context(), kz_term:ne_binary()) ->
                                   kz_services:services() | 'undefined'.
--spec calc_service_updates(cb_context:context(), ne_binary(), kz_proplist()) ->
+-spec calc_service_updates(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) ->
                                   kz_services:services() | 'undefined'.
 calc_service_updates(Context, <<"device">>) ->
     DeviceType = kz_device:device_type(cb_context:doc(Context)),
@@ -227,7 +227,7 @@ calc_service_updates(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     'undefined'.
 
--spec create_port_number(ne_binary(), ne_binaries()) -> knm_phone_number:knm_phone_number().
+-spec create_port_number(kz_term:ne_binary(), kz_term:ne_binaries()) -> knm_phone_number:knm_phone_number().
 create_port_number(Number, Features) ->
     JObj = kz_json:from_list([{<<"_id">>, Number}
                              ,{<<"features">>, Features}

@@ -17,7 +17,7 @@
 %% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
     _ = kapps_maintenance:bind('migrate', 'fax_maintenance', 'migrate'),
     fax_sup:start_link().

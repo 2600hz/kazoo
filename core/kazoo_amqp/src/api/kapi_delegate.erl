@@ -24,7 +24,7 @@
 
 -define(APIKEY, <<"delegate">>).
 
--type maybe_key() :: ne_binary() | 'undefined'.
+-type maybe_key() :: kz_term:ne_binary() | 'undefined'.
 
 -define(DELEGATE_ROUTING_KEY(App, Key), <<?APIKEY/binary, "."
                                           ,(amqp_util:encode(App))/binary, "."
@@ -46,7 +46,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec delegate(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec delegate(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 delegate(Prop) when is_list(Prop) ->
     case delegate_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DELEGATE_HEADERS, ?OPTIONAL_DELEGATE_HEADERS);
@@ -54,13 +54,13 @@ delegate(Prop) when is_list(Prop) ->
     end;
 delegate(JObj) -> delegate(kz_json:to_proplist(JObj)).
 
--spec delegate_v(api_terms()) -> boolean().
+-spec delegate_v(kz_term:api_terms()) -> boolean().
 delegate_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DELEGATE_HEADERS, ?DELEGATE_VALUES, ?DELEGATE_TYPES);
 delegate_v(JObj) -> delegate_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec bind_q(ne_binary(), ne_binary(), maybe_key()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:ne_binary(), maybe_key()) -> 'ok'.
 bind_q(Q, Props) ->
     App = props:get_binary_value('app_name', Props),
     Key = props:get_value('route_key', Props),
@@ -70,8 +70,8 @@ bind_q(Q, <<_/binary>> = App, 'undefined') ->
 bind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
     amqp_util:bind_q_to_kapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(ne_binary(), ne_binary(), maybe_key()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:ne_binary(), maybe_key()) -> 'ok'.
 unbind_q(Q, Props) ->
     App = props:get_binary_value('app_name', Props),
     Key = props:get_value('route_key', Props),
@@ -94,9 +94,9 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_delegate(ne_binary(), api_terms()) -> 'ok'.
--spec publish_delegate(ne_binary(), api_terms(), maybe_key()) -> 'ok'.
--spec publish_delegate(ne_binary(), api_terms(), maybe_key(), binary()) -> 'ok'.
+-spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+-spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms(), maybe_key()) -> 'ok'.
+-spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms(), maybe_key(), binary()) -> 'ok'.
 publish_delegate(TargetApp, API) ->
     publish_delegate(TargetApp, API, 'undefined').
 

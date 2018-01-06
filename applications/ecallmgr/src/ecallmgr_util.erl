@@ -66,20 +66,20 @@
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
 
--record(bridge_endpoint, {invite_format = <<"username">> :: ne_binary()
-                         ,endpoint_type = <<"sip">> :: ne_binary()
-                         ,ip_address :: api_binary()
-                         ,username :: api_binary()
-                         ,user :: api_binary()
-                         ,realm :: api_binary()
-                         ,number :: api_binary()
-                         ,route :: api_binary()
-                         ,proxy_address :: api_binary()
-                         ,forward_address :: api_binary()
-                         ,transport :: api_binary()
-                         ,span = <<"1">> :: ne_binary()
-                         ,channel_selection = <<"a">> :: ne_binary()
-                         ,interface = <<"RR">> :: ne_binary() % for Skype
+-record(bridge_endpoint, {invite_format = <<"username">> :: kz_term:ne_binary()
+                         ,endpoint_type = <<"sip">> :: kz_term:ne_binary()
+                         ,ip_address :: kz_term:api_binary()
+                         ,username :: kz_term:api_binary()
+                         ,user :: kz_term:api_binary()
+                         ,realm :: kz_term:api_binary()
+                         ,number :: kz_term:api_binary()
+                         ,route :: kz_term:api_binary()
+                         ,proxy_address :: kz_term:api_binary()
+                         ,forward_address :: kz_term:api_binary()
+                         ,transport :: kz_term:api_binary()
+                         ,span = <<"1">> :: kz_term:ne_binary()
+                         ,channel_selection = <<"a">> :: kz_term:ne_binary()
+                         ,interface = <<"RR">> :: kz_term:ne_binary() % for Skype
                          ,sip_interface
                          ,channel_vars = ["[",[],"]"] :: iolist()
                          ,header_vars = ["[",[],"]"] :: iolist()
@@ -94,7 +94,7 @@
 %% send the SendMsg proplist to the freeswitch node
 %% @end
 %%--------------------------------------------------------------------
--spec send_cmd(atom(), ne_binary(), text(), text()) -> send_cmd_ret().
+-spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
 send_cmd(_Node, _UUID, <<"kz_multiset">>, <<"^^">>) -> 'ok';
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
     send_cmd(Node, UUID, kz_term:to_list(App), Args);
@@ -158,13 +158,13 @@ send_cmd(Node, UUID, App, Args) ->
 dialplan_application("blind_xfer") -> "transfer";
 dialplan_application(App) -> App.
 
--spec get_expires(kz_proplist()) -> integer().
+-spec get_expires(kz_term:proplist()) -> integer().
 get_expires(Props) ->
     Expiry = kz_term:to_integer(props:get_first_defined([<<"Expires">>, <<"expires">>], Props, 300)),
     round(Expiry * 1.25).
 
 
--spec get_interface_list(atom()) -> ne_binaries().
+-spec get_interface_list(atom()) -> kz_term:ne_binaries().
 get_interface_list(Node) ->
     case freeswitch:api(Node, 'sofia', "status") of
         {'ok', Response} ->
@@ -180,8 +180,8 @@ get_interface_list(Node) ->
         _Else -> []
     end.
 
--spec get_interface_properties(atom()) -> kz_proplist().
--spec get_interface_properties(atom(), ne_binary()) -> kz_proplist().
+-spec get_interface_properties(atom()) -> kz_term:proplist().
+-spec get_interface_properties(atom(), kz_term:ne_binary()) -> kz_term:proplist().
 
 get_interface_properties(Node) ->
     [{Interface, get_interface_properties(Node, Interface)} || Interface <- get_interface_list(Node)].
@@ -200,7 +200,7 @@ get_interface_properties(Node, Interface) ->
     end.
 
 %% retrieves the sip address for the 'to' field
--spec get_sip_to(kz_proplist()) -> ne_binary().
+-spec get_sip_to(kz_term:proplist()) -> kz_term:ne_binary().
 get_sip_to(Props) ->
     get_sip_to(Props, kzd_freeswitch:original_call_direction(Props)).
 
@@ -225,8 +225,8 @@ get_sip_to(Props, _) ->
     end.
 
 %% retrieves the sip address for the 'from' field
--spec get_sip_from(kz_proplist()) -> ne_binary().
--spec get_sip_from(kz_proplist(), api_binary()) -> ne_binary().
+-spec get_sip_from(kz_term:proplist()) -> kz_term:ne_binary().
+-spec get_sip_from(kz_term:proplist(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_sip_from(Props) ->
     get_sip_from(Props, kzd_freeswitch:original_call_direction(Props)).
 
@@ -254,7 +254,7 @@ get_sip_from(Props, _) ->
                             ], Props, Default).
 
 %% retrieves the sip address for the 'request' field
--spec get_sip_request(kz_proplist()) -> ne_binary().
+-spec get_sip_request(kz_term:proplist()) -> kz_term:ne_binary().
 get_sip_request(Props) ->
     U = props:get_first_defined([<<"Hunt-Destination-Number">>
                                 ,<<"variable_sip_req_uri">>
@@ -276,11 +276,11 @@ get_sip_request(Props) ->
                                    ),
     <<User/binary, "@", Realm/binary>>.
 
--spec get_orig_ip(kz_proplist()) -> api_binary().
+-spec get_orig_ip(kz_term:proplist()) -> kz_term:api_binary().
 get_orig_ip(Prop) ->
     props:get_first_defined([<<"X-AUTH-IP">>, <<"ip">>], Prop).
 
--spec get_orig_port(kz_proplist()) -> api_binary().
+-spec get_orig_port(kz_term:proplist()) -> kz_term:api_binary().
 get_orig_port(Prop) ->
     case props:get_first_defined([<<"X-AUTH-PORT">>, <<"port">>], Prop) of
         <<>> -> 'undefined';
@@ -288,7 +288,7 @@ get_orig_port(Prop) ->
         Port -> Port
     end.
 
--spec get_sip_interface_from_db(ne_binaries()) -> ne_binary().
+-spec get_sip_interface_from_db(kz_term:ne_binaries()) -> kz_term:ne_binary().
 get_sip_interface_from_db([FsPath]) ->
     NetworkMap = ecallmgr_config:get_json(<<"network_map">>, kz_json:new()),
     case map_fs_path_to_sip_profile(FsPath, NetworkMap) of
@@ -301,7 +301,7 @@ get_sip_interface_from_db([FsPath]) ->
             Else
     end.
 
--spec map_fs_path_to_sip_profile(ne_binary(), kz_json:object()) -> api_binary().
+-spec map_fs_path_to_sip_profile(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
     SIPInterfaceObj = kz_json:filter(fun({K, _}) ->
                                              kz_network_utils:verify_cidr(FsPath, K)
@@ -311,14 +311,14 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
         {[V|_], _Keys} -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
--spec conference_channel_vars(kzd_freeswitch:data()) -> kz_proplist().
+-spec conference_channel_vars(kzd_freeswitch:data()) -> kz_term:proplist().
 conference_channel_vars(Props) ->
     [conference_channel_var_map(KV) || KV <- conference_channel_vars(Props, [])].
 
 conference_channel_vars(Props, Initial) ->
     lists:foldl(fun conference_channel_vars_fold/2, Initial, Props).
 
--spec conference_channel_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+-spec conference_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 conference_channel_vars_fold({Key, V}, Acc) ->
     case lists:member(Key, ?CONFERENCE_VARS) of
         'true' -> [{Key, V} | Acc];
@@ -332,15 +332,15 @@ conference_channel_var_map({Key, Value}=KV) ->
         Fun -> {Key, Fun(Value)}
     end.
 
--spec channel_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
+-spec channel_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
 channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
 channel_var_map({Key, Other}) -> {Key, Other}.
 
 %% Extract custom channel variables to include in the event
--spec custom_channel_vars(kzd_freeswitch:data()) -> kz_proplist().
--spec custom_channel_vars(kz_proplist(), kz_proplist()) -> kz_proplist().
--spec custom_channel_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+-spec custom_channel_vars(kzd_freeswitch:data()) -> kz_term:proplist().
+-spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
+-spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_channel_vars(Props) ->
     lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
 
@@ -348,7 +348,7 @@ custom_channel_vars(Props, Initial) ->
     CCVs = lists:foldl(fun custom_channel_vars_fold/2, Initial, Props),
     maybe_update_referred_ccv(Props, channel_vars_sort(CCVs)).
 
--spec channel_vars_sort(kz_proplist()) -> kz_proplist().
+-spec channel_vars_sort(kz_term:proplist()) -> kz_term:proplist().
 channel_vars_sort(ChannelVars) ->
     lists:usort(fun channel_var_sort/2, ChannelVars).
 
@@ -366,9 +366,9 @@ custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
     end;
 custom_channel_vars_fold(_, Acc) -> Acc.
 
--spec custom_application_vars(kzd_freeswitch:data()) -> kz_proplist().
--spec custom_application_vars(kz_proplist(), kz_proplist()) -> kz_proplist().
--spec custom_application_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+-spec custom_application_vars(kzd_freeswitch:data()) -> kz_term:proplist().
+-spec custom_application_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
+-spec custom_application_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_application_vars(Props) ->
     lists:map(fun application_var_map/1, custom_application_vars(Props, [])).
 
@@ -376,7 +376,7 @@ custom_application_vars(Props, Initial) ->
     CCVs = lists:foldl(fun custom_application_vars_fold/2, Initial, Props),
     maybe_update_referred_ccv(Props, application_vars_sort(CCVs)).
 
--spec application_vars_sort(kz_proplist()) -> kz_proplist().
+-spec application_vars_sort(kz_term:proplist()) -> kz_term:proplist().
 application_vars_sort(ApplicationVars) ->
     lists:usort(fun application_var_sort/2, ApplicationVars).
 
@@ -394,19 +394,19 @@ custom_application_vars_fold({?GET_CAV_HEADER(Key), V}, Acc) ->
     end;
 custom_application_vars_fold(_, Acc) -> Acc.
 
--spec application_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
+-spec application_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
 application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
 application_var_map({Key, Other}) -> {Key, Other}.
 
--spec maybe_update_referred_ccv(kz_proplist(), kz_proplist()) -> kz_proplist().
+-spec maybe_update_referred_ccv(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 maybe_update_referred_ccv(Props, CCVs) ->
     ReferTo = props:get_value(<<"variable_sip_refer_to">>, Props),
     update_referred_by_ccv(props:get_value(<<"variable_sip_h_Referred-By">>, Props)
                           ,update_referred_to_ccv(ReferTo, CCVs)
                           ).
 
--spec update_referred_by_ccv(api_binary(), kz_proplist()) -> kz_proplist().
+-spec update_referred_by_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
 update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
 update_referred_by_ccv(ReferredBy, CCVs) ->
     props:set_value(<<"Referred-By">>
@@ -414,7 +414,7 @@ update_referred_by_ccv(ReferredBy, CCVs) ->
                    ,CCVs
                    ).
 
--spec update_referred_to_ccv(api_binary(), kz_proplist()) -> kz_proplist().
+-spec update_referred_to_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
 update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
 update_referred_to_ccv(ReferredTo, CCVs) ->
     props:set_value(<<"Referred-To">>
@@ -424,11 +424,11 @@ update_referred_to_ccv(ReferredTo, CCVs) ->
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec eventstr_to_proplist(text()) -> kz_proplist().
+-spec eventstr_to_proplist(kz_term:text()) -> kz_term:proplist().
 eventstr_to_proplist(EvtStr) ->
     [to_kv(X, ": ") || X <- string:tokens(kz_term:to_list(EvtStr), "\n")].
 
--spec to_kv(nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
+-spec to_kv(nonempty_string(), nonempty_string()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
     [{V1, _}] = kz_http_util:parse_query_string(list_to_binary(V)),
@@ -438,7 +438,7 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     kz_time:microseconds_to_seconds(kz_term:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
--spec unserialize_fs_array(api_binary()) -> ne_binaries().
+-spec unserialize_fs_array(kz_term:api_binary()) -> kz_term:ne_binaries().
 unserialize_fs_array('undefined') -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, ['global']);
@@ -448,7 +448,7 @@ unserialize_fs_array(List)
 unserialize_fs_array(Single) ->
     [Single].
 
--spec unserialize_fs_props(kz_proplist()) -> kz_proplist().
+-spec unserialize_fs_props(kz_term:proplist()) -> kz_term:proplist().
 unserialize_fs_props(Props) ->
     lists:map(fun unserialize_fs_prop/1, Props).
 
@@ -459,7 +459,7 @@ unserialize_fs_prop(KV) -> KV.
 
 %% convert a raw FS list of vars to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec varstr_to_proplist(nonempty_string()) -> kz_proplist().
+-spec varstr_to_proplist(nonempty_string()) -> kz_term:proplist().
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(kz_term:to_list(VarStr), ",")].
 
@@ -473,7 +473,7 @@ get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> ecallmgr_fs_nodes:is_node_up(Node).
 
--spec is_node_up(atom(), ne_binary()) -> boolean().
+-spec is_node_up(atom(), kz_term:ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
     ecallmgr_fs_nodes:is_node_up(Node)
         andalso ecallmgr_fs_channel:exists(UUID).
@@ -484,27 +484,27 @@ is_node_up(Node, UUID) ->
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec multi_set_args(atom(), ne_binary(), kz_proplist()) -> binary().
+-spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
 multi_set_args(Node, UUID, KVs) ->
     multi_set_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
 
--spec multi_set_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
+-spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> binary().
 multi_set_args(Node, UUID, KVs, Separator) ->
     multi_set_args(Node, UUID, KVs, Separator, ?FS_MULTI_VAR_SEP_PREFIX).
 
--spec multi_set_args(atom(), ne_binary(), kz_proplist(), ne_binary(), binary() | string()) -> binary().
+-spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary(), binary() | string()) -> binary().
 multi_set_args(Node, UUID, KVs, Separator, Prefix) ->
     fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'set')), Separator, Prefix).
 
--spec multi_unset_args(atom(), ne_binary(), kz_proplist()) -> binary().
+-spec multi_unset_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
 multi_unset_args(Node, UUID, KVs) ->
     multi_unset_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
 
--spec multi_unset_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
+-spec multi_unset_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> binary().
 multi_unset_args(Node, UUID, KVs, Separator) ->
     multi_unset_args(Node, UUID, KVs, Separator, ?FS_MULTI_VAR_SEP_PREFIX).
 
--spec multi_unset_args(atom(), ne_binary(), kz_proplist(), ne_binary(), binary() | string()) -> binary().
+-spec multi_unset_args(atom(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary(), binary() | string()) -> binary().
 multi_unset_args(Node, UUID, KVs, Separator, Prefix) ->
     fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'unset')), Separator, Prefix).
 
@@ -514,16 +514,16 @@ fs_args_to_binary([_]=Args) ->
 fs_args_to_binary(Args) ->
     fs_args_to_binary(Args, <<?FS_MULTI_VAR_SEP>>).
 
--spec fs_args_to_binary(list(), ne_binary()) -> binary().
+-spec fs_args_to_binary(list(), kz_term:ne_binary()) -> binary().
 fs_args_to_binary(Args, Sep) ->
     fs_args_to_binary(Args, Sep, ?FS_MULTI_VAR_SEP_PREFIX).
 
--spec fs_args_to_binary(list(), ne_binary(), binary() | string()) -> binary().
+-spec fs_args_to_binary(list(), kz_term:ne_binary(), binary() | string()) -> binary().
 fs_args_to_binary(Args, Sep, Prefix) ->
     Bins = [list_to_binary([Sep, Arg]) || Arg <- Args],
     list_to_binary([Prefix, Bins]).
 
--spec process_fs_kv(atom(), ne_binary(), kz_proplist(), atom()) -> [binary()].
+-spec process_fs_kv(atom(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> [binary()].
 process_fs_kv(_, _, [], _) -> [];
 process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
     X1 = format_fs_kv(K, V, UUID, Action),
@@ -546,7 +546,7 @@ process_fs_kv_fold(_Node, _UUID, K, 'unset', Acc)
 process_fs_kv_fold(_, _, _, _, Acc) ->
     Acc.
 
--spec format_fs_kv(ne_binary(), binary(), ne_binary(), atom()) -> [binary()].
+-spec format_fs_kv(kz_term:ne_binary(), binary(), kz_term:ne_binary(), atom()) -> [binary()].
 format_fs_kv(Key, Value, UUID, 'unset') ->
     case get_fs_key_and_value(Key, Value, UUID) of
         'skip' -> [];
@@ -561,8 +561,8 @@ format_fs_kv(Key, Value, UUID, _) ->
         KVs -> [<<K/binary, "=", V/binary>> || {K,V} <- KVs]
     end.
 
--spec get_fs_kv(ne_binary(), ne_binary()) -> binary().
--spec get_fs_kv(ne_binary(), ne_binary(), api_binary()) -> binary().
+-spec get_fs_kv(kz_term:ne_binary(), kz_term:ne_binary()) -> binary().
+-spec get_fs_kv(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> binary().
 get_fs_kv(Key, Value) ->
     get_fs_kv(Key, Value, 'undefined').
 
@@ -575,7 +575,7 @@ get_fs_kv(?CCV(Key), Val, UUID) ->
 get_fs_kv(Key, Val, _) ->
     list_to_binary([get_fs_key(Key), "=", maybe_sanitize_fs_value(Key, Val)]).
 
--spec get_fs_key(ne_binary()) -> binary().
+-spec get_fs_key(kz_term:ne_binary()) -> binary().
 get_fs_key(?CCV(Key)) -> get_fs_key(Key);
 get_fs_key(?CAV(_)=CAV) -> CAV;
 get_fs_key(<<"X-", _/binary>>=Key) -> <<"sip_h_", Key/binary>>;
@@ -585,12 +585,12 @@ get_fs_key(Key) ->
         {_, Prefix} -> Prefix
     end.
 
--spec get_fs_key_and_value(ne_binary()
-                          ,ne_binary() | ne_binaries() | kz_json:object()
-                          ,ne_binary()
+-spec get_fs_key_and_value(kz_term:ne_binary()
+                          ,kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object()
+                          ,kz_term:ne_binary()
                           ) ->
-                                  {ne_binary(), binary()} |
-                                  [{ne_binary(), binary()}] |
+                                  {kz_term:ne_binary(), binary()} |
+                                  [{kz_term:ne_binary(), binary()}] |
                                   'skip'.
 get_fs_key_and_value(<<"Hold-Media">>=Key, Media, UUID) ->
     {get_fs_key(Key), media_path(Media, 'extant', UUID, kz_json:new())};
@@ -627,7 +627,7 @@ get_fs_key_and_value(_, _, _) -> 'skip'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_sanitize_fs_value(text(), text()) -> binary().
+-spec maybe_sanitize_fs_value(kz_term:text(), kz_term:text()) -> binary().
 maybe_sanitize_fs_value(<<"Outbound-Caller-ID-Name">>, Val) ->
     re:replace(Val, <<"[^a-zA-Z0-9-\s]">>, <<>>, ['global', {'return', 'binary'}]);
 maybe_sanitize_fs_value(<<"Outbound-Callee-ID-Name">>, Val) ->
@@ -652,14 +652,14 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 %% endpoints with the invite format of "route" (about 100ms per endpoint)
 %% @end
 %%--------------------------------------------------------------------
--type bridge_channel() :: ne_binary().
--type bridge_channels() :: ne_binaries().
+-type bridge_channel() :: kz_term:ne_binary().
+-type bridge_channels() :: kz_term:ne_binaries().
 -type build_return() :: bridge_channel() | {'worker', pid()}.
 -type build_returns() :: [build_return()].
 -type bridge_endpoints() :: [bridge_endpoint()].
 
--spec build_bridge_string(kz_json:objects()) -> ne_binary().
--spec build_bridge_string(kz_json:objects(), ne_binary()) -> ne_binary().
+-spec build_bridge_string(kz_json:objects()) -> kz_term:ne_binary().
+-spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
@@ -700,7 +700,7 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
                                      )
     end.
 
--spec endpoint_key(kz_json:object()) -> api_binaries().
+-spec endpoint_key(kz_json:object()) -> kz_term:api_binaries().
 endpoint_key(Endpoint) ->
     [kz_json:get_value(<<"Invite-Format">>, Endpoint)
     ,kz_json:get_value(<<"To-User">>, Endpoint)
@@ -749,18 +749,18 @@ endpoint_jobj_to_record_vars(Endpoint, #bridge_endpoint{include_channel_vars='fa
                         ),
     Bridge#bridge_endpoint{header_vars=ecallmgr_fs_xml:get_leg_vars(Props)}.
 
--spec get_endpoint_span(kz_json:object()) -> ne_binary().
+-spec get_endpoint_span(kz_json:object()) -> kz_term:ne_binary().
 get_endpoint_span(Endpoint) ->
     kz_json:get_binary_value([<<"Endpoint-Options">>, <<"Span">>], Endpoint, <<"1">>).
 
--spec get_endpoint_channel_selection(kz_json:object()) -> ne_binary().
+-spec get_endpoint_channel_selection(kz_json:object()) -> kz_term:ne_binary().
 get_endpoint_channel_selection(Endpoint) ->
     case kz_json:get_binary_value([<<"Endpoint-Options">>, <<"Span">>], Endpoint) of
         <<"descending">> -> <<"A">>;
         _Else -> <<"a">>
     end.
 
--spec get_endpoint_interface(kz_json:object()) -> ne_binary().
+-spec get_endpoint_interface(kz_json:object()) -> kz_term:ne_binary().
 get_endpoint_interface(Endpoint) ->
     case kz_json:is_true([<<"Endpoint-Options">>, <<"Skype-RR">>], Endpoint, 'false') of
         'false' -> kz_json:get_value([<<"Endpoint-Options">>, <<"Skype-Interface">>], Endpoint);
@@ -792,7 +792,7 @@ call_waiting_map(Endpoint) ->
             maybe_add_respond_header(Endpoint, OwnerId)
     end.
 
--spec maybe_add_respond_header(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec maybe_add_respond_header(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_add_respond_header(Endpoint, OwnerId) ->
     case ecallmgr_fs_channels:has_channels_for_owner(OwnerId) of
         'true' ->
@@ -927,7 +927,7 @@ maybe_failover(Endpoint) ->
         'false' -> build_sip_channel(endpoint_jobj_to_record(Endpoint))
     end.
 
--spec get_sip_contact(bridge_endpoint()) -> ne_binary().
+-spec get_sip_contact(bridge_endpoint()) -> kz_term:ne_binary().
 -ifdef(TEST).
 get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route = <<"loopback/", Route/binary>>}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
@@ -957,7 +957,7 @@ get_sip_contact(#bridge_endpoint{ip_address='undefined'
 get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) -> IPAddress.
 -endif.
 
--spec maybe_clean_contact(ne_binary(), bridge_endpoint()) -> ne_binary().
+-spec maybe_clean_contact(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
 maybe_clean_contact(<<"sip:", Contact/binary>>, _Endpoint) -> Contact;
 maybe_clean_contact(<<"sips:", Contact/binary>>, _Endpoint) -> Contact;
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
@@ -967,7 +967,7 @@ maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) -
 maybe_clean_contact(Contact, _) ->
     re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{'return', 'binary'}]).
 
--spec ensure_username_present(ne_binary(), bridge_endpoint()) -> ne_binary().
+-spec ensure_username_present(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
@@ -978,13 +978,13 @@ ensure_username_present(Contact, Endpoint) ->
         _ -> <<(guess_username(Endpoint))/binary, "@", Contact/binary>>
     end.
 
--spec guess_username(bridge_endpoint()) -> ne_binary().
+-spec guess_username(bridge_endpoint()) -> kz_term:ne_binary().
 guess_username(#bridge_endpoint{number=Number}) when is_binary(Number) -> Number;
 guess_username(#bridge_endpoint{username=Username}) when is_binary(Username) -> Username;
 guess_username(#bridge_endpoint{user=User}) when is_binary(User) -> User;
 guess_username(_) -> <<"kazoo">>.
 
--spec maybe_replace_fs_path(ne_binary(), bridge_endpoint()) -> ne_binary().
+-spec maybe_replace_fs_path(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address='undefined'}) -> Contact;
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/binary>> = Proxy}) ->
     case re:replace(Contact, <<";fs_path=[^;?]*">>, <<";fs_path=", Proxy/binary>>, [{'return', 'binary'}]) of
@@ -996,7 +996,7 @@ maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/bina
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=Proxy}=Endpoint) ->
     maybe_replace_fs_path(Contact, Endpoint#bridge_endpoint{proxy_address = <<"sip:", Proxy/binary>>}).
 
--spec maybe_replace_transport(ne_binary(), bridge_endpoint()) -> ne_binary().
+-spec maybe_replace_transport(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
 maybe_replace_transport(Contact, #bridge_endpoint{transport='undefined'}) -> Contact;
 maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
     case re:replace(Contact
@@ -1011,7 +1011,7 @@ maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
         Updated -> Updated
     end.
 
--spec maybe_format_user(ne_binary(), bridge_endpoint()) -> ne_binary().
+-spec maybe_format_user(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                            ,user=User
                                            }) when User =/= 'undefined' ->
@@ -1029,7 +1029,7 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=
     re:replace(Contact, "^[^\@]+", knm_converters:to_1npan(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, _) -> Contact.
 
--spec maybe_set_interface(ne_binary(), bridge_endpoint()) -> ne_binary().
+-spec maybe_set_interface(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoint) ->
@@ -1046,7 +1046,7 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface= <<"sofia/", _/binar
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<"sofia/", SIPInterface/binary, "/", Contact/binary>>.
 
--spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
+-spec append_channel_vars(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'
                                              ,header_vars=["[",[],"]"]
                                              }) ->
@@ -1069,8 +1069,8 @@ append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_masquerade_event(ne_binary(), ne_binary()) -> ne_binary().
--spec create_masquerade_event(ne_binary(), ne_binary(), boolean()) -> ne_binary().
+-spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
 create_masquerade_event(Application, EventName) ->
     create_masquerade_event(Application, EventName, 'true').
 
@@ -1089,16 +1089,16 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec media_path(ne_binary()) -> ne_binary().
+-spec media_path(kz_term:ne_binary()) -> kz_term:ne_binary().
 media_path(MediaName) -> media_path(MediaName, 'new', kz_binary:rand_hex(16), kz_json:new()).
 
--spec media_path(ne_binary(), kz_json:object()) -> ne_binary().
+-spec media_path(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 media_path(MediaName, JObj) -> media_path(MediaName, 'new', kz_binary:rand_hex(16), JObj).
 
--spec media_path(ne_binary(), ne_binary(), kz_json:object()) -> ne_binary().
+-spec media_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
--spec media_path(api_binary(), media_types(), ne_binary(), kz_json:object()) -> ne_binary().
+-spec media_path(kz_term:api_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(<<>>, _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
@@ -1124,14 +1124,14 @@ media_path(MediaName, Type, UUID, JObj) ->
             kz_term:to_binary(get_fs_playback(Path))
     end.
 
--spec fax_filename(ne_binary()) -> file:filename_all().
+-spec fax_filename(kz_term:ne_binary()) -> file:filename_all().
 fax_filename(UUID) ->
     Ext = ecallmgr_config:get_ne_binary(<<"default_fax_extension">>, <<".tiff">>),
     filename:join([ecallmgr_config:get_ne_binary(<<"fax_file_path">>, <<"/tmp/">>)
                   ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
--spec recording_filename(ne_binary()) -> file:filename_all().
+-spec recording_filename(kz_term:ne_binary()) -> file:filename_all().
 recording_filename(<<"local_stream://", MediaName/binary>>) -> recording_filename(MediaName);
 recording_filename(MediaName) ->
     Ext = recording_extension(MediaName),
@@ -1146,11 +1146,11 @@ recording_filename(MediaName) ->
                             ),
     RecordingName.
 
--spec recording_directory(ne_binary()) -> ne_binary().
+-spec recording_directory(kz_term:ne_binary()) -> kz_term:ne_binary().
 recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
 recording_directory(_RelativePath) -> ecallmgr_config:get_ne_binary(<<"recording_file_path">>, <<"/tmp/">>).
 
--spec recording_extension(ne_binary()) -> ne_binary().
+-spec recording_extension(kz_term:ne_binary()) -> kz_term:ne_binary().
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
         Empty when Empty =:= <<>>;
@@ -1168,11 +1168,11 @@ recording_extension(MediaName) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_playback(ne_binary()) -> ne_binary().
+-spec get_fs_playback(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) -> URI;
 get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
--spec maybe_playback_via_vlc(ne_binary()) -> ne_binary().
+-spec maybe_playback_via_vlc(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_playback_via_vlc(URI) ->
     case ecallmgr_config:is_true(<<"use_vlc">>, 'false') of
         'false' -> maybe_playback_via_shout(URI);
@@ -1181,7 +1181,7 @@ maybe_playback_via_vlc(URI) ->
             <<"vlc://", URI/binary>>
     end.
 
--spec maybe_playback_via_shout(ne_binary()) -> ne_binary().
+-spec maybe_playback_via_shout(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
         andalso ecallmgr_config:is_true(<<"use_shout">>, 'false')
@@ -1192,7 +1192,7 @@ maybe_playback_via_shout(URI) ->
             binary:replace(URI, [<<"http">>, <<"https">>], <<"shout">>)
     end.
 
--spec maybe_playback_via_http_cache(ne_binary()) -> ne_binary().
+-spec maybe_playback_via_http_cache(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_playback_via_http_cache(<<?HTTP_GET_PREFIX, _/binary>> = URI) ->
     lager:debug("media is streamed via http_cache, using ~s", [URI]),
     URI;
@@ -1208,19 +1208,19 @@ maybe_playback_via_http_cache(URI) ->
 
 %% given a proplist of a FS event, return the Kazoo-equivalent app name(s).
 %% a FS event could have multiple Kazoo equivalents
--spec convert_fs_evt_name(ne_binary()) -> ne_binaries().
+-spec convert_fs_evt_name(kz_term:ne_binary()) -> kz_term:ne_binaries().
 convert_fs_evt_name(EvtName) ->
     [WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
 
 %% given a Kazoo Dialplan Application name, return the FS-equivalent event name
 %% A Kazoo Dialplan Application name is 1-to-1 with the FS-equivalent
--spec convert_kazoo_app_name(ne_binary()) -> ne_binaries().
+-spec convert_kazoo_app_name(kz_term:ne_binary()) -> kz_term:ne_binaries().
 convert_kazoo_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].
 
 -type media_types() :: 'new' | 'extant'.
--spec lookup_media(ne_binary(), media_types(), ne_binary(), kz_json:object()) ->
-                          {'ok', ne_binary()} |
+-spec lookup_media(kz_term:ne_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) ->
+                          {'ok', kz_term:ne_binary()} |
                           {'error', any()}.
 lookup_media(MediaName, Type, CallId, JObj) ->
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE
@@ -1234,8 +1234,8 @@ lookup_media(MediaName, Type, CallId, JObj) ->
             request_media_url(MediaName, Type, CallId, JObj)
     end.
 
--spec request_media_url(ne_binary(), media_types(), ne_binary(), kz_json:object()) ->
-                               {'ok', ne_binary()} |
+-spec request_media_url(kz_term:ne_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) ->
+                               {'ok', kz_term:ne_binary()} |
                                {'error', any()}.
 request_media_url(MediaName, Type, CallId, JObj) ->
     MsgProps = props:filter_undefined(
@@ -1271,7 +1271,7 @@ request_media_url(MediaName, Type, CallId, JObj) ->
             E
     end.
 
--spec media_url_cache_props(ne_binary()) -> kz_cache:store_options().
+-spec media_url_cache_props(kz_term:ne_binary()) -> kz_cache:store_options().
 media_url_cache_props(<<"/", _/binary>> = MediaName) ->
     case binary:split(MediaName, <<"/">>, ['global']) of
         [<<>>, AccountId, MediaId] ->
@@ -1293,15 +1293,15 @@ media_url_cache_props(<<"tts://", Text/binary>>) ->
     [{'origin', {'db', <<"tts">>, Id}}];
 media_url_cache_props(_MediaName) -> [].
 
--spec custom_sip_headers(kz_proplist()) -> kz_proplist().
+-spec custom_sip_headers(kz_term:proplist()) -> kz_term:proplist().
 custom_sip_headers(Props) ->
     lists:foldl(fun maybe_aggregate_headers/2
                ,[]
                ,props:filter(fun is_custom_sip_header/1, Props)
                ).
 
--spec maybe_aggregate_headers({ne_binary(), ne_binary()}, kz_proplist()) ->
-                                     kz_proplist().
+-spec maybe_aggregate_headers({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) ->
+                                     kz_term:proplist().
 maybe_aggregate_headers(KV, Acc) ->
     {K, V} = normalize_custom_sip_header_name(KV),
     maybe_aggregate_headers(K, V, Acc).
@@ -1326,7 +1326,7 @@ is_custom_sip_header({?GET_CCV_HEADER(_), _}) -> 'false';
 is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
 is_custom_sip_header(_Header) -> 'false'.
 
--spec maybe_add_expires_deviation(api_integer()) -> api_integer().
+-spec maybe_add_expires_deviation(kz_term:api_integer()) -> kz_term:api_integer().
 maybe_add_expires_deviation('undefined') -> 'undefined';
 maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation(kz_term:to_integer(Expires));
@@ -1334,14 +1334,14 @@ maybe_add_expires_deviation(0) -> 0;
 maybe_add_expires_deviation(Expires) ->
     Expires + ?EXPIRES_DEVIATION_TIME.
 
--spec maybe_add_expires_deviation_ms(api_integer()) -> api_integer().
+-spec maybe_add_expires_deviation_ms(kz_term:api_integer()) -> kz_term:api_integer().
 maybe_add_expires_deviation_ms('undefined') -> 'undefined';
 maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation_ms(kz_term:to_integer(Expires));
 maybe_add_expires_deviation_ms(Expires) ->
     maybe_add_expires_deviation(Expires) * ?MILLISECONDS_IN_SECOND.
 
--spec get_dial_separator(api_object() | ne_binary(), kz_json:objects()) -> ne_binary().
+-spec get_dial_separator(kz_term:api_object() | kz_term:ne_binary(), kz_json:objects()) -> kz_term:ne_binary().
 get_dial_separator(?DIAL_METHOD_SINGLE, _Endpoints) -> ?SEPARATOR_SINGLE;
 get_dial_separator(?DIAL_METHOD_SIMUL, [_, _|_]) -> ?SEPARATOR_SIMULTANEOUS;
 get_dial_separator(?DIAL_METHOD_SIMUL, [_]) -> ?SEPARATOR_SINGLE;
@@ -1351,7 +1351,7 @@ get_dial_separator(JObj, Endpoints) ->
                       ,Endpoints
                       ).
 
--spec fix_contact(api_binary() | list(), ne_binary(), ne_binary()) -> api_binary().
+-spec fix_contact(kz_term:api_binary() | list(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 fix_contact('undefined', _, _) -> 'undefined';
 fix_contact(<<";", _/binary>> = OriginalContact, Username, Realm) ->
     fix_contact(<<"sip:", Username/binary, "@", Realm/binary, OriginalContact/binary>>, Username, Realm);

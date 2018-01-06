@@ -31,7 +31,7 @@
 %% (Kazoo is the only provider for signing)
 %% @end
 %%--------------------------------------------------------------------
--spec sign(map() | kz_proplist() | kz_json:object()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec sign(map() | kz_term:proplist() | kz_json:object()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 sign(Claims)
   when is_map(Claims) ->
     #{jwt_identity_signature_secret := ServerSecret
@@ -234,7 +234,7 @@ update_kazoo_secret(#{auth_db := Db
     lager:debug("generating new kazoo signing secret for ~s/~s", [Db, Key]),
     update_kazoo_secret(Token, generate_new_kazoo_signing_secret()).
 
--spec update_kazoo_secret(map(), ne_binary()) -> map() | {'error', any()}.
+-spec update_kazoo_secret(map(), kz_term:ne_binary()) -> map() | {'error', any()}.
 update_kazoo_secret(#{auth_db := Db
                      ,auth_db_id := Key
                      }=Token, Secret) ->
@@ -291,7 +291,7 @@ token(#{payload := Payload
     end;
 token(#{}=Token) -> Token#{identify_verified => 'true'}.
 
--spec verify_identity_signature(map(), ne_binary(), ne_binary(), ne_binary()) -> map().
+-spec verify_identity_signature(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
 verify_identity_signature(#{identity_secret := IdentitySecret, auth_id := Identity}=Token,  Secret, Hash, IdentitySig) ->
     lager:debug("verifying key for identity '~s'", [Identity]),
     IdentitySignature = kz_base64url:decode(IdentitySig),
@@ -300,7 +300,7 @@ verify_identity_signature(#{identity_secret := IdentitySecret, auth_id := Identi
     ExpectedSignature = crypto:hmac(HashMethod, CryptoKey, Identity),
     verify_identity_signature(Token, IdentitySignature, ExpectedSignature).
 
--spec verify_identity_signature(map(), ne_binary(), ne_binary()) -> map().
+-spec verify_identity_signature(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
 verify_identity_signature(Token, ExpectedSignature, ExpectedSignature) ->
     Token#{identify_verified => 'true'};
 verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
@@ -335,7 +335,7 @@ reset_system_secret() ->
 %% Reset account/user identity secret
 %% @end
 %%--------------------------------------------------------------------
--spec reset_secret(map() | kz_proplist() | kz_json:object()) -> 'ok' | {'error', any()}.
+-spec reset_secret(map() | kz_term:proplist() | kz_json:object()) -> 'ok' | {'error', any()}.
 reset_secret(#{<<"account_id">> := Account
               ,<<"owner_id">> := OwnerId
               }) ->
@@ -402,6 +402,6 @@ reset_identity_secret(#{auth_db := Db
 %% Generate a new Kazoo signing secret
 %% @end
 %%--------------------------------------------------------------------
--spec generate_new_kazoo_signing_secret() -> ne_binary().
+-spec generate_new_kazoo_signing_secret() -> kz_term:ne_binary().
 generate_new_kazoo_signing_secret() ->
     kz_binary:rand_hex(16).

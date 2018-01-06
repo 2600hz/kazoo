@@ -100,7 +100,7 @@ process_accounts(DataJObj) ->
             [{'error', kz_term:to_binary(Msg), ?TEMPLATE_ID}]
     end.
 
--spec process_account(ne_binary(), kz_json:object()) -> template_responses().
+-spec process_account(kz_term:ne_binary(), kz_json:object()) -> template_responses().
 process_account(AccountId, DataJObj) ->
     case kz_json:get_value(<<"user_type">>, DataJObj) of
         ?MATCH_ACCOUNT_RAW(UserId) ->
@@ -142,11 +142,11 @@ send_update_to_user(UserJObj, DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec maybe_replace_to_field(email_map(), api_binary()) -> email_map().
+-spec maybe_replace_to_field(email_map(), kz_term:api_binary()) -> email_map().
 maybe_replace_to_field(Emails, 'undefined') -> Emails;
 maybe_replace_to_field(Emails, To) -> props:set_value(<<"to">>, [To], Emails).
 
--spec build_macro_data(kz_json:object(), kz_json:object()) -> kz_proplist().
+-spec build_macro_data(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 build_macro_data(UserJObj, DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'true' -> [];
@@ -159,14 +159,14 @@ build_macro_data(UserJObj, DataJObj) ->
                          )
     end.
 
--spec maybe_add_macro_key(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
+-spec maybe_add_macro_key(kz_json:path(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, UserJObj) ->
     maybe_add_user_data(UserKey, Acc, UserJObj);
 maybe_add_macro_key(_Key, Acc, _UserJObj) ->
     lager:debug("unprocessed macro key ~s: ~p", [_Key, _UserJObj]),
     Acc.
 
--spec maybe_add_user_data(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
+-spec maybe_add_user_data(kz_json:path(), kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
 maybe_add_user_data(Key, Acc, UserJObj) ->
     UserMacros = props:get_value(<<"user">>, Acc, []),
     case kz_json:get_value(Key, UserJObj) of
@@ -176,7 +176,7 @@ maybe_add_user_data(Key, Acc, UserJObj) ->
         V -> props:set_value(<<"user">>, [{Key, V} | UserMacros], Acc)
     end.
 
--spec maybe_expand_template_id(kz_json:object()) -> ne_binary().
+-spec maybe_expand_template_id(kz_json:object()) -> kz_term:ne_binary().
 maybe_expand_template_id(DataJObj) ->
     case kz_json:get_value(<<"template_id">>, DataJObj) of
         <<"customer_update_", _/binary>> = TemplateId ->
@@ -185,7 +185,7 @@ maybe_expand_template_id(DataJObj) ->
             ?TEMPLATE_ID
     end.
 
--spec maybe_expanded_config_id(kz_json:object()) -> ne_binary().
+-spec maybe_expanded_config_id(kz_json:object()) -> kz_term:ne_binary().
 maybe_expanded_config_id(DataJObj) ->
     case kz_json:get_value(<<"template_id">>, DataJObj) of
         <<"customer_update_", _/binary>> = TemplateId -> TemplateId;

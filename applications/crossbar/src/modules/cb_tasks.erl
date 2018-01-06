@@ -196,7 +196,7 @@ to_csv({Req, Context}) ->
                         ),
     {Req, cb_context:set_resp_headers(Context, Headers)}.
 
--spec download_filename(cb_context:context(), ne_binary()) -> ne_binary().
+-spec download_filename(cb_context:context(), kz_term:ne_binary()) -> kz_term:ne_binary().
 download_filename(Context, ?KZ_TASKS_ANAME_OUT) ->
     TaskJObj = cb_context:doc(Context),
 
@@ -343,7 +343,7 @@ put(Context) ->
             crossbar_util:response_400(<<"bad request">>, Reason, Context)
     end.
 
--spec task_account_id(cb_context:context()) -> api_ne_binary().
+-spec task_account_id(cb_context:context()) -> kz_term:api_ne_binary().
 task_account_id(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> cb_context:auth_account_id(Context);
@@ -439,9 +439,9 @@ set_db(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
--spec read(ne_binary(), cb_context:context(), api_binary()) -> cb_context:context().
--spec read(ne_binary(), cb_context:context(), api_binary(), api_binary()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:api_binary()) -> cb_context:context().
 read(TaskId, Context) ->
     AccountId = cb_context:account_id(Context),
     read(TaskId, set_db(Context), AccountId).
@@ -453,13 +453,13 @@ read(TaskId, Context, AccountId) ->
     AcceptValue = accept_value(Context),
     read(TaskId, Context, AccountId, AcceptValue).
 
--spec accept_value(cb_context:context()) -> api_ne_binary().
+-spec accept_value(cb_context:context()) -> kz_term:api_ne_binary().
 accept_value(Context) ->
     accept_value(cb_context:req_header(Context, <<"accept">>)
                 ,cb_context:req_value(Context, <<"accept">>)
                 ).
 
--spec accept_value(api_ne_binary(), api_ne_binary()) -> ne_binary().
+-spec accept_value(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 accept_value('undefined', 'undefined') -> ?DEFAULT_CONTENT_TYPE;
 accept_value(Header, 'undefined') -> Header;
 accept_value(_Header, <<"csv">>) -> <<"text/csv">>;
@@ -471,7 +471,7 @@ read(TaskId, Context, AccountId, Accept) ->
 
 -type parsed_accept_values() :: {'error', 'badarg'} | media_values().
 
--spec read_doc_or_attachment(ne_binary(), cb_context:context(), ne_binary(), parsed_accept_values()) ->
+-spec read_doc_or_attachment(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), parsed_accept_values()) ->
                                     cb_context:context().
 read_doc_or_attachment(TaskId, Context, AccountId, {'error', 'badarg'}) ->
     lager:info("failed to parse the accept header"),
@@ -495,7 +495,7 @@ read_doc_or_attachment(TaskId, Context, AccountId, []) ->
     lager:info("failed to find valid accept value"),
     read_doc(TaskId, Context, AccountId).
 
--spec read_doc(ne_binary(), cb_context:context(), ne_binary()) ->
+-spec read_doc(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) ->
                       cb_context:context().
 read_doc(TaskId, Context, AccountId) ->
     Ctx = crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
@@ -532,17 +532,17 @@ read_attachment(TaskId, Context, AccountId) ->
             ReadContext
     end.
 
--spec requested_attachment_name(cb_context:context()) -> ne_binary().
+-spec requested_attachment_name(cb_context:context()) -> kz_term:ne_binary().
 requested_attachment_name(Context) ->
     cb_context:req_value(Context, <<"csv_name">>, ?KZ_TASKS_ANAME_OUT).
 
--spec csv_path_to_file(ne_binary()) -> ne_binary().
+-spec csv_path_to_file(kz_term:ne_binary()) -> kz_term:ne_binary().
 csv_path_to_file(?PATH_INPUT) ->
     ?KZ_TASKS_ANAME_IN;
 csv_path_to_file(?PATH_OUTPUT) ->
     ?KZ_TASKS_ANAME_OUT.
 
--spec read_attachment_file(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
+-spec read_attachment_file(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read_attachment_file(TaskId, Context, AttachmentName) ->
     Type = ?TYPE_CHECK_OPTION(kzd_task:type()),
     crossbar_doc:load_attachment(TaskId, AttachmentName, Type, Context).
@@ -572,7 +572,7 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
 
 %% @private
--spec req_content_type(cb_context:context()) -> ne_binary().
+-spec req_content_type(cb_context:context()) -> kz_term:ne_binary().
 req_content_type(Context) ->
     cb_context:req_header(Context, <<"content-type">>).
 
@@ -591,7 +591,7 @@ attached_data(Context, 'false') ->
     kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)).
 
 %% @private
--spec save_attached_data(cb_context:context(), ne_binary(), kz_tasks:input(), boolean()) ->
+-spec save_attached_data(cb_context:context(), kz_term:ne_binary(), kz_tasks:input(), boolean()) ->
                                 cb_context:context().
 save_attached_data(Context, TaskId, CSV, 'true') ->
     CT = req_content_type(Context),

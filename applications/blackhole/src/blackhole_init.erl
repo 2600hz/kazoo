@@ -31,7 +31,7 @@ api_path() ->
 %% @public
 %% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
@@ -48,7 +48,7 @@ start_link() ->
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req) -> Req.
 
--spec on_response(cowboy:http_status(), cowboy:http_headers(), text(), cowboy_req:req()) ->
+-spec on_response(cowboy:http_status(), cowboy:http_headers(), kz_term:text(), cowboy_req:req()) ->
                          cowboy_req:req().
 on_response(_Status, _Headers, _Body, Req) -> Req.
 
@@ -183,7 +183,7 @@ start_ssl(Dispatch) ->
             lager:warning("failed to start SSL WEBSOCKET server: ~p", [_E])
     end.
 
--spec ssl_opts(list()) -> kz_proplist().
+-spec ssl_opts(list()) -> kz_term:proplist().
 ssl_opts(RootDir) ->
     BaseOpts = base_ssl_opts(RootDir),
     case kapps_config:get_string(?CONFIG_CAT, <<"ssl_ca_cert">>) of
@@ -191,7 +191,7 @@ ssl_opts(RootDir) ->
         SSLCACert -> [{'cacertfile', SSLCACert} | BaseOpts]
     end.
 
--spec base_ssl_opts(list()) -> kz_proplist().
+-spec base_ssl_opts(list()) -> kz_term:proplist().
 base_ssl_opts(RootDir) ->
     [{'port', kapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 5556)}
     ,{'certfile', find_file(kapps_config:get_string(?CONFIG_CAT

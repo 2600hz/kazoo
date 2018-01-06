@@ -25,7 +25,7 @@
 %%% API
 %%%===================================================================
 
--spec handle_job_notify(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_job_notify(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_job_notify(JObj, _Props) ->
     case kz_json:get_value(<<"Event-Name">>, JObj) of
         <<"outbound_fax_error">> ->
@@ -53,7 +53,7 @@ handle_job_notify(JObj, _Props) ->
             process_job_outcome(PrinterId, CloudJobId, kz_json:get_value(<<"Event-Name">>, JObj))
     end.
 
--spec process_job_outcome(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec process_job_outcome(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 process_job_outcome(PrinterId, JobId, <<"outbound_fax_error">>) ->
     process_job_outcome(PrinterId, JobId, <<"ABORTED">>);
 process_job_outcome(PrinterId, JobId, <<"outbound_fax">>) ->
@@ -61,7 +61,7 @@ process_job_outcome(PrinterId, JobId, <<"outbound_fax">>) ->
 process_job_outcome(PrinterId, JobId, Status) ->
     update_job_status(PrinterId, JobId, Status).
 
--spec handle_push(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_push(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push(JObj, _Props) ->
     'true' = kapi_xmpp:event_v(JObj),
     AppName = kz_json:get_value(<<"Application-Name">>, JObj),
@@ -70,7 +70,7 @@ handle_push(JObj, _Props) ->
     JID = kz_json:get_value(<<"JID">>, JObj),
     handle_push_event(JID, AppName, AppEvent, AppData).
 
--spec handle_push_event(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec handle_push_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
     URL = <<?POOL_URL,PrinterId/binary>>,
     case get_printer_oauth_credentials(PrinterId) of
@@ -95,7 +95,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
 handle_push_event(JID, AppName, AppEvent, AppData) ->
     lager:debug("unhandled xmpp push event ~s/~s/~s/~p",[JID, AppName, AppEvent, AppData]).
 
--spec maybe_process_job(kz_json:objects(), ne_binary()) -> 'ok'.
+-spec maybe_process_job(kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
 maybe_process_job([], _Authorization) -> 'ok';
 maybe_process_job([JObj | JObjs], Authorization) ->
     JobId = kz_doc:id(JObj),
@@ -125,7 +125,7 @@ maybe_fax_number(A, B) ->
         _Other -> B
     end.
 
--spec fetch_ticket(ne_binary(), ne_binary()) -> kz_json:object().
+-spec fetch_ticket(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 fetch_ticket(JobId, Authorization) ->
     URL = <<?TICKET_URL,JobId/binary>>,
     Headers = [?GPC_PROXY_HEADER
@@ -139,7 +139,7 @@ fetch_ticket(JobId, Authorization) ->
             kz_json:new()
     end.
 
--spec update_job_status(ne_binary(), ne_binary(), ne_binary() | kz_json:object()) -> any().
+-spec update_job_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) -> any().
 update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>=Status) ->
     StateObj = kz_json:set_value(<<"state">>, kz_json:set_value(<<"type">>, Status, kz_json:new()), kz_json:new()),
     update_job_status(PrinterId, JobId, StateObj);
@@ -166,7 +166,7 @@ update_job_status(PrinterId, JobId, Status) ->
             lager:debug("error getting printer (~s) oauth credentials when updating job (~s) status : ~p",[PrinterId, JobId, E])
     end.
 
--spec send_update_job_status(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_update_job_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_update_job_status(JobId, Status, Authorization) ->
     Headers = [?GPC_PROXY_HEADER
               ,{"Authorization",Authorization}
@@ -192,8 +192,8 @@ send_update_job_status(JobId, Status, Authorization) ->
             lager:debug("unexpected response  sending update_job_status: ~p", [_Response])
     end.
 
--spec download_file(ne_binary(), ne_binary()) ->
-                           {'ok', ne_binary(), ne_binary()} |
+-spec download_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                           {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
                            {'error', any()}.
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
@@ -217,7 +217,7 @@ download_file(URL, Authorization) ->
             {'error', Response}
     end.
 
--spec maybe_save_fax_document(kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec maybe_save_fax_document(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
     case save_fax_document(Job, JobId, PrinterId, FaxNumber) of
         {'ok', JObj} ->
@@ -228,7 +228,7 @@ maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
             lager:debug("got error saving fax job ~s : ~p", [JobId, _E])
     end.
 
--spec maybe_save_fax_attachment(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec maybe_save_fax_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
@@ -246,7 +246,7 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
             lager:debug("error getting printer (~s) oauth credentials for JobId (~s) : ~p",[PrinterId, JobId, E])
     end.
 
--spec save_fax_document(kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec save_fax_document(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                {'ok', kz_json:object()} |
                                {'error', any()}.
 save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
@@ -309,7 +309,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                             ),
     kz_datamgr:save_doc(?KZ_FAXES_DB, Doc).
 
--spec get_faxbox_doc(ne_binary()) ->
+-spec get_faxbox_doc(kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 get_faxbox_doc(PrinterId) ->
@@ -319,7 +319,7 @@ get_faxbox_doc(PrinterId) ->
             fetch_faxbox_doc(PrinterId)
     end.
 
--spec fetch_faxbox_doc(ne_binary()) ->
+-spec fetch_faxbox_doc(kz_term:ne_binary()) ->
                               {'ok', kz_json:object()} |
                               {'error', any()}.
 fetch_faxbox_doc(PrinterId) ->
@@ -341,7 +341,7 @@ maybe_get_faxbox_owner_email(FaxBoxDoc) ->
         OwnerId -> get_faxbox_owner_email(FaxBoxDoc, OwnerId)
     end.
 
--spec get_faxbox_owner_email(kz_json:object(), ne_binary()) ->
+-spec get_faxbox_owner_email(kz_json:object(), kz_term:ne_binary()) ->
                                     kz_json:object().
 get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
     AccountId = kz_doc:account_id(FaxBoxDoc),
@@ -356,8 +356,8 @@ get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
             FaxBoxDoc
     end.
 
--spec get_printer_oauth_credentials(ne_binary()) ->
-                                           {'ok', ne_binary()} |
+-spec get_printer_oauth_credentials(kz_term:ne_binary()) ->
+                                           {'ok', kz_term:ne_binary()} |
                                            {'error', any()}.
 get_printer_oauth_credentials(PrinterId) ->
     case kz_cache:peek_local(?CACHE_NAME, {'gcp', PrinterId }) of
@@ -366,8 +366,8 @@ get_printer_oauth_credentials(PrinterId) ->
             fetch_printer_oauth_credentials(PrinterId)
     end.
 
--spec fetch_printer_oauth_credentials(ne_binary()) ->
-                                             {'ok', ne_binary()} |
+-spec fetch_printer_oauth_credentials(kz_term:ne_binary()) ->
+                                             {'ok', kz_term:ne_binary()} |
                                              {'error', any()}.
 fetch_printer_oauth_credentials(PrinterId) ->
     case get_faxbox_doc(PrinterId) of
@@ -381,11 +381,11 @@ fetch_printer_oauth_credentials(PrinterId) ->
             {'ok', Auth}
     end.
 
--spec handle_faxbox_edited(kz_json:object(), kz_proplist()) -> pid().
+-spec handle_faxbox_edited(kz_json:object(), kz_term:proplist()) -> pid().
 handle_faxbox_edited(JObj, Props) ->
     handle_faxbox_created(JObj, Props).
 
--spec handle_faxbox_created(kz_json:object(), kz_proplist()) -> pid().
+-spec handle_faxbox_created(kz_json:object(), kz_term:proplist()) -> pid().
 handle_faxbox_created(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
     ID = kz_json:get_value(<<"ID">>, JObj),
@@ -395,7 +395,7 @@ handle_faxbox_created(JObj, _Props) ->
     AppId = kapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
     kz_util:spawn(fun check_registration/3, [AppId, State, Doc]).
 
--spec check_registration(ne_binary(), ne_binary(), kz_json:object() ) -> 'ok'.
+-spec check_registration(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() ) -> 'ok'.
 check_registration('undefined', _, _JObj) -> 'ok';
 check_registration(_, 'undefined', _JObj) -> 'ok';
 check_registration(_, <<"expired">>, _JObj) -> 'ok';
@@ -413,7 +413,7 @@ check_registration(AppId, <<"registered">>, JObj) ->
     end;
 check_registration(_, _, _JObj) -> 'ok'.
 
--spec process_registration_result(boolean(), ne_binary(), kz_json:object(), kz_json:object() ) -> any().
+-spec process_registration_result(boolean(), kz_term:ne_binary(), kz_json:object(), kz_json:object() ) -> any().
 process_registration_result('true', AppId, JObj, Result) ->
     _AccountId = kz_doc:account_id(JObj),
     _PrinterId = kz_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
@@ -481,7 +481,7 @@ update_printer(JObj) ->
     {'ok', _} = kz_datamgr:ensure_saved(?KZ_FAXES_DB, JObj),
     'ok'.
 
--spec handle_faxbox_deleted(kz_json:object(), kz_proplist()) -> any().
+-spec handle_faxbox_deleted(kz_json:object(), kz_term:proplist()) -> any().
 handle_faxbox_deleted(JObj, _Props) ->
     lager:debug("faxbox_deleted ~p",[JObj]),
     'true' = kapi_conf:doc_update_v(JObj),

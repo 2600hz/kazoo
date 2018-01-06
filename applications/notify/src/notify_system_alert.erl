@@ -42,7 +42,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:system_alert_v(JObj),
 
@@ -76,11 +76,11 @@ handle_req(JObj, _Props) ->
         end,
     send_update(lists:flatten(SendResult), RespQ, MsgId).
 
--spec send_update(send_email_return(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_update(send_email_return(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_update(Result, RespQ, MsgId) ->
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 
--spec alert_using_POST(ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
+-spec alert_using_POST(kz_term:ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
 alert_using_POST(Url, JObj) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = kz_json:encode(JObj),
@@ -111,7 +111,7 @@ alert_using_email('true', JObj) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(kz_json:object()) -> kz_proplist().
+-spec create_template_props(kz_json:object()) -> kz_term:proplist().
 create_template_props(Event) ->
     [{<<"request">>, notify_util:json_to_template_props(
                        kz_json:delete_keys([<<"Details">>
@@ -138,7 +138,7 @@ create_template_props(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
+-spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->

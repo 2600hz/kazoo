@@ -39,8 +39,8 @@
        ,{'p', 'l', {'kz_hook_rr', AccountId, EventName}}).
 
 -spec register() -> 'true'.
--spec register(ne_binary()) -> 'true'.
--spec register(ne_binary(), ne_binary()) -> 'true'.
+-spec register(kz_term:ne_binary()) -> 'true'.
+-spec register(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 register() ->
     maybe_add_hook(?HOOK_REG).
 register(AccountId) ->
@@ -49,8 +49,8 @@ register(AccountId, EventName) ->
     maybe_add_hook(?HOOK_REG(AccountId, EventName)).
 
 -spec deregister() -> 'true'.
--spec deregister(ne_binary()) -> 'true'.
--spec deregister(ne_binary(), ne_binary()) -> 'true'.
+-spec deregister(kz_term:ne_binary()) -> 'true'.
+-spec deregister(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 deregister() ->
     maybe_remove_hook(?HOOK_REG).
 deregister(AccountId) ->
@@ -58,9 +58,9 @@ deregister(AccountId) ->
 deregister(AccountId, EventName) ->
     maybe_remove_hook(?HOOK_REG(AccountId, EventName)).
 
--spec registered() -> pids().
--spec registered(ne_binary()) -> pids().
--spec registered(ne_binary(), ne_binary()) -> pids().
+-spec registered() -> kz_term:pids().
+-spec registered(kz_term:ne_binary()) -> kz_term:pids().
+-spec registered(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:pids().
 registered() ->
     gproc:lookup_pids(?HOOK_REG).
 registered(AccountId) ->
@@ -68,7 +68,7 @@ registered(AccountId) ->
 registered(AccountId, EventName) ->
     gproc:lookup_pids(?HOOK_REG(AccountId, EventName)).
 
--spec all_registered() -> pids().
+-spec all_registered() -> kz_term:pids().
 all_registered() ->
     lists:usort(
       lists:foldl(fun all_registered_fold/2
@@ -87,8 +87,8 @@ all_registered_fold(HookPattern, Acc) ->
     gproc:select(Match) ++ Acc.
 
 -spec register_rr() -> 'true'.
--spec register_rr(ne_binary()) -> 'true'.
--spec register_rr(ne_binary(), ne_binary()) -> 'true'.
+-spec register_rr(kz_term:ne_binary()) -> 'true'.
+-spec register_rr(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 register_rr() ->
     maybe_add_hook(?HOOK_REG_RR).
 register_rr(AccountId) ->
@@ -97,8 +97,8 @@ register_rr(AccountId, EventName) ->
     maybe_add_hook(?HOOK_REG_RR(AccountId, EventName)).
 
 -spec deregister_rr() -> 'true'.
--spec deregister_rr(ne_binary()) -> 'true'.
--spec deregister_rr(ne_binary(), ne_binary()) -> 'true'.
+-spec deregister_rr(kz_term:ne_binary()) -> 'true'.
+-spec deregister_rr(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 deregister_rr() ->
     maybe_remove_hook(?HOOK_REG_RR).
 deregister_rr(AccountId) ->
@@ -106,9 +106,9 @@ deregister_rr(AccountId) ->
 deregister_rr(AccountId, EventName) ->
     maybe_remove_hook(?HOOK_REG_RR(AccountId, EventName)).
 
--spec registered_rr() -> pids().
--spec registered_rr(ne_binary()) -> pids().
--spec registered_rr(ne_binary(), ne_binary()) -> pids().
+-spec registered_rr() -> kz_term:pids().
+-spec registered_rr(kz_term:ne_binary()) -> kz_term:pids().
+-spec registered_rr(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:pids().
 registered_rr() ->
     gproc:lookup_pids(?HOOK_REG_RR).
 registered_rr(AccountId) ->
@@ -116,7 +116,7 @@ registered_rr(AccountId) ->
 registered_rr(AccountId, EventName) ->
     gproc:lookup_pids(?HOOK_REG_RR(AccountId, EventName)).
 
--spec all_registered_rr() -> pids().
+-spec all_registered_rr() -> kz_term:pids().
 all_registered_rr() ->
     lists:usort(
       lists:foldl(fun all_registered_fold/2
@@ -128,7 +128,7 @@ all_registered_rr() ->
      ).
 
 -spec maybe_add_hook(tuple()) -> 'true'.
--spec maybe_add_hook(tuple(), pids()) -> 'true'.
+-spec maybe_add_hook(tuple(), kz_term:pids()) -> 'true'.
 maybe_add_hook(Hook) ->
     case gproc:lookup_pids(Hook) of
         [] -> hook_it_up(Hook);
@@ -159,7 +159,7 @@ maybe_add_binding(?HOOK_REG_RR(_AccountId, EventName)) ->
     maybe_add_binding_to_listener('kz_hooks_shared_listener', EventName).
 
 -spec maybe_add_binding_to_listener(atom()) -> 'ok'.
--spec maybe_add_binding_to_listener(atom(), ne_binary() | 'all') -> 'ok'.
+-spec maybe_add_binding_to_listener(atom(), kz_term:ne_binary() | 'all') -> 'ok'.
 maybe_add_binding_to_listener(ServerName) ->
     maybe_add_binding_to_listener(ServerName, 'all').
 maybe_add_binding_to_listener(ServerName, EventName) ->
@@ -192,13 +192,13 @@ maybe_remove_binding(?HOOK_REG_RR(_AccountId, EventName)) ->
     maybe_remove_binding_to_listener('kz_hooks_shared_listener', EventName).
 
 -spec maybe_remove_binding_to_listener(atom()) -> 'ok'.
--spec maybe_remove_binding_to_listener(atom(), ne_binary() | 'all') -> 'ok'.
+-spec maybe_remove_binding_to_listener(atom(), kz_term:ne_binary() | 'all') -> 'ok'.
 maybe_remove_binding_to_listener(ServerName) ->
     maybe_remove_binding_to_listener(ServerName, 'all').
 maybe_remove_binding_to_listener(ServerName, EventName) ->
     gen_listener:cast(ServerName, {'maybe_remove_binding', EventName}).
 
--spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     'true' = kapi_call:event_v(JObj),
     HookEvent = kz_json:get_value(<<"Event-Name">>, JObj),
@@ -209,7 +209,7 @@ handle_call_event(JObj, Props) ->
     kz_util:put_callid(CallId),
     handle_call_event(JObj, AccountId, HookEvent, CallId, props:get_is_true('rr', Props)).
 
--spec handle_call_event(kz_json:object(), api_binary(), ne_binary(), ne_binary(), boolean()) ->
+-spec handle_call_event(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
                                'ok'.
 handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
     lager:debug("event 'channel_create' had no account id"),
@@ -234,7 +234,7 @@ handle_call_event(JObj, AccountId, HookEvent, _CallId, 'true') ->
     gproc:send(?HOOK_REG_RR(AccountId), Evt),
     gproc:send(?HOOK_REG_RR(AccountId, HookEvent), Evt).
 
--spec lookup_account_id(kz_json:object()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec lookup_account_id(kz_json:object()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 lookup_account_id(JObj) ->
     case kz_call_event:account_id(JObj) of
         'undefined' ->
@@ -246,7 +246,7 @@ lookup_account_id(JObj) ->
         Id -> {'ok', Id}
     end.
 
--spec fetch_account_id(ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec fetch_account_id(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 fetch_account_id(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
@@ -256,10 +256,10 @@ fetch_account_id(Number) ->
         {'error', _}=Error -> Error
     end.
 
--spec cache_key_number(ne_binary()) -> {'kz_hooks', ne_binary()}.
+-spec cache_key_number(kz_term:ne_binary()) -> {'kz_hooks', kz_term:ne_binary()}.
 cache_key_number(Number) -> {'kz_hooks', Number}.
 
--spec get_inbound_destination(kz_json:object()) -> api_binary().
+-spec get_inbound_destination(kz_json:object()) -> kz_term:api_binary().
 get_inbound_destination(JObj) ->
     {Number, _} = kapps_util:get_destination(JObj, <<"stepswitch">>, <<"inbound_user_field">>),
     case kapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>, 'false') of
@@ -267,6 +267,6 @@ get_inbound_destination(JObj) ->
         'false' -> knm_converters:normalize(Number)
     end.
 
--spec assume_e164(ne_binary()) -> ne_binary().
+-spec assume_e164(kz_term:ne_binary()) -> kz_term:ne_binary().
 assume_e164(<<$+, _/binary>> = Number) -> Number;
 assume_e164(Number) -> <<$+, Number/binary>>.

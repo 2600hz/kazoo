@@ -34,11 +34,11 @@ flush() ->
 plan() ->
     system_dataplan().
 
--spec plan(ne_binary()) -> map().
+-spec plan(kz_term:ne_binary()) -> map().
 plan(DbName) ->
     get_dataplan(DbName).
 
--spec plan(ne_binary(), atom() | ne_binary() | view_options() | kz_json:object()) -> map().
+-spec plan(kz_term:ne_binary(), atom() | kz_term:ne_binary() | view_options() | kz_json:object()) -> map().
 plan(DbName, DocType) when is_binary(DocType) ->
     plan(DbName, DocType, 'undefined');
 plan(DbName, Props) when is_list(Props) ->
@@ -54,7 +54,7 @@ plan(DbName, DocType)
   when is_atom(DocType) ->
     plan(DbName, kz_term:to_binary(DocType)).
 
--spec plan(ne_binary(), api_binary(), api_binary()) -> map().
+-spec plan(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) -> map().
 plan(DbName, 'undefined', 'undefined') ->
     get_dataplan(DbName);
 plan(DbName, DocType, 'undefined') ->
@@ -74,7 +74,7 @@ get_dataplan(DBName) ->
         Else -> system_dataplan(DBName, Else)
     end.
 
--spec get_dataplan(ne_binary(), api_ne_binary()) -> map().
+-spec get_dataplan(kz_term:ne_binary(), kz_term:api_ne_binary()) -> map().
 get_dataplan(DBName, 'undefined') ->
     get_dataplan(DBName);
 get_dataplan(DBName, DocType) ->
@@ -155,7 +155,7 @@ dataplan_connections(Map, Index) ->
      || {_, #{<<"connection">> := C}} <- maps:to_list(Map)
     ].
 
--spec dataplan_match(ne_binary(), map(), api_binary()) -> map().
+-spec dataplan_match(kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_match(Classification, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt
@@ -199,8 +199,8 @@ dataplan_match(Classification, Plan, AccountId) ->
              }
     end.
 
--spec dataplan_type_match(ne_binary(), ne_binary(), map()) -> map().
--spec dataplan_type_match(ne_binary(), ne_binary(), map(), api_binary()) -> map().
+-spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
+-spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 
 dataplan_type_match(Classification, DocType, Plan) ->
     dataplan_type_match(Classification, DocType, Plan, 'undefined').
@@ -252,11 +252,11 @@ att_post_handler(#{}) -> 'external'.
 
 -type fetch_dataplan_ret() :: {list(), kz_json:object()}.
 
--spec fetch_simple_dataplan(ne_binary()) -> fetch_dataplan_ret().
+-spec fetch_simple_dataplan(kz_term:ne_binary()) -> fetch_dataplan_ret().
 fetch_simple_dataplan(Id) ->
     {[Id], fetch_dataplan(Id)}.
 
--spec fetch_account_dataplan(ne_binary()) -> fetch_dataplan_ret().
+-spec fetch_account_dataplan(kz_term:ne_binary()) -> fetch_dataplan_ret().
 fetch_account_dataplan(AccountId) ->
     SystemJObj = fetch_dataplan(?SYSTEM_DATAPLAN),
     JObj = fetch_dataplan(AccountId),
@@ -272,7 +272,7 @@ fetch_account_dataplan(AccountId) ->
             {Keys, MergedJObj}
     end.
 
--spec fetch_storage_dataplan({ne_binary(), ne_binary()}) -> fetch_dataplan_ret().
+-spec fetch_storage_dataplan({kz_term:ne_binary(), kz_term:ne_binary()}) -> fetch_dataplan_ret().
 fetch_storage_dataplan({AccountId, StorageId}) ->
     {Keys, AccountPlan} = fetch_account_dataplan(AccountId),
     MergedJObj = kz_json:merge_recursive(AccountPlan, fetch_dataplan(StorageId)),
@@ -296,7 +296,7 @@ fetch_cached_dataplan(Key, Fun) ->
             Plan
     end.
 
--spec fetch_dataplan(ne_binary()) -> kz_json:object().
+-spec fetch_dataplan(kz_term:ne_binary()) -> kz_json:object().
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id, ['cache_failures']) of
         {'ok', JObj} -> JObj;
@@ -307,7 +307,7 @@ fetch_dataplan(Id) ->
         {'error', _} -> kz_json:new()
     end.
 
--spec fetch_dataplan_from_file(ne_binary()) -> kz_json:object().
+-spec fetch_dataplan_from_file(kz_term:ne_binary()) -> kz_json:object().
 fetch_dataplan_from_file(Id) ->
     JObj = kz_json:load_fixture_from_file(?APP, ?DATAPLAN_FILE_LOCATION, [Id, ".json"]),
     _ = kzs_cache:add_to_doc_cache(?KZ_DATA_DB, Id, JObj),
@@ -317,7 +317,7 @@ fetch_dataplan_from_file(Id) ->
 default_dataplan() ->
     fetch_dataplan_from_file(?SYSTEM_DATAPLAN).
 
--spec maybe_start_connection(atom() | ne_binary(), map()) -> {atom(), server()}.
+-spec maybe_start_connection(atom() | kz_term:ne_binary(), map()) -> {atom(), server()}.
 maybe_start_connection(Connection, Params)
   when is_binary(Connection) ->
     maybe_start_connection(kz_term:to_atom(Connection, 'true'), Params);

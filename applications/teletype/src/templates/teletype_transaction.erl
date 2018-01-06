@@ -83,7 +83,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData), ?TEMPLATE_ID)
     end.
 
--spec process_req(kz_json:object(), ne_binary()) -> template_response().
+-spec process_req(kz_json:object(), kz_term:ne_binary()) -> template_response().
 process_req(DataJObj, TemplateId) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -107,18 +107,18 @@ process_req(DataJObj, TemplateId) ->
         {'error', Reason} -> teletype_util:notification_failed(TemplateId, Reason)
     end.
 
--spec service_plan_data(kz_json:object()) -> kz_proplist().
+-spec service_plan_data(kz_json:object()) -> kz_term:proplist().
 service_plan_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'true' -> [];
         'false' ->teletype_util:public_proplist(<<"service_plan">>, DataJObj)
     end.
 
--spec transaction_data(kz_json:object()) -> kz_proplist().
+-spec transaction_data(kz_json:object()) -> kz_term:proplist().
 transaction_data(DataJObj) ->
     transaction_data(DataJObj, teletype_util:is_preview(DataJObj)).
 
--spec transaction_data(kz_json:object(), boolean()) -> kz_proplist().
+-spec transaction_data(kz_json:object(), boolean()) -> kz_term:proplist().
 transaction_data(DataJObj, 'true') ->
     {'ok', JObj} = teletype_util:read_preview_doc(<<"transaction">>),
     Props = kz_json:recursive_to_proplist(JObj),
@@ -174,7 +174,7 @@ purchase_order(DataJObj) ->
                   ,[global]
                   ).
 
--spec calculate_total(api_objects() | binary()) -> non_neg_integer().
+-spec calculate_total(kz_term:api_objects() | binary()) -> non_neg_integer().
 calculate_total(JObjs) when is_list(JObjs) ->
     lists:sum(
       [kz_json:get_integer_value(<<"quantity">>, J, 0) * kz_json:get_integer_value(<<"amount">>, J, 0)

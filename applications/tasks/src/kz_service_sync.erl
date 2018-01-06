@@ -57,7 +57,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
@@ -70,7 +70,7 @@ start_link() ->
                            ,[]
                            ).
 
--spec maintenance_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
+-spec maintenance_req(kapi_maintenance:req(), kz_term:proplist()) -> 'ok'.
 maintenance_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
     process_maintenance_req(MaintJObj, kapi_maintenance:req_action(MaintJObj)).
@@ -164,7 +164,7 @@ start_sync_service_timer() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -178,7 +178,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -192,7 +192,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(?SCAN_MSG, State) ->
     _ = maybe_sync_service(),
     _ = maybe_clear_process_dictionary(),
@@ -211,7 +211,7 @@ maybe_clear_dictionary_entry({{'phone_number_doc', _AccountId}=Key, _Doc}) ->
     erase(Key);
 maybe_clear_dictionary_entry(_) -> 'ok'.
 
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -250,7 +250,7 @@ code_change(_OldVsn, State, _Extra) ->
        ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"sync_buffer_period">>, 600)
        ).
 
--spec maybe_sync_service() -> kz_std_return().
+-spec maybe_sync_service() -> kz_term:std_return().
 maybe_sync_service() ->
     ViewOptions = [{'limit', 1}
                   ,'include_docs'
@@ -262,7 +262,7 @@ maybe_sync_service() ->
         {'ok', _} -> {'error', 'no_dirty_services'}
     end.
 
--spec bump_modified(kz_json:object()) -> kz_std_return().
+-spec bump_modified(kz_json:object()) -> kz_term:std_return().
 bump_modified(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     Services = kz_services:reconcile_only(AccountId),
@@ -287,14 +287,14 @@ bump_modified(JObj) ->
             maybe_follow_sync_billing_id(AccountId, ServicesJObj)
     end.
 
--spec maybe_follow_sync_billing_id(ne_binary(), kzd_services:doc()) -> kz_std_return().
+-spec maybe_follow_sync_billing_id(kz_term:ne_binary(), kzd_services:doc()) -> kz_term:std_return().
 maybe_follow_sync_billing_id(AccountId, ServicesJObj) ->
     case kz_services:get_billing_id(AccountId, ServicesJObj) of
         AccountId -> kz_services:sync(AccountId, ServicesJObj);
         BillingId -> follow_sync_billing_id(BillingId, AccountId, ServicesJObj)
     end.
 
--spec follow_sync_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
+-spec follow_sync_billing_id(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:std_return().
 follow_sync_billing_id(BillingId, AccountId, ServicesJObj) ->
     %% NOTE: First try to make the parent (to be billed) as dirty
     %%  if that is successful then mark the current service doc cleans
@@ -309,12 +309,12 @@ follow_sync_billing_id(BillingId, AccountId, ServicesJObj) ->
             E
     end.
 
--spec mark_clean(kzd_services:doc()) -> kz_std_return().
+-spec mark_clean(kzd_services:doc()) -> kz_term:std_return().
 mark_clean(ServicesJObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB, kzd_services:set_is_dirty(ServicesJObj, 'false')).
 
 
--spec maybe_update_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
+-spec maybe_update_billing_id(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:std_return().
 maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, BillingId) of
         {'error', _} ->

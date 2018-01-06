@@ -174,7 +174,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"alert">>)).
@@ -307,7 +307,7 @@ view_keys(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_descendants(ne_binary(), boolean(), list()) -> list().
+-spec add_descendants(kz_term:ne_binary(), boolean(), list()) -> list().
 add_descendants(Descendant, 'false', Keys) ->
     [[<<"descendants">>, [Descendant, <<"all">>]]
     ,[<<"descendants">>, [Descendant, <<"users">>]]

@@ -34,7 +34,7 @@ handle(Data, Call) ->
     kapps_call_command:set(Action, kz_json:new(), Call),
     cf_exe:continue(Call).
 
--spec build_action(ne_binary(), ne_binary()) -> kz_json:object().
+-spec build_action(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 build_action(<<"park">>, ShouldPark) ->
     kz_json:from_list([{<<"Park-After-Pickup">>, kz_term:is_true(ShouldPark)}]);
 build_action(<<"hangup">>, ShouldHangup) ->

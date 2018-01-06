@@ -24,11 +24,11 @@
 %% API functions
 %% ====================================================================
 
--spec resolve_path(map(), attachment_info()) -> ne_binary().
+-spec resolve_path(map(), attachment_info()) -> kz_term:ne_binary().
 resolve_path(Settings, AttInfo) ->
     <<"/", (dropbox_format_url(Settings, AttInfo))/binary>>.
 
--spec dropbox_default_fields() -> kz_proplist().
+-spec dropbox_default_fields() -> kz_term:proplist().
 dropbox_default_fields() ->
     [{group, [{arg, <<"id">>}
              ,<<"_">>
@@ -36,7 +36,7 @@ dropbox_default_fields() ->
              ]}
     ].
 
--spec dropbox_format_url(map(), attachment_info()) -> ne_binary().
+-spec dropbox_format_url(map(), attachment_info()) -> kz_term:ne_binary().
 dropbox_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, dropbox_default_fields()).
 
@@ -44,7 +44,7 @@ dropbox_token(#{oauth_doc_id := TokenDocId}) ->
     {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId),
     Authorization.
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
     Authorization = dropbox_token(Settings),
     Url = resolve_path(Settings, {DbName, DocId, AName}),
@@ -62,7 +62,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
         Else -> Else
     end.
 
--spec dropbox_post(binary(), kz_proplist(), binary()) -> dropbox_result().
+-spec dropbox_post(binary(), kz_term:proplist(), binary()) -> dropbox_result().
 dropbox_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
@@ -76,7 +76,7 @@ dropbox_post(Url, Headers, Body) ->
             {'error', 'dropbox_error'}
     end.
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', iodata()} |
                               {'error', 'invalid_data' | 'not_found'}.
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->

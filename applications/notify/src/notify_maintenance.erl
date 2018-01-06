@@ -33,7 +33,7 @@
 %% Returns whether an account's initial call notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_call(ne_binary()) -> 'ok'.
+-spec check_initial_call(kz_term:ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     case kz_account:fetch(AccountId) of
@@ -52,7 +52,7 @@ check_initial_call(Account) when is_binary(Account) ->
 %% Returns whether the initial_registration notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_registration(ne_binary()) -> 'ok'.
+-spec check_initial_registration(kz_term:ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     case kz_account:fetch(AccountId) of
@@ -70,7 +70,7 @@ check_initial_registration(Account) when is_binary(Account) ->
 %% Configures the Relay key of the SMTP_Client System Config document.
 %% @end
 %%---------------------------------------------------------------------
--spec configure_smtp_relay(ne_binary()) -> 'ok' | 'failed'.
+-spec configure_smtp_relay(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_relay(Value) ->
     case update_smtp_client_document(<<"relay">>, Value) of
         {'ok', _} ->
@@ -84,7 +84,7 @@ configure_smtp_relay(Value) ->
 %% Configures the username key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
--spec configure_smtp_username(ne_binary()) -> 'ok' | 'failed'.
+-spec configure_smtp_username(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_username(Value) ->
     case update_smtp_client_document(<<"username">>, Value) of
         {'ok', _} ->
@@ -99,7 +99,7 @@ configure_smtp_username(Value) ->
 %% Configures the password key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
--spec configure_smtp_password(ne_binary()) -> 'ok' | 'failed'.
+-spec configure_smtp_password(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_password(Value) ->
     case update_smtp_client_document(<<"password">>, Value) of
         {'ok', _} ->
@@ -114,7 +114,7 @@ configure_smtp_password(Value) ->
 %% Configures the username key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
--spec configure_smtp_auth(ne_binary()) -> 'ok' | 'failed'.
+-spec configure_smtp_auth(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_auth(Value) ->
     case update_smtp_client_document(<<"auth">>, Value) of
         {'ok', _} ->
@@ -129,7 +129,7 @@ configure_smtp_auth(Value) ->
 %% Configures the port key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
--spec configure_smtp_port(ne_binary()) -> 'ok' | 'failed'.
+-spec configure_smtp_port(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_port(Value) ->
     case update_smtp_client_document(<<"port">>, Value) of
         {'ok', _} ->
@@ -176,7 +176,7 @@ reload_smtp_configs() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec template_files() -> ne_binaries().
+-spec template_files() -> kz_term:ne_binaries().
 template_files() ->
     {'ok', Files} = file:list_dir(?TEMPLATE_PATH),
     lists:foldl(
@@ -196,7 +196,7 @@ template_files() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec template_ids() -> ne_binaries().
+-spec template_ids() -> kz_term:ne_binaries().
 template_ids() ->
     {'ok', JObjs} =  kz_datamgr:all_docs(?SYSTEM_CONFIG_DB),
     lists:foldl(
@@ -217,7 +217,7 @@ template_ids() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec match_file_to_db(ne_binaries(), ne_binaries()) -> kz_proplist().
+-spec match_file_to_db(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:proplist().
 match_file_to_db(Files, Ids) ->
     lists:foldl(
       fun(<<"notify_", FileKey/binary>>=File, Acc) ->
@@ -266,9 +266,9 @@ module_exists(Module) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec compare_template_system_config(kz_proplist()) -> 'ok'.
--spec compare_template_system_config(kz_proplist(), kz_json:object()) -> 'ok'.
--spec compare_template_system_config(api_binaries(), api_binary(), api_binary()) ->
+-spec compare_template_system_config(kz_term:proplist()) -> 'ok'.
+-spec compare_template_system_config(kz_term:proplist(), kz_json:object()) -> 'ok'.
+-spec compare_template_system_config(kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_binary()) ->
                                             'default' | 'file' |
                                             'doc' | 'ok'.
 
@@ -348,7 +348,7 @@ compare_template_system_config(DefaultTemplates, DocTemplate, FileTemplate) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_template(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec set_template(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_template(Key, Template, JObj) ->
     Default = kz_json:get_value(<<"default">>, JObj),
     kz_json:set_value(
@@ -362,7 +362,7 @@ set_template(Key, Template, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec open_file(list()) -> kz_proplist() | 'error'.
+-spec open_file(list()) -> kz_term:proplist() | 'error'.
 open_file(File) ->
     case file:consult(File) of
         {'ok', Props} -> Props;
@@ -374,7 +374,7 @@ open_file(File) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec open_system_config(ne_binary()) -> kz_json:object() | 'error' | 'not_found'.
+-spec open_system_config(kz_term:ne_binary()) -> kz_json:object() | 'error' | 'not_found'.
 open_system_config(Id) ->
     case kz_datamgr:open_cache_doc(?SYSTEM_CONFIG_DB, Id) of
         {'ok', JObj} -> JObj;
@@ -388,6 +388,6 @@ open_system_config(Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | {error, any()}.
+-spec update_smtp_client_document(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {error, any()}.
 update_smtp_client_document(Key, Value) ->
     kapps_config:set(?SMTP_CLIENT_DOC, Key, Value).

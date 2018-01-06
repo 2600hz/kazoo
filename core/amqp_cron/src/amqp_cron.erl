@@ -100,7 +100,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_link([node()]) -> startlink_ret().
+-spec start_link([node()]) -> kz_types:startlink_ret().
 start_link(Nodes) ->
     Opts = [],
     amqp_leader:start_link(?SERVER, Nodes, Opts, ?MODULE, [], []).
@@ -223,7 +223,7 @@ surrendered(State, Sync, _Election) ->
     State3 = State2#state{is_leader = 'false'},
     {'ok', State3}.
 
--spec handle_leader_call(any(), pid_ref(), state(), any()) -> handle_call_ret_state(state()).
+-spec handle_leader_call(any(), kz_term:pid_ref(), state(), any()) -> kz_types:handle_call_ret_state(state()).
 handle_leader_call({'cancel', Name}, From, State, Election) when
       is_binary(Name); is_atom(Name) ->
     case pid_for_name(Name, State#state.tasks) of
@@ -283,7 +283,7 @@ handle_leader_call('remove_done_tasks', _From, State, Election) ->
     'ok' = send_tasks(Tasks1, Election),
     {'reply', 'ok', State1}.
 
--spec handle_leader_cast(any(), state(), any()) -> handle_cast_ret_state(state()).
+-spec handle_leader_cast(any(), state(), any()) -> kz_types:handle_cast_ret_state(state()).
 handle_leader_cast(_Request, State, _Election) ->
     {'noreply', State}.
 
@@ -296,7 +296,7 @@ from_leader({'tasks', Tasks}, State, _Election) ->
 handle_DOWN(_Node, State, _Election) ->
     {'ok', State}.
 
--spec handle_call(any(), pid_ref(), state(), any()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state(), any()) -> kz_types:handle_call_ret_state(state()).
 handle_call('status', _From, State, Election) ->
     Reply = [{'leader', amqp_leader_proc:leader_node(Election)}
             ,{'alive', amqp_leader_proc:alive(Election)}
@@ -309,11 +309,11 @@ handle_call('status', _From, State, Election) ->
 handle_call(_Request, _From, State, _Election) ->
     {'reply', 'ok', State}.
 
--spec handle_cast(any(), state(), any()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state(), any()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State, _Election) ->
     {'noreply', State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 

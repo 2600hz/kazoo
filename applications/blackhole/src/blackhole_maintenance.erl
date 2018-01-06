@@ -21,8 +21,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_module(text()) -> 'ok'.
--spec start_module(text(), text() | boolean()) -> 'ok'.
+-spec start_module(kz_term:text()) -> 'ok'.
+-spec start_module(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 start_module(ModuleBin) ->
     start_module(ModuleBin, 'true').
 start_module(ModuleBin, Persist) ->
@@ -52,8 +52,8 @@ start_module(ModuleBin, Persist) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec stop_module(text()) -> 'ok'.
--spec stop_module(text(), text() | boolean()) -> 'ok'.
+-spec stop_module(kz_term:text()) -> 'ok'.
+-spec stop_module(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 stop_module(ModuleBin) ->
     stop_module(ModuleBin, 'true').
 stop_module(ModuleBin, Persist) ->
@@ -83,7 +83,7 @@ stop_module(ModuleBin, Persist) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec running_modules() -> atoms().
+-spec running_modules() -> kz_term:atoms().
 running_modules() -> blackhole_bindings:modules_loaded().
 
 -spec print_module_resp(kz_json:object()) -> 'ok'.

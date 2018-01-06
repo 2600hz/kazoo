@@ -21,13 +21,13 @@
 %%%===================================================================
 -type search_ret() :: 'ok' | {'ok', kz_json:object()}.
 
--spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data()) ->
+-spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) ->
                               search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props) ->
     Authz = ecallmgr_config:is_true(<<"authz_enabled">>, 'false'),
     search_for_route(Section, Node, FetchId, CallId, Props, Authz).
 
--spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data(), boolean()) ->
+-spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), boolean()) ->
                               search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props, 'false') ->
     do_search_for_route(Section, Node, FetchId, CallId, Props, 'undefined');
@@ -36,7 +36,7 @@ search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
     lager:debug("authz worker in ~p", [AuthzWorker]),
     do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker).
 
--spec do_search_for_route(atom(), atom(), ne_binary(), ne_binary(), kzd_freeswitch:data(), api_pid_ref()) ->
+-spec do_search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), kz_term:api_pid_ref()) ->
                                  search_ret().
 do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
     Request = route_req(CallId, FetchId, Props, Node),
@@ -53,19 +53,19 @@ do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
             maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker)
     end.
 
--spec spawn_authorize_call_fun(atom(), ne_binary(), kzd_freeswitch:data()) -> pid_ref().
+-spec spawn_authorize_call_fun(atom(), kz_term:ne_binary(), kzd_freeswitch:data()) -> kz_term:pid_ref().
 spawn_authorize_call_fun(Node, CallId, Props) ->
     Ref = make_ref(),
     Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, Props]),
     {Pid, Ref}.
 
--spec authorize_call_fun(pid(), reference(), atom(), ne_binary(), kzd_freeswitch:data()) ->
+-spec authorize_call_fun(pid(), reference(), atom(), kz_term:ne_binary(), kzd_freeswitch:data()) ->
                                 {'authorize_reply', reference(), ecallmgr_fs_authz:authz_reply()}.
 authorize_call_fun(Parent, Ref, Node, CallId, Props) ->
     kz_util:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
 
--spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), 'undefined' | pid_ref()) -> search_ret().
+-spec maybe_wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), 'undefined' | kz_term:pid_ref()) -> search_ret().
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'undefined') ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     J = kz_json:set_value(<<"Custom-Channel-Vars">>
@@ -79,7 +79,7 @@ maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker) -
         'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
--spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), pid_ref()) -> search_ret().
+-spec wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), kz_term:pid_ref()) -> search_ret().
 wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, {Pid, Ref}) ->
     lager:info("waiting for authz reply from worker ~p", [Pid]),
     receive
@@ -97,7 +97,7 @@ wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, {Pid, Ref}) ->
     end.
 
 %% Reply with a 402 for unauthzed calls
--spec reply_forbidden(atom(), atom(), ne_binary()) -> 'ok'.
+-spec reply_forbidden(atom(), atom(), kz_term:ne_binary()) -> 'ok'.
 reply_forbidden(Section, Node, FetchId) ->
     lager:info("received forbidden route response for ~s, sending 403 Incoming call barred", [FetchId]),
     Props = [{<<"Method">>, <<"error">>}
@@ -111,7 +111,7 @@ reply_forbidden(Section, Node, FetchId) ->
         {'error', Reason} -> lager:debug("node ~s rejected our ~s route unauthz: ~p", [Node, Section, Reason])
     end.
 
--spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist()) -> search_ret().
+-spec reply_affirmative(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> search_ret().
 reply_affirmative(Section, Node, FetchId, _CallId, JObj, Props) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
     {'ok', XML} = route_resp_xml(Section, JObj, Props),
@@ -132,7 +132,7 @@ route_resp_xml(Fun, Section, JObj, Props)
 route_resp_xml(_, Section, JObj, Props) ->
     ecallmgr_fs_xml:route_resp_xml(Section, JObj, Props).
 
--spec route_req(ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
+-spec route_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> kz_term:proplist().
 route_req(CallId, FetchId, Props, Node) ->
     AccountId = kzd_freeswitch:account_id(Props),
     props:filter_empty(
@@ -168,7 +168,7 @@ route_req(CallId, FetchId, Props, Node) ->
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec route_req_ccvs(ne_binary(), kz_proplist()) -> kz_proplist().
+-spec route_req_ccvs(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 route_req_ccvs(FetchId, Props) ->
     {RedirectedBy, RedirectedReason} = get_redirected(Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
@@ -188,12 +188,12 @@ route_req_ccvs(FetchId, Props) ->
 %% check content-type and decode properly
 %% some sip clients send text/html with entities encoded
 %% some other use application/vnd.3gpp.sms
--spec get_body(kz_proplist()) -> api_binary().
+-spec get_body(kz_term:proplist()) -> kz_term:api_binary().
 get_body(Props) ->
     props:get_value(<<"body">>, Props).
 
--spec get_redirected(kz_proplist()) ->
-                            {api_binary(), api_binary()}.
+-spec get_redirected(kz_term:proplist()) ->
+                            {kz_term:api_binary(), kz_term:api_binary()}.
 get_redirected(Props) ->
     case props:get_value(<<"variable_last_bridge_hangup_cause">>, Props) of
         <<"REDIRECTION_TO_NEW_DESTINATION">> ->
@@ -206,10 +206,10 @@ get_redirected(Props) ->
         _ -> {'undefined' , 'undefined'}
     end.
 
--spec register_bindings(atom(), atom(), ne_binaries()) -> boolean().
+-spec register_bindings(atom(), atom(), kz_term:ne_binaries()) -> boolean().
 register_bindings(Node, Section, Bindings) ->
     lists:all(fun(Binding) -> register_binding(Node, Section, Binding) end, Bindings).
 
--spec register_binding(atom(), atom(), ne_binary()) -> boolean().
+-spec register_binding(atom(), atom(), kz_term:ne_binary()) -> boolean().
 register_binding(Node, Section, Binding) ->
     gproc:reg({'p', 'l',  ?FS_ROUTE_MSG(Node, Section, Binding)}) =:= 'true'.

@@ -22,15 +22,15 @@
 server_info(#{server := {App, Conn}}) -> App:server_info(Conn);
 server_info({App, Conn}) -> App:server_info(Conn).
 
--spec server_url(map() | server()) -> ne_binary().
+-spec server_url(map() | server()) -> kz_term:ne_binary().
 server_url(#{server := {App, Conn}}) -> App:server_url(Conn);
 server_url({App, Conn}) -> App:server_url(Conn).
 
--spec db_url(map() | server(), ne_binary()) -> ne_binary().
+-spec db_url(map() | server(), kz_term:ne_binary()) -> kz_term:ne_binary().
 db_url(#{server := {App, Conn}}, DbName) -> App:db_url(Conn, DbName);
 db_url({App, Conn}, DbName) -> App:db_url(Conn, DbName).
 
--spec get_db(map() | server(), ne_binary()) -> db().
+-spec get_db(map() | server(), kz_term:ne_binary()) -> db().
 get_db(#{server := {App, Conn}}, DbName) ->
     Db = App:get_db(Conn, DbName),
     #db{app=App, server=Conn, db=Db, name=DbName};

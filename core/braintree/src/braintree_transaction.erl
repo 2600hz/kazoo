@@ -36,8 +36,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec url() -> string().
--spec url(ne_binary()) -> string().
--spec url(ne_binary(), ne_binary()) -> string().
+-spec url(kz_term:ne_binary()) -> string().
+-spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 
 url() ->
     "/transactions/".
@@ -58,7 +58,7 @@ url(TransactionId, Options) ->
 %% Find a transaction by id
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary()) -> bt_transaction().
+-spec find(kz_term:ne_binary()) -> bt_transaction().
 find(TransactionId) ->
     Url = url(TransactionId),
     Xml = braintree_request:get(Url),
@@ -70,7 +70,7 @@ find(TransactionId) ->
 %% Find transactions by customer id
 %% @end
 %%--------------------------------------------------------------------
--spec find_by_customer(ne_binary()) -> bt_transactions().
+-spec find_by_customer(kz_term:ne_binary()) -> bt_transactions().
 find_by_customer(CustomerId) ->
     Url = url(<<"advanced_search">>),
     Props = [{'customer_id', [{'is', CustomerId}]}],
@@ -80,7 +80,7 @@ find_by_customer(CustomerId) ->
      || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
     ].
 
--spec find_by_customer(ne_binary(), ne_binary(), ne_binary()) -> bt_transactions().
+-spec find_by_customer(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> bt_transactions().
 find_by_customer(CustomerId, Min, Max) ->
     Url = url(<<"advanced_search">>),
     Props = [{'customer_id', [{'is', CustomerId}]}
@@ -108,7 +108,7 @@ find_by_customer(CustomerId, Min, Max) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(bt_transaction()) -> bt_transaction().
--spec create(ne_binary(), bt_transaction()) -> bt_transaction().
+-spec create(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
     MaxAmount = kapps_config:get_float(?CONFIG_CAT, <<"max_amount">>, 200.00),
@@ -131,7 +131,7 @@ create(CustomerId, Transaction) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec sale(bt_transaction()) -> bt_transaction().
--spec sale(ne_binary(), bt_transaction()) -> bt_transaction().
+-spec sale(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
 
@@ -140,8 +140,8 @@ sale(CustomerId, Transaction) ->
                                      ,customer_id=CustomerId
                                      }).
 
--spec quick_sale(ne_binary(), number() | ne_binary()) -> bt_transaction().
--spec quick_sale(ne_binary(), number() | ne_binary(), kz_proplist()) -> bt_transaction().
+-spec quick_sale(kz_term:ne_binary(), number() | kz_term:ne_binary()) -> bt_transaction().
+-spec quick_sale(kz_term:ne_binary(), number() | kz_term:ne_binary(), kz_term:proplist()) -> bt_transaction().
 quick_sale(CustomerId, Amount) ->
     case kz_term:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
@@ -163,7 +163,7 @@ quick_sale(CustomerId, Amount, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec credit(bt_transaction()) -> bt_transaction().
--spec credit(ne_binary(), bt_transaction()) -> bt_transaction().
+-spec credit(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 credit(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT}).
 
@@ -172,7 +172,7 @@ credit(CustomerId, Transaction) ->
                                      ,customer_id=CustomerId
                                      }).
 
--spec quick_credit(ne_binary(), ne_binary()) -> bt_transaction().
+-spec quick_credit(kz_term:ne_binary(), kz_term:ne_binary()) -> bt_transaction().
 quick_credit(CustomerId, Amount) ->
     credit(CustomerId, #bt_transaction{amount=kz_term:to_binary(Amount)
                                       ,settle='false'
@@ -185,7 +185,7 @@ quick_credit(CustomerId, Amount) ->
 %% Void transactions that have a status:authorized or submitted_for_settlement
 %% @end
 %%--------------------------------------------------------------------
--spec void(bt_transaction() | ne_binary()) -> bt_transaction().
+-spec void(bt_transaction() | kz_term:ne_binary()) -> bt_transaction().
 void(#bt_transaction{id=TransactionId}) ->
     void(TransactionId);
 void(TransactionId) ->
@@ -199,8 +199,8 @@ void(TransactionId) ->
 %% Refund a transaction with status: settled or settling
 %% @end
 %%--------------------------------------------------------------------
--spec refund(bt_transaction() | ne_binary()) -> bt_transaction().
--spec refund(bt_transaction() | ne_binary(), api_binary()) -> bt_transaction().
+-spec refund(bt_transaction() | kz_term:ne_binary()) -> bt_transaction().
+-spec refund(bt_transaction() | kz_term:ne_binary(), kz_term:api_binary()) -> bt_transaction().
 
 refund(TransactionId) ->
     refund(TransactionId, 'undefined').
@@ -220,7 +220,7 @@ refund(TransactionId, Amount) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> bt_transaction().
--spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_transaction().
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_transaction().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/transaction").
@@ -272,7 +272,7 @@ xml_to_record(Xml, Base) ->
                    ,is_recurring = props:get_value('is_recurring', StatusHistory)
                    }.
 
--spec get_status_history(bt_xml(), kz_deeplist()) -> kz_proplist().
+-spec get_status_history(bt_xml(), kz_term:deeplist()) -> kz_term:proplist().
 get_status_history(Xml, Base) ->
     HistoryPath = lists:flatten([Base, "/status-history/status-event"]),
     History = xmerl_xpath:string(HistoryPath, Xml),
@@ -290,13 +290,13 @@ get_status_history(Xml, Base) ->
                                 end, Sources)}
     ].
 
--spec get_users(bt_xml(), api_binaries()) -> api_binaries().
+-spec get_users(bt_xml(), kz_term:api_binaries()) -> kz_term:api_binaries().
 get_users([], Users) -> Users;
 get_users([Element|Elements], Users) ->
     User = kz_xml:get_value("user/text()", Element),
     get_users(Elements, [User|Users]).
 
--spec get_transaction_sources(bt_xml(), api_binaries()) -> api_binaries().
+-spec get_transaction_sources(bt_xml(), kz_term:api_binaries()) -> kz_term:api_binaries().
 get_transaction_sources([], Sources) -> Sources;
 get_transaction_sources([Element|Elements], Sources) ->
     Source = kz_xml:get_value("transaction-source/text()", Element),
@@ -308,8 +308,8 @@ get_transaction_sources([Element|Elements], Sources) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_transaction()) -> kz_proplist() | bt_xml().
--spec record_to_xml(bt_transaction(), boolean()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_transaction()) -> kz_term:proplist() | bt_xml().
+-spec record_to_xml(bt_transaction(), boolean()) -> kz_term:proplist() | bt_xml().
 
 record_to_xml(Transaction) ->
     record_to_xml(Transaction, 'false').
@@ -447,7 +447,7 @@ record_to_json(#bt_transaction{}=Transaction) ->
       ,{<<"is_recurring">>, Transaction#bt_transaction.is_recurring}
       ]).
 
--spec json_to_record(api_object()) -> bt_transaction() | 'undefined'.
+-spec json_to_record(kz_term:api_object()) -> bt_transaction() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_transaction{id = kz_doc:id(JObj)
@@ -497,7 +497,7 @@ json_to_record(JObj) ->
                    ,is_recurring = kz_json:is_true(<<"is_recurring">>, JObj)
                    }.
 
--spec record_to_notification_props(bt_transaction()) -> kz_proplist().
+-spec record_to_notification_props(bt_transaction()) -> kz_term:proplist().
 record_to_notification_props(#bt_transaction{}=BraintreeTransaction) ->
     Transaction = record_to_json(BraintreeTransaction),
     RespCode = kz_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
@@ -516,7 +516,7 @@ record_to_notification_props(#bt_transaction{}=BraintreeTransaction) ->
       ,{<<"Currency-Code">>, kz_json:get_value(<<"currency_code">>, Transaction)}
       ]).
 
--spec purchase_order_reason(kz_json:object()) -> api_ne_binary().
+-spec purchase_order_reason(kz_json:object()) -> kz_term:api_ne_binary().
 purchase_order_reason(Transaction) ->
     case kz_json:get_integer_value(<<"purchase_order">>, Transaction) of
         'undefined' -> 'undefined';

@@ -211,7 +211,7 @@ summary(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     websockets_req(Context, [{<<"Socket-ID">>, Id}]).
 
@@ -220,7 +220,7 @@ read(Id, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec websockets_req(cb_context:context(), kz_proplist()) -> cb_context:context().
+-spec websockets_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 websockets_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

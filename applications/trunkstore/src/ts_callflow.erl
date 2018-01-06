@@ -40,11 +40,11 @@
 -define(WAIT_FOR_WIN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -type state() :: #ts_callflow_state{}.
--type event_type() :: {api_binary(), api_binary(), api_binary()}.
+-type event_type() :: {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 
 -export_type([state/0]).
 
--spec init(kz_json:object(), api_binary() | api_binaries()) ->
+-spec init(kz_json:object(), kz_term:api_binary() | kz_term:api_binaries()) ->
                   state() |
                   {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
@@ -130,9 +130,9 @@ route_won(#ts_callflow_state{amqp_worker=Worker, kapps_call=Call}=State, RouteWi
                                    }
     }.
 
--spec wait_for_bridge(state(), api_integer()) ->
+-spec wait_for_bridge(state(), kz_term:api_integer()) ->
                              {'hangup' | 'error' | 'bridged', state()}.
--spec wait_for_bridge(state(), api_integer(), kapps_call_command:request_return()) ->
+-spec wait_for_bridge(state(), kz_term:api_integer(), kapps_call_command:request_return()) ->
                              {'hangup' | 'error' | 'bridged', state()}.
 wait_for_bridge(State, 'undefined') ->
     wait_for_bridge(State, 20);
@@ -280,7 +280,7 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
                               ,Worker
                               ).
 
--spec send_hangup(state(), api_binary()) -> 'ok'.
+-spec send_hangup(state(), kz_term:api_binary()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
@@ -292,7 +292,7 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
     {'ok', _} = kz_call_response:send(CallId, CtlQ, Code),
     'ok'.
 
--spec send_command(state(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_command(state(), kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 send_command(#ts_callflow_state{amqp_worker=Worker}, Command, PubFun) ->
     'ok' = kz_amqp_worker:cast(Command, PubFun, Worker).
 
@@ -306,7 +306,7 @@ get_request_data(#ts_callflow_state{route_req_jobj=JObj}) -> JObj.
 get_custom_channel_vars(#ts_callflow_state{route_req_jobj=JObj}) ->
     kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
 
--spec get_custom_sip_headers(state()) -> api_object().
+-spec get_custom_sip_headers(state()) -> kz_term:api_object().
 get_custom_sip_headers(#ts_callflow_state{route_req_jobj=JObj}) ->
     kz_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 
@@ -316,21 +316,21 @@ set_endpoint_data(State, Data) -> State#ts_callflow_state{ep_data=Data}.
 -spec get_endpoint_data(state()) -> kz_json:object().
 get_endpoint_data(#ts_callflow_state{ep_data=EP}) -> EP.
 
--spec set_account_id(state(), ne_binary()) -> state().
+-spec set_account_id(state(), kz_term:ne_binary()) -> state().
 set_account_id(State, ID) -> State#ts_callflow_state{acctid=ID}.
 
--spec get_account_id(state()) -> ne_binary().
+-spec get_account_id(state()) -> kz_term:ne_binary().
 get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 
--spec get_control_queue(state()) -> api_binary().
+-spec get_control_queue(state()) -> kz_term:api_binary().
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
--spec get_worker_queue(state()) -> ne_binary().
+-spec get_worker_queue(state()) -> kz_term:ne_binary().
 get_worker_queue(#ts_callflow_state{amqp_worker=Worker}) ->
     gen_listener:queue_name(Worker).
 
--spec get_aleg_id(state()) -> api_binary().
--spec get_bleg_id(state()) -> api_binary().
+-spec get_aleg_id(state()) -> kz_term:api_binary().
+-spec get_bleg_id(state()) -> kz_term:api_binary().
 get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) -> ALeg.
 get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) -> ALeg.
 
@@ -340,16 +340,16 @@ get_call_cost(#ts_callflow_state{call_cost=Cost}) -> Cost.
 -spec set_failover(state(), kz_json:object()) -> state().
 set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 
--spec get_failover(state()) -> api_object().
+-spec get_failover(state()) -> kz_term:api_object().
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
--spec is_trunkstore_acct(kz_json:object(), api_binary() | api_binaries()) -> boolean().
+-spec is_trunkstore_acct(kz_json:object(), kz_term:api_binary() | kz_term:api_binaries()) -> boolean().
 is_trunkstore_acct(RouteReqJObj, Type) ->
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteReqJObj, kz_json:new()),
     lager:info("checking type(s) ~p against CCVs ~s", [Type, kz_json:encode(CCVs)]),
     check_ccvs_for_type(CCVs, Type).
 
--spec check_ccvs_for_type(kz_json:object(), api_binary() | api_binaries()) -> boolean().
+-spec check_ccvs_for_type(kz_json:object(), kz_term:api_binary() | kz_term:api_binaries()) -> boolean().
 check_ccvs_for_type(CCVs, [Type|Types]) ->
     check_ccvs_for_type(CCVs, Type)
         orelse check_ccvs_for_type(CCVs, Types);
@@ -363,7 +363,7 @@ check_ccvs_for_type(CCVs, <<"sys_info">> = Type) ->
 check_ccvs_for_type(CCVs, Type) ->
     is_authorized(CCVs, Type).
 
--spec is_authorized(kz_json:object(), api_ne_binary()) -> boolean().
+-spec is_authorized(kz_json:object(), kz_term:api_ne_binary()) -> boolean().
 is_authorized(CCVs, Type) ->
     Type =:= kz_json:get_ne_binary_value([<<"Authorizing-Type">>], CCVs).
 
@@ -376,15 +376,15 @@ is_not_redirected(CCVs) ->
     'undefined' =/= kz_json:get_ne_binary_value([<<"Referred-By">>], CCVs)
         orelse 'undefined' =/= kz_json:get_ne_binary_value([<<"Redirected-By">>], CCVs).
 
--spec pre_park_action() -> ne_binary().
+-spec pre_park_action() -> kz_term:ne_binary().
 pre_park_action() ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"ring_ready_offnet">>, 'true') of
         'false' -> <<"none">>;
         'true' -> <<"ring_ready">>
     end.
 
--spec is_success(ne_binary(), kz_json:object()) -> boolean().
--spec is_success(ne_binaries(), kz_json:object(), ne_binary()) -> boolean().
+-spec is_success(kz_term:ne_binary(), kz_json:object()) -> boolean().
+-spec is_success(kz_term:ne_binaries(), kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_success(Key, JObj) ->
     kz_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
 is_success(Key, JObj, Default) ->

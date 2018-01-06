@@ -18,9 +18,9 @@
 -define(DEFAULT_FILTER_MODE, <<"empty_fail">>).
 
 -spec handle_req(stepswitch_resources:resources()
-                ,ne_binary()
+                ,kz_term:ne_binary()
                 ,kapi_offnet_resource:req()
-                ,ne_binary()
+                ,kz_term:ne_binary()
                 ,kz_json:object()
                 ) -> stepswitch_resources:resources().
 handle_req(Resources, Number, OffnetJObj, DB, Params) ->
@@ -35,10 +35,10 @@ handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     filter_by_regex(Resources, ValueA, ValueB, Action, EmptyMode).
 
 -spec filter_by_regex(stepswitch_resources:resources()
-                     ,ne_binary()
-                     ,kz_proplists()
+                     ,kz_term:ne_binary()
+                     ,kz_term:proplists()
                      ,atom()
-                     ,ne_binary()
+                     ,kz_term:ne_binary()
                      ) -> stepswitch_resources:resources().
 filter_by_regex(Resources, ValueA, Regexes, Action, EmptyMode) ->
     lager:debug("filter resources by ~s with regex rules, and ~s matched", [ValueA, Action]),
@@ -50,7 +50,7 @@ filter_by_regex(Resources, ValueA, Regexes, Action, EmptyMode) ->
                    ,Resources
                    ).
 
--spec evaluate_rules(ne_binary(), re:mp(), ne_binary(), atom(), ne_binary()) -> boolean().
+-spec evaluate_rules(kz_term:ne_binary(), re:mp(), kz_term:ne_binary(), atom(), kz_term:ne_binary()) -> boolean().
 evaluate_rules(Id, [], _Data, 'keep', <<"empty_fail">>) ->
     lager:debug("resource ~s has empty rules, dropping", [Id]),
     'false';
@@ -82,8 +82,8 @@ evaluate_rules(Id, Rules, Data, 'drop', _EmptyMode) ->
             'false'
     end.
 
--spec do_evaluate_rules(re:mp(), ne_binary()) ->
-                               {'ok', ne_binary()} |
+-spec do_evaluate_rules(re:mp(), kz_term:ne_binary()) ->
+                               {'ok', kz_term:ne_binary()} |
                                {'error', 'no_match'}.
 do_evaluate_rules([], _) -> {'error', 'no_match'};
 do_evaluate_rules([Rule|Rules], Data) ->

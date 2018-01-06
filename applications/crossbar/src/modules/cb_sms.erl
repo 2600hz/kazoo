@@ -143,7 +143,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(Year,Month,_) = Id, Context) ->
     Context1 = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"sms">>));
@@ -223,7 +223,7 @@ on_successful_validation(Context) ->
 -define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
 -define(CALLER_ID_EXTERNAL, [<<"caller_id">>, <<"external">>, <<"number">>]).
 
--spec get_default_caller_id(cb_context:context(), api_binary()) -> api_binary().
+-spec get_default_caller_id(cb_context:context(), kz_term:api_binary()) -> kz_term:api_binary().
 get_default_caller_id(Context, 'undefined') ->
     {'ok', JObj} = kz_account:fetch(cb_context:account_id(Context)),
     kz_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
@@ -255,7 +255,7 @@ summary(Context) ->
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
 
--spec build_view_name_rane_keys(api_binary(), api_binary()) -> {ne_binary(), crossbar_view:options()}.
+-spec build_view_name_rane_keys(kz_term:api_binary(), kz_term:api_binary()) -> {kz_term:ne_binary(), crossbar_view:options()}.
 build_view_name_rane_keys('undefined', 'undefined') ->
     {?CB_LIST_ALL
     ,[{'range_start_keymap', []}
@@ -293,7 +293,7 @@ is_digit(N) when is_integer(N),
                  N =< $9 -> true;
 is_digit(_) -> false.
 
--spec build_number(ne_binary()) -> {api_binary(), kz_proplist()}.
+-spec build_number(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:proplist()}.
 build_number(Number) ->
     N = binary:split(Number, <<",">>, ['global']),
     case N of
@@ -301,8 +301,8 @@ build_number(Number) ->
         _ -> lists:foldl(fun parse_number/2, {'undefined', []}, N)
     end.
 
--spec parse_number(ne_binary(), {api_binary(), kz_proplist()}) ->
-                          {api_binary(), kz_proplist()}.
+-spec parse_number(kz_term:ne_binary(), {kz_term:api_binary(), kz_term:proplist()}) ->
+                          {kz_term:api_binary(), kz_term:proplist()}.
 parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
     {Num, [{<<"TON">>, kz_term:to_integer(N) } | Options]};
 parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->

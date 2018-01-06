@@ -13,7 +13,7 @@ run_modules() ->
     _ = [run_module(M) || M <- modules()],
     'no_return'.
 
--spec run_module(atom() | ne_binary()) -> 'no_return'.
+-spec run_module(atom() | kz_term:ne_binary()) -> 'no_return'.
 run_module(Module) when is_atom(Module) ->
     Exports = Module:module_info('exports'),
     _ = quickcheck_exports(Module, Exports),
@@ -41,7 +41,7 @@ run_seq_modules() ->
     _ = [run_seq_module(M) || M <- modules()],
     'no_return'.
 
--spec run_seq_module(atom() | ne_binary()) -> 'no_return'.
+-spec run_seq_module(atom() | kz_term:ne_binary()) -> 'no_return'.
 run_seq_module(Module) when is_atom(Module) ->
     Exports = Module:module_info('exports'),
     _ = seq_exports(Module, Exports),

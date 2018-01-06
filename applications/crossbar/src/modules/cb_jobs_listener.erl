@@ -60,7 +60,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -80,7 +80,7 @@ publish_new_job(Context) ->
     ReqId = cb_context:req_id(Context),
     publish(AccountId, JobId, ReqId).
 
--spec publish(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec publish(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 publish(AccountId, JobId, ReqId) ->
     Work = kz_json:from_list([{<<"Account-ID">>, AccountId}
                              ,{<<"Job-ID">>, JobId}
@@ -92,7 +92,7 @@ publish(AccountId, JobId, ReqId) ->
                        ,fun(API) -> kapi_delegate:publish_delegate(?APP_ROUTING, API) end
                        ).
 
--spec handle_job(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_job(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_job(JObj, _Props) ->
     'true' = kapi_delegate:delegate_v(JObj),
     kz_util:put_callid(kz_json:get_first_defined([<<"Msg-ID">>, [<<"Delegate-Message">>, <<"Job-ID">>]], JObj)),
@@ -101,14 +101,14 @@ handle_job(JObj, _Props) ->
                ,kz_json:get_value(<<"Job-ID">>, Job)
                ).
 
--spec process_job(ne_binary(), ne_binary()) -> 'ok'.
+-spec process_job(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 process_job(<<_/binary>> = AccountId, <<_/binary>> = JobId) ->
     JobModb = job_modb(AccountId, JobId),
     {'ok', Job} = kz_datamgr:open_cache_doc(JobModb, JobId),
     lager:debug("processing job ~s for account ~s", [JobId, AccountId]),
     maybe_start_job(Job, kz_json:get_value(<<"pvt_status">>, Job)).
 
--spec maybe_start_job(kz_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_start_job(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 maybe_start_job(_Job, <<"complete">>) ->
     lager:debug("job is complete, nothing to do");
 maybe_start_job(Job, <<"pending">>) ->
@@ -122,7 +122,7 @@ maybe_start_job(Job, <<"pending">>) ->
 maybe_start_job(Job, <<"running">>) ->
     lager:debug("job is running, ~s is in charge", [kz_json:get_value(<<"pvt_node">>, Job)]).
 
--spec start_job(kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec start_job(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 start_job(Job, _AccountId, _AuthAccountId, _CarrierModule, []) ->
     update_status(Job, <<"complete">>),
     lager:debug("successfully finished job");
@@ -130,7 +130,7 @@ start_job(Job, AccountId, AuthAccountId, CarrierModule, [Number|Numbers]) ->
     Job1 = maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number),
     start_job(Job1, AccountId, AuthAccountId, CarrierModule, Numbers).
 
--spec select_carrier_module(kz_json:object()) -> ne_binary().
+-spec select_carrier_module(kz_json:object()) -> kz_term:ne_binary().
 select_carrier_module(Job) ->
     ResourceId = kz_json:get_value(<<"resource_id">>, Job),
     case kz_datamgr:open_cache_doc(?KZ_OFFNET_DB, ResourceId) of
@@ -146,7 +146,7 @@ select_carrier_module(Job) ->
             ?CARRIER_LOCAL
     end.
 
--spec maybe_create_number(kz_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
+-spec maybe_create_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()) ->
                                  kz_json:object().
 maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     case kz_json:get_first_defined([[?KEY_SUCCESS, Number]
@@ -159,7 +159,7 @@ maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
             Job
     end.
 
--spec create_number(kz_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
+-spec create_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()) ->
                            kz_json:object().
 create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
     Options = [{'assign_to', AccountId}
@@ -196,7 +196,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
                          )
     end.
 
--spec update_with_failure(kz_json:object(), ne_binary(), ne_binary(), atom(), kz_json:object()) ->
+-spec update_with_failure(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_json:object()) ->
                                  kz_json:object().
 update_with_failure(Job, AccountId, Number, Failure, JObj) ->
     lager:debug("failed to create number ~s for account ~s: ~p ~p", [Number, AccountId, Failure, JObj]),
@@ -222,7 +222,7 @@ update_with_failure(Job, AccountId, Number, Failure, JObj) ->
 build_number_properties(JObj) ->
     kz_json:from_list([{<<"resource_id">>, kz_json:get_value(<<"resource_id">>, JObj)}]).
 
--spec update_status(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec update_status(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 update_status(Job, Status) ->
     {'ok', Job1} = kz_datamgr:save_doc(kz_doc:account_db(Job)
                                       ,kz_json:set_values([{<<"pvt_status">>, Status}
@@ -239,12 +239,12 @@ start_recovery() ->
     {Year, Month, _} = erlang:date(),
     maybe_recover_jobs(Year, Month, kapps_util:get_all_accounts('raw')).
 
--spec maybe_recover_jobs(kz_year(), kz_month(), ne_binaries()) -> 'ok'.
+-spec maybe_recover_jobs(kz_time:year(), kz_time:month(), kz_term:ne_binaries()) -> 'ok'.
 maybe_recover_jobs(Year, Month, Accounts) ->
     _ = [catch maybe_recover_account_jobs(Year, Month, AccountId) || AccountId <- Accounts],
     lager:debug("finished recovering account jobs").
 
--spec maybe_recover_account_jobs(kz_year(), kz_month(), ne_binary()) -> 'ok'.
+-spec maybe_recover_account_jobs(kz_time:year(), kz_time:month(), kz_term:ne_binary()) -> 'ok'.
 maybe_recover_account_jobs(Year, Month, AccountId) ->
     Modb = kazoo_modb:get_modb(AccountId, Year, Month),
     case kz_datamgr:get_results(Modb, <<"resources/status_listing">>, [{'keys', [<<"pending">>
@@ -327,7 +327,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -341,7 +341,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -359,7 +359,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?RECOVERY_MESSAGE}
            ,#state{recovery_ref=Ref}=State
            ) ->
@@ -378,7 +378,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -412,7 +412,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec job_modb(ne_binary(), ne_binary()) -> ne_binary().
+-spec job_modb(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 job_modb(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_)) ->
     kz_util:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
 job_modb(AccountId, ?MATCH_MODB_PREFIX_M1(Year,Month,_)) ->

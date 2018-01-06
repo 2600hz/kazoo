@@ -78,8 +78,8 @@
 -type fold_results() :: payload().
 -type map_results() :: list().
 
--type matches_fun() :: fun((ne_binaries(), ne_binaries()) -> boolean()).
--type candidates_fun() :: fun((ne_binary()) -> kz_bindings()).
+-type matches_fun() :: fun((kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean()).
+-type candidates_fun() :: fun((kz_term:ne_binary()) -> kz_bindings()).
 
 -record(kz_responder, {module :: atom()
                       ,function :: atom()
@@ -88,16 +88,16 @@
 -type kz_responder() :: #kz_responder{}.
 -type kz_responders() :: [kz_responder()].
 
--record(kz_binding, {binding :: ne_binary() | '_'
-                    ,binding_parts :: ne_binaries() | '_'
+-record(kz_binding, {binding :: kz_term:ne_binary() | '_'
+                    ,binding_parts :: kz_term:ne_binaries() | '_'
                     ,binding_responders = queue:new() :: queue:queue() | '_'
                                                          %% queue -> [#kz_responder{}]
-                    ,binding_prefix :: api_binary() | '$1' | '_'
+                    ,binding_prefix :: kz_term:api_binary() | '$1' | '_'
                     }).
 -type kz_binding() :: #kz_binding{}.
 -type kz_bindings() :: [kz_binding()].
 
--type kz_rt_options() :: kz_proplist().
+-type kz_rt_options() :: kz_term:proplist().
 -type kz_rt_option() :: 'candidates' | 'matches'.
 
 -record(state, {bindings = [] :: kz_bindings()
@@ -129,23 +129,23 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--spec map(ne_binary(), payload()) -> map_results().
--spec map(ne_binary(), payload(), kz_rt_options()) -> map_results().
+-spec map(kz_term:ne_binary(), payload()) -> map_results().
+-spec map(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 map(Routing, Payload) ->
     map_processor(Routing, Payload, rt_options()).
 
 map(Routing, Payload, Options) ->
     map_processor(Routing, Payload, rt_options(Options)).
 
--spec pmap(ne_binary(), payload()) -> map_results().
--spec pmap(ne_binary(), payload(), kz_rt_options()) -> map_results().
+-spec pmap(kz_term:ne_binary(), payload()) -> map_results().
+-spec pmap(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 pmap(Routing, Payload) ->
     pmap_processor(Routing, Payload, rt_options()).
 
 pmap(Routing, Payload, Options) ->
     pmap_processor(Routing, Payload, rt_options(Options)).
 
--spec get_binding_candidates(ne_binary()) -> kz_bindings().
+-spec get_binding_candidates(kz_term:ne_binary()) -> kz_bindings().
 get_binding_candidates(Routing) ->
     case binary:split(Routing, <<".">>, ['global']) of
         [Vsn, Action | _] ->
@@ -155,7 +155,7 @@ get_binding_candidates(Routing) ->
     end.
 
 %% supports Crossbar-optimized bindings, vs selecting the whole table
--spec get_binding_candidates(ne_binary(), ne_binary()) -> kz_bindings().
+-spec get_binding_candidates(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_bindings().
 get_binding_candidates(Vsn, Action) ->
     ets:select(table_id(), [{#kz_binding{binding_prefix='$1'
                                         ,_='_'
@@ -181,11 +181,11 @@ get_binding_candidates(Vsn, Action) ->
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
--spec fold(ne_binary(), payload()) -> fold_results().
+-spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     fold_processor(Routing, Payload, rt_options()).
 
--spec fold(ne_binary(), payload(), kz_rt_options()) -> fold_results().
+-spec fold(kz_term:ne_binary(), payload(), kz_rt_options()) -> fold_results().
 fold(Routing, Payload, Options) ->
     fold_processor(Routing, Payload, rt_options(Options)).
 
@@ -194,13 +194,13 @@ fold(Routing, Payload, Options) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any(kz_proplist(), function()) -> boolean().
+-spec any(kz_term:proplist(), function()) -> boolean().
 any(Res, F) when is_list(Res),
                  is_function(F, 1)
                  ->
     lists:any(F, Res).
 
--spec all(kz_proplist(), function()) -> boolean().
+-spec all(kz_term:proplist(), function()) -> boolean().
 all(Res, F) when is_list(Res),
                  is_function(F, 1)
                  ->
@@ -228,7 +228,7 @@ succeeded(Res, F) when is_list(Res),
 %% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
 %%
 %%--------------------------------------------------------------------
--spec matches(ne_binaries(), ne_binaries()) -> boolean().
+-spec matches(kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean().
 
 %% if both are empty, we made it!
 matches([], []) -> 'true';
@@ -289,7 +289,7 @@ matches(_, _) -> 'false'.
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -299,9 +299,9 @@ stop() -> gen_server:cast(?SERVER, 'stop').
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
--spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
                   bind_result() | bind_results().
--spec bind(ne_binary() | ne_binaries(), atom(), atom(), any()) ->
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
     [bind(Binding, Module, Fun) || Binding <- Bindings];
@@ -318,9 +318,9 @@ bind(Binding, Module, Fun, Payload) ->
                          {'error', 'not_found'}.
 -type unbind_results() :: [unbind_result()].
 
--spec unbind(ne_binary() | ne_binaries(), atom(), atom()) ->
+-spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
                     unbind_result() | unbind_results().
--spec unbind(ne_binary() | ne_binaries(), atom(), atom(), any()) ->
+-spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
                     unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun) ->
     [unbind(Binding, Module, Fun) || Binding <- Bindings];
@@ -336,22 +336,22 @@ unbind(Binding, Module, Fun, Payload) ->
 -spec flush() -> 'ok'.
 flush() -> gen_server:cast(?SERVER, 'flush').
 
--spec flush(ne_binary()) -> 'ok'.
+-spec flush(kz_term:ne_binary()) -> 'ok'.
 flush(Binding) -> gen_server:cast(?SERVER, {'flush', Binding}).
 
 -spec flush_mod(atom()) -> 'ok'.
 flush_mod(Module) -> gen_server:cast(?SERVER, {'flush_mod', Module}).
 
--type filter_fun() :: fun((ne_binary(), atom(), atom(), any()) -> boolean()).
+-type filter_fun() :: fun((kz_term:ne_binary(), atom(), atom(), any()) -> boolean()).
 -spec filter(filter_fun()) -> 'ok'.
 filter(Predicate) when is_function(Predicate, 4) ->
     gen_server:cast(?SERVER, {'filter', Predicate}).
 
--spec modules_loaded() -> atoms().
+-spec modules_loaded() -> kz_term:atoms().
 modules_loaded() ->
     ets:foldl(fun modules_loaded_fold/2, [], table_id()).
 
--spec modules_loaded_fold(kz_binding(), atoms()) -> atoms().
+-spec modules_loaded_fold(kz_binding(), kz_term:atoms()) -> kz_term:atoms().
 modules_loaded_fold(#kz_binding{binding_responders=Responders}, Acc) ->
     props:unique([M
                   || #kz_responder{module=M} <- queue:to_list(Responders)
@@ -365,7 +365,7 @@ table_id() -> ?MODULE.
 table_options() ->
     ['set', 'named_table', 'protected', {'keypos', #kz_binding.binding}].
 
--spec find_me_function() -> api_pid().
+-spec find_me_function() -> kz_term:api_pid().
 find_me_function() ->  whereis(?SERVER).
 
 -spec gift_data() -> 'ok'.
@@ -406,7 +406,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('is_ready', _From, #state{has_ets='true'}=State) ->
     {'reply', 'true', State};
 handle_call('is_ready', _From, State) ->
@@ -422,7 +422,7 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
--spec maybe_add_binding(ne_binary(), atom(), atom(), any()) ->
+-spec maybe_add_binding(kz_term:ne_binary(), atom(), atom(), any()) ->
                                'ok' |
                                {'error', 'exists'}.
 maybe_add_binding(Binding, Mod, Fun, Payload) ->
@@ -455,7 +455,7 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
             end
     end.
 
--spec maybe_rm_binding(ne_binary(), atom(), atom(), any()) ->
+-spec maybe_rm_binding(kz_term:ne_binary(), atom(), atom(), any()) ->
                               {'ok', 'deleted_binding' | 'updated_binding'} |
                               {'error', 'not_found'}.
 maybe_rm_binding(Binding, Mod, Fun, Payload) ->
@@ -469,7 +469,7 @@ maybe_rm_binding(Binding, Mod, Fun, Payload) ->
             maybe_rm_responder(Binding, Responder, Bind)
     end.
 
--spec maybe_rm_responder(ne_binary(), kz_responder(), kz_binding()) ->
+-spec maybe_rm_responder(kz_term:ne_binary(), kz_responder(), kz_binding()) ->
                                 {'ok', 'deleted_binding' | 'updated_binding'} |
                                 {'error', 'not_found'}.
 maybe_rm_responder(Binding, Responder, #kz_binding{binding_responders=Responders}=Bind) ->
@@ -488,12 +488,12 @@ maybe_rm_responder(Binding, Responder, #kz_binding{binding_responders=Responders
             end
     end.
 
--spec add_optimized_binding(ne_binary(), kz_responder(), ne_binaries(), ne_binary(), ne_binary()) -> boolean().
+-spec add_optimized_binding(kz_term:ne_binary(), kz_responder(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 add_optimized_binding(Binding, Responder, Pieces, Vsn, Action) ->
     Prefix = <<Vsn/binary, ".", Action/binary>>,
     add_binding(Binding, Responder, Pieces, Prefix).
 
--spec add_binding(ne_binary(), kz_responder(), ne_binaries(), api_binary()) -> boolean().
+-spec add_binding(kz_term:ne_binary(), kz_responder(), kz_term:ne_binaries(), kz_term:api_binary()) -> boolean().
 add_binding(Binding, Responder, Pieces, Prefix) ->
     Bind = #kz_binding{binding=Binding
                       ,binding_parts=lists:reverse(Pieces)
@@ -512,7 +512,7 @@ add_binding(Binding, Responder, Pieces, Prefix) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('flush', #state{}=State) ->
     ets:delete_all_objects(table_id()),
     {'noreply', State, 'hibernate'};
@@ -547,9 +547,9 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
             end
     end.
 
--type filter_updates() :: [{ne_binary(), {pos_integer(), queue:queue()}}] | [].
+-type filter_updates() :: [{kz_term:ne_binary(), {pos_integer(), queue:queue()}}] | [].
 -spec filter_bindings(filter_fun()) -> 'ok'.
--spec filter_bindings(filter_fun(), ne_binary() | '$end_of_table', filter_updates(), ne_binaries()) -> 'ok'.
+-spec filter_bindings(filter_fun(), kz_term:ne_binary() | '$end_of_table', filter_updates(), kz_term:ne_binaries()) -> 'ok'.
 filter_bindings(Predicate) ->
     filter_bindings(Predicate, ets:first(table_id()), [], []).
 
@@ -595,7 +595,7 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER',_TableId, _From, _Gift}, State) ->
     lager:debug("recv transfer of control for ~s from ~p", [_TableId, _From]),
     {'noreply', State#state{has_ets='true'}};
@@ -642,13 +642,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec fold_bind_results(kz_responders(), any(), ne_binary()) -> any().
+-spec fold_bind_results(kz_responders(), any(), kz_term:ne_binary()) -> any().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
 fold_bind_results([], Payload, _Route) -> Payload;
 fold_bind_results(Responders, Payload, Route) ->
     fold_bind_results(Responders, Payload, Route, length(Responders), []).
 
--spec fold_bind_results(kz_responders(), any(), ne_binary(), non_neg_integer(), kz_responders()) -> any().
+-spec fold_bind_results(kz_responders(), any(), kz_term:ne_binary(), non_neg_integer(), kz_responders()) -> any().
 fold_bind_results([#kz_responder{module=M
                                 ,function=F
                                 ,payload='undefined'
@@ -729,7 +729,7 @@ log_function_clause(M, F, Lenth, ST) ->
     ?LOG_ERROR("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     kz_util:log_stacktrace(ST).
 
--spec map_processor(ne_binary(), payload(), kz_rt_options()) -> map_results().
+-spec map_processor(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 map_processor(Routing, Payload, Options) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Options);
 map_processor(Routing, Payload, Options) ->
@@ -741,7 +741,7 @@ map_processor(Routing, Payload, Options) ->
                ,kazoo_bindings_rt:candidates(Options, Routing)
                ).
 
--spec pmap_processor(ne_binary(), payload(), kz_rt_options()) -> map_results().
+-spec pmap_processor(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 pmap_processor(Routing, Payload, Options) when not is_list(Payload) ->
     pmap_processor(Routing, [Payload], Options);
 pmap_processor(Routing, Payload, Options) ->
@@ -753,7 +753,7 @@ pmap_processor(Routing, Payload, Options) ->
                ,kazoo_bindings_rt:candidates(Options, Routing)
                ).
 
--spec map_processor_fold(kz_binding(), map_results(), payload(), ne_binary(), ne_binaries(), kz_rt_options()) -> map_results().
+-spec map_processor_fold(kz_binding(), map_results(), payload(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_rt_options()) -> map_results().
 map_processor_fold(#kz_binding{binding=Binding
                               ,binding_responders=Responders
                               }
@@ -781,7 +781,7 @@ map_processor_fold(#kz_binding{binding_parts=BParts
             map_responders(Acc, Responders, Payload)
     end.
 
--spec pmap_processor_fold(kz_binding(), map_results(), payload(), ne_binary(), ne_binaries(), kz_rt_options()) -> map_results().
+-spec pmap_processor_fold(kz_binding(), map_results(), payload(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_rt_options()) -> map_results().
 pmap_processor_fold(#kz_binding{binding=Binding
                                ,binding_responders=Responders
                                }
@@ -872,7 +872,7 @@ maybe_log_function_clause(M, F, Payload, [{M, F, Payload, _}|_]) -> 'ok';
 maybe_log_function_clause(M, F, Payload, ST) ->
     log_function_clause(M, F, length(Payload), ST).
 
--spec fold_processor(ne_binary(), payload(), kz_rt_options()) -> fold_results().
+-spec fold_processor(kz_term:ne_binary(), payload(), kz_rt_options()) -> fold_results().
 fold_processor(Routing, Payload, Options) when not is_list(Payload) ->
     fold_processor(Routing, [Payload], Options);
 fold_processor(Routing, Payload, Options) ->
@@ -899,7 +899,7 @@ fold_processor(Routing, Payload, Options) ->
                    ),
     Reply.
 
--spec candidates(ne_binary()) -> kz_bindings().
+-spec candidates(kz_term:ne_binary()) -> kz_bindings().
 candidates(Routing) ->
     get_binding_candidates(Routing).
 
@@ -907,11 +907,11 @@ candidates(Routing) ->
 bindings() ->
     bindings(<<"#">>, rt_options()).
 
--spec bindings(ne_binary()) -> kz_bindings().
+-spec bindings(kz_term:ne_binary()) -> kz_bindings().
 bindings(Routing) ->
     bindings(Routing, rt_options()).
 
--spec bindings(ne_binary(), kz_rt_options()) -> kz_bindings().
+-spec bindings(kz_term:ne_binary(), kz_rt_options()) -> kz_bindings().
 bindings(Routing, Opts) ->
     Options = rt_options(Opts),
     RoutingParts = routing_parts(Routing),
@@ -929,7 +929,7 @@ bindings(Routing, Opts) ->
              ,table_id()
              ).
 
--spec routing_parts(ne_binary()) -> ne_binaries().
+-spec routing_parts(kz_term:ne_binary()) -> kz_term:ne_binaries().
 routing_parts(Routing) ->
     lists:reverse(binary:split(Routing, <<".">>, ['global'])).
 

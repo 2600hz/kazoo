@@ -58,7 +58,7 @@
 
 -type mfa_errors() :: 'no_provider' |
                       'unauthorized' |
-                      ne_binary().
+                      kz_term:ne_binary().
 
 -type mfa_result() :: {'ok', 'authenticated'} |
                       {'error', mfa_errors()} |

@@ -56,7 +56,7 @@ new() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
 %%--------------------------------------------------------------------
@@ -64,7 +64,7 @@ type() -> ?PVT_TYPE.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(doc()) -> api_binary().
+-spec id(doc()) -> kz_term:api_binary().
 id(JObj) ->
     kz_doc:id(JObj).
 
@@ -73,8 +73,8 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', doc()} |
-                             {'error', any()}.
+-spec fetch(kz_term:api_binary()) -> {'ok', doc()} |
+                                     {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = AlertId) ->
@@ -85,9 +85,9 @@ fetch(<<_/binary>> = AlertId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec title() -> ne_binary().
--spec title(doc()) -> api_binary().
--spec title(doc(), Default) -> ne_binary() | Default.
+-spec title() -> kz_term:ne_binary().
+-spec title(doc()) -> kz_term:api_binary().
+-spec title(doc(), Default) -> kz_term:ne_binary() | Default.
 title() ->
     ?TITLE.
 
@@ -97,7 +97,7 @@ title(JObj) ->
 title(JObj, Default) ->
     kz_json:get_value(?TITLE, JObj, Default).
 
--spec set_title(doc(), ne_binary()) -> doc().
+-spec set_title(doc(), kz_term:ne_binary()) -> doc().
 set_title(JObj, Title) ->
     kz_json:set_value(?TITLE, Title, JObj).
 
@@ -106,9 +106,9 @@ set_title(JObj, Title) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec category() -> ne_binary().
--spec category(doc()) -> api_binary().
--spec category(doc(), Default) -> ne_binary() | Default.
+-spec category() -> kz_term:ne_binary().
+-spec category(doc()) -> kz_term:api_binary().
+-spec category(doc(), Default) -> kz_term:ne_binary() | Default.
 category() ->
     ?CATEGORY.
 
@@ -118,7 +118,7 @@ category(JObj) ->
 category(JObj, Default) ->
     kz_json:get_value(?CATEGORY, JObj, Default).
 
--spec set_category(doc(), ne_binary()) -> doc().
+-spec set_category(doc(), kz_term:ne_binary()) -> doc().
 set_category(JObj, Category) ->
     kz_json:set_value(?CATEGORY, Category, JObj).
 
@@ -127,9 +127,9 @@ set_category(JObj, Category) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec message() -> ne_binary().
--spec message(doc()) -> api_binary().
--spec message(doc(), Default) -> ne_binary() | Default.
+-spec message() -> kz_term:ne_binary().
+-spec message(doc()) -> kz_term:api_binary().
+-spec message(doc(), Default) -> kz_term:ne_binary() | Default.
 message() ->
     ?MESSAGE.
 
@@ -139,7 +139,7 @@ message(JObj) ->
 message(JObj, Default) ->
     kz_json:get_value(?MESSAGE, JObj, Default).
 
--spec set_message(doc(), ne_binary()) -> doc().
+-spec set_message(doc(), kz_term:ne_binary()) -> doc().
 set_message(JObj, Message) ->
     kz_json:set_value(?MESSAGE, Message, JObj).
 
@@ -148,7 +148,7 @@ set_message(JObj, Message) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec metadata() -> ne_binary().
+-spec metadata() -> kz_term:ne_binary().
 -spec metadata(doc()) -> kz_json:object().
 -spec metadata(doc(), Default) ->  kz_json:object() | Default.
 metadata() ->
@@ -169,9 +169,9 @@ set_metadata(JObj, Metadata) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec level() -> ne_binary().
--spec level(doc()) -> api_binary().
--spec level(doc(), Default) -> ne_binary() | Default.
+-spec level() -> kz_term:ne_binary().
+-spec level(doc()) -> kz_term:api_binary().
+-spec level(doc(), Default) -> kz_term:ne_binary() | Default.
 level() ->
     ?LEVEL.
 
@@ -181,7 +181,7 @@ level(JObj) ->
 level(JObj, Default) ->
     kz_json:get_value(?LEVEL, JObj, Default).
 
--spec set_level(doc(), ne_binary()) -> doc().
+-spec set_level(doc(), kz_term:ne_binary()) -> doc().
 set_level(JObj, Level) ->
     kz_json:set_value(?LEVEL, Level, JObj).
 
@@ -190,7 +190,7 @@ set_level(JObj, Level) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec from() -> ne_binary().
+-spec from() -> kz_term:ne_binary().
 -spec from(doc()) -> kz_json:objects().
 -spec from(doc(), Default) ->  kz_json:objects() | Default.
 from() ->
@@ -211,7 +211,7 @@ set_from(JObj, From) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to() -> ne_binary().
+-spec to() -> kz_term:ne_binary().
 -spec to(doc()) -> kz_json:objects().
 -spec to(doc(), Default) ->  kz_json:objects() | Default.
 to() ->
@@ -232,7 +232,7 @@ set_to(JObj, To) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec expiration_date() -> ne_binary().
+-spec expiration_date() -> kz_term:ne_binary().
 -spec expiration_date(doc()) -> kz_json:object().
 -spec expiration_date(doc(), Default) ->  kz_json:object() | Default.
 expiration_date() ->

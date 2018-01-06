@@ -16,10 +16,10 @@
 -include("kz_att.hrl").
 
 -type format_field() :: map()
-                      | {'group', kz_proplist()}
-                      | {'arg', ne_binary()}
-                      | {'field', ne_binary()}
-                      | ne_binary().
+                      | {'group', kz_term:proplist()}
+                      | {'arg', kz_term:ne_binary()}
+                      | {'field', kz_term:ne_binary()}
+                      | kz_term:ne_binary().
 -type format_fields() :: [format_field()].
 
 -spec sha_mac(iodata(), iodata()) -> binary().
@@ -50,12 +50,12 @@ sha256(V) ->
 md5(V) ->
     crypto:hash('md5', V).
 
--spec format_url(map(), attachment_info()) -> ne_binary().
+-spec format_url(map(), attachment_info()) -> kz_term:ne_binary().
 format_url(#{file := Path}, _AttInfo) -> Path;
 format_url(Map, AttInfo) ->
     format_url(Map, AttInfo, default_format_url_fields()).
 
--spec format_url(map(), attachment_info(), kz_proplist()) -> ne_binary().
+-spec format_url(map(), attachment_info(), kz_term:proplist()) -> kz_term:ne_binary().
 format_url(#{file := Path}, _AttInfo, _Format) -> Path;
 format_url(Map, {DbName, DocId, AName}, Format) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(DbName, DocId),
@@ -66,7 +66,7 @@ format_url(Map, {DbName, DocId, AName}, Format) ->
            ],
     format_url(Map, kz_doc:public_fields(JObj), Args, Format).
 
--spec format_url(map(), kz_json:object(), kz_proplist(), kz_proplist()) -> ne_binary().
+-spec format_url(map(), kz_json:object(), kz_term:proplist(), kz_term:proplist()) -> kz_term:ne_binary().
 format_url(#{file := Path}, _JObj, _Args, _DefaultFields) -> Path;
 format_url(Params, JObj, Args, DefaultFields) ->
     Fields = maps:get('field_list', Params, DefaultFields),
@@ -77,7 +77,7 @@ format_url(Params, JObj, Args, DefaultFields) ->
         Path -> list_to_binary([Path, "/", BaseUrl])
     end.
 
--spec do_format_url(kz_proplist(), kz_json:object(), kz_proplist(), binary()) -> ne_binary().
+-spec do_format_url(kz_term:proplist(), kz_json:object(), kz_term:proplist(), binary()) -> kz_term:ne_binary().
 do_format_url(Fields, JObj, Args, Separator) ->
     FormattedFields = lists:foldl(fun(F, Acc) ->
                                           format_url_field(JObj, Args, F, Acc)
@@ -88,7 +88,7 @@ do_format_url(Fields, JObj, Args, Separator) ->
     Reversed = lists:reverse(FormattedFields),
     kz_binary:join(Reversed, Separator).
 
--spec format_url_field(kz_json:object(), kz_proplist(), format_field(), ne_binaries()) -> ne_binaries().
+-spec format_url_field(kz_json:object(), kz_term:proplist(), format_field(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 format_url_field(JObj, Args, #{<<"group">> := Arg}, Acc) ->
     format_url_field(JObj, Args, {'group', Arg}, Acc);
 format_url_field(JObj, Args, {'group', Arg}, Acc) ->
@@ -110,7 +110,7 @@ format_url_field(JObj, _Args, {'field', Field}, Fields) ->
 format_url_field(_JObj, _Args, Field, Fields) ->
     [Field | Fields].
 
--spec default_format_url_fields() -> kz_proplist().
+-spec default_format_url_fields() -> kz_term:proplist().
 default_format_url_fields() ->
     [{'arg', <<"account_id">>}
     ,{'field', <<"owner_id">>}
@@ -118,14 +118,14 @@ default_format_url_fields() ->
     ,{'arg', <<"attachment">>}
     ].
 
--spec combined_path(api_binary(), api_binary()) -> api_binary().
+-spec combined_path(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binary().
 combined_path('undefined', 'undefined') -> 'undefined';
 combined_path('undefined', Path) -> Path;
 combined_path(Path, 'undefined') -> Path;
 combined_path(BasePath, OtherPath) ->
     filename:join(BasePath, OtherPath).
 
--spec path_from_settings(map()) -> api_ne_binary().
+-spec path_from_settings(map()) -> kz_term:api_ne_binary().
 path_from_settings(#{file := Path}) -> Path;
 path_from_settings(#{path := Path}) -> Path;
 path_from_settings(Map) ->
@@ -133,7 +133,7 @@ path_from_settings(Map) ->
     OtherPath = maps:get('folder_path', Map, 'undefined'),
     combined_path(BasePath, OtherPath).
 
--spec headers_as_binaries(kz_proplist()) -> kz_proplist().
+-spec headers_as_binaries(kz_term:proplist()) -> kz_term:proplist().
 headers_as_binaries(Headers) ->
     [{kz_term:to_binary(K), kz_term:to_binary(V)} || {K,V} <- Headers].
 
@@ -151,11 +151,11 @@ encode_multipart([{Body, Headers} | Parts], Boundary, Encoded) ->
     Acc = <<Encoded/binary, Delimiter/binary, H/binary, Body/binary>>,
     encode_multipart(Parts, Boundary, Acc).
 
--spec encode_multipart_headers(kz_proplist()) -> binary().
+-spec encode_multipart_headers(kz_term:proplist()) -> binary().
 encode_multipart_headers(Headers) ->
     encode_multipart_headers(Headers, <<>>).
 
--spec encode_multipart_headers(kz_proplist(), binary()) -> binary().
+-spec encode_multipart_headers(kz_term:proplist(), binary()) -> binary().
 encode_multipart_headers([], Encoded) -> <<Encoded/binary, "\r\n">>;
 encode_multipart_headers([{K, V} | Headers], Encoded) ->
     Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,

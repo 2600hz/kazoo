@@ -34,23 +34,23 @@
 
 -type http_method() :: 'get' | 'post'.
 
--record(state, {voice_uri :: api_ne_binary()
-               ,cdr_uri :: api_ne_binary()
-               ,request_format = <<"kazoo">> :: ne_binary()
-               ,request_body_format = <<"form">> :: ne_binary()
+-record(state, {voice_uri :: kz_term:api_ne_binary()
+               ,cdr_uri :: kz_term:api_ne_binary()
+               ,request_format = <<"kazoo">> :: kz_term:ne_binary()
+               ,request_body_format = <<"form">> :: kz_term:ne_binary()
                ,method = 'get' :: http_method()
                ,call :: kapps_call:call() | 'undefined'
                ,request_id :: kz_http:req_id() | 'undefined'
-               ,request_params :: api_object()
-               ,response_code :: api_ne_binary()
-               ,response_headers :: binaries() | api_ne_binary()
+               ,request_params :: kz_term:api_object()
+               ,response_code :: kz_term:api_ne_binary()
+               ,response_headers :: kz_term:binaries() | kz_term:api_ne_binary()
                ,response_body = <<>> :: binary()
-               ,response_content_type :: api_binary()
-               ,response_pid :: api_pid() %% pid of the processing of the response
-               ,response_event_handlers = [] :: pids()
-               ,response_ref :: api_reference() %% monitor ref for the pid
+               ,response_content_type :: kz_term:api_binary()
+               ,response_pid :: kz_term:api_pid() %% pid of the processing of the response
+               ,response_event_handlers = [] :: kz_term:pids()
+               ,response_ref :: kz_term:api_reference() %% monitor ref for the pid
                ,debug = 'false' :: boolean()
-               ,requester_queue :: api_ne_binary()
+               ,requester_queue :: kz_term:api_ne_binary()
                }).
 
 -type state() :: #state{}.
@@ -62,7 +62,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(kapps_call:call(), kz_json:object()) -> startlink_ret().
+-spec start_link(kapps_call:call(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Call, JObj) ->
     CallId = kapps_call:call_id(Call),
 
@@ -85,8 +85,8 @@ start_link(Call, JObj) ->
 -spec stop_call(pid(), kapps_call:call()) -> 'ok'.
 stop_call(Srv, Call) -> gen_listener:cast(Srv, {'stop', Call}).
 
--spec new_request(pid(), ne_binary(), http_method()) -> 'ok'.
--spec new_request(pid(), ne_binary(), http_method(), kz_json:object()) -> 'ok'.
+-spec new_request(pid(), kz_term:ne_binary(), http_method()) -> 'ok'.
+-spec new_request(pid(), kz_term:ne_binary(), http_method(), kz_json:object()) -> 'ok'.
 new_request(Srv, Uri, Method) ->
     gen_listener:cast(Srv, {'request', Uri, Method}).
 new_request(Srv, Uri, Method, Params) ->
@@ -98,7 +98,7 @@ updated_call(Srv, Call) -> gen_listener:cast(Srv, {'updated_call', Call}).
 -spec usurp_executor(pid()) -> 'ok'.
 usurp_executor(Srv) -> gen_listener:cast(Srv, 'usurp').
 
--spec maybe_relay_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec maybe_relay_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_relay_event(JObj, Props) ->
     _ = case props:get_value('pid', Props) of
             P when is_pid(P) -> kapps_call_command:relay_event(P, JObj);
@@ -111,7 +111,7 @@ maybe_relay_event(JObj, Props) ->
         end,
     relay_cdr_event(JObj, Props).
 
--spec relay_cdr_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec relay_cdr_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 relay_cdr_event(JObj, Props) ->
     case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
@@ -175,7 +175,7 @@ init([Call, JObj]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> {'reply', 'ok', state()}.
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> {'reply', 'ok', state()}.
 handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
@@ -393,7 +393,7 @@ handle_info(_Info, State) ->
 %% @doc
 %% Handling messaging bus events
 %%
-%% @spec handle_event(JObj, State) -> {'noreply', kz_proplist()} |
+%% @spec handle_event(JObj, State) -> {'noreply', kz_term:proplist()} |
 %%                                    ignore
 %% @end
 %%--------------------------------------------------------------------
@@ -436,7 +436,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_req(kapps_call:call(), ne_binary(), http_method(), kz_json:object() | kz_proplist(), ne_binary(), boolean()) ->
+-spec send_req(kapps_call:call(), kz_term:ne_binary(), http_method(), kz_json:object() | kz_term:proplist(), kz_term:ne_binary(), boolean()) ->
                       {'ok', kz_http:req_id(), kapps_call:call()} |
                       {'stop', kapps_call:call()}.
 send_req(Call, Uri, Method, BaseParams, ReqBodyFormat, Debug) when not is_list(BaseParams) ->
@@ -453,7 +453,7 @@ send_req(Call, Uri, 'post', BaseParams, ReqBodyFormat, Debug) ->
     Headers = [{"Content-Type", req_content_type(ReqBodyFormat)}],
     send(UpdatedCall, Uri, 'post', Headers, format_request(Params, ReqBodyFormat), Debug).
 
--spec send(kapps_call:call(), ne_binary(), http_method(), kz_proplist(), iolist(), boolean()) ->
+-spec send(kapps_call:call(), kz_term:ne_binary(), http_method(), kz_term:proplist(), iolist(), boolean()) ->
                   {'ok', kz_http:req_id(), kapps_call:call()} |
                   {'stop', kapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
@@ -470,11 +470,11 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
             {'stop', Call}
     end.
 
--spec normalize_resp_headers(kz_proplist()) -> kz_proplist().
+-spec normalize_resp_headers(kz_term:proplist()) -> kz_term:proplist().
 normalize_resp_headers(Headers) ->
     [{kz_term:to_lower_binary(K), kz_term:to_binary(V)} || {K, V} <- Headers].
 
--spec handle_resp(api_binary(), kapps_call:call(), ne_binary(), binary()) -> 'ok'.
+-spec handle_resp(kz_term:api_binary(), kapps_call:call(), kz_term:ne_binary(), binary()) -> 'ok'.
 handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody) ->
     kz_util:put_callid(kapps_call:call_id(Call)),
     Srv = kzt_util:get_amqp_listener(Call),
@@ -491,7 +491,7 @@ handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody) ->
                        )
     end.
 
--spec process_resp(api_binary(), kapps_call:call(), list() | binary(), binary()) ->
+-spec process_resp(kz_term:api_binary(), kapps_call:call(), list() | binary(), binary()) ->
                           {'stop', kapps_call:call()} |
                           {'ok', kapps_call:call()} |
                           {'request', kapps_call:call()} |
@@ -536,7 +536,7 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
             {'stop', Call}
     end.
 
--spec publish_failed(kapps_call:call(), ne_binary()) -> 'ok'.
+-spec publish_failed(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 publish_failed(Call, RequesterQ) ->
     PubFun = fun(P) -> kapi_pivot:publish_failed(RequesterQ, P) end,
     kz_amqp_worker:cast([{<<"Call-ID">>, kapps_call:call_id(Call)}
@@ -545,7 +545,7 @@ publish_failed(Call, RequesterQ) ->
                        ,PubFun
                        ).
 
--spec uri(ne_binary(), iolist()) -> ne_binary().
+-spec uri(kz_term:ne_binary(), iolist()) -> kz_term:ne_binary().
 uri(URI, QueryString) ->
     SuppliedQS = iolist_to_binary(QueryString),
     case kz_http_util:urlsplit(URI) of
@@ -555,7 +555,7 @@ uri(URI, QueryString) ->
             kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", SuppliedQS/binary>>, Fragment})
     end.
 
--spec req_params(ne_binary(), kapps_call:call()) -> kz_proplist().
+-spec req_params(kz_term:ne_binary(), kapps_call:call()) -> kz_term:proplist().
 req_params(Format, Call) ->
     FmtAtom = kz_term:to_atom(<<"kzt_", Format/binary>>, 'true'),
     try FmtAtom:req_params(Call) of
@@ -566,7 +566,7 @@ req_params(Format, Call) ->
         'error':'undef' -> []
     end.
 
--spec maybe_debug_req(kapps_call:call(), binary(), atom(), kz_proplist(), iolist(), boolean()) -> 'ok'.
+-spec maybe_debug_req(kapps_call:call(), binary(), atom(), kz_term:proplist(), iolist(), boolean()) -> 'ok'.
 maybe_debug_req(_Call, _Uri, _Method, _ReqHdrs, _ReqBody, 'false') -> 'ok';
 maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
     Headers = kz_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- ReqHdrs]),
@@ -576,7 +576,7 @@ maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
                       ,{<<"req_body">>, iolist_to_binary(ReqBody)}
                       ]).
 
--spec maybe_debug_resp(boolean(), kapps_call:call(), ne_binary(), kz_proplist(), binary()) -> 'ok'.
+-spec maybe_debug_resp(boolean(), kapps_call:call(), kz_term:ne_binary(), kz_term:proplist(), binary()) -> 'ok'.
 maybe_debug_resp('false', _Call, _StatusCode, _RespHeaders, _RespBody) -> 'ok';
 maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
     Headers = kz_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- RespHeaders]),
@@ -607,7 +607,7 @@ debug_json_error(Call, Msg, Before, After, RespBody) ->
                              ]),
     store_debug(Call, JObj).
 
--spec store_debug(kapps_call:call(), kz_proplist() | kz_json:object()) -> 'ok'.
+-spec store_debug(kapps_call:call(), kz_term:proplist() | kz_json:object()) -> 'ok'.
 store_debug(Call, Doc) when is_list(Doc) ->
     store_debug(Call, kz_json:from_list(Doc));
 store_debug(Call, DebugJObj) ->
@@ -632,17 +632,17 @@ store_debug(Call, DebugJObj) ->
             lager:debug("failed to save debug doc: ~p", [_E])
     end.
 
--spec fix_value(number() | list()) -> number() | ne_binary().
+-spec fix_value(number() | list()) -> number() | kz_term:ne_binary().
 fix_value(N) when is_number(N) -> N;
 fix_value(O) -> kz_term:to_lower_binary(O).
 
--spec format_request(kz_json:object(), ne_binary()) -> iolist().
+-spec format_request(kz_json:object(), kz_term:ne_binary()) -> iolist().
 format_request(Params, <<"form">>) ->
     kz_http_util:json_to_querystring(Params);
 format_request(Params, <<"json">>) ->
     kz_json:encode(Params).
 
--spec req_content_type(ne_binary()) -> list().
+-spec req_content_type(kz_term:ne_binary()) -> list().
 req_content_type(<<"form">>) ->
     "application/x-www-form-urlencoded";
 req_content_type(<<"json">>) ->

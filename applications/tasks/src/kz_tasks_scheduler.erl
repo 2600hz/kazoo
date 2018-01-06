@@ -81,7 +81,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     case gen_server:start_link(?SERVER, ?MODULE, [], []) of
         {'error', {'already_started', Pid}} ->
@@ -317,7 +317,7 @@ init([]) ->
     kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, ?APP),
     {'ok', #state{}}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'start_task', TaskId}, _From, State) ->
     lager:debug("attempting to start ~s", [TaskId]),
     %% Running tasks are stored in server State then promptly removed.
@@ -418,7 +418,7 @@ handle_call(_Request, _From, State) ->
 %% Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'worker_error', TaskId}, State) ->
     lager:debug("worker error ~s", [TaskId]),
     Task = #{total_rows := TotalRows} = task_by_id(TaskId, State),
@@ -457,7 +457,7 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
     {'noreply', State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'EXIT', Pid, ?STOP_REASON}, State) ->
     lager:debug("worker ~p was stopped", [Pid]),
     {'noreply', State};
@@ -605,7 +605,7 @@ set_last_worker_update(TaskId,
                        State = #state{last_worker_update = LWU}) ->
     State#state{last_worker_update = LWU#{TaskId => ProcessedSoFar}}.
 
--spec task_api(ne_binary(), ne_binary()) -> kz_json:object().
+-spec task_api(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 task_api(Category, Action) ->
     {'ok', JObj} = kz_tasks_help:help(Category, Action),
     kz_json:set_values([{<<"category">>, Category}

@@ -21,7 +21,7 @@
 
 -include("teletype.hrl").
 
--spec id() -> ne_binary().
+-spec id() -> kz_term:ne_binary().
 id() -> <<"new_account">>.
 
 -spec macros() -> kz_json:object().
@@ -34,19 +34,19 @@ macros() ->
        | ?COMMON_TEMPLATE_MACROS
       ]).
 
--spec subject() -> ne_binary().
+-spec subject() -> kz_term:ne_binary().
 subject() -> <<"Your new VoIP services account '{{account.name}}' has been created">>.
 
--spec category() -> ne_binary().
+-spec category() -> kz_term:ne_binary().
 category() -> <<"account">>.
 
--spec friendly_name() -> ne_binary().
+-spec friendly_name() -> kz_term:ne_binary().
 friendly_name() -> <<"New Account">>.
 
 -spec to() -> kz_json:object().
 to() -> ?CONFIGURED_EMAILS(?EMAIL_ADMINS).
 
--spec from() -> api_ne_binary().
+-spec from() -> kz_term:api_ne_binary().
 from() -> teletype_util:default_from_address().
 
 -spec cc() -> kz_json:object().
@@ -55,7 +55,7 @@ cc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 -spec bcc() -> kz_json:object().
 bcc() -> ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, []).
 
--spec reply_to() -> api_ne_binary().
+-spec reply_to() -> kz_term:api_ne_binary().
 reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
@@ -102,14 +102,14 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
     end.
 
--spec macros(kz_json:object()) -> kz_proplist().
+-spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"admin">>, admin_user_properties(DataJObj)}
     ].
 
--spec admin_user_properties(kz_json:object()) -> kz_proplist().
+-spec admin_user_properties(kz_json:object()) -> kz_term:proplist().
 admin_user_properties(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case kz_account:fetch(AccountId) of
@@ -117,7 +117,7 @@ admin_user_properties(DataJObj) ->
         {'error', _} -> []
     end.
 
--spec account_admin_user_properties(kz_json:object()) -> kz_proplist().
+-spec account_admin_user_properties(kz_json:object()) -> kz_term:proplist().
 account_admin_user_properties(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
     case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
@@ -128,7 +128,7 @@ account_admin_user_properties(AccountJObj) ->
             find_admin(Users)
     end.
 
--spec find_admin(kz_json:objects()) -> kz_proplist().
+-spec find_admin(kz_json:objects()) -> kz_term:proplist().
 find_admin([]) ->
     ?LOG_DEBUG("account has no admin users"),
     [];

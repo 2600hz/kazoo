@@ -74,13 +74,13 @@
 %%------------------------------------------------------------------------------
 %% Records
 %%------------------------------------------------------------------------------
--record(directory_user, {first_name :: ne_binary()
-                        ,last_name :: ne_binary()
-                        ,full_name :: ne_binary()
-                        ,first_last_keys :: ne_binary() % DTMF-version of first, last
-                        ,last_first_keys :: ne_binary() % DTMF-version of last, first
-                        ,callflow_id :: ne_binary() % what callflow to use on match
-                        ,name_audio_id :: api_binary() % pre-recorded audio of user's name
+-record(directory_user, {first_name :: kz_term:ne_binary()
+                        ,last_name :: kz_term:ne_binary()
+                        ,full_name :: kz_term:ne_binary()
+                        ,first_last_keys :: kz_term:ne_binary() % DTMF-version of first, last
+                        ,last_first_keys :: kz_term:ne_binary() % DTMF-version of last, first
+                        ,callflow_id :: kz_term:ne_binary() % what callflow to use on match
+                        ,name_audio_id :: kz_term:api_binary() % pre-recorded audio of user's name
                         }).
 -type directory_user() :: #directory_user{}.
 -type directory_users() :: [directory_user()].
@@ -250,7 +250,7 @@ maybe_match_user(Call, U, MatchNum, Loop) ->
             cf_exe:stop(Call)
     end.
 
--spec interpret_user_match_dtmf(ne_binary()) -> dtmf_action().
+-spec interpret_user_match_dtmf(kz_term:ne_binary()) -> dtmf_action().
 interpret_user_match_dtmf(?DTMF_RESULT_CONNECT) -> 'route';
 interpret_user_match_dtmf(?DTMF_RESULT_NEXT) -> 'next';
 interpret_user_match_dtmf(?DTMF_RESULT_START) -> 'start_over';
@@ -282,7 +282,7 @@ play_user(Call, UsernameTuple, _MatchNum) ->
                            ,{'prompt', ?PROMPT_RESULT_MENU}
                            ]).
 
--spec play_invalid(kapps_call:call()) -> ne_binary().
+-spec play_invalid(kapps_call:call()) -> kz_term:ne_binary().
 play_invalid(Call) ->
     kapps_call_command:audio_macro([{'prompt', ?PROMPT_INVALID_KEY}], Call).
 
@@ -305,7 +305,7 @@ username_audio_macro(Call, User) ->
         MediaID     -> maybe_play_media(Call, User, MediaID)
     end.
 
--spec maybe_play_media(kapps_call:call(), directory_user(), api_binary()) ->
+-spec maybe_play_media(kapps_call:call(), directory_user(), kz_term:api_binary()) ->
                               kapps_call_command:audio_macro_prompt().
 maybe_play_media(Call, User, MediaId) ->
     AccountDb = kapps_call:account_db(Call),
@@ -319,7 +319,7 @@ maybe_play_media(Call, User, MediaId) ->
         {'error', _} -> {'tts', <<39, (full_name(User))/binary, 39>>}
     end.
 
--spec play_directory_instructions(kapps_call:call(), 'first' | 'last' | ne_binary()) ->
+-spec play_directory_instructions(kapps_call:call(), 'first' | 'last' | kz_term:ne_binary()) ->
                                          {'ok', binary()} |
                                          {'error', atom()}.
 play_directory_instructions(Call, 'first') ->
@@ -327,11 +327,11 @@ play_directory_instructions(Call, 'first') ->
 play_directory_instructions(Call, 'last') ->
     play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_LASTNAME}]).
 
--spec play_no_users(kapps_call:call()) -> ne_binary(). % noop id
+-spec play_no_users(kapps_call:call()) -> kz_term:ne_binary(). % noop id
 play_no_users(Call) ->
     kapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_MORE_RESULTS}], Call).
 
--spec play_no_users_found(kapps_call:call()) -> ne_binary(). % noop id
+-spec play_no_users_found(kapps_call:call()) -> kz_term:ne_binary(). % noop id
 play_no_users_found(Call) ->
     kapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_RESULTS_FOUND}], Call).
 
@@ -385,11 +385,11 @@ media_name(#directory_user{name_audio_id = ID}) -> ID.
 %%------------------------------------------------------------------------------
 %% Utility Functions
 %%------------------------------------------------------------------------------
--spec get_sort_by(ne_binary()) -> 'first' | 'last'.
+-spec get_sort_by(kz_term:ne_binary()) -> 'first' | 'last'.
 get_sort_by(<<"first", _/binary>>) -> 'first';
 get_sort_by(_) -> 'last'.
 
--spec get_directory_listing(ne_binary(), ne_binary()) ->
+-spec get_directory_listing(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    {'ok', directory_users()} |
                                    {'error', any()}.
 get_directory_listing(Db, DirId) ->
@@ -405,7 +405,7 @@ get_directory_listing(Db, DirId) ->
             E
     end.
 
--spec get_directory_user(kz_json:object(), ne_binary()) -> directory_user().
+-spec get_directory_user(kz_json:object(), kz_term:ne_binary()) -> directory_user().
 get_directory_user(U, CallflowId) ->
     First = kz_json:get_value(<<"first_name">>, U),
     Last = kz_json:get_value(<<"last_name">>, U),
@@ -421,7 +421,7 @@ get_directory_user(U, CallflowId) ->
       }.
 
 
--spec filter_users(directory_users(), ne_binary(), 'last' | 'first') -> directory_users().
+-spec filter_users(directory_users(), kz_term:ne_binary(), 'last' | 'first') -> directory_users().
 filter_users(Users, DTMFs, 'last') ->
     lager:info("filtering users by ~s", [DTMFs]),
     Size = byte_size(DTMFs),
@@ -457,7 +457,7 @@ filter_users(Users, DTMFs, 'first') ->
        )
      ).
 
--spec maybe_dtmf_matches(ne_binary(), pos_integer(), ne_binary()) -> boolean().
+-spec maybe_dtmf_matches(kz_term:ne_binary(), pos_integer(), kz_term:ne_binary()) -> boolean().
 maybe_dtmf_matches(_, 0, _) -> 'false';
 maybe_dtmf_matches(_, Size, User) when byte_size(User) < Size -> 'false';
 maybe_dtmf_matches(DTMFs, Size, User) ->

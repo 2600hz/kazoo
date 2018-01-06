@@ -38,7 +38,7 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:low_balance_v(JObj),
     kz_util:put_callid(JObj),
@@ -85,7 +85,7 @@ send(CurrentBalance, Account) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(integer(), kz_json:object()) -> kz_proplist().
+-spec create_template_props(integer(), kz_json:object()) -> kz_term:proplist().
 create_template_props(CurrentBalance, Account) ->
     Threshold = kz_account:low_balance_threshold(kz_doc:id(Account)),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
@@ -100,7 +100,7 @@ create_template_props(CurrentBalance, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_dollars(float()) -> ne_binary().
+-spec pretty_print_dollars(float()) -> kz_term:ne_binary().
 pretty_print_dollars(Amount) ->
     kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
@@ -110,7 +110,7 @@ pretty_print_dollars(Amount) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> send_email_return().
+-spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
@@ -138,12 +138,12 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collect_recipients(ne_binary()) -> api_binaries() | api_binary().
+-spec collect_recipients(kz_term:ne_binary()) -> kz_term:api_binaries() | kz_term:api_binary().
 collect_recipients(AccountId) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     get_email(AccountId, MasterAccountId).
 
--spec get_email(ne_binary(), ne_binary()) -> api_binaries() | api_binary().
+-spec get_email(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binaries() | kz_term:api_binary().
 get_email(MasterAccountId, MasterAccountId) ->
     AccountDb = kz_util:format_account_id(MasterAccountId, 'encoded'),
     lager:debug("attempting to email low balance to master account ~s"
@@ -169,7 +169,7 @@ get_email(AccountId, MasterAccountId) ->
             get_email(MasterAccountId, MasterAccountId)
     end.
 
--spec get_email(kz_json:object(), ne_binary(), ne_binary()) -> api_binaries() | api_binary().
+-spec get_email(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binaries() | kz_term:api_binary().
 get_email(JObj, AccountId, MasterAccountId) ->
     case find_billing_email(JObj) of
         'undefined' ->
@@ -181,7 +181,7 @@ get_email(JObj, AccountId, MasterAccountId) ->
         Email -> Email
     end.
 
--spec find_billing_email(kz_json:object()) -> api_binaries() | api_binary().
+-spec find_billing_email(kz_json:object()) -> kz_term:api_binaries() | kz_term:api_binary().
 find_billing_email(JObj) ->
     case is_notify_enabled(JObj) of
         'false' -> 'undefined';

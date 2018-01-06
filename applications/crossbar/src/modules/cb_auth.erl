@@ -214,7 +214,7 @@ authenticate_nouns(_, _, _) -> 'false'.
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_resource(Context) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
 validate_resource(Context, _Path) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
 validate_resource(Context, _Path, _Id) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
@@ -241,7 +241,7 @@ validate(Context, Path, Id) ->
     validate_path(Context, Path, Id, cb_context:req_verb(Context)).
 
 %% validating /auth
--spec validate_action(cb_context:context(), api_binary(), http_method()) -> cb_context:context().
+-spec validate_action(cb_context:context(), kz_term:api_binary(), http_method()) -> cb_context:context().
 validate_action(Context, <<"reset_signature_secret">>, ?HTTP_PUT) ->
     case cb_context:req_nouns(Context) of
         [{<<"auth">>, _}] -> reset_system_identity_secret(Context);
@@ -351,7 +351,7 @@ validate_path(Context, ?KEYS_PATH, Id, ?HTTP_PUT) ->
 validate_path(Context, ?KEYS_PATH, Id, ?HTTP_GET) ->
     get_public_key(Context, Id).
 
--spec validate_token_info(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_token_info(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_token_info(Context, Token) ->
     Options = [{'force_profile_update', 'true'}],
     case crossbar_auth:validate_auth_token(Token, Options) of
@@ -464,7 +464,7 @@ maybe_authorize(Context) ->
 normalize_view(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec account_id(cb_contxt:context()) -> ne_binary().
+-spec account_id(cb_contxt:context()) -> kz_term:ne_binary().
 account_id(Context) ->
     {ok, Master} = kapps_util:get_master_account_id(),
     Source = [cb_context:req_param(Context, <<"account_id">>)
@@ -519,14 +519,14 @@ keys_summary(Context) ->
               ],
     cb_context:setters(Context, Setters).
 
--spec reset_private_key(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec reset_private_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 reset_private_key(Context, KeyId) ->
     case kz_auth_keys:reset_private_key(KeyId) of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
         {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, KeyId, Context)
     end.
 
--spec get_public_key(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec get_public_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 get_public_key(Context, KeyId) ->
     lager:debug("trying to get public key ~s", [KeyId]),
     C1 = crossbar_doc:load(KeyId, Context, ?TYPE_CHECK_OPTION(<<"system_key">>)),
@@ -535,7 +535,7 @@ get_public_key(Context, KeyId) ->
         _ -> C1
     end.
 
--spec load_public_key(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_public_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_public_key(Context, KeyId) ->
     case kz_datamgr:fetch_attachment(?KZ_AUTH_DB, KeyId, <<"private_key.pem">>) of
         {'ok', PemContents} ->
@@ -558,7 +558,7 @@ get_public_from_private_key(PemContents) ->
     PublicKey = kz_auth_keys:get_public_key_from_private_key(PrivateKey),
     kz_auth_keys:to_pem(PublicKey).
 
--spec set_public_key_response(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec set_public_key_response(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 set_public_key_response(Context, PublicKeyPem, <<"application/json">>) ->
     RespDoc = kz_json:from_list([{<<"public_key_pem">>, PublicKeyPem}]),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
@@ -580,7 +580,7 @@ set_public_key_response(Context, PublicKeyPem, <<"application/x-pem-file">>=CT) 
 %% @doc
 %% Find Mime type we should return from Accept header or payload if provided by module
 %% (temporary, better to make generic function to use across crossbar module)
--spec find_accept_type(cb_context:context()) -> ne_binary().
+-spec find_accept_type(cb_context:context()) -> kz_term:ne_binary().
 find_accept_type(Context) ->
     Acceptable = accept_values(Context),
     find_accept_type(Context, Acceptable).
@@ -603,7 +603,7 @@ accept_values(Context) ->
     Tunneled = cb_context:req_value(Context, <<"accept">>),
     media_values(AcceptValue, Tunneled).
 
--spec media_values(api_binary(), api_binary()) -> media_values().
+-spec media_values(kz_term:api_binary(), kz_term:api_binary()) -> media_values().
 media_values('undefined', 'undefined') ->
     lager:debug("no accept headers, assuming JSON"),
     [?MEDIA_VALUE(<<"application">>, <<"json">>)];

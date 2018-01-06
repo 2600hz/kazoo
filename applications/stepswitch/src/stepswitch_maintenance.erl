@@ -30,7 +30,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reverse_lookup(text()) -> 'ok'.
+-spec reverse_lookup(kz_term:text()) -> 'ok'.
 reverse_lookup(Thing) when not is_binary(Thing) ->
     reverse_lookup(kz_term:to_binary(Thing));
 reverse_lookup(Thing) ->
@@ -42,7 +42,7 @@ reverse_lookup(Thing) ->
         {'error', 'not_found'} -> io:format("resource not found~n")
     end.
 
--spec pretty_print_lookup(kz_proplist()) -> 'ok'.
+-spec pretty_print_lookup(kz_term:proplist()) -> 'ok'.
 pretty_print_lookup([]) -> 'ok';
 pretty_print_lookup([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, kz_term:to_binary(Value)]),
@@ -54,7 +54,7 @@ pretty_print_lookup([{Key, Value}|Props]) ->
 %% Displays account tree when given a DID
 %% @end
 %%--------------------------------------------------------------------
--spec number_tree(ne_binary()) -> 'ok'.
+-spec number_tree(kz_term:ne_binary()) -> 'ok'.
 number_tree(DID) ->
     case knm_number:lookup_account(DID) of
         {'error', _} -> io:format("DID ~s was not found~n", [DID]);
@@ -65,13 +65,13 @@ number_tree(DID) ->
             end
     end.
 
--spec number_tree(ne_binary(), kz_json:object()) -> 'ok'.
+-spec number_tree(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 number_tree(DID, AccountDoc) ->
     io:format("~s tree ", [DID]),
     print_tree(kz_account:tree(AccountDoc)),
     io:format(" ~s(~s)~n", [kz_account:name(AccountDoc), kz_doc:id(AccountDoc)]).
 
--spec print_tree(ne_binaries()) -> 'ok'.
+-spec print_tree(kz_term:ne_binaries()) -> 'ok'.
 print_tree([]) -> 'ok';
 print_tree([AccountId|Tree]) ->
     io:format(" ~s(~s) ->", [kz_account:fetch_name(AccountId), AccountId]),
@@ -95,7 +95,7 @@ pretty_print_resources([Resource|Resources]) ->
     io:format("~n"),
     pretty_print_resources(Resources).
 
--spec pretty_print_resource(kz_proplist()) -> 'ok'.
+-spec pretty_print_resource(kz_term:proplist()) -> 'ok'.
 pretty_print_resource([]) -> 'ok';
 pretty_print_resource([{_, []}|Props]) ->
     pretty_print_resource(Props);
@@ -141,7 +141,7 @@ refresh() ->
 %% Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number(text()) -> 'ok'.
+-spec lookup_number(kz_term:text()) -> 'ok'.
 lookup_number(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, Props} ->
@@ -154,7 +154,7 @@ lookup_number(Number) ->
             io:format("number not found~n")
     end.
 
--spec pretty_print_number_props(kz_proplist()) -> 'ok'.
+-spec pretty_print_number_props(kz_term:proplist()) -> 'ok'.
 pretty_print_number_props([]) -> 'ok';
 pretty_print_number_props([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [kz_term:to_binary(Key), kz_term:to_binary(Value)]),
@@ -172,7 +172,7 @@ reload_resources() ->
     _ = stepswitch_resources:fetch_global_resources(),
     'ok'.
 
--spec reload_resources(ne_binary()) -> 'ok'.
+-spec reload_resources(kz_term:ne_binary()) -> 'ok'.
 reload_resources(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     _ = stepswitch_resources:fetch_local_resources(AccountId),
@@ -184,10 +184,10 @@ reload_resources(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_number(text()) -> any().
+-spec process_number(kz_term:text()) -> any().
 process_number(Number) -> process_number(Number, 'undefined').
 
--spec process_number(text(), text() | 'undefined') -> any().
+-spec process_number(kz_term:text(), kz_term:text() | 'undefined') -> any().
 process_number(Num, 'undefined') ->
     JObj = kz_json:from_list([{<<"To-DID">>, kz_term:to_binary(Num)}]),
     Number = stepswitch_util:get_outbound_destination(JObj),
@@ -213,7 +213,7 @@ pretty_print_endpoints([Endpoint|Endpoints]) ->
     io:format("~n"),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoint(kz_proplist()) -> any().
+-spec pretty_print_endpoint(kz_term:proplist()) -> any().
 pretty_print_endpoint([]) -> 'ok';
 pretty_print_endpoint([{_, []}|Props]) ->
     pretty_print_endpoint(Props);

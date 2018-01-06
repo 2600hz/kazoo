@@ -78,7 +78,7 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
              ]),
     PubFun(Prop).
 
--spec update_queues(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec update_queues(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                            {'ok', kz_json:object()}
                                | kz_datamgr:data_error().
 update_queues(Call, AgentId, QueueId, <<"login">>) ->

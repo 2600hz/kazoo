@@ -19,7 +19,7 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     #{url := BaseUrlParam, verb := Verb} = Params,
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
@@ -32,7 +32,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
         {'error', _} = Error -> Error
     end.
 
--spec base_separator(ne_binary()) -> binary().
+-spec base_separator(kz_term:ne_binary()) -> binary().
 base_separator(Url) ->
     case kz_http_util:urlsplit(Url) of
         {_, _, _, <<>>, _} -> <<"/">>;
@@ -96,7 +96,7 @@ url_fields(DocUrlField, Url) ->
     ,{'document', [{DocUrlField, Url}]}
     ].
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};
@@ -109,7 +109,7 @@ fetch_attachment(URL) ->
         {'error', _} = Error -> Error
     end.
 
--spec fetch_attachment(ne_binary(), integer(), kz_json:object()) -> any().
+-spec fetch_attachment(kz_term:ne_binary(), integer(), kz_json:object()) -> any().
 fetch_attachment(_Url, Redirects, _)
   when Redirects > ?MAX_REDIRECTS ->
     {'error', 'too_many_redirects'};

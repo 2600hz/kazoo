@@ -32,10 +32,10 @@
 -define(SUCCEEDED, 'succeeded').
 
 -type migrate_stats() :: non_neg_integer() |
-                         ne_binary() |
-                         ne_binaries() |
-                         {ne_binary(), atom()} |
-                         [{ne_binary(), atom()}] |
+                         kz_term:ne_binary() |
+                         kz_term:ne_binaries() |
+                         {kz_term:ne_binary(), atom()} |
+                         [{kz_term:ne_binary(), atom()}] |
                          'undefined'.
 
 %%--------------------------------------------------------------------
@@ -73,8 +73,8 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 %% @doc Manual migration for an Account or a list of account's mailboxes
 %% @end
 %%--------------------------------------------------------------------
--spec manual_migrate(ne_binary()) -> 'ok'.
--spec manual_migrate(ne_binary(), ne_binary() | ne_binaries()) -> 'ok'.
+-spec manual_migrate(kz_term:ne_binary()) -> 'ok'.
+-spec manual_migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
 manual_migrate(AccountId) ->
     ?SUP_LOG_WARNING("######## Beginnig migration for account ~s~n~n", [AccountId]),
     manual_migrate_loop(AccountId, 1).
@@ -134,7 +134,7 @@ manual_migrate(AccountId, BoxIds) ->
 %% @doc Process messages and do migrate
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_messages(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec migrate_messages(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate_messages(AccountId, ViewResults) ->
     MsgCount = length(ViewResults),
     _ = update_process_key(?TOTAL_MESSAGES, MsgCount),
@@ -148,7 +148,7 @@ migrate_messages(AccountId, ViewResults) ->
 %% @doc Check Db existence and process with migration
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_migrate(ne_binary(), kz_json:objects(), dict:dict(), ne_binaries() | non_neg_integer()) -> 'ok'.
+-spec maybe_migrate(kz_term:ne_binary(), kz_json:objects(), dict:dict(), kz_term:ne_binaries() | non_neg_integer()) -> 'ok'.
 maybe_migrate(AccountId, ViewResults, MsgsDict, Dbs) when is_list(Dbs) ->
     NewMsgsDict = check_dbs_existence(Dbs, MsgsDict),
     maybe_migrate(AccountId, ViewResults, NewMsgsDict, dict:size(NewMsgsDict));
@@ -167,7 +167,7 @@ maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
 do_migrate(MsgsDict) ->
     dict:fold(fun bulk_save_modb/3, [], MsgsDict).
 
--spec bulk_save_modb(ne_binary(), kz_json:objects(), list()) -> 'ok'.
+-spec bulk_save_modb(kz_term:ne_binary(), kz_json:objects(), list()) -> 'ok'.
 bulk_save_modb(Db, Js, _Acc) ->
     case kz_datamgr:save_docs(Db, Js) of
         {'ok', Saved} ->
@@ -184,7 +184,7 @@ bulk_save_modb(Db, Js, _Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_mailboxes(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec update_mailboxes(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 update_mailboxes(AccountId, ViewResults) ->
     MODbFailed = dict:from_list(get_stats(?FAILED_MODB)),
     Failed = dict:from_list(get_stats(?FAILED)),
@@ -251,7 +251,7 @@ update_message_array(BoxJObj, MODbFailed, Failed) ->
 %% fake message_doc result for manual migration
 %% @end
 %%--------------------------------------------------------------------
--spec get_messages_from_vmboxes(ne_binary(), ne_binaries()) -> db_ret().
+-spec get_messages_from_vmboxes(kz_term:ne_binary(), kz_term:ne_binaries()) -> db_ret().
 get_messages_from_vmboxes(AccountId, ExpectedBoxIds) ->
     case kz_datamgr:open_cache_docs(kz_util:format_account_db(AccountId), ExpectedBoxIds) of
         {'ok', JObjs} -> {'ok', normalize_mailbox_results(JObjs)};
@@ -312,7 +312,7 @@ has_messages(JObj) ->
 %% @doc Check Db existence and remove messages that non exists dbs
 %% @end
 %%--------------------------------------------------------------------
--spec check_dbs_existence(ne_binaries(), dict:dict()) -> dict:dict().
+-spec check_dbs_existence(kz_term:ne_binaries(), dict:dict()) -> dict:dict().
 check_dbs_existence([], MsgsDict) -> MsgsDict;
 check_dbs_existence([Db | Dbs], MsgsDict) ->
     case kz_datamgr:db_exists(Db) of
@@ -329,9 +329,9 @@ check_dbs_existence([Db | Dbs], MsgsDict) ->
 %% @doc Normalize bulk save results and update stats accordingly
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_bulk_result(ne_binary(), kz_json:objects()) ->
+-spec normalize_bulk_result(kz_term:ne_binary(), kz_json:objects()) ->
                                    {non_neg_integer(), non_neg_integer()}.
--spec normalize_bulk_result(ne_binary(), kz_json:objects(), dict:dict()) ->
+-spec normalize_bulk_result(kz_term:ne_binary(), kz_json:objects(), dict:dict()) ->
                                    {non_neg_integer(), non_neg_integer()}.
 normalize_bulk_result(Db, Saved) ->
     DefaultDict = dict:from_list([{<<"succeeded">>, []}
@@ -372,7 +372,7 @@ normalize_bulk_result(Db, [S | Saved], Dict) ->
 %% kazoo_data bulk operation for faster db writes.
 %% @end
 %%--------------------------------------------------------------------
--spec process_messages(ne_binary(), kz_json:objects()) -> dict:dict().
+-spec process_messages(kz_term:ne_binary(), kz_json:objects()) -> dict:dict().
 process_messages(AccountId, JObjs) ->
     DefaultExt = ?DEFAULT_VM_EXTENSION,
     Fun = fun(J, Acc) ->
@@ -381,7 +381,7 @@ process_messages(AccountId, JObjs) ->
           end,
     lists:foldl(Fun, dict:new(), JObjs).
 
--spec create_message(ne_binary(), kz_json:object(), ne_binary()) -> kz_json:object().
+-spec create_message(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 create_message(AccountId, FakeBoxJObj, DefaultExt) ->
     AccountDb = kvm_util:get_db(AccountId),
     BoxJObj0 = kz_doc:set_account_id(kz_json:get_value(<<"value">>, FakeBoxJObj), AccountId),
@@ -497,7 +497,7 @@ update_process_total_key(?FAILED_MODB, Count) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec migration_result(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
+-spec migration_result(pid(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> 'ok'.
 migration_result(Server, AccountId, FirstOfMonth, LastOfMonth) ->
     TotalMsgs = get_stats(?TOTAL_MESSAGES),
     TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
@@ -525,12 +525,12 @@ migration_result(Server, AccountId, FirstOfMonth, LastOfMonth) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_latest_modb(ne_binary()) -> boolean().
+-spec is_latest_modb(kz_term:ne_binary()) -> boolean().
 is_latest_modb(AccountId) ->
     print_summary(AccountId, 'true').
 
--spec print_summary(ne_binary()) -> 'ok'.
--spec print_summary(ne_binary(), boolean()) -> 'ok' | boolean().
+-spec print_summary(kz_term:ne_binary()) -> 'ok'.
+-spec print_summary(kz_term:ne_binary(), boolean()) -> 'ok' | boolean().
 print_summary(AccountId) ->
     print_summary(AccountId, 'false').
 

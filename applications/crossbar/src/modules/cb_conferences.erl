@@ -117,7 +117,7 @@ validate_conferences(?HTTP_GET, Context) ->
 validate_conferences(?HTTP_PUT, Context) ->
     create_conference(Context).
 
--spec validate_conference(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_conference(http_method(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_conference(?HTTP_GET, Context0, ConferenceId) ->
     Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
@@ -133,7 +133,7 @@ validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
     load_conference(ConferenceId, Context).
 
--spec validate_participants(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_participants(http_method(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_participants(?HTTP_GET, Context0, ConferenceId) ->
     Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
@@ -143,7 +143,7 @@ validate_participants(?HTTP_GET, Context0, ConferenceId) ->
 validate_participants(?HTTP_PUT, Context, ConferenceId) ->
     maybe_load_conference(ConferenceId, Context).
 
--spec validate_participant(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec validate_participant(http_method(), cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 validate_participant(?HTTP_GET, Context0, ConferenceId, ParticipantId) ->
     Context1 = maybe_load_conference(ConferenceId, Context0),
     case cb_context:resp_status(Context1) of
@@ -213,7 +213,7 @@ build_conference(ConferenceId, Context) ->
     Merged = kz_json:merge(Conference, cb_context:req_data(Context)),
     crossbar_doc:handle_datamgr_success(Merged, Context).
 
--spec load_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_conference(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_conference(ConferenceId, Context) ->
     crossbar_doc:load(ConferenceId, Context, ?TYPE_CHECK_OPTION(kzd_conference:type())).
 
@@ -222,16 +222,16 @@ create_conference(Context) ->
     OnSuccess = fun(C) -> validate_numbers('undefined', C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
 
--spec update_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update_conference(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_conference(ConferenceId, Context) ->
     OnSuccess = fun(C) -> validate_numbers(ConferenceId, C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
 
--spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec patch_conference(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 patch_conference(ConferenceId, Context) ->
     crossbar_doc:patch_and_validate(ConferenceId, Context, fun update_conference/2).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:update_doc(Context, {fun kz_doc:set_type/2, <<"conference">>});
 on_successful_validation(ConferenceId, Context) ->
@@ -289,7 +289,7 @@ add_realtime_fold(Conference, RunningConferences) ->
 %% Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_numbers(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_numbers(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_numbers(Id, Context) ->
     Doc = cb_context:doc(Context),
     Conf = kz_json:get_value(<<"conference_numbers">>, Doc, []),
@@ -318,7 +318,7 @@ invalid_numbers(Context, JObjs) ->
 %%%===================================================================
 %%% Conterence Actions
 %%%===================================================================
--spec handle_conference_action(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec handle_conference_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 handle_conference_action(Context, ConferenceId, <<"lock">>) ->
     kapps_conference_command:lock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
@@ -333,9 +333,9 @@ handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
 
--spec play(cb_context:context(), path_token(), api_object()) ->
+-spec play(cb_context:context(), path_token(), kz_term:api_object()) ->
                   cb_context:context().
--spec play(cb_context:context(), path_token(), pos_integer(), api_object()) ->
+-spec play(cb_context:context(), path_token(), pos_integer(), kz_term:api_object()) ->
                   cb_context:context().
 play(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"play">>);
@@ -347,7 +347,7 @@ play(Context, _ConferenceId, _ParticipantId, 'undefined') ->
 play(Context, ConferenceId, ParticipantId, Data) ->
     play_media(Context, ConferenceId, ParticipantId, kz_json:get_ne_binary_value(<<"media_id">>, Data)).
 
--spec data_required(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec data_required(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 data_required(Context, Action) ->
     cb_context:add_validation_error(<<"data">>
                                    ,<<"required">>
@@ -355,9 +355,9 @@ data_required(Context, Action) ->
                                    ,Context
                                    ).
 
--spec play_media(cb_context:context(), path_token(), api_ne_binary()) ->
+-spec play_media(cb_context:context(), path_token(), kz_term:api_ne_binary()) ->
                         cb_context:context().
--spec play_media(cb_context:context(), path_token(), pos_integer(), api_ne_binary()) ->
+-spec play_media(cb_context:context(), path_token(), pos_integer(), kz_term:api_ne_binary()) ->
                         cb_context:context().
 play_media(Context, _ConferenceId, 'undefined') ->
     media_id_required(Context);
@@ -383,7 +383,7 @@ play_media(Context, ConferenceId, ParticipantId, MediaId) ->
             crossbar_util:response_202(<<"ok">>, Context)
     end.
 
--spec media_id_invalid(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec media_id_invalid(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 media_id_invalid(Context, MediaId) ->
     crossbar_util:response_bad_identifier(MediaId, Context).
 
@@ -395,7 +395,7 @@ media_id_required(Context) ->
                                    ,Context
                                    ).
 
--spec dial(cb_context:context(), path_token(), api_object()) -> cb_context:context().
+-spec dial(cb_context:context(), path_token(), kz_term:api_object()) -> cb_context:context().
 dial(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
@@ -410,7 +410,7 @@ dial(Context, ConferenceId, Data) ->
             end
     end.
 
--spec build_valid_endpoints(cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec build_valid_endpoints(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                    {cb_context:context(), kz_json:objects()}.
 build_valid_endpoints(Context, ConferenceId, Data) ->
     case kz_json_schema:validate(<<"conferences.dial">>, Data) of
@@ -463,7 +463,7 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
                               ])
     end.
 
--spec zone(api_ne_binary()) -> ne_binary().
+-spec zone(kz_term:api_ne_binary()) -> kz_term:ne_binary().
 zone('undefined') ->
     kz_config:zone('binary');
 zone(TargetCallId) ->
@@ -490,7 +490,7 @@ zone(TargetCallId) ->
             kz_config:zone('binary')
     end.
 
--spec build_endpoints_to_dial(cb_context:context(), path_token(), ne_binaries()) ->
+-spec build_endpoints_to_dial(cb_context:context(), path_token(), kz_term:ne_binaries()) ->
                                      {cb_context:context(), kz_json:objects()}.
 build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
     {ToDial, _Call, Context1, _Element} =
@@ -510,7 +510,7 @@ error_no_endpoints(Context) ->
                                    ,Context
                                    ).
 
--spec create_call(cb_context:context(), ne_binary()) -> kapps_call:call().
+-spec create_call(cb_context:context(), kz_term:ne_binary()) -> kapps_call:call().
 create_call(Context, ConferenceId) ->
     Routines =
         [{F, V}
@@ -525,7 +525,7 @@ create_call(Context, ConferenceId) ->
     kapps_call:exec(Routines, kapps_call:new()).
 
 -type build_acc() :: {kz_json:objects(), kapps_call:call(), cb_context:context(), pos_integer()}.
--spec build_endpoint(ne_binary(), build_acc()) -> build_acc().
+-spec build_endpoint(kz_term:ne_binary(), build_acc()) -> build_acc().
 build_endpoint(<<"sip:", _/binary>>=URI, {Endpoints, Call, Context, Element}) ->
     lager:info("building SIP endpoint ~s", [URI]),
     Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
@@ -562,7 +562,7 @@ add_not_endpoint_error(Context, Element) ->
                                    ,Context
                                    ).
 
--spec build_number_endpoint(ne_binary(), build_acc()) -> build_acc().
+-spec build_number_endpoint(kz_term:ne_binary(), build_acc()) -> build_acc().
 build_number_endpoint(Number, {Endpoints, Call, Context, Element}) ->
     AccountRealm = kapps_call:account_realm(Call),
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
@@ -596,7 +596,7 @@ build_endpoint_from_doc(Endpoint, Acc) ->
             build_endpoint_from_doc(Endpoint, Acc, kz_doc:type(Endpoint))
     end.
 
--spec build_endpoint_from_doc(kz_json:object(), build_acc(), ne_binary()) -> build_acc().
+-spec build_endpoint_from_doc(kz_json:object(), build_acc(), kz_term:ne_binary()) -> build_acc().
 build_endpoint_from_doc(Device, {Endpoints, Call, Context, Element}, <<"device">>) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     case kz_endpoint:build(Device, Properties, Call) of
@@ -627,7 +627,7 @@ build_endpoint_from_doc(Endpoint, {Endpoints, Call, Context, Element}, _Type) ->
     lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(Endpoint)]),
     {Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1}.
 
--spec add_no_devices_error(cb_context:context(), ne_binary(), pos_integer()) -> cb_context:context().
+-spec add_no_devices_error(cb_context:context(), kz_term:ne_binary(), pos_integer()) -> cb_context:context().
 add_no_devices_error(Context, UserId, Element) ->
     cb_context:add_validation_error([<<"data">>, <<"endpoints">>, Element]
                                    ,<<"minItems">>
@@ -638,7 +638,7 @@ add_no_devices_error(Context, UserId, Element) ->
                                    ).
 
 
--spec add_not_found_error(cb_context:context(), ne_binary(), pos_integer()) -> cb_context:context().
+-spec add_not_found_error(cb_context:context(), kz_term:ne_binary(), pos_integer()) -> cb_context:context().
 add_not_found_error(Context, Id, Index) ->
     cb_context:add_validation_error([<<"data">>, <<"participants">>, Index]
                                    ,<<"not_found">>
@@ -649,7 +649,7 @@ add_not_found_error(Context, Id, Index) ->
 %%%===================================================================
 %%% Participant Actions
 %%%===================================================================
--spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec handle_participants_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 handle_participants_action(Context, ConferenceId, Action=?MUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
@@ -689,7 +689,7 @@ handle_participants_action(Context, _ConferenceId, _Action) ->
 
 %% action applicable to conference participants selected by selector function
 -type filter_fun() :: fun((kz_json:object()) -> boolean()).
--spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary(), filter_fun()) ->
+-spec handle_participants_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), filter_fun()) ->
                                         cb_context:context().
 handle_participants_action(Context, ConferenceId, Action, Selector) ->
     ConfData = request_conference_details(ConferenceId),
@@ -757,7 +757,7 @@ participant_not_found(ParticipantId, Context) ->
                                ,Context
                                ).
 
--spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
+-spec perform_participant_action(kapps_conference:conference(), kz_term:ne_binary(), kz_term:api_integer()) -> 'ok'.
 perform_participant_action(Conference, ?MUTE, ParticipantId) ->
     kapps_conference_command:mute_participant(ParticipantId, Conference);
 perform_participant_action(Conference, ?UNMUTE, ParticipantId) ->
@@ -770,7 +770,7 @@ perform_participant_action(Conference, ?KICK, ParticipantId) ->
     kapps_conference_command:kick(ParticipantId, Conference).
 
 %% add real-time call-info to participants
--spec enrich_participant(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec enrich_participant(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_participant(ParticipantId, ConferenceId, Context) ->
     Participants = extract_participants(
                      request_conference_details(ConferenceId)
@@ -781,7 +781,7 @@ enrich_participant(ParticipantId, ConferenceId, Context) ->
                      ] ++ [kz_json:new()],
     cb_context:set_resp_data(Context, Normalized).
 
--spec enrich_participants(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec enrich_participants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_participants(ConferenceId, Context) ->
     Participants = extract_participants(
                      request_conference_details(ConferenceId)
@@ -789,13 +789,13 @@ enrich_participants(ConferenceId, Context) ->
     Normalized = [kz_json:normalize_jobj(JObj) || JObj <- Participants],
     cb_context:set_resp_data(Context, Normalized).
 
--spec enrich_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec enrich_conference(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_conference(ConferenceId, Context) ->
     RealtimeData = conference_realtime_data(ConferenceId),
     Response = kz_json:set_value(<<"_read_only">>, RealtimeData, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, Response).
 
--spec conference_realtime_data(ne_binary()) -> kz_json:object().
+-spec conference_realtime_data(kz_term:ne_binary()) -> kz_json:object().
 conference_realtime_data(ConferenceId) ->
     ConferenceDetails = request_conference_details(ConferenceId),
     Participants = extract_participants(ConferenceDetails),
@@ -808,7 +808,7 @@ conference_realtime_data(ConferenceId) ->
       ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
       ]).
 
--spec request_conference_details(ne_binary()) -> kz_json:object().
+-spec request_conference_details(kz_term:ne_binary()) -> kz_json:object().
 request_conference_details(ConferenceId) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -836,7 +836,7 @@ find_conference_details(JObjs) ->
 %%%===================================================================
 %%% Utility functions
 %%%===================================================================
--spec conference(ne_binary()) -> kapps_conference:conference().
+-spec conference(kz_term:ne_binary()) -> kapps_conference:conference().
 conference(ConferenceId) ->
     kapps_conference:set_id(ConferenceId, kapps_conference:new()).
 

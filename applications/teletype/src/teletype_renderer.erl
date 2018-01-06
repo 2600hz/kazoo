@@ -27,18 +27,18 @@
 
 -type state() :: module().
 
--spec start_link(any()) -> startlink_ret().
+-spec start_link(any()) -> kz_types:startlink_ret().
 start_link(Args) ->
     gen_server:start_link(?SERVER, [], [Args]).
 
--spec render(ne_binary(), binary(), kz_proplist()) ->
+-spec render(kz_term:ne_binary(), binary(), kz_term:proplist()) ->
                     {'ok', iolist()} |
                     {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
     render(Renderer, TemplateId, Template, TemplateData, 3).
 
--spec render(pid(), ne_binary(), binary(), kz_proplist(), integer()) ->
+-spec render(pid(), kz_term:ne_binary(), binary(), kz_term:proplist(), integer()) ->
                     {'ok', iolist()} |
                     {'error', any()}.
 
@@ -63,7 +63,7 @@ render(Renderer, TemplateId, Template, TemplateData, Tries) ->
             GoodReturn
     end.
 
--spec do_render(pid(), ne_binary(), binary(), kz_proplist()) ->
+-spec do_render(pid(), kz_term:ne_binary(), binary(), kz_term:proplist()) ->
                        {'ok', iolist()} |
                        {'error', any()}.
 do_render(Renderer, TemplateId, Template, TemplateData) ->
@@ -120,7 +120,7 @@ init(_) ->
     lager:debug("starting template renderer, using ~s as compiled module name", [Module]),
     {'ok', Module}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModule) ->
     %% l?LOG_DEBUG("trying to compile template ~s as ~s for ~w", [_TemplateId, TemplateModule, _From]),
     lager:debug("trying to compile template ~s as ~s for ~w", [_TemplateId, TemplateModule, _From]),
@@ -132,11 +132,11 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
 handle_call(_Req, _From, TemplateModule) ->
     {'noreply', TemplateModule}.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Req, TemplateModule) ->
     {'noreply', TemplateModule}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Msg, TemplateModule) ->
     {'noreply', TemplateModule}.
 

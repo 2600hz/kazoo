@@ -20,7 +20,7 @@
 -define(BYPASS_MEDIA_AFTER_BRIDGE, ecallmgr_config:get_boolean(<<"use_bypass_media_after_bridge">>, 'false')).
 -define(CHANNEL_ACTIONS_KEY, [<<"Custom-Channel-Vars">>, <<"Channel-Actions">>]).
 
--spec call_command(atom(), ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_proplist()}.
+-spec call_command(atom(), kz_term:ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_term:proplist()}.
 call_command(Node, UUID, JObj) ->
     Endpoints = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     case kapi_dialplan:bridge_v(JObj) of
@@ -59,9 +59,9 @@ call_command(Node, UUID, JObj) ->
             {<<"xferext">>, XferExt}
     end.
 
--spec unbridge(ne_binary(), kz_json:object()) ->
-                      kz_proplist() |
-                      {'error', ne_binary()}.
+-spec unbridge(kz_term:ne_binary(), kz_json:object()) ->
+                      kz_term:proplist() |
+                      {'error', kz_term:ne_binary()}.
 unbridge(UUID, JObj) ->
     case kapi_dialplan:unbridge_v(JObj) of
         'false' -> {'error', <<"unbridge failed to execute as API did not validate">>};
@@ -81,7 +81,7 @@ unbridge(UUID, JObj) ->
 %% Bridge command helpers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_ringback(atom(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec handle_ringback(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 handle_ringback(Node, UUID, JObj) ->
     case kz_json:get_first_defined([<<"Ringback">>
                                    ,[<<"Custom-Channel-Vars">>, <<"Ringback">>]
@@ -96,18 +96,18 @@ handle_ringback(Node, UUID, JObj) ->
             ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
--spec maybe_early_media(atom(), ne_binary(), kz_json:object(), kz_json:objects()) -> ecallmgr_util:send_cmd_ret().
+-spec maybe_early_media(atom(), kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> ecallmgr_util:send_cmd_ret().
 maybe_early_media(Node, UUID, JObj, Endpoints) ->
     Separator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
     maybe_early_media_separator(Node, UUID, JObj, Separator).
 
--spec maybe_early_media_separator(atom(), ne_binary(), kz_json:object(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
+-spec maybe_early_media_separator(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> ecallmgr_util:send_cmd_ret().
 maybe_early_media_separator(Node, UUID, _JObj, ?SEPARATOR_SIMULTANEOUS) ->
     lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
     ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, "");
 maybe_early_media_separator(_Node, _UUID, _, _) -> 'ok'.
 
--spec handle_hold_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec handle_hold_media(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
     case kz_json:get_value(<<"Hold-Media">>, JObj) of
         'undefined' ->
@@ -130,21 +130,21 @@ handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
             ]
     end.
 
--spec handle_secure_rtp(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec handle_secure_rtp(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 handle_secure_rtp(DP, _Node, _UUID, _Channel, JObj) ->
     case kz_json:is_true(<<"Secure-RTP">>, JObj, 'false') of
         'true' -> [{"application", "set zrtp_secure_media=true"}|DP];
         'false' -> DP
     end.
 
--spec maybe_handle_bypass_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec maybe_handle_bypass_media(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 maybe_handle_bypass_media(DP, Node, UUID, Channel, JObj) ->
     case ?BYPASS_MEDIA_AFTER_BRIDGE of
         'true' -> DP;
         'false' -> handle_bypass_media(DP, Node, UUID, Channel, JObj)
     end.
 
--spec handle_bypass_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec handle_bypass_media(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 handle_bypass_media(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     BridgeProfile = kz_term:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
     case kz_json:get_value(<<"Media">>, JObj) of
@@ -159,7 +159,7 @@ handle_bypass_media(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
             maybe_bypass_endpoint_media(Endpoints, BridgeProfile, ChannelProfile, DP)
     end.
 
--spec maybe_bypass_endpoint_media(kz_json:objects(), ne_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec maybe_bypass_endpoint_media(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 maybe_bypass_endpoint_media(Endpoints, BridgeProfile, ChannelProfile, DP) ->
     ShouldBypass = lists:all(fun(Endpoint) ->
                                      bypass_endpoint_media_enabled(Endpoint
@@ -174,13 +174,13 @@ maybe_bypass_endpoint_media(Endpoints, BridgeProfile, ChannelProfile, DP) ->
         'false' -> DP
     end.
 
--spec bypass_endpoint_media_enabled(kz_json:object(), ne_binary(), ne_binary()) -> boolean().
+-spec bypass_endpoint_media_enabled(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 bypass_endpoint_media_enabled(Endpoint, BridgeProfile, ChannelProfile) ->
     EndpointProfile = kz_json:get_ne_binary_value(<<"SIP-Interface">>, Endpoint, BridgeProfile),
     kz_json:is_true(<<"Bypass-Media">>, Endpoint)
         andalso EndpointProfile =:= ChannelProfile.
 
--spec handle_ccvs(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec handle_ccvs(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 handle_ccvs(DP, Node, UUID, _Channel, JObj) ->
     case kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj) of
         'undefined' -> DP;
@@ -190,7 +190,7 @@ handle_ccvs(DP, Node, UUID, _Channel, JObj) ->
             [{"application", <<"kz_multiset ", AppArgs/binary>>}] ++ DP
     end.
 
--spec handle_cavs(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec handle_cavs(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 handle_cavs(DP, Node, UUID, _Channel, JObj) ->
     case kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj) of
         'undefined' -> DP;
@@ -201,29 +201,29 @@ handle_cavs(DP, Node, UUID, _Channel, JObj) ->
             [{"application", <<"kz_multiset ", AppArgs/binary>>}] ++ DP
     end.
 
--spec handle_loopback_key(boolean(), ne_binary(), kz_json:object()) -> kz_proplist().
+-spec handle_loopback_key(boolean(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 handle_loopback_key('false', _Key, _JObj) -> [];
 handle_loopback_key('true', Key, JObj) ->
     V = kz_term:to_binary(kz_json:is_false(Key, JObj, 'false')),
     K = ecallmgr_util:get_fs_key(Key),
     [{"application", <<"export ", K/binary, "=", V/binary>>}].
 
--spec handle_loopback_key(ne_binary(), kz_json:object()) -> kz_proplist().
+-spec handle_loopback_key(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 handle_loopback_key(Key, JObj) ->
     Exists = kz_json:get_value(Key, JObj) =/= 'undefined',
     handle_loopback_key(Exists, Key, JObj).
 
--spec handle_loopback_keys(ne_binaries(), kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec handle_loopback_keys(kz_term:ne_binaries(), kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 handle_loopback_keys([], _JObj, Acc) -> Acc;
 handle_loopback_keys([Key | Keys], JObj, Acc) ->
     handle_loopback_keys(Keys, JObj, Acc ++ handle_loopback_key(Key, JObj)).
 
--spec handle_loopback(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec handle_loopback(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 handle_loopback(DP, _Node, _UUID, _Channel, JObj) ->
     Keys = [<<"Simplify-Loopback">>, <<"Loopback-Bowout">>],
     handle_loopback_keys(Keys, JObj, DP).
 
--spec pre_exec(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec pre_exec(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
     [{"application", "set continue_on_fail=true"}
     ,{"application", "export sip_redirect_context=context_2"}
@@ -241,7 +241,7 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
      |DP
     ].
 
--spec create_command(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec create_command(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     BypassAfterBridge = ?BYPASS_MEDIA_AFTER_BRIDGE,
     BridgeProfile = kz_term:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
@@ -253,7 +253,7 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
                                ]),
     [{"application", BridgeCmd}|DP].
 
--spec maybe_bypass_after_bridge(boolean(), ne_binary(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec maybe_bypass_after_bridge(boolean(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 maybe_bypass_after_bridge('false', _, _, Endpoints) ->
     [kz_json:delete_key(<<"Bypass-Media">>, Endpoint) || Endpoint <- Endpoints];
 maybe_bypass_after_bridge('true', BridgeProfile, ChannelProfile, Endpoints) ->
@@ -264,7 +264,7 @@ maybe_bypass_after_bridge('true', BridgeProfile, ChannelProfile, Endpoints) ->
          end
      end || Endpoint <- Endpoints].
 
--spec try_create_bridge_string(kz_json:objects(), kz_json:object()) -> ne_binary().
+-spec try_create_bridge_string(kz_json:objects(), kz_json:object()) -> kz_term:ne_binary().
 try_create_bridge_string(Endpoints, JObj) ->
     DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
     case ecallmgr_util:build_bridge_string(Endpoints, DialSeparator) of
@@ -283,7 +283,7 @@ build_channels_vars(Endpoints, JObj) ->
             end,
     ecallmgr_fs_xml:get_channel_vars(kz_json:set_values(Props, JObj)).
 
--spec post_exec(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
+-spec post_exec(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 post_exec(DP, _Node, _UUID, _Channel, _JObj) ->
     Event = ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
     [{"application", Event}
@@ -291,22 +291,22 @@ post_exec(DP, _Node, _UUID, _Channel, _JObj) ->
      |DP
     ].
 
--spec maybe_b_leg_events(atom(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_b_leg_events(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_b_leg_events(Node, UUID, JObj) ->
     Events = kz_json:get_value(<<"B-Leg-Events">>, JObj, []),
     ecallmgr_call_events:listen_for_other_leg(Node, UUID, Events).
 
--spec add_endpoints_channel_actions(atom(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec add_endpoints_channel_actions(atom(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 add_endpoints_channel_actions(Node, UUID, JObj) ->
     Endpoints = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     kz_json:set_value(<<"Endpoints">>, build_endpoints_actions(Node, UUID, Endpoints), JObj).
 
--spec build_endpoints_actions(atom(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec build_endpoints_actions(atom(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 build_endpoints_actions(Node, UUID, Endpoints) ->
     Fun = fun(Endpoint) -> build_endpoint_actions(Node, UUID, Endpoint) end,
     lists:map(Fun, Endpoints).
 
--spec build_endpoint_actions(atom(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec build_endpoint_actions(atom(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 build_endpoint_actions(Node, UUID, Endpoint) ->
     JObj = kz_json:get_json_value(<<"Endpoint-Actions">>, Endpoint, kz_json:new()),
     Fun = fun(K, V, Acc)-> build_endpoint_actions(Node, UUID, K, V, Acc) end,
@@ -317,27 +317,27 @@ build_endpoint_actions(Node, UUID, Endpoint) ->
             kz_json:set_value(?CHANNEL_ACTIONS_KEY, Var, Endpoint)
     end.
 
--type ep_actions() :: ne_binaries().
+-type ep_actions() :: kz_term:ne_binaries().
 
--spec build_endpoint_actions(atom(), ne_binary(), ne_binary(), kz_json:object(), ep_actions()) ->
+-spec build_endpoint_actions(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), ep_actions()) ->
                                     ep_actions().
 build_endpoint_actions(Node, UUID, K, V, Acc) ->
     Fun = fun(K1, V1, Acc1)-> build_endpoint_action(Node, UUID, K1, V1, Acc1) end,
     DP = kz_json:foldr(Fun, [], V),
     Acc ++ build_endpoint_action_dp(K, DP).
 
--spec build_endpoint_action(atom(), ne_binary(), ne_binary(), kz_json:object(), fs_apps()) ->
+-spec build_endpoint_action(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fs_apps()) ->
                                    fs_apps().
 build_endpoint_action(Node, UUID, _K, V, Acc) ->
     lager:debug("building dialplan action for ~s", [_K]),
     DP = ecallmgr_call_command:fetch_dialplan(Node, UUID, V, self()),
     Acc ++ DP.
 
--spec build_endpoint_action_dp(ne_binary(), fs_apps()) -> ep_actions().
+-spec build_endpoint_action_dp(kz_term:ne_binary(), fs_apps()) -> ep_actions().
 build_endpoint_action_dp(K, DP) ->
     build_endpoint_action_dp(endpoint_action_cmd(K), DP, 1, []).
 
--spec build_endpoint_action_dp(ne_binary(), fs_apps(), pos_integer(), ep_actions()) -> ep_actions().
+-spec build_endpoint_action_dp(kz_term:ne_binary(), fs_apps(), pos_integer(), ep_actions()) -> ep_actions().
 build_endpoint_action_dp(_K, [], _N, Acc) ->
     lists:reverse(Acc);
 build_endpoint_action_dp(K, [{App, Args} | DP], N, Acc) ->
@@ -347,14 +347,14 @@ build_endpoint_action_dp(K, [{App, Args} | DP], N, Acc) ->
     Var = list_to_binary([K, "_", Seq, "=", DPApp, " ", DPArgs, ""]),
     build_endpoint_action_dp(K, DP, N + 1, [Var | Acc]).
 
--spec endpoint_action_cmd(ne_binary()) -> ne_binary().
+-spec endpoint_action_cmd(kz_term:ne_binary()) -> kz_term:ne_binary().
 endpoint_action_cmd(Event) ->
     case lists:keyfind(Event, 1, ?DP_EVENT_VARS) of
         'false' -> normalize_event_action_key(Event);
         {_, Prefix} -> Prefix
     end.
 
--spec normalize_event_action_key(ne_binary()) -> ne_binary().
+-spec normalize_event_action_key(kz_term:ne_binary()) -> kz_term:ne_binary().
 normalize_event_action_key(Key) when is_binary(Key) ->
     << <<(normalize_event_action_char(B))>> || <<B>> <= Key>>.
 

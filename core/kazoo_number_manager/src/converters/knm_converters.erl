@@ -99,16 +99,16 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize(ne_binary()) -> ne_binary();
-               (ne_binaries()) -> ne_binaries().
+-spec normalize(kz_term:ne_binary()) -> kz_term:ne_binary();
+               (kz_term:ne_binaries()) -> kz_term:ne_binaries().
 normalize(Num=?NE_BINARY) ->
     (?CONVERTER_MOD):normalize(Num);
 normalize(Nums)
   when is_list(Nums) ->
     [normalize(Num) || Num <- Nums].
 
--spec normalize(ne_binary(), api_ne_binary()) -> ne_binary();
-               (ne_binaries(), api_ne_binary()) -> ne_binaries().
+-spec normalize(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary();
+               (kz_term:ne_binaries(), kz_term:api_ne_binary()) -> kz_term:ne_binaries().
 normalize(Num=?NE_BINARY, undefined) ->
     normalize(Num);
 normalize(Num=?NE_BINARY, AccountId) ->
@@ -120,8 +120,8 @@ normalize(Nums, AccountId)
   when is_list(Nums) ->
     [normalize(Num, AccountId) || Num <- Nums].
 
--spec normalize(ne_binary(), ne_binary(), kz_json:object()) -> ne_binary();
-               (ne_binaries(), ne_binary(), kz_json:object()) -> ne_binaries().
+-spec normalize(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary();
+               (kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binaries().
 normalize(Num=?NE_BINARY, ?MATCH_ACCOUNT_RAW(AccountId), DialPlan) ->
     (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan);
 normalize(Nums, ?MATCH_ACCOUNT_RAW(AccountId), DialPlan)
@@ -133,7 +133,7 @@ normalize(Nums, ?MATCH_ACCOUNT_RAW(AccountId), DialPlan)
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_normalized(ne_binary()) -> boolean().
+-spec is_normalized(kz_term:ne_binary()) -> boolean().
 is_normalized(Num) ->
     normalize(Num) =:= Num.
 
@@ -142,7 +142,7 @@ is_normalized(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_npan(ne_binary()) -> boolean().
+-spec is_npan(kz_term:ne_binary()) -> boolean().
 is_npan(Num) ->
     to_npan(Num) =:= Num.
 
@@ -151,7 +151,7 @@ is_npan(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_npan(ne_binary()) -> ne_binary().
+-spec to_npan(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_npan(Num) ->
     (?CONVERTER_MOD):to_npan(Num).
 
@@ -160,7 +160,7 @@ to_npan(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_1npan(ne_binary()) -> boolean().
+-spec is_1npan(kz_term:ne_binary()) -> boolean().
 is_1npan(Num) ->
     to_1npan(Num) =:= Num.
 
@@ -169,7 +169,7 @@ is_1npan(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_1npan(ne_binary()) -> ne_binary().
+-spec to_1npan(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_1npan(Num) ->
     (?CONVERTER_MOD):to_1npan(Num).
 
@@ -177,7 +177,7 @@ to_1npan(Num) ->
 %% @public
 %% @doc Given a number determine the database name it belongs to.
 %%--------------------------------------------------------------------
--spec to_db(<<_:40,_:_*8>>) -> api_binary().
+-spec to_db(<<_:40,_:_*8>>) -> kz_term:api_binary().
 to_db(<<NumPrefix:5/binary, _/binary>>) ->
     kz_http_util:urlencode(<<?KNM_DB_PREFIX, NumPrefix/binary>>);
 to_db(_) -> 'undefined'.
@@ -188,7 +188,7 @@ to_db(_) -> 'undefined'.
 %% Returns `{Reconcilables, NotReconcilables}'.
 %% @end
 %%--------------------------------------------------------------------
--spec are_reconcilable(ne_binaries()) -> {ne_binaries(), ne_binaries()}.
+-spec are_reconcilable(kz_term:ne_binaries()) -> {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 are_reconcilable(Nums) ->
     lists:partition(fun is_reconcilable/1, Nums).
 
@@ -197,12 +197,12 @@ are_reconcilable(Nums) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_reconcilable(ne_binary()) -> boolean().
+-spec is_reconcilable(kz_term:ne_binary()) -> boolean().
 is_reconcilable(Number) ->
     Num = normalize(Number),
     is_reconcilable_by_regex(Num, ?RECONCILE_REGEX).
 
--spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
+-spec is_reconcilable(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_reconcilable(Number, AccountId) ->
     Num = normalize(Number, AccountId),
     is_reconcilable_by_regex(Num, ?RECONCILE_REGEX(AccountId)).
@@ -221,7 +221,7 @@ is_reconcilable_by_regex(Num, Regex) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec classify(ne_binary()) -> api_binary().
+-spec classify(kz_term:ne_binary()) -> kz_term:api_binary().
 classify(Number) ->
     Num = normalize(Number),
     classify_number(Num, kz_json:to_proplist(?CLASSIFIERS)).
@@ -242,7 +242,7 @@ available_classifiers() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec available_converters() -> ne_binaries().
+-spec available_converters() -> kz_term:ne_binaries().
 available_converters() ->
     kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
 
@@ -264,7 +264,7 @@ default_converter() -> ?CONVERTER_MOD.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec classify_number(ne_binary(), kz_proplist() | ne_binary()) -> api_binary().
+-spec classify_number(kz_term:ne_binary(), kz_term:proplist() | kz_term:ne_binary()) -> kz_term:api_binary().
 classify_number(Num, []) ->
     lager:debug("unable to classify number ~s", [Num]),
     'undefined';
@@ -281,7 +281,7 @@ classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_classifier_regex(ne_binary() | kz_json:object()) -> ne_binary().
+-spec get_classifier_regex(kz_term:ne_binary() | kz_json:object()) -> kz_term:ne_binary().
 get_classifier_regex(Classifier) when is_binary(Classifier) ->
     Classifier;
 get_classifier_regex(JObj) ->

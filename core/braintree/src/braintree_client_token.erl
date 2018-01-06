@@ -30,7 +30,7 @@ url() ->
 %% Create client Token
 %% @end
 %%--------------------------------------------------------------------
--spec get_client_token(ne_binary()) -> api_ne_binary().
+-spec get_client_token(kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_client_token(<<_/binary>> = CustomerId) ->
     Url = url(),
     Props = [{'customer-id', CustomerId}

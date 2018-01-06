@@ -22,7 +22,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), api_binary() | kz_json:object()) -> kz_services:services().
+-spec reconcile(kz_services:services(), kz_term:api_binary() | kz_json:object()) -> kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -56,7 +56,7 @@ reconcile(Services, <<_/binary>> = DeviceType) ->
             do_reconcile(Services, DeviceType)
     end.
 
--spec do_reconcile(kz_services:services(), ne_binary()) -> kz_services:services().
+-spec do_reconcile(kz_services:services(), kz_term:ne_binary()) -> kz_services:services().
 do_reconcile(Services, DeviceType) ->
     Quantity = kz_services:quantity(?CATEGORY, DeviceType, Services),
     lager:debug("increment ~s.~s to ~p+1", [?CATEGORY, DeviceType, Quantity]),

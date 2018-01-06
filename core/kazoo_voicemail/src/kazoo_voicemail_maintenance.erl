@@ -40,8 +40,8 @@ migrate() ->
             io:format("~n********** migration process died with reason:~n~p~n", [_Reason])
     end.
 
--spec migrate(ne_binary()) -> 'ok'.
--spec migrate(ne_binary(), ne_binary() | ne_binaries() | kz_json:object()) -> 'ok'.
+-spec migrate(kz_term:ne_binary()) -> 'ok'.
+-spec migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object()) -> 'ok'.
 migrate(?NE_BINARY = AccountId) ->
     kvm_migrate_account:manual_migrate(AccountId);
 migrate(AccountJObj) ->
@@ -64,30 +64,30 @@ recover_messages_all() ->
     MODbs = kapps_util:get_all_account_mods(),
     recover_messages(MODbs, length(MODbs)).
 
--spec recover_messages_month(ne_binary(), ne_binary()) -> 'ok'.
+-spec recover_messages_month(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 recover_messages_month(Year, Month) ->
     MODbs = [MODb || MODb <- kapps_util:get_all_account_mods()
                          ,modb_filter(MODb, Year, Month)
             ],
     recover_messages(MODbs, length(MODbs)).
 
--spec recover_messages_account(ne_binary()) -> 'ok'.
+-spec recover_messages_account(kz_term:ne_binary()) -> 'ok'.
 recover_messages_account(Account) ->
     MODbs = kapps_util:get_account_mods(Account),
     recover_messages(MODbs, length(MODbs)).
 
--spec recover_messages_account(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec recover_messages_account(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 recover_messages_account(Account, Year, Month) ->
     MODbs = [MODb || MODb <- kapps_util:get_account_mods(Account)
                          ,modb_filter(MODb, Year, Month)
             ],
     recover_messages(MODbs, length(MODbs)).
 
--spec modb_filter(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec modb_filter(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 modb_filter(?MATCH_MODB_SUFFIX_ENCODED(_A, _B, _C, Year, Month), Year, Month) -> 'true';
 modb_filter(_, _, _) -> 'false'.
 
--spec recover_messages(ne_binaries(), non_neg_integer()) -> 'ok'.
+-spec recover_messages(kz_term:ne_binaries(), non_neg_integer()) -> 'ok'.
 recover_messages([], _) -> 'ok';
 recover_messages([MODb|MODbs], Total) ->
     ?SUP_LOG_DEBUG("(~p/~p) attempting to recover voicemail messages from ~s", [length(MODbs)+1, Total, MODb]),
@@ -95,7 +95,7 @@ recover_messages([MODb|MODbs], Total) ->
     timer:sleep(50),
     recover_messages(MODbs, Total).
 
--spec recover_missing_metadata(ne_binary()) -> 'ok'.
+-spec recover_missing_metadata(kz_term:ne_binary()) -> 'ok'.
 recover_missing_metadata(MODb) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(MODb, ?VIEW_MISSING_METADATA, ViewOptions) of
@@ -115,7 +115,7 @@ recover_missing_metadata(MODb) ->
             ?SUP_LOG_DEBUG("  unable to query missing_metadata view: ~p", [_R])
     end.
 
--spec recover_missing_metadata(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec recover_missing_metadata(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 recover_missing_metadata(MODb, JObjs) ->
     Messages = [maybe_rebuild_message_metadata(JObj) || JObj <- JObjs],
     _ = kz_datamgr:save_docs(MODb, Messages),
@@ -130,7 +130,7 @@ maybe_rebuild_message_metadata(JObj) ->
             JObj
     end.
 
--spec rebuild_message_metadata(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec rebuild_message_metadata(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 rebuild_message_metadata(JObj, AttachmentName) ->
     MediaId = kz_json:get_value(<<"_id">>, JObj),
     ?SUP_LOG_DEBUG("  rebuilding metadata for ~s", [MediaId]),
@@ -154,7 +154,7 @@ rebuild_message_metadata(JObj, AttachmentName) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec renotify(text(), text()) -> 'ok'.
+-spec renotify(kz_term:text(), kz_term:text()) -> 'ok'.
 renotify(Account, MessageId) ->
     MODb = get_modb(Account, MessageId),
     AccountId = get_account_id(Account),
@@ -172,7 +172,7 @@ renotify(Account, MessageId) ->
                                )
     end.
 
--spec log_renotify_result(ne_binary(), ne_binary(), kz_amqp_worker:request_return()) -> 'ok'.
+-spec log_renotify_result(kz_term:ne_binary(), kz_term:ne_binary(), kz_amqp_worker:request_return()) -> 'ok'.
 log_renotify_result(MessageId, BoxId, {'ok', JObj}) ->
     ?SUP_LOG_DEBUG("re-notify sent message ~s from mailbox ~s: ~s"
                   ,[MessageId, BoxId, kz_json:encode(JObj)]
@@ -190,7 +190,7 @@ log_renotify_result(MessageId, BoxId, Result) ->
                   ,[MessageId, BoxId, Result]
                   ).
 
--spec get_modb(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_modb(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_modb(?MATCH_MODB_SUFFIX_ENCODED(_A, _B, _C, _Y, _M) = MODb, _) -> MODb;
 get_modb(?MATCH_MODB_SUFFIX_encoded(_A, _B, _C, _Y, _M) = MODb, _) -> MODb;
 get_modb(?MATCH_MODB_SUFFIX_RAW(_A, _B, _C, _Y, _M) = MODb, _) ->
@@ -200,7 +200,7 @@ get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_A, _B, _C, _Y, _M) = MODb, _) ->
 get_modb(Account, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
     kz_util:format_account_mod_id(Account, Year, Month).
 
--spec get_account_id(ne_binary()) -> ne_binary().
+-spec get_account_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_account_id(?MATCH_ACCOUNT_RAW(AccountId)) -> AccountId;
 get_account_id(?MATCH_ACCOUNT_UNENCODED(A, B, Rest)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
 get_account_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
@@ -208,7 +208,7 @@ get_account_id(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _)) -> AccountId;
 get_account_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
 get_account_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest).
 
--spec rebuild_kapps_call(kz_json:object(), ne_binary()) -> kapps_call:call().
+-spec rebuild_kapps_call(kz_json:object(), kz_term:ne_binary()) -> kapps_call:call().
 rebuild_kapps_call(JObj, AccountId) ->
     Metadata = kzd_box_message:metadata(JObj),
     To = kz_json:get_value(<<"to">>, Metadata, <<"unknown@nodomain">>),

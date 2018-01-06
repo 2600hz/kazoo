@@ -15,7 +15,7 @@
 -define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
 -define(ROUTE_WIN_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
     kz_util:put_callid(JObj),
@@ -68,7 +68,7 @@ start_participant(Call, Conference) ->
         _Else -> kapps_call_command:hangup(Call)
     end.
 
--spec join_local(kapps_call:call(), kapps_conference:conference(), server_ref()) -> 'ok'.
+-spec join_local(kapps_call:call(), kapps_conference:conference(), kz_types:server_ref()) -> 'ok'.
 join_local(Call, Conference, Participant) ->
     IsModerator = kz_term:is_true(kapps_call:custom_sip_header(<<"X-Conf-Flags-Moderator">>, Call)),
     Routines = [{fun kapps_conference:set_moderator/2, IsModerator}
@@ -81,8 +81,8 @@ join_local(Call, Conference, Participant) ->
     kapps_call_command:answer(Call),
     conf_participant:join_local(Participant).
 
--spec maybe_set_name_pronounced(kapps_call:call(), server_ref()) -> 'ok'.
--spec maybe_set_name_pronounced(kz_json:api_json_term(), kz_json:api_json_term(), server_ref()) -> 'ok'.
+-spec maybe_set_name_pronounced(kapps_call:call(), kz_types:server_ref()) -> 'ok'.
+-spec maybe_set_name_pronounced(kz_json:api_json_term(), kz_json:api_json_term(), kz_types:server_ref()) -> 'ok'.
 maybe_set_name_pronounced(Call, Participant) ->
     AccountId = kapps_call:custom_sip_header(<<"X-Conf-Values-Pronounced-Name-Account-ID">>, Call),
     MediaId = kapps_call:custom_sip_header(<<"X-Conf-Values-Pronounced-Name-Media-ID">>, Call),
@@ -112,7 +112,7 @@ find_conference(Call, AccountDb) ->
             Error
     end.
 
--spec find_account_db(kapps_call:call()) -> api_binary().
+-spec find_account_db(kapps_call:call()) -> kz_term:api_binary().
 find_account_db(Call) ->
     Realm = kapps_call:to_realm(Call),
     case kapps_util:get_account_by_realm(Realm) of

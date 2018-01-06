@@ -12,7 +12,7 @@
 
 -include("pivot.hrl").
 
--spec handle_pivot_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_pivot_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_pivot_req(JObj, _Props) ->
     'true' = kapi_pivot:req_v(JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),

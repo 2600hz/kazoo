@@ -82,7 +82,7 @@ is_defined(Context) ->
 %% crossbar_view to not add `include_docs` if only they are defined.
 %% @end
 %%--------------------------------------------------------------------
--spec is_only_time_filter(cb_context:context(), ne_binary()) -> boolean().
+-spec is_only_time_filter(cb_context:context(), kz_term:ne_binary()) -> boolean().
 is_only_time_filter(Context, FilterKey) ->
     Fun = fun({<<"created_from">>, _}) -> 'true';
              ({<<"created_to">>, _}) -> 'true';
@@ -100,11 +100,11 @@ is_only_time_filter(Context, FilterKey) ->
 %% Returns 'true' if all of the requested props are found, 'false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec by_doc(api_object(), cb_context:context()) -> boolean().
+-spec by_doc(kz_term:api_object(), cb_context:context()) -> boolean().
 by_doc(Doc, Context) ->
     by_doc(Doc, Context, is_defined(Context)).
 
--spec by_doc(api_object(), cb_context:context(), boolean()) -> boolean().
+-spec by_doc(kz_term:api_object(), cb_context:context(), boolean()) -> boolean().
 by_doc(_, _, 'false') ->
     'true';
 by_doc('undefined', _, 'true') ->
@@ -190,7 +190,7 @@ is_filter_key(_) -> 'false'.
 filter_doc_by_querystring(Doc, QueryString) ->
     kz_json:all(fun({K, V}) -> should_filter_doc(Doc, K, V) end, QueryString).
 
--spec should_filter_doc(kz_json:object(), ne_binary(), kz_json:json_term()) -> boolean().
+-spec should_filter_doc(kz_json:object(), kz_term:ne_binary(), kz_json:json_term()) -> boolean().
 should_filter_doc(Doc, K, V) ->
     try filter_prop(Doc, K, V) of
         'undefined' -> 'true';
@@ -207,7 +207,7 @@ should_filter_doc(Doc, K, V) ->
 %% Returns 'true' or 'false' if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop(kz_json:object(), ne_binary(), any()) -> api_boolean().
+-spec filter_prop(kz_json:object(), kz_term:ne_binary(), any()) -> kz_term:api_boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
@@ -237,8 +237,8 @@ upperbound(DocTimestamp, QSTimestamp) ->
 lowerbound(DocTimestamp, QSTimestamp) ->
     QSTimestamp =< DocTimestamp.
 
--spec should_filter(binary(), ne_binary()) -> boolean().
--spec should_filter(kz_json:object(), ne_binary(), kz_json:json_term()) -> boolean().
+-spec should_filter(binary(), kz_term:ne_binary()) -> boolean().
+-spec should_filter(kz_json:object(), kz_term:ne_binary(), kz_json:json_term()) -> boolean().
 should_filter(Val, Val) -> 'true';
 should_filter(Val, FilterVal) ->
     try kz_json:unsafe_decode(FilterVal) of
@@ -257,16 +257,16 @@ should_filter(Doc, Key, Val) ->
                  ,kz_term:to_binary(Val)
                  ).
 
--spec has_key(kz_json:object(), ne_binary()) -> boolean().
+-spec has_key(kz_json:object(), kz_term:ne_binary()) -> boolean().
 has_key(Doc, Key) ->
     Keys = binary_key_to_json_key(Key),
     kz_json:get_value(Keys, Doc) =/= 'undefined'.
 
--spec has_value(kz_json:object(), ne_binary()) -> boolean().
+-spec has_value(kz_json:object(), kz_term:ne_binary()) -> boolean().
 has_value(Doc, Key) ->
     Keys = binary_key_to_json_key(Key),
     kz_json:get_ne_value(Keys, Doc) =/= 'undefined'.
 
--spec binary_key_to_json_key(ne_binary()) -> ne_binaries().
+-spec binary_key_to_json_key(kz_term:ne_binary()) -> kz_term:ne_binaries().
 binary_key_to_json_key(Key) ->
     binary:split(Key, <<".">>, ['global']).

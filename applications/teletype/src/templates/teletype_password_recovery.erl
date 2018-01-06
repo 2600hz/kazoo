@@ -70,7 +70,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj)
     end.
 
--spec build_macro_data(kz_json:object()) -> kz_proplist().
+-spec build_macro_data(kz_json:object()) -> kz_term:proplist().
 build_macro_data(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
@@ -102,7 +102,7 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec get_email_address(kz_json:object(), kz_proplist()) -> api_ne_binaries().
+-spec get_email_address(kz_json:object(), kz_term:proplist()) -> kz_term:api_ne_binaries().
 get_email_address(DataJObj, Emails0) ->
     ToEmails = props:get_value(<<"to">>, Emails0),
     case kz_json:get_value(<<"email">>, DataJObj) of

@@ -142,8 +142,8 @@ validate_resource(Context) -> Context.
 validate_resource(Context, UserId) -> validate_user_id(UserId, Context).
 validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
 
--spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
--spec validate_user_id(api_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
+-spec validate_user_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_user_id(kz_term:api_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
@@ -255,7 +255,7 @@ validate_users(Context, ?HTTP_GET) ->
 validate_users(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
--spec validate_user(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
+-spec validate_user(cb_context:context(), kz_term:ne_binary(), http_method()) -> cb_context:context().
 validate_user(Context, UserId, ?HTTP_GET) ->
     load_user(UserId, Context);
 validate_user(Context, UserId, ?HTTP_POST) ->
@@ -272,7 +272,7 @@ post(Context, _) ->
     _ = provisioner_util:maybe_sync_sip_data(Context1, 'user'),
     crossbar_doc:save(cb_modules_util:remove_plaintext_password(Context1)).
 
--spec post(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), kz_term:ne_binary(), path_token()) -> cb_context:context().
 post(Context, UserId, ?PHOTO) ->
     [{_FileName, FileObj}] = cb_context:req_files(Context),
     Headers = kz_json:get_value(<<"headers">>, FileObj),
@@ -404,18 +404,18 @@ vcard_fields_acc([X | Rest], Acc) ->
 vcard_fields_acc([], Acc) ->
     Acc.
 
--spec vcard_normalize_val(binary() | {char(), binaries()}) -> binary().
+-spec vcard_normalize_val(binary() | {char(), kz_term:binaries()}) -> binary().
 vcard_normalize_val({Divider, Vals}) when is_list(Vals) ->
     iolist_join(Divider, [vcard_escape_chars(X) || X <- Vals, X =/= 'undefined', X =/= [], X =/= <<>>]);
 vcard_normalize_val(Val) when is_binary(Val) ->
     vcard_escape_chars(Val).
 
--spec vcard_normalize_type(list() | {ne_binary(), ne_binary()} | ne_binary()) -> ne_binary().
+-spec vcard_normalize_type(list() | {kz_term:ne_binary(), kz_term:ne_binary()} | kz_term:ne_binary()) -> kz_term:ne_binary().
 vcard_normalize_type(T) when is_list(T) -> iolist_join(<<";">>, [vcard_normalize_type(X) || X <- T]);
 vcard_normalize_type({T, V}) -> iolist_join(<<"=">>, [T, V]);
 vcard_normalize_type(T) -> T.
 
-%%-spec card_field(ne_binary(), kz_json:object()) -> {vcard_type_spec(), vcard_val()}.
+%%-spec card_field(kz_term:ne_binary(), kz_json:object()) -> {vcard_type_spec(), vcard_val()}.
 card_field(Key, _)
   when Key =:= <<"BEGIN">> ->
     {Key, <<"VCARD">>};
@@ -480,18 +480,18 @@ card_field(Key = <<"NICKNAME">>, JObj) ->
 card_field(Key, JObj) ->
     {Key, kz_json:get_value(Key, JObj)}.
 
--spec iolist_join(char() | binary(), binaries()) -> binary().
+-spec iolist_join(char() | binary(), kz_term:binaries()) -> binary().
 iolist_join(Divider, List) ->
     case lists:foldl(fun iolist_join_acc/2, {Divider, []}, List) of
         {_, [_ | Reversed]} -> iolist_to_binary(lists:reverse(Reversed));
         {_, []} -> <<>>
     end.
 
--spec iolist_join_acc(binary(), {char() | binary(), binaries()}) -> {char() | binary(), binaries()}.
+-spec iolist_join_acc(binary(), {char() | binary(), kz_term:binaries()}) -> {char() | binary(), kz_term:binaries()}.
 iolist_join_acc(E, {Divider, Acc}) ->
     {Divider, [Divider, E | Acc]}.
 
--spec vcard_field_divide_by_length(binary(), binaries()) -> binaries().
+-spec vcard_field_divide_by_length(binary(), kz_term:binaries()) -> kz_term:binaries().
 vcard_field_divide_by_length(<<Row:75/binary, Rest/binary>>, Acc) ->
     vcard_field_divide_by_length(Rest, [Row | Acc]);
 vcard_field_divide_by_length(Row, Acc) ->
@@ -533,7 +533,7 @@ load_user_summary(Context) ->
 %% Load a user document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_user(api_binary(), cb_context:context()) -> cb_context:context().
+-spec load_user(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 %%--------------------------------------------------------------------
@@ -542,15 +542,15 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPT
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(UserId, Context) ->
     prepare_username(UserId, Context).
 
--spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(UserId, Context) ->
     crossbar_doc:patch_and_validate(UserId, Context, fun validate_request/2).
 
--spec prepare_username(api_binary(), cb_context:context()) -> cb_context:context().
+-spec prepare_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 prepare_username(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     case kz_json:get_ne_value(<<"username">>, JObj) of
@@ -560,7 +560,7 @@ prepare_username(UserId, Context) ->
             check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
     end.
 
--spec check_user_name(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_user_name(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_user_name(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     UserName = kz_json:get_ne_value(<<"username">>, JObj),
@@ -579,12 +579,12 @@ check_user_name(UserId, Context) ->
             check_emergency_caller_id(UserId, Context1)
     end.
 
--spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_emergency_caller_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_emergency_caller_id(UserId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_user_schema(UserId, Context1).
 
--spec is_username_unique(api_binary(), api_binary(), ne_binary()) -> boolean().
+-spec is_username_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
 is_username_unique(AccountDb, UserId, UserName) ->
     ViewOptions = [{'key', UserName}],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
@@ -595,12 +595,12 @@ is_username_unique(AccountDb, UserId, UserName) ->
             'false'
     end.
 
--spec check_user_schema(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_user_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_user_schema(UserId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
     cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"user">>}],
     maybe_import_credintials('undefined'
@@ -611,7 +611,7 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(UserId, Context) ->
     maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type()))).
 
--spec maybe_import_credintials(api_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_import_credintials(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_import_credintials(UserId, Context) ->
     JObj = cb_context:doc(Context),
     case kz_json:get_ne_value(<<"credentials">>, JObj) of
@@ -626,7 +626,7 @@ maybe_import_credintials(UserId, Context) ->
             maybe_validate_username(UserId, C)
     end.
 
--spec maybe_validate_username(api_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_validate_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_validate_username(UserId, Context) ->
     NewUsername = kz_json:get_ne_value(<<"username">>, cb_context:doc(Context)),
     CurrentUsername = case cb_context:fetch(Context, 'db_doc') of
@@ -653,7 +653,7 @@ maybe_validate_username(UserId, Context) ->
             manditory_rehash_creds(UserId, NewUsername, C)
     end.
 
--spec maybe_rehash_creds(api_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_rehash_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_rehash_creds(UserId, Username, Context) ->
     case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         %% No user name or hash, no creds for you!
@@ -666,7 +666,7 @@ maybe_rehash_creds(UserId, Username, Context) ->
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
--spec manditory_rehash_creds(api_binary(), api_binary(), cb_context:context()) ->
+-spec manditory_rehash_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
                                     cb_context:context().
 manditory_rehash_creds(UserId, Username, Context) ->
     case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
@@ -678,7 +678,7 @@ manditory_rehash_creds(UserId, Username, Context) ->
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
--spec rehash_creds(api_binary(), api_binary(), ne_binary(), cb_context:context()) ->
+-spec rehash_creds(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
                           cb_context:context().
 rehash_creds(_UserId, 'undefined', _Password, Context) ->
     Msg = kz_json:from_list(
@@ -702,7 +702,7 @@ rehash_creds(_UserId, Username, Password, Context) ->
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec username_doc_id(api_binary(), cb_context:context()) -> api_binary().
+-spec username_doc_id(kz_term:api_binary(), cb_context:context()) -> kz_term:api_binary().
 username_doc_id(Username, Context) ->
     username_doc_id(Username, Context, cb_context:account_db(Context)).
 username_doc_id(_, _, 'undefined') ->

@@ -11,7 +11,7 @@
 
 -include("ecallmgr.hrl").
 
--spec event(ne_binary(), api_binary(), kzd_freeswitch:data(), atom()) -> any().
+-spec event(kz_term:ne_binary(), kz_term:api_binary(), kzd_freeswitch:data(), atom()) -> any().
 event(<<"CHANNEL_CREATE">> = EventName, UUID, EventProps, Node) ->
     Props = ecallmgr_fs_loopback:filter(Node, UUID, EventProps, 'true'),
     process_event(EventName, UUID, Props, Node),
@@ -63,7 +63,7 @@ event(EventName, UUID, EventProps, Node) ->
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
 
--spec process_event(ne_binary(), api_binary(), kzd_freeswitch:data(), atom()) -> any().
+-spec process_event(kz_term:ne_binary(), kz_term:api_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = ecallmgr_fs_channel:new(Props, Node),
     lager:debug("channel added to cache"),
@@ -90,7 +90,7 @@ process_event(<<"loopback::bowout">>, _UUID, Props, Node) ->
     gproc:send({'p', 'l', ?LOOPBACK_BOWOUT_REG(ResigningUUID)}, ?LOOPBACK_BOWOUT_MSG(Node, Props));
 process_event(_, _, _, _) -> 'ok'.
 
--spec maybe_send_event(ne_binary(), api_binary(), kzd_freeswitch:data(), atom()) -> any().
+-spec maybe_send_event(kz_term:ne_binary(), kz_term:api_binary(), kzd_freeswitch:data(), atom()) -> any().
 maybe_send_event(<<"HEARTBEAT">>, _UUID, _Props, _Node) -> 'ok';
 maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
@@ -144,13 +144,13 @@ send_event(EventName, UUID, Props, Node) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
     maybe_send_call_event(UUID, EventName, Props, Node).
 
--spec maybe_send_call_event(api_binary(), ne_binary(), kz_proplist(), atom()) -> any().
+-spec maybe_send_call_event(kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> any().
 maybe_send_call_event('undefined', _, _, _) -> 'ok';
 maybe_send_call_event(CallId, EventName, Props, Node) ->
     gproc:send({'p', 'l', ?FS_CALL_EVENT_MSG(Node, EventName, CallId)}, {'event', EventName, [CallId | Props]}),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).
 
--spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
+-spec maybe_start_event_listener(atom(), kz_term:ne_binary()) -> 'ok' | kz_types:sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
         {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);

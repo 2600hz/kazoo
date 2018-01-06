@@ -24,7 +24,7 @@ main(_) ->
 unique_values(Dict) ->
     dict:fold(fun unique_values_fold/3, sets:new(), Dict).
 
--type enum() :: sets:set(ne_binary()).
+-type enum() :: sets:set(kz_term:ne_binary()).
 -spec unique_values_fold(nonempty_string(), [nonempty_string()], enum()) -> enum().
 unique_values_fold(_Key, Value, Acc) ->
     Values = [kz_term:to_binary(V) || V <- Value],

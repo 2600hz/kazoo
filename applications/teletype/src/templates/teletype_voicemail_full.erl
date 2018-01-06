@@ -74,7 +74,7 @@ handle_req(JObj, 'true') ->
         'true' -> process_req(DataJObj, AccountId)
     end.
 
--spec process_req(kz_json:object(), ne_binary()) -> template_response().
+-spec process_req(kz_json:object(), kz_term:ne_binary()) -> template_response().
 process_req(DataJObj, AccountId) ->
     VMBox = get_vm_box(AccountId, DataJObj),
     User = get_vm_box_owner(VMBox, DataJObj),
@@ -91,11 +91,11 @@ process_req(DataJObj, AccountId) ->
          ),
     process_req(kz_json:merge_jobjs(DataJObj, ReqData)).
 
--spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
+-spec maybe_add_user_email(kz_term:ne_binaries(), kz_term:api_binary()) -> kz_term:ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 
--spec get_vm_box(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec get_vm_box(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 get_vm_box(AccountId, JObj) ->
     VMBoxId = kz_json:get_value(<<"voicemail_box">>, JObj),
     case teletype_util:open_doc(<<"vmbox">>, VMBoxId, JObj) of
@@ -144,13 +144,13 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec build_template_data(kz_json:object()) -> kz_proplist().
+-spec build_template_data(kz_json:object()) -> kz_term:proplist().
 build_template_data(DataJObj) ->
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"owner">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))} %% backward compatibility
     ].
 
--spec build_voicemail_data(kz_json:object()) -> kz_proplist().
+-spec build_voicemail_data(kz_json:object()) -> kz_term:proplist().
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"id">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}

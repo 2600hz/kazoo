@@ -48,7 +48,7 @@
 
 -type direction() :: 'ascending' | 'descending'.
 
--type time_range() :: {gregorian_seconds(), gregorian_seconds()}.
+-type time_range() :: {kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}.
 
 -type api_range_key() :: 'undefined' | ['undefined'] | kazoo_data:range_key().
 -type range_keys() :: {api_range_key(), api_range_key()}.
@@ -57,7 +57,7 @@
                       fun((cb_context:context(), kazoo_data:view_options()) -> api_range_key()).
 -type keymap() :: api_range_key() | keymap_fun().
 
--type range_keymap_fun() :: fun((gregorian_seconds()) -> api_range_key()).
+-type range_keymap_fun() :: fun((kz_time:gregorian_seconds()) -> api_range_key()).
 -type range_keymap() :: 'nil' | api_range_key() | range_keymap_fun().
 
 -type user_mapper_fun() :: 'undefined' |
@@ -70,7 +70,7 @@
                       fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
 -type options() :: kazoo_data:view_options() |
-                   [{'databases', ne_binaries()} |
+                   [{'databases', kz_term:ne_binaries()} |
                     {'mapper', user_mapper_fun()} |
                     {'max_range', pos_integer()} |
 
@@ -88,16 +88,16 @@
                     {'created_to', pos_integer()} |
                     {'range_end_keymap', range_keymap()} |
                     {'range_keymap', range_keymap()} |
-                    {'range_key_name', ne_binary()} |
+                    {'range_key_name', kz_term:ne_binary()} |
                     {'range_start_keymap', range_keymap()}
                    ].
 
 -type load_params() :: #{chunk_size => pos_integer()
                         ,context => cb_context:context()
-                        ,databases => ne_binaries()
+                        ,databases => kz_term:ne_binaries()
                         ,direction => direction()
                         ,end_key => kazoo_data:range_key()
-                        ,end_time => gregorian_seconds()
+                        ,end_time => kz_time:gregorian_seconds()
                         ,has_qs_filter => boolean()
                         ,is_chunked => boolean()
                         ,last_key => last_key()
@@ -106,9 +106,9 @@
                         ,queried_jobjs => kz_json:objects()
                         ,should_paginate => boolean()
                         ,start_key => kazoo_data:range_key()
-                        ,start_time => gregorian_seconds()
+                        ,start_time => kz_time:gregorian_seconds()
                         ,total_queried => non_neg_integer()
-                        ,view => ne_binary()
+                        ,view => kz_term:ne_binary()
                         ,view_options => kazoo_data:view_options()
                         }.
 
@@ -128,7 +128,7 @@
 %% Equivalent of load/3, setting Options to an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec load(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load(Context, View) ->
     load(Context, View, []).
 
@@ -139,7 +139,7 @@ load(Context, View) ->
 %% run against the accounts database.
 %% @end
 %%--------------------------------------------------------------------
--spec load(cb_context:context(), ne_binary(), options()) -> cb_context:context().
+-spec load(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
 load(Context, View, Options) ->
     load_view(build_load_params(Context, View, Options), Context).
 
@@ -149,7 +149,7 @@ load(Context, View, Options) ->
 %% Equivalent of load/3, setting Options to an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec load_range(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_range(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_range(Context, View) ->
     load_range(Context, View, []).
 
@@ -160,7 +160,7 @@ load_range(Context, View) ->
 %% results of a view run against the accounts database.
 %% @end
 %%--------------------------------------------------------------------
--spec load_range(cb_context:context(), ne_binary(), options()) -> cb_context:context().
+-spec load_range(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
 load_range(Context, View, Options) ->
     load_view(build_load_range_params(Context, View, Options), Context).
 
@@ -170,7 +170,7 @@ load_range(Context, View, Options) ->
 %% Equivalent of load_modb/3, setting Options to an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec load_modb(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_modb(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_modb(Context, View) ->
     load_modb(Context, View, []).
 
@@ -181,7 +181,7 @@ load_modb(Context, View) ->
 %% run against the account's MODBs.
 %% @end
 %%--------------------------------------------------------------------
--spec load_modb(cb_context:context(), ne_binary(), options()) -> cb_context:context().
+-spec load_modb(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
 load_modb(Context, View, Options) ->
     load_view(build_load_modb_params(Context, View, Options), Context).
 
@@ -191,7 +191,7 @@ load_modb(Context, View, Options) ->
 %% Generates corssbar_view options map for querying view.
 %% @end
 %%--------------------------------------------------------------------
--spec build_load_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
+-spec build_load_params(cb_context:context(), kz_term:ne_binary(), options()) -> load_params() | cb_context:context().
 build_load_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
         #{direction := Direction}=LoadMap ->
@@ -215,7 +215,7 @@ build_load_params(Context, View, Options) ->
             cb_context:add_system_error('datastore_fault', Context)
     end.
 
--spec build_load_range_params(cb_context:context(), ne_binary(), options()) ->
+-spec build_load_range_params(cb_context:context(), kz_term:ne_binary(), options()) ->
                                      load_params() | cb_context:context().
 build_load_range_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
@@ -254,7 +254,7 @@ build_load_range_params(Context, View, Options) ->
 %% Generates corssbar_view options map for querying MODBs view.
 %% @end
 %%--------------------------------------------------------------------
--spec build_load_modb_params(cb_context:context(), ne_binary(), options()) ->
+-spec build_load_modb_params(cb_context:context(), kz_term:ne_binary(), options()) ->
                                     load_params() | cb_context:context().
 build_load_modb_params(Context, View, Options) ->
     case build_load_range_params(Context, View, Options) of
@@ -370,7 +370,7 @@ ranged_start_end_keys(Context, Options) ->
 %% The keys will be swapped if direction is descending.
 %% @end
 %%--------------------------------------------------------------------
--spec ranged_start_end_keys(cb_context:cb_context(), options(), direction(), gregorian_seconds(), gregorian_seconds()) -> range_keys().
+-spec ranged_start_end_keys(cb_context:cb_context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> range_keys().
 ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
     {StartKeyMap, EndKeyMap} = get_range_key_maps(Options),
     case {cb_context:req_value(Context, <<"start_key">>)
@@ -459,7 +459,7 @@ time_range(Context) -> time_range(Context, []).
 time_range(Context, Options) ->
     time_range(Context, Options, props:get_ne_binary_value('range_key_name', Options, <<"created">>)).
 
--spec time_range(cb_context:context(), options(), ne_binary()) -> time_range() | cb_context:context().
+-spec time_range(cb_context:context(), options(), kz_term:ne_binary()) -> time_range() | cb_context:context().
 time_range(Context, Options, Key) ->
     MaxRange = get_max_range(Options),
     TSTime = kz_time:now_s(),
@@ -474,7 +474,7 @@ time_range(Context, Options, Key) ->
 %% tuple `{start_time, end_time}` or `context` with validation error.
 %% @end
 %%--------------------------------------------------------------------
--spec time_range(cb_context:context(), pos_integer(), ne_binary(), pos_integer(), pos_integer()) ->
+-spec time_range(cb_context:context(), pos_integer(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
                         time_range() | cb_context:context().
 time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
     Path = <<Key/binary, "_from">>,
@@ -717,7 +717,7 @@ get_results(#{databases := [Db|RestDbs]=Dbs
 %% we're done or shall we continue.
 %% @end
 %%--------------------------------------------------------------------
--spec handle_query_result(load_params(), ne_binaries(), kz_json:objects(), api_pos_integer()) ->
+-spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), kz_term:api_pos_integer()) ->
                                  load_params().
 handle_query_result(#{last_key := LastKey
                      ,mapper := Mapper
@@ -791,8 +791,8 @@ check_page_size_and_length(#{total_queried := TotalQueried
 %% amount to satisfy page_size
 %% @end
 %%--------------------------------------------------------------------
--spec limit_with_last_key(boolean(), api_pos_integer(), pos_integer(), non_neg_integer()) ->
-                                 api_pos_integer().
+-spec limit_with_last_key(boolean(), kz_term:api_pos_integer(), pos_integer(), non_neg_integer()) ->
+                                 kz_term:api_pos_integer().
 %% non-chunked unlimited request => no limit
 limit_with_last_key('false', 'undefined', _, _) ->
     'undefined';
@@ -893,7 +893,7 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 %% Generates general corssbar_view options map for querying view.
 %% @end
 %%--------------------------------------------------------------------
--spec build_general_load_params(cb_context:context(), ne_binary(), options()) -> load_params() | cb_context:context().
+-spec build_general_load_params(cb_context:context(), kz_term:ne_binary(), options()) -> load_params() | cb_context:context().
 build_general_load_params(Context, View, Options) ->
     Direction = direction(Context, Options),
     try maps:from_list(
@@ -928,8 +928,8 @@ is_chunked(Context, Options) ->
 %% direction.
 %% @end
 %%--------------------------------------------------------------------
--spec get_range_modbs(cb_context:context(), options(), direction(), gregorian_seconds(), gregorian_seconds()) ->
-                             ne_binaries().
+-spec get_range_modbs(cb_context:context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
+                             kz_term:ne_binaries().
 get_range_modbs(Context, Options, Direction, StartTime, EndTime) ->
     case props:get_value('databases', Options) of
         'undefined' when Direction =:= 'ascending' ->
@@ -942,7 +942,7 @@ get_range_modbs(Context, Options, Direction, StartTime, EndTime) ->
             lists:reverse(lists:usort(Dbs))
     end.
 
--spec get_chunk_size(cb_context:context(), options()) -> api_pos_integer().
+-spec get_chunk_size(cb_context:context(), options()) -> kz_term:api_pos_integer().
 get_chunk_size(Context, Options) ->
     SystemSize = kapps_config:get_pos_integer(?CONFIG_CAT, <<"load_view_chunk_size">>, 50),
     OptionsSize = props:get_integer_value('chunk_size', Options, SystemSize),
@@ -978,7 +978,7 @@ maybe_set_start_end_keys(LoadMap, StartKey, EndKey) -> LoadMap#{start_key => Sta
 %% Note: DO NOT ADD ONE (1) TO PAGE_SIZE/LIMIT! Load function will add it.
 %% @end
 %%--------------------------------------------------------------------
--spec get_page_size(cb_context:context(), options()) -> api_pos_integer().
+-spec get_page_size(cb_context:context(), options()) -> kz_term:api_pos_integer().
 get_page_size(Context, Options) ->
     case cb_context:should_paginate(Context) of
         'true' ->
@@ -1015,7 +1015,7 @@ get_page_size_from_request(Context) ->
 %% Get time key value from options or request.
 %% @end
 %%--------------------------------------------------------------------
--spec get_time_key(cb_context:context(), ne_binary(), options(), pos_integer()) -> pos_integer().
+-spec get_time_key(cb_context:context(), kz_term:ne_binary(), options(), pos_integer()) -> pos_integer().
 get_time_key(Context, Key, Options, Default) ->
     case props:get_integer_value(Key, Options) of
         'undefined' ->

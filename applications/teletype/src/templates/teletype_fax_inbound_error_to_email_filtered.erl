@@ -74,7 +74,7 @@ handle_req(JObj, 'true') ->
             teletype_fax_inbound_error_to_email:process_req(teletype_fax_util:add_data(DataJObj), ?TEMPLATE_ID, TemplateMetaJObj)
     end.
 
--spec is_notice_enabled(ne_binary(), kz_json:object()) -> kz_json:object() | 'disabled' | 'ignored'.
+-spec is_notice_enabled(kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | 'disabled' | 'ignored'.
 is_notice_enabled(AccountId, JObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of

@@ -44,7 +44,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(kz_proplist(), kz_json:object()) -> mfa_result().
+-spec authenticate(kz_term:proplist(), kz_json:object()) -> mfa_result().
 authenticate(Claims, JObj) ->
     Identity = map_config(Claims, JObj),
     case is_map(Identity)
@@ -87,7 +87,7 @@ sign_request(#{<<"user_name">> := UserId
            ],
     {'error', 401, kz_json:from_list(Resp)}.
 
--spec sign_value(ne_binary(), ne_binary(), ne_binary(), integer()) -> ne_binary().
+-spec sign_value(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), integer()) -> kz_term:ne_binary().
 sign_value(Key, Value, Prefix, Exp) ->
     Expire = expire(Exp),
     BinaryValue = <<Value/binary, (?VAL_PART_SEP)/binary, (kz_term:to_binary(Expire))/binary>>,
@@ -95,7 +95,7 @@ sign_value(Key, Value, Prefix, Exp) ->
 
     <<Cookie/binary, (?VAL_PART_SEP)/binary, (signature(Key, Cookie))/binary>>.
 
--spec signature(ne_binary(), ne_binary()) -> ne_binary().
+-spec signature(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 signature(Key, Cookie) ->
     kz_binary:hexencode(crypto:hmac('sha', Key, Cookie)).
 
@@ -104,7 +104,7 @@ signature(Key, Cookie) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response(map(), ne_binary()) -> mfa_result().
+-spec verify_response(map(), kz_term:ne_binary()) -> mfa_result().
 verify_response(#{<<"integration_key">> := IKey
                  ,<<"secret_key">> := SKey
                  ,<<"application_secret_key">> := AKey
@@ -120,7 +120,7 @@ verify_response(#{<<"integration_key">> := IKey
             {'error', 'unauthorized'}
     end.
 
--spec verify_user(map(), api_binary(), api_binary()) -> mfa_result().
+-spec verify_user(map(), kz_term:api_binary(), kz_term:api_binary()) -> mfa_result().
 verify_user(_Identity, 'undefined', _AppUser) ->
     {'error', 'unauthorized'};
 verify_user(_Identity, _AuthUser, 'undefined') ->
@@ -133,7 +133,7 @@ verify_user(#{<<"user_name">> := _UserId}, _AuthUser, _AppUser) ->
                ),
     {'error', 'unauthorized'}.
 
--spec parse_value(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> api_ne_binary().
+-spec parse_value(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 parse_value(IKey, Key, Value, Prefix) ->
     MaxExpire = kz_time:current_unix_tstamp(),
     case binary:split(Value, ?VAL_PART_SEP, ['global']) of
@@ -155,7 +155,7 @@ parse_value(IKey, Key, Value, Prefix) ->
         _Else -> 'undefined'
     end.
 
--spec do_parse(map()) -> api_ne_binary().
+-spec do_parse(map()) -> kz_term:api_ne_binary().
 do_parse(Maps) ->
     Routines = [fun verify_prefix/1
                ,fun verify_signature/1
@@ -166,7 +166,7 @@ do_parse(Maps) ->
                ],
     do_parse_fold(Maps, Routines).
 
--spec do_parse_fold(map(), list()) -> api_ne_binary().
+-spec do_parse_fold(map(), list()) -> kz_term:api_ne_binary().
 do_parse_fold(#{verify_result := 'false'}, _) -> 'undefined';
 do_parse_fold(#{user_name := UserId}, []) -> UserId;
 do_parse_fold(Maps, [Fun | Funs]) ->
@@ -240,9 +240,9 @@ is_user_name(Maps) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec map_config(kz_proplist(), kz_json:object()) ->
+-spec map_config(kz_term:proplist(), kz_json:object()) ->
                         map() |
-                        {'error', ne_binary()}.
+                        {'error', kz_term:ne_binary()}.
 map_config(Claims, JObj) ->
     Identity = maps:from_list(
                  [{<<"user_name">>, props:get_value(<<"owner_id">>, Claims)}
@@ -263,7 +263,7 @@ map_config(Claims, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_values(map()) -> 'true' | ne_binary().
+-spec validate_values(map()) -> 'true' | kz_term:ne_binary().
 validate_values(Identity) ->
     try lists:all(fun(ReqV) ->
                           validate_value(ReqV, Identity)
@@ -278,7 +278,7 @@ validate_values(Identity) ->
             kz_term:to_binary(io_lib:format("duo ~s config key is invalid", [Key]))
     end.
 
--spec validate_value(ne_binary(), map()) -> boolean().
+-spec validate_value(kz_term:ne_binary(), map()) -> boolean().
 validate_value(<<"user_name">> = K, Identity) ->
     kz_term:is_ne_binary(maps:get(K, Identity));
 validate_value(<<"integration_key">> = K, Identity) ->

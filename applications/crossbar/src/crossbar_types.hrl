@@ -6,28 +6,28 @@
 -define(SOFT_DELETE, 'true').
 
 -type crossbar_status() :: 'success' | 'error' | 'fatal' | 'stop'.
--type crossbar_module_result() :: {crossbar_status(), kz_proplist()} |
-                                  {crossbar_status(), kz_proplist(), string()} |
-                                  {crossbar_status(), kz_proplist(), string(), integer()}.
+-type crossbar_module_result() :: {crossbar_status(), kz_term:proplist()} |
+                                  {crossbar_status(), kz_term:proplist(), string()} |
+                                  {crossbar_status(), kz_term:proplist(), string(), integer()}.
 
--type path_token() :: ne_binary().
+-type path_token() :: kz_term:ne_binary().
 -type path_tokens() :: [path_token()].
 
 -type resp_data() :: kz_json:object() | kz_json:objects() |
                      kz_json:json_term() | kz_json:json_proplist() |
-                     api_binary() | ne_binaries() |
+                     kz_term:api_binary() | kz_term:ne_binaries() |
                      map().
 
 %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
--type req_file() :: {ne_binary(), kz_json:object()}.
+-type req_file() :: {kz_term:ne_binary(), kz_json:object()}.
 -type req_files() :: [req_file()].
 -type req_json() :: kz_json:object() | {'malformed', binary()}.
 
--type req_noun() :: {ne_binary(), ne_binaries()}.
+-type req_noun() :: {kz_term:ne_binary(), kz_term:ne_binaries()}.
 -type req_nouns() :: [req_noun()].
 
 %% {Type, SubType, Options}
--type content_type() :: {ne_binary(), ne_binary(), '*' | kz_proplist()} | ne_binary().
+-type content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | kz_term:proplist()} | kz_term:ne_binary().
 
 -type media_value() :: {content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].
@@ -39,11 +39,11 @@
 -define(MEDIA_VALUE(Type, SubType), ?MEDIA_VALUE(Type, SubType, 1000, [], [])).
 
 %% {handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}
--type crossbar_content_handler() :: {atom(), kz_proplist()}.
+-type crossbar_content_handler() :: {atom(), kz_term:proplist()}.
 -type crossbar_content_handlers() :: [crossbar_content_handler()].
 
--type http_method() :: ne_binary(). %% HTTP Verbs in UPPERCASE
--type http_methods() :: ne_binaries().
+-type http_method() :: kz_term:ne_binary(). %% HTTP Verbs in UPPERCASE
+-type http_methods() :: kz_term:ne_binaries().
 -type req_verb() :: http_method().
 
 -type validator() :: 'required' | 'not_empty' | 'is_type'
@@ -56,7 +56,7 @@
 -type validation_error() :: jesse_error:error_reason().
 -type validation_errors() :: [validation_error()].
 
--type couch_doc_path() :: ne_binaries().
+-type couch_doc_path() :: kz_term:ne_binaries().
 -type couch_schema() :: [{couch_doc_path(), validator_rules()}].
 
 -type cb_cowboy_payload() :: {cowboy_req:req(), cb_context:context()}.

@@ -97,7 +97,7 @@ alter_endpoints(Module, Call, DisableUntil) ->
     kapps_call_command:play(Media, Call),
     kz_json:set_value(EndpointsPath, EndPoints, Module).
 
--spec maybe_alter_disable_until(ne_binary(), kz_json:object(), kapps_call:call(), integer()) -> {boolean(), kz_json:object()}.
+-spec maybe_alter_disable_until(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), integer()) -> {boolean(), kz_json:object()}.
 maybe_alter_disable_until(<<"user">>, Endpoint, Call, DisableUntil) ->
     lager:debug("comparing owner ~p, to endpoint ~p", [kapps_call:owner_id(Call), Endpoint]),
     case kapps_call:owner_id(Call)

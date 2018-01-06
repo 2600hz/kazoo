@@ -64,7 +64,7 @@ handle(Data, Call) ->
     end.
 
 -spec nomorobo_score(kz_json:object(), kapps_call:call()) ->
-                            api_integer().
+                            kz_term:api_integer().
 nomorobo_score(Data, Call) ->
     URI = nomorobo_uri(Call),
 
@@ -85,7 +85,7 @@ nomorobo_score(Data, Call) ->
             'undefined'
     end.
 
--spec nomorobo_req(ne_binary(), kz_json:object()) -> kz_http:ret().
+-spec nomorobo_req(kz_term:ne_binary(), kz_json:object()) -> kz_http:ret().
 nomorobo_req(URI, Data) ->
     Username = kz_json:get_binary_value(<<"username">>, Data),
     Password = kz_json:get_binary_value(<<"password">>, Data),
@@ -95,7 +95,7 @@ nomorobo_req(URI, Data) ->
 
     kz_http:get(kz_term:to_list(URI), [], Options).
 
--spec nomorobo_uri(kapps_call:call()) -> ne_binary().
+-spec nomorobo_uri(kapps_call:call()) -> kz_term:ne_binary().
 nomorobo_uri(Call) ->
     lists:foldl(fun uri_replace/2
                ,?URL
@@ -103,10 +103,10 @@ nomorobo_uri(Call) ->
                 ,{<<"{FROM}">>, knm_converters:to_npan(kapps_call:caller_id_number(Call))}
                 ]).
 
--spec uri_replace({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
+-spec uri_replace({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary()) -> kz_term:ne_binary().
 uri_replace({S, R}, U) -> binary:replace(U, S, R).
 
--spec nomorobo_score_from_resp(binary()) -> api_integer().
+-spec nomorobo_score_from_resp(binary()) -> kz_term:api_integer().
 nomorobo_score_from_resp(Body) ->
     try kz_json:decode(Body) of
         JObj -> trunc(kz_json:get_float_value(<<"score">>, JObj) * 10)
@@ -124,11 +124,11 @@ continue_to_score(Call, Score) ->
     lager:info("attempting to branch to '~s' from score '~p'", [Branch, Score]),
     cf_exe:continue(Branch, Call).
 
--spec nomorobo_branch(integer(), integers()) -> ne_binary().
+-spec nomorobo_branch(integer(), kz_term:integers()) -> kz_term:ne_binary().
 nomorobo_branch(Score, [Lo|Keys]) ->
     branch_to_binary(nomorobo_branch(Score, Lo, Keys)).
 
--spec branch_to_binary(integer()) -> ne_binary().
+-spec branch_to_binary(integer()) -> kz_term:ne_binary().
 branch_to_binary(-1) -> ?DEFAULT_CHILD_KEY;
 branch_to_binary(I) -> kz_term:to_binary(I).
 
@@ -152,8 +152,8 @@ continue_to_default(Call) ->
             cf_exe:stop(Call)
     end.
 
--spec nomorobo_branches({'branch_keys', ne_binaries()}) -> integers().
--spec nomorobo_branches(ne_binaries(), integers()) -> integers().
+-spec nomorobo_branches({'branch_keys', kz_term:ne_binaries()}) -> kz_term:integers().
+-spec nomorobo_branches(kz_term:ne_binaries(), kz_term:integers()) -> kz_term:integers().
 nomorobo_branches({'branch_keys', Keys}) ->
     nomorobo_branches(Keys, []).
 

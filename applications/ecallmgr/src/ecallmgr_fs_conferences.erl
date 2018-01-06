@@ -78,7 +78,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE,
                             [{'responders', ?RESPONDERS}
@@ -96,7 +96,7 @@ summary() ->
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CONFERENCES_TBL, 'size').
 
--spec summary(text()) -> 'ok'.
+-spec summary(kz_term:text()) -> 'ok'.
 summary(Node) when not is_atom(Node) ->
     summary(kz_term:to_atom(Node, 'true'));
 summary(Node) ->
@@ -108,26 +108,26 @@ details() ->
     MatchSpec = [{#conference{_ = '_'}, [], ['$_']}],
     print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
--spec details(text()) -> 'ok'.
+-spec details(kz_term:text()) -> 'ok'.
 details(UUID) when not is_binary(UUID) ->
     details(kz_term:to_binary(UUID));
 details(UUID) ->
     MatchSpec = [{#conference{uuid=UUID, _ = '_'}, [], ['$_']}],
     print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
--spec create(kz_proplist(), atom()) -> conference().
+-spec create(kz_term:proplist(), atom()) -> conference().
 create(Props, Node) ->
     gen_server:call(?SERVER, {'conference_create', Props, Node}).
 
--spec update(ne_binary(), kz_proplist() | {integer(), any()}) -> 'ok'.
+-spec update(kz_term:ne_binary(), kz_term:proplist() | {integer(), any()}) -> 'ok'.
 update(UUID, Update) ->
     gen_server:call(?SERVER, {'conference_update', UUID, Update}).
 
--spec destroy(ne_binary()) -> 'ok'.
+-spec destroy(kz_term:ne_binary()) -> 'ok'.
 destroy(UUID) ->
     gen_server:call(?SERVER, {'conference_destroy', UUID}).
 
--spec node(ne_binary()) ->
+-spec node(kz_term:ne_binary()) ->
                   {'ok', atom()} |
                   {'error', 'not_found'}.
 node(Name) ->
@@ -141,7 +141,7 @@ node(Name) ->
         _ -> {'error', 'not_found'}
     end.
 
--spec conference(ne_binary()) ->  {'ok', conference()} | {'error', 'not_found'}.
+-spec conference(kz_term:ne_binary()) ->  {'ok', conference()} | {'error', 'not_found'}.
 conference(UUID) ->
     case ets:match_object(?CONFERENCES_TBL, #conference{uuid=UUID, _ = '_'}) of
         %% TODO: this ignores conferences on multiple nodes until big-conferences
@@ -153,7 +153,7 @@ conference(UUID) ->
         _ -> {'error', 'not_found'}
     end.
 
--spec participants(conference() | ne_binary()) -> participants().
+-spec participants(conference() | kz_term:ne_binary()) -> participants().
 participants(#conference{name=Name}) -> participants(Name);
 participants(Name) ->
     %% Note: used the conference name supports participants on multiple nodes
@@ -167,11 +167,11 @@ participants_to_json(Participants) ->
 participant_create(Props, Node) ->
     gen_server:call(?SERVER, {'participant_create', Props, Node}).
 
--spec participant_update(ne_binary(), kz_proplist()) -> 'ok'.
+-spec participant_update(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 participant_update(CallId, Update) ->
     gen_server:call(?SERVER, {'participant_update', CallId, Update}).
 
--spec participant_get(ne_binary()) -> participant().
+-spec participant_get(kz_term:ne_binary()) -> participant().
 participant_get(CallId) ->
     case ets:lookup(?PARTICIPANTS_TBL, CallId) of
         [Participant=#participant{}] ->
@@ -180,7 +180,7 @@ participant_get(CallId) ->
             lager:error("No participant data by call-id ~p", [CallId])
     end.
 
--spec participant_destroy(ne_binary()) -> 'ok'.
+-spec participant_destroy(kz_term:ne_binary()) -> 'ok'.
 participant_destroy(CallId) ->
     gen_server:call(?SERVER, {'participant_destroy', CallId}).
 
@@ -190,14 +190,14 @@ sync_node(Node) -> gen_server:cast(?SERVER, {'sync_node', Node}).
 -spec flush_node(atom()) -> 'ok'.
 flush_node(Node) -> gen_server:cast(?SERVER, {'flush_node', Node}).
 
--spec handle_search_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_search_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_search_req(JObj, Props) ->
     case kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj) of
         'undefined' -> handle_search_account(JObj, Props);
         ConferenceId -> handle_search_conference(JObj, Props, ConferenceId)
     end.
 
--spec handle_search_conference(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
+-spec handle_search_conference(kz_json:object(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 handle_search_conference(JObj, _Props, Name) ->
     lager:info("received search request for conference name ~s", [Name]),
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
@@ -238,7 +238,7 @@ handle_search_conference(JObj, _Props, Name) ->
             kapi_conference:publish_error(kz_api:server_id(JObj), Error)
     end.
 
--spec handle_search_account(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_search_account(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_search_account(JObj, _Props) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     lager:info("received search request for account ~s", [AccountId]),
@@ -262,7 +262,7 @@ handle_search_account(JObj, _Props) ->
             kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp)
     end.
 
--spec conference_resp(conference()) -> {ne_binary(), kz_json:object()}.
+-spec conference_resp(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
 conference_resp(#conference{uuid=UUID
                            ,name=Name
                            ,start_time=StartTime
@@ -323,7 +323,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'conference_create', Props, Node}, _, State) ->
     lager:debug("created conference ~p", [Props]),
     Conference = conference_from_props(Props, Node),
@@ -379,7 +379,7 @@ handle_call(_Req, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'sync_node', Node}, State) ->
     Sync = list_conferences(Node),
     Conferences = get_conference_dictionary(Sync),
@@ -419,7 +419,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {'noreply', State}.
@@ -432,7 +432,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -471,7 +471,7 @@ code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 conference_from_props(Props, Node) ->
     conference_from_props(Props, Node, #conference{}).
 
--spec conference_from_props(kz_proplist(), atom(), conference()) -> conference().
+-spec conference_from_props(kz_term:proplist(), atom(), conference()) -> conference().
 conference_from_props(Props, Node, Conference) ->
     CtrlNode = kz_term:to_atom(props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props), 'true'),
     Conference#conference{node = Node
@@ -512,7 +512,7 @@ participants_to_json([Participant|Participants], JObjs) ->
 participant_to_json(#participant{}=Participant) ->
     kz_json:from_list(participant_to_props(Participant)).
 
--spec participant_to_props(participant()) -> kz_proplist().
+-spec participant_to_props(participant()) -> kz_term:proplist().
 participant_to_props(#participant{uuid=UUID
                                  ,conference_name=ConfName
                                  ,conference_uuid=ConfUUID
@@ -538,7 +538,7 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Switch-Hostname">>, Node}
       ]).
 
--spec conference_to_props(conference()) -> kz_proplist().
+-spec conference_to_props(conference()) -> kz_term:proplist().
 conference_to_props(#conference{name=Name
                                ,uuid=UUID
                                ,node=Node
@@ -593,7 +593,7 @@ list_conferences(Node) ->
         {'error', _} -> []
     end.
 
--spec xml_list_to_records(xml_els(), atom()) -> conferences() | participants().
+-spec xml_list_to_records(kz_types:xml_els(), atom()) -> conferences() | participants().
 xml_list_to_records(Xml, Node) -> xml_list_to_records(Xml, Node, []).
 
 xml_list_to_records(#xmlElement{name='conferences'
@@ -619,7 +619,7 @@ xml_list_to_records(#xmlElement{name='conference'
     [Conference | Participants ++ Recs];
 xml_list_to_records(_, _, Recs) -> Recs.
 
--spec xml_to_conference(xml_el(), atom()) -> conference().
+-spec xml_to_conference(kz_types:xml_el(), atom()) -> conference().
 xml_to_conference(#xmlElement{name='conference'
                              ,attributes=Attrs
                              }, Node) ->
@@ -630,7 +630,7 @@ xml_to_conference(#xmlElement{name='conference'
                                               ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                                               }).
 
--spec xml_attrs_to_conference(xml_attribs(), conference()) ->
+-spec xml_attrs_to_conference(kz_types:xml_attribs(), conference()) ->
                                      conference().
 xml_attrs_to_conference([], Conference) -> Conference;
 xml_attrs_to_conference([#xmlAttribute{name=Name, value=Value}
@@ -639,7 +639,7 @@ xml_attrs_to_conference([#xmlAttribute{name=Name, value=Value}
     C = xml_attr_to_conference(Conference, Name, Value),
     xml_attrs_to_conference(Attrs, C).
 
--spec xml_attr_to_conference(conference(), xml_attrib_name(), xml_attrib_value()) ->
+-spec xml_attr_to_conference(conference(), kz_types:xml_attrib_name(), kz_types:xml_attrib_value()) ->
                                     conference().
 xml_attr_to_conference(Conference, 'name', Value) ->
     Conference#conference{name=kz_term:to_binary(Value)};
@@ -667,7 +667,7 @@ xml_attr_to_conference(Conference, _Name, _Value) ->
     lager:debug("unhandled conference k/v ~s: ~p", [_Name, _Value]),
     Conference.
 
--spec xml_members_to_participants(xml_els(), conference()) -> participants().
+-spec xml_members_to_participants(kz_types:xml_els(), conference()) -> participants().
 xml_members_to_participants([], _) -> [];
 xml_members_to_participants([#xmlElement{name='members'
                                         ,content=XmlElements
@@ -683,7 +683,7 @@ xml_members_to_participants([#xmlElement{name='members'
 xml_members_to_participants([_|XmlElements], Conference) ->
     xml_members_to_participants(XmlElements, Conference).
 
--spec xml_member_to_participant(xml_els(), participant()) -> participant().
+-spec xml_member_to_participant(kz_types:xml_els(), participant()) -> participant().
 xml_member_to_participant([], Participant) -> Participant;
 xml_member_to_participant([#xmlElement{name='uuid'
                                       ,content=UUID
@@ -699,11 +699,11 @@ xml_member_to_participant([#xmlElement{name='uuid'
 xml_member_to_participant([_|XmlElements], Participant) ->
     xml_member_to_participant(XmlElements, Participant).
 
--spec xml_text_to_binary(xml_els()) -> ne_binary().
+-spec xml_text_to_binary(kz_types:xml_els()) -> kz_term:ne_binary().
 xml_text_to_binary(XmlElements) ->
     iolist_to_binary([V || #xmlText{value=V} <- XmlElements]).
 
--spec maybe_destroy_conference(ne_binary()) -> boolean().
+-spec maybe_destroy_conference(kz_term:ne_binary()) -> boolean().
 maybe_destroy_conference(UUID) ->
     case ets:match(?PARTICIPANTS_TBL, #participant{conference_uuid=UUID, _ = '_'}) of
         [] ->
@@ -838,7 +838,7 @@ print_participant_details([#participant{uuid=UUID
     print_participant_flags(Props),
     print_participant_details(Participants).
 
--spec print_participant_flags(kz_proplist()) -> 'ok'.
+-spec print_participant_flags(kz_term:proplist()) -> 'ok'.
 print_participant_flags([]) -> 'ok';
 print_participant_flags([{Flag, 'true'}|Props]) ->
     %% Cheating, all this typing today...

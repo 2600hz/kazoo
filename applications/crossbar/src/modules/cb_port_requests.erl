@@ -174,7 +174,7 @@ resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
--spec acceptable_content_types() -> kz_proplist().
+-spec acceptable_content_types() -> kz_term:proplist().
 acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
@@ -192,7 +192,7 @@ content_types_provided(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
         _Verb -> Context
     end.
 
--spec content_types_provided_get(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec content_types_provided_get(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 content_types_provided_get(Context, Id, AttachmentId) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
     cb_context:add_attachment_content_type(Context1, Id, AttachmentId).
@@ -350,7 +350,7 @@ patch(Context, Id, NewState=?PORT_REJECTED) ->
 patch(Context, Id, NewState=?PORT_CANCELED) ->
     save_then_maybe_notify(Context, Id, NewState).
 
--spec save_then_maybe_notify(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec save_then_maybe_notify(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 save_then_maybe_notify(Context, PortId, NewState) ->
     Context1 = save(Context),
     case success =:= cb_context:resp_status(Context1) of
@@ -374,7 +374,7 @@ maybe_set_scheduled_date_from_schedule_on(Doc) ->
             kz_json:set_value(<<"scheduled_date">>, Scheduled, Doc)
     end.
 
--spec date_as_configured_timezone(ne_binary(), ne_binary()) -> gregorian_seconds().
+-spec date_as_configured_timezone(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_time:gregorian_seconds().
 date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $\s,
                               HH:2/binary, $:, Mm:2/binary>>
                            ,FromTimezone
@@ -435,7 +435,7 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%% Internal functions
 %%%===================================================================
 
--spec load_port_request(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_port_request(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)).
@@ -445,7 +445,7 @@ load_port_request(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_load_summary(cb_context:context(), ne_binary()) ->
+-spec validate_load_summary(cb_context:context(), kz_term:ne_binary()) ->
                                    cb_context:context().
 validate_load_summary(Context, ?PORT_COMPLETED = Type) ->
     load_summary_by_type(Context, Type);
@@ -462,9 +462,9 @@ validate_load_summary(Context, <<_/binary>> = Type) ->
 %%--------------------------------------------------------------------
 -spec validate_port_request(cb_context:context(), http_method()) ->
                                    cb_context:context().
--spec validate_port_request(cb_context:context(), ne_binary(), http_method()) ->
+-spec validate_port_request(cb_context:context(), kz_term:ne_binary(), http_method()) ->
                                    cb_context:context().
--spec validate_port_request(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+-spec validate_port_request(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
                                    cb_context:context().
 validate_port_request(Context, ?HTTP_GET) ->
     summary(Context);
@@ -491,7 +491,7 @@ validate_port_request(Context, Id, ToState=?PORT_REJECTED, ?HTTP_PATCH) ->
 validate_port_request(Context, Id, ToState=?PORT_CANCELED, ?HTTP_PATCH) ->
     patch_then_validate_then_maybe_transition(Context, Id, ToState).
 
--spec patch_then_validate_then_maybe_transition(cb_context:context(), ne_binary(), ne_binary()) ->
+-spec patch_then_validate_then_maybe_transition(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                                        cb_context:context().
 patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
     ValidateFun = fun (_PortId, C) ->
@@ -507,7 +507,7 @@ patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_attachments(cb_context:context(), ne_binary(), http_method()) ->
+-spec validate_attachments(cb_context:context(), kz_term:ne_binary(), http_method()) ->
                                   cb_context:context().
 validate_attachments(Context, Id, ?HTTP_GET) ->
     summary_attachments(Context, Id);
@@ -519,7 +519,7 @@ validate_attachments(Context, Id, ?HTTP_PUT) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_attachment(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+-spec validate_attachment(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
                                  cb_context:context().
 validate_attachment(Context, Id, AttachmentId, ?HTTP_GET) ->
     load_attachment(Id, AttachmentId, Context);
@@ -534,7 +534,7 @@ validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_deletable(cb_context:context()) -> cb_context:context().
--spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec is_deletable(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 is_deletable(Context) ->
     is_deletable(Context, knm_port_request:current_state(cb_context:doc(Context))).
 is_deletable(Context, ?PORT_UNCONFIRMED) -> Context;
@@ -562,7 +562,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Id) ->
     Context1 = load_port_request(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -575,7 +575,7 @@ read(Context, Id) ->
         _ -> Context1
     end.
 
--spec authority(ne_binary()) -> api_binary().
+-spec authority(kz_term:ne_binary()) -> kz_term:api_binary().
 authority(AccountId) ->
     case kz_whitelabel:fetch(AccountId) of
         {'error', _R} -> 'undefined';
@@ -590,7 +590,7 @@ authority(AccountId) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_validation(C, Id) end,
     cb_context:validate_request_data(?SCHEMA, Context, OnSuccess).
@@ -613,7 +613,7 @@ summary(Context) ->
 %%% Load Summary By Range
 %%%===================================================================
 
--spec load_summary_by_type(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_summary_by_type(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_summary_by_type(Context, <<"all">>) ->
     lager:debug("loading summary for all port requests"),
     Funs = fun(?PORT_SUBMITTED=Type, C) -> load_summary_fold(C, Type, 'false');
@@ -633,7 +633,7 @@ load_summary_by_type(Context, Type) ->
       load_summary(Context, view_key_options(Context, Type, 'true'))
      ).
 
--spec load_summary_fold(cb_context:context(), ne_binary(), boolean()) -> cb_context:context().
+-spec load_summary_fold(cb_context:context(), kz_term:ne_binary(), boolean()) -> cb_context:context().
 load_summary_fold(Context, Type, IsRanged) ->
     Summary = cb_context:resp_data(Context),
     case cb_context:resp_data(load_summary(Context, view_key_options(Context, Type, IsRanged))) of
@@ -657,7 +657,7 @@ load_summary(Context, {IsRanged, Opts}) ->
         'false' -> crossbar_view:load(Context1, View, Options)
     end.
 
--spec view_key_options(cb_context:context(), ne_binary(), boolean()) -> {boolean(), crossbar_view:options()}.
+-spec view_key_options(cb_context:context(), kz_term:ne_binary(), boolean()) -> {boolean(), crossbar_view:options()}.
 view_key_options(Context, Type, 'true') ->
     {'true'
     ,[{'range_start_keymap', [cb_context:account_id(Context), Type]}
@@ -699,7 +699,7 @@ normalize_summary_results(Context) ->
            ],
     cb_context:set_resp_data(Context, JObj).
 
--spec get_account_names(ne_binaries()) -> kz_proplist().
+-spec get_account_names(kz_term:ne_binaries()) -> kz_term:proplist().
 get_account_names(Keys) ->
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?ACCOUNTS_BY_SIMPLE_ID, Keys) of
         {'ok', JObjs} ->
@@ -711,7 +711,7 @@ get_account_names(Keys) ->
         {'error', _} -> []
     end.
 
--spec get_summarize_view_name(cb_context:context()) -> ne_binary().
+-spec get_summarize_view_name(cb_context:context()) -> kz_term:ne_binary().
 get_summarize_view_name(Context) ->
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
         [_AccountId, ?DESCENDANTS] -> ?DESCENDANT_LISTING_BY_STATE;
@@ -722,7 +722,7 @@ get_summarize_view_name(Context) ->
 %%% Load Summary By Number
 %%%===================================================================
 
--spec load_summary_by_number(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_summary_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_summary_by_number(Context, Number) ->
     Options = [{'keys', build_keys(Context, Number)}
               ,{'mapper', fun normalize_view_results/2}
@@ -731,7 +731,7 @@ load_summary_by_number(Context, Number) ->
               ],
     crossbar_view:load(Context, ?ALL_PORT_REQ_NUMBERS, Options).
 
--spec build_keys(cb_context:context(), ne_binary()) -> [ne_binaries()].
+-spec build_keys(cb_context:context(), kz_term:ne_binary()) -> [kz_term:ne_binaries()].
 build_keys(Context, Number) ->
     E164 = knm_converters:normalize(Number),
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
@@ -846,7 +846,7 @@ leak_pvt_fields(Res, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec summary_attachments(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec summary_attachments(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 summary_attachments(Context, Id) ->
     Context1 = load_port_request(Context, Id),
     As = kz_doc:attachments(cb_context:doc(Context1), kz_json:new()),
@@ -858,8 +858,8 @@ summary_attachments(Context, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
--spec on_successful_validation(cb_context:context(), api_binary(), boolean()) -> cb_context:context().
+-spec on_successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
+-spec on_successful_validation(cb_context:context(), kz_term:api_binary(), boolean()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     on_successful_validation(Context, 'undefined', 'true');
 on_successful_validation(Context, Id) ->
@@ -900,7 +900,7 @@ on_successful_validation(Context, _Id, 'false') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec can_update_port_request(cb_context:context()) -> boolean().
--spec can_update_port_request(cb_context:context(), ne_binary()) -> boolean().
+-spec can_update_port_request(cb_context:context(), kz_term:ne_binary()) -> boolean().
 can_update_port_request(Context) ->
     lager:debug("port request: ~p", [cb_context:doc(Context)]),
     can_update_port_request(Context, knm_port_request:current_state(cb_context:doc(Context))).
@@ -917,7 +917,7 @@ can_update_port_request(Context, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
+-spec successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 successful_validation(Context, 'undefined') ->
     PortReq = knm_port_request:new(cb_context:doc(Context)
                                   ,cb_context:auth_account_id(Context)
@@ -933,9 +933,9 @@ successful_validation(Context, _Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_number_portability(api_binary(), ne_binary(), cb_context:context()) ->
+-spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
                                       cb_context:context().
--spec check_number_portability(api_binary(), ne_binary(), cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                       cb_context:context().
 check_number_portability(PortId, Number, Context) ->
     E164 = knm_converters:normalize(Number),
@@ -977,7 +977,7 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
             number_validation_error(Context, Number, Message)
     end.
 
--spec number_validation_error(cb_context:context(), ne_binary(), ne_binary()) ->
+-spec number_validation_error(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      cb_context:context().
 number_validation_error(Context, Number, Message) ->
     Msg = kz_json:from_list([{<<"message">>, Message}
@@ -990,7 +990,7 @@ number_validation_error(Context, Number, Message) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_number_existence(ne_binary(), ne_binary(), cb_context:context()) ->
+-spec check_number_existence(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
                                     cb_context:context().
 check_number_existence(E164, Number, Context) ->
     case knm_number:lookup_account(E164) of
@@ -1016,7 +1016,7 @@ check_number_existence(E164, Number, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) ->
+-spec load_attachment(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_attachment(Id, AttachmentId, Context) ->
     Context1 = read(Context, Id),
@@ -1030,7 +1030,7 @@ load_attachment(Id, AttachmentId, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_attachment(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_attachment(AttachmentId, Context) ->
     Context1 = crossbar_doc:load_attachment(cb_context:doc(Context)
                                            ,AttachmentId
@@ -1044,7 +1044,7 @@ load_attachment(AttachmentId, Context) ->
     cb_context:add_resp_headers(Context1, Headers).
 
 %% @private
--spec maybe_move_state(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_move_state(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_move_state(Context, PortState) ->
     Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)
                                                    ,cb_context:auth_user_id(Context)
@@ -1092,7 +1092,7 @@ generate_loa(Context, _RespStatus) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_template(ne_binary(), api_ne_binary()) -> ne_binary().
+-spec find_template(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 find_template(ResellerId, 'undefined') ->
     {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
     Template;
@@ -1111,7 +1111,7 @@ find_template(ResellerId, CarrierName) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_port_comment_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec maybe_send_port_comment_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 maybe_send_port_comment_notification(Context, Id) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     ReqData = cb_context:req_data(Context),
@@ -1133,7 +1133,7 @@ maybe_send_port_comment_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec has_new_comment(api_objects(), api_objects()) -> boolean().
+-spec has_new_comment(kz_term:api_objects(), kz_term:api_objects()) -> boolean().
 has_new_comment('undefined', [_|_]) -> 'true';
 has_new_comment([], [_|_]) -> 'true';
 has_new_comment(_, 'undefined') -> 'false';
@@ -1200,7 +1200,7 @@ revert_patch(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_comment_notification(cb_context:context(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec send_port_comment_notification(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_port_comment_notification(Context, Id, NewComment) ->
     Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
             ,{<<"account_id">>, cb_context:auth_account_id(Context)}
@@ -1222,7 +1222,7 @@ send_port_comment_notification(Context, Id, NewComment) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_unconfirmed_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_port_unconfirmed_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_port_unconfirmed_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
@@ -1236,7 +1236,7 @@ send_port_unconfirmed_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_request_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_port_request_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_port_request_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
@@ -1251,7 +1251,7 @@ send_port_request_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_pending_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_port_pending_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_port_pending_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
@@ -1265,7 +1265,7 @@ send_port_pending_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_rejected_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_port_rejected_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_port_rejected_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
@@ -1279,7 +1279,7 @@ send_port_rejected_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_cancel_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_port_cancel_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_port_cancel_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
@@ -1293,7 +1293,7 @@ send_port_cancel_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_ported_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_ported_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_ported_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
@@ -1307,7 +1307,7 @@ send_ported_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_scheduled_notification(cb_context:context(), ne_binary()) -> 'ok'.
+-spec send_port_scheduled_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 send_port_scheduled_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
@@ -1316,7 +1316,7 @@ send_port_scheduled_notification(Context, Id) ->
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_scheduled/1).
 
--spec common_patch_notification_props(cb_context:context(), api_ne_binary()) -> kz_proplist().
+-spec common_patch_notification_props(cb_context:context(), kz_term:api_ne_binary()) -> kz_term:proplist().
 common_patch_notification_props(Context, ?NE_BINARY=Reason) ->
     Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
             ,{<<"account_id">>, cb_context:auth_account_id(Context)}
@@ -1360,7 +1360,7 @@ generate_loa_from_port(Context, PortRequest) ->
             cb_context:set_resp_status(cb_context:set_resp_data(Context, PDF), 'success')
     end.
 
--spec create_QR_code(api_binary(), api_binary()) -> kz_proplist() | 'undefined'.
+-spec create_QR_code(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:proplist() | 'undefined'.
 create_QR_code('undefined', _) -> 'undefined';
 create_QR_code(_, 'undefined') -> 'undefined';
 create_QR_code(AccountId, PortRequestId) ->

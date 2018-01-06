@@ -16,16 +16,16 @@
 
 -include("teletype.hrl").
 
--spec voicemail_to_email(ne_binary()) -> 'ok' |
-                                         {'ok', kz_json:objects()} |
-                                         {'error', any()}.
+-spec voicemail_to_email(kz_term:ne_binary()) -> 'ok' |
+                                                 {'ok', kz_json:objects()} |
+                                                 {'error', any()}.
 voicemail_to_email(?NE_BINARY=AccountId) ->
     case find_vmboxes(AccountId) of
         [] -> lager:debug("no voicemail boxes in account ~s", [AccountId]);
         VMBoxes -> find_vmbox_messages(AccountId, VMBoxes)
     end.
 
--spec find_vmboxes(ne_binary()) -> kz_json:objects().
+-spec find_vmboxes(kz_term:ne_binary()) -> kz_json:objects().
 find_vmboxes(?NE_BINARY=AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
@@ -35,7 +35,7 @@ find_vmboxes(?NE_BINARY=AccountId) ->
             []
     end.
 
--spec find_vmbox_messages(ne_binary(), kz_json:objects()) ->
+-spec find_vmbox_messages(kz_term:ne_binary(), kz_json:objects()) ->
                                  'ok' |
                                  {'ok', kz_json:objects()} |
                                  {'error', any()}.
@@ -48,7 +48,7 @@ find_vmbox_messages(AccountId, [Box|Boxes]) ->
         Ms -> voicemail_to_email(AccountId, BoxJObj, Ms)
     end.
 
--spec voicemail_to_email(ne_binary(), ne_binary()) ->
+-spec voicemail_to_email(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                 'ok' |
                                 {'ok', kz_json:objects()} |
                                 {'error', any()}.
@@ -57,7 +57,7 @@ voicemail_to_email(AccountId, ?NE_BINARY=VoicemailBoxId) ->
     {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VoicemailBoxId),
     find_vmbox_messages(AccountId, [VMBox]).
 
--spec voicemail_to_email(ne_binary(), kz_json:object(), kz_json:objects()) ->
+-spec voicemail_to_email(kz_term:ne_binary(), kz_json:object(), kz_json:objects()) ->
                                 {'ok', kz_json:objects()} |
                                 {'error', any()}.
 voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
@@ -84,7 +84,7 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
                                ,5 * ?MILLISECONDS_IN_SECOND
                                ).
 
--spec skel(ne_binary()) -> ok.
+-spec skel(kz_term:ne_binary()) -> ok.
 skel(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
@@ -109,7 +109,7 @@ find_user_for_skel(AccountId, User, Users, PotentialEmail) ->
         _ -> find_user_for_skel(AccountId, Users)
     end.
 
--spec skel(ne_binary(), ne_binary()) -> ok.
+-spec skel(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 skel(AccountId, ?NE_BINARY=UserId) ->
     Req = [{<<"Account-ID">>, AccountId}
           ,{<<"User-ID">>, UserId}
@@ -118,14 +118,14 @@ skel(AccountId, ?NE_BINARY=UserId) ->
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_skel/1).
 
--spec voicemail_full(ne_binary()) -> ok.
+-spec voicemail_full(kz_term:ne_binary()) -> ok.
 voicemail_full(AccountId) ->
     case find_vmboxes(AccountId) of
         [] -> lager:debug("there are no voicemail boxes in ~s", [AccountId]);
         [Box|_] -> voicemail_full(AccountId, kz_json:get_value(<<"doc">>, Box))
     end.
 
--spec voicemail_full(ne_binary(), ne_binary()) -> kz_amqp_worker:request_return().
+-spec voicemail_full(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_amqp_worker:request_return().
 voicemail_full(AccountId, ?NE_BINARY=BoxId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Box} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
@@ -143,7 +143,7 @@ voicemail_full(AccountId, Box) ->
     Publisher = fun kapi_notifications:publish_voicemail_full/1,
     kz_amqp_worker:call_collect(Props, Publisher, 5 * ?MILLISECONDS_IN_SECOND).
 
--spec fax_inbound_to_email(ne_binary()) -> ok.
+-spec fax_inbound_to_email(kz_term:ne_binary()) -> ok.
 fax_inbound_to_email(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"faxes/crossbar_listing">>, ['include_docs']) of
@@ -160,7 +160,7 @@ find_fax_with_attachment(AccountId, [Fax|Faxes]) ->
         _As -> fax_inbound_to_email(AccountId, kz_json:get_value(<<"doc">>, Fax))
     end.
 
--spec fax_inbound_to_email(ne_binary(), ne_binary()) -> kz_amqp_worker:request_return().
+-spec fax_inbound_to_email(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_amqp_worker:request_return().
 fax_inbound_to_email(AccountId, ?NE_BINARY=FaxId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Fax} = kz_datamgr:open_cache_doc(AccountDb, FaxId),
@@ -177,7 +177,7 @@ fax_inbound_to_email(AccountId, Fax) ->
     Publisher = fun kapi_notifications:publish_fax_inbound/1,
     kz_amqp_worker:call_collect(Message, Publisher, 2 * ?MILLISECONDS_IN_SECOND).
 
--spec notify_fields(kz_json:object()) -> kz_proplist().
+-spec notify_fields(kz_json:object()) -> kz_term:proplist().
 notify_fields(JObj) ->
     props:filter_empty(
       [{<<"From-User">>, <<"FromUser">>}

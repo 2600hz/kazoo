@@ -29,8 +29,8 @@
         ,migrate/1
         ]).
 
--type api_account() :: api_ne_binary() | kapps_call:call() | kz_json:object().
--type account_or_not() :: ne_binary() | no_account_id.
+-type api_account() :: kz_term:api_ne_binary() | kapps_call:call() | kz_json:object().
+-type account_or_not() :: kz_term:ne_binary() | no_account_id.
 
 
 %%-----------------------------------------------------------------------------
@@ -39,8 +39,8 @@
 %% Get a non-empty configuration key for a given category and cast it as a binary
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_ne_binary(api_account(), ne_binary(), kz_json:path()) -> api_ne_binary().
--spec get_ne_binary(api_account(), ne_binary(), kz_json:path(), Default) -> ne_binary() | Default.
+-spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_term:api_ne_binary().
+-spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binary() | Default.
 get_ne_binary(Account, Category, Path) ->
     get_ne_binary(Account, Category, Path, undefined).
 get_ne_binary(Account, Category, Path, Default) ->
@@ -57,8 +57,8 @@ get_ne_binary(Account, Category, Path, Default) ->
 %% a list of binary
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_ne_binaries(api_account(), ne_binary(), kz_json:path()) -> ne_binaries().
--spec get_ne_binaries(api_account(), ne_binary(), kz_json:path(), Default) -> ne_binaries() | Default.
+-spec get_ne_binaries(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_term:ne_binaries().
+-spec get_ne_binaries(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binaries() | Default.
 get_ne_binaries(Account, Category, Path) ->
     get_ne_binaries(Account, Category, Path, undefined).
 get_ne_binaries(Account, Category, Path, Default) ->
@@ -74,11 +74,11 @@ get_ne_binaries(Account, Category, Path, Default) ->
 %% Get a configuration key for a given category and cast it as a pos_integer
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_pos_integer(api_account(), ne_binary(), kz_json:path()) -> pos_integer().
+-spec get_pos_integer(api_account(), kz_term:ne_binary(), kz_json:path()) -> pos_integer().
 get_pos_integer(Account, Category, Path) ->
     get_pos_integer(Account, Category, Path, 'undefined').
 
--spec get_pos_integer(api_account(), ne_binary(), kz_json:path(), Default) -> pos_integer() | Default.
+-spec get_pos_integer(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> pos_integer() | Default.
 get_pos_integer(Account, Category, Path, Default) ->
     to_pos_integer(get(Account, Category, Path, Default), Default).
 
@@ -98,9 +98,9 @@ to_pos_integer(Value, Default) ->
 %% Will search the account db first, then system_config for values.
 %% @end
 %%--------------------------------------------------------------------
--spec get_global(api_account(), ne_binary(), kz_json:path()) ->
+-spec get_global(api_account(), kz_term:ne_binary(), kz_json:path()) ->
                         kz_json:json_term().
--spec get_global(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+-spec get_global(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                         kz_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, undefined).
@@ -113,7 +113,7 @@ get_global(Account, Category, Key, Default) ->
             get_from_reseller(Account, Category, Key, Default)
     end.
 
--spec get_global(api_account(), ne_binary()) -> kz_json:object().
+-spec get_global(api_account(), kz_term:ne_binary()) -> kz_json:object().
 get_global(Account, Category) ->
     case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} -> JObj;
@@ -134,11 +134,11 @@ get_global(Account, Category) ->
 %% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
 %% @end
 %%--------------------------------------------------------------------
--spec get_from_reseller(api_account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
+-spec get_from_reseller(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:api_json_term().
 get_from_reseller(Account, Category, Key) ->
     get_from_reseller(Account, Category, Key, undefined).
 
--spec get_from_reseller(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:api_json_term().
+-spec get_from_reseller(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:api_json_term().
 get_from_reseller(Account, Category, Key, Default) ->
     case maybe_load_config_from_reseller(Account, Category) of
         {ok, JObj} ->
@@ -167,7 +167,7 @@ maybe_load_config_from_reseller(Account, Category) ->
 %% Same as get_hierarchy/4 with Default set to undefined
 %% @end
 %%--------------------------------------------------------------------
--spec get_hierarchy(api_account(), ne_binary(), kz_json:path()) -> kz_json:json_term().
+-spec get_hierarchy(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:json_term().
 get_hierarchy(Account, Category, Key) ->
     get_hierarchy(Account, Category, Key, undefined).
 
@@ -177,7 +177,7 @@ get_hierarchy(Account, Category, Key) ->
 %% Same as get_with_strategy/5 with Strategy "hierarchy_merge"
 %% @end
 %%--------------------------------------------------------------------
--spec get_hierarchy(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:json_term().
+-spec get_hierarchy(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:json_term().
 get_hierarchy(Account, Category, Key, Default) ->
     get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
 
@@ -199,12 +199,12 @@ get_hierarchy(Account, Category, Key, Default) ->
 %%    the results at the end.
 %% @end
 %%--------------------------------------------------------------------
--spec get_with_strategy(ne_binary(), api_account(), ne_binary(), kz_json:path()) ->
+-spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), kz_json:path()) ->
                                kz_json:json_term().
 get_with_strategy(Strategy, Account, Category, Key) ->
     get_with_strategy(Strategy, Account, Category, Key, undefined).
 
--spec get_with_strategy(ne_binary(), api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+-spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                kz_json:json_term().
 get_with_strategy(Strategy, Account, Category, Key, Default) ->
     ShouldMerge = is_merge_strategy(Strategy),
@@ -224,7 +224,7 @@ get_with_strategy(Strategy, Account, Category, Key, Default) ->
             Default
     end.
 
--spec get_from_strategy_cache(ne_binary(), account_or_not(), kz_json:path(), ne_binary(), boolean()) ->
+-spec get_from_strategy_cache(kz_term:ne_binary(), account_or_not(), kz_json:path(), kz_term:ne_binary(), boolean()) ->
                                      {ok, kz_json:object()} |
                                      {error, any()}.
 get_from_strategy_cache(_, no_account_id, _, _, _) ->
@@ -247,7 +247,7 @@ get_from_strategy_cache(Strategy, AccountId, Category, Key, false) ->
 %% from system_config
 %% @end
 %%--------------------------------------------------------------------
--spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) -> kz_json:object().
+-spec get_global_from_doc(kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) -> kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
     case kz_json:get_value(Key, JObj) of
         undefined ->
@@ -256,9 +256,9 @@ get_global_from_doc(Category, Key, Default, JObj) ->
             Value
     end.
 
--spec get(api_account(), ne_binary()) -> kz_json:object().
--spec get(api_account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
--spec get(api_account(), ne_binary(), kz_json:path(), Default) -> kz_json:json_term() | Default.
+-spec get(api_account(), kz_term:ne_binary()) -> kz_json:object().
+-spec get(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:api_json_term().
+-spec get(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_json:json_term() | Default.
 
 get(Account, Category, Key) ->
     get(Account, Category, Key, undefined).
@@ -272,7 +272,7 @@ get(Account, Category) ->
         {error, _} -> kz_doc:set_id(kz_json:new(), kapps_config_util:account_doc_id(Category))
     end.
 
--spec load_config_from_system(api_binary(), ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_system(kz_term:api_binary(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_system(_Account, Category) ->
     case kapps_config:get_category(Category) of
         {ok, JObj} ->
@@ -281,7 +281,7 @@ load_config_from_system(_Account, Category) ->
         {error, _}=Error -> Error
     end.
 
--spec load_config_from_reseller(api_account(), ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_reseller(api_account(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_reseller(Account, Category) ->
     AccountId = account_id(Account),
     case AccountId =/= no_account_id
@@ -292,7 +292,7 @@ load_config_from_reseller(Account, Category) ->
         [ResellerId] -> load_config_from_account(ResellerId, Category)
     end.
 
--spec load_config_from_account(account_or_not(), ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_account(account_or_not(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_account(no_account_id, _Category) ->
     {error, no_account_id};
 load_config_from_account(AccountId, Category) ->
@@ -313,11 +313,11 @@ load_config_from_account(AccountId, Category) ->
 %%          2.2.2. If not reseller, continue the fold
 %% @end
 %%--------------------------------------------------------------------
--spec load_config_from_ancestors(ne_binary(), ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(AccountId, Category) ->
     load_config_from_ancestors(AccountId, Category, kz_services:is_reseller(AccountId)).
 
--spec load_config_from_ancestors(ne_binary(), ne_binary(), boolean()) -> kazoo_data:get_results_return().
+-spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(_, _, true) ->
     %% account is reseller, no need to read from its parents
     %% Note: load_config_from_account is already read the config from this AccountId
@@ -327,7 +327,7 @@ load_config_from_ancestors(AccountId, Category, false) ->
     Tree = get_account_ancestors_or_reseller(AccountId),
     load_config_from_ancestors_fold(Tree, Category, []).
 
--spec get_account_ancestors_or_reseller(ne_binary()) -> ne_binaries().
+-spec get_account_ancestors_or_reseller(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_account_ancestors_or_reseller(AccountId) ->
     case get_account_tree(AccountId) of
         [] -> find_reseller_account(AccountId);
@@ -340,7 +340,7 @@ get_account_ancestors_or_reseller(AccountId) ->
 %% Get accounts config and walk the account up to accounts reseller
 %% @end
 %%--------------------------------------------------------------------
--spec load_config_from_ancestors_fold(ne_binaries(), ne_binary(), kz_json:objects()) ->
+-spec load_config_from_ancestors_fold(kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:objects()) ->
                                              kazoo_data:get_results_return().
 load_config_from_ancestors_fold([], _Category, JObjs) ->
     {ok, JObjs};
@@ -364,7 +364,7 @@ load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
             load_config_from_ancestors_fold(AncestorIds, Category, JObjs)
     end.
 
--spec find_reseller_account(ne_binary()) -> ne_binaries().
+-spec find_reseller_account(kz_term:ne_binary()) -> kz_term:ne_binaries().
 find_reseller_account(AccountId) ->
     case kz_services:find_reseller_id(AccountId) of
         undefined ->
@@ -374,7 +374,7 @@ find_reseller_account(AccountId) ->
         ResellerId -> [ResellerId]
     end.
 
--spec get_account_tree(ne_binary()) -> ne_binaries().
+-spec get_account_tree(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_account_tree(AccountId) ->
     case kz_account:fetch(AccountId) of
         {ok , JObj} -> kz_account:tree(JObj);
@@ -389,11 +389,11 @@ get_account_tree(AccountId) ->
 %% Set the Value for the Key in account db
 %% @end
 %%--------------------------------------------------------------------
--spec set(api_account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
+-spec set(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 set(Account, Category, Key, Value) ->
     maybe_set_account(account_id(Account), Category, Key, Value).
 
--spec maybe_set_account(account_or_not(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
+-spec maybe_set_account(account_or_not(), kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 maybe_set_account(no_account_id, _, Key, Value) ->
     kz_json:set_value(Key, Value, kz_json:new());
 maybe_set_account(AccountId, Category, Key, Value) ->
@@ -410,11 +410,11 @@ maybe_set_account(AccountId, Category, Key, Value) ->
 %% system_config value then save in account db.
 %% @end
 %%--------------------------------------------------------------------
--spec set_global(api_account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
+-spec set_global(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 set_global(Account, Category, Key, Value) ->
     set_account_or_merge_global(account_id(Account), Category, Key, Value).
 
--spec set_account_or_merge_global(account_or_not(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
+-spec set_account_or_merge_global(account_or_not(), kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) ->
                                          kz_json:object().
 set_account_or_merge_global(no_account_id, _, Key, Value) ->
     kz_json:set_value(Key, Value, kz_json:new());
@@ -426,7 +426,7 @@ set_account_or_merge_global(AccountId, Category, Key, Value) ->
     {ok, JObj1} = kz_datamgr:ensure_saved(AccountDb, Doc1),
     JObj1.
 
--spec update_config_for_saving(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec update_config_for_saving(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 update_config_for_saving(AccountId, JObj) ->
     AccountDb = kz_util:format_account_db(AccountId),
     kz_doc:update_pvt_parameters(JObj
@@ -441,13 +441,13 @@ update_config_for_saving(AccountId, JObj) ->
 %% Flush accounts specific config cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush(ne_binary(), ne_binary()) -> ok.
+-spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 flush(Account, Category) ->
     AccountDb = kz_util:format_account_db(Account),
     kz_datamgr:flush_cache_doc(AccountDb, kapps_config_util:account_doc_id(Category)),
     flush_all_strategies(Account, Category).
 
--spec flush_all_strategies(ne_binary(), ne_binary()) -> ok.
+-spec flush_all_strategies(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 flush_all_strategies(Account, Category) ->
     Strategies = [<<"hierarchy_merge">>
                  ,<<"global">>
@@ -457,7 +457,7 @@ flush_all_strategies(Account, Category) ->
                  ],
     lists:foreach(fun(Strategy) -> flush(Account, Category, Strategy) end, Strategies).
 
--spec flush(ne_binary(), ne_binary(), ne_binary()) -> ok.
+-spec flush(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 flush(Account, Category, Strategy) ->
     AccountId = kz_util:format_account_id(Account),
     CacheKey = strategy_cache_key(AccountId, Category, Strategy),
@@ -533,12 +533,12 @@ config_origins(Doc, Acc) ->
         {Db, _} -> [{db, Db, kz_doc:id(Doc)}|Acc]
     end.
 
--spec strategy_cache_key(ne_binary(), ne_binary(), ne_binary()) ->
-                                {?MODULE, ne_binary(), ne_binary(), ne_binary()}.
+-spec strategy_cache_key(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                {?MODULE, kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 strategy_cache_key(AccountId, Category, Strategy) ->
     {?MODULE, AccountId, Category, Strategy}.
 
--spec strategy_options(ne_binary(), ne_binary(), ne_binary(), boolean(), kz_json:path()) -> map().
+-spec strategy_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kz_json:path()) -> map().
 strategy_options(Strategy, AccountId, Category, ShouldMerge, Key) ->
     #{account_id => AccountId
      ,strategy => Strategy
@@ -549,14 +549,14 @@ strategy_options(Strategy, AccountId, Category, ShouldMerge, Key) ->
      ,key => Key
      }.
 
--spec is_merge_strategy(ne_binary()) -> boolean().
+-spec is_merge_strategy(kz_term:ne_binary()) -> boolean().
 is_merge_strategy(Strategy) ->
     case kz_binary:reverse(Strategy) of
         <<"egrem", _/binary>> -> true;
         _ -> false
     end.
 
--spec strategy_funs(ne_binary()) -> [function()].
+-spec strategy_funs(kz_term:ne_binary()) -> [function()].
 strategy_funs(<<"global", _/binary>>) ->
     [fun load_config_from_account/2
     ,fun load_config_from_reseller/2
@@ -600,11 +600,11 @@ account_id_from_jobj(_Obj, false) ->
     no_account_id.
 
 
--spec maybe_format_account_id(api_ne_binary()) -> account_or_not().
+-spec maybe_format_account_id(kz_term:api_ne_binary()) -> account_or_not().
 maybe_format_account_id(undefined) -> no_account_id;
 maybe_format_account_id(Account) -> kz_util:format_account_id(Account).
 
--spec maybe_new_doc({ok, kz_json:object()} | {error, any()}, ne_binary()) -> kz_json:object().
+-spec maybe_new_doc({ok, kz_json:object()} | {error, any()}, kz_term:ne_binary()) -> kz_json:object().
 maybe_new_doc({ok, JObj}, _) -> JObj;
 maybe_new_doc({error, _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
 
@@ -614,8 +614,8 @@ maybe_new_doc({error, _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
 %% ====================================================================
 
 
--type migrate_setting() :: {ne_binary(), kz_json:path()}.
--type migrate_value() :: {ne_binary(), ne_binary(), kz_json:path(), _}.
+-type migrate_setting() :: {kz_term:ne_binary(), kz_json:path()}.
+-type migrate_value() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_json:path(), _}.
 -type migrate_values() :: [migrate_value()].
 
 -define(ACCOUNT_CONFIG_MIGRATIONS
@@ -627,7 +627,7 @@ maybe_new_doc({error, _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
          }
         ]).
 
--spec migrate(ne_binary()) -> ok.
+-spec migrate(kz_term:ne_binary()) -> ok.
 migrate(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     _ = [migrate_config_setting(AccountDb, From, To)
@@ -635,7 +635,7 @@ migrate(Account) ->
         ],
     ok.
 
--spec migrate_config_setting(ne_binary(), migrate_setting(), migrate_setting()) ->
+-spec migrate_config_setting(kz_term:ne_binary(), migrate_setting(), migrate_setting()) ->
                                     ok | {error, any()}.
 migrate_config_setting(AccountDb, From, To) ->
     case remove_config_setting(AccountDb, From) of
@@ -646,7 +646,7 @@ migrate_config_setting(AccountDb, From, To) ->
         {error, Reason} -> {error, {remove, Reason}}
     end.
 
--spec migrate_config_setting(ne_binary(), kz_json:object(), migrate_values(), migrate_setting()) ->
+-spec migrate_config_setting(kz_term:ne_binary(), kz_json:object(), migrate_values(), migrate_setting()) ->
                                     ok | {error, any()}.
 migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
     case add_config_setting(AccountDb, To, Removed) of
@@ -657,12 +657,12 @@ migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
         {error, Reason} -> {error, {add, Reason}}
     end.
 
--spec add_config_setting(ne_binary(), migrate_setting(), migrate_values()) ->
+-spec add_config_setting(kz_term:ne_binary(), migrate_setting(), migrate_values()) ->
                                 ok | {error, any()}.
 add_config_setting(AccountDb, {Id, Setting}, Values) ->
     add_config_setting(AccountDb, Id, Setting, Values).
 
--spec add_config_setting(ne_binary(), ne_binary(), kz_json:path(), migrate_values()) ->
+-spec add_config_setting(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:path(), migrate_values()) ->
                                 ok | {error, any()}.
 add_config_setting(AccountDb, Id, Setting, Values) when is_binary(Id) ->
     case kz_datamgr:open_doc(AccountDb, Id) of
@@ -705,13 +705,13 @@ add_config_setting(AccountDb, JObj, ToSetting, [{FromId, Node, FromSetting, Valu
             {error, disparity}
     end.
 
--spec remove_config_setting(ne_binary(), migrate_setting()) ->
+-spec remove_config_setting(kz_term:ne_binary(), migrate_setting()) ->
                                    {ok, kz_json:object(), migrate_values()} |
                                    {error, any()}.
 remove_config_setting(AccountDb, {Id, Setting}) ->
     remove_config_setting(AccountDb, Id, Setting).
 
--spec remove_config_setting(ne_binary(), ne_binary() | kz_json:object(), kz_json:path()) ->
+-spec remove_config_setting(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_json:path()) ->
                                    {ok, kz_json:object(), migrate_values()} |
                                    {error, any()}.
 remove_config_setting(AccountDb, Id, Setting) when is_binary(Id) ->
@@ -727,7 +727,7 @@ remove_config_setting(AccountDb, JObj, Setting) ->
         ],
     remove_config_setting(AccountDb, Keys, JObj, []).
 
--spec remove_config_setting(ne_binary(), [{ne_binary(), ne_binary(), kz_json:path()}], kz_json:object(), migrate_values()) ->
+-spec remove_config_setting(kz_term:ne_binary(), [{kz_term:ne_binary(), kz_term:ne_binary(), kz_json:path()}], kz_json:object(), migrate_values()) ->
                                    {ok, kz_json:object(), migrate_values()}.
 remove_config_setting(_AccountDb, [], JObj, Removed) ->
     {ok, JObj, Removed};
@@ -743,7 +743,7 @@ remove_config_setting(AccountDb, [{Id, Node, Setting} | Keys], JObj, Removed) ->
                                  )
     end.
 
--spec config_setting_key(ne_binary(), kz_json:path()) -> ne_binaries().
+-spec config_setting_key(kz_term:ne_binary(), kz_json:path()) -> kz_term:ne_binaries().
 %% NOTE: to support nested keys, update this merge function
 config_setting_key(Node, Setting) ->
     [Node, Setting].

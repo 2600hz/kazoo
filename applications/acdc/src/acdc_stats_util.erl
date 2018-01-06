@@ -20,11 +20,11 @@
 -include("acdc.hrl").
 -include("acdc_stats.hrl").
 
--spec wait_time(ne_binary(), kz_json:object()) -> api_integer().
+-spec wait_time(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_integer().
 wait_time(<<"paused">>, _) -> 'undefined';
 wait_time(_, JObj) -> kz_json:get_integer_value(<<"Wait-Time">>, JObj).
 
--spec pause_time(ne_binary(), kz_json:object()) -> api_integer().
+-spec pause_time(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_integer().
 pause_time(<<"paused">>, JObj) ->
     case kz_json:get_integer_value(<<"Pause-Time">>, JObj) of
         'undefined' -> kz_json:get_integer_value(<<"Wait-Time">>, JObj);
@@ -32,8 +32,8 @@ pause_time(<<"paused">>, JObj) ->
     end;
 pause_time(_, _JObj) -> 'undefined'.
 
--spec caller_id_name(any(), kz_json:object()) -> api_ne_binary().
--spec caller_id_number(any(), kz_json:object()) -> api_integer().
+-spec caller_id_name(any(), kz_json:object()) -> kz_term:api_ne_binary().
+-spec caller_id_number(any(), kz_json:object()) -> kz_term:api_integer().
 caller_id_name(_, JObj) ->
     kz_json:get_value(<<"Caller-ID-Name">>, JObj).
 caller_id_number(_, JObj) ->
@@ -49,6 +49,6 @@ get_query_limit(JObj) ->
         N -> N
     end.
 
--spec db_name(ne_binary()) -> ne_binary().
+-spec db_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 db_name(Account) ->
     kz_util:format_account_mod_id(Account).

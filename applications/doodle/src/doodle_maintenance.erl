@@ -22,15 +22,15 @@
 flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
--spec start_check_sms_by_device_id(ne_binary(), ne_binary()) -> pid().
+-spec start_check_sms_by_device_id(kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
 start_check_sms_by_device_id(AccountId, DeviceId) ->
     kz_util:spawn(fun check_sms_by_device_id/2, [AccountId, DeviceId]).
 
--spec start_check_sms_by_owner_id(ne_binary(), ne_binary()) -> pid().
+-spec start_check_sms_by_owner_id(kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
 start_check_sms_by_owner_id(AccountId, OwnerId) ->
     kz_util:spawn(fun check_sms_by_owner_id/2, [AccountId, OwnerId]).
 
--spec check_sms_by_device_id(ne_binary(), ne_binary()) -> 'ok'.
+-spec check_sms_by_device_id(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 check_sms_by_device_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_device_id(AccountId, DeviceId) ->
     ViewOptions = [{'endkey', [DeviceId, kz_time:now_s()]}],
@@ -41,7 +41,7 @@ check_sms_by_device_id(AccountId, DeviceId) ->
             lager:debug("unable to get sms by device for ~s/~s: ~p", [AccountId, DeviceId, _R])
     end.
 
--spec check_sms_by_owner_id(ne_binary(), api_binary()) -> 'ok'.
+-spec check_sms_by_owner_id(kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 check_sms_by_owner_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_owner_id(AccountId, OwnerId) ->
     ViewOptions = [{'endkey', [OwnerId, kz_time:now_s()]}],
@@ -52,7 +52,7 @@ check_sms_by_owner_id(AccountId, OwnerId) ->
             lager:debug("unable to get sms by owner_id for owner_id ~s in account ~s: ~p", [AccountId, OwnerId, _R])
     end.
 
--spec start_check_sms_by_account(ne_binary(), kz_json:object()) -> pid().
+-spec start_check_sms_by_account(kz_term:ne_binary(), kz_json:object()) -> pid().
 start_check_sms_by_account(AccountId, JObj) ->
     case kz_doc:is_soft_deleted(JObj)
         orelse kz_term:is_false(kz_json:get_value(<<"pvt_enabled">>, JObj, 'true'))
@@ -61,12 +61,12 @@ start_check_sms_by_account(AccountId, JObj) ->
         'false' -> kz_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId])
     end.
 
--spec check_pending_sms_for_outbound_delivery(ne_binary()) -> pid().
+-spec check_pending_sms_for_outbound_delivery(kz_term:ne_binary()) -> pid().
 check_pending_sms_for_outbound_delivery(AccountId) ->
     kz_util:spawn(fun check_pending_sms_for_offnet_delivery/1, [AccountId]),
     kz_util:spawn(fun check_queued_sms/1, [AccountId]).
 
--spec check_pending_sms_for_delivery(ne_binary()) -> 'ok'.
+-spec check_pending_sms_for_delivery(kz_term:ne_binary()) -> 'ok'.
 check_pending_sms_for_delivery(AccountId) ->
     ViewOptions = [{'limit', 100}
                   ,{'endkey', kz_time:now_s()}
@@ -78,7 +78,7 @@ check_pending_sms_for_delivery(AccountId) ->
             lager:debug("unable to get sms list for delivery in account ~s : ~p", [AccountId, _R])
     end.
 
--spec check_queued_sms(ne_binary()) -> 'ok'.
+-spec check_queued_sms(kz_term:ne_binary()) -> 'ok'.
 check_queued_sms(AccountId) ->
     ViewOptions = [{'limit', 100}],
     case kazoo_modb:get_results(AccountId, <<"sms/queued">>, ViewOptions) of
@@ -88,7 +88,7 @@ check_queued_sms(AccountId) ->
             lager:debug("unable to get queued sms list in account ~s : ~p", [AccountId, _R])
     end.
 
--spec replay_queue_sms(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec replay_queue_sms(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 replay_queue_sms(AccountId, JObjs) ->
     lager:debug("starting queued sms for account ~s", [AccountId]),
     _ = [spawn_handler(AccountId, JObj)
@@ -96,7 +96,7 @@ replay_queue_sms(AccountId, JObjs) ->
         ],
     'ok'.
 
--spec spawn_handler(ne_binary(), kz_json:object()) -> 'ok'.
+-spec spawn_handler(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 spawn_handler(AccountId, JObj) ->
     DocId = kz_doc:id(JObj),
     ?MATCH_MODB_PREFIX(Year,Month,_) = DocId,
@@ -104,7 +104,7 @@ spawn_handler(AccountId, JObj) ->
     _ = kz_util:spawn(fun doodle_api:handle_api_sms/2, [AccountDb, DocId]),
     timer:sleep(200).
 
--spec check_pending_sms_for_offnet_delivery(ne_binary()) -> 'ok'.
+-spec check_pending_sms_for_offnet_delivery(kz_term:ne_binary()) -> 'ok'.
 check_pending_sms_for_offnet_delivery(AccountId) ->
     ViewOptions = [{'limit', 100}
                   ,{'endkey', kz_time:now_s()}
@@ -116,7 +116,7 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
             lager:debug("unable to get sms list for offnet delivery in account ~s : ~p", [AccountId, _R])
     end.
 
--spec replay_sms(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec replay_sms(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 replay_sms(AccountId, JObjs) ->
     lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
     F = fun (JObj) ->
@@ -130,9 +130,9 @@ replay_sms(AccountId, JObjs) ->
 -define(DEFAULT_FROM,
         kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_from_number">>, <<"15552220001">>)).
 
--spec send_outbound_sms(ne_binary(), ne_binary()) -> 'ok'.
--spec send_outbound_sms(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
--spec send_outbound_sms(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_outbound_sms(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec send_outbound_sms(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) -> 'ok'.
+-spec send_outbound_sms(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_outbound_sms(To, Msg) ->
     send_outbound_sms(To, ?DEFAULT_FROM, ?DEFAULT_ROUTEID, Msg).
 
@@ -150,7 +150,7 @@ send_outbound_sms(To, From, RouteId, Msg) ->
               ],
     kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1).
 
--spec send_outbound_sms(ne_binary(), ne_binary(), ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
+-spec send_outbound_sms(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) -> 'ok'.
 send_outbound_sms(To, From, RouteId, Msg, Times) ->
     F = fun (X) ->
                 MSG = <<"MSG - ", (kz_term:to_binary(X))/binary, " => ", Msg/binary>>,

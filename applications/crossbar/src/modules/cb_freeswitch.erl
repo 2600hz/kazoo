@@ -150,7 +150,7 @@ maybe_load_last_data(Context) ->
             cb_context:add_system_error(Error, Context)
     end.
 
--spec load_last_data(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_last_data(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_last_data(Context, File) ->
     {'ok', AttachBin} = file:read_file(File),
     BaseName = kz_term:to_binary(filename:basename(File)),
@@ -165,7 +165,7 @@ load_last_data(Context, File) ->
                         }
                        ]).
 
--spec extension_to_content_type(ne_binary()) -> ne_binary().
+-spec extension_to_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 extension_to_content_type(<<".gzip">>) -> ?MIME_TYPE_GZIP;
 extension_to_content_type(<<".zip">>) -> ?MIME_TYPE_ZIP2;
 extension_to_content_type(<<".rar">>) -> ?MIME_TYPE_RAR;

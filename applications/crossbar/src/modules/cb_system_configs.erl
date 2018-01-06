@@ -170,7 +170,7 @@ validate_document_request(Context, Id, FullConfig) ->
 %% Node API
 %%--------------------------------------------------------------------
 
--spec validate_document_node(cb_context:context(), path_token(), http_method(), api_ne_binary()) -> cb_context:context().
+-spec validate_document_node(cb_context:context(), path_token(), http_method(), kz_term:api_ne_binary()) -> cb_context:context().
 validate_document_node(Context, Id, ?HTTP_GET, Node) ->
     Config =
         case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, false)) of
@@ -251,7 +251,7 @@ patch(Context, Id, Node) ->
                     cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token()) ->
                     cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), api_object() | kz_json:objects()) ->
+-spec delete(cb_context:context(), path_token(), path_token(), kz_term:api_object() | kz_json:objects()) ->
                     cb_context:context().
 delete(Context, _Id) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
@@ -275,7 +275,7 @@ delete(Context, Id, Node, Doc) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read_for_delete(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read_for_delete(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read_for_delete(Id, Context) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     case cb_context:resp_status(Context) of
@@ -303,7 +303,7 @@ summary(Context) ->
 %% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), ne_binaries()) -> ne_binaries().
+-spec normalize_view_results(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"key">>, JObj) | Acc].
 
@@ -314,18 +314,18 @@ set_db_to_system(Context) ->
                        ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
                        ]).
 
--spec maybe_set_private_fields(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_set_private_fields(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_private_fields(ConfigId, JObj) ->
     case kapps_config:get_category(ConfigId) of
         {ok, Doc} -> kz_json:merge(JObj, kz_doc:private_fields(Doc));
         _ -> kz_doc:set_id(JObj, ConfigId)
     end.
 
--spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec set_id(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(Id, JObj) ->
     kz_json:set_value(<<"id">>, Id, JObj).
 
--spec set_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec set_id(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(Id, Node, JObj) ->
     kz_json:set_value(<<"id">>, <<Id/binary, "/", Node/binary>>, JObj).
 

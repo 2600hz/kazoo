@@ -49,7 +49,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -183,9 +183,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -type time() :: amqp_cron_task:oneshot() | amqp_cron_task:cron() | amqp_cron_task:sleeper().
--type time_token_value() :: 'all' | integer() | integers().
+-type time_token_value() :: 'all' | integer() | kz_term:integers().
 -type amqp_cron_callback() :: {atom(), atom(), list()} | {fun(), list()}.
--spec normalize_schedule(kz_json:object()) -> {ne_binary(), time(), amqp_cron_callback()}.
+-spec normalize_schedule(kz_json:object()) -> {kz_term:ne_binary(), time(), amqp_cron_callback()}.
 normalize_schedule(Schedule) ->
     Action = kz_json:get_value(<<"action">>, Schedule),
     ActionType = kz_json:get_value(<<"type">>, Action),
@@ -233,18 +233,18 @@ time_schedule(Schedule) ->
                          + ?SECONDS_IN_DAY * Days) * ?MILLISECONDS_IN_SECOND}
     end.
 
--spec schedule({ne_binary(), time(), amqp_cron_task:execargs()}) -> {'ok', pid()} | {'error', any()}.
+-spec schedule({kz_term:ne_binary(), time(), amqp_cron_task:execargs()}) -> {'ok', pid()} | {'error', any()}.
 schedule({Name, Time, Action}) ->
     lager:info("scheduling ~p", [Name]),
     amqp_cron:schedule_task(Name, Time, Action).
 
--spec get_time_token_value(kz_json:object()) -> fun(({ne_binary(), any()}) -> time_token_value()).
+-spec get_time_token_value(kz_json:object()) -> fun(({kz_term:ne_binary(), any()}) -> time_token_value()).
 get_time_token_value(JObj) ->
     fun({TokenName, Default}) ->
             parse_time_token(TokenName, JObj, Default)
     end.
 
--spec parse_time_token(ne_binary(), kz_json:object(), time_token_value()) -> time_token_value().
+-spec parse_time_token(kz_term:ne_binary(), kz_json:object(), time_token_value()) -> time_token_value().
 parse_time_token(TokenName, Schedule, Default) ->
     case kz_json:get_value(TokenName, Schedule, Default) of
         <<"all">> -> 'all';
@@ -253,7 +253,7 @@ parse_time_token(TokenName, Schedule, Default) ->
         Token -> kz_term:to_integer(Token)
     end.
 
--spec action_fun(ne_binary(), kz_json:object()) -> amqp_cron_callback().
+-spec action_fun(kz_term:ne_binary(), kz_json:object()) -> amqp_cron_callback().
 action_fun(<<"check_voicemail">>, JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, JObj),
     VmboxId = kz_json:get_value(<<"vmbox_id">>, JObj),
@@ -263,17 +263,17 @@ action_fun(<<"account_crawl">>, _) ->
 action_fun(Type, _JObj) ->
     {fun unknown_type/1, [Type]}.
 
--spec action_name(ne_binary(), kz_json:object(), time()) -> ne_binary().
+-spec action_name(kz_term:ne_binary(), kz_json:object(), time()) -> kz_term:ne_binary().
 action_name(ActionType, Action, Times) ->
     ActionSuffix = action_suffixes(ActionType, Action),
     kz_binary:join([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
 
--spec action_suffixes(ne_binary(), kz_json:object()) -> ne_binaries().
+-spec action_suffixes(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binaries().
 action_suffixes(<<"check_voicemail">>, JObj) ->
     [kz_json:get_value(<<"account_id">>, JObj), kz_json:get_value(<<"vmbox_id">>, JObj)];
 action_suffixes(_Type, _JObj) -> [].
 
--spec time_suffix(time()) -> ne_binary().
+-spec time_suffix(time()) -> kz_term:ne_binary().
 time_suffix({'cron', {Minutes, Hours, MDays, Months, Weekdays}}) ->
     Time = [time_tokens_to_binary(T) || T <- [Minutes, Hours, MDays, Months, Weekdays]],
     kz_binary:join(Time, "-");
@@ -283,12 +283,12 @@ time_suffix({'oneshot', {{Year, Month, Day}, {Hour, Minute, Second}}}) ->
 time_suffix({'sleeper', MilliSeconds}) ->
     kz_term:to_binary(MilliSeconds).
 
--spec time_tokens_to_binary(time_token_value()) -> ne_binary().
+-spec time_tokens_to_binary(time_token_value()) -> kz_term:ne_binary().
 time_tokens_to_binary('all') -> <<"all">>;
 time_tokens_to_binary(Tokens) when is_list(Tokens) ->
     kz_binary:join([kz_term:to_binary(X) || X <- Tokens], ",").
 
--spec unknown_type(api_binary()) -> 'ok'.
+-spec unknown_type(kz_term:api_binary()) -> 'ok'.
 unknown_type(Type) ->
     lager:warning("no function for type ~p", [Type]).
 

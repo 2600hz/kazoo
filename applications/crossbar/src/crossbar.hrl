@@ -138,13 +138,13 @@
                     ,content_types_accepted = [] :: crossbar_content_handlers()
                     ,allowed_methods = ?ALLOWED_METHODS :: http_methods()
                     ,allow_methods = ?ALLOWED_METHODS :: http_methods()
-                    ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: ne_binaries() %% english by default
-                    ,charsets_provided = [<<"iso-8859-1">>] :: ne_binaries() %% all charsets provided
-                    ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
-                    ,auth_token = 'undefined' :: api_ne_binary()
+                    ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: kz_term:ne_binaries() %% english by default
+                    ,charsets_provided = [<<"iso-8859-1">>] :: kz_term:ne_binaries() %% all charsets provided
+                    ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: kz_term:ne_binaries() %% gzip and identity
+                    ,auth_token = 'undefined' :: kz_term:api_ne_binary()
                     ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'oauth' | 'unknown'
-                    ,auth_account_id :: api_ne_binary()
-                    ,auth_doc :: api_object()
+                    ,auth_account_id :: kz_term:api_ne_binary()
+                    ,auth_doc :: kz_term:api_object()
                     ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
                     ,req_nouns = [{<<"404">>, []}] :: req_nouns() % {module, [id]} most typical
                     ,req_json = kz_json:new() :: req_json()
@@ -152,38 +152,38 @@
                     ,req_data = kz_json:new() :: kz_json:json_term()  % the "data" from the request JSON envelope
                     ,req_headers = #{} :: cowboy:http_headers()
                     ,query_json = kz_json:new() :: kz_json:object()
-                    ,account_id :: api_ne_binary()
-                    ,account_name :: api_ne_binary()
-                    ,user_id :: api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
-                    ,device_id :: api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
-                    ,reseller_id :: api_ne_binary()
-                    ,db_name :: api_binary() | ne_binaries()
-                    ,doc :: api_object() | kz_json:objects()
+                    ,account_id :: kz_term:api_ne_binary()
+                    ,account_name :: kz_term:api_ne_binary()
+                    ,user_id :: kz_term:api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
+                    ,device_id :: kz_term:api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
+                    ,reseller_id :: kz_term:api_ne_binary()
+                    ,db_name :: kz_term:api_binary() | kz_term:ne_binaries()
+                    ,doc :: kz_term:api_object() | kz_json:objects()
                     ,pretty_print = 'false' :: boolean()
-                    ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_datetime()
-                    ,resp_etag :: 'automatic' | string() | api_binary()
+                    ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_time:datetime()
+                    ,resp_etag :: 'automatic' | string() | kz_term:api_binary()
                     ,resp_status = 'error' :: crossbar_status()
-                    ,resp_error_msg :: api_ne_binary()
-                    ,resp_error_code :: api_integer()
+                    ,resp_error_msg :: kz_term:api_ne_binary()
+                    ,resp_error_code :: kz_term:api_integer()
                     ,resp_file = <<>> :: binary()
                     ,resp_data :: resp_data()
                     ,resp_headers = #{} :: cowboy:http_headers() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
                     ,resp_envelope = kz_json:new() :: kz_json:object()
-                    ,start = os:timestamp() :: kz_now()
+                    ,start = os:timestamp() :: kz_time:now()
                     ,req_id = ?DEFAULT_LOG_SYSTEM_ID :: binary()
-                    ,storage = [] :: kz_proplist()
+                    ,storage = [] :: kz_term:proplist()
                     ,raw_host = <<>> :: binary()
                     ,port = 8000 :: integer()
                     ,raw_path = <<>> :: binary()
                     ,raw_qs = <<>> :: binary()
                     ,method = ?HTTP_GET :: http_method()
                     ,validation_errors = kz_json:new() :: kz_json:object()
-                    ,client_ip = <<"127.0.0.1">> :: api_ne_binary()
-                    ,load_merge_bypass :: api_object()
-                    ,profile_id :: api_ne_binary()
-                    ,api_version = ?VERSION_1 :: ne_binary()
+                    ,client_ip = <<"127.0.0.1">> :: kz_term:api_ne_binary()
+                    ,load_merge_bypass :: kz_term:api_object()
+                    ,profile_id :: kz_term:api_ne_binary()
+                    ,api_version = ?VERSION_1 :: kz_term:ne_binary()
                     ,magic_pathed = 'false' :: boolean()
-                    ,should_paginate :: api_boolean()
+                    ,should_paginate :: kz_term:api_boolean()
                     ,host_url = <<>> :: binary()
                     }).
 

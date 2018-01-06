@@ -12,7 +12,7 @@
 
 -include("call_inspector.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> ok.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> ok.
 handle_req(JObj, _Props) ->
     true = kapi_inspector:filter_req_v(JObj),
     CallIds = [CallId

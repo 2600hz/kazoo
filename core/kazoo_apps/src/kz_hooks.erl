@@ -16,29 +16,29 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -spec register() -> 'true'.
--spec register(ne_binary()) -> 'true'.
--spec register(ne_binary(), ne_binary()) -> 'true'.
+-spec register(kz_term:ne_binary()) -> 'true'.
+-spec register(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 register() -> kz_hooks_util:register().
 register(AccountId) -> kz_hooks_util:register(AccountId).
 register(AccountId, EventName) -> kz_hooks_util:register(AccountId, EventName).
 
 -spec deregister() -> 'true'.
--spec deregister(ne_binary()) -> 'true'.
--spec deregister(ne_binary(), ne_binary()) -> 'true'.
+-spec deregister(kz_term:ne_binary()) -> 'true'.
+-spec deregister(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 deregister() -> kz_hooks_util:deregister().
 deregister(AccountId) -> kz_hooks_util:deregister(AccountId).
 deregister(AccountId, EventName) -> kz_hooks_util:deregister(AccountId, EventName).
 
 -spec register_rr() -> 'true'.
--spec register_rr(ne_binary()) -> 'true'.
--spec register_rr(ne_binary(), ne_binary()) -> 'true'.
+-spec register_rr(kz_term:ne_binary()) -> 'true'.
+-spec register_rr(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 register_rr() -> kz_hooks_util:register_rr().
 register_rr(AccountId) -> kz_hooks_util:register_rr(AccountId).
 register_rr(AccountId, EventName) -> kz_hooks_util:register_rr(AccountId, EventName).
 
 -spec deregister_rr() -> 'true'.
--spec deregister_rr(ne_binary()) -> 'true'.
--spec deregister_rr(ne_binary(), ne_binary()) -> 'true'.
+-spec deregister_rr(kz_term:ne_binary()) -> 'true'.
+-spec deregister_rr(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 deregister_rr() -> kz_hooks_util:deregister_rr().
 deregister_rr(AccountId) -> kz_hooks_util:deregister_rr(AccountId).
 deregister_rr(AccountId, EventName) -> kz_hooks_util:deregister_rr(AccountId, EventName).

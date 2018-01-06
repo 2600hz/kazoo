@@ -25,7 +25,7 @@
 
 -include("services.hrl").
 
--record(kz_service_plans, {vendor_id :: api_binary()
+-record(kz_service_plans, {vendor_id :: kz_term:api_binary()
                           ,plans = [] :: kzd_service_plan:docs()
                           }).
 
@@ -57,7 +57,7 @@ from_service_json(ServicesJObj) ->
 
     get_plans(PlanIds, ResellerId, ServicesJObj).
 
--spec find_reseller_id(kzd_services:doc()) -> api_ne_binary().
+-spec find_reseller_id(kzd_services:doc()) -> kz_term:api_ne_binary().
 find_reseller_id(ServicesJObj) ->
     case kzd_services:reseller_id(ServicesJObj) of
         'undefined' -> kz_json:get_ne_binary_value(<<"reseller_id">>, ServicesJObj);
@@ -92,7 +92,7 @@ merge_plans(SerivcePlan, PlansJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_service_plan(ne_binary(), ne_binary(), kzd_services:doc()) -> kzd_services:doc().
+-spec add_service_plan(kz_term:ne_binary(), kz_term:ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
     ResellerDb = kz_util:format_account_db(ResellerId),
     case open_cache_doc(ResellerDb, PlanId) of
@@ -124,7 +124,7 @@ open_cache_doc(Db, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete_service_plan(ne_binary(), kzd_services:doc()) -> kzd_services:doc().
+-spec delete_service_plan(kz_term:ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 delete_service_plan(PlanId, ServicesJObj) ->
     kzd_services:set_plan(ServicesJObj, PlanId, 'undefined').
 
@@ -154,7 +154,7 @@ plan_summary(ServicesJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges(ne_binary(), ne_binary(), plans()) -> float().
+-spec activation_charges(kz_term:ne_binary(), kz_term:ne_binary(), plans()) -> float().
 activation_charges(Category, Item, ServicePlans) ->
     lists:sum(
       [kz_service_plan:activation_charges(Category, Item, Plan)
@@ -215,8 +215,8 @@ public_json_items(ServiceJObj) ->
 %% in the vendors #kz_service_plans data structure.
 %% @end
 %%--------------------------------------------------------------------
--spec get_plans(ne_binaries(), ne_binary(), kzd_services:doc()) -> plans().
--spec get_plan(ne_binary(), ne_binary(), kzd_services:doc(), plans()) -> plans().
+-spec get_plans(kz_term:ne_binaries(), kz_term:ne_binary(), kzd_services:doc()) -> plans().
+-spec get_plan(kz_term:ne_binary(), kz_term:ne_binary(), kzd_services:doc(), plans()) -> plans().
 
 get_plans(PlanIds, ResellerId, Services) ->
     lists:foldl(fun(PlanId, ServicePlans) ->
@@ -240,7 +240,7 @@ get_plan(PlanId, ResellerId, Services, ServicePlans) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_fetch_vendor_plan(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
+-spec maybe_fetch_vendor_plan(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                                      kzd_service_plan:api_doc().
 maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
     AreOverridesEmpty = kz_json:is_empty(Overrides),
@@ -262,7 +262,7 @@ maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
 %% for that vendor, creating a new list (record) if not present.
 %% @end
 %%--------------------------------------------------------------------
--spec append_vendor_plan(kzd_service_plan:doc(), ne_binary(), plans()) -> plans().
+-spec append_vendor_plan(kzd_service_plan:doc(), kz_term:ne_binary(), plans()) -> plans().
 append_vendor_plan(Plan, VendorId, ServicePlans) ->
     case lists:keyfind(VendorId, #kz_service_plans.vendor_id, ServicePlans) of
         'false' ->

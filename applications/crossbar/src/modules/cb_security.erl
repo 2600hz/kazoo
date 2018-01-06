@@ -282,7 +282,7 @@ maybe_add_multi_factor_metadata(AuthConfig) ->
           end,
     kz_json:foldl(Fun, AuthConfig, kz_json:get_value(<<"auth_modules">>, AuthConfig, kz_json:new())).
 
--spec add_multi_factor_metadata(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec add_multi_factor_metadata(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
 add_multi_factor_metadata(AuthModule, JObj, AuthConfig) ->
     AccountId = kz_json:get_value([<<"multi_factor">>, <<"account_id">>], JObj),
     ConfigId = kz_json:get_value([<<"multi_factor">>, <<"configuration_id">>], JObj),
@@ -298,7 +298,7 @@ add_multi_factor_metadata(AuthModule, JObj, AuthConfig) ->
             kz_json:set_value(Path, Metadata, AuthConfig)
     end.
 
--spec get_metadata(ne_binary(), ne_binary()) -> api_object().
+-spec get_metadata(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_metadata(AccountId, ConfigId) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConfigId) of
         {'ok', JObj} ->
@@ -324,7 +324,7 @@ set_as_system(AuthConfig, Path) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     SchemaName = kapps_config_util:account_schema_name(?AUTH_CONFIG_CAT),
@@ -337,7 +337,7 @@ update(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
     C1 = cb_context:store(Context, <<"orig_req_data">>, cb_context:req_data(Context)),
     crossbar_doc:patch_and_validate(Id, C1, fun update/2).
@@ -379,7 +379,7 @@ check_multi_factor_setting(AuthModule, JObj, Context) ->
 has_configuration_id(JObj) ->
     kz_json:get_ne_binary_value([<<"multi_factor">>, <<"configuration_id">>], JObj) =/= 'undefined'.
 
--spec has_account_id_or_db(kz_json:object()) -> boolean() | ne_binary().
+-spec has_account_id_or_db(kz_json:object()) -> boolean() | kz_term:ne_binary().
 has_account_id_or_db(JObj) ->
     case kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj) of
         'undefined' -> <<"setting multi-factor configuration_id needs setting account_id">>;
@@ -397,7 +397,7 @@ has_account_id_or_db(JObj) ->
 %% * if a include_subaccounts, allow a child account set its parent's config
 %% @end
 %%--------------------------------------------------------------------
--spec check_account_hierarchy(ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
+-spec check_account_hierarchy(kz_term:ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
 check_account_hierarchy(AuthModule, JObj, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = kz_json:get_ne_binary_value([<<"multi_factor">>, <<"account_id">>], JObj),
@@ -413,7 +413,7 @@ check_account_hierarchy(AuthModule, JObj, Context) ->
             failed_multi_factor_validation(AuthModule, ErrMsg, Context)
     end.
 
--spec failed_multi_factor_validation(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec failed_multi_factor_validation(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
     KeyPath = <<"auth_modules.", AuthModule/binary, ".account_id">>,
     JObj = cb_context:validation_errors(Context),
@@ -432,6 +432,6 @@ failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
 %% Load a login attempt log from MODB
 %% @end
 %%--------------------------------------------------------------------
--spec read_attempt_log(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read_attempt_log(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read_attempt_log(?MATCH_MODB_PREFIX(Year, Month, _)=AttemptId, Context) ->
     crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?AUTH_ATTEMPT_TYPE)).

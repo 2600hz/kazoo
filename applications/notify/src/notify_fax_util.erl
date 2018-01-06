@@ -20,7 +20,7 @@
 %% create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
--spec get_file_name(kz_proplist(), string()) -> ne_binary().
+-spec get_file_name(kz_term:proplist(), string()) -> kz_term:ne_binary().
 get_file_name(Props, Ext) ->
     Fax = props:get_value(<<"fax">>, Props),
     CallerID = case {props:get_value(<<"caller_id_name">>, Fax), props:get_value(<<"caller_id_number">>, Fax)} of
@@ -38,15 +38,15 @@ get_file_name(Props, Ext) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachment(ne_binary(), kz_proplist()) ->
-                            {ne_binary(), ne_binary(), ne_binary()} |
+-spec get_attachment(kz_term:ne_binary(), kz_term:proplist()) ->
+                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
                             {'error', any()}.
 get_attachment(Category, Props) ->
     UseDb = props:get_value(<<"account_db">>, Props, ?KZ_FAXES_DB),
     get_attachment(UseDb, Category, Props).
 
--spec get_attachment(ne_binary(), ne_binary(), kz_proplist()) ->
-                            {ne_binary(), ne_binary(), ne_binary()} |
+-spec get_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
                             {'error', any()}.
 get_attachment(UseDb, Category, Props) ->
     Fax   = props:get_value(<<"fax">>, Props),
@@ -65,10 +65,10 @@ get_attachment(UseDb, Category, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec raw_attachment_binary(ne_binary(), ne_binary()) ->
-                                   {'ok', ne_binary(), ne_binary()}.
--spec raw_attachment_binary(ne_binary(), ne_binary(), non_neg_integer()) ->
-                                   {'ok', ne_binary(), ne_binary()}.
+-spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer()) ->
+                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
 raw_attachment_binary(Db, FaxId) ->
     raw_attachment_binary(Db, FaxId, 2).
 
@@ -97,8 +97,8 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_tiff(ne_binary(), kz_proplist(), ne_binary()) ->
-                             {ne_binary(), ne_binary(), ne_binary()}.
+-spec convert_to_tiff(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
+                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 convert_to_tiff(AttachmentBin, Props, _ContentType) ->
     {<<"image/tiff">>, get_file_name(Props, "tiff"), AttachmentBin}.
 
@@ -108,8 +108,8 @@ convert_to_tiff(AttachmentBin, Props, _ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_pdf(ne_binary(), kz_proplist(), ne_binary()) ->
-                            {ne_binary(), ne_binary(), ne_binary()} |
+-spec convert_to_pdf(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
+                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
                             {'error', any()}.
 convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
     {<<"application/pdf">>, get_file_name(Props, "pdf"), AttachmentBin};
@@ -137,6 +137,6 @@ convert_to_pdf(AttachmentBin, Props, _ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file_name(ne_binary()) -> string().
+-spec tmp_file_name(kz_term:ne_binary()) -> string().
 tmp_file_name(Ext) ->
     kz_term:to_list(<<"/tmp/", (kz_binary:rand_hex(10))/binary, "_notify_fax.", Ext/binary>>).

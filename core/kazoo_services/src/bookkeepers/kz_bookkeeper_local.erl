@@ -22,7 +22,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_good_standing(ne_binary(), ne_binary()) -> boolean().
+-spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_good_standing(_AccountId, _Status) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -31,7 +31,7 @@ is_good_standing(_AccountId, _Status) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
+-spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
 sync(_Items, _AccountId) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -40,7 +40,7 @@ sync(_Items, _AccountId) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
+-spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
 commit_transactions(_BillingId, Transactions) ->
     kz_transactions:save(Transactions),
     'ok'.
@@ -51,7 +51,7 @@ commit_transactions(_BillingId, Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 charge_transactions(_BillingId, _Transactions) -> [].
 
 %%--------------------------------------------------------------------
@@ -60,7 +60,7 @@ charge_transactions(_BillingId, _Transactions) -> [].
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+-spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
                           {'error', atom()}.
 transactions(AccountId, From, To) ->
@@ -77,7 +77,7 @@ transactions(AccountId, From, To) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_topup(ne_binary(), kz_transactions:transactions()) -> 'ok'.
+-spec handle_topup(kz_term:ne_binary(), kz_transactions:transactions()) -> 'ok'.
 handle_topup(_, []) -> 'ok';
 handle_topup(BillingId, [Transaction|Transactions]) ->
     case kz_transaction:code(Transaction) =:= ?CODE_TOPUP of
@@ -87,7 +87,7 @@ handle_topup(BillingId, [Transaction|Transactions]) ->
             send_topup_notification(BillingId, Transaction)
     end.
 
--spec send_topup_notification(ne_binary(), kz_transaction:transaction()) -> 'ok'.
+-spec send_topup_notification(kz_term:ne_binary(), kz_transaction:transaction()) -> 'ok'.
 send_topup_notification(BillingId, Transaction) ->
     Props = [{<<"Account-ID">>, BillingId}
             ,{<<"Amount">>, wht_util:units_to_dollars(kz_transaction:amount(Transaction))}

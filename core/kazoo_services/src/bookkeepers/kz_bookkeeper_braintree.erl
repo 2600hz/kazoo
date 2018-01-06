@@ -23,11 +23,11 @@
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 
 -record(kz_service_update, {bt_subscription :: braintree_subscription:subscription()
-                           ,plan_id :: api_ne_binary()
+                           ,plan_id :: kz_term:api_ne_binary()
                            }).
 
 -record(kz_service_updates, {bt_subscriptions = [] :: [update()]
-                            ,account_id :: api_ne_binary()
+                            ,account_id :: kz_term:api_ne_binary()
                             ,bt_customer :: braintree_customer:customer()
                             }).
 
@@ -40,7 +40,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_good_standing(ne_binary(), ne_binary()) -> boolean().
+-spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_good_standing(AccountId, _Status) ->
     try braintree_customer:find(AccountId) of
         Customer -> customer_has_card(Customer, AccountId)
@@ -50,7 +50,7 @@ is_good_standing(AccountId, _Status) ->
             'false'
     end.
 
--spec customer_has_card(braintree_customer:customer(), ne_binary()) -> boolean().
+-spec customer_has_card(braintree_customer:customer(), kz_term:ne_binary()) -> boolean().
 customer_has_card(Customer, AccountId) ->
     try braintree_customer:default_payment_card(Customer) of
         Card ->
@@ -74,8 +74,8 @@ customer_has_card(Customer, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
--spec sync(kz_service_item:items(), ne_binary(), updates()) -> bookkeeper_sync_result().
+-spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
+-spec sync(kz_service_item:items(), kz_term:ne_binary(), updates()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     ItemList = kz_service_items:to_list(Items),
     case fetch_bt_customer(AccountId, ItemList =/= []) of
@@ -110,7 +110,7 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+-spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
                           {'error', 'not_found'} |
                           {'error', 'unknown_error'}.
@@ -132,7 +132,7 @@ transactions(AccountId, From0, To0) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec subscriptions(ne_binary()) -> atom() | kz_json:objects().
+-spec subscriptions(kz_term:ne_binary()) -> atom() | kz_json:objects().
 subscriptions(AccountId) ->
     try braintree_customer:find(AccountId) of
         Customer ->
@@ -150,8 +150,8 @@ subscriptions(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec commit_transactions(ne_binary(),kz_transactions:kz_transactions()) -> 'ok' | 'error'.
--spec commit_transactions(ne_binary(), kz_transactions:kz_transactions(), integer()) -> 'ok' | 'error'.
+-spec commit_transactions(kz_term:ne_binary(),kz_transactions:kz_transactions()) -> 'ok' | 'error'.
+-spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions(), integer()) -> 'ok' | 'error'.
 commit_transactions(BillingId, Transactions) ->
     _ = kz_transactions:save(Transactions),
     commit_transactions(BillingId, Transactions, 3).
@@ -185,8 +185,8 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), kz_json:objects()) -> kz_json:objects().
--spec charge_transactions(ne_binary(), kz_json:objects(), dict:dict()) -> kz_json:objects().
+-spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec charge_transactions(kz_term:ne_binary(), kz_json:objects(), dict:dict()) -> kz_json:objects().
 charge_transactions(BillingId, Transactions) ->
     charge_transactions(BillingId, Transactions, dict:new()).
 
@@ -215,7 +215,7 @@ charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     NewDict = dict:append(Code, Transaction, Dict),
     charge_transactions(BillingId, Transactions, NewDict).
 
--spec handle_charged_transactions(ne_binary(), pos_integer(), kz_json:objects()) -> boolean().
+-spec handle_charged_transactions(kz_term:ne_binary(), pos_integer(), kz_json:objects()) -> boolean().
 handle_charged_transactions(BillingId, Code, []) ->
     lager:debug("no transaction found for ~p", [{BillingId, Code}]),
     'true';
@@ -225,7 +225,7 @@ handle_charged_transactions(BillingId, Code, JObjs) ->
     {Success, _} = braintree_quick_sale(BillingId, Amount, Props),
     Success.
 
--spec handle_topup(ne_binary(), kz_json:objects()) -> 'true' | {boolean(), ne_binary()}.
+-spec handle_topup(kz_term:ne_binary(), kz_json:objects()) -> 'true' | {boolean(), kz_term:ne_binary()}.
 handle_topup(BillingId, []) ->
     lager:debug("no top-up transaction found for ~s", [BillingId]),
     'true';
@@ -241,7 +241,7 @@ handle_topup(BillingId, JObjs) ->
     end.
 
 
--spec braintree_quick_sale(ne_binary(), number() | ne_binary(), kz_proplist()) ->
+-spec braintree_quick_sale(kz_term:ne_binary(), number() | kz_term:ne_binary(), kz_term:proplist()) ->
                                   {boolean(), api_bt_transaction()}.
 braintree_quick_sale(BillingId, Amount, Props) ->
     try braintree_transaction:quick_sale(BillingId
@@ -271,14 +271,14 @@ handle_quick_sale_response(BtTransaction) ->
     kz_term:to_integer(RespCode) < 2000.
 
 
--spec send_topup_notification(boolean(), ne_binary(), integer(), api_bt_transaction() | ne_binary()) ->
-                                     {boolean(), ne_binary()}.
+-spec send_topup_notification(boolean(), kz_term:ne_binary(), integer(), api_bt_transaction() | kz_term:ne_binary()) ->
+                                     {boolean(), kz_term:ne_binary()}.
 send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->
     Props = notification_data(Success, BillingId, Amount, BraintreeTransaction),
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_topup/1),
     {Success, props:get_value(<<"Response">>, Props)}.
 
--spec notification_data(boolean(), ne_binary(), integer(), api_bt_transaction()) -> kz_proplist().
+-spec notification_data(boolean(), kz_term:ne_binary(), integer(), api_bt_transaction()) -> kz_term:proplist().
 notification_data(Success, BillingId, Amount, 'undefined') ->
     [{<<"Account-ID">>, BillingId}
     ,{<<"Amount">>, Amount}
@@ -322,7 +322,7 @@ convert_transaction(BTTransaction) ->
 
 -spec set_reason_and_code(kz_json:object(), kz_transaction:transaction()) ->
                                  kz_transaction:transaction().
--spec set_reason_and_code(kz_json:object(), kz_transaction:transaction(), api_pos_integer()) ->
+-spec set_reason_and_code(kz_json:object(), kz_transaction:transaction(), kz_term:api_pos_integer()) ->
                                  kz_transaction:transaction().
 set_reason_and_code(BTTransaction, Transaction) ->
     Code = kz_json:get_integer_value(<<"purchase_order">>, BTTransaction),
@@ -354,14 +354,14 @@ bookkeeper_info(BTTransaction) ->
       ,{<<"merchant_account_id">>, kz_json:get_value(<<"merchant_account_id">>, BTTransaction)}
       ]).
 
--spec type(kz_json:object()) -> ne_binary().
+-spec type(kz_json:object()) -> kz_term:ne_binary().
 type(BTTransaction) ->
     case kz_json:get_ne_value(<<"type">>, BTTransaction) =:= ?BT_TRANS_SALE of
         'true' -> <<"debit">>;
         'false' -> <<"credit">>
     end.
 
--spec status(kz_json:object()) -> ne_binary().
+-spec status(kz_json:object()) -> kz_term:ne_binary().
 status(BTTransaction) ->
     kz_json:get_ne_binary_value(<<"status">>, BTTransaction).
 
@@ -370,20 +370,20 @@ amount(BTTransaction) ->
     Amount = kz_json:get_integer_value(<<"amount">>, BTTransaction),
     wht_util:dollars_to_units(Amount).
 
--spec created(kz_json:object()) -> gregorian_seconds().
+-spec created(kz_json:object()) -> kz_time:gregorian_seconds().
 created(BTTransaction) ->
     utc_to_gregorian_seconds(kz_json:get_value(<<"created_at">>, BTTransaction)).
 
--spec modified(kz_json:object()) -> gregorian_seconds().
+-spec modified(kz_json:object()) -> kz_time:gregorian_seconds().
 modified(BTTransaction) ->
     utc_to_gregorian_seconds(kz_json:get_value(<<"update_at">>, BTTransaction)).
 
--spec account_id(kz_json:object()) -> ne_binary().
+-spec account_id(kz_json:object()) -> kz_term:ne_binary().
 account_id(BTTransaction) ->
     CustomerId = kz_json:get_value([<<"customer">>, <<"id">>], BTTransaction),
     kz_util:format_account_id(CustomerId, 'raw').
 
--spec account_db(kz_json:object()) -> ne_binary().
+-spec account_db(kz_json:object()) -> kz_term:ne_binary().
 account_db(BTTransaction) ->
     CustormerId = kz_json:get_value([<<"customer">>, <<"id">>], BTTransaction),
     kz_util:format_account_db(CustormerId).
@@ -419,7 +419,7 @@ calculate([Addon|Addons], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec timestamp_to_braintree(api_seconds()) -> ne_binary().
+-spec timestamp_to_braintree(kz_time:api_seconds()) -> kz_term:ne_binary().
 timestamp_to_braintree('undefined') ->
     lager:debug("timestamp undefined using now_s"),
     timestamp_to_braintree(kz_time:now_s());
@@ -436,7 +436,7 @@ timestamp_to_braintree(Timestamp) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec utc_to_gregorian_seconds(ne_binary()) -> api_seconds().
+-spec utc_to_gregorian_seconds(kz_term:ne_binary()) -> kz_time:api_seconds().
 utc_to_gregorian_seconds(<<Y:4/binary, "-", M:2/binary, "-", D:2/binary, "T"
                            ,H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary
                          >>
@@ -469,7 +469,7 @@ calculate_amount(JObjs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec already_charged(ne_binary() | integer() , integer() | kz_json:objects()) -> boolean().
+-spec already_charged(kz_term:ne_binary() | integer() , integer() | kz_json:objects()) -> boolean().
 already_charged(BillingId, Code) when is_integer(Code) ->
     lager:warning("checking if ~s has been charged for transaction of type ~p today", [BillingId, Code]),
     BtTransactions = braintree_transaction:find_by_customer(BillingId),
@@ -501,7 +501,7 @@ already_charged(Code, [Transaction|Transactions]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec already_charged_transaction(integer(), ne_binary(), integer(), kz_json:object()) -> boolean().
+-spec already_charged_transaction(integer(), kz_term:ne_binary(), integer(), kz_json:object()) -> boolean().
 already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
     _Id = kz_doc:id(Transaction),
     lager:warning("transaction was voided (~s)", [_Id]),
@@ -579,7 +579,7 @@ handle_cumulative_discounts(ServiceItem, Subscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_subscriptions(ne_binary(), braintree_subscription:subscription(), updates()) ->
+-spec update_subscriptions(kz_term:ne_binary(), braintree_subscription:subscription(), updates()) ->
                                   updates().
 update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=Subscriptions}=Updates) ->
     Update = #kz_service_update{bt_subscription = Subscription
@@ -594,7 +594,7 @@ update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_bt_customer(ne_binary(), boolean()) ->
+-spec fetch_bt_customer(kz_term:ne_binary(), boolean()) ->
                                'undefined' | braintree_customer:customer().
 fetch_bt_customer(AccountId, NewItems) ->
     lager:debug("requesting braintree customer ~s", [AccountId]),
@@ -611,7 +611,7 @@ fetch_bt_customer(AccountId, NewItems) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_or_create_subscription(ne_binary(), updates() | braintree_customer:customer()) ->
+-spec fetch_or_create_subscription(kz_term:ne_binary(), updates() | braintree_customer:customer()) ->
                                           braintree_subscription:subscription().
 fetch_or_create_subscription(PlanId, #kz_service_updates{bt_subscriptions=[]
                                                         ,bt_customer=Customer
@@ -637,7 +637,7 @@ fetch_or_create_subscription(PlanId, #bt_customer{}=Customer) ->
             braintree_customer:new_subscription(PlanId, Customer)
     end.
 
--spec find_subscription_by_plan_id(ne_binary(), [update()]) ->
+-spec find_subscription_by_plan_id(kz_term:ne_binary(), [update()]) ->
                                           'undefined' |
                                           braintree_subscription:subscription().
 find_subscription_by_plan_id(PlanId, Subscriptions) ->
@@ -652,7 +652,7 @@ find_subscription_by_plan_id(PlanId, Subscriptions) ->
     end.
 
 %% @private
--spec prepare_subscription(kz_service_item:item(), ne_binary(), ne_binary(), updates()) ->
+-spec prepare_subscription(kz_service_item:item(), kz_term:ne_binary(), kz_term:ne_binary(), updates()) ->
                                   braintree_subscription:subscription().
 prepare_subscription(ServiceItem, AddOnId, PlanId, Updates) ->
     Routines = [fun(S) ->

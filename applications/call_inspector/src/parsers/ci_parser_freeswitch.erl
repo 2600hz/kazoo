@@ -27,9 +27,9 @@
 -record(state, {parser_id :: atom()
                ,logfile :: file:name()
                ,iodevice :: file:io_device()
-               ,logip :: ne_binary()
+               ,logip :: kz_term:ne_binary()
                ,logport :: pos_integer()
-               ,timer :: api_reference()
+               ,timer :: kz_term:api_reference()
                ,counter :: pos_integer()
                }).
 -type state() :: #state{}.
@@ -41,7 +41,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link([ci_parsers_util:parser_args()]) -> startlink_ret().
+-spec start_link([ci_parsers_util:parser_args()]) -> kz_types:startlink_ret().
 start_link([Arg]=Args) ->
     ServerName = ci_parsers_util:make_name(Arg),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
@@ -61,7 +61,7 @@ start_link([Arg]=Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init({'parser_args', file:filename_all(), ne_binary(), pos_integer()}) ->
+-spec init({'parser_args', file:filename_all(), kz_term:ne_binary(), pos_integer()}) ->
                   {'ok', state()} |
                   {'stop', any()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
@@ -97,7 +97,7 @@ init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(atom(), any(), state()) -> handle_call_ret().
+-spec handle_call(atom(), any(), state()) -> kz_types:handle_call_ret().
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',
@@ -113,7 +113,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
@@ -128,7 +128,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('start_parsing', State=#state{parser_id = ParserId
                                          ,iodevice = IoDevice
                                          ,logip = LogIP
@@ -184,7 +184,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec extract_chunks(atom(), file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
+-spec extract_chunks(atom(), file:io_device(), kz_term:ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
 extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev, buffer()) of
         [] -> Counter;
@@ -193,9 +193,9 @@ extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
             extract_chunks(ParserId, Dev, LogIP, LogPort, NewCounter)
     end.
 
--type buffer() :: [binary() | {'timestamp', api_number()}].
+-type buffer() :: [binary() | {'timestamp', kz_term:api_number()}].
 
--spec make_and_store_chunk(atom(), ne_binary(), pos_integer(), pos_integer(), buffer()) -> pos_integer().
+-spec make_and_store_chunk(atom(), kz_term:ne_binary(), pos_integer(), pos_integer(), buffer()) -> pos_integer().
 make_and_store_chunk(ParserId, LogIP, LogPort, Counter, Data00) ->
     Apply = fun (Fun, Arg) -> Fun(Arg) end,
     {Timestamp, Data0, NewCounter} =
@@ -278,7 +278,7 @@ buffer(Buffer) ->
     [].
 
 
--spec set_legs(ne_binary(), pos_integer(), ci_chunk:chunk(), [ne_binary()]) ->
+-spec set_legs(kz_term:ne_binary(), pos_integer(), ci_chunk:chunk(), [kz_term:ne_binary()]) ->
                       ci_chunk:chunk().
 set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
     case FirstLine of
@@ -301,16 +301,16 @@ set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
                      ]
                     ).
 
--spec ip(ne_binary()) -> ne_binary().
+-spec ip(kz_term:ne_binary()) -> kz_term:ne_binary().
 ip(Bin) ->
     %% 15 = Look ahead inside longest IPv4 possible
     extract_ahead(<<"/[">>, 4*3+3, <<"]:">>, Bin).
 
--spec get_port(ne_binary()) -> ne_binary().
+-spec get_port(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_port(Bin) ->
     extract_ahead(<<"]:">>, 6, <<" at ">>, Bin).
 
--spec extract_ahead(ne_binary(), pos_integer(), ne_binary(), binary()) -> api_binary().
+-spec extract_ahead(kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), binary()) -> kz_term:api_binary().
 extract_ahead(Lhs, Span, Rhs, Bin) ->
     case binary:match(Bin, Lhs) of
         {StartS, StartP} ->
@@ -324,11 +324,11 @@ extract_ahead(Lhs, Span, Rhs, Bin) ->
             'undefined'
     end.
 
--spec label([ne_binary()]) -> ne_binary().
+-spec label([kz_term:ne_binary()]) -> kz_term:ne_binary().
 label(Data) ->
     lists:nth(2, Data).
 
--spec remove_whitespace_lines([binary()]) -> [ne_binary()].
+-spec remove_whitespace_lines([binary()]) -> [kz_term:ne_binary()].
 remove_whitespace_lines(Data) ->
     [Line || Line <- Data, not all_whitespace(Line)].
 
@@ -340,7 +340,7 @@ all_whitespace(<<$\n, Rest/binary>>) ->
 all_whitespace(<<>>) -> 'true';
 all_whitespace(_) -> 'false'.
 
--spec strip_truncating_pieces([ne_binary()]) -> [ne_binary()].
+-spec strip_truncating_pieces([kz_term:ne_binary()]) -> [kz_term:ne_binary()].
 strip_truncating_pieces(Data) ->
     [case re:run(Line, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
          {'match', [{Offset,_}|_]} -> kz_binary:truncate_right(Line, Offset);
@@ -349,35 +349,35 @@ strip_truncating_pieces(Data) ->
      || Line <- Data
     ].
 
--spec remove_unrelated_lines([ne_binary()]) -> [ne_binary()].
+-spec remove_unrelated_lines([kz_term:ne_binary()]) -> [kz_term:ne_binary()].
 remove_unrelated_lines([FirstLine|Lines]) ->
     [FirstLine | do_remove_unrelated_lines(Lines)].
 
--spec do_remove_unrelated_lines([ne_binary()]) -> [ne_binary()].
+-spec do_remove_unrelated_lines([kz_term:ne_binary()]) -> [kz_term:ne_binary()].
 do_remove_unrelated_lines([]) -> [];
 do_remove_unrelated_lines([<<"   ", _/binary>>=Line|Lines]) ->
     [Line | do_remove_unrelated_lines(Lines)];
 do_remove_unrelated_lines([_|Lines]) ->
     do_remove_unrelated_lines(Lines).
 
--spec unwrap_lines([ne_binary()]) -> [ne_binary()].
+-spec unwrap_lines([kz_term:ne_binary()]) -> [kz_term:ne_binary()].
 unwrap_lines([FirstLine|Lines]) ->
     [unwrap_first_line(FirstLine)] ++ [unwrap(Line) || Line <- Lines].
 
--spec unwrap_first_line(ne_binary()) -> ne_binary().
+-spec unwrap_first_line(kz_term:ne_binary()) -> kz_term:ne_binary().
 unwrap_first_line(FirstLine) ->
     Rm = length(":\n"),
     Sz = byte_size(FirstLine) - Rm,
     <<Line:Sz/binary, _:Rm/binary>> = FirstLine,
     Line.
 
--spec unwrap(ne_binary()) -> ne_binary().
+-spec unwrap(kz_term:ne_binary()) -> kz_term:ne_binary().
 unwrap(Line) ->
     Sz = byte_size(Line) - length("   ") - length("\n"),
     <<"   ", Data:Sz/binary, _:1/binary>> = Line,
     Data.
 
--spec remove_dashes([ne_binary()]) -> [ne_binary()].
+-spec remove_dashes([kz_term:ne_binary()]) -> [kz_term:ne_binary()].
 remove_dashes([]) -> [];
 remove_dashes([Line|Lines]) ->
     case binary:split(Line, <<"#012   --">>) of

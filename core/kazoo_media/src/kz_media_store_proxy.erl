@@ -26,7 +26,7 @@
 -type validate_request_ret() :: {'ok', media_store_path()} | {'error', integer()}.
 -type handler_return() :: {'ok', cowboy_req:req(), 'ok' | state()}.
 
--spec init(cowboy_req:req(), kz_proplist()) -> handler_return().
+-spec init(cowboy_req:req(), kz_term:proplist()) -> handler_return().
 init(Req, _Opts) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
     case authenticate(Req) of
@@ -54,7 +54,7 @@ maybe_basic_authentication(Req) ->
             maybe_basic_authentication(Username, Password)
     end.
 
--spec maybe_basic_authentication(ne_binary(), ne_binary()) -> boolean().
+-spec maybe_basic_authentication(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 maybe_basic_authentication(Username, Password) ->
     AuthUsername = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
     AuthPassword = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
@@ -70,7 +70,7 @@ maybe_acl_authentication(Req) ->
     Ip = kz_network_utils:iptuple_to_binary(IpTuple),
     maybe_acl_authentication(ACLs, Ip).
 
--spec maybe_acl_authentication(ne_binaries(), ne_binary()) -> boolean().
+-spec maybe_acl_authentication(kz_term:ne_binaries(), kz_term:ne_binary()) -> boolean().
 maybe_acl_authentication([], Ip) ->
     lager:debug("ip address ~s can not be authenticated via ACLs", [Ip]),
     'false';
@@ -83,7 +83,7 @@ maybe_acl_authentication([ACL|ACLs], Ip) ->
             maybe_acl_authentication(ACLs, Ip)
     end.
 
--spec credentials(cowboy_req:req()) -> {api_binary(), api_binary(), cowboy_req:req()}.
+-spec credentials(cowboy_req:req()) -> {kz_term:api_binary(), kz_term:api_binary(), cowboy_req:req()}.
 credentials(Req) ->
     case cowboy_req:header(<<"authorization">>, Req) of
         'undefined' ->
@@ -93,7 +93,7 @@ credentials(Req) ->
             {Username, Password, Req}
     end.
 
--spec credentials_from_header(ne_binary()) -> {api_binary(), api_binary()}.
+-spec credentials_from_header(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 credentials_from_header(AuthorizationHeader) ->
     case binary:split(AuthorizationHeader, <<$\s>>) of
         [<<"Basic">>, EncodedCredentials] ->
@@ -102,7 +102,7 @@ credentials_from_header(AuthorizationHeader) ->
             {'undefined', 'undefined'}
     end.
 
--spec decoded_credentials(ne_binary()) -> {api_binary(), api_binary()}.
+-spec decoded_credentials(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 decoded_credentials(EncodedCredentials) ->
     DecodedCredentials = base64:decode(EncodedCredentials),
     case binary:split(DecodedCredentials, <<$:>>) of
@@ -118,7 +118,7 @@ unauthorized(Req0) ->
     Req2 = cowboy_req:set_resp_body(unauthorized_body(), Req1),
     cowboy_req:reply(401, Req2).
 
--spec unauthorized_body() -> ne_binary().
+-spec unauthorized_body() -> kz_term:ne_binary().
 unauthorized_body() ->
     <<"
     <!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"
@@ -186,7 +186,7 @@ setup_context(#media_store_path{att=Attachment}=Path, Req) ->
             reply_error(500, Req)
     end.
 
--spec decode_url(ne_binary()) -> media_store_path() | 'error'.
+-spec decode_url(kz_term:ne_binary()) -> media_store_path() | 'error'.
 decode_url(Url) ->
     try binary_to_term(base64:decode(kz_util:uri_decode(Url))) of
         {Db, Id, Attachment, Options} ->
@@ -234,12 +234,12 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path) ->
             {'error', 415}
     end.
 
--spec add_content_type(media_store_path(), ne_binary()) -> media_store_path().
+-spec add_content_type(media_store_path(), kz_term:ne_binary()) -> media_store_path().
 add_content_type(#media_store_path{opt=Options}= Path, CT) ->
     NewOptions = props:set_value('content_type', kz_term:to_list(CT), Options),
     Path#media_store_path{opt=NewOptions}.
 
--spec ensure_extension_present(media_store_path(), ne_binary()) -> validate_request_ret().
+-spec ensure_extension_present(media_store_path(), kz_term:ne_binary()) -> validate_request_ret().
 ensure_extension_present(#media_store_path{att=Attachment}=Path, CT) ->
     case kz_term:is_empty(filename:extension(Attachment))
         andalso kz_mime:to_extension(CT)
@@ -264,7 +264,7 @@ store(#state{filename=Filename, media=Path}=State, Req) ->
             reply_error(500, State, Req)
     end.
 
--spec store(media_store_path(), ne_binary(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
+-spec store(media_store_path(), kz_term:ne_binary(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
 store(#media_store_path{db=Db
                        ,id=Id
                        ,att=Attachment
@@ -283,7 +283,7 @@ store(#media_store_path{db=Db
             {'ok', failure(Reason, Req0), State}
     end.
 
--spec success(kz_json:object(), kz_proplist(), cowboy_req:req()) -> cowboy_req:req().
+-spec success(kz_json:object(), kz_term:proplist(), cowboy_req:req()) -> cowboy_req:req().
 success(JObj, Props, Req0) ->
     Body = io_lib:format("~s~n", [kz_json:encode(kz_json:set_value(<<"ok">>, 'true', JObj))]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),

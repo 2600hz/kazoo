@@ -31,13 +31,13 @@
 -record(prompts
        ,{accept_tone =
              kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
-         :: ne_binary()
-        ,reject_tone = kz_media_util:get_prompt(?REJECT_PROMPT) :: api_ne_binary()
+         :: kz_term:ne_binary()
+        ,reject_tone = kz_media_util:get_prompt(?REJECT_PROMPT) :: kz_term:api_ne_binary()
         ,default_prompt =
              kz_media_util:get_prompt(
                kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
               )
-         :: ne_binary()
+         :: kz_term:ne_binary()
         }).
 -type prompts() :: #prompts{}.
 
@@ -45,11 +45,11 @@
        ,{prompts = #prompts{} :: prompts()
         ,default_max_digits = kapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_digits">>, 10) :: integer()
         ,default_min_digits = kapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_digits">>, 10) :: integer()
-        ,default_whitelist = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>) :: ne_binary()
+        ,default_whitelist = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>) :: kz_term:ne_binary()
         }
        ).
 
--type cid() :: {ne_binary(), ne_binary()}.
+-type cid() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,7 +58,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
--spec handle(kz_json:object(), kapps_call:call(), api_ne_binary(), api_ne_binary()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 handle(Data, Call) ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     Action = kz_json:get_ne_binary_value(<<"action">>, Data),
@@ -86,7 +86,7 @@ handle(Data, Call, _Manual, CaptureGroup) ->
 %% Handle manual mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
--spec handle_manual(kz_json:object(), kapps_call:call(), api_ne_binary()) -> 'ok'.
+-spec handle_manual(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 handle_manual(Data, Call, CaptureGroup) ->
     CID = collect_cid_number(Data, Call),
     update_call(Call, CID, CaptureGroup),
@@ -99,7 +99,7 @@ handle_manual(Data, Call, CaptureGroup) ->
 %% Handle static mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
--spec handle_static(kz_json:object(), kapps_call:call(), api_ne_binary()) -> 'ok'.
+-spec handle_static(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 handle_static(Data, Call, CaptureGroup) ->
     {CIDName, CIDNumber} = get_static_cid_entry(Data, Call),
     update_call(Call, CIDNumber, CIDName, CaptureGroup),
@@ -110,7 +110,7 @@ handle_static(Data, Call, CaptureGroup) ->
 %% @doc Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
--type list_cid_entry() :: {ne_binary(), ne_binary(), ne_binary()} |
+-type list_cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
                           {'error', kz_datamgr:data_error()}.
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -129,7 +129,7 @@ maybe_proceed_with_call(_, _, Call) ->
     _ = kapps_call_command:prompt(<<"fault-can_not_be_completed_at_this_time">>, Call),
     kapps_call_command:queued_hangup(Call).
 
--spec proceed_with_call(ne_binary(), ne_binary(), binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
+-spec proceed_with_call(kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
 proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
     update_call(Call, NewCallerIdNumber, NewCallerIdName, Dest),
     Number = knm_converters:normalize(Dest),
@@ -142,7 +142,7 @@ proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
 %% request, to and callee_number
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), ne_binary(), api_ne_binary()) -> 'ok'.
+-spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 update_call(Call, CIDNumber, CaptureGroup) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
@@ -158,7 +158,7 @@ update_call(Call, CIDNumber, CaptureGroup) ->
 %% @doc Same as update_call/3, but also sets caller id name
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), ne_binary(), ne_binary(), api_ne_binary()) -> 'ok'.
+-spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {CIDNumber, CIDName}}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
@@ -179,7 +179,7 @@ update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
 %% @doc If CaptureGroup exists correct request, to and callee_id_number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_strip_features_code(kapps_call:call(), api_ne_binary()) -> 'ok'.
+-spec maybe_strip_features_code(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 maybe_strip_features_code(Call, 'undefined') ->
     cf_exe:set_call(Call);
 maybe_strip_features_code(Call, CaptureGroup) ->
@@ -200,7 +200,7 @@ maybe_strip_features_code(Call, CaptureGroup) ->
 %% @doc Lookup callflow and continue with the call
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), ne_binary()) -> 'ok'.
+-spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 maybe_route_to_callflow(Data, Call, Number) ->
     case cf_flow:lookup(Number, kapps_call:account_id(Call)) of
         {'ok', Flow, 'true'} ->
@@ -216,7 +216,7 @@ maybe_route_to_callflow(Data, Call, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_restrict_call(kz_json:object(), kapps_call:call(), ne_binary(), kzd_callflow:doc()) -> 'ok'.
+-spec maybe_restrict_call(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kzd_callflow:doc()) -> 'ok'.
 maybe_restrict_call(Data, Call, Number, Flow) ->
     case should_restrict_call(Data, Call, Number) of
         'true' ->
@@ -234,7 +234,7 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_restrict_call(kz_json:object(), kapps_call:call(), ne_binary()) ->
+-spec should_restrict_call(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
                                   boolean().
 should_restrict_call(Data, Call, Number) ->
     case kz_json:is_true(<<"enforce_call_restriction">>, Data, 'true') of
@@ -249,7 +249,7 @@ should_restrict_call(Data, Call, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_restrict_call(kapps_call:call(), ne_binary()) -> boolean().
+-spec should_restrict_call(kapps_call:call(), kz_term:ne_binary()) -> boolean().
 should_restrict_call(Call, Number) ->
     case  kz_endpoint:get(Call) of
         {'error', _} -> 'false';
@@ -264,7 +264,7 @@ should_restrict_call(Call, Number) ->
 %% @doc Collect CID number from user
 %% @end
 %%--------------------------------------------------------------------
--spec collect_cid_number(kz_json:object(), kapps_call:call()) -> ne_binary().
+-spec collect_cid_number(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
 collect_cid_number(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
@@ -351,7 +351,7 @@ get_list_entry(Data, Call) ->
             E
     end.
 
--spec find_key_and_dest(kz_json:object(), kz_json:object(), kapps_call:call()) -> {ne_binary(), ne_binary()}.
+-spec find_key_and_dest(kz_json:object(), kz_json:object(), kapps_call:call()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 find_key_and_dest(ListJObj, Data, Call) ->
     case kz_json:get_ne_binary_value(<<"idx_name">>, Data) of
         'undefined' -> find_key_and_dest(ListJObj, Call);
@@ -362,7 +362,7 @@ find_key_and_dest(ListJObj, Data, Call) ->
             {CIDKey, Dest}
     end.
 
--spec find_key_and_dest(kz_json:object(), kapps_call:call()) -> {ne_binary(), ne_binary()}.
+-spec find_key_and_dest(kz_json:object(), kapps_call:call()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 find_key_and_dest(ListJObj, Call) ->
     LengthDigits = kz_json:get_integer_value(<<"length">>, ListJObj, 2),
     lager:debug("digit length to limit lookup key in number: ~p", [LengthDigits]),
@@ -406,7 +406,7 @@ cid_key_lookup(CIDKey, Entries, Call) ->
             maybe_set_default_cid('undefined', 'undefined', Call)
     end.
 
--spec cidkey_wanted(binary(), kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec cidkey_wanted(binary(), kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 cidkey_wanted(CIDKey, Entry, Acc) ->
     case kz_json:get_binary_value([<<"value">>, <<"cid_key">>], Entry) == CIDKey of
         'true' -> Acc ++ [{kz_json:get_ne_binary_value([<<"value">>, <<"cid_name">>], Entry)
@@ -420,7 +420,7 @@ cidkey_wanted(CIDKey, Entry, Acc) ->
 %% @doc Play reject prompt if any of the caller id are empty
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_default_cid(api_ne_binary(), api_ne_binary(), kapps_call:call()) -> cid().
+-spec maybe_set_default_cid(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> cid().
 maybe_set_default_cid('undefined', 'undefined', Call) ->
     lager:debug("empty cid entry, set to default value"),
     play_reject_prompt(Call),

@@ -35,19 +35,19 @@
 -define(MAX_MOVE_RETRY, 5).
 -define(MAX_MOVE_NOTIFY_MSG, "failed to move fax outbound document ~s from faxes database to account ~s modb").
 
--record(state, {queue_name :: api_binary()
-               ,job_id :: api_binary()
-               ,job :: api_object()
-               ,account_id :: api_binary()
-               ,status :: api_ne_binary()
-               ,fax_status :: api_object()
-               ,pages :: api_integer()
+-record(state, {queue_name :: kz_term:api_binary()
+               ,job_id :: kz_term:api_binary()
+               ,job :: kz_term:api_object()
+               ,account_id :: kz_term:api_binary()
+               ,status :: kz_term:api_ne_binary()
+               ,fax_status :: kz_term:api_object()
+               ,pages :: kz_term:api_integer()
                ,page = 0 :: integer()
-               ,file :: api_ne_binary()
-               ,callid :: ne_binary()
-               ,controller :: ne_binary()
-               ,stage :: api_binary()
-               ,resp :: api_object()
+               ,file :: kz_term:api_ne_binary()
+               ,callid :: kz_term:ne_binary()
+               ,controller :: kz_term:ne_binary()
+               ,stage :: kz_term:api_binary()
+               ,resp :: kz_term:api_object()
                ,move_retry = 0 :: integer()
                }).
 -type state() :: #state{}.
@@ -98,7 +98,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(fax_job()) -> startlink_ret().
+-spec start_link(fax_job()) -> kz_types:startlink_ret().
 start_link(FaxJob) ->
     CallId = kz_binary:rand_hex(16),
     _JobId = kapi_fax:job_id(FaxJob),
@@ -114,19 +114,19 @@ start_link(FaxJob) ->
                             ]
                            ,[FaxJob, CallId]).
 
--spec handle_tx_resp(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_tx_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_tx_resp(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', kz_api:msg_id(JObj), JObj}).
 
--spec handle_fax_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_fax_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_fax_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     JobId = kz_call_event:authorizing_id(JObj),
     Event = kz_call_event:application_event(JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
 
--spec handle_job_status_query(kz_json:object(), kz_proplist()) -> any().
+-spec handle_job_status_query(kz_json:object(), kz_term:proplist()) -> any().
 handle_job_status_query(JObj, Props) ->
     'true' = kapi_fax:query_status_v(JObj),
     Srv = props:get_value('server', Props),
@@ -150,7 +150,7 @@ handle_job_status_query(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([kz_json:object() | ne_binary()]) -> {'ok', state()}.
+-spec init([kz_json:object() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([FaxJob, CallId]) ->
     CtrlQ = kz_api:server_id(FaxJob),
     JobId = kapi_fax:job_id(FaxJob),
@@ -176,7 +176,7 @@ init([FaxJob, CallId]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -190,7 +190,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
                                             ,job=Job
                                             ,resp='undefined'
@@ -415,7 +415,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('timeout', #state{stage='undefined'}=State) ->
     {'noreply', State};
 handle_info('timeout', #state{stage=Stage, job=JObj}=State) ->
@@ -434,7 +434,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -478,10 +478,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec attempt_to_acquire_job(ne_binary(), ne_binary()) ->
+-spec attempt_to_acquire_job(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                     {'ok', kz_json:object()} |
                                     {'error', any()}.
--spec attempt_to_acquire_job(kz_json:object(), ne_binary(), api_binary()) ->
+-spec attempt_to_acquire_job(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                     {'ok', kz_json:object()} |
                                     {'error', any()}.
 attempt_to_acquire_job(Id, Q) ->
@@ -650,11 +650,11 @@ release_successful_job(Resp, JObj) ->
                ]),
     release_job(Result, JObj, Resp).
 
--spec release_job(kz_proplist(), kz_json:object()) -> release_ret().
+-spec release_job(kz_term:proplist(), kz_json:object()) -> release_ret().
 release_job(Result, JObj) ->
     release_job(Result, JObj, kz_json:new()).
 
--spec release_job(kz_proplist(), kz_json:object(), kz_json:object()) -> release_ret().
+-spec release_job(kz_term:proplist(), kz_json:object(), kz_json:object()) -> release_ret().
 release_job(Result, JObj, Resp) ->
     Success = props:is_true(<<"success">>, Result, 'false'),
     Updaters = [fun(J) -> kz_json:set_value(<<"tx_result">>, kz_json:from_list(Result), J) end
@@ -728,7 +728,7 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
             apply_reschedule_rules({Rules, Keys}, JObj)
     end.
 
--spec get_attempt_value(api_binary() | integer()) -> integer().
+-spec get_attempt_value(kz_term:api_binary() | integer()) -> integer().
 get_attempt_value(X) when is_integer(X) -> X;
 get_attempt_value('undefined') -> -1;
 get_attempt_value(<<"any">>) -> -1;
@@ -742,7 +742,7 @@ set_default_update_fields(JObj) ->
                       ,JObj
                       ).
 
--spec maybe_notify(kz_json:object(), kz_json:object(), ne_binary()) -> any().
+-spec maybe_notify(kz_json:object(), kz_json:object(), kz_term:ne_binary()) -> any().
 maybe_notify(JObj, Resp, <<"completed">>) ->
     Message = notify_fields(JObj, Resp),
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound/1);
@@ -755,7 +755,7 @@ maybe_notify(JObj, Resp, <<"failed">>) ->
 maybe_notify(_JObj, _Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
 
--spec maybe_move_doc(kz_json:object(), ne_binary()) ->
+-spec maybe_move_doc(kz_json:object(), kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 maybe_move_doc(JObj, <<"completed">>) ->
@@ -782,13 +782,13 @@ move_doc(JObj) ->
     lager:debug("moving fax outbound document ~s from faxes to ~s with id ~s", [FromId, AccountMODb, ToId]),
     kazoo_modb:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options).
 
--spec fax_error(kz_json:object()) -> api_binary().
+-spec fax_error(kz_json:object()) -> kz_term:api_binary().
 fax_error(JObj) ->
     kz_json:get_first_defined([ [<<"Application-Data">>, <<"Fax-Result-Text">>]
                               , [<<"tx_result">>, <<"result_text">>]
                               ], JObj).
 
--spec notify_fields(kz_json:object(), kz_json:object()) -> kz_proplist().
+-spec notify_fields(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 notify_fields(JObj, Resp) ->
     <<"sip:", HangupCode/binary>> = kz_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:0">>),
     HangupCause = kz_json:get_value(<<"Hangup-Cause">>, Resp),
@@ -824,7 +824,7 @@ notify_fields(JObj, Resp) ->
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec fax_fields(api_object()) -> kz_proplist().
+-spec fax_fields(kz_term:api_object()) -> kz_term:proplist().
 fax_fields('undefined') -> [];
 fax_fields(JObj) ->
     [{K,V} || {<<"Fax-", _/binary>> = K, V} <- kz_json:to_proplist(JObj)].
@@ -842,7 +842,7 @@ fetch_document(JObj) ->
         AttachmentNames -> fetch_document_from_attachment(JObj, AttachmentNames)
     end.
 
--spec fetch_document_from_attachment(kz_json:object(), ne_binaries()) -> kz_http:ret().
+-spec fetch_document_from_attachment(kz_json:object(), kz_term:ne_binaries()) -> kz_http:ret().
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     DefaultContentType = kz_mime:from_extension(filename:extension(AttachmentName)),
     ContentType = kz_doc:attachment_content_type(JObj, AttachmentName, DefaultContentType),
@@ -865,9 +865,9 @@ fetch_document_from_url(JObj) ->
     lager:debug("making ~s request to '~s'", [Method, Url]),
     kz_http:req(Method, Url, Headers, Body).
 
--spec prepare_contents(ne_binary(), kz_proplist(), ne_binary()) ->
-                              {'ok', ne_binary()} |
-                              {'error', ne_binary()}.
+-spec prepare_contents(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) ->
+                              {'ok', kz_term:ne_binary()} |
+                              {'error', kz_term:ne_binary()}.
 prepare_contents(JobId, RespHeaders, RespContent) ->
     lager:debug("preparing fax contents"),
     CT = props:get_value("content-type", RespHeaders, <<"application/octet-stream">>),
@@ -878,9 +878,9 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
         {'error', _}=Error -> Error
     end.
 
--spec prepare_contents(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
-                              {'ok', ne_binary()} |
-                              {'error', ne_binary()}.
+-spec prepare_contents(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                              {'ok', kz_term:ne_binary()} |
+                              {'error', kz_term:ne_binary()}.
 prepare_contents(<<"image/tiff">>, JobId, RespContent, TmpDir) ->
     OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
     kz_util:write_file(OutputFile, RespContent),
@@ -925,9 +925,9 @@ prepare_contents(CT, _JobId, _RespContent, _TmpDir) ->
     lager:debug("unsupported file type: ~p", [CT]),
     {'error', list_to_binary(["file type '", CT, "' is unsupported"])}.
 
--spec convert_openoffice_document(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
-                                         {'ok', ne_binary()} |
-                                         {'error', ne_binary()}.
+-spec convert_openoffice_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                         {'ok', kz_term:ne_binary()} |
+                                         {'error', kz_term:ne_binary()}.
 convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
     Extension = kz_mime:to_extension(CT),
     InputFile = list_to_binary([TmpDir, JobId, ".", Extension]),
@@ -944,7 +944,7 @@ convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
             {'error', <<"can not convert file, try uploading a tiff">>}
     end.
 
--spec get_sizes(ne_binary()) -> {integer(), non_neg_integer()}.
+-spec get_sizes(kz_term:ne_binary()) -> {integer(), non_neg_integer()}.
 get_sizes(OutputFile) when is_binary(OutputFile) ->
     CmdCount = kapps_config:get_binary(?CONFIG_CAT, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
     Cmd = io_lib:format(CmdCount, [OutputFile]),
@@ -956,7 +956,7 @@ get_sizes(OutputFile) when is_binary(OutputFile) ->
     FileSize = filelib:file_size(kz_term:to_list(OutputFile)),
     {NumberOfPages, FileSize}.
 
--spec send_fax(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec send_fax(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
     SendFax = fun() -> send_fax(JobId, JObj, Q, get_did(JObj)) end,
     maybe_ensure_valid_caller_id(JObj, SendFax).
@@ -978,7 +978,7 @@ ensure_valid_caller_id(JObj, SendFax) ->
             gen_server:cast(self(), {'error', 'invalid_cid', CIDNum})
     end.
 
--spec send_fax(ne_binary(), kz_json:object(), ne_binary(), binary() | 'undefined') -> 'ok'.
+-spec send_fax(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), binary() | 'undefined') -> 'ok'.
 send_fax(_JobId, _JObj, _Q, 'undefined') ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(undefined)">>});
 send_fax(_JobId, _JObj, _Q, <<>>) ->
@@ -1021,7 +1021,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
     kapi_offnet_resource:publish_req(Request).
 
--spec get_hunt_account_id(ne_binary()) -> api_binary().
+-spec get_hunt_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
 get_hunt_account_id(AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
@@ -1030,7 +1030,7 @@ get_hunt_account_id(AccountId) ->
         _ -> 'undefined'
     end.
 
--spec maybe_hunt_account_id(api_object(), ne_binary()) -> api_binary().
+-spec maybe_hunt_account_id(kz_term:api_object(), kz_term:ne_binary()) -> kz_term:api_binary().
 maybe_hunt_account_id('undefined', _) -> 'undefined';
 maybe_hunt_account_id(JObj, AccountId) ->
     case kz_json:get_value(<<"module">>, JObj) of
@@ -1040,39 +1040,39 @@ maybe_hunt_account_id(JObj, AccountId) ->
             maybe_hunt_account_id(kz_json:get_value([<<"children">>, <<"_">>], JObj), AccountId)
     end.
 
--spec resource_ccvs(ne_binary()) -> kz_json:object().
+-spec resource_ccvs(kz_term:ne_binary()) -> kz_json:object().
 resource_ccvs(JobId) ->
     kz_json:from_list([{<<"Authorizing-ID">>, JobId}
                       ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
                       ,{<<"RTCP-MUX">>, false}
                       ]).
 
--spec get_did(kz_json:object()) -> api_binary().
+-spec get_did(kz_json:object()) -> kz_term:api_binary().
 get_did(JObj) ->
     case kz_json:is_true(<<"bypass_e164">>, JObj, 'false') of
         'true' -> kz_json:get_value(<<"to_number">>, JObj);
         'false' -> knm_converters:normalize(kz_json:get_value(<<"to_number">>, JObj))
     end.
 
--spec get_proxy_url(ne_binary()) -> ne_binary().
+-spec get_proxy_url(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_proxy_url(JobId) ->
     Hostname = kz_network_utils:get_hostname(),
     Port = integer_to_binary(?PORT),
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
 
--spec send_status(state(), ne_binary()) -> any().
+-spec send_status(state(), kz_term:ne_binary()) -> any().
 send_status(State, Status) ->
     send_status(State, Status, ?FAX_SEND, 'undefined').
 
--spec send_error_status(state(), ne_binary()) -> any().
+-spec send_error_status(state(), kz_term:ne_binary()) -> any().
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), kz_term:ne_binary(), kz_term:api_object()) -> any().
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> any().
 send_status(#state{job=JObj
                   ,page=Page
                   ,job_id=JobId
@@ -1097,7 +1097,7 @@ send_status(#state{job=JObj
                 ]),
     kapi_fax:publish_status(Payload).
 
--spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
+-spec send_reply_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
 send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
     Payload = props:filter_undefined(
                 [{<<"Job-ID">>, JobId}
@@ -1109,7 +1109,7 @@ send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
                 ]),
     kapi_fax:publish_targeted_status(Q, Payload).
 
--spec send_control_status(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_control_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_control_status(CtrlQ, Q, JobId, FaxState) ->
     Payload = [{<<"Job-ID">>, JobId}
               ,{<<"Fax-State">>, FaxState}
@@ -1118,12 +1118,12 @@ send_control_status(CtrlQ, Q, JobId, FaxState) ->
     Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
--spec handle_start_job(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_start_job(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_start_job(JObj, _Props) ->
     'true' = kapi_fax:start_job_v(JObj),
     fax_worker_sup:start_fax_job(JObj).
 
--spec validate_tiff(ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+-spec validate_tiff(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', kz_term:ne_binary()}.
 validate_tiff(Filename) ->
     case file:read_file_info(Filename) of
         {'ok', _} ->
@@ -1134,7 +1134,7 @@ validate_tiff(Filename) ->
             {'error', <<"could not convert input file">>}
     end.
 
--spec validate_tiff_content(ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+-spec validate_tiff_content(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', kz_term:ne_binary()}.
 validate_tiff_content(Filename) ->
     case os:find_executable("tiff2pdf") of
         'false' ->

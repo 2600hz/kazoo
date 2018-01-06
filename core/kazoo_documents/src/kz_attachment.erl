@@ -17,7 +17,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec decode_base64(ne_binary()) -> {api_binary(), ne_binary()}.
+-spec decode_base64(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:ne_binary()}.
 decode_base64(Base64) ->
     case binary:split(Base64, <<",">>) of
         %% http://tools.ietf.org/html/rfc4648
@@ -30,7 +30,7 @@ decode_base64(Base64) ->
             {'undefined', corrected_base64_decode(Base64)}
     end.
 
--spec get_content_type(ne_binary()) -> api_binary().
+-spec get_content_type(kz_term:ne_binary()) -> kz_term:api_binary().
 get_content_type(MediaType) ->
     get_content_type(MediaType, kz_binary:truncate_left(MediaType, 6)).
 
@@ -46,7 +46,7 @@ get_content_type(MediaType, _) ->
             {'error', 'badarg'}
     end.
 
--spec corrected_base64_decode(ne_binary()) -> ne_binary().
+-spec corrected_base64_decode(kz_term:ne_binary()) -> kz_term:ne_binary().
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 =:= 3 ->
     base64:decode(<<Base64/binary, "=">>);
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 =:= 2 ->

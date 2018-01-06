@@ -109,8 +109,8 @@ validate(Context, PathToken) ->
     _ = cb_context:put_reqid(Context),
     validate_ips(Context, PathToken, cb_context:req_verb(Context)).
 
--spec validate_ips(cb_context:context(), ne_binary()) -> cb_context:context().
--spec validate_ips(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
+-spec validate_ips(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+-spec validate_ips(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_ips(Context, ?HTTP_GET) ->
     load_available(Context);
 validate_ips(Context, ?HTTP_PUT) ->
@@ -274,7 +274,7 @@ load_hosts(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_ip(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_ip(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_ip(Context, Id) ->
     case kz_ip:fetch(Id) of
         {'ok', IP} ->
@@ -315,21 +315,21 @@ maybe_assign_ips(Context) ->
     cb_context:validate_request_data(<<"ips">>, Context, OnSuccess).
 
 -spec validate_ips_not_in_use(cb_context:context()) -> cb_context:context().
--spec validate_ips_not_in_use(cb_context:context(), ne_binaries()) -> cb_context:context().
+-spec validate_ips_not_in_use(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
 validate_ips_not_in_use(Context) ->
     validate_ips_not_in_use(Context, cb_context:req_value(Context, <<"ips">>)).
 
 validate_ips_not_in_use(Context, IPs) ->
     lists:foldl(fun validate_ip_not_in_use/2, Context, IPs).
 
--spec validate_ip_not_in_use(ne_binary() | cb_context:context(), ne_binary() | cb_context:context()) ->
+-spec validate_ip_not_in_use(kz_term:ne_binary() | cb_context:context(), kz_term:ne_binary() | cb_context:context()) ->
                                     cb_context:context().
 validate_ip_not_in_use(<<_/binary>> = IP, Context) ->
     validate_ip_not_in_use(Context, IP);
 validate_ip_not_in_use(Context, <<_/binary>> = IP) ->
     validate_ip_not_in_use(Context, IP, cb_context:resp_status(Context)).
 
--spec validate_ip_not_in_use(cb_context:context(), ne_binary(), crossbar_status()) ->
+-spec validate_ip_not_in_use(cb_context:context(), kz_term:ne_binary(), crossbar_status()) ->
                                     cb_context:context().
 validate_ip_not_in_use(Context, IP, 'error') ->
     case kz_ip:is_available(IP) of
@@ -352,7 +352,7 @@ validate_ip_not_in_use(Context, IP, _Status) ->
                                        )
     end.
 
--spec error_ip_assigned(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec error_ip_assigned(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 error_ip_assigned(Context, IP) ->
     Msg = kz_json:from_list([{<<"cause">>, IP}
                             ,{<<"message">>, <<"ip already assigned">>}
@@ -379,7 +379,7 @@ assign_ips(Context) ->
         _ -> Context1
     end.
 
--spec reconcile_services([api_ne_binary()]) -> 'ok'.
+-spec reconcile_services([kz_term:api_ne_binary()]) -> 'ok'.
 reconcile_services(AccountIds) ->
     _ = [kz_services:reconcile(AccountId, <<"ips">>)
          || AccountId <- AccountIds,
@@ -387,8 +387,8 @@ reconcile_services(AccountIds) ->
         ],
     'ok'.
 
--type assign_acc() :: {cb_context:context(), kz_json:objects(), [ne_binary() | 'undefined']}.
--spec maybe_assign_ip(ne_binary(), assign_acc()) -> assign_acc().
+-type assign_acc() :: {cb_context:context(), kz_json:objects(), [kz_term:ne_binary() | 'undefined']}.
+-spec maybe_assign_ip(kz_term:ne_binary(), assign_acc()) -> assign_acc().
 maybe_assign_ip(IP, {Context, RespData, AccountIds}) ->
     AccountId = cb_context:account_id(Context),
     case kz_ip:fetch(IP) of
@@ -397,7 +397,7 @@ maybe_assign_ip(IP, {Context, RespData, AccountIds}) ->
             {crossbar_doc:handle_datamgr_errors(Reason, IP, Context), RespData}
     end.
 
--spec maybe_assign_ip(cb_context:context(), ne_binary(), kz_json:object(), kz_json:objects(), [ne_binary() | 'undefined']) -> assign_acc().
+-spec maybe_assign_ip(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_json:objects(), [kz_term:ne_binary() | 'undefined']) -> assign_acc().
 maybe_assign_ip(Context, AccountId, IPJObj, RespData, AccountIds) ->
     case kz_ip:assign(AccountId, IPJObj) of
         {'ok', AssignedIP} ->
@@ -420,7 +420,7 @@ maybe_assign_ip(Context, AccountId, IPJObj, RespData, AccountIds) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_ip(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec assign_ip(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 assign_ip(Context, IP) ->
     AccountId = cb_context:account_id(Context),
     case kz_ip:assign(AccountId, IP) of
@@ -441,13 +441,13 @@ assign_ip(Context, IP) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec release_or_delete_ip(cb_context:context(), ne_binary(), req_nouns()) -> cb_context:context().
+-spec release_or_delete_ip(cb_context:context(), kz_term:ne_binary(), req_nouns()) -> cb_context:context().
 release_or_delete_ip(Context, IP, [{<<"ips">>, [IP]}]) ->
     delete_ip(Context, IP);
 release_or_delete_ip(Context, IP, [{<<"ips">>, [IP]}, {<<"accounts">>, [_]}]) ->
     release_ip(Context, IP).
 
--spec release_ip(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec release_ip(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 release_ip(Context, Id) ->
     case kz_ip:release(Id) of
         {'ok', IP} ->
@@ -459,7 +459,7 @@ release_ip(Context, Id) ->
             crossbar_doc:handle_datamgr_errors(Reason, Id, Context)
     end.
 
--spec delete_ip(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec delete_ip(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 delete_ip(Context, IP) ->
     case kz_ip:delete(IP) of
         {'ok', Deleted} -> crossbar_doc:handle_json_success(Deleted, Context);

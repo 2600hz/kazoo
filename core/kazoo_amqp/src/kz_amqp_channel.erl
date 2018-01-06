@@ -56,7 +56,7 @@ consumer_pid() ->
         _Else -> self()
     end.
 
--spec consumer_pid(pid()) -> api_pid().
+-spec consumer_pid(pid()) -> kz_term:api_pid().
 consumer_pid(Pid) when is_pid(Pid) ->
     put('$kz_amqp_consumer_pid', Pid).
 
@@ -79,14 +79,14 @@ consumer_channel(Channel) ->
 remove_consumer_channel() ->
     put('$kz_amqp_consumer_channel', 'undefined').
 
--spec consumer_broker() -> api_binary().
+-spec consumer_broker() -> kz_term:api_binary().
 consumer_broker() ->
     case get('$kz_amqp_consumer_broker') of
         Broker when is_binary(Broker) -> Broker;
         _Else -> 'undefined'
     end.
 
--spec consumer_broker(ne_binary()) -> api_binary().
+-spec consumer_broker(kz_term:ne_binary()) -> kz_term:api_binary().
 consumer_broker(Broker) when is_binary(Broker) ->
     put('$kz_amqp_consumer_broker', Broker).
 
@@ -111,14 +111,14 @@ channel_publish_method(Method)
 -spec requisition() -> boolean().
 requisition() -> requisition(consumer_pid()).
 
--spec requisition(pid() | api_binary()) -> boolean().
+-spec requisition(pid() | kz_term:api_binary()) -> boolean().
 requisition(Consumer) when is_pid(Consumer) ->
     requisition(Consumer, consumer_broker());
 requisition(Broker) ->
     put('$kz_amqp_consumer_broker', Broker),
     requisition(consumer_pid(), Broker).
 
--spec requisition(pid(), api_binary()) -> boolean().
+-spec requisition(pid(), kz_term:api_binary()) -> boolean().
 requisition(Consumer, Broker) when is_pid(Consumer) ->
     case kz_amqp_assignments:request_channel(Consumer, Broker) of
         #kz_amqp_assignment{channel=Channel}
@@ -135,10 +135,10 @@ release(Pid) when is_pid(Pid) ->
     _ = kz_amqp_history:remove(Pid),
     kz_amqp_assignments:release(Pid).
 
--spec close(api_pid()) -> 'ok'.
+-spec close(kz_term:api_pid()) -> 'ok'.
 close(Channel) -> close(Channel, []).
 
--spec close(api_pid(), list()) -> 'ok'.
+-spec close(kz_term:api_pid(), list()) -> 'ok'.
 close(Channel, []) when is_pid(Channel) ->
     _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5 * ?MILLISECONDS_IN_SECOND)),
     lager:debug("closed amqp channel ~p", [Channel]);
@@ -253,7 +253,7 @@ basic_publish(Channel
   when is_pid(Channel) ->
     amqp_channel:Method(Channel, BasicPub, AmqpMsg).
 
--spec maybe_split_routing_key(binary()) -> {api_pid(), binary()}.
+-spec maybe_split_routing_key(binary()) -> {kz_term:api_pid(), binary()}.
 maybe_split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->
     Size = byte_size(RoutingKey),
     {Start, _} = lists:last(binary:matches(RoutingKey, <<"/">>)),

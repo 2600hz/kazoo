@@ -28,10 +28,10 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) -> {'ok', kz_json:object()} |
-                          {'error', atom()}.
--spec get(ne_binary(), api_seconds(), api_seconds()) -> {'ok', kz_json:object()} |
-                                                        {'error', atom()}.
+-spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                  {'error', atom()}.
+-spec get(kz_term:ne_binary(), kz_time:api_seconds(), kz_time:api_seconds()) -> {'ok', kz_json:object()} |
+                                                                                {'error', atom()}.
 get(Account) ->
     get(Account, undefined, undefined).
 
@@ -70,6 +70,6 @@ get(Account, CreatedFrom, CreatedTo)
         throw:_R -> {error, _R}
     end.
 
--spec available_ledgers(api_binary()) -> kz_json:objects().
+-spec available_ledgers(kz_term:api_binary()) -> kz_json:objects().
 available_ledgers(AccountId) ->
     kapps_account_config:get_global(AccountId, <<"ledgers">>, <<"registered_ledgers">>, ?DEFAULT_AVIALABLE_LEDGERS).

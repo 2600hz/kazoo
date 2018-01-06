@@ -20,7 +20,7 @@
 -define(KEY_STUB_ATTACHMENTS, <<"pvt_attachments">>).
 
 %% Attachment-related functions ------------------------------------------------
--spec fetch_attachment(map(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec fetch_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', binary()} |
                               data_error().
 fetch_attachment(#{}=Server, DbName, DocId, AName) ->
@@ -51,7 +51,7 @@ do_fetch_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps
         DiffModule -> DiffModule:fetch_attachment(HandlerProps, DbName, DocId, AName)
     end.
 
--spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
+-spec stream_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) ->
                                {'ok', reference()} |
                                data_error().
 stream_attachment(#{}=Server, DbName, DocId, AName, Caller) ->
@@ -112,9 +112,9 @@ relay_stream_attachment(Caller, Ref, Bin) ->
                     ,'server' := {module(), db()}
                     }.
 
--spec put_attachment(att_map(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec put_attachment(att_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
-                            {'ok', kz_json:object(), kz_proplist()} |
+                            {'ok', kz_json:object(), kz_term:proplist()} |
                             data_error().
 
 put_attachment(#{att_handler := {Handler, Params}}=Map
@@ -144,10 +144,10 @@ attachment_handler_jobj(Handler, Props) ->
     JObj = kz_json:from_list(props:get_value('attachment', Props, [])),
     kz_json:set_value(kz_term:to_binary(Handler), JObj, kz_json:new()).
 
--spec handle_put_attachment(att_map(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
-                           , kz_proplist(), kz_proplist()) ->
+-spec handle_put_attachment(att_map(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+                           , kz_term:proplist(), kz_term:proplist()) ->
                                    {'ok', kz_json:object()} |
-                                   {'ok', kz_json:object(), kz_proplist()} |
+                                   {'ok', kz_json:object(), kz_term:proplist()} |
                                    data_error().
 
 handle_put_attachment(#{att_post_handler := 'stub'
@@ -162,7 +162,7 @@ handle_put_attachment(#{att_post_handler := 'external'}=Map, Att, DbName, DocId,
         {'error', _}=E -> E
     end.
 
--spec external_attachment(att_map(), ne_binary(), kz_json:object(), kz_json:object(), Props) ->
+-spec external_attachment(att_map(), kz_term:ne_binary(), kz_json:object(), kz_json:object(), Props) ->
                                  {'ok', kz_json:object(), Props} |
                                  data_error().
 external_attachment(Map, DbName, JObj, Att, Props) ->
@@ -172,15 +172,15 @@ external_attachment(Map, DbName, JObj, Att, Props) ->
         Error -> Error
     end.
 
--spec delete_attachment(map(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec delete_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                                {'ok', kz_json:object()} |
                                data_error().
 delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
--spec attachment_url(map(), ne_binary(), ne_binary(), ne_binary(), api_atom(), kz_proplist()) ->
-                            ne_binary() |
+-spec attachment_url(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_atom(), kz_term:proplist()) ->
+                            kz_term:ne_binary() |
                             {'proxy', tuple()}.
 attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined', Options) ->
     {'proxy', {DbName, DocId, AttachmentId, Options}};

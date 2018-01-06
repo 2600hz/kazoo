@@ -49,10 +49,10 @@
                     ,{<<"record_min_sec">>, 0}
                     ]).
 
--record(media_store_path, {db :: ne_binary()
-                          ,id :: ne_binary()
-                          ,att :: ne_binary()
-                          ,opt = [] :: kz_proplist()
+-record(media_store_path, {db :: kz_term:ne_binary()
+                          ,id :: kz_term:ne_binary()
+                          ,att :: kz_term:ne_binary()
+                          ,opt = [] :: kz_term:proplist()
                           }).
 
 -type media_store_path() :: #media_store_path{}.

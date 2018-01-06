@@ -42,7 +42,7 @@ print_authz_summary_header() ->
     io:format("| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |~n"),
     io:format("+==================================+=======+================+============+================+=================+============+~n").
 
--spec authz_summary(ne_binaries()) -> 'no_return'.
+-spec authz_summary(kz_term:ne_binaries()) -> 'no_return'.
 authz_summary([]) -> 'no_return';
 authz_summary([AccountId|AccountIds]) ->
     io:format("| ~-32s | ~-5w | ~-14w | ~-10w | ~-14w | ~-15w | ~-10w |~n"
@@ -60,7 +60,7 @@ authz_summary(<<_/binary>> = AccountId) ->
     print_authz_summary_header(),
     authz_summary([AccountId]).
 
--spec authz_details(j5_channels:channels() | ne_binary()) -> 'no_return'.
+-spec authz_details(j5_channels:channels() | kz_term:ne_binary()) -> 'no_return'.
 authz_details([]) ->
     io:format("~n", []),
     'no_return';
@@ -92,7 +92,7 @@ authz_details([Channel|Channels]) ->
 authz_details(AccountId) ->
     authz_details(j5_channels:account(AccountId)).
 
--spec authz_details_cost(kz_proplist(), non_neg_integer()) -> non_neg_integer().
+-spec authz_details_cost(kz_term:proplist(), non_neg_integer()) -> non_neg_integer().
 authz_details_cost(Props, Timestamp) ->
     case props:get_integer_value(<<"Answered-Timestamp">>, Props) of
         'undefined' -> 0;
@@ -102,7 +102,7 @@ authz_details_cost(Props, Timestamp) ->
             wht_util:units_to_dollars(wht_util:call_cost(JObj))
     end.
 
--spec authz_details_duration(ne_binary(), kz_proplist(), non_neg_integer()) -> iolist().
+-spec authz_details_duration(kz_term:ne_binary(), kz_term:proplist(), non_neg_integer()) -> iolist().
 authz_details_duration(Key, Props, Timestamp) ->
     case props:get_integer_value(Key, Props) of
         'undefined' -> "0s";
@@ -121,7 +121,7 @@ limits_summary() ->
             limits_summary(Limits)
     end.
 
--spec limits_summary([j5_limits:limits()] | ne_binary()) -> 'no_return'.
+-spec limits_summary([j5_limits:limits()] | kz_term:ne_binary()) -> 'no_return'.
 limits_summary([]) -> 'no_return';
 limits_summary([Limit|Limits]) ->
     case j5_limits:enabled(Limit) of
@@ -185,7 +185,7 @@ limit_summary_header() ->
     io:format("|                                  |       |                |            |  In | Out | Both | Burst |            |             |~n"),
     io:format("+==================================+=======+================+============+==========================+============+=============+~n").
 
--spec limits_details(atom() | string() | ne_binary()) -> 'no_return'.
+-spec limits_details(atom() | string() | kz_term:ne_binary()) -> 'no_return'.
 limits_details(Account) when not is_binary(Account) ->
     limits_details(kz_term:to_binary(Account));
 limits_details(Account) ->
@@ -223,7 +223,7 @@ limits_details_allotments(JObj) ->
         Keys -> limits_details_allotments(Keys, JObj)
     end.
 
--spec limits_details_allotments(ne_binaries(), kz_json:object()) -> 'ok'.
+-spec limits_details_allotments(kz_term:ne_binaries(), kz_json:object()) -> 'ok'.
 limits_details_allotments([], _) -> 'ok';
 limits_details_allotments([Key|Keys], JObj) ->
     io:format("~n", []),
@@ -232,14 +232,14 @@ limits_details_allotments([Key|Keys], JObj) ->
     pretty_print_field("  Cycle", kz_json:get_value([Key, <<"cycle">>], JObj, <<"monthly">>)),
     limits_details_allotments(Keys, JObj).
 
--spec pretty_print_field(text(), any()) -> 'ok'.
+-spec pretty_print_field(kz_term:text(), any()) -> 'ok'.
 pretty_print_field(_, 'undefined') -> 'ok';
 pretty_print_field(Name, Value) when is_number(Value) ->
     io:format("~-25s: ~w~n", [Name, Value]);
 pretty_print_field(Name, Value) ->
     io:format("~-25s: ~s~n", [Name, Value]).
 
--spec current_balance(ne_binary()) -> iolist().
+-spec current_balance(kz_term:ne_binary()) -> iolist().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', Balance} -> kz_term:to_list(wht_util:units_to_dollars(Balance));

@@ -155,7 +155,7 @@ validate(Context) ->
         _Status -> Context1
     end.
 
--spec validate_action(cb_context:context(), api_ne_binary()) -> cb_context:context().
+-spec validate_action(cb_context:context(), kz_term:api_ne_binary()) -> cb_context:context().
 validate_action(Context, 'undefined') ->
     cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
 validate_action(Context, ?SWITCH_USER) ->
@@ -230,7 +230,7 @@ post(Context, ?RECOVERY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_get_auth_token(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_get_auth_token(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_get_auth_token(Context, AuthToken) ->
     case AuthToken =:= cb_context:auth_token(Context) of
         'true' ->
@@ -245,7 +245,7 @@ maybe_get_auth_token(Context, AuthToken) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_auth_resp(cb_context:context(), ne_binary(),  ne_binary()) ->
+-spec create_auth_resp(cb_context:context(), kz_term:ne_binary(),  kz_term:ne_binary()) ->
                               cb_context:context().
 create_auth_resp(Context, AccountId, AccountId) ->
     lager:debug("account ~s is same as auth account", [AccountId]),
@@ -269,7 +269,7 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
--spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      cb_context:context().
 maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
@@ -322,7 +322,7 @@ maybe_authenticate_user(Context, _Creds, _Method, Account) ->
     crossbar_auth:log_failed_auth(?MODULE, <<"credentials">>, Reason, Context, Account),
     cb_context:add_system_error('invalid_credentials', Context).
 
--spec maybe_auth_account(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec maybe_auth_account(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                 cb_context:context().
 maybe_auth_account(Context, Credentials, Method, Account) ->
     Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
@@ -332,7 +332,7 @@ maybe_auth_account(Context, Credentials, Method, Account) ->
         _Status -> Context1
     end.
 
--spec maybe_auth_accounts(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) ->
+-spec maybe_auth_accounts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                                  cb_context:context().
 maybe_auth_accounts(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
@@ -346,7 +346,7 @@ maybe_auth_accounts(Context, Credentials, Method, [Account|Accounts]) ->
             maybe_auth_accounts(Context, Credentials, Method, Accounts)
     end.
 
--spec maybe_account_is_expired(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_account_is_expired(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_account_is_expired(Context, Account) ->
     case kz_util:is_account_expired(Account) of
         'false' -> maybe_account_is_enabled(Context, Account);
@@ -363,7 +363,7 @@ maybe_account_is_expired(Context, Account) ->
             cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context)
     end.
 
--spec maybe_account_is_enabled(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_account_is_enabled(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_account_is_enabled(Context, Account) ->
     case kz_util:is_account_enabled(Account) of
         'true' -> Context;
@@ -378,7 +378,7 @@ maybe_account_is_enabled(Context, Account) ->
             cb_context:add_validation_error(<<"account">>, <<"disabled">>, Cause, Context)
     end.
 
--spec load_sha1_results(cb_context:context(), kz_json:objects() | kz_json:object(), ne_binary())->
+-spec load_sha1_results(cb_context:context(), kz_json:objects() | kz_json:object(), kz_term:ne_binary())->
                                cb_context:context().
 load_sha1_results(Context, [JObj|_], _Account)->
     lager:debug("found more that one user with SHA1 creds, using ~s", [kz_doc:id(JObj)]),
@@ -392,7 +392,7 @@ load_sha1_results(Context, JObj, _Account)->
     lager:debug("found SHA1 credentials belong to user ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(cb_context:store(Context, 'auth_type', <<"credentials">>), kz_json:get_value(<<"value">>, JObj)).
 
--spec load_md5_results(cb_context:context(), kz_json:objects() | kz_json:object(), ne_binary()) ->
+-spec load_md5_results(cb_context:context(), kz_json:objects() | kz_json:object(), kz_term:ne_binary()) ->
                               cb_context:context().
 load_md5_results(Context, [JObj|_], _Account) ->
     lager:debug("found more that one user with MD5 creds, using ~s", [kz_doc:id(JObj)]),
@@ -421,7 +421,7 @@ maybe_load_user_doc_via_creds(Context) ->
     end.
 
 %% @private
--spec maybe_load_user_doc_by_username(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_load_user_doc_by_username(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_by_username(Account, Context) ->
     JObj = cb_context:doc(Context),
     AccountDb = kz_util:format_account_db(Account),
@@ -529,7 +529,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
     end.
 
 %% @private
--spec reset_id(ne_binary()) -> ne_binary().
+-spec reset_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM)) ->
     <<Y1:1/binary, Y2:1/binary, Y3:1/binary, Y4:1/binary>> = YYYY,
     <<M1:1/binary, M2:1/binary>> = MM,
@@ -553,7 +553,7 @@ reset_id(<<AccountId:32/binary,
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM).
 
 %% @private
--spec reset_link(ne_binary(), ne_binary()) -> ne_binary().
+-spec reset_link(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_link(UIURL, ResetId) ->
     case binary:match(UIURL, <<$?>>) of
         'nomatch' -> <<UIURL/binary, "?recovery=", ResetId/binary>>;
@@ -561,7 +561,7 @@ reset_link(UIURL, ResetId) ->
     end.
 
 %% @private
--spec create_resetid_doc(ne_binary(), ne_binary()) -> kz_json:object().
+-spec create_resetid_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 create_resetid_doc(ResetId, UserId) ->
     kz_json:from_list(
       [{<<"_id">>, ResetId}
@@ -576,8 +576,8 @@ create_resetid_doc(ResetId, UserId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account(api_binary(), api_binary(), api_binary(), cb_context:context()) ->
-                          {'ok', ne_binary() | ne_binaries()} |
+-spec find_account(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
+                          {'ok', kz_term:ne_binary() | kz_term:ne_binaries()} |
                           {'error', cb_context:context()}.
 find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
@@ -615,7 +615,7 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
             find_account('undefined', AccountRealm, AccountName, ErrorContext)
     end.
 
--spec error_no_account_phone_number(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec error_no_account_phone_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 error_no_account_phone_number(Context, PhoneNumber) ->
     Msg =
         kz_json:from_list(
@@ -624,7 +624,7 @@ error_no_account_phone_number(Context, PhoneNumber) ->
           ]),
     cb_context:add_validation_error(<<"phone_number">>, <<"not_found">>, Msg, Context).
 
--spec error_no_account_realm(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec error_no_account_realm(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 error_no_account_realm(Context, AccountRealm) ->
     Msg =
         kz_json:from_list(
@@ -633,7 +633,7 @@ error_no_account_realm(Context, AccountRealm) ->
           ]),
     cb_context:add_validation_error(<<"account_realm">>, <<"not_found">>, Msg, Context).
 
--spec error_no_account_name(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec error_no_account_name(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 error_no_account_name(Context, AccountName) ->
     Msg =
         kz_json:from_list(

@@ -64,7 +64,7 @@ authenticate(Context, 'basic') ->
     end;
 authenticate(_Context, _TokenType) -> 'false'.
 
--spec check_basic_token(cb_context:context(), api_binary()) ->
+-spec check_basic_token(cb_context:context(), kz_term:api_binary()) ->
                                'false' |
                                {'true' | 'stop', cb_context:context()}.
 check_basic_token(_Context, <<>>) -> 'false';
@@ -75,7 +75,7 @@ check_basic_token(Context, AuthToken) ->
         {'error', 'not_found'} -> maybe_check_credentials(Context, AuthToken)
     end.
 
--spec maybe_check_credentials(cb_context:context(), api_binary()) ->
+-spec maybe_check_credentials(cb_context:context(), kz_term:api_binary()) ->
                                      'false' |
                                      {'true' | 'stop', cb_context:context()}.
 maybe_check_credentials(Context, AuthToken) ->
@@ -86,7 +86,7 @@ maybe_check_credentials(Context, AuthToken) ->
              'false'
     end.
 
--spec check_credentials(cb_context:context(), ne_binary(), api_binary()) ->
+-spec check_credentials(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                'false' |
                                {'true' | 'stop', cb_context:context()}.
 check_credentials(Context, AccountId, Credentials) ->
@@ -94,7 +94,7 @@ check_credentials(Context, AccountId, Credentials) ->
     BasicType = kapps_account_config:get(AccountId, ?AUTH_CONFIG_CAT, ?BASIC_AUTH_KEY, ?BASIC_AUTH_TYPE),
     check_credentials(Context, AccountId, Credentials, BasicType).
 
--spec check_credentials(cb_context:context(), ne_binary(), ne_binary() | {ne_binary(), ne_binary()}, ne_binary()) ->
+-spec check_credentials(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary()) ->
                                'false' |
                                {'true' | 'stop', cb_context:context()}.
 check_credentials(Context, AccountId, {Username, Password}, _BasicType) ->
@@ -116,7 +116,7 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
         _ -> 'false'
     end.
 
--spec get_credential_doc(ne_binary(), ne_binary(), ne_binary()) -> api_object().
+-spec get_credential_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_credential_doc(AccountId, View, Key) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Options = [{'key', Key}, 'include_docs'],

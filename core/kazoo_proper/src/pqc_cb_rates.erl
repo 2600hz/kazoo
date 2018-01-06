@@ -38,7 +38,7 @@
 -define(GLOBAL_COST, 1).
 -define(ACCOUNT_COST, 4).
 
--spec rate_doc(ne_binary() | proper_types:type(), number() | proper_types:type()) ->
+-spec rate_doc(kz_term:ne_binary() | proper_types:type(), number() | proper_types:type()) ->
                       kzd_rate:doc().
 rate_doc(RatedeckId, Cost) ->
     kzd_rate:from_map(#{<<"prefix">> => <<"1222">>
@@ -48,16 +48,16 @@ rate_doc(RatedeckId, Cost) ->
                        }
                      ).
 
--spec upload_rate(pqc_cb_api:state(), kzd_rate:doc()) -> {'ok', api_ne_binary()}.
+-spec upload_rate(pqc_cb_api:state(), kzd_rate:doc()) -> {'ok', kz_term:api_ne_binary()}.
 upload_rate(API, RateDoc) ->
     ?INFO("uploading rate ~p", [RateDoc]),
     CSV = kz_csv:from_jobjs([RateDoc]),
     upload_csv(API, CSV, kzd_rate:ratedeck(RateDoc)).
 
 -spec upload_csv(pqc_cb_api:state(), iodata()) ->
-                        {'ok', api_ne_binary()}.
--spec upload_csv(pqc_cb_api:state(), iodata(), api_ne_binary()) ->
-                        {'ok', api_ne_binary()}.
+                        {'ok', kz_term:api_ne_binary()}.
+-spec upload_csv(pqc_cb_api:state(), iodata(), kz_term:api_ne_binary()) ->
+                        {'ok', kz_term:api_ne_binary()}.
 upload_csv(API, CSV) ->
     upload_csv(API, CSV, 'undefined').
 
@@ -72,7 +72,7 @@ upload_csv(API, CSV, _RatedeckId) ->
 
     {'ok', TaskId}.
 
--spec create_service_plan(pqc_cb_api:state(), ne_binary() | proper_types:type()) ->
+-spec create_service_plan(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type()) ->
                                  'ok' | {'error', any()}.
 create_service_plan(API, RatedeckId) ->
     RatesResp = get_rates(API, RatedeckId),
@@ -89,7 +89,7 @@ create_service_plan(API, RatedeckId) ->
             end
     end.
 
--spec assign_service_plan(pqc_cb_api:state(), ne_binary() | proper_types:type(), ne_binary()) ->
+-spec assign_service_plan(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
                                  pqc_cb_api:response().
 assign_service_plan(_API, 'undefined', _RatedeckId) ->
     ?INFO("no account to assign ~s to", [_RatedeckId]),
@@ -99,8 +99,8 @@ assign_service_plan(API, AccountId, RatedeckId) ->
     ServicePlanId = service_plan_id(RatedeckId),
     pqc_cb_service_plans:assign_service_plan(API, AccountId, ServicePlanId).
 
--spec rate_account_did(pqc_cb_api:state(), ne_binary() | proper_types:type(), ne_binary()) ->
-                              api_integer().
+-spec rate_account_did(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
+                              kz_term:api_integer().
 rate_account_did(_API, 'undefined', _DID) ->
     ?INFO("account doesn't exist to rate DID ~p", [_DID]),
     ?FAILED_RESPONSE;
@@ -109,7 +109,7 @@ rate_account_did(API, AccountId, DID) ->
     URL = string:join([pqc_cb_accounts:account_url(AccountId), "rates", "number", kz_term:to_list(DID)], "/"),
     make_rating_request(API, URL).
 
--spec ratedeck_service_plan(ne_binary() | kzd_rate:doc()) -> kzd_service_plan:doc().
+-spec ratedeck_service_plan(kz_term:ne_binary() | kzd_rate:doc()) -> kzd_service_plan:doc().
 ratedeck_service_plan(<<_/binary>> = RatedeckId) ->
     Plan = kz_json:from_list([{<<"ratedeck">>
                               ,kz_json:from_list([{RatedeckId, kz_json:new()}])
@@ -142,13 +142,13 @@ wait_for_task(API, TaskId) ->
             wait_for_task(API, TaskId)
     end.
 
--spec delete_rate(pqc_cb_api:state(), ne_binary() | kzd_rate:doc()) -> pqc_cb_api:response().
+-spec delete_rate(pqc_cb_api:state(), kz_term:ne_binary() | kzd_rate:doc()) -> pqc_cb_api:response().
 delete_rate(API, <<_/binary>>=RatedeckId) ->
     delete_rate(API, ?RATE_ID, RatedeckId);
 delete_rate(API, RateDoc) ->
     delete_rate(API, ?RATE_ID, kzd_rate:ratedeck(RateDoc)).
 
--spec delete_rate(pqc_cb_api:state(), ne_binary(), ne_binary()) -> pqc_cb_api:response().
+-spec delete_rate(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete_rate(API, ID, <<_/binary>>=RatedeckId) ->
     ?INFO("deleting rate ~s from ~s", [ID, RatedeckId]),
 
@@ -173,7 +173,7 @@ get_rate(API, RateDoc) ->
                            ).
 
 -spec get_rates(pqc_cb_api:state()) -> pqc_cb_api:response().
--spec get_rates(pqc_cb_api:state(), ne_binary()) -> pqc_cb_api:response().
+-spec get_rates(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 get_rates(API) ->
     get_rates(API, ?KZ_RATES_DB).
 get_rates(API, RatedeckId) ->
@@ -184,14 +184,14 @@ get_rates(API, RatedeckId) ->
                            ,pqc_cb_api:request_headers(API)
                            ).
 
--spec rate_did(pqc_cb_api:state(), ne_binary(), ne_binary()) -> api_integer().
+-spec rate_did(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_integer().
 rate_did(API, RatedeckId, DID) ->
     ?INFO("rating DID ~s using ~s", [DID, RatedeckId]),
     URL = rate_number_url(RatedeckId, DID),
 
     make_rating_request(API, URL).
 
--spec make_rating_request(pqc_cb_api:state(), string()) -> api_integer().
+-spec make_rating_request(pqc_cb_api:state(), string()) -> kz_term:api_integer().
 make_rating_request(API, URL) ->
     RequestHeaders = pqc_cb_api:request_headers(API),
 

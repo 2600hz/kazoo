@@ -26,7 +26,7 @@
 
 -record(state, {parser_id :: atom()
                ,socket :: gen_udp:socket()
-               ,listen_ip :: ne_binary()
+               ,listen_ip :: kz_term:ne_binary()
                ,listen_port :: pos_integer()
                }).
 -type state() :: #state{}.
@@ -38,7 +38,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link([ci_parsers_util:parser_args()]) -> startlink_ret().
+-spec start_link([ci_parsers_util:parser_args()]) -> kz_types:startlink_ret().
 start_link([Arg]=Args) ->
     ServerName = ci_parsers_util:make_name(Arg),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
@@ -58,7 +58,7 @@ start_link([Arg]=Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init({'parser_args', ne_binary(), pos_integer()}) -> {'ok', state()}.
+-spec init({'parser_args', kz_term:ne_binary(), pos_integer()}) -> {'ok', state()}.
 init({'parser_args', IP, Port} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
     _ = kz_util:put_callid(ParserId),
@@ -86,7 +86,7 @@ init({'parser_args', IP, Port} = Args) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(atom(), any(), state()) -> handle_call_ret().
+-spec handle_call(atom(), any(), state()) -> kz_types:handle_call_ret().
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',
@@ -102,7 +102,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
@@ -117,7 +117,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'udp', _Socket, _IPTuple, _InPortNo, Packet}, State) ->
     {'ok', Hep} = hep:decode(Packet),
     make_and_store_chunk(State#state.parser_id, Hep),
@@ -178,7 +178,7 @@ make_and_store_chunk(ParserId, Hep) ->
     lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk).
 
--spec ip(inet:ip4_address() | inet:ip6_address()) -> ne_binary().
+-spec ip(inet:ip4_address() | inet:ip6_address()) -> kz_term:ne_binary().
 ip({92,_,_,_}=IP) ->
     lager:debug("look we hit this terrible case again!"),
     ip(setelement(1, IP, 192));

@@ -17,7 +17,7 @@
                               ]).
 -define(DEFAULT_FILTER_MODE, <<"empty_fail">>).
 
--spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:object()) ->
+-spec handle_req(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary(), kz_json:object()) ->
                         stepswitch_resources:resources().
 handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     SourceA = kz_srs_util:get_source(kz_json:get_value(<<"value_a">>, Params)),
@@ -60,12 +60,12 @@ maybe_db_type({'database', SelectorName}, Resources, PrefixSrc) ->
     {'database', View, Options};
 maybe_db_type(Other, _Resources, _PrefixSrc) -> Other.
 
--spec build_prefixes(ne_binary()) -> ne_binaries().
+-spec build_prefixes(kz_term:ne_binary()) -> kz_term:ne_binaries().
 build_prefixes(<<"+", Rest/binary>>) -> build_prefixes(Rest);
 build_prefixes(<<D:1/binary, Rest/binary>>) ->
     build_prefixes(Rest, D, [D]).
 
--spec build_prefixes(ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries().
+-spec build_prefixes(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 build_prefixes(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
     build_prefixes(Rest, <<Prefix/binary, D/binary>>, [<<Prefix/binary, D/binary>> | Acc]);
 build_prefixes(<<>>, _, Acc) -> Acc.

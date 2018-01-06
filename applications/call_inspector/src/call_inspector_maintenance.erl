@@ -31,7 +31,7 @@ list_active_parsers() ->
     lists:foreach(fun (Id) -> io:format("~p\n", [Id]) end, Ids),
     'no_return'.
 
--spec stop_active_parser(text()) -> 'ok'.
+-spec stop_active_parser(kz_term:text()) -> 'ok'.
 stop_active_parser(Id)
   when not is_atom(Id) ->
     stop_active_parser(
@@ -43,7 +43,7 @@ stop_active_parser(Id)
   when is_atom(Id) ->
     ci_parsers_sup:stop_child(Id).
 
--spec start_freeswitch_parser(text(), text(), text()) -> 'no_return'.
+-spec start_freeswitch_parser(kz_term:text(), kz_term:text(), kz_term:text()) -> 'no_return'.
 start_freeswitch_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
     case ci_parsers_sup:start_child('ci_parser_freeswitch', Args) of
@@ -55,7 +55,7 @@ start_freeswitch_parser(Filename, LogIP, LogPort) ->
             'no_return'
     end.
 
--spec start_kamailio_parser(text(), text(), text()) -> 'no_return'.
+-spec start_kamailio_parser(kz_term:text(), kz_term:text(), kz_term:text()) -> 'no_return'.
 start_kamailio_parser(Filename, LogIP, LogPort) ->
     Args = [{'parser_args', Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
     case ci_parsers_sup:start_child('ci_parser_kamailio', Args) of
@@ -67,7 +67,7 @@ start_kamailio_parser(Filename, LogIP, LogPort) ->
             'no_return'
     end.
 
--spec start_hep_parser(text(), text()) -> 'no_return'.
+-spec start_hep_parser(kz_term:text(), kz_term:text()) -> 'no_return'.
 start_hep_parser(IP, Port) ->
     Args = [{'parser_args', kz_term:to_binary(IP), kz_term:to_integer(Port)}],
     case ci_parsers_sup:start_child('ci_parser_hep', Args) of
@@ -82,10 +82,10 @@ start_hep_parser(IP, Port) ->
 -spec flush() -> 'ok'.
 flush() -> ci_datastore:flush().
 
--spec flush(text()) -> 'ok'.
+-spec flush(kz_term:text()) -> 'ok'.
 flush(CallId) -> ci_datastore:flush(CallId).
 
--spec callid_details(text()) -> 'no_return'.
+-spec callid_details(kz_term:text()) -> 'no_return'.
 callid_details(CallId) ->
     Props = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -106,7 +106,7 @@ callid_details(CallId) ->
     end,
     no_return.
 
--spec inspect_call_id(ne_binary()) -> no_return.
+-spec inspect_call_id(kz_term:ne_binary()) -> no_return.
 inspect_call_id(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

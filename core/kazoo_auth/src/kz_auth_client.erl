@@ -19,11 +19,11 @@
         ]).
 
 
--spec token_for_auth_id(ne_binary()) -> {ok | error, map()}.
+-spec token_for_auth_id(kz_term:ne_binary()) -> {ok | error, map()}.
 token_for_auth_id(AuthId) ->
     token_for_auth_id(AuthId, #{}).
 
--spec token_for_auth_id(ne_binary(), map()) -> {ok | error, map()}.
+-spec token_for_auth_id(kz_term:ne_binary(), map()) -> {ok | error, map()}.
 token_for_auth_id(AuthId, Options) ->
     Map = #{options => Options#{auth_id => AuthId}},
     Routines = [fun add_subject/1
@@ -40,11 +40,11 @@ token_for_auth_id(AuthId, Options) ->
     kz_auth_util:run(Map, Routines).
 
 
--spec token_for_app(ne_binary()) -> {ok | error, map()}.
+-spec token_for_app(kz_term:ne_binary()) -> {ok | error, map()}.
 token_for_app(AppId) ->
     token_for_app(AppId, #{}).
 
--spec token_for_app(ne_binary(), map()) -> {ok | error, map()}.
+-spec token_for_app(kz_term:ne_binary(), map()) -> {ok | error, map()}.
 token_for_app(AppId, Options) ->
     Map = #{app_id => AppId
            ,options => Options
