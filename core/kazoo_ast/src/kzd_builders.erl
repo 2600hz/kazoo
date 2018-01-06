@@ -105,7 +105,7 @@ add_sub_property(SubProperty, SubSchema, Acc, ParentProperty) ->
     accessor_from_properties(ParentProperty ++ [SubProperty], SubSchema, Acc).
 
 getter_name([_|_]=Properties) ->
-    kz_binary:join(Properties, <<"_">>);
+    kz_binary:join([getter_name(P) || P <- Properties], <<"_">>);
 getter_name(Property) ->
     kz_term:to_lower_binary(Property).
 
