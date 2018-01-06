@@ -156,6 +156,8 @@ json_getter_fun(Schema, <<"array">>) ->
     {"get_list_value", list_return_subtype(Schema)};
 json_getter_fun(_Schema, <<"integer">>) ->
     {"get_integer_value", "integer()"};
+json_getter_fun(_Schema, <<"number">>) ->
+    {"get_value", "number()"};
 json_getter_fun(Schema, 'undefined') ->
     case kz_json:get_value(<<"$ref">>, Schema) of
         'undefined' ->
@@ -190,6 +192,7 @@ list_return_subtype(Schema, 'undefined') ->
     end;
 list_return_subtype(_Schema, <<"string">>) -> "ne_binaries()";
 list_return_subtype(_Schema, <<"integer">>) -> "integers()";
+list_return_subtype(_Schema, <<"number">>) -> "[number()]";
 list_return_subtype(_Schema, <<"object">>) -> "kz_json:objects()";
 list_return_subtype(_Schema, _Type) ->
     ?LOG_INFO("unhandled subtype ~p~n", [_Type]),
