@@ -1,0 +1,61 @@
+-module(kzd_acls).
+
+-export([new/0]).
+-export([cidr/1, cidr/2, set_cidr/2]).
+-export([description/1, description/2, set_description/2]).
+-export([network_list_name/1, network_list_name/2, set_network_list_name/2]).
+-export([type/1, type/2, set_type/2]).
+
+
+-include("kz_documents.hrl").
+
+-type doc() :: kz_json:object().
+-export_type([doc/0]).
+
+-spec new() -> doc().
+new() ->
+    kz_json_schema:default_object(?MODULE_STRING).
+
+-spec cidr(doc()) -> api_binary().
+-spec cidr(doc(), Default) -> binary() | Default.
+cidr(Doc) ->
+    cidr(Doc, 'undefined').
+cidr(Doc, Default) ->
+    kz_json:get_binary_value(<<"cidr">>, Doc, Default).
+
+-spec set_cidr(doc(), binary()) -> doc().
+set_cidr(Doc, Cidr) ->
+    kz_json:set_value(<<"cidr">>, Cidr, Doc).
+
+-spec description(doc()) -> api_binary().
+-spec description(doc(), Default) -> binary() | Default.
+description(Doc) ->
+    description(Doc, 'undefined').
+description(Doc, Default) ->
+    kz_json:get_binary_value(<<"description">>, Doc, Default).
+
+-spec set_description(doc(), binary()) -> doc().
+set_description(Doc, Description) ->
+    kz_json:set_value(<<"description">>, Description, Doc).
+
+-spec network_list_name(doc()) -> api_binary().
+-spec network_list_name(doc(), Default) -> binary() | Default.
+network_list_name(Doc) ->
+    network_list_name(Doc, 'undefined').
+network_list_name(Doc, Default) ->
+    kz_json:get_binary_value(<<"network_list_name">>, Doc, Default).
+
+-spec set_network_list_name(doc(), binary()) -> doc().
+set_network_list_name(Doc, NetworkListName) ->
+    kz_json:set_value(<<"network_list_name">>, NetworkListName, Doc).
+
+-spec type(doc()) -> binary().
+-spec type(doc(), Default) -> binary() | Default.
+type(Doc) ->
+    type(Doc, <<"allow">>).
+type(Doc, Default) ->
+    kz_json:get_binary_value(<<"type">>, Doc, Default).
+
+-spec set_type(doc(), binary()) -> doc().
+set_type(Doc, Type) ->
+    kz_json:set_value(<<"type">>, Type, Doc).

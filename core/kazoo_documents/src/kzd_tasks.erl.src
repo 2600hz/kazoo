@@ -1,0 +1,37 @@
+-module(kzd_tasks).
+
+-export([new/0]).
+-export([file_name/1, file_name/2, set_file_name/2]).
+-export([records/1, records/2, set_records/2]).
+
+
+-include("kz_documents.hrl").
+
+-type doc() :: kz_json:object().
+-export_type([doc/0]).
+
+-spec new() -> doc().
+new() ->
+    kz_json_schema:default_object(?MODULE_STRING).
+
+-spec file_name(doc()) -> api_binary().
+-spec file_name(doc(), Default) -> binary() | Default.
+file_name(Doc) ->
+    file_name(Doc, 'undefined').
+file_name(Doc, Default) ->
+    kz_json:get_binary_value(<<"file_name">>, Doc, Default).
+
+-spec set_file_name(doc(), binary()) -> doc().
+set_file_name(Doc, FileName) ->
+    kz_json:set_value(<<"file_name">>, FileName, Doc).
+
+-spec records(doc()) -> api_list().
+-spec records(doc(), Default) -> list() | Default.
+records(Doc) ->
+    records(Doc, 'undefined').
+records(Doc, Default) ->
+    kz_json:get_list_value(<<"records">>, Doc, Default).
+
+-spec set_records(doc(), list()) -> doc().
+set_records(Doc, Records) ->
+    kz_json:set_value(<<"records">>, Records, Doc).
