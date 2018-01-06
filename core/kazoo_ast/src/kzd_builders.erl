@@ -53,7 +53,10 @@ accessors_from_properties(Properties) ->
                  ).
 
 base_module(SchemaName) ->
-    ["-module(kzd_", SchemaName, ").\n\n"].
+    ["-module(kzd_", clean_name(SchemaName), ").\n\n"].
+
+clean_name(SchemaName) ->
+    binary:replace(SchemaName, <<"-">>, <<"_">>, ['global']).
 
 base_exports() ->
     ["-export([new/0]).\n\n"].
@@ -73,8 +76,8 @@ base_accessors() ->
     ].
 
 accessor_from_properties(Property, Schema, {Exports, Accessors}) ->
-    {add_exports(Property, Exports)
-    ,add_accessors(Property, Schema, Accessors)
+    {add_exports(clean_name(Property), Exports)
+    ,add_accessors(clean_name(Property), Schema, Accessors)
     }.
 
 add_exports(Property, Exports) ->
@@ -90,7 +93,8 @@ add_accessors(Property, Schema, Accessors) ->
     Getter = kz_term:to_lower_binary(Property),
     SetVar = kz_ast_util:smash_snake(kz_binary:ucfirst(Property), <<>>),
 
-    [["-spec ", Getter, "(doc()) -> ", default_return_type(ReturnType, Default), ".\n"
+    [["\n"
+      "-spec ", Getter, "(doc()) -> ", default_return_type(ReturnType, Default), ".\n"
       "-spec ", Getter, "(doc(), Default) -> ", ReturnType, " | Default.\n"
      ,Getter, "(Doc) ->\n"
       "    ", Getter, "(Doc, ", Default, ").\n"
@@ -98,7 +102,7 @@ add_accessors(Property, Schema, Accessors) ->
       "    kz_json:", JSONGetterFun, "(<<\"", Property, "\">>, Doc, Default).\n\n"
      ,"-spec set_", Getter, "(doc(), ", ReturnType, ") -> doc().\n"
      ,"set_", Getter, "(Doc, ", SetVar, ") ->\n"
-     ,"    kz_json:set_value(<<\"", Property, "\">>, ", SetVar, ", Doc).\n\n"
+     ,"    kz_json:set_value(<<\"", Property, "\">>, ", SetVar, ", Doc).\n"
      ]
      | Accessors
     ].
