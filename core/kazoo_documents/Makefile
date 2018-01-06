@@ -20,6 +20,9 @@ clean-autogen:
 %.erl: %.erl.src
 	@cp -n $< $@
 
+diff:
+	@$(foreach ERL,$(ERL_FILES),cmp --silent $(ERL) $(ERL:.erl=.erl.src) || diff -c $(ERL) $(ERL).src;) true
+
 eunit: kz-test
 
 test: kz-test
