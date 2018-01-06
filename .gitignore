@@ -81,3 +81,4 @@ compile_commands.json
 /doc/mkdocs/*.local
 
 .idea/
+/core/kazoo_documents/src/*.erl.src

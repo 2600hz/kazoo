@@ -6,7 +6,7 @@
         ,ast_to_list_of_binaries/1
         ,ast_list_to_list/1
         ,binary_match_to_binary/1
-        ,smash_snake/1
+        ,smash_snake/1, smash_snake/2
 
         ,default_schema_priv_dir/0
         ,schema_path/1, schema_path/2
@@ -111,12 +111,15 @@ ast_list_el_to_el(?TUPLE(Fields)) ->
 
 %% user_auth -> User Auth
 -spec smash_snake(kz_term:ne_binary()) -> iolist().
+-spec smash_snake(kz_term:ne_binary(), binary()) -> iolist().
 smash_snake(BaseName) ->
+    smash_snake(BaseName, <<" ">>).
+smash_snake(BaseName, Glue) ->
     case binary:split(BaseName, <<"_">>, ['global']) of
         [Part] -> format_name_part(Part);
         [H|Parts] ->
             [format_name_part(H)
-             | [[<<" ">>, format_name_part(Part)] || Part <- Parts]
+             | [[Glue, format_name_part(Part)] || Part <- Parts]
             ]
     end.
 
