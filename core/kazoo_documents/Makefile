@@ -8,11 +8,14 @@ ERL_FILES = $(SRC_FILES:.erl.src=.erl)
 all: compile
 
 compile: $(ERL_FILES)
-	@echo $(SRC_FILES)
-	@echo $(ERL_FILES)
+
+clean: clean-autogen
+
+clean-autogen:
+	@$(foreach ERL,$(ERL_FILES),cmp --silent $(ERL) $(ERL:.erl=.erl.src) && rm $(ERL);)
 
 %.erl: %.erl.src
-	cp -n $< $@
+	@cp -n $< $@
 
 eunit: kz-test
 
