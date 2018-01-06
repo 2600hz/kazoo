@@ -84,6 +84,8 @@ base_accessors() ->
      "    kz_json_schema:default_object(?MODULE_STRING).\n"
     ].
 
+accessor_from_properties(?NE_BINARY=Property, Schema, Acc) ->
+    accessor_from_properties([Property], Schema, Acc);
 accessor_from_properties(Property, Schema, {Exports, Accessors}) ->
     Acc = {add_exports(clean_name(Property), Exports)
           ,add_accessors(clean_name(Property), Schema, Accessors)
@@ -100,7 +102,7 @@ maybe_add_sub_properties(Property, Schema, Acc0, <<"object">>) ->
 maybe_add_sub_properties(_Property, _Schema, Acc, _Type) -> Acc.
 
 add_sub_property(SubProperty, SubSchema, Acc, ParentProperty) ->
-    accessor_from_properties([ParentProperty, SubProperty], SubSchema, Acc).
+    accessor_from_properties(ParentProperty ++ [SubProperty], SubSchema, Acc).
 
 getter_name([_|_]=Properties) ->
     kz_binary:join(Properties, <<"_">>);
@@ -188,6 +190,7 @@ list_return_subtype(Schema, 'undefined') ->
     end;
 list_return_subtype(_Schema, <<"string">>) -> "ne_binaries()";
 list_return_subtype(_Schema, <<"integer">>) -> "integers()";
+list_return_subtype(_Schema, <<"object">>) -> "kz_json:objects()";
 list_return_subtype(_Schema, _Type) ->
     ?LOG_INFO("unhandled subtype ~p~n", [_Type]),
     "list()".
