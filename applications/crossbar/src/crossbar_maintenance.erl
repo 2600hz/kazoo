@@ -1187,8 +1187,10 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
 
 -spec update_schemas() -> 'ok'.
 update_schemas() ->
+    kz_datamgr:suppress_change_notice(),
+    lager:notice("starting system schemas update"),
     kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
-    lager:notice("system schemas updated").
+    lager:notice("finished system schemas update").
 
 -spec db_init() -> 'ok'.
 db_init() ->
