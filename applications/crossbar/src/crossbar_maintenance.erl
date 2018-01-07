@@ -1185,10 +1185,15 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
              ],
     update_screenshots(AppId, MA, SShots).
 
+-spec update_schemas() -> 'ok'.
+update_schemas() ->
+    kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
+    lager:notice("system schemas updated").
+
 -spec db_init() -> 'ok'.
 db_init() ->
     kz_datamgr:suppress_change_notice(),
-    _ = kz_util:spawn(fun() -> kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>) end),
+    _ = kz_util:spawn(fun update_schemas/1),
     _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, ?APP, <<"account/media.json">>),
     _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),
