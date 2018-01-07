@@ -610,10 +610,12 @@ remove_acl(Name, ACLs, ConfigFun) ->
 
 -spec list_acls(kz_json:object(), api_binary()) -> 'no_return'.
 list_acls(ACLs, Network) ->
-    io:format("+--------------------------------+-------------------+---------------+-------+------------------+----------------------------------+~n", []),
+    ThinBar  = "+--------------------------------+--------------------+---------------+-------+------------------+----------------------------------+\n",
+    ThickBar = "+================================+====================+===============+=======+==================+==================================+\n",
+    io:put_chars(ThinBar),
     FormatString = "| ~-30s | ~-18s | ~-13s | ~-5s | ~-16s | ~-32s |~n",
     io:format(FormatString, [<<"Name">>, <<"CIDR">>, <<"List">>, <<"Type">>, <<"Authorizing Type">>, <<"ID">>]),
-    io:format("+================================+===================+===============+=======+==================+==================================+~n", []),
+    io:put_chars(ThickBar),
     Props = kz_json:foldl(fun(Name, ACL, Acc) ->
                                   [{kz_json:get_value(<<"network-list-name">>, ACL)
                                    ,kz_json:set_value(<<"name">>, Name, ACL)}
@@ -623,7 +625,7 @@ list_acls(ACLs, Network) ->
     _ = [maybe_print_acl(Network, FormatString, ACL)
          || {_, ACL} <- lists:sort(fun list_acls_sort/2, Props)
         ],
-    io:format("+--------------------------------+-------------------+---------------+-------+------------------+----------------------------------+~n", []),
+    io:put_chars(ThinBar),
     'no_return'.
 
 list_acls_sort({Network1, _}, {Network2, _}) ->
