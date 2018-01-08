@@ -1,6 +1,7 @@
 -module(kzd_call_recordings).
 
 -export([new/0]).
+-export([type/0, type/1]).
 -export([call_id/1, call_id/2, set_call_id/2]).
 -export([callee_id_name/1, callee_id_name/2, set_callee_id_name/2]).
 -export([callee_id_number/1, callee_id_number/2, set_callee_id_number/2]).
@@ -26,15 +27,23 @@
 -export([to/1, to/2, set_to/2]).
 -export([url/1, url/2, set_url/2]).
 
-
 -include("kz_documents.hrl").
+
+-define(PVT_TYPE, <<"call_recording">>).
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?MODULE_STRING).
+    kz_doc:set_type(kz_json_schema:default_object(?MODULE_STRING), type()).
+
+-spec type() -> ne_binary().
+-spec type(doc()) -> ne_binary().
+type() -> ?PVT_TYPE.
+
+type(Doc) ->
+    kz_doc:type(Doc, ?PVT_TYPE).
 
 -spec call_id(doc()) -> api_binary().
 -spec call_id(doc(), Default) -> binary() | Default.

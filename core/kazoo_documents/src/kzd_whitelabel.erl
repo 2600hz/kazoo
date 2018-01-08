@@ -14,14 +14,18 @@
 -export([outbound_trunks_price/1, outbound_trunks_price/2, set_outbound_trunks_price/2]).
 -export([port/1, port/2, set_port/2]).
 -export([port_features/1, port_features/2, set_port_features/2]).
+-export([port_hide/1, port_hide/2, set_port_hide/2]).
 -export([port_loa/1, port_loa/2, set_port_loa/2]).
 -export([port_resporg/1, port_resporg/2, set_port_resporg/2]).
 -export([port_support_email/1, port_support_email/2, set_port_support_email/2]).
 -export([port_terms/1, port_terms/2, set_port_terms/2]).
 -export([twoway_trunks_price/1, twoway_trunks_price/2, set_twoway_trunks_price/2]).
 
+-export([fetch/1]).
 
 -include("kz_documents.hrl").
+
+-define(ID, <<"whitelabel">>).
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
@@ -173,6 +177,17 @@ port_features(Doc, Default) ->
 set_port_features(Doc, PortFeatures) ->
     kz_json:set_value([<<"port">>, <<"features">>], PortFeatures, Doc).
 
+-spec port_hide(doc()) -> boolean().
+-spec port_hide(doc(), Default) -> boolean() | Default.
+port_hide(Doc) ->
+    port_hide(Doc, 'false').
+port_hide(Doc, Default) ->
+    kz_json:is_true(<<"hide_port">>, Doc, Default).
+
+-spec set_port_hide(doc(), boolean()) -> doc().
+set_port_hide(Doc, Hide) ->
+    kz_json:set_value(<<"hide_port">>, Hide, Doc).
+
 -spec port_loa(doc()) -> api_binary().
 -spec port_loa(doc(), Default) -> binary() | Default.
 port_loa(Doc) ->
@@ -227,3 +242,12 @@ twoway_trunks_price(Doc, Default) ->
 -spec set_twoway_trunks_price(doc(), binary()) -> doc().
 set_twoway_trunks_price(Doc, TwowayTrunksPrice) ->
     kz_json:set_value([<<"twoway_trunks_price">>], TwowayTrunksPrice, Doc).
+
+-spec fetch(api_binary()) ->
+                   {'ok', kz_json:object()} |
+                   {'error', any()}.
+fetch('undefined') ->
+    {'error', 'account_id_undefined'};
+fetch(Account) ->
+    AccoundDb = kz_util:format_account_db(Account),
+    kz_datamgr:open_cache_doc(AccoundDb, ?ID).
