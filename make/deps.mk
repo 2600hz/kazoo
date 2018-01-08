@@ -79,7 +79,7 @@ dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1b
 dep_jesse = git https://github.com/2600hz/jesse 1.5-rc6
 ##dep_jesse = git https://github.com/for-GET/jesse 1.5.0-rc2
 
-dep_lager = git https://github.com/erlang-lager/lager 3.5.1
+dep_lager = git https://github.com/erlang-lager/lager 3.5.2
 dep_trie = git https://github.com/okeuday/trie v1.5.4
 dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81df0d926960c0346
 dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53
