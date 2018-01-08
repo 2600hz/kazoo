@@ -53,15 +53,22 @@ from_gregorian_seconds(Seconds, TZ) when is_integer(Seconds) ->
 %%--------------------------------------------------------------------
 -spec from_iso_week(kz_iso_week()) -> kz_date().
 from_iso_week({Year, Week}) ->
-    Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
-    Offset = 4 - calendar:day_of_the_week(Year, 1, 4),
+    Jan4 = calendar:date_to_gregorian_days(Year, 1, 4),
+    Jan4DOW = calendar:day_of_the_week(Year, 1, 4),
     Days =
-        case Offset =:= 0 of
-            'true' -> Jan1 + ( Week * 7 );
-            'false' ->
-                Jan1 + Offset + ( ( Week - 1 ) * 7 )
-        end,
+        %% days to the ISO 8601 first week for the year
+        (Jan4 - weekday_distance(Jan4DOW, 1))
+        +
+        %% plus the number of days not including the first week
+        (Week - 1) * 7,
     calendar:gregorian_days_to_date(Days).
+
+-spec weekday_distance(1..7, 1..7) -> 1..7.
+weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
+    case D0 - D1 of
+        Days when Days =< 7 -> Days;
+        Days -> Days + 7
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
