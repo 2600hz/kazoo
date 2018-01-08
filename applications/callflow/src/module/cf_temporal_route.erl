@@ -20,6 +20,7 @@
 
 -export([handle/2
         ,normalize_date/1
+        ,iso_week_to_gregorian_date/1
         ]).
 
 -ifdef(TEST).
@@ -933,13 +934,13 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 iso_week_to_gregorian_date({Year, Week}) ->
     Jan4 = calendar:date_to_gregorian_days(Year, 1, 4),
     Jan4DOW = calendar:day_of_the_week(Year, 1, 4),
-        Days =
+    Days =
         %% days to the ISO 8601 first week for the year
         (Jan4 - weekday_distance(Jan4DOW, 1))
         +
         %% plus the number of days not including the first week
         (Week - 1) * 7,
-        calendar:gregorian_days_to_date(Days).
+    calendar:gregorian_days_to_date(Days).
 
 -spec weekday_distance(1..7, 1..7) -> 1..7.
 weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
