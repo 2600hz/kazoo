@@ -20,6 +20,7 @@
 
 -export([handle/2
         ,normalize_date/1
+        ,iso_week_to_gregorian_date/1
         ]).
 
 -ifdef(TEST).
@@ -931,15 +932,23 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 %%--------------------------------------------------------------------
 -spec iso_week_to_gregorian_date(kz_iso_week()) -> kz_date().
 iso_week_to_gregorian_date({Year, Week}) ->
-    Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
-    Offset = 4 - calendar:day_of_the_week(Year, 1, 4),
+    Jan4 = calendar:date_to_gregorian_days(Year, 1, 4),
+    Jan4DOW = calendar:day_of_the_week(Year, 1, 4),
     Days =
-        case Offset =:= 0 of
-            'true' -> Jan1 + ( Week * 7 );
-            'false' ->
-                Jan1 + Offset + ( ( Week - 1 ) * 7 )
-        end,
+        %% days to the ISO 8601 first week for the year
+        (Jan4 - weekday_distance(Jan4DOW, 1))
+        +
+        %% plus the number of days not including the first week
+        (Week - 1) * 7,
     calendar:gregorian_days_to_date(Days).
+
+-spec weekday_distance(1..7, 1..7) -> 1..7.
+weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
+    case D0 - D1 of
+        Days when Days =< 7 ->
+            Days;
+        Days -> Days + 7
+    end.
 
 -spec find_active_days(ne_binaries(), kz_day()) -> [kz_daynum()].
 find_active_days(Weekdays, DOW0) ->
