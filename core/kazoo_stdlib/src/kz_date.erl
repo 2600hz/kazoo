@@ -52,12 +52,7 @@ from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
 from_iso_week({Year, Week}) ->
     Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
     Offset = 4 - calendar:day_of_the_week(Year, 1, 4),
-    Days =
-        case Offset =:= 0 of
-            'true' -> Jan1 + ( Week * 7 );
-            'false' ->
-                Jan1 + Offset + ( ( Week - 1 ) * 7 )
-        end,
+    Days = Jan1 + Offset + ( ( Week - 1 ) * 7 ),
     calendar:gregorian_days_to_date(Days).
 
 %%--------------------------------------------------------------------
