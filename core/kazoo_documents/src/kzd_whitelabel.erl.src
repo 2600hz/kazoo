@@ -13,6 +13,7 @@
 -export([nav_learn_more/1, nav_learn_more/2, set_nav_learn_more/2]).
 -export([outbound_trunks_price/1, outbound_trunks_price/2, set_outbound_trunks_price/2]).
 -export([port/1, port/2, set_port/2]).
+-export([port_authority/1, port_authority/2, set_port_authority/2]).
 -export([port_features/1, port_features/2, set_port_features/2]).
 -export([port_loa/1, port_loa/2, set_port_loa/2]).
 -export([port_resporg/1, port_resporg/2, set_port_resporg/2]).
@@ -161,6 +162,17 @@ port(Doc, Default) ->
 -spec set_port(doc(), kz_json:object()) -> doc().
 set_port(Doc, Port) ->
     kz_json:set_value([<<"port">>], Port, Doc).
+
+-spec port_authority(doc()) -> any().
+-spec port_authority(doc(), Default) -> any() | Default.
+port_authority(Doc) ->
+    port_authority(Doc, 'undefined').
+port_authority(Doc, Default) ->
+    kz_json:get_value([<<"port">>, <<"authority">>], Doc, Default).
+
+-spec set_port_authority(doc(), any()) -> doc().
+set_port_authority(Doc, PortAuthority) ->
+    kz_json:set_value([<<"port">>, <<"authority">>], PortAuthority, Doc).
 
 -spec port_features(doc()) -> api_binary().
 -spec port_features(doc(), Default) -> binary() | Default.
