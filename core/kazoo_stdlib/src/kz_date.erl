@@ -101,15 +101,18 @@ normalize({Y, M, D}=Date) ->
 
 %%--------------------------------------------------------------------
 %% @doc Calculate when the second date is in time, relative to the first
+%% calendar:time_difference/2 is obsolete. Convert to gregorian seconds instead
 %% @end
 %%--------------------------------------------------------------------
 -spec relative_difference(kz_datetime(), kz_datetime()) -> 'future' | 'equal' | 'past'.
 relative_difference(Date1, Date2) ->
-    case calendar:time_difference(Date1, Date2) of
-        {D, _} when D > 0 -> 'future';
-        {D, _} when D < 0 -> 'past';
-        {0, {0, 0, 0}} -> 'equal';
-        {0, _} -> 'future'
+    case {calendar:datetime_to_gregorian_seconds(Date1)
+         ,calendar:datetime_to_gregorian_seconds(Date2)
+         }
+    of
+        {Present, Present} -> 'equal';
+        {Past, Future} when Future > Past -> 'future';
+        {Future, Past} when Future > Past -> 'past'
     end.
 
 %%--------------------------------------------------------------------
