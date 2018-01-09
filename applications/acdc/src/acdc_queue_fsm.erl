@@ -656,6 +656,7 @@ handle_sync_event(_Event, From, StateName, State) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
+    webseq:stop(?WSD_ID),
     lager:debug("acdc queue statem terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
