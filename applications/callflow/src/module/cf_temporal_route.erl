@@ -523,13 +523,15 @@ next_rule_date(#rule{cycle = <<"monthly">>
     case [D || D <- Days, D > D1] of
         %% The day hasn't happend on an 'active' month
         [Day|_] when Distance =:= Offset ->
-            kz_date:normalize({Y0, M0 + Offset, Day});
+            M01 = M0 + Offset,
+            kz_date:normalize({Y0 + (M01 div 12), M01 rem 12, Day});
         %% Empty List:
         %%   All of the days in the list have already happened
         %% Non Empty List that failed the guard:
         %%   The day hasn't happend on an 'inactive' month
         _ ->
-            kz_date:normalize({Y0, M0 + Offset + I0, hd( Days )})
+            M01 = M0 + Offset + I0,
+            kz_date:normalize({Y0 + (M01 div 12), M01 rem 12, hd(Days)})
     end;
 
 next_rule_date(#rule{cycle = <<"monthly">>
