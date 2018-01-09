@@ -17,6 +17,7 @@
 
 -spec start() -> {'ok', kz_term:atoms()}.
 start() ->
+    _ = io:setopts('user', [{'encoding', 'unicode'}]),
     {'ok', _Apps} = application:ensure_all_started(?APP).
 
 %% Application callbacks
