@@ -1134,11 +1134,15 @@ config_setting_key(Node, Setting) ->
 
 -spec migrate_config_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 migrate_config_doc(FromId, ToId) ->
-    case kz_datamgr:open_doc(?KZ_CONFIG_DB, FromId) of
-        {'error', 'not_found'} -> lager:debug("didn't find ~s to migrate", [FromId]);
-        {'ok', FromJObj} ->
-            migrate_from_doc_to_doc(FromJObj, open_to_doc(ToId))
-
+    case kz_datamgr:open_doc(?KZ_CONFIG_DB, ToId) of
+        {'ok', _ToJObj} ->
+            lager:info("target doc ~s exists already, not migrating ~s", [ToId, FromId]);
+        {'error', 'not_found'} ->
+            case kz_datamgr:open_doc(?KZ_CONFIG_DB, FromId) of
+                {'error', 'not_found'} -> lager:debug("didn't find ~s to migrate", [FromId]);
+                {'ok', FromJObj} ->
+                    migrate_from_doc_to_doc(FromJObj, base_to_doc(ToId))
+            end
     end.
 
 -spec migrate_from_doc_to_doc(kz_json:object(), kz_json:object()) -> 'ok'.
@@ -1177,9 +1181,6 @@ maybe_fix_nodename(<<"whistle_apps@", Host/binary>>) ->
 maybe_fix_nodename(NodeName) ->
     NodeName.
 
--spec open_to_doc(kz_term:ne_binary()) -> kz_json:object().
-open_to_doc(ToId) ->
-    case kz_datamgr:open_doc(?KZ_CONFIG_DB, ToId) of
-        {'ok', ToJObj} -> ToJObj;
-        {'error', 'not_found'} -> kz_json:from_list([{<<"_id">>, ToId}])
-    end.
+-spec base_to_doc(kz_term:ne_binary()) -> kz_json:object().
+base_to_doc(ToId) ->
+    kz_json:from_list([{<<"_id">>, ToId}]).
