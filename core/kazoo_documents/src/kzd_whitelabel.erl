@@ -14,7 +14,7 @@
 -export([outbound_trunks_price/1, outbound_trunks_price/2, set_outbound_trunks_price/2]).
 -export([port/1, port/2, set_port/2]).
 -export([port_features/1, port_features/2, set_port_features/2]).
--export([port_hide/1, port_hide/2, set_port_hide/2]).
+-export([hide_port/1, hide_port/2, set_hide_port/2]).
 -export([port_loa/1, port_loa/2, set_port_loa/2]).
 -export([port_resporg/1, port_resporg/2, set_port_resporg/2]).
 -export([port_support_email/1, port_support_email/2, set_port_support_email/2]).
@@ -177,15 +177,15 @@ port_features(Doc, Default) ->
 set_port_features(Doc, PortFeatures) ->
     kz_json:set_value([<<"port">>, <<"features">>], PortFeatures, Doc).
 
--spec port_hide(doc()) -> boolean().
--spec port_hide(doc(), Default) -> boolean() | Default.
-port_hide(Doc) ->
-    port_hide(Doc, 'false').
-port_hide(Doc, Default) ->
+-spec hide_port(doc()) -> boolean().
+-spec hide_port(doc(), Default) -> boolean() | Default.
+hide_port(Doc) ->
+    hide_port(Doc, 'false').
+hide_port(Doc, Default) ->
     kz_json:is_true(<<"hide_port">>, Doc, Default).
 
--spec set_port_hide(doc(), boolean()) -> doc().
-set_port_hide(Doc, Hide) ->
+-spec set_hide_port(doc(), boolean()) -> doc().
+set_hide_port(Doc, Hide) ->
     kz_json:set_value(<<"hide_port">>, Hide, Doc).
 
 -spec port_loa(doc()) -> api_binary().

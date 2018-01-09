@@ -252,8 +252,8 @@ is_filtered(AccountId, _App, <<"port">>=_AppName) ->
     lager:debug("filtering '~s' application", [_AppName]),
     ResellerId = kz_services:find_reseller_id(AccountId),
     MaybeHide =
-        case kz_whitelabel:fetch(ResellerId) of
-            {'ok', JObj} -> kz_whitelabel:port_hide(JObj);
+        case kzd_whitelabel:fetch(ResellerId) of
+            {'ok', JObj} -> kzd_whitelabel:hide_port(JObj);
             {'error', 'not_found'} -> 'false';
             {'error', _R} ->
                 lager:error("failed to load whitelabel doc for ~s: ~p", [ResellerId, _R]),

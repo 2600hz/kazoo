@@ -588,10 +588,10 @@ read(Context, Id) ->
 
 -spec authority(kz_term:ne_binary()) -> kz_term:api_binary().
 authority(AccountId) ->
-    case kz_whitelabel:fetch(AccountId) of
+    case kzd_whitelabel:fetch(AccountId) of
         {'error', _R} -> 'undefined';
         {'ok', JObj} ->
-            kz_whitelabel:port_authority(JObj)
+            kzd_whitelabel:port_authority(JObj)
     end.
 
 %%--------------------------------------------------------------------

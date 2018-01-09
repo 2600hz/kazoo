@@ -78,10 +78,10 @@ get_emails(ReqData, AccountId, 'false') ->
 
 -spec find_reseller_port_email(kz_term:api_binary()) -> kz_term:api_binary().
 find_reseller_port_email(AccountId) ->
-    case kz_whitelabel:fetch(AccountId) of
+    case kzd_whitelabel:fetch(AccountId) of
         {'error', _R} -> 'undefined';
         {'ok', JObj} ->
-            kz_whitelabel:port_email(JObj)
+            kzd_whitelabel:port_support_email(JObj)
     end.
 
 -spec get_port_req_email(kz_json:object()) -> kz_term:binaries().
