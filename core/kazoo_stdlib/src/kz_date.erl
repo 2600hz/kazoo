@@ -85,18 +85,14 @@ normalize({Y, M, D}) when M div 13 > 0 ->
     normalize({Y + (M div 13), (M rem 13)+1, D});
 normalize({Y, 0, D}) ->
     normalize({Y - 1, 12, D});
-normalize({Y, M, D}) when M < 1 ->
-    normalize({Y - 1, M + 12, D});
-normalize({Y, M, D}) when D < 1 ->
+normalize({Y, M, 0}) ->
     {Y1, M1, _} = normalize({Y, M - 1, 1}),
     D0 = calendar:last_day_of_the_month(Y1, M1),
-    normalize({Y1, M1, D + D0});
+    normalize({Y1, M1, D0});
 normalize({Y, M, D}=Date) ->
-    case days_in_month(Y, M) of
-        Days when D > Days ->
-            normalize({Y, M + 1, D - Days});
-        _ ->
-            Date
+    case D - days_in_month(Y, M) of
+        D1 when D1 > 0 -> normalize({Y, M + 1, D1});
+        _ -> Date
     end.
 
 %%--------------------------------------------------------------------
@@ -235,7 +231,7 @@ days_in_month(_Year,  9) -> 30;
 days_in_month(_Year, 11) -> 30;
 days_in_month(Year,   0) -> days_in_month(Year-1, 12);
 days_in_month(Year,  13) -> days_in_month(Year+1, 1);
-days_in_month(Year, 2) ->
+days_in_month(Year,   2) ->
     case calendar:is_leap_year(Year) of
         'true' -> 29;
         'false' -> 28

@@ -51,6 +51,8 @@ kz_dates_test_() ->
     Tests = [{{1600, 1, 65}, {1600, 3, 5}}
             ,{{1601, 1, 65}, {1601, 3, 6}}
             ,{{0,12,32}, {1,1,1}}
+            ,{{2601, 0, 2}, {2600, 12, 2}}
+            ,{{2600, 2, 0}, {2600, 1, 31}}
             ],
     [?_assertEqual(Normalized, kz_date:normalize(Date))
      || {Date, Normalized} <- Tests
@@ -63,21 +65,27 @@ iso_week_test_() ->
      || ISOWeek <- Roundtrips
     ].
 
+%% week 53 in a year is equivalent to week 1 in the next year.
+%% See 1/1/1 for instance {0,53} or {1,1}
+are_matched_weeks({Y1, 53}, {Y2, 1}) -> Y2 =:= Y1+1;
+are_matched_weeks({Y1, 1}, {Y2, 53}) -> Y1 =:= Y2+1;
+are_matched_weeks(ISO1, ISO2) -> ISO1 =:= ISO2.
+
 -ifdef(PROPER).
-%% proper_test_() ->
-%%     {"Runs " ?MODULE_STRING " PropEr tests"
-%%     ,[{atom_to_list(F)
-%%       ,fun () ->
-%%                ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
-%%                                                       ,{'numtests', 500}
-%%                                                       ]))
-%%        end
-%%       }
-%%       || {F, 0} <- ?MODULE:module_info('exports'),
-%%          F > 'prop_',
-%%          F < 'prop`'
-%%      ]
-%%     }.
+proper_test_() ->
+    {"Runs " ?MODULE_STRING " PropEr tests"
+    ,[{atom_to_list(F)
+      ,fun () ->
+               ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
+                                                      ,{'numtests', 500}
+                                                      ]))
+       end
+      }
+      || {F, 0} <- ?MODULE:module_info('exports'),
+         F > 'prop_',
+         F < 'prop`'
+     ]
+    }.
 
 prop_normalize() ->
     ?FORALL({GregorianDate, MonthsBack}
@@ -121,12 +129,6 @@ prop_iso_week() ->
                          )
             end
            ).
-
-%% week 53 in a year is equivalent to week 1 in the next year.
-%% See 1/1/1 for instance {0,53} or {1,1}
-are_matched_weeks({Y1, 53}, {Y2, 1}) -> Y2 =:= Y1+1;
-are_matched_weeks({Y1, 1}, {Y2, 53}) -> Y1 =:= Y2+1;
-are_matched_weeks(ISO1, ISO2) -> ISO1 =:= ISO2.
 
 prop_iso8601() ->
     ?FORALL({Date, ToFun}
