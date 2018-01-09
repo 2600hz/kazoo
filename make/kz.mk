@@ -119,8 +119,10 @@ $(ROOT)/make/cover.mk: $(ROOT)/make/core.mk
 $(ROOT)/make/core.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/core/core.mk' -O $(ROOT)/make/core.mk
 
-proper: ERLC_OPTS += -DPROPER
-proper: compile-test eunit
+proper: compile-proper eunit
+
+compile-proper: ERLC_OPTS += -DPROPER
+compile-proper: compile-test
 
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):
