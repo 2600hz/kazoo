@@ -9,7 +9,7 @@
                    ,kzd_voicemail_box:type()
                    ,kzd_fax:type()
                    ,kzd_box_message:type()
-                   ,kzd_call_recording:type()
+                   ,kzd_call_recordings:type()
                    ]).
 
 -define(DOC_MODB_TYPES, [kzd_fax:type()
