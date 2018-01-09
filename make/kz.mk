@@ -103,7 +103,9 @@ COVERDATA=$(PROJECT).coverdata
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
-eunit: compile-test
+eunit: compile-test eunit-run
+
+eunit-run:
 	@mkdir -p $(COVER_REPORT_DIR)
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
 
@@ -119,8 +121,10 @@ $(ROOT)/make/cover.mk: $(ROOT)/make/core.mk
 $(ROOT)/make/core.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/core/core.mk' -O $(ROOT)/make/core.mk
 
-proper: ERLC_OPTS += -DPROPER
-proper: compile-test eunit
+proper: compile-proper eunit-run
+
+compile-proper: ERLC_OPTS += -DPROPER
+compile-proper: compile-test
 
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):
