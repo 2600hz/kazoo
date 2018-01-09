@@ -16,6 +16,8 @@
 -endif.
 -include_lib("eunit/include/eunit.hrl").
 
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+
 %% PROPER TESTING
 -ifdef(PROPER).
 %%
@@ -102,3 +104,10 @@ converters_fields_in_order_test_() ->
                   ,{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, kz_json:from_list([{<<"prefix">>, <<"+1">>}])}
                   )
     ].
+
+to_db_test_() ->
+    Ns = [{<<"+14158867900">>, <<?KNM_DB_PREFIX_ENCODED, "%2B1415">>}
+         ,{<<"14158867900">>, <<?KNM_DB_PREFIX_ENCODED, "14158">>}
+         ,{<<"1234">>, 'undefined'}
+         ],
+    [?_assertEqual(Db, knm_converters:to_db(N)) || {N, Db} <- Ns].
