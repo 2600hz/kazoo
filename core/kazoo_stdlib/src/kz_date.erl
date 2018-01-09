@@ -81,14 +81,14 @@ to_iso_week({_Year, _Month, _Day}=Date) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize(kz_date()) -> kz_date().
-normalize({Y, M, D}) when M div 13 > 0 ->
-    normalize({Y + (M div 13), (M rem 13)+1, D});
 normalize({Y, 0, D}) ->
     normalize({Y - 1, 12, D});
 normalize({Y, M, 0}) ->
     {Y1, M1, _} = normalize({Y, M - 1, 1}),
     D0 = calendar:last_day_of_the_month(Y1, M1),
     normalize({Y1, M1, D0});
+normalize({Y, M, D}) when M > 12, M div 12 > 0 ->
+    normalize({Y + (M div 12), M rem 12, D});
 normalize({Y, M, D}=Date) ->
     case D - days_in_month(Y, M) of
         D1 when D1 > 0 -> normalize({Y, M + 1, D1});
