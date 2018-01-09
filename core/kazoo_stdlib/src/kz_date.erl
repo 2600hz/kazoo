@@ -27,6 +27,7 @@
 -export([ordinal_to_position/1
         ,wday_to_dow/1
         ,dow_to_wday/1
+        ,days_in_month/2
 
         ,pad_month/1
         ,pad_day/1
@@ -75,12 +76,10 @@ weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize(kz_date()) -> kz_date().
-normalize({Y, 13, D}) ->
-    normalize({Y + 1, 1, D});
+normalize({Y, M, D}) when M div 13 > 0 ->
+    normalize({Y + (M div 13), (M rem 13)+1, D});
 normalize({Y, 0, D}) ->
     normalize({Y - 1, 12, D});
-normalize({Y, M, D}) when M > 12 ->
-    normalize({Y + 1, M - 12, D});
 normalize({Y, M, D}) when M < 1 ->
     normalize({Y - 1, M + 12, D});
 normalize({Y, M, D}) when D < 1 ->
@@ -88,7 +87,7 @@ normalize({Y, M, D}) when D < 1 ->
     D0 = calendar:last_day_of_the_month(Y1, M1),
     normalize({Y1, M1, D + D0});
 normalize({Y, M, D}=Date) ->
-    case calendar:last_day_of_the_month(Y, M) of
+    case days_in_month(Y, M) of
         Days when D > Days ->
             normalize({Y, M + 1, D - Days});
         _ ->
@@ -213,6 +212,26 @@ dow_to_wday(4) -> <<"thursday">>;
 dow_to_wday(5) -> <<"friday">>;
 dow_to_wday(6) -> <<"saturday">>;
 dow_to_wday(7) -> <<"sunday">>.
+
+-spec days_in_month(kz_year(), 0..13) -> 28..31.
+days_in_month(_Year,  1) -> 31;
+days_in_month(_Year,  3) -> 31;
+days_in_month(_Year,  5) -> 31;
+days_in_month(_Year,  7) -> 31;
+days_in_month(_Year,  8) -> 31;
+days_in_month(_Year, 10) -> 31;
+days_in_month(_Year, 12) -> 31;
+days_in_month(_Year,  4) -> 30;
+days_in_month(_Year,  6) -> 30;
+days_in_month(_Year,  9) -> 30;
+days_in_month(_Year, 11) -> 30;
+days_in_month(Year,   0) -> days_in_month(Year-1, 12);
+days_in_month(Year,  13) -> days_in_month(Year+1, 1);
+days_in_month(Year, 2) ->
+    case calendar:is_leap_year(Year) of
+        'true' -> 29;
+        'false' -> 28
+    end.
 
 -spec pad_month(kz_month() | ne_binary()) -> ne_binary().
 pad_month(Month) ->
