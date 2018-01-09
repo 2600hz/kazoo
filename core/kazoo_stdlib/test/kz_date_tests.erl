@@ -136,4 +136,32 @@ prop_iso8601() ->
                      )
            ).
 
+prop_relative_diff() ->
+    ?FORALL({GregorianSeconds, Offset}
+           ,{range(31640000,82048118400) %% 1/1/1 00:00:00 - 2600/1/1 00:00:00
+            ,range(1,31540000) %% seconds in year
+            }
+           ,begin
+                Now = calendar:gregorian_seconds_to_datetime(GregorianSeconds),
+                Future = calendar:gregorian_seconds_to_datetime(GregorianSeconds + Offset),
+                lists:all(fun({Diff, A, B}) ->
+                                  case kz_date:relative_difference(A, B) of
+                                      Diff -> 'true';
+                                      _Result ->
+                                          io:format("failed to calc relative diff of ~p and ~p~n"
+                                                    "expected ~p got ~p~n"
+                                                   ,[A, B, Diff, _Result]
+                                                   ),
+                                          'false'
+                                  end
+                          end
+                         ,[{'future', Now, Future}
+                          ,{'past', Future, Now}
+                          ,{'equal', Now, Now}
+                          ,{'equal', Future, Future}
+                          ]
+                         )
+            end
+           ).
+
 -endif.
