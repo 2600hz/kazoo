@@ -149,7 +149,7 @@ from_iso8601(_NotValid) ->
 
 -spec to_iso8601(calendar:date() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
 to_iso8601({Year, Month, Day}) ->
-    Y = kz_term:to_binary(Year),
+    Y = kz_binary:pad_left(kz_term:to_binary(Year), 4, <<"0">>),
     M = kz_binary:pad_left(kz_term:to_binary(Month), 2, <<"0">>),
     D = kz_binary:pad_left(kz_term:to_binary(Day), 2, <<"0">>),
 
@@ -163,7 +163,7 @@ to_iso8601(Timestamp) ->
 
 -spec to_iso8601_extended(calendar:date() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
 to_iso8601_extended({Year, Month, Day}) ->
-    Y = kz_term:to_binary(Year),
+    Y = kz_binary:pad_left(kz_term:to_binary(Year), 4, <<"0">>),
     M = kz_binary:pad_left(kz_term:to_binary(Month), 2, <<"0">>),
     D = kz_binary:pad_left(kz_term:to_binary(Day), 2, <<"0">>),
 

@@ -59,7 +59,7 @@ kz_dates_test_() ->
 %% Found during PropEr testing
 iso_week_test_() ->
     Roundtrips = [{0,53}, {8,53}],
-    [?_assert(are_matched(ISOWeek, kz_date:to_iso_week(kz_date:from_iso_week(ISOWeek))))
+    [?_assert(are_matched_weeks(ISOWeek, kz_date:to_iso_week(kz_date:from_iso_week(ISOWeek))))
      || ISOWeek <- Roundtrips
     ].
 
@@ -117,13 +117,23 @@ prop_iso_week() ->
                 ?WHENFAIL(io:format("failed to convert to/from iso week for ~p <=> ~p~n"
                                    ,[ISOWeek, RoundTrip]
                                    )
-                         ,are_matched(ISOWeek, RoundTrip)
+                         ,are_matched_weeks(ISOWeek, RoundTrip)
                          )
             end
            ).
 
-are_matched({Y1, 53}, {Y2, 1}) -> Y2 =:= Y1+1;
-are_matched({Y1, 1}, {Y2, 53}) -> Y1 =:= Y2+1;
-are_matched(ISO1, ISO2) -> ISO1 =:= ISO2.
+%% week 53 in a year is equivalent to week 1 in the next year.
+%% See 1/1/1 for instance {0,53} or {1,1}
+are_matched_weeks({Y1, 53}, {Y2, 1}) -> Y2 =:= Y1+1;
+are_matched_weeks({Y1, 1}, {Y2, 53}) -> Y1 =:= Y2+1;
+are_matched_weeks(ISO1, ISO2) -> ISO1 =:= ISO2.
+
+prop_iso8601() ->
+    ?FORALL({Date, ToFun}
+           ,{safe_date(), oneof([to_iso8601, to_iso8601_extended])}
+           ,?WHENFAIL(io:format("failed to roundtrip ~p with ~p~n", [Date, ToFun])
+                     ,Date =:= kz_date:from_iso8601(kz_date:ToFun(Date))
+                     )
+           ).
 
 -endif.
