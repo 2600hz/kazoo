@@ -56,6 +56,13 @@ kz_dates_test_() ->
      || {Date, Normalized} <- Tests
     ].
 
+%% Found during PropEr testing
+iso_week_test_() ->
+    Roundtrips = [{0,53}, {8,53}],
+    [?_assert(are_matched(ISOWeek, kz_date:to_iso_week(kz_date:from_iso_week(ISOWeek))))
+     || ISOWeek <- Roundtrips
+    ].
+
 -ifdef(PROPER).
 %% proper_test_() ->
 %%     {"Runs " ?MODULE_STRING " PropEr tests"
@@ -71,12 +78,6 @@ kz_dates_test_() ->
 %%          F < 'prop`'
 %%      ]
 %%     }.
-
-prop_normalize_identity() ->
-    ?FORALL(NormalizedDate
-           ,date_to_normalize()
-           ,NormalizedDate =:= kz_date:normalize(NormalizedDate)
-           ).
 
 prop_normalize() ->
     ?FORALL({GregorianDate, MonthsBack}
@@ -107,5 +108,22 @@ funky_date({Y, 1, D}, MonthsBack) ->
     funky_date({Y-1, 12, D+kz_date:days_in_month(Y-1, 12)}, MonthsBack-1);
 funky_date({Y, M, D}, MonthsBack) ->
     funky_date({Y, M-1, D+kz_date:days_in_month(Y, M-1)}, MonthsBack-1).
+
+prop_iso_week() ->
+    ?FORALL(ISOWeek
+           ,{kz_year(), kz_weeknum()}
+           ,begin
+                RoundTrip = kz_date:to_iso_week(kz_date:from_iso_week(ISOWeek)),
+                ?WHENFAIL(io:format("failed to convert to/from iso week for ~p <=> ~p~n"
+                                   ,[ISOWeek, RoundTrip]
+                                   )
+                         ,are_matched(ISOWeek, RoundTrip)
+                         )
+            end
+           ).
+
+are_matched({Y1, 53}, {Y2, 1}) -> Y2 =:= Y1+1;
+are_matched({Y1, 1}, {Y2, 53}) -> Y1 =:= Y2+1;
+are_matched(ISO1, ISO2) -> ISO1 =:= ISO2.
 
 -endif.

@@ -13,6 +13,7 @@
 %% Date object functions
 -export([from_gregorian_seconds/2
         ,from_iso_week/1
+        ,to_iso_week/1
 
         ,find_next_weekday/2
         ,normalize/1
@@ -67,6 +68,10 @@ weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
         Days when Days =< 7 -> Days;
         Days -> Days + 7
     end.
+
+-spec to_iso_week(kz_date()) -> kz_iso_week().
+to_iso_week({_Year, _Month, _Day}=Date) ->
+    calendar:iso_week_number(Date).
 
 %%--------------------------------------------------------------------
 %% @doc
