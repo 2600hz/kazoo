@@ -7,12 +7,12 @@
 %%%-------------------------------------------------------------------
 -module(kzd_item_plan).
 
--export([integrate_scheme/0
-        ,integrate_sum/2
-        ,integrate_merge_object/2
-        ,integrate_merge_list/2
-        ,integrate_orelse/2
-        ,integrate_andalso/2
+-export([merge_scheme/0
+        ,merge_sum/2
+        ,merge_object/2
+        ,merge_list/2
+        ,merge_orelse/2
+        ,merge_andalso/2
         ]).
 -export([minimum/1, minimum/2
         ,flat_rates/1, flat_rates/2
@@ -52,74 +52,77 @@
 -define(CUMULATIVE, <<"cumulative">>).
 -define(ENABLED, <<"enabled">>).
 
--spec integrate_scheme() -> kz_json:paths().
-integrate_scheme() ->
+-spec merge_scheme() -> kz_json:paths().
+merge_scheme() ->
     [{?ACTIVATION_CHARGE, fun kz_json:find/2}
-    ,{?MINIMUM, fun kzd_item_plan:integrate_sum/2}
+    ,{?MINIMUM, fun kzd_item_plan:merge_sum/2}
     ,{?FLAT_RATES, fun kz_json:find/2}
-    ,{?RATES, fun kzd_item_plan:integrate_merge_object/2}
+    ,{?RATES, fun kzd_item_plan:merge_object/2}
     ,{?RATE, fun kz_json:find/2}
-    ,{?EXCEPTIONS, fun kzd_item_plan:integrate_merge_list/2}
-    ,{?CASCADE, fun  kzd_item_plan:integrate_orelse/2}
+    ,{?EXCEPTIONS, fun kzd_item_plan:merge_list/2}
+    ,{?CASCADE, fun  kzd_item_plan:merge_orelse/2}
     ,{?MASQUERADE, fun kz_json:find/2}
     ,{?NAME, fun kz_json:find/2}
     ,{[?DISCOUNTS, ?SINGLE, ?RATE], fun kz_json:find/2}
-    ,{[?DISCOUNTS, ?SINGLE, ?RATES], fun kzd_item_plan:integrate_merge_object/2}
+    ,{[?DISCOUNTS, ?SINGLE, ?RATES], fun kzd_item_plan:merge_object/2}
     ,{[?DISCOUNTS, ?CUMULATIVE, ?RATE], fun kz_json:find/2}
-    ,{[?DISCOUNTS, ?CUMULATIVE, ?RATES], fun kzd_item_plan:integrate_merge_object/2}
-    ,{[?DISCOUNTS, ?CUMULATIVE, <<"maximum">>], fun kzd_item_plan:integrate_sum/2}
-    ,{?ENABLED, fun kzd_item_plan:integrate_andalso/2}
+    ,{[?DISCOUNTS, ?CUMULATIVE, ?RATES], fun kzd_item_plan:merge_object/2}
+    ,{[?DISCOUNTS, ?CUMULATIVE, <<"maximum">>], fun kzd_item_plan:merge_sum/2}
+    ,{?ENABLED, fun kzd_item_plan:merge_andalso/2}
     ].
 
--spec integrate_sum(kz_json:path(), kz_json:objects()) -> non_neg_integer().
-integrate_sum(Key, [JObj|JObjs]) ->
+-spec merge_sum(kz_json:path(), kz_json:objects()) -> non_neg_integer().
+merge_sum(Key, [JObj|JObjs]) ->
     lists:foldl(fun(J, 'undefined') ->
                         kz_json:get_integer_value(Key, J);
                    (J, Value) ->
                         Value + kz_json:get_integer_value(Key, J, 0)
                 end, kz_json:get_integer_value(Key, JObj), JObjs).
 
--spec integrate_merge_object(kz_json:path(), kz_json:objects()) -> kz_json:object().
-integrate_merge_object(Key, [JObj|JObjs]) ->
+-spec merge_object(kz_json:path(), kz_json:objects()) -> kz_json:object().
+merge_object(Key, [JObj|JObjs]) ->
     lists:foldl(fun(J, 'undefined') ->
                         kz_json:get_value(Key, J);
                    (J, Value) ->
                         kz_json:merge(kz_json:get_value(Key, J, kz_json:new()), Value)
                 end, kz_json:get_value(Key, JObj), JObjs).
 
--spec integrate_merge_list(kz_json:path(), kz_json:objects()) -> list().
-integrate_merge_list(Key, [JObj|JObjs]) ->
-    List = lists:foldl(fun(J, 'undefined') ->
-                               kz_json:get_value(Key, J);
-                          (J, Value) ->
-                               lists:merge(
-                                 kz_json:get_list_value(Key, J, [])
-                                          ,Value
-                                )
-                       end, kz_json:get_value(Key, JObj), JObjs),
-    sets:to_list(sets:from_list(List)).
+-spec merge_list(kz_json:path(), kz_json:objects()) -> list().
+merge_list(Key, [JObj|JObjs]) ->
+    case lists:foldl(fun(J, 'undefined') ->
+                             kz_json:get_value(Key, J);
+                        (J, Value) ->
+                             lists:merge(
+                               kz_json:get_list_value(Key, J, [])
+                                        ,Value
+                              )
+                     end, kz_json:get_value(Key, JObj), JObjs)
+    of
+        'undefined' -> 'undefined';
+        List -> sets:to_list(sets:from_list(List))
+    end.
 
--spec integrate_orelse(kz_json:path(), kz_json:objects()) -> boolean().
-integrate_orelse(Key, [JObj|JObjs]) ->
+-spec merge_orelse(kz_json:path(), kz_json:objects()) -> boolean().
+merge_orelse(Key, [JObj|JObjs]) ->
     lists:foldl(fun(J, 'undefined') ->
                         kz_json:get_value(Key, J);
                    (J, Value) ->
                         case kz_json:get_value(Key, J) of
                             'undefined' -> Value;
-                            Boolean -> 
+                            Boolean ->
                                 kz_term:is_true(Boolean)
                                     orelse Value
                         end
                 end, kz_json:get_value(Key, JObj), JObjs).
 
--spec integrate_andalso(kz_json:path(), kz_json:objects()) -> boolean().
-integrate_andalso(Key, [JObj|JObjs]) ->
+-spec merge_andalso(kz_json:path(), kz_json:objects()) -> boolean().
+merge_andalso(Key, [JObj|JObjs]) ->
     lists:foldl(fun(J, 'undefined') ->
                         kz_json:get_value(Key, J);
                    (J, Value) ->
                         case kz_json:get_value(Key, J) of
                             'undefined' -> Value;
-                            Boolean -> 
+                            Boolean ->
                                 kz_term:is_true(Boolean)
                                     andalso Value
                         end
