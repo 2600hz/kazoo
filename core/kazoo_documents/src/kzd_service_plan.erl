@@ -56,7 +56,6 @@
 -define(MERGE_PRIORITY, [?MERGE, <<"priority">>]).
 
 -define(DEFAULT_MERGE_PRIORITY, 0).
--define(DEFAULT_MERGE_STRATEGY, <<"simple">>).
 
 -spec new() -> doc().
 new() -> kz_json:new().
@@ -201,7 +200,7 @@ grouping_category(ServicePlan, Default) ->
 
 -spec merge_strategy(doc()) -> ne_binary().
 merge_strategy(ServicePlan) ->
-    kz_json:get_ne_binary_value(?MERGE_STRATEGY, ServicePlan, ?DEFAULT_MERGE_STRATEGY).
+    kz_json:get_ne_binary_value(?MERGE_STRATEGY, ServicePlan).
 
 -spec merge_priority(doc()) -> ne_binary().
 merge_priority(ServicePlan) ->

@@ -7,8 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(kz_service_plans).
 
--export([merge_plans/1]).
-
 -export([empty/0]).
 -export([public_json/1]).
 -export([add_service_plan/3]).
@@ -56,13 +54,13 @@ from_service_json(ServicesJObj) ->
     Routines = [fun get_services_plan/2
                ,fun get_object_plans/2
                ],
-    lists:foldl(fun(F, ServicePlans) ->
-                        F(ServicesJObj, ServicePlans) 
-                end
-               ,empty()
-               ,Routines
-               ).
-%%    lists:map(fun merge_plans/1, Plans).
+    Plans = lists:foldl(fun(F, ServicePlans) ->
+                                F(ServicesJObj, ServicePlans)
+                        end
+                       ,empty()
+                       ,Routines
+                       ),
+    merge_vendors(Plans).
 
 -spec get_services_plan(kz_json:object(), plans()) -> plans().
 get_services_plan(ServicesJObj, ServicePlans) ->
@@ -174,13 +172,9 @@ public_json(ServicePlans) ->
 -spec public_json(plans(), kz_json:object()) -> kzd_service_plan:doc().
 public_json([], JObj) ->
     kzd_service_plan:set_plan(kzd_service_plan:new(), JObj);
-public_json([#kz_service_plans{plans=Plans}|ServicePlans], JObj) ->
-    NewJObj = lists:foldl(fun merge_plans/2, JObj, Plans),
-    public_json(ServicePlans, NewJObj).
-
--spec merge_plans(kzd_service_plan:doc(), kz_json:object()) -> kz_json:object().
-merge_plans(SerivcePlan, JObj) ->
-    kz_json:merge(JObj, kzd_service_plan:plan(SerivcePlan)).
+public_json([ServicesPlan|ServicesPlans], JObj) ->
+    #kz_service_plans{plans=NewJObj}=merge_plan(ServicesPlan, JObj),
+    public_json(ServicesPlans, NewJObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -223,7 +217,6 @@ delete_service_plan(PlanId, ServicesJObj) ->
 %%--------------------------------------------------------------------
 -spec plan_summary(kzd_services:doc()) -> kz_json:object().
 plan_summary(ServicesJObj) ->
-    %% TODO: handle object plans
     ResellerId = kzd_services:reseller_id(ServicesJObj),
     lists:foldl(fun(PlanId, J) ->
                         Plan = kzd_services:plan(ServicesJObj, PlanId),
@@ -305,12 +298,89 @@ public_json_items(ServiceJObj) ->
 %% for that vendor, creating a new list (record) if not present.
 %% @end
 %%--------------------------------------------------------------------
+-spec merge_vendors(plans()) -> plans().
+merge_vendors(ServicesPlans) ->
+    lists:map(fun merge_plan/1, ServicesPlans).
+
+-spec merge_plan(plan()) -> plan().
+merge_plan(ServicesPlan) ->
+    merge_plan(ServicesPlan, 'false').
+    
+-spec merge_plan(plan(), boolean() | kz_json:object()) -> plan().
+merge_plan(#kz_service_plans{plans=PlanJObjs}=ServicesPlan, MergeToSingle) ->
+    Dict = lists:foldl(fun(PlanJObj, D) ->
+                               Strategy = kzd_service_plan:merge_strategy(PlanJObj),
+                               Priority = kzd_service_plan:merge_priority(PlanJObj),
+                               dict:append(Strategy, {Priority, PlanJObj}, D)
+                       end, dict:new(), PlanJObjs),
+    Sorted = lists:sort(fun merge_plan_strategy_sort/2
+                       ,dict:to_list(Dict)
+                       ),
+    Merged = merge_plan_plans(Sorted, []),
+    case MergeToSingle of
+        'false' ->
+            ServicesPlan#kz_service_plans{plans=Merged};
+        'true' ->
+            ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, kz_json:new(), Merged)};
+        Else ->
+            'true' = kz_json:is_object(Else),
+            ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, Else, Merged)}
+    end.
+
+-spec merge_to_single(kz_json:object(), kz_json:object()) -> kz_json:object().
+merge_to_single(JObj, Merged) ->
+    kz_json:merge(Merged, JObj).
+
+-spec merge_plan_strategy_sort(merge_strategy_group(), merge_strategy_group()) -> boolean().
+merge_plan_strategy_sort({A, _}, {B, _}) ->
+    merge_strategy_priority(A) =< merge_strategy_priority(B).
+
+-spec merge_plan_plans(merge_strategy_groups(), kz_json:objects()) -> kz_json:objects().
+merge_plan_plans([], Merged) -> Merged;
+merge_plan_plans([{<<"simple">>, Group}|Tail], Merged) ->
+    Sorted = lists:sort(fun merge_plan_plans_sort/2, Group),
+    MergedGroup = lists:foldl(fun simple_merge_plans/2, kz_json:new(), Sorted),
+    merge_plan_plans(Tail, [MergedGroup|Merged]);
+merge_plan_plans([{<<"cumulative">>, Group}|Tail], Merged) ->
+    Props = [{[CategoryId, ItemId], kzd_service_plan:item(PlanJObj, CategoryId, ItemId)}
+             || {_, PlanJObj} <- lists:sort(fun merge_plan_plans_sort/2, Group)
+                    ,CategoryId <- kzd_service_plan:categories(PlanJObj)
+                    ,ItemId <- kzd_service_plan:items(PlanJObj, CategoryId)
+            ],
+    Dict = lists:foldl(fun({Key, Value}, D) ->
+                               dict:append(Key, Value, D)
+                       end, dict:new(), Props),
+    Values = [{cumulative_merge_keys(Root, Key), Fun(Key, JObjs)}
+              || {Root, JObjs} <- dict:to_list(Dict)
+                     ,{Key, Fun} <- kzd_item_plan:merge_scheme()
+             ],
+    MergedGroup = kz_json:from_list([{<<"_id">>, <<"cumulative">>}
+                                    %%,{<<"plans">>, [PlanJObj || {_, PlanJObj} <- Group]}
+                                    ,{<<"plan">>, kz_json:set_values(Values, kz_json:new())}
+                                    ]),
+    merge_plan_plans(Tail, [MergedGroup|Merged]);
+merge_plan_plans([{_S, Group}|Tail], Merged) ->
+    MergedGroup = [PlanJObj || {_, PlanJObj} <- Group],
+    merge_plan_plans(Tail, MergedGroup ++ Merged).
+
+-spec cumulative_merge_keys(ne_binary() | ne_binaries(), ne_binary() | ne_binaries()) -> ne_binaries().
+cumulative_merge_keys(Root, Key) ->
+    lists:flatten([Root, Key]).
+    
+-spec merge_plan_plans_sort(merge_strategy_plan(), merge_strategy_plan()) -> boolean().
+merge_plan_plans_sort({A, _}, {B, _}) ->
+    A =< B.
+
+-spec simple_merge_plans(merge_strategy_plan(), kz_json:object()) -> kz_json:object().
+simple_merge_plans({_, PlanJObj}, Merged) ->
+    kz_json:merge(Merged, PlanJObj).
+
 -type merge_strategy_plan() :: {non_neg_integer(), kz_json:object()}.
 -type merge_strategy_plans() :: [merge_strategy_plan()].
 -type merge_strategy_group() :: {ne_binary(), merge_strategy_plans()}.
 -type merge_strategy_groups() :: [merge_strategy_groups()].
 
--spec merge_strategy_priority_map() -> propslist().
+-spec merge_strategy_priority_map() -> kz_proplist().
 merge_strategy_priority_map() ->
     [{<<"simple">>, 10}
     ,{<<"cumulative">>, 20}
@@ -319,102 +389,3 @@ merge_strategy_priority_map() ->
 -spec merge_strategy_priority(ne_binary()) -> non_neg_integer().
 merge_strategy_priority(Strategy) ->
     props:get_value(Strategy, merge_strategy_priority_map()).
-
-merge_vendor(ServicePlans) ->
-    lists:map(fun merge_vendor_map/1, ServicePlans).
-
--spec merge_vendor_map(plan()) -> plan().
-merge_vendor_map(#kz_service_plans{vendor_id=VendorId, plans=Plans}=ServicePlan) ->
-    
-
-
--spec merge_plan(plan()) -> plan().
-merge_plan(#kz_service_plans{vendor_id=VendorId, plans=PlanJObjs}=ServicePlan) ->
-    Dict = lists:foldl(fun(PlanJObj, D) ->
-                               Strategy = kzd_service_plan:merge_strategy(PlanJObj),
-                               Priority = kzd_service_plan:merge_priority(PlanJObj),
-                               dict:append(Strategy, {Priority, PlanJObj}, D)
-                       end, dict:new(), PlanJObjs),
-    Sorted = lists:sort(merge_plan_strategy_sort/2
-                       ,dict:to_list(Dict)
-                       ),
-    merge_plan_plans(Sorted).
-
--spec merge_plan_strategy_sort(merge_strategy_group(), merge_strategy_group()) -> boolean().
-merge_plan_strategy_sort({A, _}, {B, _}) ->
-    merge_strategy_priority(A) =< merge_strategy_priority(B).
-
--spec merge_plan_plans(merge_strategy_groups(), kz_json:object()) -> kz_json:object().
-merge_plan_plans([], JObj) -> JObj;
-merge_plan_plans([{<<"simple">>, Group}|Tail], JObj) ->
-    Sorted = lists:sort(fun merge_plan_plans_sort/2, Group),
-    Merged = lists:foldl(fun simple_merge_plans/2, kz_json:new(), Sorted),
-    merge_plan_plans(Tail, kz_json:merge(Merged, JObj));
-merge_plan_plans([{<<"cumulative">>, Plans}|Tail], JObj) ->
-    Props = [{[CategoryId, ItemId], kzd_service_plan:item(Plan, CategoryId, ItemId)}
-             || Plan <- lists:sort(fun merge_plan_plans_sort/2, Plans)
-                    ,CategoryId <- kzd_service_plan:categories(Plan)
-                    ,ItemId <- kzd_service_plan:items(Plan, CategoryId)
-            ],
-    Dict = lists:foldl(fun({Key, Value}, D) ->
-                               dict:append(Key, Value, D)
-                       end, dict:new(), Props),
-    Scheme = [{Root ++ Key
-               || {Root, JObjs} <- dict:to_list(Dict)
-                      ,{Key, Fun} <- kzd_item_plan:merge_scheme()
-              ],
-
-
--spec cumulative_merge_keys(ne_binary() | ne_binaries(), ne_binary(), ne_binaries()) -> ne_binaries().
-cumulative_merge_keys(Root, Key) ->
-    lists:flatten([Root], [Key]).
-
-
-
-    Scheme = kzd_item_plan:merge_scheme(),
-    cumulative_merge_plans(dict:to_list(Dict), Scheme, JObj).
-
-cumulative_merge_plans([], _, JObj) -> JObj.
-cumulative_merge_plans([Key, JObjs|Tail], Scheme, JObj) ->
-    Value = merge_plans_key(Scheme, JObjs, JObj).
-
-    Dict1 = dict:map(fun merge_plans_map/2, Dict0),
-    
-
--spec merge_plan_plans_sort(merge_strategy_plan(), merge_strategy_plan()) -> boolean().
-merge_plan_plans_sort({A, _}, {B, _}) ->
-    A =< B.
-
--spec simple_merge_plans(merge_strategy_plan(), kz_json:object()) -> kz_json:object().
-simple_merge_plans({_, PlanJObj}, Merged) ->
-    kz_json:merge(Merged, PlanJObj).
-    
-
-
-    Props = [{[CategoryId, ItemId], kzd_service_plan:item(Plan, CategoryId, ItemId)}
-             || Plan <- Plans
-                    ,CategoryId <- kzd_service_plan:categories(Plan)
-                    ,ItemId <- kzd_service_plan:items(Plan, CategoryId)
-            ],
-    Dict0 = lists:foldl(fun({Key, Value}, D) ->
-                                dict:append(Key, Value, D)
-                        end, dict:new(), Props),
-    Dict1 = dict:map(fun merge_plans_map/2, Dict0),
-    Thing1 = kz_json:set_values(dict:to_list(Dict1), kz_json:new()),
-    io:format("thing: ~p~n", [Thing1]),
-    Thing2 = kz_json:from_list([{<<"_id">>, VendorId}
-                               ,{<<"plan">>, Thing1}
-                               ]),
-    ServicePlans#kz_service_plans{plans=[Thing2]}.
-
--spec merge_plans_map(kz_json:path(), kz_json:objects()) -> kz_json:object().
-merge_plans_map(_Key, JObjs) ->
-    merge_plans_key(kzd_item_plan:merge_scheme(), JObjs, kz_json:new()).
-
--spec merge_plans_key(kz_json:paths(), kz_json:objects(), kz_json:object()) -> kz_json:object().
-merge_plans_key([], _, JObj) -> JObj;
-merge_plans_key([{Key, Fun}|Scheme], JObjs, JObj) ->
-    merge_plans_key(Scheme
-                   ,JObjs
-                   ,kz_json:set_value(Key, Fun(Key, JObjs), JObj)
-                   ).
