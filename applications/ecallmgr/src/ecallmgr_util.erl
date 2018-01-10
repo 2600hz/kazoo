@@ -167,7 +167,7 @@ cmd_is_empty({"kz_multiset", "^^"}) -> 'true';
 cmd_is_empty({_, "kz_multiset ^^"}) -> 'true';
 cmd_is_empty(_) -> 'false'.
 
--spec send_cmds(atom(), ne_binary(), [{text(), text()}]) -> send_cmd_ret().
+-spec send_cmds(atom(), kz_term:ne_binary(), [{kz_term:text(), kz_term:text()}]) -> send_cmd_ret().
 send_cmds(Node, UUID, Cmds) ->
     Commands = [begin
                     AppName = dialplan_application(App),
@@ -182,7 +182,7 @@ send_cmds(Node, UUID, Cmds) ->
                ),
     Result.
 
--spec dialplan_application(ne_binary() | string()) -> ne_binary().
+-spec dialplan_application(kz_term:ne_binary() | string()) -> kz_term:ne_binary().
 dialplan_application(App)
   when is_list(App) ->
     dialplan_application(kz_term:to_binary(App));
@@ -413,7 +413,9 @@ custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
     props:set_value(Key, V, Acc);
 custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
     props:insert_value(Key, V, Acc);
-custom_channel_vars_fold(_KV, Acc) -> Acc.
+custom_channel_vars_fold({<<"X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    props:insert_value(Key, V, Acc);
+custom_channel_vars_fold(_, Acc) -> Acc.
 
 -spec custom_application_vars(kzd_freeswitch:data()) -> kz_term:proplist().
 custom_application_vars(Props) ->
@@ -668,6 +670,8 @@ get_fs_kv(Key, Val, _) ->
 -spec get_fs_key(kz_term:ne_binary()) -> binary().
 get_fs_key(?CCV(Key)) -> get_fs_key(Key);
 get_fs_key(?CAV(_)=CAV) -> CAV;
+get_fs_key(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, Key/binary>>) ->
+    <<?CHANNEL_LOOPBACK_HEADER_PREFIX, (get_fs_key(Key))/binary>>;
 get_fs_key(<<"X-", _/binary>>=Key) -> <<"sip_h_", Key/binary>>;
 get_fs_key(Key) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
