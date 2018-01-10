@@ -204,4 +204,4 @@ merge_strategy(ServicePlan) ->
 
 -spec merge_priority(doc()) -> ne_binary().
 merge_priority(ServicePlan) ->
-    kz_json:get_ne_binary_value(?MERGE_PRIORITY, ServicePlan, ?DEFAULT_MERGE_PRIORITY).
+    kz_json:get_integer_value(?MERGE_PRIORITY, ServicePlan, ?DEFAULT_MERGE_PRIORITY).

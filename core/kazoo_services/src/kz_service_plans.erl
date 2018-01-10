@@ -33,6 +33,18 @@
 -type plans() :: [plan()].
 
 -export_type([plan/0, plans/0]).
+-define(DEFAULT_PRIORITIES
+       ,kz_json:from_list(
+          [{<<"simple">>, 10}
+          ,{<<"cumulative">>, 20}
+          ])
+       ).
+-define(MERGE_STRATEGY_PRIORITIES
+       ,kapps_config:get_json(?WHS_CONFIG_CAT
+                             ,<<"merge_strategy_priority">>
+                             ,?DEFAULT_PRIORITIES
+                             )
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -298,10 +310,14 @@ public_json_items(ServiceJObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Given a plan and a vendor id append it to the list of service plans
-%% for that vendor, creating a new list (record) if not present.
+%%
 %% @end
 %%--------------------------------------------------------------------
+-type merge_strategy_plan() :: {non_neg_integer(), kz_json:object()}.
+-type merge_strategy_plans() :: [merge_strategy_plan()].
+-type merge_strategy_group() :: {ne_binary(), merge_strategy_plans()}.
+-type merge_strategy_groups() :: [merge_strategy_groups()].
+
 -spec merge_vendors(plans()) -> plans().
 merge_vendors(ServicesPlans) ->
     lists:map(fun merge_plan/1, ServicesPlans).
@@ -359,7 +375,6 @@ merge_plan_plans([{<<"cumulative">>, Group}|Tail], Merged) ->
                      ,{Key, Fun} <- kzd_item_plan:cumulative_merge_scheme()
              ],
     MergedGroup = kz_json:from_list([{<<"_id">>, <<"cumulative">>}
-                                    ,{<<"plans">>, [PlanJObj || {_, PlanJObj} <- Group]}
                                     ,{<<"plan">>, kz_json:set_values(Values, kz_json:new())}
                                     ]),
     merge_plan_plans(Tail, [MergedGroup|Merged]);
@@ -379,17 +394,6 @@ merge_plan_plans_sort({A, _}, {B, _}) ->
 simple_merge_plans({_, PlanJObj}, Merged) ->
     kz_json:merge(Merged, PlanJObj).
 
--type merge_strategy_plan() :: {non_neg_integer(), kz_json:object()}.
--type merge_strategy_plans() :: [merge_strategy_plan()].
--type merge_strategy_group() :: {ne_binary(), merge_strategy_plans()}.
--type merge_strategy_groups() :: [merge_strategy_groups()].
-
--spec merge_strategy_priority_map() -> kz_proplist().
-merge_strategy_priority_map() ->
-    [{<<"simple">>, 10}
-    ,{<<"cumulative">>, 20}
-    ].
-
 -spec merge_strategy_priority(ne_binary()) -> non_neg_integer().
 merge_strategy_priority(Strategy) ->
-    props:get_value(Strategy, merge_strategy_priority_map()).
+    kz_json:get_integer_value(Strategy, ?MERGE_STRATEGY_PRIORITIES, 0).
