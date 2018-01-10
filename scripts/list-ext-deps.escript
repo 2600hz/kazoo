@@ -100,11 +100,11 @@ all_erlang_apps() ->
 
 -compile({inline,
           [
-          {find_beams, 1},
-          {beams_to_mods, 1},
-          {beam_to_mod, 1},
-          {beam_to_app, 1},
-          {app_vsn_to_app, 1}
+           {find_beams, 1},
+           {beams_to_mods, 1},
+           {beam_to_mod, 1},
+           {beam_to_app, 1},
+           {app_vsn_to_app, 1}
           ]}).
 
 beam_to_app(Beam) ->
@@ -141,7 +141,7 @@ usage() ->
     out_stderr("usage: ~s path [path...]\n\n"
                "Find OTP dependencies of .beam files "
                "(compiled with debug info) in list of paths\n",
-              [filename:basename(escript:script_name())]),
+               [filename:basename(escript:script_name())]),
     halt(1).
 
 out_stderr(Fmt, Args) ->
