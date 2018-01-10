@@ -445,7 +445,7 @@ route_resp_ringback(JObj) ->
             action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(Stream))/binary>>)
     end.
 
--spec route_resp_ccvs(kz_json:object()) -> kz_types:xml_els().
+-spec route_resp_ccvs(kz_json:object()) -> kz_types:xml_el().
 route_resp_ccvs(JObj) ->
     CCVs = [{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
            ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
