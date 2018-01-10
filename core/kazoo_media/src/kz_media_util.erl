@@ -384,25 +384,11 @@ max_recording_time_limit() ->
 base_url(Host, Port) ->
     base_url(Host, Port, 'proxy_playback').
 
-%% base_url(Host, Port, 'direct_playback') ->
-%%     case ?AUTH_PLAYBACK of
-%%         'false' -> build_url(Host, Port, [], []);
-%%         'true' ->
-%%             {Username, Password} = kz_couch_connections:get_creds(),
-%%             build_url(Host, Port, Username, Password)
-%%     end;
 base_url(Host, Port, 'proxy_playback') ->
     case ?AUTH_PLAYBACK of
         'false' -> build_url(Host, Port, [], []);
         'true' -> build_url(Host, Port, ?AUTH_USERNAME, ?AUTH_PASSWORD)
     end;
-%% base_url(Host, Port, 'direct_store') ->
-%%     case ?USE_AUTH_STORE of
-%%         'false' -> build_url(Host, Port, [], []);
-%%         'true' ->
-%%             {Username, Password} = kz_couch_connections:get_creds(),
-%%             build_url(Host, Port, Username, Password)
-%%     end;
 base_url(Host, Port, 'proxy_store') ->
     case ?USE_AUTH_STORE of
         'false' -> build_url(Host, Port, [], []);
@@ -414,14 +400,14 @@ build_url(H, P, [], []) ->
                  'true' -> <<"https">>;
                  'false' -> <<"http">>
              end,
-    list_to_binary([Scheme, "://", kz_term:to_binary(H), ":", kz_term:to_binary(P), "/"]);
+    list_to_binary([Scheme, "://", kz_term:to_binary(H), ":", kz_term:to_binary(P)]);
 build_url(H, P, User, Pwd) ->
     Scheme = case ?USE_HTTPS of
                  'true' -> <<"https">>;
                  'false' -> <<"http">>
              end,
     list_to_binary([Scheme, "://", User, ":", Pwd
-                   ,"@", kz_term:to_binary(H), ":", kz_term:to_binary(P), "/"
+                   ,"@", kz_term:to_binary(H), ":", kz_term:to_binary(P)
                    ]).
 
 -spec convert_stream_type(kz_term:ne_binary()) -> kz_term:ne_binary().
