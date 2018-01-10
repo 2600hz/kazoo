@@ -7,6 +7,7 @@
 %%%
 %%%-------------------------------------------------------------------
 -module(kz_media_store_proxy).
+-behaviour(cowboy_handler).
 
 -export([init/2
         ,terminate/3
@@ -36,18 +37,20 @@ init(Req, _Opts) ->
 check_authn(Req, 'true') ->
     check_validation(Req, cowboy_req:path_info(Req));
 check_authn(Req, 'false') ->
-    lager:debug("request did not provide valid credentials"),
+    lager:info("request did not provide valid credentials"),
     {'ok', unauthorized(Req), 'ok'}.
 
 -spec check_validation(cowboy_req:req(), kz_term:ne_binaries()) -> handler_return().
 check_validation(Req, [EncodedUrl, _Filename]) ->
+    lager:debug("encoded url: ~s", [EncodedUrl]),
     check_url(Req, decode_url(EncodedUrl));
 check_validation(Req, _Else) ->
-    lager:debug("unexpected path: ~p", [_Else]),
+    lager:info("unexpected path in request: ~p", [_Else]),
     reply_error(404, Req).
 
 -spec check_url(cowboy_req:req(), 'error' | media_store_path()) -> handler_return().
 check_url(Req, 'error') ->
+    lager:info("url decoding failed on ~p", [hd(cowboy_req:path_info(Req))]),
     reply_error(404, Req);
 check_url(Req, Path) ->
     validate_path_request(Req, Path).
@@ -153,13 +156,16 @@ handle(Req, State) ->
 
 -spec handle_body(body(), state()) -> handler_return().
 handle_body({'more', Contents, Req}, #state{file=Device}=State) ->
+    lager:debug("recv part of file"),
     case file:write(Device, Contents) of
         'ok' -> handle(Req, State);
         {'error', Reason} -> failure(Reason, Req)
     end;
 handle_body({'ok', <<>>, Req}, #state{file=Device}=State) ->
+    lager:debug("recv empty req body"),
     handle_close(Req, State, file:close(Device));
 handle_body({'ok', Contents, Req}, #state{file=Device}=State) ->
+    lager:debug("recv file"),
     case file:write(Device, Contents) of
         'ok' -> handle_close(Req, State, file:close(Device));
         {'error', Reason} -> failure(Reason, Req)
@@ -182,6 +188,7 @@ setup_context(Req, #media_store_path{att=Attachment}=Path) ->
     Filename = list_to_binary(["/tmp/", kz_binary:rand_hex(16), "_", Attachment]),
     case file:open(Filename, ['write', 'exclusive']) of
         {'ok', IODevice} ->
+            lager:debug("opened ~s for writing", [Filename]),
             State = #state{media=Path
                           ,filename=Filename
                           ,file=IODevice
@@ -266,11 +273,12 @@ store(#state{filename=Filename, media=Path}=State, Req) ->
     case file:read_file(Filename) of
         {'ok', Data} -> store(Path, Data, State, Req);
         {'error', Reason} ->
-            lager:debug("error ~p opening file ~s", [Reason, Filename]),
+            lager:info("error ~p opening file ~s", [Reason, Filename]),
             reply_error(500, State, Req)
     end.
 
--spec store(media_store_path(), kz_term:ne_binary(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
+-spec store(media_store_path(), kz_term:ne_binary(), state(), cowboy_req:req()) ->
+                   {'ok', cowboy_req:req(), state()}.
 store(#media_store_path{db=Db
                        ,id=Id
                        ,att=Attachment
@@ -296,27 +304,30 @@ success(JObj, Props, Req0) ->
     Headers = maps:from_list([{kz_term:to_binary(H), kz_term:to_binary(V)}
                               || {H, V} <- props:get_value('headers', Props, [])
                              ]),
+    lager:info("replying with 200: ~s", [Body]),
     cowboy_req:reply(200, Headers, Req1).
 
 -spec failure(any(), cowboy_req:req()) -> cowboy_req:req().
 failure(Reason, Req0) ->
     Body = io_lib:format("~p~n", [Reason]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
+    lager:info("replying with 500 error: ~s", [Body]),
     cowboy_req:reply(500, Req1).
 
 -spec reply_error(reply_code(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
 reply_error(Code, Req) ->
+    lager:info("replying with error ~p", [Code]),
     {'ok', cowboy_req:reply(Code, Req), 'ok'}.
 
 -spec reply_error(reply_code(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
-reply_error(Code, State, Req0) ->
-    Req1 = cowboy_req:reply(Code, Req0),
-    {'ok', Req1, State}.
+reply_error(Code, State, Req) ->
+    lager:info("replying with error ~p", [Code]),
+    {'ok', cowboy_req:reply(Code, Req), State}.
 
 -spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
 terminate(_Reason, _Req, 'ok') ->
-    'ok';
+    lager:debug("terminating handler: ~p", [_Reason]);
 terminate(_Reason, _Req, #state{file=Device, filename=Filename}) ->
     catch(file:close(Device)),
     catch(file:delete(Filename)),
-    'ok'.
+    lager:debug("closed files and terminated handler: ~p", [_Reason]).
