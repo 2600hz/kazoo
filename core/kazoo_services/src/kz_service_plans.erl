@@ -91,9 +91,13 @@ get_services_plan(PlanId, ResellerId, ServicesJObj, ServicePlans) ->
                               )
     end.
 
+-ifdef(TEST).
+-spec get_object_plans(kz_json:object(), plans()) -> plans().
+get_object_plans(_, ServicePlans) -> ServicePlans.
+-else
 -spec get_object_plans(kz_json:object(), plans()) -> plans().
 get_object_plans(ServicesJObj, ServicePlans) ->
-    ResellerId = find_reseller_id(ServicesJObj),    
+    ResellerId = find_reseller_id(ServicesJObj),
     Account = kz_doc:id(ServicesJObj),
     AccountDb = kz_util:format_account_db(Account),
     {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/object_plans">>),
@@ -105,6 +109,7 @@ get_object_plans(ServicesJObj, ServicePlans) ->
                ,ServicePlans
                ,Props
                ).
+-endif.
 
 -spec get_object_plans_fold(ne_binary()) ->
                                    fun(({ne_binary(), kz_json:object()}, plans()) ->
@@ -254,8 +259,6 @@ activation_charges(Category, Item, ServicePlans) ->
 -spec create_items(kzd_services:doc()) ->
                           {'ok', kz_service_items:items()} |
                           {'error', 'no_plans'}.
--spec create_items(kzd_services:doc(), plans()) -> kz_service_items:items().
-
 create_items(ServiceJObj) ->
     case from_service_json(ServiceJObj) of
         [] -> {'error', 'no_plans'};
@@ -263,6 +266,7 @@ create_items(ServiceJObj) ->
             {'ok', create_items(ServiceJObj, ServicePlans)}
     end.
 
+-spec create_items(kzd_services:doc(), plans()) -> kz_service_items:items().
 create_items(ServiceJObj, ServicePlans) ->
     Services = kz_services:from_service_json(ServiceJObj),
     Plans = [Plan
@@ -305,7 +309,7 @@ merge_vendors(ServicesPlans) ->
 -spec merge_plan(plan()) -> plan().
 merge_plan(ServicesPlan) ->
     merge_plan(ServicesPlan, 'false').
-    
+
 -spec merge_plan(plan(), boolean() | kz_json:object()) -> plan().
 merge_plan(#kz_service_plans{plans=PlanJObjs}=ServicesPlan, MergeToSingle) ->
     Dict = lists:foldl(fun(PlanJObj, D) ->
@@ -323,7 +327,7 @@ merge_plan(#kz_service_plans{plans=PlanJObjs}=ServicesPlan, MergeToSingle) ->
         'true' ->
             ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, kz_json:new(), Merged)};
         Else ->
-            'true' = kz_json:is_object(Else),
+            'true' = kz_json:is_json_object(Else),
             ServicesPlan#kz_service_plans{plans=lists:foldl(fun merge_to_single/2, Else, Merged)}
     end.
 
@@ -352,10 +356,10 @@ merge_plan_plans([{<<"cumulative">>, Group}|Tail], Merged) ->
                        end, dict:new(), Props),
     Values = [{cumulative_merge_keys(Root, Key), Fun(Key, JObjs)}
               || {Root, JObjs} <- dict:to_list(Dict)
-                     ,{Key, Fun} <- kzd_item_plan:merge_scheme()
+                     ,{Key, Fun} <- kzd_item_plan:cumulative_merge_scheme()
              ],
     MergedGroup = kz_json:from_list([{<<"_id">>, <<"cumulative">>}
-                                    %%,{<<"plans">>, [PlanJObj || {_, PlanJObj} <- Group]}
+                                    ,{<<"plans">>, [PlanJObj || {_, PlanJObj} <- Group]}
                                     ,{<<"plan">>, kz_json:set_values(Values, kz_json:new())}
                                     ]),
     merge_plan_plans(Tail, [MergedGroup|Merged]);
@@ -366,7 +370,7 @@ merge_plan_plans([{_S, Group}|Tail], Merged) ->
 -spec cumulative_merge_keys(ne_binary() | ne_binaries(), ne_binary() | ne_binaries()) -> ne_binaries().
 cumulative_merge_keys(Root, Key) ->
     lists:flatten([Root, Key]).
-    
+
 -spec merge_plan_plans_sort(merge_strategy_plan(), merge_strategy_plan()) -> boolean().
 merge_plan_plans_sort({A, _}, {B, _}) ->
     A =< B.
