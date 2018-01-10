@@ -168,11 +168,11 @@
                     ,control_q :: kz_term:api_binary()                   %% The control queue provided on route win
                     ,control_p :: kz_term:api_pid()                      %% The control pid provided on route win
                     ,control_q_helper = fun default_control_queue_helper/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                    ,controller_q :: api_binary()                %%
-                    ,caller_id_name :: api_ne_binary()      %% The caller name
-                    ,caller_id_number :: api_ne_binary() %% The caller number
-                    ,callee_id_name :: api_binary()                     %% The callee name
-                    ,callee_id_number :: api_binary()                   %% The callee number
+                    ,controller_q :: kz_term:api_binary()                %%
+                    ,caller_id_name :: kz_term:api_ne_binary()      %% The caller name
+                    ,caller_id_number :: kz_term:api_ne_binary() %% The caller number
+                    ,callee_id_name :: kz_term:api_binary()                     %% The callee name
+                    ,callee_id_number :: kz_term:api_binary()                   %% The callee number
                     ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
                     ,switch_hostname :: kz_term:api_ne_binary()                    %% The switch hostname (as reported by the switch)
                     ,switch_url :: kz_term:api_binary()                         %% The switch url
@@ -677,12 +677,12 @@ default_control_queue_helper(_Field, #kapps_call{}=Call) ->
 clear_control_queue_helper(#kapps_call{}=Call) ->
     Call#kapps_call{control_q_helper=fun default_control_queue_helper/2}.
 
--spec control_q(call() | kz_types:api_control_q()) -> api_binary().
+-spec control_q(call() | kz_types:api_control_q()) -> kz_term:api_binary().
 control_q(#kapps_call{control_q=ControlQ}) -> ControlQ;
 control_q({ControlQ, _}) -> ControlQ;
 control_q('undefined') -> 'undefined'.
 
--spec control_p(call() | kz_types:api_control_q()) -> api_binary().
+-spec control_p(call() | kz_types:api_control_q()) -> kz_term:api_binary().
 control_p(#kapps_call{control_p=ControlP}) -> ControlP;
 control_p({_, ControlP}) -> ControlP;
 control_p('undefined') -> 'undefined'.

@@ -28,7 +28,7 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     {'ok', Pid} = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     Workers = kapps_config:get_integer(?CF_CONFIG_CAT, <<"callflow_listeners">>, 1),
@@ -54,7 +54,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,

@@ -19,7 +19,7 @@
 -define(DEFAULT_METHOD_CONFIG(LogSuccess),
         kz_json:from_list(
           [{<<"enabled">>, 'true'}
-          ,{<<"token_auth_expiry_s">>, ?SECONDS_IN_HOUR}
+          ,{<<"token_auth_expiry_s">>, ?DEFAULT_AUTH_EXPIRY}
           ,{<<"log_failed_attempts">>, 'true'}
           ,{<<"log_successful_attempts">>, LogSuccess}
           ]

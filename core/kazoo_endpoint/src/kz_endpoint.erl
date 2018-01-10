@@ -1173,18 +1173,12 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
 
 -spec maybe_get_t38(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
 maybe_get_t38(Endpoint, Call) ->
-    Opt =
-        case ?MODULE:get(Call) of
-            {'ok', JObj} -> kz_json:is_true([<<"media">>, <<"fax_option">>], JObj);
-            {'error', _} -> 'undefined'
-        end,
+    T38Call = kz_term:to_atom(kapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call)),
     DeviceType = kz_json:get_value(<<"device_type">>, Endpoint),
+    T38Device = kz_json:get_value([<<"media">>, <<"fax_option">>], Endpoint),
     case DeviceType =:= <<"fax">> of
         'false' -> [];
-        'true' ->
-            kapps_call_command:get_inbound_t38_settings(Opt
-                                                       ,kz_json:is_true([<<"media">>, <<"fax_option">>], Endpoint)
-                                                       )
+        'true' -> kapps_call_command:get_inbound_t38_settings(T38Call, T38Device)
     end.
 
 -spec maybe_build_failover(kz_json:object(), kapps_call:call()) -> kz_term:api_object().
@@ -1716,10 +1710,19 @@ maybe_enable_fax({Endpoint, Call, CallFwd, CCVs}=Acc) ->
 
 -spec maybe_enforce_security(ccv_acc()) -> ccv_acc().
 maybe_enforce_security({Endpoint, Call, CallFwd, CCVs}) ->
-    EnforceSecurity = kz_json:is_true([<<"media">>, <<"encryption">>, <<"enforce_security">>], Endpoint, 'true'),
-    {Endpoint, Call, CallFwd
-    ,kz_json:set_value(<<"Media-Encryption-Enforce-Security">>, EnforceSecurity, CCVs)
-    }.
+    case kz_json:get_ne_binary_value([<<"media">>, <<"encryption">>, <<"security">>], Endpoint) of
+        'undefined' ->
+            case kz_json:is_true([<<"media">>, <<"encryption">>, <<"enforce_security">>], Endpoint) of
+                'true' ->
+                    Security = <<"mandatory">>,
+                    NewCCVS = kz_json:set_value(<<"Media-Encryption">>, Security, CCVs),
+                    {Endpoint, Call, CallFwd, NewCCVS};
+                'false' -> {Endpoint, Call, CallFwd, CCVs}
+            end;
+        Security ->
+            NewCCVS = kz_json:set_value(<<"Media-Encryption">>, Security, CCVs),
+            {Endpoint, Call, CallFwd, NewCCVS}
+    end.
 
 -spec maybe_set_encryption_flags(ccv_acc()) -> ccv_acc().
 maybe_set_encryption_flags({Endpoint, Call, CallFwd, CCVs}) ->
@@ -1997,14 +2000,14 @@ set_realm({Endpoint, Call, CallFwd, CCVs}) ->
     ,kz_json:set_value(<<"Realm">>, Realm, CCVs)
     }.
 
--spec profile(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec profile(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 profile(EndpointId, AccountId) ->
     case ?MODULE:get(EndpointId, AccountId) of
         {'ok', Endpoint} -> generate_profile(EndpointId, AccountId, Endpoint);
         Error -> Error
     end.
 
--spec generate_profile(ne_binary(), ne_binary(), kz_json:object()) -> {'ok', kz_json:object()}.
+-spec generate_profile(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> {'ok', kz_json:object()}.
 generate_profile(EndpointId, AccountId, Endpoint) ->
     %% I DON'T LIKE THIS
     %% kz_endpoint should not depend on kapps_call

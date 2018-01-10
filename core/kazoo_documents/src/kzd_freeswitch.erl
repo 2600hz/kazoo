@@ -528,7 +528,7 @@ fetch_uuid(Props) ->
                            ,Props
                            ).
 
--spec fetch_section(data()) -> api_binary().
+-spec fetch_section(data()) -> kz_term:api_binary().
 fetch_section(Props) ->
     props:get_first_defined([<<"Fetch-Section">>
                             ,<<"variable_Fetch-Section">>

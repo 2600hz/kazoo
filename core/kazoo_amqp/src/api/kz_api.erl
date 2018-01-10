@@ -154,7 +154,7 @@ reply_to(Props) when is_list(Props) ->
 reply_to(JObj) ->
     kz_json:get_value(?KEY_REPLY_TO_PID, JObj).
 
--spec deliver_to(api_terms()) -> api_binary().
+-spec deliver_to(kz_term:api_terms()) -> kz_term:api_binary().
 deliver_to(Props) when is_list(Props) ->
     props:get_value(?KEY_DELIVER_TO_PID, Props);
 deliver_to(JObj) ->

@@ -1042,7 +1042,7 @@ b_hangup('true', Call) ->
 queued_hangup(Call) ->
     queued_hangup(Call, 'undefined').
 
--spec queued_hangup(kapps_call:call(), api_ne_binary()) -> 'ok'.
+-spec queued_hangup(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 queued_hangup(Call, Cause) ->
     Command = props:filter_undefined(
                 [{<<"Application-Name">>, <<"hangup">>}

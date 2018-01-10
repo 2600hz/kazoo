@@ -1552,7 +1552,7 @@ utf8_binary(Value) ->
     Value.
 
 -spec to_log(object()) -> 'ok'.
--spec to_log(object(), ne_binary()) -> 'ok'.
+-spec to_log(object(), kz_term:ne_binary()) -> 'ok'.
 to_log(JObj) ->
     to_log(JObj, <<"JObj">>).
 

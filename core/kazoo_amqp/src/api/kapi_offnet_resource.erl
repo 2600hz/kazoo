@@ -264,7 +264,7 @@ publish_req(Req, ContentType)
 publish_req(Req, ContentType) ->
     publish_req(kz_json:to_proplist(Req), ContentType).
 
--spec publish_ctl_req(kz_types:api_control_q(), api_terms()) -> 'ok'.
+-spec publish_ctl_req(kz_types:api_control_q(), kz_term:api_terms()) -> 'ok'.
 publish_ctl_req({CtrlQ, CtrlP}, Props)
   when is_list(Props) ->
     Insert = [{?KEY_CONTROL_QUEUE, CtrlQ}

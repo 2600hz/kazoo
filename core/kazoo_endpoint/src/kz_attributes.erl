@@ -119,7 +119,7 @@ maybe_get_endpoint_cid(Validate, Attribute, Call) ->
             get_endpoint_cid(Validate, Attribute, JObj, Call)
     end.
 
--spec get_endpoint_cid(boolean(), ne_binary(), kz_json:object(), kapps_call:call()) -> cid().
+-spec get_endpoint_cid(boolean(), kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> cid().
 get_endpoint_cid(Validate, Attribute, JObj, Call) ->
     Number = get_cid_or_default(Attribute, <<"number">>, JObj),
     Name = get_cid_or_default(Attribute, <<"name">>, JObj),

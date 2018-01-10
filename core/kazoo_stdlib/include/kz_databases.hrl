@@ -34,15 +34,14 @@
 
 -define(KZ_PENDING_NOTIFY_DB, <<"pending_notifications">>).
 
--define(KZ_SYSTEM_DBS, [?KZ_DATA_DB
+-define(KZ_SYSTEM_DBS, [?KZ_ACCOUNTS_DB
+                       ,?KZ_DATA_DB
                        ,?KZ_CONFIG_DB
                        ,?KZ_SCHEMA_DB
                        ,?KZ_AUTH_DB
                        ,?KZ_MEDIA_DB
                        ,?KZ_SIP_DB
-                       ,?KZ_ACCOUNTS_DB
                        ,?KZ_RATES_DB
-                       ,?KZ_PROVISIONER_DB
                        ,?KZ_FAXES_DB
                        ,?KZ_SERVICES_DB
                        ,?KZ_OFFNET_DB
@@ -50,7 +49,6 @@
                        ,?KZ_PORT_REQUESTS_DB
                        ,?KZ_DEDICATED_IP_DB
                        ,?KZ_ACDC_DB
-                       ,?KZ_OAUTH_DB
                        ,?KZ_WEBHOOKS_DB
                        ,?KZ_TOKEN_DB
                        ,?KZ_ALERTS_DB

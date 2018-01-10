@@ -94,9 +94,9 @@ main(CommandLineArgs, Loops) ->
 -spec in_kazoo(atom(), module(), atom(), kz_term:binaries()) -> no_return().
 in_kazoo(SUPName, M, F, As) ->
     kz_util:put_callid(SUPName),
-    lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
+    lager:info("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
     R = apply(M, F, As),
-    lager:notice("~s result: ~p", [?MODULE, R]),
+    lager:info("~s result: ~p", [?MODULE, R]),
     R.
 
 -spec print_result(any(), boolean()) -> 'ok'.
