@@ -94,7 +94,7 @@ get_services_plan(PlanId, ResellerId, ServicesJObj, ServicePlans) ->
 -ifdef(TEST).
 -spec get_object_plans(kz_json:object(), plans()) -> plans().
 get_object_plans(_, ServicePlans) -> ServicePlans.
--else
+-else.
 -spec get_object_plans(kz_json:object(), plans()) -> plans().
 get_object_plans(ServicesJObj, ServicePlans) ->
     ResellerId = find_reseller_id(ServicesJObj),
@@ -109,7 +109,6 @@ get_object_plans(ServicesJObj, ServicePlans) ->
                ,ServicePlans
                ,Props
                ).
--endif.
 
 -spec get_object_plans_fold(ne_binary()) ->
                                    fun(({ne_binary(), kz_json:object()}, plans()) ->
@@ -130,6 +129,7 @@ get_object_plan(PlanId, ResellerId, JObj, ServicePlans) ->
                               ,ServicePlans
                               )
     end.
+-endif.
 
 -spec fetch_plan(ne_binary(), ne_binary(), kz_json:object()) -> api_object().
 fetch_plan(PlanId, AccountId, Overrides) ->
