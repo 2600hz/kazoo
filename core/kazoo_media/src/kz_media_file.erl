@@ -95,11 +95,12 @@ proxy_uri(JObj, #media_store_path{db = Db
                   end,
     Path = kz_util:uri_encode(base64:encode(term_to_binary({Db, Id, Attachment, Options}))),
     File = kz_util:uri_encode(Attachment),
-    <<(kz_media_util:base_url(Host, Port, Permissions))/binary
-      ,StreamType/binary
-      ,"/", Path/binary
-      ,"/", File/binary
-    >>.
+    UrlParts = [kz_media_util:base_url(Host, Port, Permissions)
+               ,StreamType
+               ,Path
+               ,File
+               ],
+    kz_binary:join(UrlParts, <<"/">>).
 
 -spec find_attachment(build_uri_args() | kz_term:ne_binary()) ->
                              {'ok', media_store_path()} |

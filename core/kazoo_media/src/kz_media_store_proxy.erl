@@ -10,7 +10,6 @@
 
 -export([init/2
         ,terminate/3
-        ,handle/2
         ]).
 
 -include("kazoo_media.hrl").
@@ -180,7 +179,7 @@ setup_context(#media_store_path{att=Attachment}=Path, Req) ->
                           ,filename=Filename
                           ,file=IODevice
                           },
-            {'ok', Req, State};
+            handle(Req, State);
         {'error', Reason} ->
             lager:debug("error ~p opening file ~s", [Reason, Filename]),
             reply_error(500, Req)
@@ -236,7 +235,7 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path) ->
 
 -spec add_content_type(media_store_path(), kz_term:ne_binary()) -> media_store_path().
 add_content_type(#media_store_path{opt=Options}= Path, CT) ->
-    NewOptions = props:set_value('content_type', kz_term:to_list(CT), Options),
+    NewOptions = props:set_value('content-type', kz_term:to_list(CT), Options),
     Path#media_store_path{opt=NewOptions}.
 
 -spec ensure_extension_present(media_store_path(), kz_term:ne_binary()) -> validate_request_ret().
