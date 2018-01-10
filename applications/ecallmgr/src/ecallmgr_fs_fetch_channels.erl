@@ -71,7 +71,7 @@ channel_resp_dialprefix(JObj, Channel, ChannelVars, ForChannelCCVs) ->
     Props = props:filter_undefined(
               [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
               ,{<<"sip_origination_call_id">>, CallId}
-              
+
               ,{<<"ecallmgr_", ?CALL_INTERACTION_ID>>, props:get_value(<<"Call-Interaction-ID">>, ChannelVars)}
               ,{<<"ecallmgr_Account-ID">>, props:get_value(<<"Account-ID">>, ChannelVars)}
               ,{<<"ecallmgr_Realm">>, props:get_value(<<"Realm">>, ChannelVars)}
@@ -79,12 +79,12 @@ channel_resp_dialprefix(JObj, Channel, ChannelVars, ForChannelCCVs) ->
               ,{<<"ecallmgr_Authorizing-ID">>, props:get_value(<<"Authorizing-ID">>, ChannelVars)}
               ,{<<"ecallmgr_Owner-ID">>, props:get_value(<<"Owner-ID">>, ChannelVars)}
               ,{<<"presence_id">>, props:get_value(<<"Presence-ID">>, ChannelVars)}
-              
+
               ,{<<"sip_h_X-FS-Auth-Token">>, nighmare_auth_token(ForChannelCCVs)}
               ,{<<"sip_h_X-FS-", ?CALL_INTERACTION_ID>>, props:get_value(<<"Call-Interaction-ID">>, ChannelVars)}
               ,{<<"sip_h_X-FS-From-Core-UUID">>, kz_json:get_value(<<"Core-UUID">>, JObj)}
               ,{<<"sip_h_X-FS-Refer-Partner-UUID">>, props:get_value(<<"Other-Leg-Call-ID">>, Channel)}
-              
+
               ]),
     fs_props_to_binary(Props).
 
