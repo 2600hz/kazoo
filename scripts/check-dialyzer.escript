@@ -81,18 +81,17 @@ get_beam_path(Path, BPs) ->
 
 maybe_fix_path(Path) ->
     case {is_beam(Path), is_erl(Path)} of
-        {'true',_} -> fix_path(Path);
-        {_,'true'} ->
+        {'true', 'false'} ->
+            fix_path(Path);
+        {'false', 'true'} ->
             RootDir = root_dir(Path),
             Module  = filename:basename(Path, ".erl"),
             Beam = filename:join([RootDir, "ebin", Module++".beam"]),
             case file_exists(Beam) of
                 'true' -> fix_path(Beam);
-                'false' ->
-                    io:format("file ~s doesn't exist~n", [Beam]),
-                    'undefined'
+                'false' -> 'undefined'
             end;
-        {_,_} ->
+        {'false', 'false'} ->
             {'app', filelib:wildcard(filename:join(Path, "*.beam"))}
     end.
 
@@ -110,9 +109,18 @@ do_warn(PLT, Paths) ->
 
     {N, _} = lists:foldl(fun do_warn_path/2
                         ,{0, PLT}
-                        ,[{'beams', lists:usort(Beams)} | Apps]
+                        ,[{'beams', Beams} | Apps]
                         ),
     N.
+
+%% explicitly adding `kz_types' so dialyzer knows about `sup_init_ret', `handle_call_ret_state' and other supervisor,
+%% gen_server, ... critical types defined in `kz_types'. Dialyzer is strict about types for these `init', `handle_*'
+%% functions and if we don't add `kz_types' here, dialyzer thinks their types are `any()' and will warn about it.
+ensure_kz_types(Beams) ->
+    case lists:any(fun(F) -> filename:basename(F, ".beam") =:= "kz_types" end, Beams) of
+        'true' -> Beams;
+        'false' -> [code:which(kz_types) | Beams]
+    end.
 
 do_warn_path({_, []}, Acc) -> Acc;
 do_warn_path({'beams', Beams}, {N, PLT}) ->
@@ -129,11 +137,7 @@ do_warn_path({'app', Beams}, {N, PLT}) ->
     {N + scan_and_print(PLT, Beams), PLT}.
 
 scan_and_print(PLT, Bs) ->
-    %% explicitly adding `kz_types' so dialyzer knows about `sup_init_ret', `handle_call_ret_state' and other supervisor,
-    %% gen_server, ... critical types defined in `kz_types'. Dialyzer is strict about types for these `init', `handle_*'
-    %% functions and if we don't add `kz_types' here, dialyzer thinks their types are `any()' and will warn about it.
-    Beams = Bs ++ [fix_path("core/kazoo_stdlib/ebin/kz_types.beam")],
-
+    Beams = ensure_kz_types(Bs),
     io:format("scanning ~s~n", [string:join(Beams, " ")]),
     length([print(W)
             || W <- scan(PLT, Beams),
