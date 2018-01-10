@@ -42,6 +42,7 @@ start_link(Manager, Call, Props) ->
 %%--------------------------------------------------------------------
 -spec init(pid(), kapps_call:call(), kz_term:proplist()) -> 'no_return'.
 init(Manager, Call, Props) ->
+    kapps_call:put_callid(Call),
     Config = get_config(Props),
     State = init_state(Manager, Call, Config),
     loop(State).
