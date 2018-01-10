@@ -45,7 +45,7 @@
 -type fetch_resp() :: kz_json:object() |
                       kz_term:proplist() |
                       channel().
--type channel_format() :: 'json' | 'proplist' | 'record'.
+-type channel_format() :: 'json' | 'proplist' | 'record' | 'api'.
 
 -spec fetch(kz_term:ne_binary()) ->
                    {'ok', fetch_resp()} |
@@ -79,6 +79,7 @@ fetch_other_leg(UUID, Format) ->
 
 -spec format(channel_format(), channel()) -> fetch_resp().
 format('json', Channel) -> to_json(Channel);
+format('api', Channel) -> to_api_json(Channel);
 format('proplist', Channel) -> to_props(Channel);
 format('record', Channel) -> Channel.
 
@@ -276,9 +277,14 @@ to_api_props(?NE_BINARY=CallId) ->
 channel_ccvs(#channel{ccvs='undefined'}) -> [];
 channel_ccvs(#channel{ccvs=CCVs}) -> kz_json:to_proplist(CCVs);
 channel_ccvs([_|_]=Props) ->
-    kz_json:to_proplist(props:get_value(<<"custom_channel_vars">>, Props, kz_json:new()));
+    case props:get_value(<<"custom_channel_vars">>, Props, kz_json:new()) of
+        List when is_list(List) -> List;
+        JObj -> kz_json:to_proplist(JObj)
+    end;
 channel_ccvs(JObj) ->
-    kz_json:to_proplist(<<"Custom-Channel-Vars">>, JObj).
+    kz_json:to_proplist(kz_json:get_first_defined([<<"Custom-Channel-Vars">>
+                                   ,<<"custom_channel_vars">>
+                                   ], JObj, kz_json:new())).
 
 -spec channel_cavs(channel() | kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 channel_cavs(#channel{cavs='undefined'}) -> [];
@@ -300,9 +306,9 @@ fetch_remote(UUID) ->
     case get_active_channel_status(UUID) of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            Props = kz_json:recursive_to_proplist(kz_json:normalize(JObj)),
-            CCVs = props:get_value(<<"custom_channel_vars">>, Props, []),
-            Props ++ CCVs
+            Props = kz_json:recursive_to_proplist(JObj),
+            CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+            Props ++ kz_json:to_proplist(kz_json:normalize(CCVs))
     end.
 
 -spec get_other_leg(kz_term:api_binary(), kz_term:proplist()) -> kz_term:api_binary().
@@ -341,7 +347,7 @@ maybe_other_bridge_leg(UUID, Props, _, _) ->
         BridgeId -> BridgeId
     end.
 
--spec jobj_to_record(atom(), ne_binary(), kz_json:object()) -> channel().
+-spec jobj_to_record(atom(), kz_term:ne_binary(), kz_json:object()) -> channel().
 jobj_to_record(Node, UUID, JObj) ->
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     CAVs = kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new()),
@@ -395,14 +401,14 @@ jobj_to_record(Node, UUID, JObj) ->
             }.
 
 
--spec other_leg_handling_locally(ne_binary()) -> boolean().
+-spec other_leg_handling_locally(kz_term:ne_binary()) -> boolean().
 other_leg_handling_locally(OtherLeg) ->
     case fetch(OtherLeg, 'record') of
         {'ok', #channel{handling_locally=HandleLocally}} -> HandleLocally;
         _ -> 'false'
     end.
 
--spec handling_locally(api_binary(), api_binary()) -> boolean().
+-spec handling_locally(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
 handling_locally('undefined', 'undefined') -> 'false';
 handling_locally(Node, 'undefined') ->
     Node =:= kz_term:to_binary(node());
@@ -412,10 +418,10 @@ handling_locally(Node, OtherLeg) ->
         _ -> other_leg_handling_locally(OtherLeg)
     end.
 
--spec new(atom(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec new(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 new(Node, UUID, JObj) ->
     ecallmgr_fs_channels:new(jobj_to_record(Node, UUID, JObj)).
 
--spec update(atom(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec update(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 update(Node, UUID, JObj) ->
     ecallmgr_fs_channels:update(UUID, jobj_to_record(Node, UUID, JObj)).

@@ -28,7 +28,8 @@ receive_fax(Node, UUID, JObj) ->
                          ])),
     _ = ecallmgr_fs_command:set(Node, UUID, Sets),
     Filename = kz_term:to_list(kz_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID))),
-    [{<<"playback">>, <<"silence_stream://2000">>}
+    [{<<"answer">>, <<>>}
+    ,{<<"playback">>, <<"silence_stream://2000">>}
     ,{<<"rxfax">>, Filename}
     ].
 

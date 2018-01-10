@@ -184,5 +184,5 @@ which_children(Supervisor) ->
 
 node_modules(Options) ->
     ClientVersion = props:get_value('client_version', Options),
-    {_, Release, _} = freeswitch:release(ClientVersion),
-    ecallmgr_config:get_ne_binaries(?NODE_MODULES_KEY(Release), ?NODE_MODULES).
+    {_, _, Bundle} = freeswitch:release(ClientVersion),
+    ecallmgr_config:get_ne_binaries(?NODE_MODULES_KEY(Bundle), ?NODE_MODULES).

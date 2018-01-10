@@ -37,8 +37,8 @@ start_link() ->
 start_proc(Map) ->
     supervisor:start_child(?SERVER, [control_q(Map)]).
 
--spec start_control_process(atom(), ne_binary(), ne_binary(), api_ne_binary(), api_pid(), kz_json:object()) ->
-                                   sup_startchild_ret().
+-spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_pid(), kz_json:object()) ->
+                                   kz_types:sup_startchild_ret().
 start_control_process(Node, CallId, FetchId, ControllerQ, ControllerP, CCVs) ->
     lager:debug("starting call control for ~s", [CallId]),
     start_proc(#{node => Node

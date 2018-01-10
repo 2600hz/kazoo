@@ -31,7 +31,7 @@
 
 -type state() :: map().
 
--record(cache, {call_id :: ne_binary()
+-record(cache, {call_id :: kz_term:ne_binary()
                ,pid :: pid()
                }).
 -type cache() :: #cache{}.

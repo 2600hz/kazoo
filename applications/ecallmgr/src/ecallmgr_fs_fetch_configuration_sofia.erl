@@ -74,13 +74,13 @@ default_sip_profiles(Node) ->
                      ,JObj
                      ).
 
--spec default_sip_profile() -> kz_proplist().
+-spec default_sip_profile() -> kz_term:proplist().
 default_sip_profile() ->
     [{<<"Settings">>, kz_json:from_list(default_sip_settings())}
     ,{<<"Gateways">>, kz_json:from_list(default_sip_gateways())}
     ].
 
--spec default_sip_settings() -> kz_proplist().
+-spec default_sip_settings() -> kz_term:proplist().
 default_sip_settings() ->
     [{<<"message-threads">>, <<"10">>}
     ,{<<"auth-calls">>, <<"true">>}

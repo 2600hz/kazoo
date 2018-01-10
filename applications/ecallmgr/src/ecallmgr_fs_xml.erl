@@ -183,7 +183,7 @@ conference_resp_xml([_|_]=Resp) ->
     conference_resp_xml(Resp, []);
 conference_resp_xml(Resp) -> conference_resp_xml(kz_json:to_proplist(Resp)).
 
--spec conference_resp_xml(api_terms(), kz_proplist()) -> {'ok', iolist()}.
+-spec conference_resp_xml(kz_term:api_terms(), kz_term:proplist()) -> {'ok', iolist()}.
 conference_resp_xml([_|_]=Resp, Props) ->
     Ps = props:get_value(<<"Profiles">>, Resp, kz_json:new()),
     CCs = props:get_value(<<"Caller-Controls">>, Resp, kz_json:new()),
@@ -552,6 +552,14 @@ get_channel_vars({<<"Custom-Application-Vars">>, JObj}, Vars) ->
 get_channel_vars({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     kz_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
 
+get_channel_vars({<<"Originate-Context">>, Context}, Vars) ->
+    [list_to_binary(["user_context='", kz_term:to_list(Context), "'"])
+    ,list_to_binary(["context='", kz_term:to_list(Context), "'"])
+    ,list_to_binary(["sip_context='", kz_term:to_list(Context), "'"])
+    ,list_to_binary(["origination_context='", kz_term:to_list(Context), "'"])
+     | Vars
+    ];
+
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
                     ,"='", kz_term:to_list(Username), "'"
@@ -749,7 +757,7 @@ get_profile_params(JObj) ->
     get_profile_params(
       kz_json:to_proplist(
         kz_json:get_value(<<"Custom-Profile-Vars">>, JObj, kz_json:new())
-       )).
+       ) ++ [{<<"Context">>, ?DEFAULT_FREESWITCH_CONTEXT}]).
 
 -spec get_profile_param(tuple(), kz_term:proplist()) -> kz_term:proplist().
 get_profile_param({Key, Val}, Acc) ->
@@ -1032,7 +1040,7 @@ chat_permissions_el(Profiles) ->
 variables_el(Children) ->
     variables_el('variables', Children).
 
--spec variables_el(atom(), xml_els()) -> xml_el().
+-spec variables_el(atom(), kz_types:xml_els()) -> kz_types:xml_el().
 variables_el(Name, Children) ->
     #xmlElement{name=Name
                ,content=Children
@@ -1294,7 +1302,7 @@ event_filters_el(Filters) ->
                ,attributes=[xml_attrib('type', <<"whitelist">>)]
                }.
 
--spec route_resp_park_xml(api_terms(), kz_proplist()) -> xml_els().
+-spec route_resp_park_xml(kz_term:api_terms(), kz_term:proplist()) -> kz_types:xml_els().
 route_resp_park_xml(JObj, Props) ->
     Exten = [route_resp_log_winning_node()
             ,route_resp_set_winning_node()
@@ -1318,5 +1326,7 @@ route_resp_set_control_info(Props) ->
                          ,props:get_value(control_q, Props)
                          ,";Call-Control-PID="
                          ,kz_term:to_binary(props:get_value(control_p, Props))
+                         ,";ecallmgr_Ecallmgr-Node="
+                         ,kz_term:to_binary(node())
                          ]),
     action_el(App, Arg).

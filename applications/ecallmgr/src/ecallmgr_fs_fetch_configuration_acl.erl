@@ -55,7 +55,7 @@ acl(#{node := Node, fetch_id := Id}) ->
     end.
 
 
--spec generate_acl_xml(api_object()) -> api_binary().
+-spec generate_acl_xml(kz_term:api_object()) -> kz_term:api_binary().
 generate_acl_xml('undefined') ->
     'undefined';
 generate_acl_xml(SysconfResp) ->

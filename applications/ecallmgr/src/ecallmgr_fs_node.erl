@@ -513,58 +513,27 @@ process_cmd(Node, Options, JObj, Acc0) ->
 
 -spec process_cmd(atom(), kz_term:proplist(), kz_term:ne_binary(), kz_json:json_term(), cmd_results()) -> cmd_results().
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc) ->
-    process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'binary').
+    execute_command(Node, Options, ApiCmd0, ApiArg, Acc).
 
--spec process_cmd(atom(), kz_term:proplist(), kz_term:ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
-process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
-    execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat).
-
--spec execute_command(atom(), kz_term:proplist(), kz_term:ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') ->
-                             cmd_results().
-execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
+-spec execute_command(atom(), kz_term:proplist(), kz_term:ne_binary(), kz_json:json_term(), cmd_results()) -> cmd_results().
+execute_command(Node, _Options, ApiCmd0, ApiArg, Acc) ->
     ApiCmd = kz_term:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
     lager:debug("exec ~s on ~s", [ApiCmd, Node]),
-    case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
+    case freeswitch:bgapi(Node, ApiCmd, ApiArg) of
         {'ok', BGApiID} ->
             receive
+                {'bgok', BGApiID} ->
+                    [{'ok', {ApiCmd, ApiArg}, <<"OK">>} | Acc];
                 {'bgok', BGApiID, FSResp} ->
-                    process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, ['global']), Acc);
-                {'bgerror', BGApiID, _} when ArgFormat =:= 'binary' ->
-                    process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'list');
+                    [{'ok', {ApiCmd, ApiArg}, FSResp} | Acc];
                 {'bgerror', BGApiID, Error} ->
-                    process_resp(ApiCmd, ApiArg, binary:split(Error, <<"\n">>, ['global']), Acc)
+                    [{'error', {ApiCmd, ApiArg}, Error} | Acc]
             after 120 * ?MILLISECONDS_IN_SECOND ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]
             end;
         {'error', Error} ->
             [{'error', {ApiCmd, ApiArg}, Error} | Acc]
     end.
-
--spec format_args('list'|'binary', kz_term:api_terms()) -> kz_term:api_terms().
-format_args('list', Args) -> kz_term:to_list(Args);
-format_args('binary', Args) -> kz_term:to_binary(Args).
-
--spec process_resp(atom(), kz_term:api_terms(), kz_term:ne_binaries(), cmd_results()) -> cmd_results().
-process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
-    process_resp(ApiCmd, ApiArg, Resps, Acc);
-process_resp(ApiCmd, ApiArg, [<<"+OK Reloading XML">>|Resps], Acc) ->
-    process_resp(ApiCmd, ApiArg, Resps, Acc);
-process_resp(ApiCmd, ApiArg, [<<"+OK acl reloaded">>|Resps], Acc) ->
-    process_resp(ApiCmd, ApiArg, Resps, Acc);
-process_resp(ApiCmd, ApiArg, [<<"+OK ", Resp/binary>>|Resps], Acc) ->
-    process_resp(ApiCmd, ApiArg, Resps, [{'ok', {ApiCmd, ApiArg}, Resp} | Acc]);
-process_resp(ApiCmd, ApiArg, [<<"+OK">>|Resps], Acc) ->
-    process_resp(ApiCmd, ApiArg, Resps, [{'ok', {ApiCmd, ApiArg}, <<"OK">>} | Acc]);
-process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
-    case was_bad_error(Err, ApiCmd, ApiArg) of
-        'true' -> process_resp(ApiCmd, ApiArg, Resps, [{'error', {ApiCmd, ApiArg}, Err} | Acc]);
-        'false' -> process_resp(ApiCmd, ApiArg, Resps, Acc)
-    end;
-process_resp(_, _, [], Acc) -> Acc.
-
--spec was_bad_error(kz_term:ne_binary(), atom(), any()) -> boolean().
-was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
-was_bad_error(_E, _, _) -> 'true'.
 
 -spec was_not_successful_cmd(cmd_result()) -> boolean().
 was_not_successful_cmd({'ok', _, _}) -> 'false';

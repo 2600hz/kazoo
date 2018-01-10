@@ -43,7 +43,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_listener:start_link(?MODULE
                            ,[{'responders', ?RESPONDERS}
@@ -70,14 +70,14 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
     lager:info("starting new fs amqp event listener for ~s", [Node]),
     {'ok', #{node => Node, options => Options}}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('control_q', _From, #{queue := Q}=State) ->
     {'reply', {'ok', Q, kz_amqp_channel:consumer_channel()}, State};
 handle_call('control_q', _From, State) ->
@@ -116,7 +116,7 @@ handle_cast(_Cast, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -184,6 +184,6 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec control_q(pid()) -> {'ok', ne_binary(), pid()} | {'error', 'no_queue'}.
+-spec control_q(pid()) -> {'ok', kz_term:ne_binary(), pid()} | {'error', 'no_queue'}.
 control_q(Pid) ->
     gen_listener:call(Pid, 'control_q').

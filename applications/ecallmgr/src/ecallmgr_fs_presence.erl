@@ -23,11 +23,14 @@ init() ->
 publish_presence(#{call_id := UUID} = Ctx) ->
     kz_util:put_callid(UUID),
     Routines = [fun check_proto/1
+               ,fun check_node/1
                ],
     case lists:all(fun(F) -> F(Ctx) end, Routines) of
         'true' -> build_presence_event(UUID, Ctx);
         'false' -> 'ok'
-    end.
+    end;
+publish_presence(#{payload := JObj}) ->
+    lager:debug_unsafe("PRESENCE NO CALLID ~s", [kz_json:encode(JObj, ['pretty'])]).
 
 -spec check_proto(map()) -> boolean().
 check_proto(#{payload := JObj}) ->
@@ -39,10 +42,17 @@ is_proto_handled(_Proto) ->
     lager:debug("presence proto ~p not handled", [_Proto]),
     'false'.
 
--spec check_publish_state(atom(), kz_term:api_binary(), kz_term:proplist()) -> boolean().
-check_publish_state(_Node, _UUID, Props) ->
-    props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
-        orelse props:is_true(<<"Publish-Channel-State">>, Props, 'true').
+-spec check_node(map()) -> boolean().
+check_node(#{payload := JObj}) ->
+    Node = kz_term:to_binary(node()),
+    case ?RESTRICTED_PUBLISHING
+        andalso kz_call_event:custom_channel_var(JObj, <<"Ecallmgr-Node">>)
+    of
+        'false' -> 'false';
+        'undefined' -> true;
+        Node -> true;
+        _Other -> 'false'
+    end.
 
 -spec realm(kz_json:object()) -> kz_term:ne_binary().
 realm(JObj) ->
@@ -59,7 +69,7 @@ get_user_realm(JObj) ->
         [From] -> {From, realm(JObj)}
     end.
 
--spec from(kz_json:object()) -> ne_binary().
+-spec from(kz_json:object()) -> kz_term:ne_binary().
 from(JObj) ->
     kz_json:get_first_defined([<<"from">>
                               ,<<"variable_presence_id">>

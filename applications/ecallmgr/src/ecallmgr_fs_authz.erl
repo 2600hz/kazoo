@@ -413,7 +413,7 @@ outbound_flags(Props) ->
         Flags when is_list(Flags) -> Flags
     end.
 
--spec rating_req(ne_binary(), kz_json:object()) -> kz_term:proplist().
+-spec rating_req(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 rating_req(CallId, Props) ->
     props:filter_undefined([{<<"To-DID">>, kz_evt_freeswitch:to_did(Props)}
                            ,{<<"From-DID">>, kz_evt_freeswitch:caller_id_number(Props)}

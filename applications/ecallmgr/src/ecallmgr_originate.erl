@@ -171,7 +171,7 @@ handle_cast({'create_uuid'}, #state{node=Node
     UUID = {_, Id} = create_uuid(JObj, Node),
     kz_util:put_callid(Id),
     lager:debug("created uuid ~p", [UUID]),
-    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'false')
         andalso start_control_process(State#state{uuid=UUID}) of
         'false' ->
             gen_listener:cast(self(), {'build_originate_args'}),
@@ -261,7 +261,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                                          ,server_id=ServerId
                                          ,control_pid=CtrlPid
                                          }=State) ->
-    ControlDisabled = kz_json:is_false(<<"Start-Control-Process">>, JObj, 'false'),
+    ControlDisabled = kz_json:is_false(<<"Start-Control-Process">>, JObj, 'true'),
     case originate_execute(Node, Dialstrings, find_originate_timeout(JObj)) of
         {'ok', UUID} when is_pid(CtrlPid) ->
             lager:debug("originate completed for: ~s with ctrl ~p", [UUID, CtrlPid]),
@@ -407,11 +407,12 @@ get_transfer_action(JObj, Route) ->
 intercept_unbridged_only('undefined', JObj) ->
     get_bridge_action(JObj);
 intercept_unbridged_only(ExistingCallId, JObj) ->
+    Context = ?DEFAULT_FREESWITCH_CONTEXT,
     case kz_json:is_true(<<"Intercept-Unbridged-Only">>, JObj, 'true') of
         'true' ->
-            <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ">>;
+            <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ", Context/binary>>;
         'false' ->
-            <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline ">>
+            <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline", Context/binary>>
     end.
 
 -spec get_bridge_action(kz_json:object()) -> kz_term:ne_binary().
@@ -482,7 +483,8 @@ get_channel_vars(JObj, FetchId) ->
            ,{<<?CALL_INTERACTION_ID>>, InteractionId}
            ],
     J = kz_json:from_list_recursive([{<<"Custom-Channel-Vars">>, add_ccvs(JObj, CCVs)}]),
-    ecallmgr_fs_xml:get_channel_vars(kz_json:merge(JObj, J)).
+    J1 = kz_json:set_value(<<"Originate-Context">>, ?DEFAULT_FREESWITCH_CONTEXT, J),
+    ecallmgr_fs_xml:get_channel_vars(kz_json:merge(JObj, J1)).
 
 -spec add_ccvs(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 add_ccvs(JObj, Props) ->
@@ -523,7 +525,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
     case freeswitch:api(Node
                        ,'originate'
                        ,kz_term:to_list(Dialstrings)
-                       ,Timeout * ?MILLISECONDS_IN_SECOND + 2000
+                       ,Timeout * ?MILLISECONDS_IN_SECOND + 20000
                        )
     of
         {'ok', UUID} ->
@@ -757,7 +759,7 @@ start_control_process(#state{control_pid=_Pid
 
 -spec maybe_start_call_handlers(created_uuid(), state()) -> 'ok'.
 maybe_start_call_handlers(UUID, #state{originate_req=JObj}=State) ->
-    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'false')
         andalso start_control_process(State#state{uuid=UUID}) of
         'false' -> 'ok';
         {'ok', #state{control_pid=_Pid}} ->

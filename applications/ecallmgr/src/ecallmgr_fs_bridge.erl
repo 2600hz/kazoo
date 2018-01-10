@@ -234,6 +234,7 @@ pre_exec(DP, _Node, _UUID, _Channel, JObj) ->
               ,{<<"Call-Control-Queue">>, <<"${Call-Control-Queue}">>}
               ,{<<"Call-Control-PID">>, <<"${Call-Control-PID}">>}
               ,{<<"Switch-URI">>, <<"${Switch-URI}">>}
+              ,{<<"fax_enable_t38">>, <<"true">>}
               ] ++ loopback_exports(JObj),
     CmdExport = kz_binary:join([<<K/binary, "=", V/binary>> || {K, V} <- Exports], <<" ">>),
     [{"application", "kz_multiset continue_on_fail=true hangup_after_bridge=true"}

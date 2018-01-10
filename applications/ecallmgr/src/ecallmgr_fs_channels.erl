@@ -215,12 +215,12 @@ update(UUID, Key, Value) ->
 updates(UUID, Updates) ->
     gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
 
--spec deferred_update(ne_binary(), pos_integer(), any()) -> 'ok'.
+-spec deferred_update(kz_term:ne_binary(), pos_integer(), any()) -> 'ok'.
 deferred_update(UUID, Key, Value) ->
     deferred_updates(UUID, [{Key, Value}]).
 
 
--spec deferred_updates(ne_binary(), channel_updates()) -> 'ok'.
+-spec deferred_updates(kz_term:ne_binary(), channel_updates()) -> 'ok'.
 deferred_updates(UUID, Updates) ->
     gen_server:cast(?SERVER, {'channel_updates', UUID, Updates}).
 
@@ -852,7 +852,7 @@ channel_call_state('true') ->
 channel_call_state('false') ->
     'undefined'.
 
--spec connection_ccvs(channel()) -> api_object().
+-spec connection_ccvs(channel()) -> kz_term:api_object().
 connection_ccvs(#channel{ccvs=CCVs}) -> CCVs.
 
 -spec connection_cavs(channel()) -> kz_term:api_object().

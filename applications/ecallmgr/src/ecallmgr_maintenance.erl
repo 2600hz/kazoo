@@ -543,6 +543,7 @@ remove_fs_node(FSNode, FSNodes, ConfigFun) ->
                 io:format("removing ~s from ecallmgr system config~n", [FSNode]),
                 run_config_fun(ConfigFun, <<"fs_nodes">>, lists:delete(FSNode, FSNodes))
         end,
+    ecallmgr_fs_pinger_sup:remove_node(kz_term:to_atom(FSNode, 'true')),
     ecallmgr_fs_nodes:remove(kz_term:to_atom(FSNode, 'true')).
 
 -spec get_fs_nodes(kz_term:ne_binary() | atom()) -> kz_term:ne_binaries().

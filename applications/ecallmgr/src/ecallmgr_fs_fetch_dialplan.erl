@@ -29,12 +29,12 @@
 -spec init() -> 'ok'.
 init() ->
     kazoo_bindings:bind(<<"fetch.dialplan.*.route_req.context_2">>, ?MODULE, 'dialplan'),
+    kazoo_bindings:bind(<<"fetch.dialplan.*.route_req.default">>, ?MODULE, 'dialplan'),
     kazoo_bindings:bind(<<"event_stream.event.dialplan.ROUTE_WINNER">>, ?MODULE, 'route_winner'),
     'ok'.
 
 -spec dialplan(map()) -> fs_sendmsg_ret().
 dialplan(#{fetch_id := FetchId, payload := JObj}=Map) ->
-    lager:debug_unsafe("FETCH ~s", [kz_json:encode(JObj, ['pretty'])]),
     lager:debug("start dialplan fetch ~s for ~s", [FetchId, kzd_fetch:call_id(JObj)]),
     Routines = [fun call_id/1
                ,fun timeout/1
@@ -92,7 +92,7 @@ maybe_authz(#{}=Map) ->
 
 maybe_expired(#{timeout := Timeout}=Map)
   when Timeout =< 0 ->
-    lager:warning("timeout before sending route request"),
+    lager:warning("timeout before sending route request : ~B", [Timeout]),
     send_reply(Map);
 maybe_expired(#{request := Request}=Map) ->
     kapi_route:publish_req(Request),

@@ -35,7 +35,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Section) ->
     gen_server:start_link(?SERVER, [Node, Section], []).
 
@@ -49,7 +49,7 @@ start_link(Node, Section) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | ne_binary()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([Node, Section]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
@@ -71,7 +71,7 @@ init([Node, Section]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -85,7 +85,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind', #state{node=Node, section=Section}=State) ->
     case freeswitch:bind(Node, Section) of
         'ok' -> {'noreply', State};
@@ -106,7 +106,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'fetch', JObj}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun handle_fetch_req/2, [Node, JObj]),
     {'noreply', State};

@@ -49,7 +49,7 @@ handle_event(#{node := Node, payload := JObj}) ->
     Event = kz_conference_event:event(JObj),
     process_event(Event, JObj, Node).
 
--spec process_event(ne_binary(), kz_json:object(), atom()) -> any().
+-spec process_event(kz_term:ne_binary(), kz_json:object(), atom()) -> any().
 process_event(<<"conference-create">>, JObj, Node) ->
     _ = ecallmgr_fs_conferences:create(JObj, Node),
     ConferenceId = kz_conference_event:conference_id(JObj),

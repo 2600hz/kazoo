@@ -27,4 +27,12 @@ init() ->
 -spec publish_call_event(map()) -> any().
 publish_call_event(#{payload := JObj}) ->
     kz_util:put_callid(JObj),
-    kapi_call:publish_event(JObj).
+    Node = kz_term:to_binary(node()),
+    case ?RESTRICTED_PUBLISHING
+        andalso kz_call_event:custom_channel_var(JObj, <<"Ecallmgr-Node">>)
+    of
+        'false' -> kapi_call:publish_event(JObj);
+        'undefined' -> kapi_call:publish_event(JObj);
+        Node -> kapi_call:publish_event(JObj);
+        _Other -> 'ok'
+    end.

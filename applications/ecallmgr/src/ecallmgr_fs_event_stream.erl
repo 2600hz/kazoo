@@ -24,12 +24,12 @@
 
 -record(state, {node :: atom()
                ,bindings :: bindings()
-               ,profile_name :: atom() | ne_binary()
+               ,profile_name :: atom() | kz_term:ne_binary()
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: timeout()
-               ,channel_mon :: api_reference()
+               ,channel_mon :: kz_term:api_reference()
                }).
 -type state() :: #state{}.
 

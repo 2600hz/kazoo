@@ -37,6 +37,8 @@
 -define(DEFAULT_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_sample_rate">>, 8000)).
 -define(DEFAULT_STEREO_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_stereo_sample_rate">>, 16000)).
 
+-define(RESTRICTED_PUBLISHING, ecallmgr_config:get_boolean(<<"restrict_channel_event_publisher">>, 'true')).
+
 -type fs_app() :: {kz_term:ne_binary(), binary() | 'noop'} |
                   {kz_term:ne_binary(), kz_term:ne_binary(), atom()}.
 -type fs_apps() :: [fs_app()].
@@ -103,8 +105,8 @@
                  ,loopback_other_leg :: kz_term:api_ne_binary() | '_'
                  ,callflow_id :: kz_term:api_ne_binary() | '_'
                  ,is_onhold = 'false' :: boolean() | '_'
-                 ,cavs :: api_object() | '_'
-                 ,ccvs :: api_object() | '_'
+                 ,cavs :: kz_term:api_object() | '_'
+                 ,ccvs :: kz_term:api_object() | '_'
                  ,from :: kz_term:api_binary() | '_'
                  ,to :: kz_term:api_binary() | '_'
                  }).
@@ -339,6 +341,8 @@
                              ,{<<"Caller-Callee-ID-Number">>, <<"callee_id_number">>}
                              ,{<<"Caller-Caller-ID-Name">>, <<"caller_id_name">>}
                              ,{<<"Caller-Caller-ID-Number">>, <<"caller_id_number">>}
+                             ,{<<"Context">>, <<"context">>}
+                             ,{<<"Device-ID">>, <<"device_id">>}
                              ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}] Dialplan-related
