@@ -81,6 +81,7 @@
 
 -type api_number() :: number() | 'undefined'.
 -type api_integer() :: integer() | 'undefined'.
+-type api_integers() :: [integer()] | 'undefined'.
 -type api_pos_integer() :: pos_integer() | 'undefined'.
 -type api_non_neg_integer() :: non_neg_integer() | 'undefined'.
 -type api_float() :: float() | 'undefined'.
@@ -102,50 +103,51 @@
 
 -type functions() :: [function()].
 
--export_type([text/0
-             ,atoms/0
-             ,pids/0
-             ,references/0
-             ,proplist_key/0
-             ,proplist_value/0
-             ,proplist_property/0
-             ,proplist/0
-             ,proplists/0
-             ,proplist_kv/2
-             ,pid_ref/0
-             ,pid_refs/0
-             ,api_pid_ref/0
-             ,api_pid_refs/0
-             ,api_terms/0
-             ,api_binary/0
-             ,api_ne_binary/0
-             ,api_ne_binaries/0
+-export_type([api_atom/0
+             ,api_atoms/0
              ,api_binaries/0
+             ,api_binary/0
+             ,api_boolean/0
+             ,api_float/0
+             ,api_integer/0
+             ,api_integers/0
+             ,api_list/0
+             ,api_ne_binaries/0
+             ,api_ne_binary/0
+             ,api_non_neg_integer/0
+             ,api_number/0
              ,api_object/0
              ,api_objects/0
-             ,api_boolean/0
-             ,api_atom/0
-             ,api_atoms/0
-             ,api_string/0
-             ,api_reference/0
              ,api_pid/0
-             ,api_list/0
-             ,api_number/0
-             ,api_integer/0
+             ,api_pid_ref/0
+             ,api_pid_refs/0
              ,api_pos_integer/0
-             ,api_non_neg_integer/0
-             ,api_float/0
+             ,api_reference/0
+             ,api_string/0
+             ,api_terms/0
+             ,atoms/0
+             ,binaries/0
              ,deeplist/0
-             ,std_return/0
-             ,sup_no_return/0
+             ,functions/0
+             ,integers/0
              ,jobj_return/0
              ,jobjs_return/0
-             ,ne_binary/0
              ,ne_binaries/0
-             ,binaries/0
+             ,ne_binary/0
+             ,pid_ref/0
+             ,pid_refs/0
+             ,pids/0
+             ,proplist/0
+             ,proplist_key/0
+             ,proplist_kv/2
+             ,proplist_property/0
+             ,proplist_value/0
+             ,proplists/0
+             ,references/0
+             ,std_return/0
              ,strings/0
-             ,integers/0
-             ,functions/0
+             ,sup_no_return/0
+             ,text/0
              ]).
 
 %%--------------------------------------------------------------------
