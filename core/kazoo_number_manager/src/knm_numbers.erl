@@ -131,7 +131,7 @@ prev_assigned_to(#{'todo' := Ns}) ->
         end,
     case sets:to_list(lists:foldl(F, sets:new(), Ns)) of
         [] -> 'undefined';
-        [AccountId] -> AccountId
+        [AccountId |  _] -> AccountId
     end.
 
 
