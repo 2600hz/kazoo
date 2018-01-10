@@ -20,7 +20,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec addresses(doc()) -> api_objects().
+-spec addresses(doc()) -> kz_term:api_objects().
 -spec addresses(doc(), Default) -> kz_json:objects() | Default.
 addresses(Doc) ->
     addresses(Doc, 'undefined').
@@ -31,7 +31,7 @@ addresses(Doc, Default) ->
 set_addresses(Doc, Addresses) ->
     kz_json:set_value([<<"addresses">>], Addresses, Doc).
 
--spec assistant(doc()) -> api_binary().
+-spec assistant(doc()) -> kz_term:api_binary().
 -spec assistant(doc(), Default) -> binary() | Default.
 assistant(Doc) ->
     assistant(Doc, 'undefined').
@@ -42,7 +42,7 @@ assistant(Doc, Default) ->
 set_assistant(Doc, Assistant) ->
     kz_json:set_value([<<"assistant">>], Assistant, Doc).
 
--spec birthday(doc()) -> api_binary().
+-spec birthday(doc()) -> kz_term:api_binary().
 -spec birthday(doc(), Default) -> binary() | Default.
 birthday(Doc) ->
     birthday(Doc, 'undefined').
@@ -53,18 +53,18 @@ birthday(Doc, Default) ->
 set_birthday(Doc, Birthday) ->
     kz_json:set_value([<<"birthday">>], Birthday, Doc).
 
--spec nicknames(doc()) -> api_ne_binaries().
--spec nicknames(doc(), Default) -> ne_binaries() | Default.
+-spec nicknames(doc()) -> kz_term:api_ne_binaries().
+-spec nicknames(doc(), Default) -> kz_term:ne_binaries() | Default.
 nicknames(Doc) ->
     nicknames(Doc, 'undefined').
 nicknames(Doc, Default) ->
     kz_json:get_list_value([<<"nicknames">>], Doc, Default).
 
--spec set_nicknames(doc(), ne_binaries()) -> doc().
+-spec set_nicknames(doc(), kz_term:ne_binaries()) -> doc().
 set_nicknames(Doc, Nicknames) ->
     kz_json:set_value([<<"nicknames">>], Nicknames, Doc).
 
--spec note(doc()) -> api_binary().
+-spec note(doc()) -> kz_term:api_binary().
 -spec note(doc(), Default) -> binary() | Default.
 note(Doc) ->
     note(Doc, 'undefined').
@@ -75,7 +75,7 @@ note(Doc, Default) ->
 set_note(Doc, Note) ->
     kz_json:set_value([<<"note">>], Note, Doc).
 
--spec role(doc()) -> api_binary().
+-spec role(doc()) -> kz_term:api_binary().
 -spec role(doc(), Default) -> binary() | Default.
 role(Doc) ->
     role(Doc, 'undefined').
@@ -86,7 +86,7 @@ role(Doc, Default) ->
 set_role(Doc, Role) ->
     kz_json:set_value([<<"role">>], Role, Doc).
 
--spec sort_string(doc()) -> api_binary().
+-spec sort_string(doc()) -> kz_term:api_binary().
 -spec sort_string(doc(), Default) -> binary() | Default.
 sort_string(Doc) ->
     sort_string(Doc, 'undefined').
@@ -97,7 +97,7 @@ sort_string(Doc, Default) ->
 set_sort_string(Doc, SortString) ->
     kz_json:set_value([<<"sort_string">>], SortString, Doc).
 
--spec title(doc()) -> api_binary().
+-spec title(doc()) -> kz_term:api_binary().
 -spec title(doc(), Default) -> binary() | Default.
 title(Doc) ->
     title(Doc, 'undefined').

@@ -19,7 +19,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec featurecode(doc()) -> api_object().
+-spec featurecode(doc()) -> kz_term:api_object().
 -spec featurecode(doc(), Default) -> kz_json:object() | Default.
 featurecode(Doc) ->
     featurecode(Doc, 'undefined').
@@ -30,29 +30,29 @@ featurecode(Doc, Default) ->
 set_featurecode(Doc, Featurecode) ->
     kz_json:set_value([<<"featurecode">>], Featurecode, Doc).
 
--spec featurecode_name(doc()) -> api_ne_binary().
--spec featurecode_name(doc(), Default) -> ne_binary() | Default.
+-spec featurecode_name(doc()) -> kz_term:api_ne_binary().
+-spec featurecode_name(doc(), Default) -> kz_term:ne_binary() | Default.
 featurecode_name(Doc) ->
     featurecode_name(Doc, 'undefined').
 featurecode_name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"featurecode">>, <<"name">>], Doc, Default).
 
--spec set_featurecode_name(doc(), ne_binary()) -> doc().
+-spec set_featurecode_name(doc(), kz_term:ne_binary()) -> doc().
 set_featurecode_name(Doc, FeaturecodeName) ->
     kz_json:set_value([<<"featurecode">>, <<"name">>], FeaturecodeName, Doc).
 
--spec featurecode_number(doc()) -> api_ne_binary().
--spec featurecode_number(doc(), Default) -> ne_binary() | Default.
+-spec featurecode_number(doc()) -> kz_term:api_ne_binary().
+-spec featurecode_number(doc(), Default) -> kz_term:ne_binary() | Default.
 featurecode_number(Doc) ->
     featurecode_number(Doc, 'undefined').
 featurecode_number(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"featurecode">>, <<"number">>], Doc, Default).
 
--spec set_featurecode_number(doc(), ne_binary()) -> doc().
+-spec set_featurecode_number(doc(), kz_term:ne_binary()) -> doc().
 set_featurecode_number(Doc, FeaturecodeNumber) ->
     kz_json:set_value([<<"featurecode">>, <<"number">>], FeaturecodeNumber, Doc).
 
--spec flow(doc()) -> api_object().
+-spec flow(doc()) -> kz_term:api_object().
 -spec flow(doc(), Default) -> kz_json:object() | Default.
 flow(Doc) ->
     flow(Doc, 'undefined').
@@ -63,7 +63,7 @@ flow(Doc, Default) ->
 set_flow(Doc, Flow) ->
     kz_json:set_value([<<"flow">>], Flow, Doc).
 
--spec metaflow(doc()) -> api_object().
+-spec metaflow(doc()) -> kz_term:api_object().
 -spec metaflow(doc(), Default) -> kz_json:object() | Default.
 metaflow(Doc) ->
     metaflow(Doc, 'undefined').
@@ -74,24 +74,24 @@ metaflow(Doc, Default) ->
 set_metaflow(Doc, Metaflow) ->
     kz_json:set_value([<<"metaflow">>], Metaflow, Doc).
 
--spec numbers(doc()) -> ne_binaries().
--spec numbers(doc(), Default) -> ne_binaries() | Default.
+-spec numbers(doc()) -> kz_term:ne_binaries().
+-spec numbers(doc(), Default) -> kz_term:ne_binaries() | Default.
 numbers(Doc) ->
     numbers(Doc, []).
 numbers(Doc, Default) ->
     kz_json:get_list_value([<<"numbers">>], Doc, Default).
 
--spec set_numbers(doc(), ne_binaries()) -> doc().
+-spec set_numbers(doc(), kz_term:ne_binaries()) -> doc().
 set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
--spec patterns(doc()) -> ne_binaries().
--spec patterns(doc(), Default) -> ne_binaries() | Default.
+-spec patterns(doc()) -> kz_term:ne_binaries().
+-spec patterns(doc(), Default) -> kz_term:ne_binaries() | Default.
 patterns(Doc) ->
     patterns(Doc, []).
 patterns(Doc, Default) ->
     kz_json:get_list_value([<<"patterns">>], Doc, Default).
 
--spec set_patterns(doc(), ne_binaries()) -> doc().
+-spec set_patterns(doc(), kz_term:ne_binaries()) -> doc().
 set_patterns(Doc, Patterns) ->
     kz_json:set_value([<<"patterns">>], Patterns, Doc).

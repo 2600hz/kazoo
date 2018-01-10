@@ -39,7 +39,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec call_recording(doc()) -> api_object().
+-spec call_recording(doc()) -> kz_term:api_object().
 -spec call_recording(doc(), Default) -> kz_json:object() | Default.
 call_recording(Doc) ->
     call_recording(Doc, 'undefined').
@@ -50,7 +50,7 @@ call_recording(Doc, Default) ->
 set_call_recording(Doc, CallRecording) ->
     kz_json:set_value([<<"call_recording">>], CallRecording, Doc).
 
--spec call_recording_account(doc()) -> api_object().
+-spec call_recording_account(doc()) -> kz_term:api_object().
 -spec call_recording_account(doc(), Default) -> kz_json:object() | Default.
 call_recording_account(Doc) ->
     call_recording_account(Doc, 'undefined').
@@ -61,7 +61,7 @@ call_recording_account(Doc, Default) ->
 set_call_recording_account(Doc, CallRecordingAccount) ->
     kz_json:set_value([<<"call_recording">>, <<"account">>], CallRecordingAccount, Doc).
 
--spec call_recording_endpoint(doc()) -> api_object().
+-spec call_recording_endpoint(doc()) -> kz_term:api_object().
 -spec call_recording_endpoint(doc(), Default) -> kz_json:object() | Default.
 call_recording_endpoint(Doc) ->
     call_recording_endpoint(Doc, 'undefined').
@@ -83,7 +83,7 @@ call_restriction(Doc, Default) ->
 set_call_restriction(Doc, CallRestriction) ->
     kz_json:set_value([<<"call_restriction">>], CallRestriction, Doc).
 
--spec call_waiting(doc()) -> api_object().
+-spec call_waiting(doc()) -> kz_term:api_object().
 -spec call_waiting(doc(), Default) -> kz_json:object() | Default.
 call_waiting(Doc) ->
     call_waiting(Doc, 'undefined').
@@ -94,7 +94,7 @@ call_waiting(Doc, Default) ->
 set_call_waiting(Doc, CallWaiting) ->
     kz_json:set_value([<<"call_waiting">>], CallWaiting, Doc).
 
--spec caller_id(doc()) -> api_object().
+-spec caller_id(doc()) -> kz_term:api_object().
 -spec caller_id(doc(), Default) -> kz_json:object() | Default.
 caller_id(Doc) ->
     caller_id(Doc, 'undefined').
@@ -105,7 +105,7 @@ caller_id(Doc, Default) ->
 set_caller_id(Doc, CallerId) ->
     kz_json:set_value([<<"caller_id">>], CallerId, Doc).
 
--spec dial_plan(doc()) -> api_object().
+-spec dial_plan(doc()) -> kz_term:api_object().
 -spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(Doc) ->
     dial_plan(Doc, 'undefined').
@@ -116,7 +116,7 @@ dial_plan(Doc, Default) ->
 set_dial_plan(Doc, DialPlan) ->
     kz_json:set_value([<<"dial_plan">>], DialPlan, Doc).
 
--spec do_not_disturb(doc()) -> api_object().
+-spec do_not_disturb(doc()) -> kz_term:api_object().
 -spec do_not_disturb(doc(), Default) -> kz_json:object() | Default.
 do_not_disturb(Doc) ->
     do_not_disturb(Doc, 'undefined').
@@ -127,7 +127,7 @@ do_not_disturb(Doc, Default) ->
 set_do_not_disturb(Doc, DoNotDisturb) ->
     kz_json:set_value([<<"do_not_disturb">>], DoNotDisturb, Doc).
 
--spec do_not_disturb_enabled(doc()) -> api_boolean().
+-spec do_not_disturb_enabled(doc()) -> kz_term:api_boolean().
 -spec do_not_disturb_enabled(doc(), Default) -> boolean() | Default.
 do_not_disturb_enabled(Doc) ->
     do_not_disturb_enabled(Doc, 'undefined').
@@ -149,7 +149,7 @@ enabled(Doc, Default) ->
 set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
--spec formatters(doc()) -> api_object().
+-spec formatters(doc()) -> kz_term:api_object().
 -spec formatters(doc(), Default) -> kz_json:object() | Default.
 formatters(Doc) ->
     formatters(Doc, 'undefined').
@@ -160,7 +160,7 @@ formatters(Doc, Default) ->
 set_formatters(Doc, Formatters) ->
     kz_json:set_value([<<"formatters">>], Formatters, Doc).
 
--spec language(doc()) -> api_binary().
+-spec language(doc()) -> kz_term:api_binary().
 -spec language(doc(), Default) -> binary() | Default.
 language(Doc) ->
     language(Doc, 'undefined').
@@ -171,7 +171,7 @@ language(Doc, Default) ->
 set_language(Doc, Language) ->
     kz_json:set_value([<<"language">>], Language, Doc).
 
--spec metaflows(doc()) -> api_object().
+-spec metaflows(doc()) -> kz_term:api_object().
 -spec metaflows(doc(), Default) -> kz_json:object() | Default.
 metaflows(Doc) ->
     metaflows(Doc, 'undefined').
@@ -193,7 +193,7 @@ music_on_hold(Doc, Default) ->
 set_music_on_hold(Doc, MusicOnHold) ->
     kz_json:set_value([<<"music_on_hold">>], MusicOnHold, Doc).
 
--spec music_on_hold_media_id(doc()) -> api_binary().
+-spec music_on_hold_media_id(doc()) -> kz_term:api_binary().
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
 music_on_hold_media_id(Doc) ->
     music_on_hold_media_id(Doc, 'undefined').
@@ -204,18 +204,18 @@ music_on_hold_media_id(Doc, Default) ->
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
     kz_json:set_value([<<"music_on_hold">>, <<"media_id">>], MusicOnHoldMediaId, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec org(doc()) -> api_binary().
+-spec org(doc()) -> kz_term:api_binary().
 -spec org(doc(), Default) -> binary() | Default.
 org(Doc) ->
     org(Doc, 'undefined').
@@ -237,7 +237,7 @@ preflow(Doc, Default) ->
 set_preflow(Doc, Preflow) ->
     kz_json:set_value([<<"preflow">>], Preflow, Doc).
 
--spec preflow_always(doc()) -> api_binary().
+-spec preflow_always(doc()) -> kz_term:api_binary().
 -spec preflow_always(doc(), Default) -> binary() | Default.
 preflow_always(Doc) ->
     preflow_always(Doc, 'undefined').
@@ -248,14 +248,14 @@ preflow_always(Doc, Default) ->
 set_preflow_always(Doc, PreflowAlways) ->
     kz_json:set_value([<<"preflow">>, <<"always">>], PreflowAlways, Doc).
 
--spec realm(doc()) -> api_ne_binary().
--spec realm(doc(), Default) -> ne_binary() | Default.
+-spec realm(doc()) -> kz_term:api_ne_binary().
+-spec realm(doc(), Default) -> kz_term:ne_binary() | Default.
 realm(Doc) ->
     realm(Doc, 'undefined').
 realm(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"realm">>], Doc, Default).
 
--spec set_realm(doc(), ne_binary()) -> doc().
+-spec set_realm(doc(), kz_term:ne_binary()) -> doc().
 set_realm(Doc, Realm) ->
     kz_json:set_value([<<"realm">>], Realm, Doc).
 
@@ -270,7 +270,7 @@ ringtones(Doc, Default) ->
 set_ringtones(Doc, Ringtones) ->
     kz_json:set_value([<<"ringtones">>], Ringtones, Doc).
 
--spec ringtones_external(doc()) -> api_binary().
+-spec ringtones_external(doc()) -> kz_term:api_binary().
 -spec ringtones_external(doc(), Default) -> binary() | Default.
 ringtones_external(Doc) ->
     ringtones_external(Doc, 'undefined').
@@ -281,7 +281,7 @@ ringtones_external(Doc, Default) ->
 set_ringtones_external(Doc, RingtonesExternal) ->
     kz_json:set_value([<<"ringtones">>, <<"external">>], RingtonesExternal, Doc).
 
--spec ringtones_internal(doc()) -> api_binary().
+-spec ringtones_internal(doc()) -> kz_term:api_binary().
 -spec ringtones_internal(doc(), Default) -> binary() | Default.
 ringtones_internal(Doc) ->
     ringtones_internal(Doc, 'undefined').
@@ -292,18 +292,18 @@ ringtones_internal(Doc, Default) ->
 set_ringtones_internal(Doc, RingtonesInternal) ->
     kz_json:set_value([<<"ringtones">>, <<"internal">>], RingtonesInternal, Doc).
 
--spec timezone(doc()) -> api_ne_binary().
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(doc()) -> kz_term:api_ne_binary().
+-spec timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 timezone(Doc) ->
     timezone(Doc, 'undefined').
 timezone(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"timezone">>], Doc, Default).
 
--spec set_timezone(doc(), ne_binary()) -> doc().
+-spec set_timezone(doc(), kz_term:ne_binary()) -> doc().
 set_timezone(Doc, Timezone) ->
     kz_json:set_value([<<"timezone">>], Timezone, Doc).
 
--spec voicemail(doc()) -> api_object().
+-spec voicemail(doc()) -> kz_term:api_object().
 -spec voicemail(doc(), Default) -> kz_json:object() | Default.
 voicemail(Doc) ->
     voicemail(Doc, 'undefined').
@@ -314,7 +314,7 @@ voicemail(Doc, Default) ->
 set_voicemail(Doc, Voicemail) ->
     kz_json:set_value([<<"voicemail">>], Voicemail, Doc).
 
--spec voicemail_notify(doc()) -> api_object().
+-spec voicemail_notify(doc()) -> kz_term:api_object().
 -spec voicemail_notify(doc(), Default) -> kz_json:object() | Default.
 voicemail_notify(Doc) ->
     voicemail_notify(Doc, 'undefined').
@@ -325,7 +325,7 @@ voicemail_notify(Doc, Default) ->
 set_voicemail_notify(Doc, VoicemailNotify) ->
     kz_json:set_value([<<"voicemail">>, <<"notify">>], VoicemailNotify, Doc).
 
--spec voicemail_notify_callback(doc()) -> api_object().
+-spec voicemail_notify_callback(doc()) -> kz_term:api_object().
 -spec voicemail_notify_callback(doc(), Default) -> kz_json:object() | Default.
 voicemail_notify_callback(Doc) ->
     voicemail_notify_callback(Doc, 'undefined').

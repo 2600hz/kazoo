@@ -64,14 +64,14 @@ is_setup(Doc, Default) ->
 set_is_setup(Doc, IsSetup) ->
     kz_json:set_value([<<"is_setup">>], IsSetup, Doc).
 
--spec mailbox(doc()) -> api_ne_binary().
--spec mailbox(doc(), Default) -> ne_binary() | Default.
+-spec mailbox(doc()) -> kz_term:api_ne_binary().
+-spec mailbox(doc(), Default) -> kz_term:ne_binary() | Default.
 mailbox(Doc) ->
     mailbox(Doc, 'undefined').
 mailbox(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"mailbox">>], Doc, Default).
 
--spec set_mailbox(doc(), ne_binary()) -> doc().
+-spec set_mailbox(doc(), kz_term:ne_binary()) -> doc().
 set_mailbox(Doc, Mailbox) ->
     kz_json:set_value([<<"mailbox">>], Mailbox, Doc).
 
@@ -86,14 +86,14 @@ media(Doc, Default) ->
 set_media(Doc, Media) ->
     kz_json:set_value([<<"media">>], Media, Doc).
 
--spec media_unavailable(doc()) -> api_ne_binary().
--spec media_unavailable(doc(), Default) -> ne_binary() | Default.
+-spec media_unavailable(doc()) -> kz_term:api_ne_binary().
+-spec media_unavailable(doc(), Default) -> kz_term:ne_binary() | Default.
 media_unavailable(Doc) ->
     media_unavailable(Doc, 'undefined').
 media_unavailable(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"media">>, <<"unavailable">>], Doc, Default).
 
--spec set_media_unavailable(doc(), ne_binary()) -> doc().
+-spec set_media_unavailable(doc(), kz_term:ne_binary()) -> doc().
 set_media_unavailable(Doc, MediaUnavailable) ->
     kz_json:set_value([<<"media">>, <<"unavailable">>], MediaUnavailable, Doc).
 
@@ -108,14 +108,14 @@ media_extension(Doc, Default) ->
 set_media_extension(Doc, MediaExtension) ->
     kz_json:set_value([<<"media_extension">>], MediaExtension, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
@@ -130,7 +130,7 @@ not_configurable(Doc, Default) ->
 set_not_configurable(Doc, NotConfigurable) ->
     kz_json:set_value([<<"not_configurable">>], NotConfigurable, Doc).
 
--spec notify(doc()) -> api_object().
+-spec notify(doc()) -> kz_term:api_object().
 -spec notify(doc(), Default) -> kz_json:object() | Default.
 notify(Doc) ->
     notify(Doc, 'undefined').
@@ -141,7 +141,7 @@ notify(Doc, Default) ->
 set_notify(Doc, Notify) ->
     kz_json:set_value([<<"notify">>], Notify, Doc).
 
--spec notify_callback(doc()) -> api_object().
+-spec notify_callback(doc()) -> kz_term:api_object().
 -spec notify_callback(doc(), Default) -> kz_json:object() | Default.
 notify_callback(Doc) ->
     notify_callback(Doc, 'undefined').
@@ -152,36 +152,36 @@ notify_callback(Doc, Default) ->
 set_notify_callback(Doc, NotifyCallback) ->
     kz_json:set_value([<<"notify">>, <<"callback">>], NotifyCallback, Doc).
 
--spec notify_email_addresses(doc()) -> ne_binaries().
--spec notify_email_addresses(doc(), Default) -> ne_binaries() | Default.
+-spec notify_email_addresses(doc()) -> kz_term:ne_binaries().
+-spec notify_email_addresses(doc(), Default) -> kz_term:ne_binaries() | Default.
 notify_email_addresses(Doc) ->
     notify_email_addresses(Doc, []).
 notify_email_addresses(Doc, Default) ->
     kz_json:get_list_value([<<"notify_email_addresses">>], Doc, Default).
 
--spec set_notify_email_addresses(doc(), ne_binaries()) -> doc().
+-spec set_notify_email_addresses(doc(), kz_term:ne_binaries()) -> doc().
 set_notify_email_addresses(Doc, NotifyEmailAddresses) ->
     kz_json:set_value([<<"notify_email_addresses">>], NotifyEmailAddresses, Doc).
 
--spec owner_id(doc()) -> api_ne_binary().
--spec owner_id(doc(), Default) -> ne_binary() | Default.
+-spec owner_id(doc()) -> kz_term:api_ne_binary().
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(Doc) ->
     owner_id(Doc, 'undefined').
 owner_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"owner_id">>], Doc, Default).
 
--spec set_owner_id(doc(), ne_binary()) -> doc().
+-spec set_owner_id(doc(), kz_term:ne_binary()) -> doc().
 set_owner_id(Doc, OwnerId) ->
     kz_json:set_value([<<"owner_id">>], OwnerId, Doc).
 
--spec pin(doc()) -> api_ne_binary().
--spec pin(doc(), Default) -> ne_binary() | Default.
+-spec pin(doc()) -> kz_term:api_ne_binary().
+-spec pin(doc(), Default) -> kz_term:ne_binary() | Default.
 pin(Doc) ->
     pin(Doc, 'undefined').
 pin(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"pin">>], Doc, Default).
 
--spec set_pin(doc(), ne_binary()) -> doc().
+-spec set_pin(doc(), kz_term:ne_binary()) -> doc().
 set_pin(Doc, Pin) ->
     kz_json:set_value([<<"pin">>], Pin, Doc).
 
@@ -229,13 +229,13 @@ skip_instructions(Doc, Default) ->
 set_skip_instructions(Doc, SkipInstructions) ->
     kz_json:set_value([<<"skip_instructions">>], SkipInstructions, Doc).
 
--spec timezone(doc()) -> api_ne_binary().
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(doc()) -> kz_term:api_ne_binary().
+-spec timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 timezone(Doc) ->
     timezone(Doc, 'undefined').
 timezone(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"timezone">>], Doc, Default).
 
--spec set_timezone(doc(), ne_binary()) -> doc().
+-spec set_timezone(doc(), kz_term:ne_binary()) -> doc().
 set_timezone(Doc, Timezone) ->
     kz_json:set_value([<<"timezone">>], Timezone, Doc).

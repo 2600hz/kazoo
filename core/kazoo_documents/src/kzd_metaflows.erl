@@ -17,18 +17,18 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec binding_digit(doc()) -> ne_binary().
--spec binding_digit(doc(), Default) -> ne_binary() | Default.
+-spec binding_digit(doc()) -> kz_term:ne_binary().
+-spec binding_digit(doc(), Default) -> kz_term:ne_binary() | Default.
 binding_digit(Doc) ->
     binding_digit(Doc, <<"*">>).
 binding_digit(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"binding_digit">>], Doc, Default).
 
--spec set_binding_digit(doc(), ne_binary()) -> doc().
+-spec set_binding_digit(doc(), kz_term:ne_binary()) -> doc().
 set_binding_digit(Doc, BindingDigit) ->
     kz_json:set_value([<<"binding_digit">>], BindingDigit, Doc).
 
--spec digit_timeout(doc()) -> api_integer().
+-spec digit_timeout(doc()) -> kz_term:api_integer().
 -spec digit_timeout(doc(), Default) -> integer() | Default.
 digit_timeout(Doc) ->
     digit_timeout(Doc, 'undefined').
@@ -39,7 +39,7 @@ digit_timeout(Doc, Default) ->
 set_digit_timeout(Doc, DigitTimeout) ->
     kz_json:set_value([<<"digit_timeout">>], DigitTimeout, Doc).
 
--spec listen_on(doc()) -> api_binary().
+-spec listen_on(doc()) -> kz_term:api_binary().
 -spec listen_on(doc(), Default) -> binary() | Default.
 listen_on(Doc) ->
     listen_on(Doc, 'undefined').
@@ -50,7 +50,7 @@ listen_on(Doc, Default) ->
 set_listen_on(Doc, ListenOn) ->
     kz_json:set_value([<<"listen_on">>], ListenOn, Doc).
 
--spec numbers(doc()) -> api_object().
+-spec numbers(doc()) -> kz_term:api_object().
 -spec numbers(doc(), Default) -> kz_json:object() | Default.
 numbers(Doc) ->
     numbers(Doc, 'undefined').
@@ -61,7 +61,7 @@ numbers(Doc, Default) ->
 set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
--spec patterns(doc()) -> api_object().
+-spec patterns(doc()) -> kz_term:api_object().
 -spec patterns(doc(), Default) -> kz_json:object() | Default.
 patterns(Doc) ->
     patterns(Doc, 'undefined').

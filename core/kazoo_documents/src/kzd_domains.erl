@@ -1,11 +1,3 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Domains document for white-label
-%%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
 -module(kzd_domains).
 
 -export([new/0]).
@@ -26,7 +18,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec a(doc()) -> api_object().
+-spec a(doc()) -> kz_term:api_object().
 -spec a(doc(), Default) -> kz_json:object() | Default.
 a(Doc) ->
     a(Doc, 'undefined').
@@ -48,7 +40,7 @@ cname(Doc, Default) ->
 set_cname(Doc, Cname) ->
     kz_json:set_value([<<"CNAME">>], Cname, Doc).
 
--spec mx(doc()) -> api_object().
+-spec mx(doc()) -> kz_term:api_object().
 -spec mx(doc(), Default) -> kz_json:object() | Default.
 mx(Doc) ->
     mx(Doc, 'undefined').
@@ -58,14 +50,6 @@ mx(Doc, Default) ->
 -spec set_mx(doc(), kz_json:object()) -> doc().
 set_mx(Doc, Mx) ->
     kz_json:set_value([<<"MX">>], Mx, Doc).
-
--spec set_a_record(doc(), kz_json:object()) -> doc().
-set_a_record(Domains, A_RECORD) ->
-    kz_json:set_value(?KEY_A_RECORD, A_RECORD, Domains).
-
--spec add_a_record_host(doc(), kz_term:ne_binary(), kz_json:object()) -> doc().
-add_a_record_host(Domains, Host, Settings) ->
-    kz_json:set_value([?KEY_A_RECORD, Host], Settings, Domains).
 
 -spec naptr(doc()) -> kz_term:api_object().
 -spec naptr(doc(), Default) -> kz_json:object() | Default.
@@ -78,10 +62,6 @@ naptr(Doc, Default) ->
 set_naptr(Doc, Naptr) ->
     kz_json:set_value([<<"NAPTR">>], Naptr, Doc).
 
--spec add_naptr_host(doc(), kz_term:ne_binary(), kz_json:object()) -> doc().
-add_naptr_host(Domains, Host, Settings) ->
-    kz_json:set_value([?KEY_NAPTR, Host], Settings, Domains).
-
 -spec srv(doc()) -> kz_term:api_object().
 -spec srv(doc(), Default) -> kz_json:object() | Default.
 srv(Doc) ->
@@ -93,7 +73,7 @@ srv(Doc, Default) ->
 set_srv(Doc, Srv) ->
     kz_json:set_value([<<"SRV">>], Srv, Doc).
 
--spec txt(doc()) -> api_object().
+-spec txt(doc()) -> kz_term:api_object().
 -spec txt(doc(), Default) -> kz_json:object() | Default.
 txt(Doc) ->
     txt(Doc, 'undefined').

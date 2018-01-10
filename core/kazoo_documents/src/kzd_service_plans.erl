@@ -18,7 +18,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec bookkeepers(doc()) -> api_object().
+-spec bookkeepers(doc()) -> kz_term:api_object().
 -spec bookkeepers(doc(), Default) -> kz_json:object() | Default.
 bookkeepers(Doc) ->
     bookkeepers(Doc, 'undefined').
@@ -29,7 +29,7 @@ bookkeepers(Doc, Default) ->
 set_bookkeepers(Doc, Bookkeepers) ->
     kz_json:set_value([<<"bookkeepers">>], Bookkeepers, Doc).
 
--spec category(doc()) -> api_binary().
+-spec category(doc()) -> kz_term:api_binary().
 -spec category(doc(), Default) -> binary() | Default.
 category(Doc) ->
     category(Doc, 'undefined').
@@ -40,7 +40,7 @@ category(Doc, Default) ->
 set_category(Doc, Category) ->
     kz_json:set_value([<<"category">>], Category, Doc).
 
--spec description(doc()) -> api_binary().
+-spec description(doc()) -> kz_term:api_binary().
 -spec description(doc(), Default) -> binary() | Default.
 description(Doc) ->
     description(Doc, 'undefined').
@@ -51,7 +51,7 @@ description(Doc, Default) ->
 set_description(Doc, Description) ->
     kz_json:set_value([<<"description">>], Description, Doc).
 
--spec manual_recurring(doc()) -> api_objects().
+-spec manual_recurring(doc()) -> kz_term:api_objects().
 -spec manual_recurring(doc(), Default) -> kz_json:objects() | Default.
 manual_recurring(Doc) ->
     manual_recurring(Doc, 'undefined').
@@ -62,18 +62,18 @@ manual_recurring(Doc, Default) ->
 set_manual_recurring(Doc, ManualRecurring) ->
     kz_json:set_value([<<"manual_recurring">>], ManualRecurring, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec plan(doc()) -> api_object().
+-spec plan(doc()) -> kz_term:api_object().
 -spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Doc) ->
     plan(Doc, 'undefined').

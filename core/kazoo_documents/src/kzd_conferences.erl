@@ -39,7 +39,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec bridge_password(doc()) -> api_binary().
+-spec bridge_password(doc()) -> kz_term:api_binary().
 -spec bridge_password(doc(), Default) -> binary() | Default.
 bridge_password(Doc) ->
     bridge_password(Doc, 'undefined').
@@ -50,7 +50,7 @@ bridge_password(Doc, Default) ->
 set_bridge_password(Doc, BridgePassword) ->
     kz_json:set_value([<<"bridge_password">>], BridgePassword, Doc).
 
--spec bridge_username(doc()) -> api_binary().
+-spec bridge_username(doc()) -> kz_term:api_binary().
 -spec bridge_username(doc(), Default) -> binary() | Default.
 bridge_username(Doc) ->
     bridge_username(Doc, 'undefined').
@@ -61,7 +61,7 @@ bridge_username(Doc, Default) ->
 set_bridge_username(Doc, BridgeUsername) ->
     kz_json:set_value([<<"bridge_username">>], BridgeUsername, Doc).
 
--spec caller_controls(doc()) -> api_binary().
+-spec caller_controls(doc()) -> kz_term:api_binary().
 -spec caller_controls(doc(), Default) -> binary() | Default.
 caller_controls(Doc) ->
     caller_controls(Doc, 'undefined').
@@ -72,18 +72,18 @@ caller_controls(Doc, Default) ->
 set_caller_controls(Doc, CallerControls) ->
     kz_json:set_value([<<"caller_controls">>], CallerControls, Doc).
 
--spec conference_numbers(doc()) -> ne_binaries().
--spec conference_numbers(doc(), Default) -> ne_binaries() | Default.
+-spec conference_numbers(doc()) -> kz_term:ne_binaries().
+-spec conference_numbers(doc(), Default) -> kz_term:ne_binaries() | Default.
 conference_numbers(Doc) ->
     conference_numbers(Doc, []).
 conference_numbers(Doc, Default) ->
     kz_json:get_list_value([<<"conference_numbers">>], Doc, Default).
 
--spec set_conference_numbers(doc(), ne_binaries()) -> doc().
+-spec set_conference_numbers(doc(), kz_term:ne_binaries()) -> doc().
 set_conference_numbers(Doc, ConferenceNumbers) ->
     kz_json:set_value([<<"conference_numbers">>], ConferenceNumbers, Doc).
 
--spec focus(doc()) -> api_binary().
+-spec focus(doc()) -> kz_term:api_binary().
 -spec focus(doc(), Default) -> binary() | Default.
 focus(Doc) ->
     focus(Doc, 'undefined').
@@ -94,7 +94,7 @@ focus(Doc, Default) ->
 set_focus(Doc, Focus) ->
     kz_json:set_value([<<"focus">>], Focus, Doc).
 
--spec max_members_media(doc()) -> api_binary().
+-spec max_members_media(doc()) -> kz_term:api_binary().
 -spec max_members_media(doc(), Default) -> binary() | Default.
 max_members_media(Doc) ->
     max_members_media(Doc, 'undefined').
@@ -105,7 +105,7 @@ max_members_media(Doc, Default) ->
 set_max_members_media(Doc, MaxMembersMedia) ->
     kz_json:set_value([<<"max_members_media">>], MaxMembersMedia, Doc).
 
--spec max_participants(doc()) -> api_integer().
+-spec max_participants(doc()) -> kz_term:api_integer().
 -spec max_participants(doc(), Default) -> integer() | Default.
 max_participants(Doc) ->
     max_participants(Doc, 'undefined').
@@ -149,25 +149,25 @@ member_join_muted(Doc, Default) ->
 set_member_join_muted(Doc, MemberJoinMuted) ->
     kz_json:set_value([<<"member">>, <<"join_muted">>], MemberJoinMuted, Doc).
 
--spec member_numbers(doc()) -> ne_binaries().
--spec member_numbers(doc(), Default) -> ne_binaries() | Default.
+-spec member_numbers(doc()) -> kz_term:ne_binaries().
+-spec member_numbers(doc(), Default) -> kz_term:ne_binaries() | Default.
 member_numbers(Doc) ->
     member_numbers(Doc, []).
 member_numbers(Doc, Default) ->
     kz_json:get_list_value([<<"member">>, <<"numbers">>], Doc, Default).
 
--spec set_member_numbers(doc(), ne_binaries()) -> doc().
+-spec set_member_numbers(doc(), kz_term:ne_binaries()) -> doc().
 set_member_numbers(Doc, MemberNumbers) ->
     kz_json:set_value([<<"member">>, <<"numbers">>], MemberNumbers, Doc).
 
--spec member_pins(doc()) -> ne_binaries().
--spec member_pins(doc(), Default) -> ne_binaries() | Default.
+-spec member_pins(doc()) -> kz_term:ne_binaries().
+-spec member_pins(doc(), Default) -> kz_term:ne_binaries() | Default.
 member_pins(Doc) ->
     member_pins(Doc, []).
 member_pins(Doc, Default) ->
     kz_json:get_list_value([<<"member">>, <<"pins">>], Doc, Default).
 
--spec set_member_pins(doc(), ne_binaries()) -> doc().
+-spec set_member_pins(doc(), kz_term:ne_binaries()) -> doc().
 set_member_pins(Doc, MemberPins) ->
     kz_json:set_value([<<"member">>, <<"pins">>], MemberPins, Doc).
 
@@ -204,29 +204,29 @@ moderator_join_muted(Doc, Default) ->
 set_moderator_join_muted(Doc, ModeratorJoinMuted) ->
     kz_json:set_value([<<"moderator">>, <<"join_muted">>], ModeratorJoinMuted, Doc).
 
--spec moderator_numbers(doc()) -> ne_binaries().
--spec moderator_numbers(doc(), Default) -> ne_binaries() | Default.
+-spec moderator_numbers(doc()) -> kz_term:ne_binaries().
+-spec moderator_numbers(doc(), Default) -> kz_term:ne_binaries() | Default.
 moderator_numbers(Doc) ->
     moderator_numbers(Doc, []).
 moderator_numbers(Doc, Default) ->
     kz_json:get_list_value([<<"moderator">>, <<"numbers">>], Doc, Default).
 
--spec set_moderator_numbers(doc(), ne_binaries()) -> doc().
+-spec set_moderator_numbers(doc(), kz_term:ne_binaries()) -> doc().
 set_moderator_numbers(Doc, ModeratorNumbers) ->
     kz_json:set_value([<<"moderator">>, <<"numbers">>], ModeratorNumbers, Doc).
 
--spec moderator_pins(doc()) -> ne_binaries().
--spec moderator_pins(doc(), Default) -> ne_binaries() | Default.
+-spec moderator_pins(doc()) -> kz_term:ne_binaries().
+-spec moderator_pins(doc(), Default) -> kz_term:ne_binaries() | Default.
 moderator_pins(Doc) ->
     moderator_pins(Doc, []).
 moderator_pins(Doc, Default) ->
     kz_json:get_list_value([<<"moderator">>, <<"pins">>], Doc, Default).
 
--spec set_moderator_pins(doc(), ne_binaries()) -> doc().
+-spec set_moderator_pins(doc(), kz_term:ne_binaries()) -> doc().
 set_moderator_pins(Doc, ModeratorPins) ->
     kz_json:set_value([<<"moderator">>, <<"pins">>], ModeratorPins, Doc).
 
--spec moderator_controls(doc()) -> api_binary().
+-spec moderator_controls(doc()) -> kz_term:api_binary().
 -spec moderator_controls(doc(), Default) -> binary() | Default.
 moderator_controls(Doc) ->
     moderator_controls(Doc, 'undefined').
@@ -237,25 +237,25 @@ moderator_controls(Doc, Default) ->
 set_moderator_controls(Doc, ModeratorControls) ->
     kz_json:set_value([<<"moderator_controls">>], ModeratorControls, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec owner_id(doc()) -> api_ne_binary().
--spec owner_id(doc(), Default) -> ne_binary() | Default.
+-spec owner_id(doc()) -> kz_term:api_ne_binary().
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(Doc) ->
     owner_id(Doc, 'undefined').
 owner_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"owner_id">>], Doc, Default).
 
--spec set_owner_id(doc(), ne_binary()) -> doc().
+-spec set_owner_id(doc(), kz_term:ne_binary()) -> doc().
 set_owner_id(Doc, OwnerId) ->
     kz_json:set_value([<<"owner_id">>], OwnerId, Doc).
 
@@ -292,7 +292,7 @@ play_name(Doc, Default) ->
 set_play_name(Doc, PlayName) ->
     kz_json:set_value([<<"play_name">>], PlayName, Doc).
 
--spec play_welcome(doc()) -> api_boolean().
+-spec play_welcome(doc()) -> kz_term:api_boolean().
 -spec play_welcome(doc(), Default) -> boolean() | Default.
 play_welcome(Doc) ->
     play_welcome(Doc, 'undefined').
@@ -303,7 +303,7 @@ play_welcome(Doc, Default) ->
 set_play_welcome(Doc, PlayWelcome) ->
     kz_json:set_value([<<"play_welcome">>], PlayWelcome, Doc).
 
--spec profile(doc()) -> api_binary().
+-spec profile(doc()) -> kz_term:api_binary().
 -spec profile(doc(), Default) -> binary() | Default.
 profile(Doc) ->
     profile(Doc, 'undefined').
@@ -314,7 +314,7 @@ profile(Doc, Default) ->
 set_profile(Doc, Profile) ->
     kz_json:set_value([<<"profile">>], Profile, Doc).
 
--spec require_moderator(doc()) -> api_boolean().
+-spec require_moderator(doc()) -> kz_term:api_boolean().
 -spec require_moderator(doc(), Default) -> boolean() | Default.
 require_moderator(Doc) ->
     require_moderator(Doc, 'undefined').
@@ -325,7 +325,7 @@ require_moderator(Doc, Default) ->
 set_require_moderator(Doc, RequireModerator) ->
     kz_json:set_value([<<"require_moderator">>], RequireModerator, Doc).
 
--spec wait_for_moderator(doc()) -> api_boolean().
+-spec wait_for_moderator(doc()) -> kz_term:api_boolean().
 -spec wait_for_moderator(doc(), Default) -> boolean() | Default.
 wait_for_moderator(Doc) ->
     wait_for_moderator(Doc, 'undefined').

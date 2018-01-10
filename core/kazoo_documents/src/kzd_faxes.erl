@@ -50,7 +50,7 @@ attempts(Doc, Default) ->
 set_attempts(Doc, Attempts) ->
     kz_json:set_value([<<"attempts">>], Attempts, Doc).
 
--spec document(doc()) -> api_object().
+-spec document(doc()) -> kz_term:api_object().
 -spec document(doc(), Default) -> kz_json:object() | Default.
 document(Doc) ->
     document(Doc, 'undefined').
@@ -61,7 +61,7 @@ document(Doc, Default) ->
 set_document(Doc, Document) ->
     kz_json:set_value([<<"document">>], Document, Doc).
 
--spec document_content(doc()) -> api_binary().
+-spec document_content(doc()) -> kz_term:api_binary().
 -spec document_content(doc(), Default) -> binary() | Default.
 document_content(Doc) ->
     document_content(Doc, 'undefined').
@@ -72,7 +72,7 @@ document_content(Doc, Default) ->
 set_document_content(Doc, DocumentContent) ->
     kz_json:set_value([<<"document">>, <<"content">>], DocumentContent, Doc).
 
--spec document_content_type(doc()) -> api_binary().
+-spec document_content_type(doc()) -> kz_term:api_binary().
 -spec document_content_type(doc(), Default) -> binary() | Default.
 document_content_type(Doc) ->
     document_content_type(Doc, 'undefined').
@@ -83,7 +83,7 @@ document_content_type(Doc, Default) ->
 set_document_content_type(Doc, DocumentContentType) ->
     kz_json:set_value([<<"document">>, <<"content_type">>], DocumentContentType, Doc).
 
--spec document_host(doc()) -> api_binary().
+-spec document_host(doc()) -> kz_term:api_binary().
 -spec document_host(doc(), Default) -> binary() | Default.
 document_host(Doc) ->
     document_host(Doc, 'undefined').
@@ -105,7 +105,7 @@ document_method(Doc, Default) ->
 set_document_method(Doc, DocumentMethod) ->
     kz_json:set_value([<<"document">>, <<"method">>], DocumentMethod, Doc).
 
--spec document_referer(doc()) -> api_binary().
+-spec document_referer(doc()) -> kz_term:api_binary().
 -spec document_referer(doc(), Default) -> binary() | Default.
 document_referer(Doc) ->
     document_referer(Doc, 'undefined').
@@ -116,7 +116,7 @@ document_referer(Doc, Default) ->
 set_document_referer(Doc, DocumentReferer) ->
     kz_json:set_value([<<"document">>, <<"referer">>], DocumentReferer, Doc).
 
--spec document_url(doc()) -> api_binary().
+-spec document_url(doc()) -> kz_term:api_binary().
 -spec document_url(doc(), Default) -> binary() | Default.
 document_url(Doc) ->
     document_url(Doc, 'undefined').
@@ -127,7 +127,7 @@ document_url(Doc, Default) ->
 set_document_url(Doc, DocumentUrl) ->
     kz_json:set_value([<<"document">>, <<"url">>], DocumentUrl, Doc).
 
--spec from_name(doc()) -> api_binary().
+-spec from_name(doc()) -> kz_term:api_binary().
 -spec from_name(doc(), Default) -> binary() | Default.
 from_name(Doc) ->
     from_name(Doc, 'undefined').
@@ -138,7 +138,7 @@ from_name(Doc, Default) ->
 set_from_name(Doc, FromName) ->
     kz_json:set_value([<<"from_name">>], FromName, Doc).
 
--spec from_number(doc()) -> api_binary().
+-spec from_number(doc()) -> kz_term:api_binary().
 -spec from_number(doc(), Default) -> binary() | Default.
 from_number(Doc) ->
     from_number(Doc, 'undefined').
@@ -149,7 +149,7 @@ from_number(Doc, Default) ->
 set_from_number(Doc, FromNumber) ->
     kz_json:set_value([<<"from_number">>], FromNumber, Doc).
 
--spec notifications(doc()) -> api_object().
+-spec notifications(doc()) -> kz_term:api_object().
 -spec notifications(doc(), Default) -> kz_json:object() | Default.
 notifications(Doc) ->
     notifications(Doc, 'undefined').
@@ -160,7 +160,7 @@ notifications(Doc, Default) ->
 set_notifications(Doc, Notifications) ->
     kz_json:set_value([<<"notifications">>], Notifications, Doc).
 
--spec notifications_email(doc()) -> api_object().
+-spec notifications_email(doc()) -> kz_term:api_object().
 -spec notifications_email(doc(), Default) -> kz_json:object() | Default.
 notifications_email(Doc) ->
     notifications_email(Doc, 'undefined').
@@ -182,7 +182,7 @@ notifications_email_send_to(Doc, Default) ->
 set_notifications_email_send_to(Doc, NotificationsEmailSendTo) ->
     kz_json:set_value([<<"notifications">>, <<"email">>, <<"send_to">>], NotificationsEmailSendTo, Doc).
 
--spec notifications_sms(doc()) -> api_object().
+-spec notifications_sms(doc()) -> kz_term:api_object().
 -spec notifications_sms(doc(), Default) -> kz_json:object() | Default.
 notifications_sms(Doc) ->
     notifications_sms(Doc, 'undefined').
@@ -215,7 +215,7 @@ retries(Doc, Default) ->
 set_retries(Doc, Retries) ->
     kz_json:set_value([<<"retries">>], Retries, Doc).
 
--spec to_name(doc()) -> api_binary().
+-spec to_name(doc()) -> kz_term:api_binary().
 -spec to_name(doc(), Default) -> binary() | Default.
 to_name(Doc) ->
     to_name(Doc, 'undefined').
@@ -226,7 +226,7 @@ to_name(Doc, Default) ->
 set_to_name(Doc, ToName) ->
     kz_json:set_value([<<"to_name">>], ToName, Doc).
 
--spec to_number(doc()) -> api_binary().
+-spec to_number(doc()) -> kz_term:api_binary().
 -spec to_number(doc(), Default) -> binary() | Default.
 to_number(Doc) ->
     to_number(Doc, 'undefined').
@@ -237,7 +237,7 @@ to_number(Doc, Default) ->
 set_to_number(Doc, ToNumber) ->
     kz_json:set_value([<<"to_number">>], ToNumber, Doc).
 
--spec tx_result(doc()) -> api_object().
+-spec tx_result(doc()) -> kz_term:api_object().
 -spec tx_result(doc(), Default) -> kz_json:object() | Default.
 tx_result(Doc) ->
     tx_result(Doc, 'undefined').

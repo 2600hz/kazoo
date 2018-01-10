@@ -23,7 +23,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec account(doc()) -> api_object().
+-spec account(doc()) -> kz_term:api_object().
 -spec account(doc(), Default) -> kz_json:object() | Default.
 account(Doc) ->
     account(Doc, 'undefined').
@@ -34,18 +34,18 @@ account(Doc, Default) ->
 set_account(Doc, Account) ->
     kz_json:set_value([<<"account">>], Account, Doc).
 
--spec account_auth_realm(doc()) -> api_ne_binary().
--spec account_auth_realm(doc(), Default) -> ne_binary() | Default.
+-spec account_auth_realm(doc()) -> kz_term:api_ne_binary().
+-spec account_auth_realm(doc(), Default) -> kz_term:ne_binary() | Default.
 account_auth_realm(Doc) ->
     account_auth_realm(Doc, 'undefined').
 account_auth_realm(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"account">>, <<"auth_realm">>], Doc, Default).
 
--spec set_account_auth_realm(doc(), ne_binary()) -> doc().
+-spec set_account_auth_realm(doc(), kz_term:ne_binary()) -> doc().
 set_account_auth_realm(Doc, AccountAuthenticationRealm) ->
     kz_json:set_value([<<"account">>, <<"auth_realm">>], AccountAuthenticationRealm, Doc).
 
--spec account_caller_id(doc()) -> api_object().
+-spec account_caller_id(doc()) -> kz_term:api_object().
 -spec account_caller_id(doc(), Default) -> kz_json:object() | Default.
 account_caller_id(Doc) ->
     account_caller_id(Doc, 'undefined').
@@ -56,7 +56,7 @@ account_caller_id(Doc, Default) ->
 set_account_caller_id(Doc, AccountCallerId) ->
     kz_json:set_value([<<"account">>, <<"caller_id">>], AccountCallerId, Doc).
 
--spec account_caller_id_cid_name(doc()) -> api_binary().
+-spec account_caller_id_cid_name(doc()) -> kz_term:api_binary().
 -spec account_caller_id_cid_name(doc(), Default) -> binary() | Default.
 account_caller_id_cid_name(Doc) ->
     account_caller_id_cid_name(Doc, 'undefined').
@@ -67,7 +67,7 @@ account_caller_id_cid_name(Doc, Default) ->
 set_account_caller_id_cid_name(Doc, AccountCallerIdCidName) ->
     kz_json:set_value([<<"account">>, <<"caller_id">>, <<"cid_name">>], AccountCallerIdCidName, Doc).
 
--spec account_caller_id_cid_number(doc()) -> api_binary().
+-spec account_caller_id_cid_number(doc()) -> kz_term:api_binary().
 -spec account_caller_id_cid_number(doc(), Default) -> binary() | Default.
 account_caller_id_cid_number(Doc) ->
     account_caller_id_cid_number(Doc, 'undefined').
@@ -78,7 +78,7 @@ account_caller_id_cid_number(Doc, Default) ->
 set_account_caller_id_cid_number(Doc, AccountCallerIdCidNumber) ->
     kz_json:set_value([<<"account">>, <<"caller_id">>, <<"cid_number">>], AccountCallerIdCidNumber, Doc).
 
--spec account_emergency_caller_id(doc()) -> api_object().
+-spec account_emergency_caller_id(doc()) -> kz_term:api_object().
 -spec account_emergency_caller_id(doc(), Default) -> kz_json:object() | Default.
 account_emergency_caller_id(Doc) ->
     account_emergency_caller_id(Doc, 'undefined').
@@ -89,7 +89,7 @@ account_emergency_caller_id(Doc, Default) ->
 set_account_emergency_caller_id(Doc, AccountEmergencyCallerId) ->
     kz_json:set_value([<<"account">>, <<"emergency_caller_id">>], AccountEmergencyCallerId, Doc).
 
--spec account_emergency_caller_id_cid_name(doc()) -> api_binary().
+-spec account_emergency_caller_id_cid_name(doc()) -> kz_term:api_binary().
 -spec account_emergency_caller_id_cid_name(doc(), Default) -> binary() | Default.
 account_emergency_caller_id_cid_name(Doc) ->
     account_emergency_caller_id_cid_name(Doc, 'undefined').
@@ -100,7 +100,7 @@ account_emergency_caller_id_cid_name(Doc, Default) ->
 set_account_emergency_caller_id_cid_name(Doc, AccountEmergencyCallerIdCidName) ->
     kz_json:set_value([<<"account">>, <<"emergency_caller_id">>, <<"cid_name">>], AccountEmergencyCallerIdCidName, Doc).
 
--spec account_emergency_caller_id_cid_number(doc()) -> api_binary().
+-spec account_emergency_caller_id_cid_number(doc()) -> kz_term:api_binary().
 -spec account_emergency_caller_id_cid_number(doc(), Default) -> binary() | Default.
 account_emergency_caller_id_cid_number(Doc) ->
     account_emergency_caller_id_cid_number(Doc, 'undefined').
@@ -111,7 +111,7 @@ account_emergency_caller_id_cid_number(Doc, Default) ->
 set_account_emergency_caller_id_cid_number(Doc, AccountEmergencyCallerIdCidNumber) ->
     kz_json:set_value([<<"account">>, <<"emergency_caller_id">>, <<"cid_number">>], AccountEmergencyCallerIdCidNumber, Doc).
 
--spec account_trunks(doc()) -> api_integer().
+-spec account_trunks(doc()) -> kz_term:api_integer().
 -spec account_trunks(doc(), Default) -> integer() | Default.
 account_trunks(Doc) ->
     account_trunks(Doc, 'undefined').
@@ -122,7 +122,7 @@ account_trunks(Doc, Default) ->
 set_account_trunks(Doc, AccountTrunks) ->
     kz_json:set_value([<<"account">>, <<"trunks">>], AccountTrunks, Doc).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> kz_term:api_binary().
 -spec name(doc(), Default) -> binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').

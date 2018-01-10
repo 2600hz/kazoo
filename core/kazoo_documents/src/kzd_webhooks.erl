@@ -21,7 +21,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec custom_data(doc()) -> api_object().
+-spec custom_data(doc()) -> kz_term:api_object().
 -spec custom_data(doc(), Default) -> kz_json:object() | Default.
 custom_data(Doc) ->
     custom_data(Doc, 'undefined').
@@ -43,7 +43,7 @@ enabled(Doc, Default) ->
 set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
--spec hook(doc()) -> api_binary().
+-spec hook(doc()) -> kz_term:api_binary().
 -spec hook(doc(), Default) -> binary() | Default.
 hook(Doc) ->
     hook(Doc, 'undefined').
@@ -76,7 +76,7 @@ include_internal_legs(Doc, Default) ->
 set_include_internal_legs(Doc, IncludeInternalLegs) ->
     kz_json:set_value([<<"include_internal_legs">>], IncludeInternalLegs, Doc).
 
--spec include_subaccounts(doc()) -> api_boolean().
+-spec include_subaccounts(doc()) -> kz_term:api_boolean().
 -spec include_subaccounts(doc(), Default) -> boolean() | Default.
 include_subaccounts(Doc) ->
     include_subaccounts(Doc, 'undefined').
@@ -87,7 +87,7 @@ include_subaccounts(Doc, Default) ->
 set_include_subaccounts(Doc, IncludeSubaccounts) ->
     kz_json:set_value([<<"include_subaccounts">>], IncludeSubaccounts, Doc).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> kz_term:api_binary().
 -spec name(doc(), Default) -> binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
@@ -109,7 +109,7 @@ retries(Doc, Default) ->
 set_retries(Doc, Retries) ->
     kz_json:set_value([<<"retries">>], Retries, Doc).
 
--spec uri(doc()) -> api_binary().
+-spec uri(doc()) -> kz_term:api_binary().
 -spec uri(doc(), Default) -> binary() | Default.
 uri(Doc) ->
     uri(Doc, 'undefined').

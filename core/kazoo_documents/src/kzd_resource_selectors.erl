@@ -18,7 +18,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec name(doc()) -> api_binary().
+-spec name(doc()) -> kz_term:api_binary().
 -spec name(doc(), Default) -> binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
@@ -29,7 +29,7 @@ name(Doc, Default) ->
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec resource(doc()) -> api_binary().
+-spec resource(doc()) -> kz_term:api_binary().
 -spec resource(doc(), Default) -> binary() | Default.
 resource(Doc) ->
     resource(Doc, 'undefined').
@@ -40,7 +40,7 @@ resource(Doc, Default) ->
 set_resource(Doc, Resource) ->
     kz_json:set_value([<<"resource">>], Resource, Doc).
 
--spec selector(doc()) -> api_binary().
+-spec selector(doc()) -> kz_term:api_binary().
 -spec selector(doc(), Default) -> binary() | Default.
 selector(Doc) ->
     selector(Doc, 'undefined').
@@ -51,7 +51,7 @@ selector(Doc, Default) ->
 set_selector(Doc, Selector) ->
     kz_json:set_value([<<"selector">>], Selector, Doc).
 
--spec start_time(doc()) -> api_integer().
+-spec start_time(doc()) -> kz_term:api_integer().
 -spec start_time(doc(), Default) -> integer() | Default.
 start_time(Doc) ->
     start_time(Doc, 'undefined').
@@ -62,7 +62,7 @@ start_time(Doc, Default) ->
 set_start_time(Doc, StartTime) ->
     kz_json:set_value([<<"start_time">>], StartTime, Doc).
 
--spec stop_time(doc()) -> api_integer().
+-spec stop_time(doc()) -> kz_term:api_integer().
 -spec stop_time(doc(), Default) -> integer() | Default.
 stop_time(Doc) ->
     stop_time(Doc, 'undefined').
@@ -73,7 +73,7 @@ stop_time(Doc, Default) ->
 set_stop_time(Doc, StopTime) ->
     kz_json:set_value([<<"stop_time">>], StopTime, Doc).
 
--spec value(doc()) -> api_binary().
+-spec value(doc()) -> kz_term:api_binary().
 -spec value(doc(), Default) -> binary() | Default.
 value(Doc) ->
     value(Doc, 'undefined').

@@ -21,7 +21,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec enabled(doc()) -> api_boolean().
+-spec enabled(doc()) -> kz_term:api_boolean().
 -spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc) ->
     enabled(Doc, 'undefined').
@@ -32,7 +32,7 @@ enabled(Doc, Default) ->
 set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
--spec log_failed_attempts(doc()) -> api_boolean().
+-spec log_failed_attempts(doc()) -> kz_term:api_boolean().
 -spec log_failed_attempts(doc(), Default) -> boolean() | Default.
 log_failed_attempts(Doc) ->
     log_failed_attempts(Doc, 'undefined').
@@ -43,7 +43,7 @@ log_failed_attempts(Doc, Default) ->
 set_log_failed_attempts(Doc, LogFailedAttempts) ->
     kz_json:set_value([<<"log_failed_attempts">>], LogFailedAttempts, Doc).
 
--spec log_successful_attempts(doc()) -> api_boolean().
+-spec log_successful_attempts(doc()) -> kz_term:api_boolean().
 -spec log_successful_attempts(doc(), Default) -> boolean() | Default.
 log_successful_attempts(Doc) ->
     log_successful_attempts(Doc, 'undefined').
@@ -54,7 +54,7 @@ log_successful_attempts(Doc, Default) ->
 set_log_successful_attempts(Doc, LogSuccessfulAttempts) ->
     kz_json:set_value([<<"log_successful_attempts">>], LogSuccessfulAttempts, Doc).
 
--spec multi_factor(doc()) -> api_object().
+-spec multi_factor(doc()) -> kz_term:api_object().
 -spec multi_factor(doc(), Default) -> kz_json:object() | Default.
 multi_factor(Doc) ->
     multi_factor(Doc, 'undefined').
@@ -65,7 +65,7 @@ multi_factor(Doc, Default) ->
 set_multi_factor(Doc, MultiFactor) ->
     kz_json:set_value([<<"multi_factor">>], MultiFactor, Doc).
 
--spec multi_factor_account_id(doc()) -> api_binary().
+-spec multi_factor_account_id(doc()) -> kz_term:api_binary().
 -spec multi_factor_account_id(doc(), Default) -> binary() | Default.
 multi_factor_account_id(Doc) ->
     multi_factor_account_id(Doc, 'undefined').
@@ -76,7 +76,7 @@ multi_factor_account_id(Doc, Default) ->
 set_multi_factor_account_id(Doc, MultiFactorAccountId) ->
     kz_json:set_value([<<"multi_factor">>, <<"account_id">>], MultiFactorAccountId, Doc).
 
--spec multi_factor_configuration_id(doc()) -> api_binary().
+-spec multi_factor_configuration_id(doc()) -> kz_term:api_binary().
 -spec multi_factor_configuration_id(doc(), Default) -> binary() | Default.
 multi_factor_configuration_id(Doc) ->
     multi_factor_configuration_id(Doc, 'undefined').
@@ -87,7 +87,7 @@ multi_factor_configuration_id(Doc, Default) ->
 set_multi_factor_configuration_id(Doc, MultiFactorConfigurationId) ->
     kz_json:set_value([<<"multi_factor">>, <<"configuration_id">>], MultiFactorConfigurationId, Doc).
 
--spec multi_factor_enabled(doc()) -> api_boolean().
+-spec multi_factor_enabled(doc()) -> kz_term:api_boolean().
 -spec multi_factor_enabled(doc(), Default) -> boolean() | Default.
 multi_factor_enabled(Doc) ->
     multi_factor_enabled(Doc, 'undefined').
@@ -98,7 +98,7 @@ multi_factor_enabled(Doc, Default) ->
 set_multi_factor_enabled(Doc, MultiFactorEnabled) ->
     kz_json:set_value([<<"multi_factor">>, <<"enabled">>], MultiFactorEnabled, Doc).
 
--spec multi_factor_include_subaccounts(doc()) -> api_boolean().
+-spec multi_factor_include_subaccounts(doc()) -> kz_term:api_boolean().
 -spec multi_factor_include_subaccounts(doc(), Default) -> boolean() | Default.
 multi_factor_include_subaccounts(Doc) ->
     multi_factor_include_subaccounts(Doc, 'undefined').
@@ -109,7 +109,7 @@ multi_factor_include_subaccounts(Doc, Default) ->
 set_multi_factor_include_subaccounts(Doc, MultiFactorIncludeSubaccounts) ->
     kz_json:set_value([<<"multi_factor">>, <<"include_subaccounts">>], MultiFactorIncludeSubaccounts, Doc).
 
--spec token_auth_expiry_s(doc()) -> api_integer().
+-spec token_auth_expiry_s(doc()) -> kz_term:api_integer().
 -spec token_auth_expiry_s(doc(), Default) -> integer() | Default.
 token_auth_expiry_s(Doc) ->
     token_auth_expiry_s(Doc, 'undefined').

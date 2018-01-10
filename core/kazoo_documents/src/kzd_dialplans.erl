@@ -13,13 +13,13 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec system(doc()) -> api_ne_binaries().
--spec system(doc(), Default) -> ne_binaries() | Default.
+-spec system(doc()) -> kz_term:api_ne_binaries().
+-spec system(doc(), Default) -> kz_term:ne_binaries() | Default.
 system(Doc) ->
     system(Doc, 'undefined').
 system(Doc, Default) ->
     kz_json:get_list_value([<<"system">>], Doc, Default).
 
--spec set_system(doc(), ne_binaries()) -> doc().
+-spec set_system(doc(), kz_term:ne_binaries()) -> doc().
 set_system(Doc, System) ->
     kz_json:set_value([<<"system">>], System, Doc).

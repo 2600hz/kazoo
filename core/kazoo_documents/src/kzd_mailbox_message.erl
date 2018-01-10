@@ -21,7 +21,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec call_id(doc()) -> api_binary().
+-spec call_id(doc()) -> kz_term:api_binary().
 -spec call_id(doc(), Default) -> binary() | Default.
 call_id(Doc) ->
     call_id(Doc, 'undefined').
@@ -32,7 +32,7 @@ call_id(Doc, Default) ->
 set_call_id(Doc, CallId) ->
     kz_json:set_value([<<"call_id">>], CallId, Doc).
 
--spec caller_id_name(doc()) -> api_binary().
+-spec caller_id_name(doc()) -> kz_term:api_binary().
 -spec caller_id_name(doc(), Default) -> binary() | Default.
 caller_id_name(Doc) ->
     caller_id_name(Doc, 'undefined').
@@ -43,7 +43,7 @@ caller_id_name(Doc, Default) ->
 set_caller_id_name(Doc, CallerIdName) ->
     kz_json:set_value([<<"caller_id_name">>], CallerIdName, Doc).
 
--spec caller_id_number(doc()) -> api_binary().
+-spec caller_id_number(doc()) -> kz_term:api_binary().
 -spec caller_id_number(doc(), Default) -> binary() | Default.
 caller_id_number(Doc) ->
     caller_id_number(Doc, 'undefined').
@@ -54,7 +54,7 @@ caller_id_number(Doc, Default) ->
 set_caller_id_number(Doc, CallerIdNumber) ->
     kz_json:set_value([<<"caller_id_number">>], CallerIdNumber, Doc).
 
--spec folder(doc()) -> api_binary().
+-spec folder(doc()) -> kz_term:api_binary().
 -spec folder(doc(), Default) -> binary() | Default.
 folder(Doc) ->
     folder(Doc, 'undefined').
@@ -65,7 +65,7 @@ folder(Doc, Default) ->
 set_folder(Doc, Folder) ->
     kz_json:set_value([<<"folder">>], Folder, Doc).
 
--spec from(doc()) -> api_binary().
+-spec from(doc()) -> kz_term:api_binary().
 -spec from(doc(), Default) -> binary() | Default.
 from(Doc) ->
     from(Doc, 'undefined').
@@ -76,7 +76,7 @@ from(Doc, Default) ->
 set_from(Doc, From) ->
     kz_json:set_value([<<"from">>], From, Doc).
 
--spec length(doc()) -> api_integer().
+-spec length(doc()) -> kz_term:api_integer().
 -spec length(doc(), Default) -> integer() | Default.
 length(Doc) ->
     length(Doc, 'undefined').
@@ -87,18 +87,18 @@ length(Doc, Default) ->
 set_length(Doc, Length) ->
     kz_json:set_value([<<"length">>], Length, Doc).
 
--spec media_id(doc()) -> api_ne_binary().
--spec media_id(doc(), Default) -> ne_binary() | Default.
+-spec media_id(doc()) -> kz_term:api_ne_binary().
+-spec media_id(doc(), Default) -> kz_term:ne_binary() | Default.
 media_id(Doc) ->
     media_id(Doc, 'undefined').
 media_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"media_id">>], Doc, Default).
 
--spec set_media_id(doc(), ne_binary()) -> doc().
+-spec set_media_id(doc(), kz_term:ne_binary()) -> doc().
 set_media_id(Doc, MediaId) ->
     kz_json:set_value([<<"media_id">>], MediaId, Doc).
 
--spec timestamp(doc()) -> api_integer().
+-spec timestamp(doc()) -> kz_term:api_integer().
 -spec timestamp(doc(), Default) -> integer() | Default.
 timestamp(Doc) ->
     timestamp(Doc, 'undefined').
@@ -109,7 +109,7 @@ timestamp(Doc, Default) ->
 set_timestamp(Doc, Timestamp) ->
     kz_json:set_value([<<"timestamp">>], Timestamp, Doc).
 
--spec to(doc()) -> api_binary().
+-spec to(doc()) -> kz_term:api_binary().
 -spec to(doc(), Default) -> binary() | Default.
 to(Doc) ->
     to(Doc, 'undefined').

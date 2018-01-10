@@ -17,36 +17,36 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec account_name(doc()) -> api_ne_binary().
--spec account_name(doc(), Default) -> ne_binary() | Default.
+-spec account_name(doc()) -> kz_term:api_ne_binary().
+-spec account_name(doc(), Default) -> kz_term:ne_binary() | Default.
 account_name(Doc) ->
     account_name(Doc, 'undefined').
 account_name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"account_name">>], Doc, Default).
 
--spec set_account_name(doc(), ne_binary()) -> doc().
+-spec set_account_name(doc(), kz_term:ne_binary()) -> doc().
 set_account_name(Doc, AccountName) ->
     kz_json:set_value([<<"account_name">>], AccountName, Doc).
 
--spec account_realm(doc()) -> api_ne_binary().
--spec account_realm(doc(), Default) -> ne_binary() | Default.
+-spec account_realm(doc()) -> kz_term:api_ne_binary().
+-spec account_realm(doc(), Default) -> kz_term:ne_binary() | Default.
 account_realm(Doc) ->
     account_realm(Doc, 'undefined').
 account_realm(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"account_realm">>], Doc, Default).
 
--spec set_account_realm(doc(), ne_binary()) -> doc().
+-spec set_account_realm(doc(), kz_term:ne_binary()) -> doc().
 set_account_realm(Doc, AccountRealm) ->
     kz_json:set_value([<<"account_realm">>], AccountRealm, Doc).
 
--spec credentials(doc()) -> api_ne_binary().
--spec credentials(doc(), Default) -> ne_binary() | Default.
+-spec credentials(doc()) -> kz_term:api_ne_binary().
+-spec credentials(doc(), Default) -> kz_term:ne_binary() | Default.
 credentials(Doc) ->
     credentials(Doc, 'undefined').
 credentials(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"credentials">>], Doc, Default).
 
--spec set_credentials(doc(), ne_binary()) -> doc().
+-spec set_credentials(doc(), kz_term:ne_binary()) -> doc().
 set_credentials(Doc, Credentials) ->
     kz_json:set_value([<<"credentials">>], Credentials, Doc).
 
@@ -61,13 +61,13 @@ method(Doc, Default) ->
 set_method(Doc, Method) ->
     kz_json:set_value([<<"method">>], Method, Doc).
 
--spec phone_number(doc()) -> api_ne_binary().
--spec phone_number(doc(), Default) -> ne_binary() | Default.
+-spec phone_number(doc()) -> kz_term:api_ne_binary().
+-spec phone_number(doc(), Default) -> kz_term:ne_binary() | Default.
 phone_number(Doc) ->
     phone_number(Doc, 'undefined').
 phone_number(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"phone_number">>], Doc, Default).
 
--spec set_phone_number(doc(), ne_binary()) -> doc().
+-spec set_phone_number(doc(), kz_term:ne_binary()) -> doc().
 set_phone_number(Doc, PhoneNumber) ->
     kz_json:set_value([<<"phone_number">>], PhoneNumber, Doc).
