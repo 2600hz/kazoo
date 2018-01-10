@@ -18,7 +18,7 @@
 route_req(CallId, FetchId, Props, Node) ->
     route_req(<<>>, CallId, FetchId, Props, Node).
 
--spec route_req(binary(), ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
+-spec route_req(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), atom()) -> kz_term:proplist().
 route_req(ServerId, CallId, FetchId, Props, Node) ->
     AccountId = kzd_freeswitch:account_id(Props),
     Context = kzd_freeswitch:hunt_context(Props, ?DEFAULT_FREESWITCH_CONTEXT),
