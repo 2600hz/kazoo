@@ -276,7 +276,7 @@ queue_name(Call) ->
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
 
--spec control_queue(api_binary(), kapps_call:call() | pid()) -> kz_types:api_control_q().
+-spec control_queue(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_types:api_control_q().
 control_queue(_, Call) -> control_queue(Call).
 
 -spec get_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:keys()}.
@@ -841,15 +841,6 @@ amqp_call_message(API, PubFun, VerifyFun, Q) ->
                ],
     Request = kz_api:exec(Routines, API),
     kz_amqp_worker:call(Request, PubFun, VerifyFun).
-
--spec send_command(kz_term:proplist(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
-send_command(_, 'undefined', _) -> lager:debug("no control queue to send command to");
-send_command(_, _, 'undefined') -> lager:debug("no call id to send command to");
-send_command(Command, ControlQ, CallId) ->
-    Props = Command ++ [{<<"Call-ID">>, CallId}
-                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ],
-    kz_amqp_worker:cast(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
 -spec add_server_id(kz_term:ne_binary(), kz_term:api_terms()) -> kz_term:api_terms().
 add_server_id(Q, API) when is_list(API) ->

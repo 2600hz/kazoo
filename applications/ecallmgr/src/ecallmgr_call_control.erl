@@ -145,7 +145,7 @@ queue_name(_) -> 'undefined'.
 other_legs(Srv) ->
     gen_server:call(Srv, 'other_legs', ?MILLISECONDS_IN_SECOND).
 
--spec update_node(atom(), kz_term:ne_binary() | pids()) -> 'ok'.
+-spec update_node(atom(), kz_term:ne_binary() | kz_term:pids()) -> 'ok'.
 update_node(Node, CallId) when is_binary(CallId) ->
     update_node(Node, gproc:lookup_pids({'p', 'l', {'call_control', CallId}}));
 update_node(Node, Pids) when is_list(Pids) ->
@@ -359,6 +359,8 @@ handle_info({'usurp_control', CallId, _FetchId, _JObj}, #state{call_id = CallId}
 handle_info({'usurp_control', _CallId, _FetchId, _JObj}, State) ->
     {'noreply', State};
 handle_info({switch_reply, _}, State) ->
+    {'noreply', State};
+handle_info({route_resp, _, _}, State) ->
     {'noreply', State};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
@@ -615,7 +617,7 @@ force_queue_advance(#state{call_id=CallId
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_execute_complete(kz_term:api_binary(), kz_json:object(), state()) -> state().
+-spec handle_execute_complete(kz_term:api_binary(), kz_term:api_binary(), kz_json:object(), state()) -> state().
 handle_execute_complete('undefined', _, _JObj, State) ->
     lager:debug_unsafe("call control received undefined : ~s", [kz_json:encode(_JObj, ['pretty'])]),
     State;
@@ -651,6 +653,9 @@ handle_execute_complete(<<"playback">> = AppName, EventUUID, JObj, #state{curren
                 State#state{command_q=flush_group_id(CmdQ, GroupId, AppName)}
         end,
     forward_queue(S);
+handle_execute_complete(AppName, <<"null">>, _, State) ->
+    lager:debug("ignoring execute complete for ~s", [AppName]),
+    State;
 handle_execute_complete(AppName, EventUUID, _, #state{current_app=AppName
                                                      ,current_cmd_uuid=EventUUID
                                                      }=State) ->
@@ -1030,7 +1035,7 @@ get_module(Category, Name) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec execute_control_request(kz_json:object(), state()) -> 'ok' | {'ok', ne_binary()} | {'error', any()}.
+-spec execute_control_request(kz_json:object(), state()) -> 'ok' | {'ok', kz_term:ne_binary()} | {'error', any()}.
 execute_control_request(Cmd, #state{node=Node
                                    ,call_id=CallId
                                    ,other_legs=OtherLegs
@@ -1182,7 +1187,7 @@ bind(Node, CallId) ->
     'true' = gproc:reg({'p', 'l', {'call_event', Node, CallId}}),
     'true' = gproc:reg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)}).
 
--spec unbind(atom(), ne_binary()) -> 'true'.
+-spec unbind(atom(), kz_term:ne_binary()) -> 'true'.
 unbind(Node, CallId) ->
     lager:debug("unbinding from call ~s events on node ~s", [CallId, Node]),
     _ = (catch gproc:unreg({'p', 'l', {'call_event', Node, CallId}})),
