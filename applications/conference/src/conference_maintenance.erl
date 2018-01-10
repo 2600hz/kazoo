@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017 2600Hz
+%%% @copyright (C) 2011-2018 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -33,7 +33,7 @@ blocking_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh() -> 'started'.
--spec refresh(text()) -> 'ok'.
+-spec refresh(kz_term:text()) -> 'ok'.
 
 refresh() ->
     _ = kz_util:spawn(fun blocking_refresh/0),

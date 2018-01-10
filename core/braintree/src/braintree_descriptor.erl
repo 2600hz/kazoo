@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,21 +20,21 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_name(bt_descriptor()) -> api_ne_binary().
+-spec get_name(bt_descriptor()) -> kz_term:api_ne_binary().
 get_name(#bt_descriptor{name=Name}) ->
     Name.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Contert the given XML to a descriptor record
+%% Convert the given XML to a descriptor record
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> bt_descriptor().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/descriptor").
 
--spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_descriptor().
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_descriptor().
 xml_to_record(Xml, Base) ->
     #bt_descriptor{name = kz_xml:get_value([Base, "/name/text()"], Xml)
                   ,phone = kz_xml:get_value([Base, "/phone/text()"], Xml)
@@ -44,14 +44,14 @@ xml_to_record(Xml, Base) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Contert the given XML to a descriptor record
+%% Convert the given XML to a descriptor record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_descriptor()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_descriptor()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml(Descriptor) ->
-    record_to_xml(Descriptor, false).
+    record_to_xml(Descriptor, 'false').
 
--spec record_to_xml(bt_descriptor(), boolean()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_descriptor(), boolean()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml('undefined', _ToString) -> 'undefined';
 record_to_xml(Descriptor, ToString) ->
     Props = [{'name', Descriptor#bt_descriptor.name}
@@ -59,8 +59,8 @@ record_to_xml(Descriptor, ToString) ->
             ,{'url', Descriptor#bt_descriptor.url}
             ],
     case ToString of
-        true -> braintree_util:make_doc_xml(Props, 'descriptor');
-        false -> Props
+        'true' -> braintree_util:make_doc_xml(Props, 'descriptor');
+        'false' -> Props
     end.
 
 %%--------------------------------------------------------------------
@@ -71,11 +71,10 @@ record_to_xml(Descriptor, ToString) ->
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_descriptor()) -> kz_json:object().
 record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
-    kz_json:from_list(
-      [{<<"name">>, Name}
-      ,{<<"phone">>, Phone}
-      ,{<<"url">>, Url}
-      ]).
+    kz_json:from_list([{<<"name">>, Name}
+                      ,{<<"phone">>, Phone}
+                      ,{<<"url">>, Url}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,7 +82,7 @@ record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
 %% Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> bt_descriptor() | 'undefined'.
+-spec json_to_record(kz_term:api_object()) -> bt_descriptor() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_descriptor{name = kz_json:get_binary_value(<<"name">>, JObj)

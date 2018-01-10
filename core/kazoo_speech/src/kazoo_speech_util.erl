@@ -4,7 +4,7 @@
 
 -include("kazoo_speech.hrl").
 
--spec tmp_file_name(ne_binary()) -> string().
+-spec tmp_file_name(kz_term:ne_binary()) -> string().
 tmp_file_name(Ext) ->
     Prefix = kz_binary:rand_hex(10),
     Name = filename:join([?TMP_PATH

@@ -6,15 +6,15 @@
 
 -include("kazoo_speech.hrl").
 
--spec default_provider() -> ne_binary().
+-spec default_provider() -> kz_term:ne_binary().
 default_provider() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>).
 
--spec default_mime_type() -> ne_binary().
+-spec default_mime_type() -> kz_term:ne_binary().
 default_mime_type() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_mime_type">>, <<"application/wav">>).
 
--spec default_locale() -> ne_binary().
+-spec default_locale() -> kz_term:ne_binary().
 default_locale() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_locale">>, <<"en-us">>).
 
@@ -22,10 +22,10 @@ default_locale() ->
 %% Transcribe the audio binary
 %%------------------------------------------------------------------------------
 -spec freeform(binary()) -> asr_resp().
--spec freeform(binary(), ne_binary()) -> asr_resp().
--spec freeform(binary(), ne_binary(), ne_binary()) -> asr_resp().
--spec freeform(binary(), ne_binary(), ne_binary(), kz_proplist()) -> asr_resp().
--spec freeform(binary(), ne_binary(), ne_binary(), kz_proplist(), ne_binary()) -> asr_resp().
+-spec freeform(binary(), kz_term:ne_binary()) -> asr_resp().
+-spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> asr_resp().
+-spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
+-spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content) ->
     freeform(Content, default_mime_type()).
 freeform(Content, ContentType) ->
@@ -46,11 +46,11 @@ freeform(Content, ContentType, Locale, Options, ASRProvider) ->
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
 %%------------------------------------------------------------------------------
--spec commands(ne_binary(), ne_binaries()) -> asr_resp().
--spec commands(ne_binary(), ne_binaries(), ne_binary()) -> asr_resp().
--spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) -> asr_resp().
--spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist()) -> asr_resp().
--spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist(), ne_binary()) -> asr_resp().
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries()) -> asr_resp().
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> asr_resp().
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) -> asr_resp().
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 commands(Bin, Commands) ->
     commands(Bin, Commands, default_mime_type()).
 commands(Bin, Commands, ContentType) ->

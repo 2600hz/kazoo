@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
@@ -209,10 +209,10 @@ call_is_singular(Call) ->
 %% @doc
 %% Gets where the call was started. If kapps_call returns undefined, it was on net.
 %%
-%% @spec get_inception(kapps_call:call()) -> ne_binary().
+%% @spec get_inception(kapps_call:call()) -> kz_term:ne_binary().
 %% @end
 %%--------------------------------------------------------------------
--spec get_inception(kapps_call:call()) -> ne_binary().
+-spec get_inception(kapps_call:call()) -> kz_term:ne_binary().
 get_inception(Call) ->
     case kapps_call:inception(Call) of
         'undefined' -> <<"onnet">>;
@@ -224,9 +224,9 @@ get_inception(Call) ->
 %% @doc
 %% Gets the singular call hook URL from the configuration (may be cached).
 %%
-%% @spec get_hook_url() -> ne_binary().
+%% @spec get_hook_url() -> kz_term:ne_binary().
 %% @end
 %%--------------------------------------------------------------------
--spec get_hook_url() -> ne_binary().
+-spec get_hook_url() -> kz_term:ne_binary().
 get_hook_url() ->
     kapps_config:get_binary(?CF_CONFIG_CAT, <<"singular_call_hook_url">>, <<"">>).

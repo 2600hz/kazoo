@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -32,20 +32,20 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_event_process(atom(), ne_binary()) -> sup_startchild_ret().
+-spec start_event_process(atom(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret().
 start_event_process(Node, UUID) ->
     ecallmgr_call_event_sup:start_proc([Node, UUID]).
 
--spec start_control_process(atom(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+-spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret().
 start_control_process(Node, CallId, FetchId) ->
     start_control_process(Node, CallId, FetchId, 'undefined', kz_json:new()).
 
--spec start_control_process(atom(), ne_binary(), ne_binary(), api_ne_binary(), kz_json:object()) ->
-                                   sup_startchild_ret().
+-spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
+                                   kz_types:sup_startchild_ret().
 start_control_process(Node, CallId, FetchId, ControllerQ, CCVs) ->
     ecallmgr_call_control_sup:start_proc([Node
                                          ,CallId
@@ -67,7 +67,7 @@ start_control_process(Node, CallId, FetchId, ControllerQ, CCVs) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

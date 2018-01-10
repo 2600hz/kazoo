@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -32,11 +32,11 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_recording(kapps_call:call(), kz_json:object()) -> sup_startchild_ret().
+-spec start_recording(kapps_call:call(), kz_json:object()) -> kz_types:sup_startchild_ret().
 start_recording(Call, Data) ->
     supervisor:start_child(?SERVER, [Call, Data]).
 
@@ -44,11 +44,11 @@ start_recording(Call, Data) ->
 stop_recording(Pid) ->
     gen_server:cast(Pid, 'stop_recording').
 
--spec workers() -> pids().
+-spec workers() -> kz_term:pids().
 workers() ->
     [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
--spec worker(ne_binary()) -> api_pid().
+-spec worker(kz_term:ne_binary()) -> kz_term:api_pid().
 worker(Name) ->
     case [Pid
           || {Worker, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER),
@@ -72,7 +72,7 @@ worker(Name) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,

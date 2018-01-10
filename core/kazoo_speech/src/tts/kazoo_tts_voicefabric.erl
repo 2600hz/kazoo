@@ -35,12 +35,12 @@
 
 -define(VOICEFABRIC_TTS_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url_voicefabric">>, <<"https://voicefabric.ru/WSServer/ws/tts">>)).
 
--spec set_api_key(ne_binary()) -> 'ok'.
+-spec set_api_key(kz_term:ne_binary()) -> 'ok'.
 set_api_key(Key) ->
     {'ok', _} = kapps_config:set_default(?MOD_CONFIG_CAT, <<"tts_api_key">>, Key),
     'ok'.
 
--spec create(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
+-spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> create_resp().
 create(Text, Voice, _Format, Options) ->
     lager:debug("getting ~ts from VoiceFabric", [Text]),
     VoiceMappings = ?VOICEFABRIC_VOICE_MAPPINGS,
@@ -75,9 +75,9 @@ create(Text, Voice, _Format, Options) ->
             end
     end.
 
--spec voicefabric_request_body(ne_binary(), list()) ->
-                                      {'ok', list(), ne_binary()} |
-                                      {'error', ne_binary()}.
+-spec voicefabric_request_body(kz_term:ne_binary(), list()) ->
+                                      {'ok', list(), kz_term:ne_binary()} |
+                                      {'error', kz_term:ne_binary()}.
 voicefabric_request_body(<<"urlencode">>, Data) ->
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
     Body = kz_http_util:props_to_querystring(Data),
@@ -108,7 +108,7 @@ voicefabric_request_body(ArgsEncode, _Data) ->
 
 -spec create_response(kz_http:ret()) ->
                              kz_http:req_id() |
-                             {'ok', ne_binary(), ne_binary()} |
+                             {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
                              {'error', 'tts_provider_failure', binary()}.
 create_response({'error', _R}) ->
     lager:warning("creating speech file failed with error ~p", [_R]),
@@ -152,7 +152,7 @@ create_response({'ok', _Code, RespHeaders, Content}) ->
     _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
     {'error', 'tts_provider_failure', Content}.
 
--spec voicefabric_get_media_rate(kz_proplist()) -> {'ok', ne_binary()}.
+-spec voicefabric_get_media_rate(kz_term:proplist()) -> {'ok', kz_term:ne_binary()}.
 voicefabric_get_media_rate(Headers1) ->
     Headers = [{kz_term:to_lower_binary(X), kz_term:to_binary(Y)}
                || {X, Y} <- Headers1
@@ -163,12 +163,12 @@ voicefabric_get_media_rate(Headers1) ->
         [X || X <- re:split(Params, "; "), voicefabric_filter_rate(X)],
     {'ok', Rate}.
 
--spec voicefabric_filter_rate(ne_binary()) -> boolean().
+-spec voicefabric_filter_rate(kz_term:ne_binary()) -> boolean().
 voicefabric_filter_rate(<<"rate=", _/binary>>) -> 'true';
 voicefabric_filter_rate(_)                     -> 'false'.
 
--spec create_default_response({'ok', 200, kz_proplist(), binary()}) ->
-                                     {'ok', ne_binary(), binary()}.
+-spec create_default_response({'ok', 200, kz_term:proplist(), binary()}) ->
+                                     {'ok', kz_term:ne_binary(), binary()}.
 create_default_response({'ok', 200, Headers, Content}) ->
     ContentType = props:get_value("content-type", Headers),
     ContentLength = props:get_value("content-length", Headers),

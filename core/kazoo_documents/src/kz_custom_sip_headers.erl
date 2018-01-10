@@ -11,7 +11,7 @@
 -define(IN, <<"in">>).
 -define(OUT, <<"out">>).
 
--spec inbound(kz_json:object()) -> api_object().
+-spec inbound(kz_json:object()) -> kz_term:api_object().
 -spec inbound(kz_json:object(), Default) -> kz_json:object() | Default.
 inbound(CSH) ->
     inbound(CSH, 'undefined').
@@ -41,12 +41,12 @@ outbound_header(DeviceJObj, Name) ->
 outbound_header(DeviceJObj, Name, Default) ->
     kz_json:get_ne_value(Name, outbound(DeviceJObj), Default).
 
--spec filter_csh({ne_binary(), any()}) -> boolean().
+-spec filter_csh({kz_term:ne_binary(), any()}) -> boolean().
 filter_csh({<<"in">>, _}) -> 'false';
 filter_csh({<<"out">>, _}) -> 'false';
 filter_csh(_) -> 'true'.
 
--spec outbound(kz_json:object()) -> api_object().
+-spec outbound(kz_json:object()) -> kz_term:api_object().
 -spec outbound(kz_json:object(), Default) -> kz_json:object() | Default.
 outbound(CSH) ->
     outbound(CSH, 'undefined').

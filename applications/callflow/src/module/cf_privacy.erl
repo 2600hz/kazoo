@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -29,7 +29,7 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec update_call(ne_binary(), {'ok', kapps_call:call()}, ne_binary()) -> 'ok'.
+-spec update_call(kz_term:ne_binary(), {'ok', kapps_call:call()}, kz_term:ne_binary()) -> 'ok'.
 update_call(CaptureGroup, {'ok', Call}, Mode) ->
     Normalize = knm_converters:normalize(CaptureGroup),
     CCVs = ccvs_by_privacy_mode(Mode),
@@ -42,7 +42,7 @@ update_call(CaptureGroup, {'ok', Call}, Mode) ->
                ],
     cf_exe:set_call(kapps_call:exec(Routines, Call)).
 
--spec ccvs_by_privacy_mode(api_ne_binary()) -> kz_proplist().
+-spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
 ccvs_by_privacy_mode('undefined') ->
     ccvs_by_privacy_mode(<<"full">>);
 ccvs_by_privacy_mode(<<"full">>) ->

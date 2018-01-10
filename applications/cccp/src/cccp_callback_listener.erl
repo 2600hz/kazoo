@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -39,7 +39,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(list()) -> startlink_ret().
+-spec start_link(list()) -> kz_types:startlink_ret().
 start_link(JObj) ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                      ,{'bindings', ?BINDINGS}
@@ -92,7 +92,7 @@ init([JObj]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -106,7 +106,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue='undefined'}=S) ->
     gen_listener:cast(self(), 'originate_park'),
     {'noreply', S#state{queue = Q}};
@@ -139,7 +139,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -214,7 +214,7 @@ originate_park(#state{account_id=AccountId
             gen_listener:cast(self(), 'stop_callback')
     end.
 
--spec handle_resource_response(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_resource_response(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_resource_response(JObj, Props) ->
     Srv = props:get_value('server', Props),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
@@ -254,7 +254,7 @@ handle_originate_response(JObj, Props) ->
         _ -> 'ok'
     end.
 
--spec bridge_to_final_destination(ne_binary(), ne_binary(), state()) -> 'ok'.
+-spec bridge_to_final_destination(kz_term:ne_binary(), kz_term:ne_binary(), state()) -> 'ok'.
 bridge_to_final_destination(CallId, ToDID, #state{offnet_ctl_q=CtrlQ
                                                  ,account_id=AccountId
                                                  ,authorizing_id=AuthorizingId
@@ -269,7 +269,7 @@ bridge_to_final_destination(CallId, ToDID, #state{offnet_ctl_q=CtrlQ
         _ -> cccp_util:store_last_dialed(ToDID, AccountDocId)
     end.
 
--spec b_leg_number(kz_proplist()) -> ne_binary().
+-spec b_leg_number(kz_term:proplist()) -> kz_term:ne_binary().
 b_leg_number(Props) ->
     case props:get_value('b_leg_number', Props) of
         'undefined' ->
@@ -285,7 +285,7 @@ b_leg_number(Props) ->
             BLegNumber
     end.
 
--spec maybe_make_announcement_to_a_leg(kz_proplist()) -> 'ok'.
+-spec maybe_make_announcement_to_a_leg(kz_term:proplist()) -> 'ok'.
 maybe_make_announcement_to_a_leg(Props) ->
     case props:get_value('media_id', Props) of
         <<MediaId:32/binary>> ->
@@ -297,11 +297,11 @@ maybe_make_announcement_to_a_leg(Props) ->
         _ -> 'ok'
     end.
 
--spec call(kz_proplist()) -> kapps_call:call().
+-spec call(kz_term:proplist()) -> kapps_call:call().
 call(Props) ->
     props:get_value('call', Props).
 
--spec maybe_handle_doc_id(ne_binary(), kz_proplist()) -> 'ok'.
+-spec maybe_handle_doc_id(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 maybe_handle_doc_id(DocId, Props) ->
     AccountDb = kz_util:format_account_id(props:get_value('account_id', Props), 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, DocId) of
@@ -309,7 +309,7 @@ maybe_handle_doc_id(DocId, Props) ->
         {'ok', JObj} -> maybe_handle_doc(JObj, Props)
     end.
 
--spec maybe_handle_doc(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec maybe_handle_doc(kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_handle_doc(JObj, Props) ->
     Call = call(Props),
     case kz_doc:type(JObj) of

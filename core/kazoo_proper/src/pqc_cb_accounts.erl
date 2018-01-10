@@ -18,19 +18,19 @@
 -include("kazoo_proper.hrl").
 
 -type account_id() :: {'call', 'pqc_kazoo_model', 'account_id_by_name', [pqc_cb_api:state() | proper_types:type()]} |
-                      ne_binary().
+                      kz_term:ne_binary().
 
--spec command(pqc_kazoo_model:model(), ne_binary() | proper_types:type()) ->
+-spec command(pqc_kazoo_model:model(), kz_term:ne_binary() | proper_types:type()) ->
                      {'call', ?MODULE, 'create_account', [pqc_cb_api:state() | proper_types:term()]}.
 command(Model, Name) ->
     {'call', ?MODULE, 'create_account', [pqc_kazoo_model:api(Model), Name]}.
 
--spec symbolic_account_id(pqc_kazoo_model:model(), ne_binary() | proper_types:type()) ->
+-spec symbolic_account_id(pqc_kazoo_model:model(), kz_term:ne_binary() | proper_types:type()) ->
                                  account_id().
 symbolic_account_id(Model, Name) ->
     {'call', 'pqc_kazoo_model', 'account_id_by_name', [Model, Name]}.
 
--spec create_account(pqc_cb_api:state(), ne_binary()) -> binary().
+-spec create_account(pqc_cb_api:state(), kz_term:ne_binary()) -> binary().
 create_account(API, NewAccountName) ->
     RequestData = kz_json:from_list([{<<"name">>, NewAccountName}]),
     RequestEnvelope = pqc_cb_api:create_envelope(RequestData),
@@ -45,19 +45,19 @@ create_account(API, NewAccountName) ->
         andalso allow_number_additions(NewAccountId),
     Resp.
 
--spec allow_number_additions(ne_binary()) -> {'ok', kz_account:doc()}.
+-spec allow_number_additions(kz_term:ne_binary()) -> {'ok', kz_account:doc()}.
 allow_number_additions(AccountId) ->
     {'ok', _Account} = kz_util:set_allow_number_additions(AccountId, 'true').
 
--spec delete_account(pqc_cb_api:state(), ne_binary()) -> binary().
+-spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> binary().
 delete_account(API, AccountId) ->
     URL = account_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
     pqc_cb_api:make_request([200], fun kz_http:delete/2, URL, RequestHeaders).
 
--spec cleanup_accounts(ne_binaries()) -> 'ok'.
--spec cleanup_accounts(pqc_cb_api:state(), ne_binaries()) -> 'ok'.
+-spec cleanup_accounts(kz_term:ne_binaries()) -> 'ok'.
+-spec cleanup_accounts(pqc_cb_api:state(), kz_term:ne_binaries()) -> 'ok'.
 cleanup_accounts(AccountNames) ->
     cleanup_accounts(pqc_cb_api:authenticate(), AccountNames).
 
@@ -65,7 +65,7 @@ cleanup_accounts(API, AccountNames) ->
     _ = [cleanup_account(API, AccountName) || AccountName <- AccountNames],
     kt_cleanup:cleanup_soft_deletes(?KZ_ACCOUNTS_DB).
 
--spec cleanup_account(pqc_cb_api:state(), ne_binary()) -> 'ok'.
+-spec cleanup_account(pqc_cb_api:state(), kz_term:ne_binary()) -> 'ok'.
 cleanup_account(API, AccountName) ->
     _ = try pqc_cb_search:search_account_by_name(API, AccountName) of
             ?FAILED_RESPONSE ->

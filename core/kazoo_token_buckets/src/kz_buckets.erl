@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%% API interface for buckets
 %%% ETS writer for table
@@ -57,10 +57,10 @@
                }).
 -type state() :: #state{}.
 
--record(bucket, {key :: {ne_binary(), ne_binary()} | '_'
+-record(bucket, {key :: {kz_term:ne_binary(), kz_term:ne_binary()} | '_'
                 ,srv :: pid() | '$1' | '$2' | '_'
                 ,ref :: reference() | '$2' | '_'
-                ,accessed = kz_time:now_s() :: gregorian_seconds() | '$1' | '_'
+                ,accessed = kz_time:now_s() :: kz_time:gregorian_seconds() | '$1' | '_'
                 }).
 -type bucket() :: #bucket{}.
 
@@ -71,7 +71,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -83,8 +83,8 @@ start_link() ->
 %% StartIfMissing :: start the token bucket if it doesn't exist yet
 %% @end
 %%--------------------------------------------------------------------
--spec consume_token(ne_binary()) -> boolean().
--spec consume_token(ne_binary(), ne_binary() | boolean()) -> boolean().
+-spec consume_token(kz_term:ne_binary()) -> boolean().
+-spec consume_token(kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> boolean().
 
 consume_token(Name) ->
     consume_tokens(Name, 1).
@@ -94,9 +94,9 @@ consume_token(<<_/binary>> = App, <<_/binary>> = Name) ->
 consume_token(Name, StartIfMissing) ->
     consume_tokens(?DEFAULT_APP, Name, 1, StartIfMissing).
 
--spec consume_tokens(ne_binary(), integer()) -> boolean().
--spec consume_tokens(ne_binary(), ne_binary() | integer(), integer() | boolean()) -> boolean().
--spec consume_tokens(ne_binary(), ne_binary(), integer(), boolean()) -> boolean().
+-spec consume_tokens(kz_term:ne_binary(), integer()) -> boolean().
+-spec consume_tokens(kz_term:ne_binary(), kz_term:ne_binary() | integer(), integer() | boolean()) -> boolean().
+-spec consume_tokens(kz_term:ne_binary(), kz_term:ne_binary(), integer(), boolean()) -> boolean().
 consume_tokens(Key, Count) ->
     consume_tokens(Key, Count, 'true').
 
@@ -121,8 +121,8 @@ consume_tokens(App, Key, Count, StartIfMissing) ->
 %% remaining tokens and return false
 %% @end
 %%--------------------------------------------------------------------
--spec consume_tokens_until(ne_binary(), pos_integer()) -> boolean().
--spec consume_tokens_until(ne_binary(), ne_binary() | pos_integer(), pos_integer() | boolean()) -> boolean().
+-spec consume_tokens_until(kz_term:ne_binary(), pos_integer()) -> boolean().
+-spec consume_tokens_until(kz_term:ne_binary(), kz_term:ne_binary() | pos_integer(), pos_integer() | boolean()) -> boolean().
 consume_tokens_until(Key, Count) ->
     consume_tokens_until(?DEFAULT_APP, Key, Count, 'true').
 
@@ -134,13 +134,13 @@ consume_tokens_until(Key=?NE_BINARY, Count, StartIfMissing)
        is_boolean(StartIfMissing) ->
     consume_tokens(?DEFAULT_APP, Key, Count, StartIfMissing).
 
--spec consume_tokens_until(ne_binary(), ne_binary(), pos_integer(), boolean()) -> boolean().
+-spec consume_tokens_until(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), boolean()) -> boolean().
 consume_tokens_until(App=?NE_BINARY, Key=?NE_BINARY, Count, StartIfMissing)
   when is_integer(Count),
        is_boolean(StartIfMissing) ->
     consume_tokens(App, Key, Count, StartIfMissing, fun kz_token_bucket:consume_until/2).
 
--spec consume_tokens(ne_binary(), ne_binary(), integer(), boolean(), fun()) -> boolean().
+-spec consume_tokens(kz_term:ne_binary(), kz_term:ne_binary(), integer(), boolean(), fun()) -> boolean().
 consume_tokens(App, Key, Count, StartIfMissing, BucketFun) ->
     case get_bucket(App, Key) of
         'undefined' ->
@@ -153,7 +153,7 @@ consume_tokens(App, Key, Count, StartIfMissing, BucketFun) ->
             end
     end.
 
--spec maybe_start_bucket(ne_binary(), ne_binary(), integer(), boolean(), fun()) -> boolean().
+-spec maybe_start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), integer(), boolean(), fun()) -> boolean().
 maybe_start_bucket(_App, _Key, _Count, 'false', _BucketFun) -> 'false';
 maybe_start_bucket(App, Key, Count, 'true', BucketFun) ->
     lager:debug("bucket (~s ~s) missing, starting", [App, Key]),
@@ -162,8 +162,8 @@ maybe_start_bucket(App, Key, Count, 'true', BucketFun) ->
         _OK -> consume_tokens(App, Key, Count, 'false', BucketFun)
     end.
 
--spec get_bucket(ne_binary(), ne_binary()) -> api_pid().
--spec get_bucket(ne_binary(), ne_binary(), 'record'|'server') -> api_pid() | bucket().
+-spec get_bucket(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_pid().
+-spec get_bucket(kz_term:ne_binary(), kz_term:ne_binary(), 'record'|'server') -> kz_term:api_pid() | bucket().
 get_bucket(App, Key) ->
     get_bucket(App, Key, 'server').
 
@@ -181,8 +181,8 @@ get_bucket(App, Key, 'server') ->
             Srv
     end.
 
--spec exists(ne_binary()) -> boolean().
--spec exists(ne_binary(), ne_binary()) -> boolean().
+-spec exists(kz_term:ne_binary()) -> boolean().
+-spec exists(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 exists(Key) ->
     exists(?DEFAULT_APP, Key).
 exists(App, Key) ->
@@ -194,15 +194,15 @@ exists(App, Key) ->
             'false'
     end.
 
--spec start_bucket(ne_binary()) ->
+-spec start_bucket(kz_term:ne_binary()) ->
                           'ok' | 'error' | 'exists'.
--spec start_bucket(ne_binary(), ne_binary()) ->
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary()) ->
                           'ok' | 'error' | 'exists'.
--spec start_bucket(ne_binary(), ne_binary(), pos_integer()) ->
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) ->
                           'ok' | 'error' | 'exists'.
--spec start_bucket(ne_binary(), ne_binary(), pos_integer(), pos_integer()) ->
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
                           'ok' | 'error' | 'exists'.
--spec start_bucket(ne_binary(), ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
                           'ok' | 'error' | 'exists'.
 start_bucket(Name) ->
     start_bucket(?DEFAULT_APP, Name).
@@ -301,7 +301,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'start', _App, _Name, _MaxTokens, _FillRate, _FillTime}
            ,_From
            ,#state{table_id='undefined'}=State
@@ -347,7 +347,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
@@ -367,7 +367,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', Tbl, _From, _Data}, #state{table_id='undefined'}=State) ->
     lager:debug("recv ets transfer from ~p for ~p", [_From, Tbl]),
     {'noreply', State#state{table_id=Tbl}};
@@ -424,7 +424,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec new_bucket(pid(), {ne_binary(), ne_binary()}) -> bucket().
+-spec new_bucket(pid(), {kz_term:ne_binary(), kz_term:ne_binary()}) -> bucket().
 new_bucket(Pid, Name) ->
     #bucket{key=Name
            ,srv=Pid

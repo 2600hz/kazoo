@@ -35,9 +35,9 @@
 -include_lib("proper/include/proper.hrl").
 -include("kazoo_proper.hrl").
 
--record('dedicated', {ip :: api_ne_binary()
-                     ,host :: api_ne_binary()
-                     ,zone :: api_ne_binary()
+-record('dedicated', {ip :: kz_term:api_ne_binary()
+                     ,host :: kz_term:api_ne_binary()
+                     ,zone :: kz_term:api_ne_binary()
                      }).
 -define(DEDICATED(IP, Host, Zone)
        ,#dedicated{ip=IP, host=Host, zone=Zone}
@@ -52,8 +52,8 @@ ips_url() ->
 ips_url(AccountId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "ips"], "/").
 
--spec ip_url(text()) -> string().
--spec ip_url(pqc_cb_accounts:account_id(), text()) -> string().
+-spec ip_url(kz_term:text()) -> string().
+-spec ip_url(pqc_cb_accounts:account_id(), kz_term:text()) -> string().
 ip_url(IP) ->
     string:join([pqc_cb_api:v2_base_url(), "ips", kz_term:to_list(IP)], "/").
 
@@ -162,7 +162,7 @@ assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     end.
 
 -spec fetch_hosts(pqc_cb_api:state()) ->
-                         {'ok', ne_binaries()} |
+                         {'ok', kz_term:ne_binaries()} |
                          {'error', 'not_found'}.
 fetch_hosts(API) ->
     case pqc_cb_api:make_request([200]
@@ -179,7 +179,7 @@ fetch_hosts(API) ->
     end.
 
 -spec fetch_zones(pqc_cb_api:state()) ->
-                         {'ok', ne_binaries()} |
+                         {'ok', kz_term:ne_binaries()} |
                          {'error', 'not_found'}.
 fetch_zones(API) ->
     case pqc_cb_api:make_request([200]
@@ -571,7 +571,7 @@ assign_dedicated_ips(Model, AccountId, Dedicateds) ->
                ,Dedicateds
                ).
 
--spec are_all_ips_listed([{ne_binary(), pqc_kazoo_model:dedicated_ip()}], kz_json:objects(), boolean()) ->
+-spec are_all_ips_listed([{kz_term:ne_binary(), pqc_kazoo_model:dedicated_ip()}], kz_json:objects(), boolean()) ->
                                 boolean().
 are_all_ips_listed([], [], _CheckHost) -> 'true';
 are_all_ips_listed(_ModelIPs, [], _CheckHost) -> 'false';
@@ -583,7 +583,7 @@ are_all_ips_listed(ModelIPs, ListedIPs, CheckHost) ->
              ,ModelIPs
              ).
 
--spec is_ip_listed(ne_binary(), pqc_kazoo_model:dedicated_ip(), kz_json:objects()) ->
+-spec is_ip_listed(kz_term:ne_binary(), pqc_kazoo_model:dedicated_ip(), kz_json:objects()) ->
                           boolean().
 is_ip_listed(IP, IPInfo, ListedIPs) ->
     is_ip_listed(IP, IPInfo, ListedIPs, 'true').
@@ -602,7 +602,7 @@ is_ip_listed(IP, IPInfo, ListedIPs, CheckHost) ->
              ,ListedIPs
              ).
 
--spec all_requested_are_listed(ne_binary(), [dedicated()], kz_json:objects()) -> boolean().
+-spec all_requested_are_listed(kz_term:ne_binary(), [dedicated()], kz_json:objects()) -> boolean().
 all_requested_are_listed(AccountId, Dedicateds, ListedIPs) ->
     [] =:= lists:foldl(fun(ListedIP, Ds) ->
                                IP = kz_json:get_ne_binary_value(<<"ip">>, ListedIP),
@@ -620,7 +620,7 @@ all_requested_are_listed(AccountId, Dedicateds, ListedIPs) ->
                       ,ListedIPs
                       ).
 
--spec is_assigned(ne_binary(), dedicated(), kz_json:object()) -> boolean().
+-spec is_assigned(kz_term:ne_binary(), dedicated(), kz_json:object()) -> boolean().
 is_assigned(AccountId, ?DEDICATED(DIP, DHost, DZone), ListedIP) ->
     IP = kz_json:get_ne_binary_value(<<"ip">>, ListedIP),
     Host = kz_json:get_ne_binary_value(<<"host">>, ListedIP),

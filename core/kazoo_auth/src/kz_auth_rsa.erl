@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -23,7 +23,7 @@
 
 -type state() :: #state{}.
 -type gen_rsa() :: {gen_rsa, integer(), integer()}.
--type job() :: {integer(), pid_ref(), gen_rsa()}.
+-type job() :: {integer(), kz_term:pid_ref(), gen_rsa()}.
 
 
 -include("kazoo_auth.hrl").
@@ -45,7 +45,7 @@ max_jobs(Limit) when is_integer(Limit)
                      andalso Limit > 0 ->
     gen_server:call(?SERVER, {set_limit, Limit}, infinity).
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     Limit = case application:get_env(kazoo_auth, max_jobs) of
                 undefined -> ?DEFAULT_MAXJOBS;
@@ -64,7 +64,7 @@ init(Limit) when is_integer(Limit)
     Port = kz_auth_rsa_drv:open(),
     {ok, #state{port = Port}}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(stop, _From, #state{} = State) ->
     {stop, normal, ok, State};
 handle_call({gen_rsa, _Bits, _E} = Req, From, #state{} = State) ->
@@ -81,11 +81,11 @@ handle_call({set_limit, Limit}, _From, #state{} = State)
 handle_call(_Request, _From, State) ->
     {noreply, State}.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({Port, Ref, Data}, #state{port = Port, requests = Reqs} = State) ->
     case lists:keytake(Ref, 1, Reqs) of
         {value, {Ref, From}, NewRequests} ->

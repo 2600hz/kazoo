@@ -8,18 +8,18 @@
 
 -type callback_fun() :: fun((any(), any(), 'flush' | 'erase' | 'expire') -> any()).
 -type callback_funs() :: [callback_fun()].
--type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
-                        {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
-                        {'db', ne_binary()} | %% {db, Database}
-                        {'db', ne_binary(), ne_binary() | '_'} | %% {db, Database, Type}
-                        {'database', ne_binary()} | %% {database, Database} added for notify db create/delete
-                        {'type', ne_binary()}. %% {type, PvtType}
+-type origin_tuple() :: {'db', kz_term:ne_binary(), kz_term:ne_binary()} | %% {db, Database, PvtType or Id}
+                        {'type', kz_term:ne_binary(), kz_term:ne_binary()} | %% {type, PvtType, Id}
+                        {'db', kz_term:ne_binary()} | %% {db, Database}
+                        {'db', kz_term:ne_binary(), kz_term:ne_binary() | '_'} | %% {db, Database, Type}
+                        {'database', kz_term:ne_binary()} | %% {database, Database} added for notify db create/delete
+                        {'type', kz_term:ne_binary()}. %% {type, PvtType}
 -type origin_tuples() :: [origin_tuple()].
 
 -record(cache_obj, {key :: any()| '_' | '$1'
                    ,value :: any() | '_' | '$1' | '$2'
-                   ,expires :: kz_timeout() | '_' | '$3'
-                   ,timestamp = kz_time:now_s() :: gregorian_seconds() | '_' | '$4'
+                   ,expires :: timeout() | '_' | '$3'
+                   ,timestamp = kz_time:now_s() :: kz_time:gregorian_seconds() | '_' | '$4'
                    ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5' | 'undefined'
                    ,origin :: origin_tuple() | origin_tuples() | '$1' | '_' | 'undefined'
                    }).

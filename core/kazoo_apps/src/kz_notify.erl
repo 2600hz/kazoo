@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,7 +18,7 @@ system_alert(Format, Args) ->
     Msg = io_lib:format(Format, Args),
     system_alert(Msg, Msg, []).
 
--spec system_alert(string() | ne_binary(), string() | ne_binary(), kz_proplist()) -> 'ok'.
+-spec system_alert(string() | kz_term:ne_binary(), string() | kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 system_alert(Subject, Msg, Headers)
   when not is_binary(Subject);
        not is_binary(Msg) ->
@@ -30,17 +30,17 @@ system_alert(Subject, Msg, Headers) ->
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
 
--spec system_alert(ne_binary(), string() | ne_binary(), [any()], kz_proplist()) -> 'ok'.
+-spec system_alert(kz_term:ne_binary(), string() | kz_term:ne_binary(), [any()], kz_term:proplist()) -> 'ok'.
 system_alert(Subject, Format, Args, Headers) ->
     Msg = io_lib:format(Format, Args),
     system_alert(Subject, Msg, Headers).
 
--spec detailed_alert(string(), list(), kz_proplist()) -> 'ok'.
+-spec detailed_alert(string(), list(), kz_term:proplist()) -> 'ok'.
 detailed_alert(Format, Args, Props) ->
     Msg = io_lib:format(Format, Args),
     detailed_alert(Msg, Msg, [{<<"Format">>, kz_term:to_binary(Format)} | Props], []).
 
--spec detailed_alert(string() | ne_binary(), string() | ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
+-spec detailed_alert(string() | kz_term:ne_binary(), string() | kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) -> 'ok'.
 detailed_alert(Subject, Msg, Props, Headers)
   when not is_binary(Subject);
        not is_binary(Msg) ->
@@ -53,7 +53,7 @@ detailed_alert(Subject, Msg, Props, Headers) ->
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
 
--spec detailed_alert(string() | ne_binary(), string() | ne_binary(), [any()], kz_proplist(), kz_proplist()) -> 'ok'.
+-spec detailed_alert(string() | kz_term:ne_binary(), string() | kz_term:ne_binary(), [any()], kz_term:proplist(), kz_term:proplist()) -> 'ok'.
 detailed_alert(Subject, Format, Args, Props, Headers) ->
     Msg = io_lib:format(Format, Args),
     detailed_alert(Subject, Msg, [{<<"Format">>, kz_term:to_binary(Format)} | Props], Headers).

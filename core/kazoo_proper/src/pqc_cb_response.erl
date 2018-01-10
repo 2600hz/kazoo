@@ -11,7 +11,7 @@
 
 -include("kazoo_proper.hrl").
 
--spec account_id(pqc_cb_api:response() | kz_json:object()) -> ne_binary().
+-spec account_id(pqc_cb_api:response() | kz_json:object()) -> kz_term:ne_binary().
 account_id(JSON) when is_binary(JSON) ->
     account_id(kz_json:decode(JSON));
 account_id(APIResp) ->
@@ -29,7 +29,7 @@ error_code(JSON) when is_binary(JSON) ->
 error_code(APIResp) ->
     kz_json:get_integer_value(<<"error">>, APIResp).
 
--spec status(pqc_cb_api:response() | kz_json:object()) -> ne_binary().
+-spec status(pqc_cb_api:response() | kz_json:object()) -> kz_term:ne_binary().
 status(JSON) when is_binary(JSON) ->
     status(kz_json:decode(JSON));
 status(APIResp) ->
@@ -42,7 +42,7 @@ data(JSON) when is_binary(JSON) ->
 data(APIResp) ->
     kz_json:get_value(<<"data">>, APIResp).
 
--spec message(pqc_cb_api:response() | kz_json:object()) -> ne_binary().
+-spec message(pqc_cb_api:response() | kz_json:object()) -> kz_term:ne_binary().
 message(JSON) when is_binary(JSON) ->
     message(kz_json:decode(JSON));
 message(APIResp) ->

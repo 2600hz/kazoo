@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Put the call on hold
 %%% Data = {
@@ -42,7 +42,7 @@ handle(Data, Call) ->
                                    ),
     {'continue', Call}.
 
--spec hold_leg(kapps_call:call(), ne_binary()) -> ne_binary().
+-spec hold_leg(kapps_call:call(), kz_term:ne_binary()) -> kz_term:ne_binary().
 hold_leg(Call, RequestingLeg) when is_binary(RequestingLeg) ->
     case kapps_call:call_id(Call) of
         RequestingLeg -> kapps_call:other_leg_call_id(Call);
@@ -62,7 +62,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
--spec number_builder_check(api_object()) -> api_object().
+-spec number_builder_check(kz_term:api_object()) -> kz_term:api_object().
 number_builder_check('undefined') ->
     number_builder_moh(kz_json:new());
 number_builder_check(NumberJObj) ->
@@ -72,7 +72,7 @@ number_builder_check(NumberJObj) ->
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
     number_builder_check_option(NumberJObj, Option).
 
--spec number_builder_check_option(kz_json:object(), string()) -> api_object().
+-spec number_builder_check_option(kz_json:object(), string()) -> kz_term:api_object().
 number_builder_check_option(NumberJObj, "e") ->
     number_builder_moh(NumberJObj);
 number_builder_check_option(_NumberJObj, "d") ->

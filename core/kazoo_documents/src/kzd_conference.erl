@@ -28,5 +28,5 @@ new() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.

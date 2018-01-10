@@ -8,7 +8,7 @@
 -define(TTS_API_KEY, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)).
 -define(TMP_PATH, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"temporary_storage_path">>, <<"/tmp">>)).
 
--type conversion_return() :: {binary(), ne_binary()} |
+-type conversion_return() :: {binary(), kz_term:ne_binary()} |
                              {'error', 'unsupported_content_type'}.
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider' | 'unsupported_content_type'.
@@ -16,7 +16,7 @@
                            kz_http:ret().
 
 -type create_resp() :: provider_return() |
-                       {'ok', ne_binary(), ne_binary()} | %% {'ok', ContentType, BinaryData}
+                       {'ok', kz_term:ne_binary(), kz_term:ne_binary()} | %% {'ok', ContentType, BinaryData}
                        {'error', 'tts_provider_failure', binary()}.
 
 -type asr_resp() :: kz_http:req_id() |

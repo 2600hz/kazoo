@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -16,7 +16,7 @@
 -define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
 -define(ROUTE_WIN_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),
     Call = kapps_call:from_route_req(JObj),
@@ -68,7 +68,7 @@ allow_no_match_type(Call) ->
         _ -> 'true'
     end.
 
--spec maybe_reply_to_req(kz_json:object(), kz_proplist(), kapps_call:call(), kz_json:object(), boolean()) ->
+-spec maybe_reply_to_req(kz_json:object(), kz_term:proplist(), kapps_call:call(), kz_json:object(), boolean()) ->
                                 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request"
@@ -84,14 +84,14 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
             send_route_response(Flow, JObj, UpdatedCall)
     end.
 
--spec bucket_info(kapps_call:call(), kz_json:object()) -> {ne_binary(), pos_integer()}.
+-spec bucket_info(kapps_call:call(), kz_json:object()) -> {kz_term:ne_binary(), pos_integer()}.
 bucket_info(Call, Flow) ->
     case kz_json:get_value(<<"pvt_bucket_name">>, Flow) of
         'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
         Name -> {Name, bucket_cost(Flow)}
     end.
 
--spec bucket_name_from_call(kapps_call:call(), kz_json:object()) -> ne_binary().
+-spec bucket_name_from_call(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
 bucket_name_from_call(Call, Flow) ->
     <<(kapps_call:account_id(Call))/binary, ":", (kz_doc:id(Flow))/binary>>.
 
@@ -128,7 +128,7 @@ send_route_response(_Flow, JObj, Call) ->
             lager:info("doodle didn't received a route win, exiting : ~p", [_E])
     end.
 
--spec update_call(kz_json:object(), boolean(), ne_binary(), kapps_call:call(), kz_json:object()) -> kapps_call:call().
+-spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call(), kz_json:object()) -> kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
     Updaters = [{fun kapps_call:kvs_store_proplist/2
                 ,[{'cf_flow_id', kz_doc:id(Flow)}
@@ -155,7 +155,7 @@ cache_resource_types(Flow, Call, JObj) ->
                ,cache_resource_types(kapps_call:resource_type(Call), Flow, Call, JObj)
                ).
 
--spec cache_resource_types(ne_binary(), kz_json:object(), kapps_call:call(), kz_json:object()) -> ne_binaries().
+-spec cache_resource_types(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), kz_json:object()) -> kz_term:ne_binaries().
 cache_resource_types(<<"sms">>, _Flow, _Call, _JObj) ->
     [<<"Message-ID">>, <<"Body">>];
 cache_resource_types(_Other, _Flow, _Call, _JObj) -> [].

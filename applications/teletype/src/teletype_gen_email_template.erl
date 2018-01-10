@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% When implementing template modules, these callbacks are a must!
@@ -13,17 +13,17 @@
 -include_lib("teletype.hrl").
 
 
--callback id() -> ne_binary().
+-callback id() -> kz_term:ne_binary().
 
 -callback init() -> ok.
 
--callback macros(kz_json:object()) -> kz_proplist().
+-callback macros(kz_json:object()) -> kz_term:proplist().
 
 
 -callback macros() -> kz_json:object().
 
--callback subject() -> ne_binary().
+-callback subject() -> kz_term:ne_binary().
 
--callback category() -> ne_binary().
+-callback category() -> kz_term:ne_binary().
 
--callback friendly_name() -> ne_binary().
+-callback friendly_name() -> kz_term:ne_binary().

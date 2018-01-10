@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -29,16 +29,16 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add_node(atom(), kz_proplist()) -> sup_startchild_ret().
+-spec add_node(atom(), kz_term:proplist()) -> kz_types:sup_startchild_ret().
 add_node(Node, Options) ->
     ChildSpec = ?WORKER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_pinger', [Node, Options], 'transient'),
     supervisor:start_child(?SERVER, ChildSpec).
 
--spec find_pinger(atom()) -> api_pid().
+-spec find_pinger(atom()) -> kz_term:api_pid().
 find_pinger(Node) ->
     Workers = supervisor:which_children(?MODULE),
     find_pinger(Workers, Node).
@@ -67,7 +67,7 @@ remove_node(Node) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 2,

@@ -52,7 +52,7 @@ update_schema(Name, AutoGenSchema, PrivDir) ->
         andalso update_schema(Name, AccountSchema, PrivDir, <<"account_config">>),
     update_schema(Name, AutoGenSchema, PrivDir, <<"system_config">>).
 
--spec update_schema(ne_binary(), kz_json:object(), file:filename_all(), ne_binary()) -> 'ok'.
+-spec update_schema(kz_term:ne_binary(), kz_json:object(), file:filename_all(), kz_term:ne_binary()) -> 'ok'.
 update_schema(Name, AutoGenSchema, PrivDir, ConfigType) ->
     Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>, PrivDir),
 

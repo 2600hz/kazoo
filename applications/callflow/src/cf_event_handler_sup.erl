@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -32,19 +32,19 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(any(), atom(), list()) -> sup_startchild_ret().
+-spec new(any(), atom(), list()) -> kz_types:sup_startchild_ret().
 new(Name, M, A) ->
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(Name, M, A, 'temporary')).
 
--spec workers() -> pids().
+-spec workers() -> kz_term:pids().
 workers() ->
     [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
--spec worker(ne_binary()) -> api_pid().
+-spec worker(kz_term:ne_binary()) -> kz_term:api_pid().
 worker(Name) ->
     case [Pid || {Worker, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER), Worker =:= Name] of
         [] -> 'undefined';
@@ -64,7 +64,7 @@ worker(Name) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 0,

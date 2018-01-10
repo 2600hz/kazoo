@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -15,11 +15,11 @@
         ,maybe_rm_queue/2, maybe_rm_queue/3
         ]).
 
--spec maybe_add_queue(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec maybe_add_queue(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_add_queue(AgentJObj, QueueId) ->
     maybe_add_queue(AgentJObj, QueueId, AgentJObj).
 
--spec maybe_add_queue(kz_json:object(), ne_binary(), Default) -> kz_json:object() | Default.
+-spec maybe_add_queue(kz_json:object(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 maybe_add_queue(AgentJObj, QueueId, WhenExists) ->
     Qs = kz_json:get_value(<<"queues">>, AgentJObj, []),
     case lists:member(QueueId, Qs) of
@@ -27,11 +27,11 @@ maybe_add_queue(AgentJObj, QueueId, WhenExists) ->
         'true' -> WhenExists
     end.
 
--spec maybe_rm_queue(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec maybe_rm_queue(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_rm_queue(AgentJObj, QueueId) ->
     maybe_rm_queue(AgentJObj, QueueId, AgentJObj).
 
--spec maybe_rm_queue(kz_json:object(), ne_binary(), Default) -> kz_json:object() | Default.
+-spec maybe_rm_queue(kz_json:object(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 maybe_rm_queue(AgentJObj, QueueId, WhenNotExists) ->
     Qs = kz_json:get_value(<<"queues">>, AgentJObj, []),
     case lists:member(QueueId, Qs) of

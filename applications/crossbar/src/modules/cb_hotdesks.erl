@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Hotdesks module
 %%%
@@ -82,7 +82,7 @@ validate(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_hotdesks(cb_context:context(), http_method(), kz_proplist()) -> cb_context:context().
+-spec validate_hotdesks(cb_context:context(), http_method(), kz_term:proplist()) -> cb_context:context().
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"users">>, [UserId]}|_]) ->
     fetch_device_hotdesks(UserId, Context);
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"devices">>, [DeviceId]}|_]) ->
@@ -110,7 +110,7 @@ normalize_view_results(JObj, Acc) ->
 fetch_all_hotdesks(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
--spec fetch_user_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec fetch_user_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_user_hotdesks(DeviceId, Context) ->
     Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
     case cb_context:resp_status(Context1) of
@@ -121,13 +121,13 @@ fetch_user_hotdesks(DeviceId, Context) ->
         _Else -> Context1
     end.
 
--spec fetch_users(ne_binaries(), cb_context:context()) -> cb_context:context().
+-spec fetch_users(kz_term:ne_binaries(), cb_context:context()) -> cb_context:context().
 fetch_users(UserIds, Context) ->
     ViewOptions = [{'keys', UserIds}],
     View = <<"users/list_by_id">>,
     crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2).
 
--spec fetch_device_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec fetch_device_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_device_hotdesks(UserId, Context) ->
     ViewOptions = [{'key', UserId}],
     crossbar_doc:load_view(?CB_LIST, ViewOptions, Context, fun normalize_view_results/2).

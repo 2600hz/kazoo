@@ -141,7 +141,7 @@ start_cache() ->
     {'ok', _Cache} = kz_cache:start_link(?MODULE).
 
 -spec stop_cache() -> 'ok'.
--spec stop_cache(server_ref()) -> 'ok'.
+-spec stop_cache(kz_types:server_ref()) -> 'ok'.
 stop_cache() ->
     stop_cache(?MODULE).
 stop_cache(Cache) ->

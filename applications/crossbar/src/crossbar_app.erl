@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,7 +20,7 @@
 %% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     declare_exchanges(),
     _ = kapps_maintenance:bind('migrate', 'crossbar_maintenance', 'migrate'),

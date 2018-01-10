@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -52,19 +52,19 @@
 
 -include("services.hrl").
 
--record(kz_service_item, {category :: api_binary()
-                         ,item :: api_binary()
-                         ,name :: api_binary()
-                         ,quantity = 0 :: api_integer()
-                         ,rate = 0.0 :: api_float()
+-record(kz_service_item, {category :: kz_term:api_binary()
+                         ,item :: kz_term:api_binary()
+                         ,name :: kz_term:api_binary()
+                         ,quantity = 0 :: kz_term:api_integer()
+                         ,rate = 0.0 :: kz_term:api_float()
                          ,single_discount = 'false' :: boolean()
-                         ,single_discount_rate = 0.00 :: api_float()
-                         ,cumulative_discount = 0 :: api_integer()
-                         ,cumulative_discount_rate = 0.00 :: api_float()
+                         ,single_discount_rate = 0.00 :: kz_term:api_float()
+                         ,cumulative_discount = 0 :: kz_term:api_integer()
+                         ,cumulative_discount_rate = 0.00 :: kz_term:api_float()
                          ,bookkeepers = kz_json:new() :: kz_json:object()
-                         ,activation_charge = 0.00 :: api_float()
-                         ,minimum = 0 :: api_integer()
-                         ,exceptions = [] :: ne_binaries()
+                         ,activation_charge = 0.00 :: kz_term:api_float()
+                         ,minimum = 0 :: kz_term:api_integer()
+                         ,exceptions = [] :: kz_term:ne_binaries()
                          }).
 
 -type item() :: #kz_service_item{}.
@@ -112,7 +112,7 @@ empty() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec category(item()) -> api_binary().
+-spec category(item()) -> kz_term:api_binary().
 category(#kz_service_item{category=Category}) ->
     Category.
 
@@ -122,7 +122,7 @@ category(#kz_service_item{category=Category}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_category(ne_binary(), item()) -> item().
+-spec set_category(kz_term:ne_binary(), item()) -> item().
 set_category(Category, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{category=Category}.
 
@@ -132,7 +132,7 @@ set_category(Category, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec item(item()) -> api_binary().
+-spec item(item()) -> kz_term:api_binary().
 item(#kz_service_item{item=Item}) ->
     Item.
 
@@ -142,7 +142,7 @@ item(#kz_service_item{item=Item}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_item(ne_binary(), item()) -> item().
+-spec set_item(kz_term:ne_binary(), item()) -> item().
 set_item(Item, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{item=Item}.
 
@@ -152,7 +152,7 @@ set_item(Item, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec name(item()) -> api_binary().
+-spec name(item()) -> kz_term:api_binary().
 name(#kz_service_item{name=Name}) ->
     Name.
 
@@ -162,7 +162,7 @@ name(#kz_service_item{name=Name}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_name(ne_binary(), item()) -> item().
+-spec set_name(kz_term:ne_binary(), item()) -> item().
 set_name(Name, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{name=Name}.
 
@@ -172,7 +172,7 @@ set_name(Name, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec quantity(item()) -> api_integer().
+-spec quantity(item()) -> kz_term:api_integer().
 quantity(#kz_service_item{quantity=Quantity}) ->
     Quantity.
 
@@ -182,7 +182,7 @@ quantity(#kz_service_item{quantity=Quantity}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_quantity(api_binary() | integer(), item()) -> item().
+-spec set_quantity(kz_term:api_binary() | integer(), item()) -> item().
 set_quantity('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{quantity='undefined'};
 set_quantity(Q, #kz_service_item{}=ServiceItem) ->
@@ -201,7 +201,7 @@ set_quantity(Q, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec rate(item()) -> api_float().
+-spec rate(item()) -> kz_term:api_float().
 rate(#kz_service_item{rate=Rate}) ->
     Rate.
 
@@ -211,7 +211,7 @@ rate(#kz_service_item{rate=Rate}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_rate(api_binary() | float(), item()) -> item().
+-spec set_rate(kz_term:api_binary() | float(), item()) -> item().
 set_rate('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{rate='undefined'};
 set_rate(Rate, #kz_service_item{}=ServiceItem) ->
@@ -233,7 +233,7 @@ single_discount(#kz_service_item{single_discount=SingleDiscount}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_single_discount(ne_binary() | boolean(), item()) -> item().
+-spec set_single_discount(kz_term:ne_binary() | boolean(), item()) -> item().
 set_single_discount(SingleDiscount, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{single_discount=kz_term:is_true(SingleDiscount)}.
 
@@ -243,7 +243,7 @@ set_single_discount(SingleDiscount, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec single_discount_rate(item()) -> api_float().
+-spec single_discount_rate(item()) -> kz_term:api_float().
 single_discount_rate(#kz_service_item{single_discount_rate=Rate}) ->
     Rate.
 
@@ -253,7 +253,7 @@ single_discount_rate(#kz_service_item{single_discount_rate=Rate}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_single_discount_rate(api_binary() | float(), item()) -> item().
+-spec set_single_discount_rate(kz_term:api_binary() | float(), item()) -> item().
 set_single_discount_rate('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{single_discount_rate='undefined'};
 set_single_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
@@ -265,7 +265,7 @@ set_single_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount(item()) -> api_integer().
+-spec cumulative_discount(item()) -> kz_term:api_integer().
 cumulative_discount(#kz_service_item{cumulative_discount=Quantity}) ->
     Quantity.
 
@@ -275,7 +275,7 @@ cumulative_discount(#kz_service_item{cumulative_discount=Quantity}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_cumulative_discount(api_binary() | integer(), item()) -> item().
+-spec set_cumulative_discount(kz_term:api_binary() | integer(), item()) -> item().
 set_cumulative_discount('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{cumulative_discount='undefined'};
 set_cumulative_discount(Quantity, #kz_service_item{}=ServiceItem) ->
@@ -287,7 +287,7 @@ set_cumulative_discount(Quantity, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount_rate(item()) -> api_float().
+-spec cumulative_discount_rate(item()) -> kz_term:api_float().
 cumulative_discount_rate(#kz_service_item{cumulative_discount_rate=Rate}) ->
     Rate.
 
@@ -297,7 +297,7 @@ cumulative_discount_rate(#kz_service_item{cumulative_discount_rate=Rate}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_cumulative_discount_rate(api_binary() | float(), item()) -> item().
+-spec set_cumulative_discount_rate(kz_term:api_binary() | float(), item()) -> item().
 set_cumulative_discount_rate('undefined', #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{cumulative_discount_rate='undefined'};
 set_cumulative_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
@@ -309,7 +309,7 @@ set_cumulative_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bookkeeper(kz_json:path(), item()) -> api_object() | ne_binary().
+-spec bookkeeper(kz_json:path(), item()) -> kz_term:api_object() | kz_term:ne_binary().
 bookkeeper(Bookkeeper, #kz_service_item{bookkeepers=Bookkeepers}) ->
     kz_json:get_ne_value(Bookkeeper, Bookkeepers).
 
@@ -367,7 +367,7 @@ set_minimum(Min, ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec exceptions(item()) -> ne_binaries().
+-spec exceptions(item()) -> kz_term:ne_binaries().
 exceptions(#kz_service_item{exceptions=Exc}) -> Exc.
 
 %%--------------------------------------------------------------------
@@ -376,6 +376,6 @@ exceptions(#kz_service_item{exceptions=Exc}) -> Exc.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_exceptions(ne_binaries(), item()) -> item().
+-spec set_exceptions(kz_term:ne_binaries(), item()) -> item().
 set_exceptions(Exc, ServiceItem) ->
     ServiceItem#kz_service_item{exceptions=Exc}.

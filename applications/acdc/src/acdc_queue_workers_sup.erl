@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -33,21 +33,21 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link(?SERVER, []).
 
--spec new_worker(pid(), ne_binary(), ne_binary()) -> 'ok'.
+-spec new_worker(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 new_worker(WorkersSup, AcctId, QueueId) ->
     new_workers(WorkersSup, AcctId, QueueId, 1).
 
--spec new_workers(pid(), ne_binary(), ne_binary(), integer()) -> 'ok'.
+-spec new_workers(pid(), kz_term:ne_binary(), kz_term:ne_binary(), integer()) -> 'ok'.
 new_workers(_, _,_,N) when N =< 0 -> 'ok';
 new_workers(WorkersSup, AcctId, QueueId, N) when is_integer(N) ->
     _ = supervisor:start_child(WorkersSup, [self(), AcctId, QueueId]),
     new_workers(WorkersSup, AcctId, QueueId, N-1).
 
--spec workers(pid()) -> pids().
+-spec workers(pid()) -> kz_term:pids().
 workers(Super) ->
     [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(Super), is_pid(Pid)].
 
@@ -72,7 +72,7 @@ status(Super) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,

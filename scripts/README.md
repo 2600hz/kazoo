@@ -309,6 +309,40 @@ Script for updating Erlang code to account for functions that have moved modules
 -   kz\_json to kz\_doc for public/private fields
 
 
+## `list-ext-deps.escript`
+
+This escript gathers information from all `.beam` files in the filesystem tree specified by a list of directories provided to it on the command line, determines which external calls these files collectively make, and compares these calls with the applications provided by the Erlang runtime under which the script is running.
+
+The end result is a list of OTP applications that this set of `.beam` files collectively make calls to (i.e. depend on).
+
+* NOTE: The `.beam` files *must* be compiled with debug information for this script to be useful.
+
+### Example
+
+In this example, we find the names of all the Erlang applications which the `.beam` files in `applications/`, `core/`, and `deps` depend on.
+
+```
+$ scripts/list-ext-deps.escript core applications deps 2> /tmp/errors.log
+common_test
+compiler
+crypto
+erts
+eunit
+inets
+kernel
+mnesia
+observer
+public_key
+runtime_tools
+sasl
+ssl
+stdlib
+syntax_tools
+tools
+xmerl
+```
+  
+
 ## `no_raw_json.escript`
 
 Erlang has a handful of internal representations of JSON used by the various parses. The kz\_json module handles these details and Kazoo programmers should treat the data structure used as opaque. This script parses the codebase looking for instances where the opaqueness of the data structure is violated.

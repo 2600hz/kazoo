@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -11,7 +11,7 @@
 
 -include("sysconf.hrl").
 
--spec build(ne_binary()) -> kz_json:object().
+-spec build(kz_term:ne_binary()) -> kz_json:object().
 build(_Node) ->
     get_gateways().
 

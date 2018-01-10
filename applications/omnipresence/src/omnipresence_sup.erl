@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -40,11 +40,11 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec subscriptions_srv() -> api_pid().
+-spec subscriptions_srv() -> kz_term:api_pid().
 subscriptions_srv() ->
     case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?SERVER)] of
         [] -> 'undefined';
@@ -64,7 +64,7 @@ subscriptions_srv() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

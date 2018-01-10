@@ -28,7 +28,7 @@ connection() ->
     Props = props:get_value('generic', kz_config:get(Section), []),
     connection(connection_options(Props)).
 
--spec connection_options(kz_proplist()) -> kz_proplist().
+-spec connection_options(kz_term:proplist()) -> kz_term:proplist().
 connection_options(Props) ->
     case props:get_value('connect_options', Props) of
         'undefined' -> Props;
@@ -37,7 +37,7 @@ connection_options(Props) ->
             [{'connect_options', Options} | props:delete('connect_options', Props)]
     end.
 
--spec connection(kz_proplist() | map()) -> data_connection().
+-spec connection(kz_term:proplist() | map()) -> data_connection().
 connection(List) when is_list(List) ->
     connection(maps:from_list(List));
 connection(#{driver := App}=Map)

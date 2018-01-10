@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% The Great Kazoo Migration (TM)
 %%% @end
@@ -25,14 +25,14 @@ migrate() ->
     lists:foldl(fun(A, C) -> migrate_account_fold(A, C, Total) end, 1, AccountIds),
     'ok'.
 
--spec migrate_account_fold(ne_binary(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+-spec migrate_account_fold(kz_term:ne_binary(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 migrate_account_fold(AccountId, Current, Total) ->
     io:format("(~p/~p) migrating items within account '~s'~n", [Current, Total, AccountId]),
     _ = migrate_account(AccountId),
     io:format("[~s] finished migrating items~n~n", [AccountId]),
     Current + 1.
 
--spec migrate_account(ne_binary()) -> 'ok'.
+-spec migrate_account(kz_term:ne_binary()) -> 'ok'.
 migrate_account(Account) ->
     lists:foreach(fun(Fun) -> Fun(Account) end
                  ,[fun migrate_voicemails/1
@@ -43,11 +43,11 @@ migrate_account(Account) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_view_count(ne_binary(), ne_binary()) -> non_neg_integer().
+-spec get_view_count(kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
 get_view_count(AccountId, View) ->
     get_view_count(AccountId, View, 2).
 
--spec get_view_count(ne_binary(), ne_binary(), integer()) -> non_neg_integer().
+-spec get_view_count(kz_term:ne_binary(), kz_term:ne_binary(), integer()) -> non_neg_integer().
 get_view_count(_AccountId, _View, Retry) when Retry < 0 ->
     io:format("[~s] failed to fetch view ~s count~n", [_AccountId, _View]),
     0;
@@ -62,7 +62,7 @@ get_view_count(AccountId, View, Retry) ->
             get_view_count(AccountDb, View, Retry-1)
     end.
 
--spec next_skip(non_neg_integer(), non_neg_integer(), kz_proplist()) -> kz_proplist().
+-spec next_skip(non_neg_integer(), non_neg_integer(), kz_term:proplist()) -> kz_term:proplist().
 next_skip(0, Skip, ViewOptions) -> props:set_value('skip', Skip, ViewOptions);
 next_skip(Remaining, Skip, ViewOptions) ->
     case Remaining < props:get_value(limit, ViewOptions) of
@@ -70,7 +70,7 @@ next_skip(Remaining, Skip, ViewOptions) ->
         false -> props:set_value('skip', Skip, ViewOptions)
     end.
 
--spec maps_update_with(ne_binary(), fun((any()) -> any()), any(), map()) -> map().
+-spec maps_update_with(kz_term:ne_binary(), fun((any()) -> any()), any(), map()) -> map().
 maps_update_with(Key, UpdateFun, Init, Map) ->
     try maps:get(Key, Map) of
         OldValue -> maps:put(Key, UpdateFun(OldValue), Map)
@@ -81,13 +81,13 @@ maps_update_with(Key, UpdateFun, Init, Map) ->
 %%%===================================================================
 %%% Voicemail Migration
 %%%===================================================================
--spec migrate_voicemails(ne_binary()) -> 'ok'.
+-spec migrate_voicemails(kz_term:ne_binary()) -> 'ok'.
 migrate_voicemails(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Total = get_view_count(AccountId, <<"vmboxes/legacy_msg_by_timestamp">>),
     migrate_voicemails(AccountId, Total).
 
--spec migrate_voicemails(ne_binary(), non_neg_integer()) -> 'ok'.
+-spec migrate_voicemails(kz_term:ne_binary(), non_neg_integer()) -> 'ok'.
 migrate_voicemails(_AccountId, 0) ->
     io:format("[~s] no voicemail messages found~n", [_AccountId]);
 migrate_voicemails(AccountId, Total) ->
@@ -101,7 +101,7 @@ migrate_voicemails(AccountId, Total) ->
              },
     migrate_voicemails(AccountId, Stats, [{'limit', Limit}]).
 
--spec migrate_voicemails(ne_binary(), map(), kz_proplist()) -> 'ok'.
+-spec migrate_voicemails(kz_term:ne_binary(), map(), kz_term:proplist()) -> 'ok'.
 migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"vmboxes/legacy_msg_by_timestamp">>, ViewOptions) of
@@ -137,7 +137,7 @@ migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved :=
             io:format("[~s] failed to fetch voicemail messages: ~p~n~n", [AccountId, _R])
     end.
 
--spec move_vm_to_modb(ne_binary(), kz_json:object(), map()) -> map().
+-spec move_vm_to_modb(kz_term:ne_binary(), kz_json:object(), map()) -> map().
 move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
                                           ,processed := Processed
                                           ,moved := Moved
@@ -188,7 +188,7 @@ move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
                 }
     end.
 
--spec transform_vm_doc_funs(ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary(), update_funs()}.
+-spec transform_vm_doc_funs(kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary(), update_funs()}.
 transform_vm_doc_funs(AccountDb, LegacyVMJObj) ->
     Metadata = kz_json:get_value(<<"metadata">>, LegacyVMJObj),
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, Metadata),
@@ -213,7 +213,7 @@ transform_vm_doc_funs(AccountDb, LegacyVMJObj) ->
      ]
     }.
 
--spec update_mailboxes(ne_binary(), map()) -> 'ok'.
+-spec update_mailboxes(kz_term:ne_binary(), map()) -> 'ok'.
 update_mailboxes(AccountId, Map) ->
     BoxIds = maps:keys(Map),
 
@@ -254,13 +254,13 @@ update_message_array(BoxJObj, ResultSet) ->
 %%% Voicemail Migration
 %%%===================================================================
 
--spec migrate_cdrs(ne_binary()) -> 'ok'.
+-spec migrate_cdrs(kz_term:ne_binary()) -> 'ok'.
 migrate_cdrs(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Total = get_view_count(AccountId, <<"cdrs/crossbar_listing">>),
     migrate_cdrs(AccountId, Total).
 
--spec migrate_cdrs(ne_binary(), non_neg_integer()) -> 'ok'.
+-spec migrate_cdrs(kz_term:ne_binary(), non_neg_integer()) -> 'ok'.
 migrate_cdrs(_AccountId, 0) ->
     io:format("[~s] no cdrs found~n", [_AccountId]);
 migrate_cdrs(AccountId, Total) ->
@@ -273,7 +273,7 @@ migrate_cdrs(AccountId, Total) ->
              },
     migrate_cdrs(AccountId, Stats, [{'limit', Limit}, include_docs]).
 
--spec migrate_cdrs(ne_binary(), map(), kz_proplist()) -> 'ok'.
+-spec migrate_cdrs(kz_term:ne_binary(), map(), kz_term:proplist()) -> 'ok'.
 migrate_cdrs(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
@@ -313,12 +313,12 @@ migrate_cdrs(AccountId, #{total := Total, processed := Processed, moved := Moved
             io:format("[~s] failed to fetch cdrs: ~p~n", [AccountId, _R])
     end.
 
--spec move_cdrs_to_modb(ne_binary(), kz_json:objects()) -> ne_binaries().
+-spec move_cdrs_to_modb(kz_term:ne_binary(), kz_json:objects()) -> kz_term:ne_binaries().
 move_cdrs_to_modb(AccountId, ViewResults) ->
     Mapped = map_tranform_cdrs(AccountId, ViewResults, maps:new()),
     maps:fold(fun do_move_cdrs/3, [], Mapped).
 
--spec map_tranform_cdrs(ne_binary(), kz_json:objects(), map()) -> map().
+-spec map_tranform_cdrs(kz_term:ne_binary(), kz_json:objects(), map()) -> map().
 map_tranform_cdrs(_AccountId, [], Map) -> Map;
 map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
     AccountDb = kz_util:format_account_db(AccountId),
@@ -340,7 +340,7 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
     NewMap = maps_update_with(NewDb, fun(Old) -> [NewDoc|Old] end, [NewDoc], Map),
     map_tranform_cdrs(AccountId, VRs, NewMap).
 
--spec do_move_cdrs(ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().
+-spec do_move_cdrs(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 do_move_cdrs(MODB, Docs, MovedAcc) ->
     _AccountId = kz_util:format_account_id(MODB),
     case kz_datamgr:save_docs(MODB, Docs) of
@@ -350,7 +350,7 @@ do_move_cdrs(MODB, Docs, MovedAcc) ->
             MovedAcc
     end.
 
--spec check_for_failure(kz_json:objects(), ne_binaries()) -> ne_binaries().
+-spec check_for_failure(kz_json:objects(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 check_for_failure(JObjs, MovedAcc) ->
     Fun = fun(J, Acc) ->
                   case kz_json:get_value(<<"error">>, J) of

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @doc
 %%% Handle requests from WhApps for the blacklist
@@ -16,7 +16,7 @@
 init() ->
     ok.
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = dth_api:blacklist_req_v(JObj),
 

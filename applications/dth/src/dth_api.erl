@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Builder and validator, much like kz_api.erl, of the AMQP APIs
 %%% exposed by this WhApp
@@ -20,8 +20,8 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec blacklist_req(api_terms()) -> {'ok', iolist()} |
-                                    {'error', string()}.
+-spec blacklist_req(kz_term:api_terms()) -> {'ok', iolist()} |
+                                            {'error', string()}.
 blacklist_req(Prop) when is_list(Prop) ->
     case blacklist_req_v(Prop) of
         true -> kz_api:build_message(Prop, ?DTH_BLACKLIST_REQ_HEADERS, ?OPTIONAL_DTH_BLACKLIST_REQ_HEADERS);
@@ -30,7 +30,7 @@ blacklist_req(Prop) when is_list(Prop) ->
 blacklist_req(JObj) ->
     blacklist_req(kz_json:to_proplist(JObj)).
 
--spec blacklist_req_v(api_terms()) -> boolean().
+-spec blacklist_req_v(kz_term:api_terms()) -> boolean().
 blacklist_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DTH_BLACKLIST_REQ_HEADERS, ?DTH_BLACKLIST_REQ_VALUES, ?DTH_BLACKLIST_REQ_TYPES);
 blacklist_req_v(JObj) ->
@@ -41,8 +41,8 @@ blacklist_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec blacklist_resp(api_terms()) -> {'ok', iolist()} |
-                                     {'error', string()}.
+-spec blacklist_resp(kz_term:api_terms()) -> {'ok', iolist()} |
+                                             {'error', string()}.
 blacklist_resp(Prop) when is_list(Prop) ->
     case blacklist_resp_v(Prop) of
         true -> kz_api:build_message(Prop, ?DTH_BLACKLIST_RESP_HEADERS, ?OPTIONAL_DTH_BLACKLIST_RESP_HEADERS);
@@ -52,7 +52,7 @@ blacklist_resp(JObj) ->
     blacklist_resp(kz_json:to_proplist(JObj)).
 
 
--spec blacklist_resp_v(api_terms()) -> boolean().
+-spec blacklist_resp_v(kz_term:api_terms()) -> boolean().
 blacklist_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DTH_BLACKLIST_RESP_HEADERS, ?DTH_BLACKLIST_RESP_VALUES, ?DTH_BLACKLIST_RESP_TYPES);
 blacklist_resp_v(JObj) ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Execute a metaflow
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("konami.hrl").
 
--spec handle(api_object(), kapps_call:call()) -> 'ok'.
+-spec handle(kz_term:api_object(), kapps_call:call()) -> 'ok'.
 handle('undefined', _Call) ->
     lager:debug("no metaflow to execute");
 handle(Metaflow, Call) ->
@@ -39,7 +39,7 @@ handle(Metaflow, Call) ->
             kz_util:log_stacktrace(ST)
     end.
 
--spec find_child_metaflow(api_binary(), kz_json:object()) -> api_object().
+-spec find_child_metaflow(kz_term:api_binary(), kz_json:object()) -> kz_term:api_object().
 find_child_metaflow('undefined', Metaflow) ->
     kz_json:get_value([<<"children">>, <<"_">>], Metaflow);
 find_child_metaflow(Child, Metaflow) ->

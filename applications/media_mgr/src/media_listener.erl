@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -39,7 +39,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', [{'media', []}]}
                                      ,{'responders', [{{?MODULE, 'handle_media_req'}
@@ -47,7 +47,7 @@ start_link() ->
                                                      ]}
                                      ], []).
 
--spec handle_media_req(kz_json:object(), kz_proplist()) -> kz_amqp_worker:cast_return().
+-spec handle_media_req(kz_json:object(), kz_term:proplist()) -> kz_amqp_worker:cast_return().
 handle_media_req(JObj, _Props) ->
     'true' = kapi_media:req_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -92,7 +92,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_supported'}, State}.
 
@@ -106,7 +106,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -120,7 +120,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -158,7 +158,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_error_resp(kz_json:object(), atom() | ne_binary()) ->
+-spec send_error_resp(kz_json:object(), atom() | kz_term:ne_binary()) ->
                              kz_amqp_worker:cast_return().
 send_error_resp(JObj, ErrMsg) ->
     MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
@@ -173,7 +173,7 @@ send_error_resp(JObj, ErrMsg) ->
     Publisher = fun(P) -> kapi_media:publish_error(ServerId, P) end,
     kz_amqp_worker:cast(Error, Publisher).
 
--spec send_media_resp(kz_json:object(), ne_binary()) ->
+-spec send_media_resp(kz_json:object(), kz_term:ne_binary()) ->
                              kz_amqp_worker:cast_return().
 send_media_resp(JObj, StreamURL) ->
     lager:debug("media stream URL: ~s", [StreamURL]),

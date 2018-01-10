@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Ecallmgr module (statem) for disconnecting calls when account
 %%% balance drops below zero
@@ -36,8 +36,8 @@
 
 -type statem_events() :: 'start_cycle' | 'worker_stop'.
 -type statem_state() :: 'idle' | 'working' | 'worker_timeout'.
--type statem_reply() :: {'next_state', statem_state(), api_pid()} |
-                        {'next_state', statem_state(), api_pid(), 'hibernate'}.
+-type statem_reply() :: {'next_state', statem_state(), kz_term:api_pid()} |
+                        {'next_state', statem_state(), kz_term:api_pid(), 'hibernate'}.
 
 %%====================================================================
 %% API
@@ -45,7 +45,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     case ?IS_ENABLED of
         'true' -> gen_statem:start_link(?SERVER, [], []);
@@ -66,7 +66,7 @@ init(_Args) ->
 callback_mode() ->
     'state_functions'.
 
--spec handle_info(any(), atom(), statem_state()) -> handle_fsm_ret(statem_state()).
+-spec handle_info(any(), atom(), statem_state()) -> kz_types:handle_fsm_ret(statem_state()).
 handle_info({'EXIT', WorkerPid, Reason}, StateName, WorkerPid) ->
     lager:debug("worker: ~p exited with reason ~p", [WorkerPid, Reason]),
     gen_statem:cast(self(), 'worker_stop'),
@@ -83,14 +83,14 @@ terminate(_Reason, _StateName, _State) ->
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
--spec idle(gen_statem:event_type(), statem_events(), api_pid()) -> statem_reply().
+-spec idle(gen_statem:event_type(), statem_events(), kz_term:api_pid()) -> statem_reply().
 idle('cast', 'start_cycle', 'undefined') ->
     WorkerPid = spawn_worker(?CRAWLER_CYCLE_MS),
     {'next_state', 'working', WorkerPid};
 idle('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec working(gen_statem:event_type(), statem_events(), api_pid()) -> statem_reply().
+-spec working(gen_statem:event_type(), statem_events(), kz_term:api_pid()) -> statem_reply().
 working('cast', 'worker_stop', _OldWorkerPid) ->
     {'next_state', 'idle', 'undefined', 'hibernate'};
 working('cast', 'start_cycle', WorkerPid) ->
@@ -99,7 +99,7 @@ working('cast', 'start_cycle', WorkerPid) ->
 working('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec worker_timeout(gen_statem:event_type(), statem_events(), api_pid()) -> statem_reply().
+-spec worker_timeout(gen_statem:event_type(), statem_events(), kz_term:api_pid()) -> statem_reply().
 worker_timeout('cast', 'worker_stop', _OldWorkerPid) ->
     WorkerPid = spawn_worker(?CRAWLER_CYCLE_MS),
     {'next_state', 'working', WorkerPid};

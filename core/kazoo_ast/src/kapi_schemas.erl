@@ -13,8 +13,8 @@
 -define(DEBUG(_Fmt, _Args), 'ok').
 %%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
--record(acc, {kapi_name = <<"empty">> :: ne_binary() %% s/kapi_(.+)/\1/
-             ,api_name = <<"empty">> :: api_ne_binary() %% api function
+-record(acc, {kapi_name = <<"empty">> :: kz_term:ne_binary() %% s/kapi_(.+)/\1/
+             ,api_name = <<"empty">> :: kz_term:api_ne_binary() %% api function
              ,app_schemas = kz_json:new() :: kz_json:object()
              ,project_schemas = kz_json:new() :: kz_json:object()
              ,schema_dir = kz_ast_util:default_schema_priv_dir() :: file:filename_all()
@@ -112,7 +112,7 @@ process_module(KapiModule) ->
     io:format(" done~n", []),
     Schemas.
 
--spec print_dot(ne_binary() | module(), acc()) ->
+-spec print_dot(kz_term:ne_binary() | module(), acc()) ->
                        acc() |
                        {'skip', acc()}.
 print_dot(<<"kapi_fs">>, #acc{}=Acc) ->
@@ -156,7 +156,7 @@ add_schemas_to_bucket(_App, #acc{schema_dir = PrivDir
            ,project_schemas = kz_json:set_value(PrivDir, UpdatedSchema, ProjectSchemas)
            }.
 
--spec set_function(ne_binary() | function(), integer(), acc()) -> acc().
+-spec set_function(kz_term:ne_binary() | function(), integer(), acc()) -> acc().
 set_function(<<_/binary>> = Function, 0, #acc{kapi_name = <<"notifications">>}=Acc) ->
     case kz_binary:reverse(Function) of
         <<"noitinifed_", Nuf/binary>> ->

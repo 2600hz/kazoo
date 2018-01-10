@@ -277,6 +277,179 @@ dedupe() {
     replace kapps_util get_event_type kz_util get_event_type
 }
 
+replace_types() {
+    local MODULE="$1"
+    local GREP_PATTERN="$2"
+    local SED_PATTERN="$3"
+    local REPLACE_TO="$4"
+    for FILE in `grep -Elr --include=*.erl --include=*.hrl --include=*.escript --exclude="$MODULE.erl" "$GREP_PATTERN" "$ROOT"/{core,applications,scripts}`; do
+        sed -ri "s/$SED_PATTERN/$REPLACE_TO/g" "$FILE"
+    done
+}
+
+change_to_module_type() {
+    local MODULE="$1"
+    declare -a TYPES_ARR=("${!2}")
+
+    local TYPES="$(echo -n ${TYPES_ARR[@]} | sed -r 's/ +/\|/g; s/\|*$//g')"
+
+    local GREP_PATTERN="(:{0}(:{2})|([ ,([{>]))($TYPES) *\\("
+    local SED_PATTERN="(:{0}(:{2})|([ ,([{>]))($TYPES)(\(\)|\(([a-zA-Z_]|\[\])+\(?\))"
+    local REPLACE_TO="\1$MODULE:\4\5"
+
+    replace_types "$MODULE" "$GREP_PATTERN" "$SED_PATTERN" "$REPLACE_TO"
+}
+
+change_kz_node_to_module_type() {
+    local GREP_PATTERN="(:{0}(:{2})|([ ,([{>]))(kz_node kz_nodes) *\\("
+    local SED_PATTERN="(:{0}(:{2})|([ ,([{>]))(kz_node kz_nodes)\s*(\(\))"
+
+    replace_types "kz_types" "$GREP_PATTERN" "$SED_PATTERN" "\1kz_types:\4\5"
+}
+
+change_kz_timeout() {
+    local GREP_PATTERN="kz_timeout"
+    local SED_PATTERN="kz_timeout"
+
+    replace_types "kz_types" "$GREP_PATTERN" "$SED_PATTERN" "timeout"
+}
+
+removing_kz_prefix_from_types() {
+    local MODULE="$1"
+    declare -a TYPES=("${!2}")
+
+    K_TYPES="$(echo -n ${TYPES[@]} | grep -Eo 'kz_[a-z_]+' | tr '\n' ' ' | sed -r 's/ +/\|/g; s/\|*$//g')"
+    WITHOUT_K="$(echo -n $K_TYPES | sed 's/kz_//g')"
+
+    local GREP_PATTERN="$MODULE:$K_TYPES"
+    local SED_PATTERN="$MODULE:kz_($WITHOUT_K)"
+    local REPLACE_TO="$MODULE:\1"
+
+    replace_types "$MODULE" "$GREP_PATTERN" "$SED_PATTERN" "$REPLACE_TO"
+}
+
+kz_type_modules() {
+    local kz_types=(mail_message_body
+                    dict
+                    kz_ip_list
+                    sup_child_spec
+                    sup_child_specs
+                    sup_start_flags
+                    sup_init_ret
+                    sup_child_id
+                    sup_startchild_err
+                    sup_startchild_ret
+                    startlink_err
+                    startlink_ret
+                    startapp_ret
+                    call_from
+                    gen_server_timeout
+                    handle_call_ret
+                    handle_call_ret_state
+                    handle_cast_ret
+                    handle_cast_ret_state
+                    handle_info_ret
+                    handle_info_ret_state
+                    handle_fsm_ret
+                    handle_sync_event_ret
+                    server_ref
+                    gen_server_name
+                    gen_server_option
+                    gen_server_options
+                    xml_attrib_name
+                    xml_attrib_value
+                    xml_attrib
+                    xml_attribs
+                    xml_el
+                    xml_els
+                    xml_text
+                    xml_texts
+                    xml_thing
+                    xml_things
+                    whapp_info
+                    kapps_info
+                    media_server
+                    media_serve
+                    )
+    local kz_term=(text
+                   atoms
+                   pids
+                   references
+                   kz_proplist_key
+                   kz_proplist_value
+                   kz_proplist_property
+                   kz_proplist
+                   kz_proplists
+                   kz_proplist_kv
+                   pid_ref
+                   pid_refs
+                   api_pid_ref
+                   api_pid_refs
+                   api_terms
+                   api_binary
+                   api_ne_binary
+                   api_ne_binaries
+                   api_binaries
+                   api_object
+                   api_objects
+                   api_boolean
+                   api_atom
+                   api_atoms
+                   api_string
+                   api_reference
+                   api_pid
+                   api_list
+                   api_number
+                   api_integer
+                   api_pos_integer
+                   api_non_neg_integer
+                   api_float
+                   kz_deeplist
+                   kz_std_return
+                   kz_jobj_return
+                   kz_jobjs_return
+                   ne_binary
+                   ne_binaries
+                   binaries
+                   strings
+                   integers
+                   functions
+                   )
+    local kz_time=(kz_now
+                   kz_year
+                   kz_month
+                   kz_day
+                   kz_hour
+                   kz_minute
+                   kz_second
+                   kz_daynum
+                   kz_weeknum
+                   kz_date
+                   kz_time
+                   kz_datetime
+                   kz_iso_week
+                   gregorian_seconds
+                   unix_seconds
+                   api_seconds
+                   )
+    echo "  * ensuring core types migration"
+    change_to_module_type "kz_types" kz_types[@]
+    echo "  * ensuring term types migration"
+    change_to_module_type "kz_term" kz_term[@]
+    echo "  * ensuring time types migration"
+    change_to_module_type "kz_time" kz_time[@]
+    echo "  * manually checking kz_node types"
+    change_kz_node_to_module_type
+    echo "  * using built in kz_timeout type"
+    change_kz_timeout
+    echo "  * removing kz_ prefix from kz_types"
+    removing_kz_prefix_from_types "kz_types" kz_types[@]
+    echo "  * removing kz_ prefix from kz_term"
+    removing_kz_prefix_from_types "kz_term" kz_term[@]
+    echo "  * removing kz_ prefix from kz_time"
+    removing_kz_prefix_from_types "kz_time" kz_time[@]
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -299,5 +472,7 @@ echo "ensuring includes from kazoo are moved to kazoo_stdlib"
 kz_includes
 echo 'ensuring utility calls are not duplicated all over the place'
 dedupe
+echo "ensuring kz_types migration to module is performed"
+kz_type_modules
 
 popd >/dev/null

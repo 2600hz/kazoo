@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -52,7 +52,7 @@ reconcile_fold(JObj, S) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile(kz_services:services(), api_binary()) -> kz_services:services().
+-spec reconcile(kz_services:services(), kz_term:api_binary()) -> kz_services:services().
 reconcile(Services, 'undefined') -> Services;
 reconcile(Services0, Item) ->
     Services1 = reconcile(Services0),

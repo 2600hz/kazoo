@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handles inspection of incoming caller id and branching to a child
 %%% callflow node accordingly.
@@ -42,7 +42,7 @@ handle(Data, Call) ->
         'false' -> handle_no_match(Call)
     end.
 
--spec is_matching_prefix(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_matching_prefix(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_matching_prefix(AccountDb, ListId, Number) ->
     NumberPrefixes = build_keys(Number),
     Keys = [[ListId, X] || X <- NumberPrefixes],
@@ -51,7 +51,7 @@ is_matching_prefix(AccountDb, ListId, Number) ->
         _ -> 'false'
     end.
 
--spec is_matching_regexp(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_matching_regexp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_matching_regexp(AccountDb, ListId, Number) ->
     case kz_datamgr:get_results(AccountDb, <<"lists/regexps_in_list">>, [{'key', ListId}]) of
         {'ok', Regexps} ->
@@ -61,7 +61,7 @@ is_matching_regexp(AccountDb, ListId, Number) ->
             'false'
     end.
 
--spec match_regexps(binaries(), ne_binary()) -> boolean().
+-spec match_regexps(kz_term:binaries(), kz_term:ne_binary()) -> boolean().
 match_regexps([Pattern | Rest], Number) ->
     case re:run(Number, Pattern) of
         {'match', _} -> 'true';
@@ -70,13 +70,13 @@ match_regexps([Pattern | Rest], Number) ->
 match_regexps([], _Number) -> 'false'.
 
 %% TODO: this function from hon_util, may be place it somewhere in library?
--spec build_keys(binary()) -> binaries().
+-spec build_keys(binary()) -> kz_term:binaries().
 build_keys(<<"+", E164/binary>>) ->
     build_keys(E164);
 build_keys(<<D:1/binary, Rest/binary>>) ->
     build_keys(Rest, D, [D]).
 
--spec build_keys(binary(), binary(), binaries()) -> binaries().
+-spec build_keys(binary(), binary(), kz_term:binaries()) -> kz_term:binaries().
 build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
     build_keys(Rest, <<Prefix/binary, D/binary>>, [<<Prefix/binary, D/binary>> | Acc]);
 build_keys(<<>>, _, Acc) -> Acc.
@@ -113,7 +113,7 @@ handle_no_match(Call) ->
 %% Check if the given node name is a callflow child
 %% @end
 %%--------------------------------------------------------------------
--spec is_callflow_child(ne_binary(), kapps_call:call()) -> boolean().
+-spec is_callflow_child(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 is_callflow_child(Name, Call) ->
     lager:debug("Looking for callflow child ~s", [Name]),
     case cf_exe:attempt(Name, Call) of

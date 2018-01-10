@@ -13,7 +13,7 @@
 
 %% API
 
--spec graphite_metrics(ne_binary(), ne_binary(), ne_binary()) -> no_return.
+-spec graphite_metrics(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 graphite_metrics(Account, Cluster, Zone) ->
     Scheme = scheme(Account, Cluster, Zone),
     F = fun ({Metric, Measured}) -> graphite(Scheme, Metric, Measured) end,

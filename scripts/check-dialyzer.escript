@@ -128,7 +128,12 @@ do_warn_path({'beams', Beams}, {N, PLT}) ->
 do_warn_path({'app', Beams}, {N, PLT}) ->
     {N + scan_and_print(PLT, Beams), PLT}.
 
-scan_and_print(PLT, Beams) ->
+scan_and_print(PLT, Bs) ->
+    %% explicitly adding `kz_types' so dialyzer knows about `sup_init_ret', `handle_call_ret_state' and other supervisor,
+    %% gen_server, ... critical types defined in `kz_types'. Dialyzer is strict about types for these `init', `handle_*'
+    %% functions and if we don't add `kz_types' here, dialyzer thinks their types are `any()' and will warn about it.
+    Beams = Bs ++ [fix_path("core/kazoo_stdlib/ebin/kz_types.beam")],
+
     io:format("scanning ~s~n", [string:join(Beams, " ")]),
     length([print(W)
             || W <- scan(PLT, Beams),
@@ -154,29 +159,29 @@ scan(PLT, Things) ->
     end.
 
 do_scan(PLT, Paths) ->
-    dialyzer:run([ {'init_plt', PLT}
-                 , {'analysis_type', 'succ_typings'}
-                   %% , {'files_rec', [Path]}
-                 , {'files', Paths}
-                 , {'warnings', ['error_handling' %% functions that only return via exception
-                                 %% ,no_behaviours  %% suppress warnings about behaviour callbacks
-                                 %% ,no_contracts   %% suppress warnings about invalid contracts
-                                 %% ,no_fail_call   %% suppress warnings for failing calls
-                                 %% ,no_fun_app     %% suppress warnings for failing fun applications
-                                 %% ,no_improper_lists %% suppress warnings for improper list construction
-                                 %% ,no_match          %% suppress warnings for patterns that are unused
-                                 %% ,no_missing_calls  %% suppress warnings about calls to missing functions
-                                 %% ,no_opaque         %% suppress warnings for violating opaque data structures
-                                 %% ,no_return         %% suppress warnins for functions that never return a value
-                                 %% ,no_undefined_callbacks %% suppress warnings about behaviours with no -callback
-                                 %% ,no_unused         %% suppress warnings for unused functions
-                                ,'race_conditions'   %% include warnings for possible race conditions
-                                ,'underspecs'        %% warn when the spec is too loose
-                                 %% ,unknown           %% let warnings about unknown functions/types change exit status
-                                ,'unmatched_returns' %% warn when function calls ignore structure return values
-                                 %% ,overspecs %% ignorable, mostly for Dialyzer devs
-                                 %% ,specdiffs
-                                ]}
+    dialyzer:run([{'init_plt', PLT}
+                 ,{'analysis_type', 'succ_typings'}
+                  %% ,{'files_rec', [Path]}
+                 ,{'files', Paths}
+                 ,{'warnings', ['error_handling' %% functions that only return via exception
+                                %% ,no_behaviours  %% suppress warnings about behaviour callbacks
+                                %% ,no_contracts   %% suppress warnings about invalid contracts
+                                %% ,no_fail_call   %% suppress warnings for failing calls
+                                %% ,no_fun_app     %% suppress warnings for failing fun applications
+                                %% ,no_improper_lists %% suppress warnings for improper list construction
+                                %% ,no_match          %% suppress warnings for patterns that are unused
+                                %% ,no_missing_calls  %% suppress warnings about calls to missing functions
+                                %% ,no_opaque         %% suppress warnings for violating opaque data structures
+                                %% ,no_return         %% suppress warnins for functions that never return a value
+                                %% ,no_undefined_callbacks %% suppress warnings about behaviours with no -callback
+                                %% ,no_unused         %% suppress warnings for unused functions
+                               ,'race_conditions'   %% include warnings for possible race conditions
+                               ,'underspecs'        %% warn when the spec is too loose
+                                %% ,unknown           %% let warnings about unknown functions/types change exit status
+                               ,'unmatched_returns' %% warn when function calls ignore structure return values
+                                %% ,overspecs %% ignorable, mostly for Dialyzer devs
+                                %% ,specdiffs
+                               ]}
                  ]).
 
 usage() ->

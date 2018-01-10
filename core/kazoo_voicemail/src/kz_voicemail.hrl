@@ -21,18 +21,18 @@
         kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 2 * ?MILLISECONDS_IN_SECOND)).
 
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
--type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
--type message() :: ne_binary() | kz_json:object().
--type messages() :: ne_binaries() | kz_json:objects().
+-type vm_folder() :: kz_term:ne_binary() | {kz_term:ne_binary(), boolean()}.
+-type message() :: kz_term:ne_binary() | kz_json:object().
+-type messages() :: kz_term:ne_binaries() | kz_json:objects().
 -type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
 
--type bulk_map() :: #{succeeded => ne_binaries() | kz_json:objects()
-                     ,failed => [{ne_binary(), ne_binary()}]
-                     ,to_update_map => #{ne_binary() => kz_json:objects()}
+-type bulk_map() :: #{succeeded => kz_term:ne_binaries() | kz_json:objects()
+                     ,failed => [{kz_term:ne_binary(), kz_term:ne_binary()}]
+                     ,to_update_map => #{kz_term:ne_binary() => kz_json:objects()}
                      ,enforce_set => set:sets()
                      }.
 
--type next_account() :: {ne_binary(), gregorian_seconds(), gregorian_seconds()}.
+-type next_account() :: {kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}.
 
 -define(KZ_VOICEMAIL_HRL, 'true').
 -endif.

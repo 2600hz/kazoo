@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -35,7 +35,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(AcctId, QueueId) ->
     supervisor:start_link(?SERVER, [AcctId, QueueId]).
 
@@ -43,11 +43,11 @@ start_link(AcctId, QueueId) ->
 stop(Super) ->
     supervisor:terminate_child('acdc_queues_sup', Super).
 
--spec manager(pid()) -> api_pid().
+-spec manager(pid()) -> kz_term:api_pid().
 manager(Super) ->
     hd([P || {_, P, 'worker', _} <- supervisor:which_children(Super)]).
 
--spec workers_sup(pid()) -> api_pid().
+-spec workers_sup(pid()) -> kz_term:api_pid().
 workers_sup(Super) ->
     hd([P || {_, P, 'supervisor', _} <- supervisor:which_children(Super)]).
 
@@ -84,7 +84,7 @@ status(Supervisor) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init(Args) ->
     RestartStrategy = 'one_for_all',
     MaxRestarts = 2,

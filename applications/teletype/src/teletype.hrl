@@ -20,32 +20,32 @@
 -type mime_tuples() :: [mimemail:mimetuple()].
 
 %% {ContentType, Filename, Content}
--type attachment() :: {ne_binary(), ne_binary(), ne_binary()}.
+-type attachment() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 -type attachments() :: [attachment()].
 
 %% {ContentType, Content}
--type rendered_template() :: {ne_binary(), iolist()}.
+-type rendered_template() :: {kz_term:ne_binary(), iolist()}.
 -type rendered_templates() :: [rendered_template()].
 
 %% {"to"/"cc"/etc, [Address,...]}
--type email_map() :: [{ne_binary(), api_ne_binaries()}].
+-type email_map() :: [{kz_term:ne_binary(), kz_term:api_ne_binaries()}].
 
 -type init_param() :: {'macros', kz_json:object()} |
-                      {'subject', ne_binary()} |
-                      {'category', ne_binary()} |
-                      {'friendly_name', ne_binary()} |
+                      {'subject', kz_term:ne_binary()} |
+                      {'category', kz_term:ne_binary()} |
+                      {'friendly_name', kz_term:ne_binary()} |
                       {'to', kz_json:object()} |
                       {'cc', kz_json:object()} |
                       {'bcc', kz_json:object()} |
-                      {'from', ne_binary()} |
-                      {'reply_to', api_binary()}.
+                      {'from', kz_term:ne_binary()} |
+                      {'reply_to', kz_term:api_binary()}.
 -type init_params() :: [init_param(),...].
 
 -type template_response() :: 'ok' |
-                             {'disabled', ne_binary()} |
-                             {'ignored', ne_binary()} |
-                             {'completed', ne_binary()} |
-                             {'failed', ne_binary(), any()}.
+                             {'disabled', kz_term:ne_binary()} |
+                             {'ignored', kz_term:ne_binary()} |
+                             {'completed', kz_term:ne_binary()} |
+                             {'failed', kz_term:ne_binary(), any()}.
 -type template_responses() :: [template_response()].
 
 -define(TEXT_PLAIN, <<"text/plain">>).
@@ -225,10 +225,10 @@
         ++ ?SYSTEM_MACROS
        ).
 
--record(email_receipt, {to :: ne_binaries() | ne_binary()
-                       ,from :: ne_binary()
-                       ,call_id :: ne_binary()
-                       ,timestamp :: gregorian_seconds()
+-record(email_receipt, {to :: kz_term:ne_binaries() | kz_term:ne_binary()
+                       ,from :: kz_term:ne_binary()
+                       ,call_id :: kz_term:ne_binary()
+                       ,timestamp :: kz_time:gregorian_seconds()
                        }).
 -type email_receipt() :: #email_receipt{}.
 

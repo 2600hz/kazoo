@@ -12,14 +12,14 @@
 record_min_sec() ->
     kapps_config:get_integer(?CONFIG_CAT, <<"record_min_sec">>, 0).
 
--spec storage_retry_times(ne_binary()) -> pos_integer().
+-spec storage_retry_times(kz_term:ne_binary()) -> pos_integer().
 storage_retry_times(AccountId) ->
     kapps_account_config:get_global(AccountId, ?CONFIG_CAT
                                    ,[<<"call_recording">>, <<"storage_retry_times">>]
                                    ,5
                                    ).
 
--spec call_recording_extension() -> ne_binary().
+-spec call_recording_extension() -> kz_term:ne_binary().
 call_recording_extension() ->
     kapps_config:get_ne_binary(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
 

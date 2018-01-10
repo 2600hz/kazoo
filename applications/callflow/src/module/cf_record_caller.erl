@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% Handles starting/stopping a call recording
 %%%
@@ -38,7 +38,7 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec record_caller(kz_json:object(), kapps_call:call(), ne_binary()) -> 'ok'.
+-spec record_caller(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 record_caller(Data, Call, Url) ->
     kapps_call_command:answer_now(Call),
 
@@ -54,7 +54,7 @@ record_caller(Data, Call, Url) ->
                                    ),
     lager:debug("recording ended").
 
--spec set_recording_url(kz_json:object(), kapps_call:call(), ne_binary(), ne_binary()) -> any().
+-spec set_recording_url(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 set_recording_url(Data, Call, Url, MediaName) ->
     lager:debug("store to ~s to ~s", [MediaName, Url]),
 

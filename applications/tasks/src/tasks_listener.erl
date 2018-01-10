@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2017, 2600Hz
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -56,7 +56,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
@@ -75,7 +75,7 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_start_req(kz_json:object(), kz_proplist()) -> ok.
+-spec handle_start_req(kz_json:object(), kz_term:proplist()) -> ok.
 handle_start_req(JObj, _Props) ->
     true = kapi_tasks:start_req_v(JObj),
     Help =
@@ -97,7 +97,7 @@ handle_start_req(JObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_stop_req(kz_json:object(), kz_proplist()) -> ok.
+-spec handle_stop_req(kz_json:object(), kz_term:proplist()) -> ok.
 handle_stop_req(JObj, _Props) ->
     true = kapi_tasks:stop_req_v(JObj),
     Help =
@@ -118,7 +118,7 @@ handle_stop_req(JObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_remove_req(kz_json:object(), kz_proplist()) -> ok.
+-spec handle_remove_req(kz_json:object(), kz_term:proplist()) -> ok.
 handle_remove_req(JObj, _Props) ->
     true = kapi_tasks:remove_req_v(JObj),
     Help =
@@ -156,7 +156,7 @@ init([]) ->
 %% Handling call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -166,7 +166,7 @@ handle_call(_Request, _From, State) ->
 %% Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -176,7 +176,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -186,7 +186,7 @@ handle_info(_Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

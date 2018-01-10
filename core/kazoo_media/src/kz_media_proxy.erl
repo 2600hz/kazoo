@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017 2600Hz INC
+%%% @copyright (C) 2010-2018 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -14,7 +14,7 @@
 
 -include("kazoo_media.hrl").
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 

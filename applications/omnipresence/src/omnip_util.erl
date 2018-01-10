@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -18,20 +18,20 @@
 -include("omnipresence.hrl").
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
--spec extract_user(ne_binary()) -> {ne_binary(), ne_binary(), ne_binaries()}.
+-spec extract_user(kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()}.
 extract_user(User) ->
     [#uri{scheme=Proto, user=Username, domain=Realm}] = kzsip_uri:uris(User),
     {kz_term:to_binary(Proto), <<Username/binary, "@", Realm/binary>>, [Username, Realm]}.
 
--spec normalize_variables(kz_proplist()) -> kz_proplist().
+-spec normalize_variables(kz_term:proplist()) -> kz_term:proplist().
 normalize_variables(Props) ->
     [{kz_json:normalize_key(K), V} || {K, V} <- Props].
 
--spec are_valid_uris(ne_binaries()) -> boolean().
+-spec are_valid_uris(kz_term:ne_binaries()) -> boolean().
 are_valid_uris(L) ->
     lists:all(fun is_valid_uri/1, L).
 
--spec is_valid_uri(ne_binary()) -> boolean().
+-spec is_valid_uri(kz_term:ne_binary()) -> boolean().
 is_valid_uri(Uri) ->
     case binary:split(Uri, <<"@">>) of
         [_User, _Host] -> 'true';

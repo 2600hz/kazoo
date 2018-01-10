@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Starts a cf_exe and processes the "flow" sans DB
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("callflow.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> kapps_call:call().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> kapps_call:call().
 handle_req(JObj, _Props) ->
     'true' = kapi_callflow:resume_v(JObj),
     Call0 = kapps_call:from_json(kz_json:get_json_value(<<"Call">>, JObj)),

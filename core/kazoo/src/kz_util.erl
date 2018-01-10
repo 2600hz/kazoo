@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -144,7 +144,7 @@ log_stacktrace_mfa(M, F, Args, Info) ->
                    | 'notice'
                    | 'info'
                    | 'debug'
-                   | ne_binary().
+                   | kz_term:ne_binary().
 
 -spec change_console_log_level(log_level()) -> 'ok'.
 change_console_log_level(L) when is_atom(L) ->
@@ -178,9 +178,9 @@ change_syslog_log_level(L) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(api_binary()) -> api_binary().
--spec format_account_id(api_binary(), account_format()) -> api_binary();
-                       (api_binary(), gregorian_seconds()) -> api_binary(). %% MODb!
+-spec format_account_id(kz_term:api_binary()) -> kz_term:api_binary().
+-spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
+                       (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% MODb!
 
 format_account_id(Account) ->
     format_account_id(Account, 'raw').
@@ -212,7 +212,7 @@ format_account_id(AccountId, 'encoded') ->
 %% @private
 %% Returns account_id() | any()
 %% Passes input along if not account_id() | account_db() | account_db_unencoded().
--spec raw_account_id(ne_binary()) -> ne_binary().
+-spec raw_account_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 raw_account_id(?MATCH_ACCOUNT_RAW(AccountId)) ->
     AccountId;
 raw_account_id(?MATCH_ACCOUNT_UNENCODED(A, B, Rest)) ->
@@ -244,7 +244,7 @@ raw_account_id(Other) ->
 %% @private
 %% (modb()) -> modb_id() when modb() :: modb_id() | modb_db() | modb_db_unencoded()
 %% Crashes if given anything else.
--spec raw_account_modb(ne_binary()) -> ne_binary().
+-spec raw_account_modb(kz_term:ne_binary()) -> kz_term:ne_binary().
 raw_account_modb(?MATCH_MODB_SUFFIX_RAW(_, _, _) = AccountId) ->
     AccountId;
 raw_account_modb(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
@@ -259,9 +259,9 @@ raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
 %% unencoded or 'raw' format.
 %% @end
 %%--------------------------------------------------------------------
--spec format_resource_selectors_id(api_binary()) -> api_binary().
--spec format_resource_selectors_id(api_binary(), account_format()) -> api_binary();
-                                  (api_binary(), gregorian_seconds()) -> api_binary(). %% MODb!
+-spec format_resource_selectors_id(kz_term:api_binary()) -> kz_term:api_binary().
+-spec format_resource_selectors_id(kz_term:api_binary(), account_format()) -> kz_term:api_binary();
+                                  (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% MODb!
 
 format_resource_selectors_id(Account) ->
     format_resource_selectors_id(Account, 'raw').
@@ -293,7 +293,7 @@ format_resource_selectors_id(AccountId, 'encoded') ->
 %% @private
 %% Returns account_id() | any()
 %% Passes input along if not account_id() | account_db() | account_db_unencoded().
--spec raw_resource_selectors_id(ne_binary()) -> ne_binary().
+-spec raw_resource_selectors_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_RAW(AccountId)) ->
     AccountId;
 raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest)) ->
@@ -314,7 +314,7 @@ raw_resource_selectors_id(Other) ->
 %% Given a representation of an account resource_selectors return it in a 'encoded',
 %% @end
 %%--------------------------------------------------------------------
--spec format_resource_selectors_db(api_binary()) -> api_binary().
+-spec format_resource_selectors_db(kz_term:api_binary()) -> kz_term:api_binary().
 format_resource_selectors_db(AccountId) ->
     format_resource_selectors_id(AccountId, 'encoded').
 
@@ -325,8 +325,8 @@ format_resource_selectors_db(AccountId) ->
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_id(api_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
-                               api_binary().
+-spec format_account_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
+                               kz_term:api_binary().
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, kz_term:to_integer(Year), Month);
@@ -344,10 +344,10 @@ format_account_id(Account, Year, Month) when is_integer(Year),
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_mod_id(api_binary()) -> api_binary().
--spec format_account_mod_id(api_binary(), gregorian_seconds() | kz_now()) -> api_binary().
--spec format_account_mod_id(api_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
-                                   api_binary().
+-spec format_account_mod_id(kz_term:api_binary()) -> kz_term:api_binary().
+-spec format_account_mod_id(kz_term:api_binary(), kz_time:gregorian_seconds() | kz_time:now()) -> kz_term:api_binary().
+-spec format_account_mod_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
+                                   kz_term:api_binary().
 
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
@@ -369,7 +369,7 @@ format_account_mod_id(AccountId, Year, Month) ->
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_db(api_binary()) -> api_binary().
+-spec format_account_db(kz_term:api_binary()) -> kz_term:api_binary().
 format_account_db(AccountId) ->
     format_account_id(AccountId, 'encoded').
 
@@ -380,8 +380,8 @@ format_account_db(AccountId) ->
 %% Note: crashes if given anything but an MODb (in any format).
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_modb(ne_binary()) -> ne_binary().
--spec format_account_modb(ne_binary(), account_format()) -> ne_binary().
+-spec format_account_modb(kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec format_account_modb(kz_term:ne_binary(), account_format()) -> kz_term:ne_binary().
 format_account_modb(AccountId) ->
     format_account_modb(AccountId, 'raw').
 format_account_modb(AccountId, 'raw') ->
@@ -402,7 +402,7 @@ format_account_modb(AccountId, 'encoded') ->
 %% This can possibly return an empty binary.
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_account_name(api_binary()) -> api_binary().
+-spec normalize_account_name(kz_term:api_binary()) -> kz_term:api_binary().
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
@@ -429,8 +429,8 @@ is_alphanumeric(_) ->
 %% its own hierarchy.
 %% @end
 %%--------------------------------------------------------------------
--spec is_in_account_hierarchy(api_binary(), api_binary()) -> boolean().
--spec is_in_account_hierarchy(api_binary(), api_binary(), boolean()) -> boolean().
+-spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
+-spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
 
 is_in_account_hierarchy(CheckFor, InAccount) ->
     is_in_account_hierarchy(CheckFor, InAccount, 'false').
@@ -469,7 +469,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_system_admin(api_binary()) -> boolean().
+-spec is_system_admin(kz_term:api_binary()) -> boolean().
 is_system_admin('undefined') -> 'false';
 is_system_admin(Account) ->
     case kz_account:fetch(Account) of
@@ -488,7 +488,7 @@ is_system_admin(Account) ->
 %% 'false'.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled(api_binary()) -> boolean().
+-spec is_account_enabled(kz_term:api_binary()) -> boolean().
 is_account_enabled('undefined') -> 'false';
 is_account_enabled(Account) ->
     case kz_account:fetch(Account) of
@@ -499,7 +499,7 @@ is_account_enabled(Account) ->
             kz_account:is_enabled(JObj)
     end.
 
--spec is_account_expired(api_binary()) -> 'false' | {'true', gregorian_seconds()}.
+-spec is_account_expired(kz_term:api_binary()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
 is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
     case kz_account:fetch(Account) of
@@ -515,7 +515,7 @@ is_account_expired(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_disable_account(ne_binary()) ->
+-spec maybe_disable_account(kz_term:ne_binary()) ->
                                    {'ok', kz_json:object()} |
                                    {'error', any()}.
 maybe_disable_account(Account) ->
@@ -530,7 +530,7 @@ maybe_disable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(ne_binary()) ->
+-spec disable_account(kz_term:ne_binary()) ->
                              {'ok', kz_json:object()} |
                              {'error', any()}.
 disable_account(Account) ->
@@ -541,7 +541,7 @@ disable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account(ne_binary()) ->
+-spec enable_account(kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 enable_account(Account) ->
@@ -552,7 +552,7 @@ enable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_superduper_admin(ne_binary(), boolean()) ->
+-spec set_superduper_admin(kz_term:ne_binary(), boolean()) ->
                                   {'ok', kz_json:object()} |
                                   {'error', any()}.
 set_superduper_admin(Account, IsAdmin) ->
@@ -563,7 +563,7 @@ set_superduper_admin(Account, IsAdmin) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_allow_number_additions(ne_binary(), boolean()) ->
+-spec set_allow_number_additions(kz_term:ne_binary(), boolean()) ->
                                         {'ok', kz_json:object()} |
                                         {'error', any()}.
 set_allow_number_additions(Account, IsAllowed) ->
@@ -577,7 +577,7 @@ set_allow_number_additions(Account, IsAllowed) ->
 -spec account_update(kz_account:doc()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
--spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
+-spec account_update(kz_term:ne_binary(), function()) -> 'ok' | {'error', any()}.
 account_update(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
     case kz_datamgr:ensure_saved(AccountDb, AccountJObj) of
@@ -623,7 +623,7 @@ try_load_module(Name) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) -> 'ok'.
+-spec put_callid(kz_json:object() | kz_term:proplist() | kz_term:ne_binary() | atom()) -> 'ok'.
 put_callid(?NE_BINARY = CallId) ->
     _ = kz_log_md_put('callid', CallId),
     _ = erlang:put('callid', CallId),
@@ -635,16 +635,16 @@ put_callid(Atom) when is_atom(Atom) ->
 put_callid(APITerm) ->
     put_callid(find_callid(APITerm)).
 
--spec get_callid() -> ne_binary().
+-spec get_callid() -> kz_term:ne_binary().
 get_callid() -> erlang:get('callid').
 
--spec find_callid(api_terms()) -> api_binary().
+-spec find_callid(kz_term:api_terms()) -> kz_term:api_binary().
 find_callid(APITerm) when is_list(APITerm) ->
     find_callid(APITerm, fun props:get_first_defined/3);
 find_callid(APITerm) ->
     find_callid(APITerm, fun kz_json:get_first_defined/3).
 
--spec find_callid(api_terms(), fun()) -> api_binary().
+-spec find_callid(kz_term:api_terms(), fun()) -> kz_term:api_binary().
 find_callid(APITerm, GetFun) ->
     GetFun([?KEY_LOG_ID, ?KEY_API_CALL_ID, ?KEY_MSG_ID]
           ,APITerm
@@ -711,7 +711,7 @@ spawn_link(Fun) ->
                               Fun()
                       end).
 
--spec spawn_monitor(fun(), list()) -> pid_ref().
+-spec spawn_monitor(fun(), list()) -> kz_term:pid_ref().
 spawn_monitor(Fun, Arguments) ->
     CallId = get_callid(),
     erlang:spawn_monitor(fun () ->
@@ -720,11 +720,11 @@ spawn_monitor(Fun, Arguments) ->
                          end).
 
 
--spec set_startup() -> api_seconds().
+-spec set_startup() -> kz_time:api_seconds().
 set_startup() ->
     put('$startup', kz_time:now_s()).
 
--spec startup() -> api_seconds().
+-spec startup() -> kz_time:api_seconds().
 startup() ->
     get('$startup').
 
@@ -734,7 +734,7 @@ startup() ->
 %% Given an object, extract the category and name into a tuple
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type(api_terms()) -> {api_binary(), api_binary()}.
+-spec get_event_type(kz_term:api_terms()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 get_event_type(Props) when is_list(Props) ->
     {props:get_value(<<"Event-Category">>, Props)
     ,props:get_value(<<"Event-Name">>, Props)
@@ -744,7 +744,7 @@ get_event_type(JObj) ->
     ,kz_json:get_value(<<"Event-Name">>, JObj)
     }.
 
--spec uri_decode(text()) -> text().
+-spec uri_decode(kz_term:text()) -> kz_term:text().
 uri_decode(Binary) when is_binary(Binary) ->
     kz_term:to_binary(http_uri:decode(kz_term:to_list(Binary)));
 uri_decode(String) when is_list(String) ->
@@ -752,7 +752,7 @@ uri_decode(String) when is_list(String) ->
 uri_decode(Atom) when is_atom(Atom) ->
     kz_term:to_atom(http_uri:decode(kz_term:to_list(Atom)), 'true').
 
--spec uri_encode(text()) -> text().
+-spec uri_encode(kz_term:text()) -> kz_term:text().
 uri_encode(Binary) when is_binary(Binary) ->
     kz_term:to_binary(http_uri:encode(kz_term:to_list(Binary)));
 uri_encode(String) when is_list(String) ->
@@ -760,7 +760,7 @@ uri_encode(String) when is_list(String) ->
 uri_encode(Atom) when is_atom(Atom) ->
     kz_term:to_atom(http_uri:encode(kz_term:to_list(Atom)), 'true').
 
--spec resolve_uri(nonempty_string() | ne_binary(), nonempty_string() | api_ne_binary()) -> ne_binary().
+-spec resolve_uri(nonempty_string() | kz_term:ne_binary(), nonempty_string() | kz_term:api_ne_binary()) -> kz_term:ne_binary().
 resolve_uri(Raw, 'undefined') -> kz_term:to_binary(Raw);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
@@ -769,7 +769,7 @@ resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
 resolve_uri(RawPath, Relative) ->
     resolve_uri(kz_term:to_binary(RawPath), kz_term:to_binary(Relative)).
 
--spec resolve_uri_path(ne_binary(), ne_binary()) -> ne_binaries().
+-spec resolve_uri_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 resolve_uri_path(RawPath, Relative) ->
     PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
     UrlTokens = binary:split(Relative, <<"/">>, ['global']),
@@ -777,7 +777,7 @@ resolve_uri_path(RawPath, Relative) ->
       lists:foldl(fun resolve_uri_fold/2, PathTokensRev, UrlTokens)
      ).
 
--spec resolve_uri_fold(ne_binary(), ne_binaries()) -> ne_binaries().
+-spec resolve_uri_fold(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 resolve_uri_fold(<<"..">>, []) -> [];
 resolve_uri_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
 resolve_uri_fold(<<".">>, PathTokens) -> PathTokens;
@@ -793,14 +793,14 @@ resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
             [Segment|DirTokens]
     end.
 
--spec uri(ne_binary(), ne_binaries()) -> ne_binary().
+-spec uri(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 uri(BaseUrl, Tokens) ->
     [Pro, Url] = binary:split(BaseUrl, <<"://">>),
     Uri = filename:join([Url | Tokens]),
     <<Pro/binary, "://", Uri/binary>>.
 
 %% fetch and cache the kazoo version from the VERSION file in kazoo's root folder
--spec kazoo_version() -> ne_binary().
+-spec kazoo_version() -> kz_term:ne_binary().
 kazoo_version() ->
     {_, _, Version} = get_app('kazoo'),
     kz_term:to_binary(Version).
@@ -810,8 +810,8 @@ write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
 
--spec pretty_print_bytes(non_neg_integer()) -> ne_binary().
--spec pretty_print_bytes(non_neg_integer(), 'full' | 'truncated') -> ne_binary().
+-spec pretty_print_bytes(non_neg_integer()) -> kz_term:ne_binary().
+-spec pretty_print_bytes(non_neg_integer(), 'full' | 'truncated') -> kz_term:ne_binary().
 pretty_print_bytes(Bytes) ->
     pretty_print_bytes(Bytes, 'full').
 
@@ -898,7 +898,7 @@ delete_dir(Dir) ->
     F = fun(D) -> 'ok' = file:del_dir(D) end,
     lists:foreach(F, del_all_files([Dir], [])).
 
--spec del_all_files(strings(), strings()) -> strings().
+-spec del_all_files(kz_term:strings(), kz_term:strings()) -> kz_term:strings().
 del_all_files([], EmptyDirs) -> EmptyDirs;
 del_all_files([Dir | T], EmptyDirs) ->
     {'ok', FilesInDir} = file:list_dir(Dir),
@@ -940,7 +940,7 @@ process_fold(App, _, M, _) -> {App, M}.
 %% @doc
 %% For core apps that want to know which app is calling.
 %% @end
--spec calling_app() -> ne_binary().
+-spec calling_app() -> kz_term:ne_binary().
 calling_app() ->
     Modules = erlang:process_info(self(),current_stacktrace),
     {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
@@ -950,7 +950,7 @@ calling_app() ->
         {Parent, _MFA} -> kz_term:to_binary(Parent)
     end.
 
--spec calling_app_version() -> {ne_binary(), ne_binary()}.
+-spec calling_app_version() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 calling_app_version() ->
     Modules = erlang:process_info(self(),current_stacktrace),
     {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
@@ -983,7 +983,7 @@ calling_process() ->
      ,line => Line
      }.
 
--spec get_app(atom() | ne_binary()) -> {atom(), string(), string()} | 'undefined'.
+-spec get_app(atom() | kz_term:ne_binary()) -> {atom(), string(), string()} | 'undefined'.
 get_app(<<_/binary>> = AppName) ->
     get_app(kz_term:to_atom(AppName));
 get_app(AppName) ->
@@ -992,7 +992,7 @@ get_app(AppName) ->
         [Ret | _] -> Ret
     end.
 
--spec application_version(atom()) -> ne_binary().
+-spec application_version(atom()) -> kz_term:ne_binary().
 application_version(Application) ->
     {'ok', Vsn} = application:get_key(Application, 'vsn'),
     kz_term:to_binary(Vsn).
@@ -1001,7 +1001,7 @@ application_version(Application) ->
 %% Like lists:usort/1 but preserves original ordering.
 %% Time: O(nlog(n)).
 %% @end
--spec uniq([kz_proplist()]) -> kz_proplist().
+-spec uniq([kz_term:proplist()]) -> kz_term:proplist().
 uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
 uniq([], _, L) -> lists:reverse(L);
 uniq([{K,_}=KV|Rest], S, L) ->

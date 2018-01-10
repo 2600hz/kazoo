@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,7 +20,7 @@
 %% Check if the device sip ip is unique
 %% @end
 %%--------------------------------------------------------------------
--spec is_ip_unique(ne_binary(), ne_binary()) -> boolean().
+-spec is_ip_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_unique(IP, DeviceId) ->
     is_ip_acl_unique(IP, DeviceId)
         andalso is_ip_sip_auth_unique(IP, DeviceId).
@@ -31,14 +31,14 @@ is_ip_unique(IP, DeviceId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_ip_acl_unique(ne_binary(), ne_binary()) -> boolean().
+-spec is_ip_acl_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_acl_unique(IP, DeviceId) ->
     lists:all(
       fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
              ,get_all_acl_ips()
      ).
 
--spec is_ip_unique(kz_json:object(), ne_binary(), ne_binary()) -> boolean().
+-spec is_ip_unique(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_unique(JObj, IP, DeviceId) ->
     case kz_json:get_value(?AUTHZ_ID, JObj) of
         DeviceId -> 'true';
@@ -52,7 +52,7 @@ is_ip_unique(JObj, IP, DeviceId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_ip_sip_auth_unique(ne_binary(), ne_binary()) -> boolean().
+-spec is_ip_sip_auth_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_sip_auth_unique(IP, DeviceId) ->
     case kapps_util:get_ccvs_by_ip(IP) of
         {'ok', CCVs} -> props:get_value(<<"Authorizing-ID">>, CCVs) =:= DeviceId;

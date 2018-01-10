@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% DB Link for attachments
 %%% @end
@@ -21,7 +21,7 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(_Params, _DbName, _DocId, _AName, _Contents, Options) ->
     Props = props:filter_undefined(
               [{<<"att_dbname">>, props:get_value('att_dbname', Options)}
@@ -34,7 +34,7 @@ put_attachment(_Params, _DbName, _DocId, _AName, _Contents, Options) ->
     end.
 
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     case kz_json:get_value(<<"att_name">>, HandlerProps) of
         'undefined' -> get_att_name(HandlerProps);

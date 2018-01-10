@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Util functions used by kazoo_couch
 %%% @end
@@ -32,16 +32,16 @@ get_db(#server{}=Conn, DbName) ->
     kz_couch_util:get_db(Conn, DbName).
 
 %%% DB-related functions ---------------------------------------------
--spec db_compact(server(), ne_binary()) -> boolean().
+-spec db_compact(server(), kz_term:ne_binary()) -> boolean().
 db_compact(#server{}=Conn, DbName) ->
     Db = get_db(Conn, DbName),
     do_db_compact(Db).
 
--spec db_create(server(), ne_binary()) -> boolean().
+-spec db_create(server(), kz_term:ne_binary()) -> boolean().
 db_create(#server{}=Conn, DbName) ->
     db_create(Conn, DbName, []).
 
--spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
+-spec db_create(server(), kz_term:ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
     case do_db_create_db(Conn, DbName, Options, []) of
         {'ok', _} -> 'true';
@@ -73,21 +73,21 @@ do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Pa
             Error
     end.
 
--spec check_db_create_error(server(), ne_binary(), any()) -> boolean().
+-spec check_db_create_error(server(), kz_term:ne_binary(), any()) -> boolean().
 check_db_create_error(Server, DbName, <<"conflict">>) ->
     lager:warning("db ~s creation failed with HTTP error 500 and conflict reason, checking db exists", [DbName]),
     db_exists(Server, DbName);
 check_db_create_error(_Server, _DbName, _Reason) ->
     'false'.
 
--spec db_delete(server(), ne_binary()) -> boolean().
+-spec db_delete(server(), kz_term:ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
     case couchbeam:delete_db(Conn, kz_term:to_list(DbName)) of
         {'error', _} -> 'false';
         {'ok', _} -> 'true'
     end.
 
--spec db_replicate(server(), kz_json:object() | kz_proplist()) ->
+-spec db_replicate(server(), kz_json:object() | kz_term:proplist()) ->
                           {'ok', kz_json:object()} |
                           couchbeam_error().
 db_replicate(#server{}=Conn, Prop) when is_list(Prop) ->
@@ -96,31 +96,31 @@ db_replicate(#server{}=Conn, JObj) ->
     couchbeam:replicate(Conn, JObj).
 
 -spec db_list(server(), view_options()) ->
-                     {'ok', kz_json:objects() | ne_binaries()} | couchbeam_error().
+                     {'ok', kz_json:objects() | kz_term:ne_binaries()} | couchbeam_error().
 db_list(#server{}=Conn, Options) ->
     couchbeam:all_dbs(Conn, Options).
 
--spec db_view_cleanup(server(), ne_binary()) -> boolean().
+-spec db_view_cleanup(server(), kz_term:ne_binary()) -> boolean().
 db_view_cleanup(#server{}=Conn, DbName) ->
     do_db_view_cleanup(get_db(Conn, DbName)).
 
 -spec db_info(server()) ->
-                     {'ok', ne_binaries()} |
+                     {'ok', kz_term:ne_binaries()} |
                      couchbeam_error().
 db_info(#server{}=Conn) ->
     ?RETRY_504(couchbeam:all_dbs(Conn)).
 
--spec db_info(server(), ne_binary()) ->
+-spec db_info(server(), kz_term:ne_binary()) ->
                      {'ok', kz_json:object()} |
                      couchbeam_error().
 db_info(#server{}=Conn, DbName) ->
     ?RETRY_504(couchbeam:db_info(get_db(Conn, DbName))).
 
--spec db_exists(server(), ne_binary()) -> boolean().
+-spec db_exists(server(), kz_term:ne_binary()) -> boolean().
 db_exists(#server{}=Conn, DbName) ->
     couchbeam:db_exists(Conn, kz_term:to_list(DbName)).
 
--spec db_archive(server(), ne_binary(), ne_binary()) ->
+-spec db_archive(server(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                         'ok' |
                         couchbeam_error().
 db_archive(#server{}=Conn, DbName, Filename) ->
@@ -137,7 +137,7 @@ db_archive(#server{}=Conn, DbName, Filename) ->
 %% MaxDocs = The biggest set of docs to pull from Couch
 %% N = The number of docs in the DB that haven't been archived
 %% Pos = Which doc will the next query start from (the offset)
--spec archive(db(), ne_binary(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+-spec archive(db(), kz_term:ne_binary(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 archive(_Db, DbName, _File,  _MaxDocs, 0, _Pos) ->
     io:format("    archive ~s complete~n", [DbName]);
 archive(#db{}=Db, DbName, File, MaxDocs, N, Pos) when N =< MaxDocs ->
@@ -180,7 +180,7 @@ archive_docs(File, [Doc|Docs]) ->
     'ok' = file:write(File, [kz_json:encode(Doc), $,, $\n]),
     archive_docs(File, Docs).
 
--spec db_import(server(), ne_binary(), ne_binary()) ->
+-spec db_import(server(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                        'ok' |
                        couchbeam_error().
 db_import(#server{}=Conn, DbName, Filename) ->
@@ -189,7 +189,7 @@ db_import(#server{}=Conn, DbName, Filename) ->
         Error -> Error
     end.
 
--spec do_db_import(server(), ne_binary(), kz_json:objects()) ->
+-spec do_db_import(server(), kz_term:ne_binary(), kz_json:objects()) ->
                           'ok' |
                           couchbeam_error().
 do_db_import(#server{}=Conn, DbName, Docs) ->

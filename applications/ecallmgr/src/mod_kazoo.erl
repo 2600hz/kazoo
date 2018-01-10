@@ -125,9 +125,9 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
             {'error', 'exception'}
     end.
 
--spec api(atom(), text()) -> fs_api_return().
--spec api(atom(), text(), text()) -> fs_api_return().
--spec api(atom(), text(), text(), kz_timeout()) -> fs_api_return().
+-spec api(atom(), kz_term:text()) -> fs_api_return().
+-spec api(atom(), kz_term:text(), kz_term:text()) -> fs_api_return().
+-spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd) ->
     api(Node, Cmd, "").
 api(Node, Cmd, Args) ->
@@ -246,7 +246,7 @@ bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
         {'api', Result} -> Result
     end.
 
--spec bgapi(atom(), ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
+-spec bgapi(atom(), kz_term:ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
 bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
     Self = self(),
     _ = kz_util:spawn(
@@ -320,7 +320,7 @@ sendevent(Node, EventName, Headers) ->
 sendevent_custom(Node, SubClassName, Headers) ->
     gen_server:cast({'mod_kazoo', Node}, {'sendevent', 'CUSTOM',  SubClassName, Headers}).
 
--spec sendmsg(atom(), ne_binary(), list()) -> fs_api_return().
+-spec sendmsg(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
 sendmsg(Node, UUID, Headers) ->
     gen_server:call({'mod_kazoo', Node}, {'sendmsg', UUID, Headers}).
 

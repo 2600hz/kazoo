@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -33,7 +33,7 @@ init() ->
 
 %%% Triggerables
 
--spec cleanup_soft_deletes(ne_binary()) -> ok.
+-spec cleanup_soft_deletes(kz_term:ne_binary()) -> ok.
 cleanup_soft_deletes(?KZ_ACCOUNTS_DB) ->
     do_cleanup(?KZ_ACCOUNTS_DB);
 cleanup_soft_deletes(Account) ->
@@ -50,12 +50,12 @@ cleanup_soft_deletes(Account) ->
 %%% Internal functions
 %%%===================================================================
 
--spec cleanup_account_soft_deletes(ne_binary()) -> 'ok'.
+-spec cleanup_account_soft_deletes(kz_term:ne_binary()) -> 'ok'.
 cleanup_account_soft_deletes(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     do_cleanup(AccountDb).
 
--spec do_cleanup(ne_binary()) -> 'ok'.
+-spec do_cleanup(kz_term:ne_binary()) -> 'ok'.
 do_cleanup(Db) ->
     View = <<"maintenance/soft_deletes">>,
     ViewOptions = [{'limit', kz_datamgr:max_bulk_insert()}],

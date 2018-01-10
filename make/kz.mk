@@ -60,7 +60,7 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: $(SOURCES)
 	@mkdir -p ebin/
-	@ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
 	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 app_src:
@@ -78,7 +78,7 @@ test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)
 	@mkdir -p test/
 	@mkdir -p ebin/
-	@ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(TEST_PA) -o ebin/ $?
+	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(TEST_PA) -o ebin/ $?
 	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > ebin/$(PROJECT).app
 
@@ -103,7 +103,9 @@ COVERDATA=$(PROJECT).coverdata
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
-eunit: compile-test
+eunit: compile-test eunit-run
+
+eunit-run:
 	@mkdir -p $(COVER_REPORT_DIR)
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
 
@@ -119,8 +121,10 @@ $(ROOT)/make/cover.mk: $(ROOT)/make/core.mk
 $(ROOT)/make/core.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/core/core.mk' -O $(ROOT)/make/core.mk
 
-proper: ERLC_OPTS += -DPROPER
-proper: compile-test eunit
+proper: compile-proper eunit-run
+
+compile-proper: ERLC_OPTS += -DPROPER
+compile-proper: compile-test
 
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):

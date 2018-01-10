@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Helpers for manipulating the #cb_context{} record
 %%% @end
@@ -170,24 +170,24 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
     set_req_json(Context, NewReqJObj).
 
 %% Accessors
--spec account_id(context()) -> api_ne_binary().
--spec account_name(context()) -> api_ne_binary().
--spec account_db(context()) -> api_ne_binary().
--spec user_id(context()) -> api_ne_binary().
--spec device_id(context()) -> api_ne_binary().
--spec reseller_id(context()) -> api_ne_binary().
--spec account_modb(context()) -> api_ne_binary().
--spec account_modb(context(), kz_now() | kz_timeout()) -> api_ne_binary().
--spec account_modb(context(), kz_year(), kz_month()) -> api_ne_binary().
--spec account_realm(context()) -> api_ne_binary().
--spec account_doc(context()) -> api_object().
--spec profile_id(context()) -> api_ne_binary().
+-spec account_id(context()) -> kz_term:api_ne_binary().
+-spec account_name(context()) -> kz_term:api_ne_binary().
+-spec account_db(context()) -> kz_term:api_ne_binary().
+-spec user_id(context()) -> kz_term:api_ne_binary().
+-spec device_id(context()) -> kz_term:api_ne_binary().
+-spec reseller_id(context()) -> kz_term:api_ne_binary().
+-spec account_modb(context()) -> kz_term:api_ne_binary().
+-spec account_modb(context(), kz_time:now() | timeout()) -> kz_term:api_ne_binary().
+-spec account_modb(context(), kz_time:year(), kz_time:month()) -> kz_term:api_ne_binary().
+-spec account_realm(context()) -> kz_term:api_ne_binary().
+-spec account_doc(context()) -> kz_term:api_object().
+-spec profile_id(context()) -> kz_term:api_ne_binary().
 -spec is_authenticated(context()) -> boolean().
 -spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'oauth' | 'unknown'.
--spec auth_token(context()) -> api_ne_binary().
--spec auth_doc(context()) -> api_object().
--spec auth_account_id(context()) -> api_ne_binary().
--spec auth_user_id(context()) -> api_ne_binary().
+-spec auth_token(context()) -> kz_term:api_ne_binary().
+-spec auth_doc(context()) -> kz_term:api_object().
+-spec auth_account_id(context()) -> kz_term:api_ne_binary().
+-spec auth_user_id(context()) -> kz_term:api_ne_binary().
 -spec req_verb(context()) -> http_method().
 -spec req_data(context()) -> kz_json:json_term().
 -spec req_files(context()) -> req_files().
@@ -195,21 +195,21 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec req_headers(context()) -> cowboy:http_headers().
 -spec req_header(context(), binary()) -> iodata() | 'undefined'.
 -spec query_string(context()) -> kz_json:object().
--spec req_param(context(), ne_binary()) -> kz_json:api_json_term().
--spec req_param(context(), ne_binary(), Default) -> kz_json:json_term() | Default.
--spec client_ip(context()) -> api_ne_binary().
--spec req_id(context()) -> ne_binary().
--spec auth_account_doc(context()) -> api_object().
--spec doc(context()) -> api_object() | kz_json:objects().
--spec load_merge_bypass(context()) -> api_object().
--spec start(context()) -> kz_now().
+-spec req_param(context(), kz_term:ne_binary()) -> kz_json:api_json_term().
+-spec req_param(context(), kz_term:ne_binary(), Default) -> kz_json:json_term() | Default.
+-spec client_ip(context()) -> kz_term:api_ne_binary().
+-spec req_id(context()) -> kz_term:ne_binary().
+-spec auth_account_doc(context()) -> kz_term:api_object().
+-spec doc(context()) -> kz_term:api_object() | kz_json:objects().
+-spec load_merge_bypass(context()) -> kz_term:api_object().
+-spec start(context()) -> kz_time:now().
 -spec resp_file(context()) -> binary().
 -spec resp_data(context()) -> resp_data().
 -spec resp_status(context()) -> crossbar_status().
--spec resp_expires(context()) -> kz_datetime().
+-spec resp_expires(context()) -> kz_time:datetime().
 -spec resp_headers(context()) -> cowboy:http_headers().
--spec api_version(context()) -> ne_binary().
--spec resp_etag(context()) -> 'automatic' | string() | api_binary().
+-spec api_version(context()) -> kz_term:ne_binary().
+-spec resp_etag(context()) -> 'automatic' | string() | kz_term:api_binary().
 -spec resp_envelope(context()) -> kz_json:object().
 -spec allow_methods(context()) -> http_methods().
 -spec allowed_methods(context()) -> http_methods().
@@ -217,11 +217,11 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec req_json(context()) -> kz_json:object().
 -spec content_types_accepted(context()) -> crossbar_content_handlers().
 -spec content_types_provided(context()) -> crossbar_content_handlers().
--spec languages_provided(context()) -> ne_binaries().
--spec encodings_provided(context()) -> ne_binaries().
+-spec languages_provided(context()) -> kz_term:ne_binaries().
+-spec encodings_provided(context()) -> kz_term:ne_binaries().
 -spec validation_errors(context()) -> kz_json:object().
--spec resp_error_code(context()) -> api_integer().
--spec resp_error_msg(context()) -> api_ne_binary().
+-spec resp_error_code(context()) -> kz_term:api_integer().
+-spec resp_error_msg(context()) -> kz_term:api_ne_binary().
 
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
@@ -262,7 +262,7 @@ is_authenticated(#cb_context{}) -> 'true'.
 %% Returns true if the request contains a system admin module.
 %% @end
 %%--------------------------------------------------------------------
--spec is_superduper_admin(api_ne_binary() | context()) -> boolean().
+-spec is_superduper_admin(kz_term:api_ne_binary() | context()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
     lager:debug("checking for superduper admin: ~s", [AccountId]),
@@ -346,7 +346,7 @@ pretty_print(#cb_context{pretty_print = PrettyPrint}) -> PrettyPrint.
 path_token(Token) ->
     kz_util:uri_decode(Token).
 
--spec path_tokens(context()) -> ne_binaries().
+-spec path_tokens(context()) -> kz_term:ne_binaries().
 path_tokens(#cb_context{raw_path=Path}) ->
     [path_token(kz_util:uri_decode(Token))
      || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])
@@ -372,11 +372,11 @@ should_paginate(#cb_context{should_paginate=Should}) -> Should.
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
--spec pagination_page_size(context()) -> api_pos_integer().
+-spec pagination_page_size(context()) -> kz_term:api_pos_integer().
 pagination_page_size(Context) ->
     pagination_page_size(Context, api_version(Context)).
 
--spec pagination_page_size(context(), ne_binary()) -> api_pos_integer().
+-spec pagination_page_size(context(), kz_term:ne_binary()) -> kz_term:api_pos_integer().
 pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
 pagination_page_size(Context, _Version) ->
     case req_value(Context, <<"page_size">>) of
@@ -420,57 +420,57 @@ setters_fold({F, V}, C) -> F(C, V);
 setters_fold({F, K, V}, C) -> F(C, K, V);
 setters_fold(F, C) when is_function(F, 1) -> F(C).
 
--spec set_account_id(context(), ne_binary()) -> context().
--spec set_account_db(context(), ne_binary()) -> context().
--spec set_user_id(context(), ne_binary()) -> context().
--spec set_device_id(context(), ne_binary()) -> context().
--spec set_auth_token(context(), ne_binary()) -> context().
+-spec set_account_id(context(), kz_term:ne_binary()) -> context().
+-spec set_account_db(context(), kz_term:ne_binary()) -> context().
+-spec set_user_id(context(), kz_term:ne_binary()) -> context().
+-spec set_device_id(context(), kz_term:ne_binary()) -> context().
+-spec set_auth_token(context(), kz_term:ne_binary()) -> context().
 -spec set_auth_doc(context(), kz_json:object()) -> context().
--spec set_auth_account_id(context(), ne_binary()) -> context().
+-spec set_auth_account_id(context(), kz_term:ne_binary()) -> context().
 -spec set_req_verb(context(), http_method()) -> context().
 -spec set_req_data(context(), kz_json:json_term()) -> context().
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().
 -spec set_req_headers(context(), cowboy:http_headers()) -> context().
--spec set_req_header(context(), ne_binary(), iodata()) -> context().
+-spec set_req_header(context(), kz_term:ne_binary(), iodata()) -> context().
 -spec set_query_string(context(), kz_json:object()) -> context().
--spec set_req_id(context(), ne_binary()) -> context().
+-spec set_req_id(context(), kz_term:ne_binary()) -> context().
 -spec set_doc(context(), kz_json:api_json_term() | kz_json:objects()) -> context().
--spec set_load_merge_bypass(context(), api_ne_binary()) -> context().
--spec set_start(context(), kz_now()) -> context().
--spec set_resp_file(context(), api_binary()) -> context().
+-spec set_load_merge_bypass(context(), kz_term:api_ne_binary()) -> context().
+-spec set_start(context(), kz_time:now()) -> context().
+-spec set_resp_file(context(), kz_term:api_binary()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
--spec set_resp_expires(context(), kz_datetime()) -> context().
--spec set_api_version(context(), ne_binary() | pos_integer()) -> context().
--spec set_resp_etag(context(), api_binary()) -> context().
+-spec set_resp_expires(context(), kz_time:datetime()) -> context().
+-spec set_api_version(context(), kz_term:ne_binary() | pos_integer()) -> context().
+-spec set_resp_etag(context(), kz_term:api_binary()) -> context().
 -spec set_resp_envelope(context(), kz_json:object()) -> context().
 -spec set_resp_headers(context(), cowboy:http_headers()) -> context().
 -spec add_resp_headers(context(), cowboy:http_headers()) -> context().
--spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
--spec add_resp_header(context(), ne_binary(), ne_binary()) -> context().
+-spec set_resp_header(context(), kz_term:ne_binary(), kz_term:ne_binary()) -> context().
+-spec add_resp_header(context(), kz_term:ne_binary(), kz_term:ne_binary()) -> context().
 -spec set_allow_methods(context(), http_methods()) -> context().
 -spec set_allowed_methods(context(), http_methods()) -> context().
 -spec set_method(context(), http_method()) -> context().
 -spec set_req_json(context(), kz_json:object()) -> context().
 -spec set_content_types_accepted(context(), crossbar_content_handlers()) -> context().
 -spec set_content_types_provided(context(), crossbar_content_handlers()) -> context().
--spec set_languages_provided(context(), ne_binaries()) -> context().
--spec set_encodings_provided(context(), ne_binaries()) -> context().
+-spec set_languages_provided(context(), kz_term:ne_binaries()) -> context().
+-spec set_encodings_provided(context(), kz_term:ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
--spec set_resp_error_msg(context(), api_ne_binary()) -> context().
+-spec set_resp_error_msg(context(), kz_term:api_ne_binary()) -> context().
 -spec set_magic_pathed(context(), boolean()) -> context().
 -spec set_should_paginate(context(), boolean()) -> context().
 -spec set_validation_errors(context(), kz_json:object()) -> context().
 -spec set_port(context(), integer()) -> context().
 -spec set_raw_path(context(), binary()) -> context().
 -spec set_raw_qs(context(), binary()) -> context().
--spec set_client_ip(context(), ne_binary()) -> context().
--spec set_profile_id(context(), ne_binary()) -> context().
--spec set_account_name(context(), api_ne_binary()) -> context().
--spec set_reseller_id(context(), api_ne_binary()) -> context().
--spec set_account_modb(context(), kz_year() | ne_binary(), kz_month() | ne_binary()) -> context().
--spec set_account_modb(context(), ne_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) -> context().
+-spec set_client_ip(context(), kz_term:ne_binary()) -> context().
+-spec set_profile_id(context(), kz_term:ne_binary()) -> context().
+-spec set_account_name(context(), kz_term:api_ne_binary()) -> context().
+-spec set_reseller_id(context(), kz_term:api_ne_binary()) -> context().
+-spec set_account_modb(context(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> context().
+-spec set_account_modb(context(), kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> context().
 -spec set_auth_token_type(context(), 'x-auth-token' | 'basic' | 'oauth' | 'unknown') -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) ->
@@ -594,7 +594,7 @@ set_pretty_print(#cb_context{}=Context, Value) ->
 set_raw_path(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_path = Value}.
 
--spec raw_qs(context()) -> api_ne_binary().
+-spec raw_qs(context()) -> kz_term:api_ne_binary().
 raw_qs(#cb_context{raw_qs=QS}) ->
     QS.
 set_raw_qs(#cb_context{}=Context, Value) ->
@@ -630,7 +630,7 @@ add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|
 add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
     add_content_types_provided(Context,[NewCTA]).
 
--spec add_attachment_content_type(context(), ne_binary(), ne_binary()) -> context().
+-spec add_attachment_content_type(context(), kz_term:ne_binary(), kz_term:ne_binary()) -> context().
 add_attachment_content_type(#cb_context{}=Context, DocId, AttachmentId) ->
     Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION_ANY),
     case resp_status(Context1) of
@@ -639,7 +639,7 @@ add_attachment_content_type(#cb_context{}=Context, DocId, AttachmentId) ->
         _Status -> Context1
     end.
 
--spec maybe_add_content_type_provided(context(), ne_binary()) -> context().
+-spec maybe_add_content_type_provided(context(), kz_term:ne_binary()) -> context().
 maybe_add_content_type_provided(Context, AttachmentId) ->
     case kz_doc:attachment_content_type(doc(Context), AttachmentId) of
         'undefined' -> Context;
@@ -721,7 +721,7 @@ import_errors(#cb_context{}=Context) ->
     end.
 
 -spec response(context()) -> {ok, kz_json:object()} |
-                             {error, {pos_integer(), ne_binary(), kz_json:object()}}.
+                             {error, {pos_integer(), kz_term:ne_binary(), kz_json:object()}}.
 response(#cb_context{resp_status='success'
                     ,resp_data=JObj
                     }) ->
@@ -750,13 +750,13 @@ response(#cb_context{resp_error_code=Code
 %%--------------------------------------------------------------------
 -type after_fun() :: fun((context()) -> context()) | 'undefined'.
 
--spec validate_request_data(ne_binary() | api_object(), context()) ->
+-spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context()) ->
                                    context().
--spec validate_request_data(ne_binary() | api_object(), context(), after_fun()) ->
+-spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun()) ->
                                    context().
--spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun()) ->
+-spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun(), after_fun()) ->
                                    context().
--spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun(), boolean()) ->
+-spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun(), after_fun(), boolean()) ->
                                    context().
 validate_request_data(SchemaId, Context) ->
     validate_request_data(SchemaId, Context, 'undefined').
@@ -868,7 +868,7 @@ passed(Context) ->
         Id -> set_doc(Context1, kz_doc:set_id(doc(Context1), Id))
     end.
 
--spec find_schema(ne_binary()) -> api_object().
+-spec find_schema(kz_term:ne_binary()) -> kz_term:api_object().
 find_schema(Schema=?NE_BINARY) ->
     case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;
@@ -884,8 +884,8 @@ find_schema(Schema=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
--spec add_system_error(atom() | binary(), ne_binary() | kz_json:object(), context()) -> context().
--spec add_system_error(integer(), atom() | ne_binary(), ne_binary() | kz_json:object(), context()) -> context().
+-spec add_system_error(atom() | binary(), kz_term:ne_binary() | kz_json:object(), context()) -> context().
+-spec add_system_error(integer(), atom() | kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
@@ -979,7 +979,7 @@ add_system_error(Code, Error, JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | kz_json:object(), context()) -> context().
+-spec build_system_error(integer(), atom() | kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) -> context().
 build_system_error(Code, Error, <<_/binary>> = Message, Context) ->
     build_system_error(Code, Error, kz_json:from_list([{<<"message">>, Message}]), Context);
 build_system_error(Code, Error, JObj, Context) ->
@@ -997,7 +997,7 @@ build_system_error(Code, Error, JObj, Context) ->
 %% Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
--spec add_validation_error(kz_json:path(), ne_binary(), ne_binary() | kz_json:object(), context()) ->
+-spec add_validation_error(kz_json:path(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
                                   context().
 add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->
     add_validation_error([Property], Code, Message, Context);
@@ -1022,7 +1022,7 @@ add_validation_error(Property, Code, Message, Context) ->
                       ,resp_error_msg=maybe_update_error_message(resp_error_msg(Context), ErrorMessage)
                       }.
 
--spec maybe_update_error_message(ne_binary(), ne_binary()) -> ne_binary().
+-spec maybe_update_error_message(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_update_error_message(_Old, <<"init failed">>) -> <<"validation error">>;
 maybe_update_error_message(Msg, Msg) -> Msg;
 maybe_update_error_message(_Old, New) -> New.
@@ -1094,7 +1094,7 @@ system_properties(Context) ->
                         ]
       ]).
 
--spec system_error(context(), ne_binary()) -> context().
+-spec system_error(context(), kz_term:ne_binary()) -> context().
 system_error(Context, Error) ->
     Notify = props:filter_undefined(
                [{<<"Subject">>, <<"System Alert: API Error - ", Error/binary>>}

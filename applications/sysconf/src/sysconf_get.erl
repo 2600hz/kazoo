@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handle requests to read configuration data
 %%% Support nested keys a la kz_json, with a #
@@ -17,7 +17,7 @@
 -spec init() -> 'ok'.
 init() -> 'ok'.
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     'true' = kapi_sysconf:get_req_v(ApiJObj),
     kz_util:put_callid(ApiJObj),
@@ -43,14 +43,14 @@ handle_req(ApiJObj, _Props) ->
            ],
     kapi_sysconf:publish_get_resp(RespQ, Resp).
 
--spec format_key(ne_binary() | ne_binaries()) -> ne_binary().
+-spec format_key(kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_term:ne_binary().
 format_key(Key)
   when is_binary(Key) -> Key;
 format_key(Keys)
   when is_list(Keys) ->
     kz_binary:join(Keys, <<".">>).
 
--spec get_value(ne_binary(), ne_binary() | ne_binaries(), any(), ne_binary()) -> any().
+-spec get_value(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries(), any(), kz_term:ne_binary()) -> any().
 get_value(_, <<"acls">>, _, Node) ->
     sysconf_acls:build(Node);
 get_value(_, <<"gateways">>, _, Node) ->

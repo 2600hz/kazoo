@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -39,16 +39,16 @@
 -type workers() :: [worker()].
 -record(state, {max_worker = ?MAX_PROCESS :: integer()
                ,workers = [] :: workers()
-               ,account_ids = [] :: ne_binaries()
+               ,account_ids = [] :: kz_term:ne_binaries()
                ,retention_passed = 'false' :: boolean()
                ,total_account = 0 :: non_neg_integer()
                ,total_processed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
                ,total_failed = 0 :: non_neg_integer()
                ,total_account_failed = 0 :: non_neg_integer()
-               ,failed_accounts = [] :: ne_binaries()
-               ,calling_process = 'undefined' :: api_pid()
-               ,timer_ref :: api_reference()
+               ,failed_accounts = [] :: kz_term:ne_binaries()
+               ,calling_process = 'undefined' :: kz_term:api_pid()
+               ,timer_ref :: kz_term:api_reference()
                ,account_queue :: queue:queue() | 'undefined'
                }).
 -type state() :: #state{}.
@@ -88,11 +88,11 @@
 %% Starts the server
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> startlink_ret().
+-spec start() -> kz_types:startlink_ret().
 start() ->
     gen_server:start(?SERVER, [], []).
 
--spec start(pid()) -> startlink_ret().
+-spec start(pid()) -> kz_types:startlink_ret().
 start(Pid) ->
     gen_server:start(?SERVER, [Pid], []).
 
@@ -101,17 +101,17 @@ stop(Server) ->
     gen_server:call(Server, 'stop').
 
 %% Workers API
--spec account_is_done(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
+-spec account_is_done(pid(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> 'ok'.
 account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth) ->
     gen_server:call(Server, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, 'normal'}}).
 
--spec account_maybe_failed(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds(), any()) -> 'ok'.
+-spec account_maybe_failed(pid(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), any()) -> 'ok'.
 account_maybe_failed(_Server, _AccountId, _FirstOfMonth, _LastOfMonth, 'timeout') ->
     ?SUP_LOG_WARNING("ignoring 'timeout' error for worker of account ~s", [_AccountId]);
 account_maybe_failed(Server, AccountId, FirstOfMonth, LastOfMonth, Reason) ->
     gen_server:call(Server, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}).
 
--spec update_stats(pid(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec update_stats(pid(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 update_stats(Server, AccountId, Stats) ->
     gen_server:call(Server, {'update_stats', {AccountId, Stats}}).
 
@@ -154,7 +154,7 @@ init(Pid) ->
 %% Handling call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'account_is_done', MaybeDone}, _From, #state{account_queue = Queue
                                                          ,total_account_failed = TotalAccFailed
                                                          ,failed_accounts = FailedAccounts
@@ -199,7 +199,7 @@ handle_call(_Request, _From, State) ->
 %% Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -210,7 +210,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
                                            ,workers = []
                                            ,retention_passed = 'true'
@@ -332,12 +332,12 @@ maybe_spawn_worker(#state{workers = Workers
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec make_callid(reference(), ne_binary()) -> ne_binary().
+-spec make_callid(reference(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_callid(Ref, AccountId) ->
     Id = ref_to_id(Ref),
     <<"task_", AccountId/binary, "_", Id/binary>>.
 
--spec ref_to_id(reference()) -> ne_binary().
+-spec ref_to_id(reference()) -> kz_term:ne_binary().
 ref_to_id(Ref) ->
     Bin = list_to_binary(io_lib:format("~p", [Ref])),
     Start = <<"#Ref<">>,
@@ -397,14 +397,14 @@ get_next(_Queue, _WorkerNextAccount, _NextAccount, _Q, _IsRetPassed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec populate_queue(ne_binaries()) -> queue:queue().
+-spec populate_queue(kz_term:ne_binaries()) -> queue:queue().
 populate_queue(AccountIds) ->
     Props = [{AccountId, 'undefined', 'undefined'}
              || AccountId <- AccountIds
             ],
     queue:from_list(Props).
 
--spec populate_queue(ne_binaries(), gregorian_seconds()) -> queue:queue().
+-spec populate_queue(kz_term:ne_binaries(), kz_time:gregorian_seconds()) -> queue:queue().
 populate_queue(AccountIds, LastOfMonth) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(LastOfMonth),
     FirstOfMonth = calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}),
@@ -433,7 +433,7 @@ remove_account_from_queue(Key, Queue) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec previous_month_timestamp(gregorian_seconds()) -> gregorian_seconds().
+-spec previous_month_timestamp(kz_time:gregorian_seconds()) -> kz_time:gregorian_seconds().
 previous_month_timestamp(TimeStamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(TimeStamp),
     {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(Year, Month),

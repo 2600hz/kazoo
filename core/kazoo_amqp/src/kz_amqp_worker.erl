@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% Worker with a dedicated targeted queue.
 %%%
@@ -64,8 +64,8 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--type publish_fun() :: fun((api_terms()) -> any()).
--type validate_fun() :: fun((api_terms()) -> boolean()).
+-type publish_fun() :: fun((kz_term:api_terms()) -> any()).
+-type validate_fun() :: fun((kz_term:api_terms()) -> boolean()).
 
 -type collect_until_acc() :: any().
 
@@ -74,7 +74,7 @@
                              collect_until_acc_fun() |
                              {collect_until_acc_fun(), collect_until_acc()}.
 
--type whapp() :: atom() | ne_binary().
+-type whapp() :: atom() | kz_term:ne_binary().
 
 -type collect_until() :: collect_until_fun() |
                          whapp() |
@@ -82,7 +82,7 @@
                          {whapp(), validate_fun(), boolean()} |  %% {Whapp, VFun, IncludeFederated}
                          {whapp(), boolean(), boolean()} |       %% {Whapp, IncludeFederated, IsShared}
                          {whapp(), validate_fun(), boolean(), boolean()}. %% {Whapp, VFun, IncludeFederated, IsShared}
--type timeout_or_until() :: kz_timeout() | collect_until().
+-type timeout_or_until() :: timeout() | collect_until().
 
 %% case {IsFederated, IsShared} of
 %%  {'true', 'true'} -> Get from {0,1} whapp instance per zone
@@ -97,24 +97,24 @@
              ,cast_return/0
              ]).
 
--record(state, {current_msg_id :: api_binary()
-               ,client_pid :: api_pid()
-               ,client_ref :: api_reference()
-               ,client_from :: api_pid_ref() | 'relay'
+-record(state, {current_msg_id :: kz_term:api_binary()
+               ,client_pid :: kz_term:api_pid()
+               ,client_ref :: kz_term:api_reference()
+               ,client_from :: kz_term:api_pid_ref() | 'relay'
                ,client_vfun :: validate_fun() | 'undefined'
                ,client_cfun = collect_until_timeout() :: collect_until_fun()
-               ,responses :: api_objects()
-               ,neg_resp :: api_object()
+               ,responses :: kz_term:api_objects()
+               ,neg_resp :: kz_term:api_object()
                ,neg_resp_count = 0 :: non_neg_integer()
                ,neg_resp_threshold = 1 :: pos_integer()
-               ,req_timeout_ref :: api_reference()
-               ,req_start_time :: kz_now() | 'undefined'
-               ,callid :: api_binary()
-               ,pool_ref :: server_ref()
-               ,defer_response :: api_object()
-               ,queue :: api_binary()
+               ,req_timeout_ref :: kz_term:api_reference()
+               ,req_start_time :: kz_time:now() | 'undefined'
+               ,callid :: kz_term:api_binary()
+               ,pool_ref :: kz_types:server_ref()
+               ,defer_response :: kz_term:api_object()
+               ,queue :: kz_term:api_binary()
                ,confirms = 'false' :: boolean()
-               ,flow = 'undefined' :: api_boolean()
+               ,flow = 'undefined' :: kz_term:api_boolean()
                ,acc = 'undefined' :: any()
                ,defer = 'undefined' :: 'undefined' | {any(), {pid(), reference()}}
                }).
@@ -127,7 +127,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(kz_proplist()) -> startlink_ret().
+-spec start_link(kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Args) ->
     gen_listener:start_link(?SERVER, [{'bindings', maybe_bindings(Args)}
                                      ,{'responders', ?RESPONDERS}
@@ -139,35 +139,35 @@ start_link(Args) ->
                                       ++ maybe_server_confirms(Args)
                                      ], [Args]).
 
--spec maybe_broker(kz_proplist()) -> kz_proplist().
+-spec maybe_broker(kz_term:proplist()) -> kz_term:proplist().
 maybe_broker(Args) ->
     case props:get_value('amqp_broker', Args) of
         'undefined' -> [];
         Broker -> [{'broker', Broker}]
     end.
 
--spec maybe_queuename(kz_proplist()) -> binary().
+-spec maybe_queuename(kz_term:proplist()) -> binary().
 maybe_queuename(Args) ->
     case props:get_value('amqp_queuename_start', Args) of
         'undefined' -> ?QUEUE_NAME;
         QueueStart -> <<(kz_term:to_binary(QueueStart))/binary, "_", (kz_binary:rand_hex(4))/binary>>
     end.
 
--spec maybe_bindings(kz_proplist()) -> kz_proplist().
+-spec maybe_bindings(kz_term:proplist()) -> kz_term:proplist().
 maybe_bindings(Args) ->
     case props:get_value('amqp_bindings', Args) of
         'undefined' -> ?BINDINGS;
         Bindings -> Bindings
     end.
 
--spec maybe_exchanges(kz_proplist()) -> kz_proplist().
+-spec maybe_exchanges(kz_term:proplist()) -> kz_term:proplist().
 maybe_exchanges(Args) ->
     case props:get_value('amqp_exchanges', Args) of
         'undefined' -> [];
         Exchanges -> [{'declare_exchanges', Exchanges}]
     end.
 
--spec maybe_server_confirms(kz_proplist()) -> kz_proplist().
+-spec maybe_server_confirms(kz_term:proplist()) -> kz_term:proplist().
 maybe_server_confirms(Args) ->
     case props:get_value('amqp_server_confirms', Args) of
         'undefined' -> [];
@@ -181,11 +181,11 @@ default_timeout() -> 2 * ?MILLISECONDS_IN_SECOND.
                           {'returned', kz_json:object(), kz_json:object()} |
                           {'timeout', kz_json:objects()} |
                           {'error', any()}.
--spec call(api_terms(), publish_fun(), validate_fun()) ->
+-spec call(kz_term:api_terms(), publish_fun(), validate_fun()) ->
                   request_return().
--spec call(api_terms(), publish_fun(), validate_fun(), kz_timeout()) ->
+-spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout()) ->
                   request_return().
--spec call(api_terms(), publish_fun(), validate_fun(), kz_timeout(), pid()  | atom()) ->
+-spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), pid()  | atom()) ->
                   request_return().
 call(Req, PubFun, VFun) ->
     call(Req, PubFun, VFun, default_timeout()).
@@ -258,11 +258,11 @@ checkin_worker(Worker) ->
 checkin_worker(Worker, Pool) ->
     poolboy:checkin(Pool, Worker).
 
--spec call_custom(api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
+-spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
                          request_return().
--spec call_custom(api_terms(), publish_fun(), validate_fun(), kz_timeout(), gen_listener:binding()) ->
+-spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding()) ->
                          request_return().
--spec call_custom(api_terms(), publish_fun(), validate_fun(), kz_timeout(), gen_listener:binding(), pid()) ->
+-spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding(), pid()) ->
                          request_return().
 call_custom(Req, PubFun, VFun, Bind) ->
     call_custom(Req, PubFun, VFun, default_timeout(), Bind).
@@ -288,13 +288,13 @@ call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
         checkin_worker(Worker)
     end.
 
--spec call_collect(api_terms(), publish_fun()) ->
+-spec call_collect(kz_term:api_terms(), publish_fun()) ->
                           request_return().
--spec call_collect(api_terms(), publish_fun(), timeout_or_until()) ->
+-spec call_collect(kz_term:api_terms(), publish_fun(), timeout_or_until()) ->
                           request_return().
--spec call_collect(api_terms(), publish_fun(), collect_until(), kz_timeout()) ->
+-spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout()) ->
                           request_return().
--spec call_collect(api_terms(), publish_fun(), collect_until(), kz_timeout(), pid()) ->
+-spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout(), pid()) ->
                           request_return().
 call_collect(Req, PubFun) ->
     call_collect(Req, PubFun, default_timeout()).
@@ -393,8 +393,8 @@ call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
                        {'error', any()} |
                        {'returned', kz_json:object(), kz_json:object()}.
 
--spec cast(api_terms(), publish_fun()) -> cast_return().
--spec cast(api_terms(), publish_fun(), pid() | atom()) -> cast_return().
+-spec cast(kz_term:api_terms(), publish_fun()) -> cast_return().
+-spec cast(kz_term:api_terms(), publish_fun(), pid() | atom()) -> cast_return().
 cast(Req, PubFun) ->
     cast(Req, PubFun, worker_pool()).
 
@@ -426,16 +426,16 @@ stop_relay(Worker, RelayPid) ->
 -spec collect_until_timeout() -> collect_until_fun().
 collect_until_timeout() -> fun kz_term:always_false/1.
 
--spec collect_from_whapp(text()) -> 'undefined' | collect_until_fun().
+-spec collect_from_whapp(kz_term:text()) -> 'undefined' | collect_until_fun().
 collect_from_whapp(Whapp) ->
     collect_from_whapp(Whapp, 'false').
 
--spec collect_from_whapp(text(), boolean()) ->
+-spec collect_from_whapp(kz_term:text(), boolean()) ->
                                 'undefined' | collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated) ->
     collect_from_whapp(Whapp, IncludeFederated, 'false').
 
--spec collect_from_whapp(text(), boolean(), boolean()) ->
+-spec collect_from_whapp(kz_term:text(), boolean(), boolean()) ->
                                 'undefined' | collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated, IsShared) ->
     Count = case {IncludeFederated, IsShared} of
@@ -451,15 +451,15 @@ count_fun(0) -> 'undefined';
 count_fun(Count) ->
     fun(Responses) -> length(Responses) >= Count end.
 
--spec collect_from_whapp_or_validate(text(), validate_fun()) -> collect_until_fun().
+-spec collect_from_whapp_or_validate(kz_term:text(), validate_fun()) -> collect_until_fun().
 collect_from_whapp_or_validate(Whapp, VFun) ->
     collect_from_whapp_or_validate(Whapp, VFun, 'false').
 
--spec collect_from_whapp_or_validate(text(),validate_fun(), boolean()) -> collect_until_fun().
+-spec collect_from_whapp_or_validate(kz_term:text(),validate_fun(), boolean()) -> collect_until_fun().
 collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated) ->
     collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated, 'false').
 
--spec collect_from_whapp_or_validate(text(),validate_fun(), boolean(), boolean()) -> collect_until_fun().
+-spec collect_from_whapp_or_validate(kz_term:text(),validate_fun(), boolean(), boolean()) -> collect_until_fun().
 collect_from_whapp_or_validate(Whapp, VFun, 'true', 'true') ->
     Count = kz_nodes:whapp_zone_count(Whapp),
     lager:debug("attempting to collect ~p responses from ~s or the first valid", [Count, Whapp]),
@@ -482,13 +482,13 @@ collect_or_validate_fun(VFun, Count) ->
                 orelse VFun(Response)
     end.
 
--spec handle_resp(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
                      ,{'event', kz_api:msg_id(JObj), JObj}
                      ).
 
--spec send_request(ne_binary(), ne_binary(), publish_fun(), kz_proplist()) ->
+-spec send_request(kz_term:ne_binary(), kz_term:ne_binary(), publish_fun(), kz_term:proplist()) ->
                           'ok' | {'error', any()}.
 send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
@@ -509,11 +509,11 @@ send_request(CallId, Self, PublishFun, ReqProps)
             {'error', E}
     end.
 
--spec request_filter(kz_proplist()) -> kz_proplist().
+-spec request_filter(kz_term:proplist()) -> kz_term:proplist().
 request_filter(Props) ->
     props:filter(fun request_proplist_filter/1, Props).
 
--spec request_proplist_filter({kz_proplist_key(), kz_proplist_value()}) -> boolean().
+-spec request_proplist_filter({kz_term:proplist_key(), kz_term:proplist_value()}) -> boolean().
 request_proplist_filter({<<"Server-ID">>, Value}) ->
     not kz_term:is_empty(Value);
 request_proplist_filter({_, 'undefined'}) -> 'false';
@@ -558,7 +558,7 @@ init([Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(Call, From, #state{queue='undefined'}=State)
   when is_tuple(Call) ->
     kz_util:put_callid(element(2, Call)),
@@ -689,7 +689,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer='undefined'}=State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer={Call,From}}=State) ->
@@ -861,7 +861,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}
            ,#state{current_msg_id = _MsgId
                   ,client_ref = ClientRef
@@ -936,7 +936,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{client_from='relay'
                          ,client_pid=Pid
                          }) ->
@@ -1005,23 +1005,23 @@ reset(#state{req_timeout_ref = ReqRef
                ,responses = 'undefined'
                }.
 
--spec fudge_timeout(kz_timeout()) -> kz_timeout().
+-spec fudge_timeout(timeout()) -> timeout().
 fudge_timeout('infinity'=T) -> T;
 fudge_timeout(T) -> T + ?FUDGE.
 
--spec start_req_timeout(kz_timeout()) -> reference().
+-spec start_req_timeout(timeout()) -> reference().
 start_req_timeout('infinity') -> make_ref();
 start_req_timeout(Timeout) ->
     erlang:start_timer(Timeout, self(), 'req_timeout').
 
--spec maybe_convert_to_proplist(kz_proplist() | kz_json:object()) -> kz_proplist().
+-spec maybe_convert_to_proplist(kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 maybe_convert_to_proplist(Req) ->
     case kz_json:is_json_object(Req) of
         'true' -> maybe_set_msg_id(kz_json:to_proplist(Req));
         'false' -> maybe_set_msg_id(Req)
     end.
 
--spec maybe_set_msg_id(kz_proplist()) -> kz_proplist().
+-spec maybe_set_msg_id(kz_term:proplist()) -> kz_term:proplist().
 maybe_set_msg_id(Props) ->
     case kz_api:msg_id(Props) of
         'undefined' ->
@@ -1030,7 +1030,7 @@ maybe_set_msg_id(Props) ->
             Props
     end.
 
--spec publish_api(fun(), api_terms()) -> 'ok' | {'error', any()}.
+-spec publish_api(fun(), kz_term:api_terms()) -> 'ok' | {'error', any()}.
 publish_api(PublishFun, ReqProps) ->
     try PublishFun(ReqProps) of
         'ok' -> 'ok';

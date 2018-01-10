@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Find reserved numbers in an account's reseller account.
@@ -48,8 +48,8 @@ is_local() -> 'true'.
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
-                                      {error, any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
+                                              {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
@@ -59,7 +59,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% assigned to an account's reseller account.
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Prefix, Quantity, Options) ->
@@ -71,7 +71,7 @@ find_numbers(Prefix, Quantity, Options) ->
             do_find_numbers(Prefix, Quantity, Offset, knm_carriers:reseller_id(Options), QID)
     end.
 
--spec do_find_numbers(ne_binary(), pos_integer(), non_neg_integer(), ne_binary(), ne_binary()) ->
+-spec do_find_numbers(kz_term:ne_binary(), pos_integer(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                              {'ok', knm_number:knm_numbers()} |
                              {'error', any()}.
 do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId, QID)
@@ -97,7 +97,7 @@ do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId, QID)
 do_find_numbers(_, _, _, _, _) ->
     {'error', 'not_available'}.
 
--spec find_more(ne_binary(), pos_integer(), non_neg_integer(), ne_binary(), non_neg_integer(), ne_binary(), knm_number:knm_numbers()) ->
+-spec find_more(kz_term:ne_binary(), pos_integer(), non_neg_integer(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binary(), knm_number:knm_numbers()) ->
                        {'ok', knm_number:knm_numbers()}.
 find_more(Prefix, Quantity, Offset, AccountId, NotEnough, QID, Numbers)
   when NotEnough < Quantity ->

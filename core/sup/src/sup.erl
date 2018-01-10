@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% A really simple escript to accept RPC request and push them
 %%% into a running kazoo virtual machine.
@@ -86,7 +86,7 @@ main(CommandLineArgs, Loops) ->
 
 %%% Internals
 
--spec in_kazoo(atom(), module(), atom(), binaries()) -> no_return().
+-spec in_kazoo(atom(), module(), atom(), kz_term:binaries()) -> no_return().
 in_kazoo(SUPName, M, F, As) ->
     kz_util:put_callid(SUPName),
     lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
@@ -108,7 +108,7 @@ print_result(Result, 'false') ->
         'error':'badarg' -> stdout("~p", [String])
     end.
 
--spec get_target(kz_proplist(), boolean()) -> atom().
+-spec get_target(kz_term:proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
     Node = props:get_value('node', Options),
     Host = get_host(),
@@ -124,7 +124,7 @@ get_target(Options, Verbose) ->
             print_ping_failed(Target, Cookie)
     end.
 
--spec get_cookie(kz_proplist(), atom()) -> atom().
+-spec get_cookie(kz_term:proplist(), atom()) -> atom().
 get_cookie(Options, Node) ->
     CookieStr =
         case { props:get_value('cookie', Options, "")
@@ -174,7 +174,7 @@ print_invalid_cli_args() ->
     stderr("Invalid command or wrong number of arguments, please try again", []),
     halt(1).
 
--spec parse_args(string()) -> {'ok', kz_proplist(), list()}.
+-spec parse_args(string()) -> {'ok', kz_term:proplist(), list()}.
 parse_args(CommandLineArgs) ->
     case getopt:parse(option_spec_list(), CommandLineArgs) of
         {'ok', {Options, Args}} when is_list(Options) ->

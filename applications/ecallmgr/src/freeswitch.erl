@@ -76,9 +76,9 @@ bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
 fetch_reply(Node, FetchID, Section, Reply, Timeout) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Timeout).
 
--spec api(atom(), text()) -> fs_api_return().
--spec api(atom(), text(), text()) -> fs_api_return().
--spec api(atom(), text(), text(), kz_timeout()) -> fs_api_return().
+-spec api(atom(), kz_term:text()) -> fs_api_return().
+-spec api(atom(), kz_term:text(), kz_term:text()) -> fs_api_return().
+-spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd) -> ?FS_MODULE:api(Node, Cmd).
 api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
 api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).
@@ -96,7 +96,7 @@ bgapi(Node, Cmd, Args, Fun) -> ?FS_MODULE:bgapi(Node, Cmd, Args, Fun).
 -spec bgapi(atom(), atom(), string() | binary(), fun(), list()) -> fs_api_return().
 bgapi(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi(Node, Cmd, Args, Fun, CallBackParams).
 
--spec bgapi(atom(), ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
+-spec bgapi(atom(), kz_term:ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
 bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) -> ?FS_MODULE:bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun).
 
 -type event() :: atom() | kz_json:object().
@@ -114,7 +114,7 @@ sendevent(Node, EventName, Headers) -> ?FS_MODULE:sendevent(Node, EventName, Hea
 -spec sendevent_custom(atom(), atom(), list()) -> 'ok'.
 sendevent_custom(Node, SubClassName, Headers) -> ?FS_MODULE:sendevent_custom(Node, SubClassName, Headers).
 
--spec sendmsg(atom(), ne_binary(), list()) -> fs_api_return().
+-spec sendmsg(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
 sendmsg(Node, UUID, Headers) -> ?FS_MODULE:sendmsg(Node, UUID, Headers).
 
 -spec config(atom()) -> 'ok'.

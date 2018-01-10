@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz Inc
+%%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -41,7 +41,7 @@ bindings(_Context, #{account_id := AccountId
         ,listeners => Listeners
         }.
 
--spec skel_bind_options(ne_binary(), ne_binary()) -> kz_proplist().
+-spec skel_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 skel_bind_options(AccountId, MyId) ->
     [{'restrict_to', ['skel.updates']}
     ,{'account_id', AccountId}

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Devices module
 %%%
@@ -62,7 +62,7 @@ maybe_originate(Context, ?HTTP_GET) ->
 maybe_originate(Context, ?HTTP_POST) ->
     Context.
 
--spec load_endpoint(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
+-spec load_endpoint(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 load_endpoint(Context, EndpointId, EndpointType) ->
     crossbar_doc:load(EndpointId, Context, ?TYPE_CHECK_OPTION(EndpointType)).
 

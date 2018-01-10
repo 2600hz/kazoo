@@ -21,9 +21,9 @@
                                                                 ]}
                                    ]).
 
--record(fax_storage, {id :: api_binary()
-                     ,attachment_id :: api_binary()
-                     ,db :: api_binary()
+-record(fax_storage, {id :: kz_term:api_binary()
+                     ,attachment_id :: kz_term:api_binary()
+                     ,db :: kz_term:api_binary()
                      }).
 -type fax_storage() :: #fax_storage{}.
 

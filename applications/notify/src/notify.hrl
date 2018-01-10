@@ -12,7 +12,7 @@
 -define(APP_NAME, <<"notify">>).
 -define(APP, 'notify').
 
--type respond_to() :: {api_binary(), ne_binary()}.
+-type respond_to() :: {kz_term:api_binary(), kz_term:ne_binary()}.
 -type send_email_return() :: 'ok' | {'error', any()} | ['ok' | {'error', any()}].
 
 -define(NOTIFY_HRL, true).
