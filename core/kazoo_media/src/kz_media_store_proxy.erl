@@ -22,19 +22,35 @@
 -type state() :: #state{}.
 
 -type body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()}.
--type validate_request_ret() :: {'ok', media_store_path()} | {'error', integer()}.
+-type validate_request_ret() :: {'ok', media_store_path()} | {'error', reply_code()}.
 -type handler_return() :: {'ok', cowboy_req:req(), 'ok' | state()}.
+
+-type reply_code() :: 200 | 400 | 404 | 500.
 
 -spec init(cowboy_req:req(), kz_term:proplist()) -> handler_return().
 init(Req, _Opts) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
-    case authenticate(Req) of
-        'true' ->
-            validate_request(cowboy_req:path_info(Req), Req);
-        'false' ->
-            lager:debug("request did not provide valid credentials"),
-            {'ok', unauthorized(Req), 'ok'}
-    end.
+    check_authn(Req, authenticate(Req)).
+
+-spec check_authn(cowboy_req:req(), boolean()) -> handler_return().
+check_authn(Req, 'true') ->
+    check_validation(Req, cowboy_req:path_info(Req));
+check_authn(Req, 'false') ->
+    lager:debug("request did not provide valid credentials"),
+    {'ok', unauthorized(Req), 'ok'}.
+
+-spec check_validation(cowboy_req:req(), kz_term:ne_binaries()) -> handler_return().
+check_validation(Req, [EncodedUrl, _Filename]) ->
+    check_url(Req, decode_url(EncodedUrl));
+check_validation(Req, _Else) ->
+    lager:debug("unexpected path: ~p", [_Else]),
+    reply_error(404, Req).
+
+-spec check_url(cowboy_req:req(), 'error' | media_store_path()) -> handler_return().
+check_url(Req, 'error') ->
+    reply_error(404, Req);
+check_url(Req, Path) ->
+    validate_path_request(Req, Path).
 
 -spec authenticate(cowboy_req:req()) -> boolean().
 authenticate(Req) ->
@@ -154,24 +170,15 @@ handle_close(Req, State, 'ok') ->
 handle_close(Req, _State, {'error', Reason}) ->
     failure(Reason, Req).
 
--spec validate_request(list(), cowboy_req:req()) -> handler_return().
-validate_request([EncodedUrl, _Filename], Req) ->
-    case decode_url(EncodedUrl) of
-        'error' -> reply_error(404, Req);
-        Path -> validate_path_request(Path, Req)
-    end;
-validate_request(_Else, Req) ->
-    lager:debug("unexpected path: ~p", [_Else]),
-    reply_error(404, Req).
-
--spec validate_path_request(media_store_path(), cowboy_req:req()) -> handler_return().
-validate_path_request(Path, Req) ->
-    case is_appropriate_content_type(Path, Req) of
-        {'ok', NewPath} -> setup_context(NewPath, Req);
+-spec validate_path_request(cowboy_req:req(), media_store_path()) -> handler_return().
+validate_path_request(Req, Path) ->
+    case is_appropriate_content_type(Req, Path) of
+        {'ok', NewPath} -> setup_context(Req, NewPath);
         {'error', Code} -> reply_error(Code, Req)
     end.
 
-setup_context(#media_store_path{att=Attachment}=Path, Req) ->
+-spec setup_context(cowboy_req:req(), media_store_path()) -> handler_return().
+setup_context(Req, #media_store_path{att=Attachment}=Path) ->
     Filename = list_to_binary(["/tmp/", kz_binary:rand_hex(16), "_", Attachment]),
     case file:open(Filename, ['write', 'exclusive']) of
         {'ok', IODevice} ->
@@ -198,8 +205,8 @@ decode_url(Url) ->
         _:_ -> 'error'
     end.
 
--spec is_appropriate_content_type(media_store_path(), cowboy_req:req()) -> validate_request_ret().
-is_appropriate_content_type(Path, Req) ->
+-spec is_appropriate_content_type(cowboy_req:req(), media_store_path()) -> validate_request_ret().
+is_appropriate_content_type(Req, Path) ->
     case cowboy_req:header(<<"content-type">>, Req) of
         <<"audio/", _/binary>> = CT ->
             lager:debug("found content-type via header: ~s", [CT]),
@@ -297,12 +304,11 @@ failure(Reason, Req0) ->
     Req1 = cowboy_req:set_resp_body(Body, Req0),
     cowboy_req:reply(500, Req1).
 
--spec reply_error(integer(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
-reply_error(Code, Req0) ->
-    Req1 = cowboy_req:reply(Code, Req0),
-    {'ok', Req1, 'ok'}.
+-spec reply_error(reply_code(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
+reply_error(Code, Req) ->
+    {'ok', cowboy_req:reply(Code, Req), 'ok'}.
 
--spec reply_error(integer(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
+-spec reply_error(reply_code(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
 reply_error(Code, State, Req0) ->
     Req1 = cowboy_req:reply(Code, Req0),
     {'ok', Req1, State}.
