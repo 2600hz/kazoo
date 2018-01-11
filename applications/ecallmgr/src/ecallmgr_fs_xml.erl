@@ -10,7 +10,7 @@
 
 -export([build_leg_vars/1, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
         ,route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
-        ,directory_resp_endpoint_xml/1
+        ,directory_resp_endpoint_xml/1, directory_resp_endpoint_xml/2
         ,acl_xml/1, not_found/0, empty_response/0
         ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
         ,sip_channel_xml/1
@@ -64,17 +64,33 @@ sip_channel_xml(Props) ->
     SectionEl = section_el(<<"channels">>, ChannelEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
--spec directory_resp_endpoint_xml(kz_term:api_terms()) -> {'ok', iolist()}.
-directory_resp_endpoint_xml(JObj) ->
-    DomainName = kz_json:get_value(<<"Domain-Name">>, JObj),
-    UserId = kz_json:get_value(<<"User-ID">>, JObj),
-    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
+directory_resp_domain(Endpoint, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Requested-Domain-Name">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value(<<"Domain-Name">>, Endpoint);
+        Domain -> Domain
+    end.
+
+directory_resp_user_id(Endpoint, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Requested-User-ID">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value(<<"User-ID">>, Endpoint);
+        Domain -> Domain
+    end.
+
+-spec directory_resp_endpoint_xml(kz_json:object()) -> {'ok', iolist()}.
+directory_resp_endpoint_xml(Endpoint) ->
+    directory_resp_endpoint_xml(Endpoint, Endpoint).
+
+-spec directory_resp_endpoint_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_endpoint_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    UserId = directory_resp_user_id(Endpoint, JObj),
+    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(Endpoint)],
     VariablesEl = variables_el(VariableEls),
     Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
-                kz_json:get_value(<<"Expires">>,JObj)
+                kz_json:get_value(<<"Expires">>,Endpoint)
                ),
-    Number = kz_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
-    ProfileEls = [variable_el(K, V) || {K, V} <- get_profile_params(JObj)],
+    Number = kz_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],Endpoint),
+    ProfileEls = [variable_el(K, V) || {K, V} <- get_profile_params(Endpoint)],
     ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
     UserEl = user_el(user_el_props(Number, UserId, Expires), [VariablesEl, ProfileVariablesEl]),
     DomainEl = domain_el(DomainName, UserEl),

@@ -48,39 +48,37 @@ maybe_sip_auth_response(Node, Id, JObj) ->
 
 -spec maybe_kamailio_association(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_handlecall_ret().
 maybe_kamailio_association(Node, Id, JObj) ->
+    lager:debug_unsafe("KAMAILIO ~s", [kz_json:encode(JObj, ['pretty'])]),
     kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj), JObj).
 
 -spec kamailio_association(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> fs_handlecall_ret().
 kamailio_association(Node, Id, 'undefined', _AccountId, _) -> directory_not_found(Node, Id);
 kamailio_association(Node, Id, _EndpointId, 'undefined', _) -> directory_not_found(Node, Id);
-kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(AccountId), _) ->
+kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
     case kz_endpoint:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
-            {'ok', Xml} = ecallmgr_fs_xml:directory_resp_endpoint_xml(Endpoint),
+            {'ok', Xml} = ecallmgr_fs_xml:directory_resp_endpoint_xml(Endpoint, JObj),
             lager:debug("sending directory XML to ~w: ~s", [Node, Xml]),
             freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml));
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
             directory_not_found(Node, Id)
+    end;   
+kamailio_association(Node, Id, UserId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
+    case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
+        'undefined' -> lookup_user(Node, Id, <<"password">>, JObj);
+        EndpointId -> kamailio_association(Node, Id, EndpointId, AccountId, kz_json:set_value(<<"Requested-User-ID">>, UserId, JObj))
     end;
-kamailio_association(Node, Id, _EndpointId, _Realm, JObj) ->
-    lookup_user(Node, Id, <<"password">>, JObj).
-    
-%% kamailio_association(Node, Id, _EndpointId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
-%%     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
-%%         'undefined' -> lookup_user(Node, Id, <<"password">>, JObj);
-%%         EndpointId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
-%%     end;
-%% kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
-%%     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Account-ID">>, JObj) of
-%%         'undefined' ->
-%%             case kapps_util:get_account_by_realm(Realm) of
-%%                 {'ok', Account} -> kamailio_association(Node, Id, EndpointId, kz_util:format_account_id(Account), JObj);
-%%                 _ -> lookup_user(Node, Id, <<"password">>, JObj)
-%%             end;
-%%         AccountId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
-%%     end.
+kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
+    case kz_json:get_ne_binary_value(<<"X-ecallmgr_Account-ID">>, JObj) of
+        'undefined' ->
+            case kapps_util:get_account_by_realm(Realm) of
+                {'ok', Account} -> kamailio_association(Node, Id, EndpointId, kz_util:format_account_id(Account), kz_json:set_value(<<"Requested-Domain-Name">>, Realm, JObj));
+                _ -> lookup_user(Node, Id, <<"password">>, JObj)
+            end;
+        AccountId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
+    end.
 
 -spec directory_not_found(atom(), kz_term:ne_binary()) -> fs_handlecall_ret().
 directory_not_found(Node, FetchId) ->
