@@ -219,4 +219,6 @@ default_return_type("kz_json:" ++ Type, "'undefined'") ->
 default_return_type("any()", _) -> "any()";
 default_return_type("kz_term:" ++ Type, "'undefined'") ->
     ["kz_term:api_" | Type];
+default_return_type(Type, "'undefined'") ->
+    ["kz_term:api_" | Type];
 default_return_type(Type, _Default) -> Type.
