@@ -53,7 +53,7 @@ maybe_kamailio_association(Node, Id, JObj) ->
 -spec kamailio_association(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> fs_handlecall_ret().
 kamailio_association(Node, Id, 'undefined', _AccountId) -> directory_not_found(Node, Id);
 kamailio_association(Node, Id, _EndpointId, 'undefined') -> directory_not_found(Node, Id);
-kamailio_association(Node, Id, EndpointId, AccountId) ->
+kamailio_association(Node, Id, EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     case kz_endpoint:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
@@ -62,6 +62,13 @@ kamailio_association(Node, Id, EndpointId, AccountId) ->
             freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml));
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
+            directory_not_found(Node, Id)
+    end;
+kamailio_association(Node, Id, EndpointId, Realm) ->
+    case kapps_util:get_account_by_realm(Realm) of
+        {'ok', AccountId} -> kamailio_association(Node, Id, EndpointId, AccountId);
+        _ ->
+            lager:debug("account by realm '~s' not found", [Realm]),
             directory_not_found(Node, Id)
     end.
 
