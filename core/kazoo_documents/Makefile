@@ -2,7 +2,7 @@ ROOT = ../..
 PROJECT = kazoo_documents
 
 TEST_EBINS = $(ROOT)/applications/crossbar/ebin
-SRC_FILES := $(wildcard src/*.erl.src)
+SRC_FILES := $(sort $(wildcard src/*.erl.src))
 ERL_FILES := $(SRC_FILES:.erl.src=.erl)
 
 SOURCES = src/*.erl $(ERL_FILES)
