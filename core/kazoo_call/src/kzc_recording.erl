@@ -503,14 +503,16 @@ store_recording_meta(#state{call=Call
         {'error', _}= Err -> Err
     end.
 
--spec maybe_store_recording_meta(state()) -> {'ok', kz_json:object()} |
+-spec maybe_store_recording_meta(state()) -> {'ok', kzd_call_recording:doc()} |
                                              {'error', any()}.
 maybe_store_recording_meta(#state{doc_db=Db
                                  ,doc_id=DocId
                                  }=State) ->
     case kz_datamgr:open_cache_doc(Db, {kzd_call_recording:type(), DocId}) of
-        {'ok', Rev} -> Rev;
-        _ -> store_recording_meta(State)
+        {'ok', Doc} -> {'ok', Doc};
+        {'error', _E} ->
+            lager:debug("failed to find recording meta ~s in ~s: ~p", [DocId, Db, _E]),
+            store_recording_meta(State)
     end.
 
 -spec get_media_name(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
