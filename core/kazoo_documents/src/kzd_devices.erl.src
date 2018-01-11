@@ -69,7 +69,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec call_forward(doc()) -> api_object().
+-spec call_forward(doc()) -> kz_term:api_object().
 -spec call_forward(doc(), Default) -> kz_json:object() | Default.
 call_forward(Doc) ->
     call_forward(Doc, 'undefined').
@@ -135,7 +135,7 @@ call_forward_keep_caller_id(Doc, Default) ->
 set_call_forward_keep_caller_id(Doc, CallForwardKeepCallerId) ->
     kz_json:set_value([<<"call_forward">>, <<"keep_caller_id">>], CallForwardKeepCallerId, Doc).
 
--spec call_forward_number(doc()) -> api_binary().
+-spec call_forward_number(doc()) -> kz_term:api_binary().
 -spec call_forward_number(doc(), Default) -> binary() | Default.
 call_forward_number(Doc) ->
     call_forward_number(Doc, 'undefined').
@@ -168,7 +168,7 @@ call_forward_substitute(Doc, Default) ->
 set_call_forward_substitute(Doc, CallForwardSubstitute) ->
     kz_json:set_value([<<"call_forward">>, <<"substitute">>], CallForwardSubstitute, Doc).
 
--spec call_recording(doc()) -> api_object().
+-spec call_recording(doc()) -> kz_term:api_object().
 -spec call_recording(doc(), Default) -> kz_json:object() | Default.
 call_recording(Doc) ->
     call_recording(Doc, 'undefined').
@@ -190,7 +190,7 @@ call_restriction(Doc, Default) ->
 set_call_restriction(Doc, CallRestriction) ->
     kz_json:set_value([<<"call_restriction">>], CallRestriction, Doc).
 
--spec call_waiting(doc()) -> api_object().
+-spec call_waiting(doc()) -> kz_term:api_object().
 -spec call_waiting(doc(), Default) -> kz_json:object() | Default.
 call_waiting(Doc) ->
     call_waiting(Doc, 'undefined').
@@ -201,7 +201,7 @@ call_waiting(Doc, Default) ->
 set_call_waiting(Doc, CallWaiting) ->
     kz_json:set_value([<<"call_waiting">>], CallWaiting, Doc).
 
--spec caller_id(doc()) -> api_object().
+-spec caller_id(doc()) -> kz_term:api_object().
 -spec caller_id(doc(), Default) -> kz_json:object() | Default.
 caller_id(Doc) ->
     caller_id(Doc, 'undefined').
@@ -223,7 +223,7 @@ contact_list(Doc, Default) ->
 set_contact_list(Doc, ContactList) ->
     kz_json:set_value([<<"contact_list">>], ContactList, Doc).
 
--spec contact_list_exclude(doc()) -> api_boolean().
+-spec contact_list_exclude(doc()) -> kz_term:api_boolean().
 -spec contact_list_exclude(doc(), Default) -> boolean() | Default.
 contact_list_exclude(Doc) ->
     contact_list_exclude(Doc, 'undefined').
@@ -234,7 +234,7 @@ contact_list_exclude(Doc, Default) ->
 set_contact_list_exclude(Doc, ContactListExclude) ->
     kz_json:set_value([<<"contact_list">>, <<"exclude">>], ContactListExclude, Doc).
 
--spec device_type(doc()) -> api_binary().
+-spec device_type(doc()) -> kz_term:api_binary().
 -spec device_type(doc(), Default) -> binary() | Default.
 device_type(Doc) ->
     device_type(Doc, 'undefined').
@@ -245,7 +245,7 @@ device_type(Doc, Default) ->
 set_device_type(Doc, DeviceType) ->
     kz_json:set_value([<<"device_type">>], DeviceType, Doc).
 
--spec dial_plan(doc()) -> api_object().
+-spec dial_plan(doc()) -> kz_term:api_object().
 -spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(Doc) ->
     dial_plan(Doc, 'undefined').
@@ -256,7 +256,7 @@ dial_plan(Doc, Default) ->
 set_dial_plan(Doc, DialPlan) ->
     kz_json:set_value([<<"dial_plan">>], DialPlan, Doc).
 
--spec do_not_disturb(doc()) -> api_object().
+-spec do_not_disturb(doc()) -> kz_term:api_object().
 -spec do_not_disturb(doc(), Default) -> kz_json:object() | Default.
 do_not_disturb(Doc) ->
     do_not_disturb(Doc, 'undefined').
@@ -267,7 +267,7 @@ do_not_disturb(Doc, Default) ->
 set_do_not_disturb(Doc, DoNotDisturb) ->
     kz_json:set_value([<<"do_not_disturb">>], DoNotDisturb, Doc).
 
--spec do_not_disturb_enabled(doc()) -> api_boolean().
+-spec do_not_disturb_enabled(doc()) -> kz_term:api_boolean().
 -spec do_not_disturb_enabled(doc(), Default) -> boolean() | Default.
 do_not_disturb_enabled(Doc) ->
     do_not_disturb_enabled(Doc, 'undefined').
@@ -300,7 +300,7 @@ exclude_from_queues(Doc, Default) ->
 set_exclude_from_queues(Doc, ExcludeFromQueues) ->
     kz_json:set_value([<<"exclude_from_queues">>], ExcludeFromQueues, Doc).
 
--spec formatters(doc()) -> api_object().
+-spec formatters(doc()) -> kz_term:api_object().
 -spec formatters(doc(), Default) -> kz_json:object() | Default.
 formatters(Doc) ->
     formatters(Doc, 'undefined').
@@ -311,7 +311,7 @@ formatters(Doc, Default) ->
 set_formatters(Doc, Formatters) ->
     kz_json:set_value([<<"formatters">>], Formatters, Doc).
 
--spec language(doc()) -> api_binary().
+-spec language(doc()) -> kz_term:api_binary().
 -spec language(doc(), Default) -> binary() | Default.
 language(Doc) ->
     language(Doc, 'undefined').
@@ -322,7 +322,7 @@ language(Doc, Default) ->
 set_language(Doc, Language) ->
     kz_json:set_value([<<"language">>], Language, Doc).
 
--spec media(doc()) -> api_object().
+-spec media(doc()) -> kz_term:api_object().
 -spec media(doc(), Default) -> kz_json:object() | Default.
 media(Doc) ->
     media(Doc, 'undefined').
@@ -333,7 +333,7 @@ media(Doc, Default) ->
 set_media(Doc, Media) ->
     kz_json:set_value([<<"media">>], Media, Doc).
 
--spec metaflows(doc()) -> api_object().
+-spec metaflows(doc()) -> kz_term:api_object().
 -spec metaflows(doc(), Default) -> kz_json:object() | Default.
 metaflows(Doc) ->
     metaflows(Doc, 'undefined').
@@ -355,7 +355,7 @@ music_on_hold(Doc, Default) ->
 set_music_on_hold(Doc, MusicOnHold) ->
     kz_json:set_value([<<"music_on_hold">>], MusicOnHold, Doc).
 
--spec music_on_hold_media_id(doc()) -> api_binary().
+-spec music_on_hold_media_id(doc()) -> kz_term:api_binary().
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
 music_on_hold_media_id(Doc) ->
     music_on_hold_media_id(Doc, 'undefined').
@@ -377,40 +377,40 @@ mwi_unsolicitated_updates(Doc, Default) ->
 set_mwi_unsolicitated_updates(Doc, MwiUnsolicitatedUpdates) ->
     kz_json:set_value([<<"mwi_unsolicitated_updates">>], MwiUnsolicitatedUpdates, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec outbound_flags(doc()) -> api_ne_binaries().
--spec outbound_flags(doc(), Default) -> ne_binaries() | Default.
+-spec outbound_flags(doc()) -> kz_term:api_ne_binaries().
+-spec outbound_flags(doc(), Default) -> kz_term:ne_binaries() | Default.
 outbound_flags(Doc) ->
     outbound_flags(Doc, 'undefined').
 outbound_flags(Doc, Default) ->
     kz_json:get_list_value([<<"outbound_flags">>], Doc, Default).
 
--spec set_outbound_flags(doc(), ne_binaries()) -> doc().
+-spec set_outbound_flags(doc(), kz_term:ne_binaries()) -> doc().
 set_outbound_flags(Doc, OutboundFlags) ->
     kz_json:set_value([<<"outbound_flags">>], OutboundFlags, Doc).
 
--spec owner_id(doc()) -> api_ne_binary().
--spec owner_id(doc(), Default) -> ne_binary() | Default.
+-spec owner_id(doc()) -> kz_term:api_ne_binary().
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(Doc) ->
     owner_id(Doc, 'undefined').
 owner_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"owner_id">>], Doc, Default).
 
--spec set_owner_id(doc(), ne_binary()) -> doc().
+-spec set_owner_id(doc(), kz_term:ne_binary()) -> doc().
 set_owner_id(Doc, OwnerId) ->
     kz_json:set_value([<<"owner_id">>], OwnerId, Doc).
 
--spec presence_id(doc()) -> api_binary().
+-spec presence_id(doc()) -> kz_term:api_binary().
 -spec presence_id(doc(), Default) -> binary() | Default.
 presence_id(Doc) ->
     presence_id(Doc, 'undefined').
@@ -421,7 +421,7 @@ presence_id(Doc, Default) ->
 set_presence_id(Doc, PresenceId) ->
     kz_json:set_value([<<"presence_id">>], PresenceId, Doc).
 
--spec provision(doc()) -> api_object().
+-spec provision(doc()) -> kz_term:api_object().
 -spec provision(doc(), Default) -> kz_json:object() | Default.
 provision(Doc) ->
     provision(Doc, 'undefined').
@@ -432,7 +432,7 @@ provision(Doc, Default) ->
 set_provision(Doc, Provision) ->
     kz_json:set_value([<<"provision">>], Provision, Doc).
 
--spec provision_combo_keys(doc()) -> api_object().
+-spec provision_combo_keys(doc()) -> kz_term:api_object().
 -spec provision_combo_keys(doc(), Default) -> kz_json:object() | Default.
 provision_combo_keys(Doc) ->
     provision_combo_keys(Doc, 'undefined').
@@ -443,7 +443,7 @@ provision_combo_keys(Doc, Default) ->
 set_provision_combo_keys(Doc, ProvisionComboKeys) ->
     kz_json:set_value([<<"provision">>, <<"combo_keys">>], ProvisionComboKeys, Doc).
 
--spec provision_endpoint_brand(doc()) -> api_binary().
+-spec provision_endpoint_brand(doc()) -> kz_term:api_binary().
 -spec provision_endpoint_brand(doc(), Default) -> binary() | Default.
 provision_endpoint_brand(Doc) ->
     provision_endpoint_brand(Doc, 'undefined').
@@ -454,7 +454,7 @@ provision_endpoint_brand(Doc, Default) ->
 set_provision_endpoint_brand(Doc, ProvisionEndpointBrand) ->
     kz_json:set_value([<<"provision">>, <<"endpoint_brand">>], ProvisionEndpointBrand, Doc).
 
--spec provision_endpoint_family(doc()) -> api_binary().
+-spec provision_endpoint_family(doc()) -> kz_term:api_binary().
 -spec provision_endpoint_family(doc(), Default) -> binary() | Default.
 provision_endpoint_family(Doc) ->
     provision_endpoint_family(Doc, 'undefined').
@@ -476,7 +476,7 @@ provision_endpoint_model(Doc, Default) ->
 set_provision_endpoint_model(Doc, ProvisionEndpointModel) ->
     kz_json:set_value([<<"provision">>, <<"endpoint_model">>], ProvisionEndpointModel, Doc).
 
--spec provision_feature_keys(doc()) -> api_object().
+-spec provision_feature_keys(doc()) -> kz_term:api_object().
 -spec provision_feature_keys(doc(), Default) -> kz_json:object() | Default.
 provision_feature_keys(Doc) ->
     provision_feature_keys(Doc, 'undefined').
@@ -509,7 +509,7 @@ ringtones(Doc, Default) ->
 set_ringtones(Doc, Ringtones) ->
     kz_json:set_value([<<"ringtones">>], Ringtones, Doc).
 
--spec ringtones_external(doc()) -> api_binary().
+-spec ringtones_external(doc()) -> kz_term:api_binary().
 -spec ringtones_external(doc(), Default) -> binary() | Default.
 ringtones_external(Doc) ->
     ringtones_external(Doc, 'undefined').
@@ -520,7 +520,7 @@ ringtones_external(Doc, Default) ->
 set_ringtones_external(Doc, RingtonesExternal) ->
     kz_json:set_value([<<"ringtones">>, <<"external">>], RingtonesExternal, Doc).
 
--spec ringtones_internal(doc()) -> api_binary().
+-spec ringtones_internal(doc()) -> kz_term:api_binary().
 -spec ringtones_internal(doc(), Default) -> binary() | Default.
 ringtones_internal(Doc) ->
     ringtones_internal(Doc, 'undefined').
@@ -542,7 +542,7 @@ sip(Doc, Default) ->
 set_sip(Doc, Sip) ->
     kz_json:set_value([<<"sip">>], Sip, Doc).
 
--spec sip_custom_sip_headers(doc()) -> api_object().
+-spec sip_custom_sip_headers(doc()) -> kz_term:api_object().
 -spec sip_custom_sip_headers(doc(), Default) -> kz_json:object() | Default.
 sip_custom_sip_headers(Doc) ->
     sip_custom_sip_headers(Doc, 'undefined').
@@ -564,7 +564,7 @@ sip_expire_seconds(Doc, Default) ->
 set_sip_expire_seconds(Doc, SipExpireSeconds) ->
     kz_json:set_value([<<"sip">>, <<"expire_seconds">>], SipExpireSeconds, Doc).
 
--spec sip_ignore_completed_elsewhere(doc()) -> api_boolean().
+-spec sip_ignore_completed_elsewhere(doc()) -> kz_term:api_boolean().
 -spec sip_ignore_completed_elsewhere(doc(), Default) -> boolean() | Default.
 sip_ignore_completed_elsewhere(Doc) ->
     sip_ignore_completed_elsewhere(Doc, 'undefined').
@@ -586,7 +586,7 @@ sip_invite_format(Doc, Default) ->
 set_sip_invite_format(Doc, SipInviteFormat) ->
     kz_json:set_value([<<"sip">>, <<"invite_format">>], SipInviteFormat, Doc).
 
--spec sip_ip(doc()) -> api_binary().
+-spec sip_ip(doc()) -> kz_term:api_binary().
 -spec sip_ip(doc(), Default) -> binary() | Default.
 sip_ip(Doc) ->
     sip_ip(Doc, 'undefined').
@@ -608,7 +608,7 @@ sip_method(Doc, Default) ->
 set_sip_method(Doc, SipMethod) ->
     kz_json:set_value([<<"sip">>, <<"method">>], SipMethod, Doc).
 
--spec sip_number(doc()) -> api_binary().
+-spec sip_number(doc()) -> kz_term:api_binary().
 -spec sip_number(doc(), Default) -> binary() | Default.
 sip_number(Doc) ->
     sip_number(Doc, 'undefined').
@@ -619,29 +619,29 @@ sip_number(Doc, Default) ->
 set_sip_number(Doc, SipNumber) ->
     kz_json:set_value([<<"sip">>, <<"number">>], SipNumber, Doc).
 
--spec sip_password(doc()) -> api_ne_binary().
--spec sip_password(doc(), Default) -> ne_binary() | Default.
+-spec sip_password(doc()) -> kz_term:api_ne_binary().
+-spec sip_password(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_password(Doc) ->
     sip_password(Doc, 'undefined').
 sip_password(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"sip">>, <<"password">>], Doc, Default).
 
--spec set_sip_password(doc(), ne_binary()) -> doc().
+-spec set_sip_password(doc(), kz_term:ne_binary()) -> doc().
 set_sip_password(Doc, SipPassword) ->
     kz_json:set_value([<<"sip">>, <<"password">>], SipPassword, Doc).
 
--spec sip_realm(doc()) -> api_ne_binary().
--spec sip_realm(doc(), Default) -> ne_binary() | Default.
+-spec sip_realm(doc()) -> kz_term:api_ne_binary().
+-spec sip_realm(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_realm(Doc) ->
     sip_realm(Doc, 'undefined').
 sip_realm(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"sip">>, <<"realm">>], Doc, Default).
 
--spec set_sip_realm(doc(), ne_binary()) -> doc().
+-spec set_sip_realm(doc(), kz_term:ne_binary()) -> doc().
 set_sip_realm(Doc, SipRealm) ->
     kz_json:set_value([<<"sip">>, <<"realm">>], SipRealm, Doc).
 
--spec sip_route(doc()) -> api_binary().
+-spec sip_route(doc()) -> kz_term:api_binary().
 -spec sip_route(doc(), Default) -> binary() | Default.
 sip_route(Doc) ->
     sip_route(Doc, 'undefined').
@@ -652,7 +652,7 @@ sip_route(Doc, Default) ->
 set_sip_route(Doc, SipRoute) ->
     kz_json:set_value([<<"sip">>, <<"route">>], SipRoute, Doc).
 
--spec sip_static_route(doc()) -> api_binary().
+-spec sip_static_route(doc()) -> kz_term:api_binary().
 -spec sip_static_route(doc(), Default) -> binary() | Default.
 sip_static_route(Doc) ->
     sip_static_route(Doc, 'undefined').
@@ -663,14 +663,14 @@ sip_static_route(Doc, Default) ->
 set_sip_static_route(Doc, SipStaticRoute) ->
     kz_json:set_value([<<"sip">>, <<"static_route">>], SipStaticRoute, Doc).
 
--spec sip_username(doc()) -> api_ne_binary().
--spec sip_username(doc(), Default) -> ne_binary() | Default.
+-spec sip_username(doc()) -> kz_term:api_ne_binary().
+-spec sip_username(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_username(Doc) ->
     sip_username(Doc, 'undefined').
 sip_username(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"sip">>, <<"username">>], Doc, Default).
 
--spec set_sip_username(doc(), ne_binary()) -> doc().
+-spec set_sip_username(doc(), kz_term:ne_binary()) -> doc().
 set_sip_username(Doc, SipUsername) ->
     kz_json:set_value([<<"sip">>, <<"username">>], SipUsername, Doc).
 
@@ -685,7 +685,7 @@ suppress_unregister_notifications(Doc, Default) ->
 set_suppress_unregister_notifications(Doc, SuppressUnregisterNotifications) ->
     kz_json:set_value([<<"suppress_unregister_notifications">>], SuppressUnregisterNotifications, Doc).
 
--spec timezone(doc()) -> api_binary().
+-spec timezone(doc()) -> kz_term:api_binary().
 -spec timezone(doc(), Default) -> binary() | Default.
 timezone(Doc) ->
     timezone(Doc, 'undefined').

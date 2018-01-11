@@ -13,7 +13,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec enabled(doc()) -> api_boolean().
+-spec enabled(doc()) -> kz_term:api_boolean().
 -spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc) ->
     enabled(Doc, 'undefined').

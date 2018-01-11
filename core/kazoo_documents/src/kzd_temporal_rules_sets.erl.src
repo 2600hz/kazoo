@@ -14,24 +14,24 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec temporal_rules(doc()) -> api_ne_binaries().
--spec temporal_rules(doc(), Default) -> ne_binaries() | Default.
+-spec temporal_rules(doc()) -> kz_term:api_ne_binaries().
+-spec temporal_rules(doc(), Default) -> kz_term:ne_binaries() | Default.
 temporal_rules(Doc) ->
     temporal_rules(Doc, 'undefined').
 temporal_rules(Doc, Default) ->
     kz_json:get_list_value([<<"temporal_rules">>], Doc, Default).
 
--spec set_temporal_rules(doc(), ne_binaries()) -> doc().
+-spec set_temporal_rules(doc(), kz_term:ne_binaries()) -> doc().
 set_temporal_rules(Doc, TemporalRules) ->
     kz_json:set_value([<<"temporal_rules">>], TemporalRules, Doc).

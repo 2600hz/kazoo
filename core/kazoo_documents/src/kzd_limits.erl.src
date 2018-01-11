@@ -30,7 +30,7 @@ allow_prepay(Doc, Default) ->
 set_allow_prepay(Doc, AllowPrepay) ->
     kz_json:set_value([<<"allow_prepay">>], AllowPrepay, Doc).
 
--spec burst_trunks(doc()) -> api_integer().
+-spec burst_trunks(doc()) -> kz_term:api_integer().
 -spec burst_trunks(doc(), Default) -> integer() | Default.
 burst_trunks(Doc) ->
     burst_trunks(Doc, 'undefined').
@@ -41,7 +41,7 @@ burst_trunks(Doc, Default) ->
 set_burst_trunks(Doc, BurstTrunks) ->
     kz_json:set_value([<<"burst_trunks">>], BurstTrunks, Doc).
 
--spec calls(doc()) -> api_integer().
+-spec calls(doc()) -> kz_term:api_integer().
 -spec calls(doc(), Default) -> integer() | Default.
 calls(Doc) ->
     calls(Doc, 'undefined').
@@ -52,7 +52,7 @@ calls(Doc, Default) ->
 set_calls(Doc, Calls) ->
     kz_json:set_value([<<"calls">>], Calls, Doc).
 
--spec inbound_trunks(doc()) -> api_integer().
+-spec inbound_trunks(doc()) -> kz_term:api_integer().
 -spec inbound_trunks(doc(), Default) -> integer() | Default.
 inbound_trunks(Doc) ->
     inbound_trunks(Doc, 'undefined').
@@ -63,7 +63,7 @@ inbound_trunks(Doc, Default) ->
 set_inbound_trunks(Doc, InboundTrunks) ->
     kz_json:set_value([<<"inbound_trunks">>], InboundTrunks, Doc).
 
--spec outbound_trunks(doc()) -> api_integer().
+-spec outbound_trunks(doc()) -> kz_term:api_integer().
 -spec outbound_trunks(doc(), Default) -> integer() | Default.
 outbound_trunks(Doc) ->
     outbound_trunks(Doc, 'undefined').
@@ -74,7 +74,7 @@ outbound_trunks(Doc, Default) ->
 set_outbound_trunks(Doc, OutboundTrunks) ->
     kz_json:set_value([<<"outbound_trunks">>], OutboundTrunks, Doc).
 
--spec resource_consuming_calls(doc()) -> api_integer().
+-spec resource_consuming_calls(doc()) -> kz_term:api_integer().
 -spec resource_consuming_calls(doc(), Default) -> integer() | Default.
 resource_consuming_calls(Doc) ->
     resource_consuming_calls(Doc, 'undefined').
@@ -85,7 +85,7 @@ resource_consuming_calls(Doc, Default) ->
 set_resource_consuming_calls(Doc, ResourceConsumingCalls) ->
     kz_json:set_value([<<"resource_consuming_calls">>], ResourceConsumingCalls, Doc).
 
--spec twoway_trunks(doc()) -> api_integer().
+-spec twoway_trunks(doc()) -> kz_term:api_integer().
 -spec twoway_trunks(doc(), Default) -> integer() | Default.
 twoway_trunks(Doc) ->
     twoway_trunks(Doc, 'undefined').

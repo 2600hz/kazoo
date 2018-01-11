@@ -15,14 +15,14 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
@@ -37,7 +37,7 @@ numbers(Doc, Default) ->
 set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
--spec should_block_anonymous(doc()) -> api_boolean().
+-spec should_block_anonymous(doc()) -> kz_term:api_boolean().
 -spec should_block_anonymous(doc(), Default) -> boolean() | Default.
 should_block_anonymous(Doc) ->
     should_block_anonymous(Doc, 'undefined').

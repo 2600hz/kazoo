@@ -18,7 +18,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec a(doc()) -> api_object().
+-spec a(doc()) -> kz_term:api_object().
 -spec a(doc(), Default) -> kz_json:object() | Default.
 a(Doc) ->
     a(Doc, 'undefined').
@@ -29,7 +29,7 @@ a(Doc, Default) ->
 set_a(Doc, A) ->
     kz_json:set_value([<<"A">>], A, Doc).
 
--spec cname(doc()) -> api_object().
+-spec cname(doc()) -> kz_term:api_object().
 -spec cname(doc(), Default) -> kz_json:object() | Default.
 cname(Doc) ->
     cname(Doc, 'undefined').
@@ -40,7 +40,7 @@ cname(Doc, Default) ->
 set_cname(Doc, Cname) ->
     kz_json:set_value([<<"CNAME">>], Cname, Doc).
 
--spec mx(doc()) -> api_object().
+-spec mx(doc()) -> kz_term:api_object().
 -spec mx(doc(), Default) -> kz_json:object() | Default.
 mx(Doc) ->
     mx(Doc, 'undefined').
@@ -51,7 +51,7 @@ mx(Doc, Default) ->
 set_mx(Doc, Mx) ->
     kz_json:set_value([<<"MX">>], Mx, Doc).
 
--spec naptr(doc()) -> api_object().
+-spec naptr(doc()) -> kz_term:api_object().
 -spec naptr(doc(), Default) -> kz_json:object() | Default.
 naptr(Doc) ->
     naptr(Doc, 'undefined').
@@ -62,7 +62,7 @@ naptr(Doc, Default) ->
 set_naptr(Doc, Naptr) ->
     kz_json:set_value([<<"NAPTR">>], Naptr, Doc).
 
--spec srv(doc()) -> api_object().
+-spec srv(doc()) -> kz_term:api_object().
 -spec srv(doc(), Default) -> kz_json:object() | Default.
 srv(Doc) ->
     srv(Doc, 'undefined').
@@ -73,7 +73,7 @@ srv(Doc, Default) ->
 set_srv(Doc, Srv) ->
     kz_json:set_value([<<"SRV">>], Srv, Doc).
 
--spec txt(doc()) -> api_object().
+-spec txt(doc()) -> kz_term:api_object().
 -spec txt(doc(), Default) -> kz_json:object() | Default.
 txt(Doc) ->
     txt(Doc, 'undefined').

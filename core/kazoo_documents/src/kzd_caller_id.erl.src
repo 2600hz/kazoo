@@ -21,7 +21,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec emergency(doc()) -> api_object().
+-spec emergency(doc()) -> kz_term:api_object().
 -spec emergency(doc(), Default) -> kz_json:object() | Default.
 emergency(Doc) ->
     emergency(Doc, 'undefined').
@@ -32,7 +32,7 @@ emergency(Doc, Default) ->
 set_emergency(Doc, Emergency) ->
     kz_json:set_value([<<"emergency">>], Emergency, Doc).
 
--spec emergency_name(doc()) -> api_binary().
+-spec emergency_name(doc()) -> kz_term:api_binary().
 -spec emergency_name(doc(), Default) -> binary() | Default.
 emergency_name(Doc) ->
     emergency_name(Doc, 'undefined').
@@ -43,7 +43,7 @@ emergency_name(Doc, Default) ->
 set_emergency_name(Doc, EmergencyName) ->
     kz_json:set_value([<<"emergency">>, <<"name">>], EmergencyName, Doc).
 
--spec emergency_number(doc()) -> api_binary().
+-spec emergency_number(doc()) -> kz_term:api_binary().
 -spec emergency_number(doc(), Default) -> binary() | Default.
 emergency_number(Doc) ->
     emergency_number(Doc, 'undefined').
@@ -54,7 +54,7 @@ emergency_number(Doc, Default) ->
 set_emergency_number(Doc, EmergencyNumber) ->
     kz_json:set_value([<<"emergency">>, <<"number">>], EmergencyNumber, Doc).
 
--spec external(doc()) -> api_object().
+-spec external(doc()) -> kz_term:api_object().
 -spec external(doc(), Default) -> kz_json:object() | Default.
 external(Doc) ->
     external(Doc, 'undefined').
@@ -65,7 +65,7 @@ external(Doc, Default) ->
 set_external(Doc, External) ->
     kz_json:set_value([<<"external">>], External, Doc).
 
--spec external_name(doc()) -> api_binary().
+-spec external_name(doc()) -> kz_term:api_binary().
 -spec external_name(doc(), Default) -> binary() | Default.
 external_name(Doc) ->
     external_name(Doc, 'undefined').
@@ -76,7 +76,7 @@ external_name(Doc, Default) ->
 set_external_name(Doc, ExternalName) ->
     kz_json:set_value([<<"external">>, <<"name">>], ExternalName, Doc).
 
--spec external_number(doc()) -> api_binary().
+-spec external_number(doc()) -> kz_term:api_binary().
 -spec external_number(doc(), Default) -> binary() | Default.
 external_number(Doc) ->
     external_number(Doc, 'undefined').
@@ -87,7 +87,7 @@ external_number(Doc, Default) ->
 set_external_number(Doc, ExternalNumber) ->
     kz_json:set_value([<<"external">>, <<"number">>], ExternalNumber, Doc).
 
--spec internal(doc()) -> api_object().
+-spec internal(doc()) -> kz_term:api_object().
 -spec internal(doc(), Default) -> kz_json:object() | Default.
 internal(Doc) ->
     internal(Doc, 'undefined').
@@ -98,7 +98,7 @@ internal(Doc, Default) ->
 set_internal(Doc, Internal) ->
     kz_json:set_value([<<"internal">>], Internal, Doc).
 
--spec internal_name(doc()) -> api_binary().
+-spec internal_name(doc()) -> kz_term:api_binary().
 -spec internal_name(doc(), Default) -> binary() | Default.
 internal_name(Doc) ->
     internal_name(Doc, 'undefined').
@@ -109,7 +109,7 @@ internal_name(Doc, Default) ->
 set_internal_name(Doc, InternalName) ->
     kz_json:set_value([<<"internal">>, <<"name">>], InternalName, Doc).
 
--spec internal_number(doc()) -> api_binary().
+-spec internal_number(doc()) -> kz_term:api_binary().
 -spec internal_number(doc(), Default) -> binary() | Default.
 internal_number(Doc) ->
     internal_number(Doc, 'undefined').

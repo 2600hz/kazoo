@@ -21,7 +21,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec cycle(doc()) -> kz_term:api_binary().
+-spec cycle(doc()) -> binary().
 -spec cycle(doc(), Default) -> binary() | Default.
 cycle(Doc) ->
     cycle(Doc, 'undefined').
@@ -54,7 +54,7 @@ interval(Doc, Default) ->
 set_interval(Doc, Interval) ->
     kz_json:set_value([<<"interval">>], Interval, Doc).
 
--spec month(doc()) -> kz_term:api_integer().
+-spec month(doc()) -> integer().
 -spec month(doc(), Default) -> integer() | Default.
 month(Doc) ->
     month(Doc, 'undefined').
@@ -76,7 +76,7 @@ name(Doc, Default) ->
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec ordinal(doc()) -> kz_term:api_binary().
+-spec ordinal(doc()) -> binary().
 -spec ordinal(doc(), Default) -> binary() | Default.
 ordinal(Doc) ->
     ordinal(Doc, 'undefined').
@@ -98,7 +98,7 @@ start_date(Doc, Default) ->
 set_start_date(Doc, StartDate) ->
     kz_json:set_value([<<"start_date">>], StartDate, Doc).
 
--spec time_window_start(doc()) -> kz_term:api_integer().
+-spec time_window_start(doc()) -> integer().
 -spec time_window_start(doc(), Default) -> integer() | Default.
 time_window_start(Doc) ->
     time_window_start(Doc, 'undefined').

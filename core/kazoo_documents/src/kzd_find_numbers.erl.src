@@ -15,25 +15,25 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec country(doc()) -> ne_binary().
--spec country(doc(), Default) -> ne_binary() | Default.
+-spec country(doc()) -> kz_term:ne_binary().
+-spec country(doc(), Default) -> kz_term:ne_binary() | Default.
 country(Doc) ->
     country(Doc, <<"US">>).
 country(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"country">>], Doc, Default).
 
--spec set_country(doc(), ne_binary()) -> doc().
+-spec set_country(doc(), kz_term:ne_binary()) -> doc().
 set_country(Doc, Country) ->
     kz_json:set_value([<<"country">>], Country, Doc).
 
--spec prefix(doc()) -> api_ne_binary().
--spec prefix(doc(), Default) -> ne_binary() | Default.
+-spec prefix(doc()) -> kz_term:api_ne_binary().
+-spec prefix(doc(), Default) -> kz_term:ne_binary() | Default.
 prefix(Doc) ->
     prefix(Doc, 'undefined').
 prefix(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"prefix">>], Doc, Default).
 
--spec set_prefix(doc(), ne_binary()) -> doc().
+-spec set_prefix(doc(), kz_term:ne_binary()) -> doc().
 set_prefix(Doc, Prefix) ->
     kz_json:set_value([<<"prefix">>], Prefix, Doc).
 

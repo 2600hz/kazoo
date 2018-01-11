@@ -21,7 +21,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec cycle(doc()) -> api_binary().
+-spec cycle(doc()) -> kz_term:api_binary().
 -spec cycle(doc(), Default) -> binary() | Default.
 cycle(Doc) ->
     cycle(Doc, 'undefined').
@@ -32,14 +32,14 @@ cycle(Doc, Default) ->
 set_cycle(Doc, Cycle) ->
     kz_json:set_value([<<"cycle">>], Cycle, Doc).
 
--spec days(doc()) -> api_integers().
--spec days(doc(), Default) -> integers() | Default.
+-spec days(doc()) -> kz_term:api_integers().
+-spec days(doc(), Default) -> kz_term:integers() | Default.
 days(Doc) ->
     days(Doc, 'undefined').
 days(Doc, Default) ->
     kz_json:get_list_value([<<"days">>], Doc, Default).
 
--spec set_days(doc(), integers()) -> doc().
+-spec set_days(doc(), kz_term:integers()) -> doc().
 set_days(Doc, Days) ->
     kz_json:set_value([<<"days">>], Days, Doc).
 
@@ -54,7 +54,7 @@ interval(Doc, Default) ->
 set_interval(Doc, Interval) ->
     kz_json:set_value([<<"interval">>], Interval, Doc).
 
--spec month(doc()) -> api_integer().
+-spec month(doc()) -> kz_term:api_integer().
 -spec month(doc(), Default) -> integer() | Default.
 month(Doc) ->
     month(Doc, 'undefined').
@@ -65,18 +65,18 @@ month(Doc, Default) ->
 set_month(Doc, Month) ->
     kz_json:set_value([<<"month">>], Month, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec ordinal(doc()) -> api_binary().
+-spec ordinal(doc()) -> kz_term:api_binary().
 -spec ordinal(doc(), Default) -> binary() | Default.
 ordinal(Doc) ->
     ordinal(Doc, 'undefined').
@@ -98,7 +98,7 @@ start_date(Doc, Default) ->
 set_start_date(Doc, StartDate) ->
     kz_json:set_value([<<"start_date">>], StartDate, Doc).
 
--spec time_window_start(doc()) -> api_integer().
+-spec time_window_start(doc()) -> kz_term:api_integer().
 -spec time_window_start(doc(), Default) -> integer() | Default.
 time_window_start(Doc) ->
     time_window_start(Doc, 'undefined').
@@ -109,13 +109,13 @@ time_window_start(Doc, Default) ->
 set_time_window_start(Doc, TimeWindowStart) ->
     kz_json:set_value([<<"time_window_start">>], TimeWindowStart, Doc).
 
--spec wdays(doc()) -> api_ne_binaries().
--spec wdays(doc(), Default) -> ne_binaries() | Default.
+-spec wdays(doc()) -> kz_term:api_ne_binaries().
+-spec wdays(doc(), Default) -> kz_term:ne_binaries() | Default.
 wdays(Doc) ->
     wdays(Doc, 'undefined').
 wdays(Doc, Default) ->
     kz_json:get_list_value([<<"wdays">>], Doc, Default).
 
--spec set_wdays(doc(), ne_binaries()) -> doc().
+-spec set_wdays(doc(), kz_term:ne_binaries()) -> doc().
 set_wdays(Doc, Wdays) ->
     kz_json:set_value([<<"wdays">>], Wdays, Doc).

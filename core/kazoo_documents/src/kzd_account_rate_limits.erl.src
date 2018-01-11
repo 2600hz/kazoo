@@ -14,7 +14,7 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec account(doc()) -> api_object().
+-spec account(doc()) -> kz_term:api_object().
 -spec account(doc(), Default) -> kz_json:object() | Default.
 account(Doc) ->
     account(Doc, 'undefined').
@@ -25,7 +25,7 @@ account(Doc, Default) ->
 set_account(Doc, Account) ->
     kz_json:set_value([<<"account">>], Account, Doc).
 
--spec device(doc()) -> api_object().
+-spec device(doc()) -> kz_term:api_object().
 -spec device(doc(), Default) -> kz_json:object() | Default.
 device(Doc) ->
     device(Doc, 'undefined').

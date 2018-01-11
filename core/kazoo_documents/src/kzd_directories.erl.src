@@ -51,14 +51,14 @@ min_dtmf(Doc, Default) ->
 set_min_dtmf(Doc, MinDtmf) ->
     kz_json:set_value([<<"min_dtmf">>], MinDtmf, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
@@ -73,13 +73,13 @@ sort_by(Doc, Default) ->
 set_sort_by(Doc, SortBy) ->
     kz_json:set_value([<<"sort_by">>], SortBy, Doc).
 
--spec users(doc()) -> ne_binaries().
--spec users(doc(), Default) -> ne_binaries() | Default.
+-spec users(doc()) -> kz_term:ne_binaries().
+-spec users(doc(), Default) -> kz_term:ne_binaries() | Default.
 users(Doc) ->
     users(Doc, []).
 users(Doc, Default) ->
     kz_json:get_list_value([<<"users">>], Doc, Default).
 
--spec set_users(doc(), ne_binaries()) -> doc().
+-spec set_users(doc(), kz_term:ne_binaries()) -> doc().
 set_users(Doc, Users) ->
     kz_json:set_value([<<"users">>], Users, Doc).

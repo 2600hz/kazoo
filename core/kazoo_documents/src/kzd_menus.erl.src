@@ -49,29 +49,29 @@ hunt(Doc, Default) ->
 set_hunt(Doc, Hunt) ->
     kz_json:set_value([<<"hunt">>], Hunt, Doc).
 
--spec hunt_allow(doc()) -> api_ne_binary().
--spec hunt_allow(doc(), Default) -> ne_binary() | Default.
+-spec hunt_allow(doc()) -> kz_term:api_ne_binary().
+-spec hunt_allow(doc(), Default) -> kz_term:ne_binary() | Default.
 hunt_allow(Doc) ->
     hunt_allow(Doc, 'undefined').
 hunt_allow(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"hunt_allow">>], Doc, Default).
 
--spec set_hunt_allow(doc(), ne_binary()) -> doc().
+-spec set_hunt_allow(doc(), kz_term:ne_binary()) -> doc().
 set_hunt_allow(Doc, HuntAllow) ->
     kz_json:set_value([<<"hunt_allow">>], HuntAllow, Doc).
 
--spec hunt_deny(doc()) -> api_ne_binary().
--spec hunt_deny(doc(), Default) -> ne_binary() | Default.
+-spec hunt_deny(doc()) -> kz_term:api_ne_binary().
+-spec hunt_deny(doc(), Default) -> kz_term:ne_binary() | Default.
 hunt_deny(Doc) ->
     hunt_deny(Doc, 'undefined').
 hunt_deny(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"hunt_deny">>], Doc, Default).
 
--spec set_hunt_deny(doc(), ne_binary()) -> doc().
+-spec set_hunt_deny(doc(), kz_term:ne_binary()) -> doc().
 set_hunt_deny(Doc, HuntDeny) ->
     kz_json:set_value([<<"hunt_deny">>], HuntDeny, Doc).
 
--spec interdigit_timeout(doc()) -> api_integer().
+-spec interdigit_timeout(doc()) -> kz_term:api_integer().
 -spec interdigit_timeout(doc(), Default) -> integer() | Default.
 interdigit_timeout(Doc) ->
     interdigit_timeout(Doc, 'undefined').
@@ -115,14 +115,14 @@ media_exit_media(Doc, Default) ->
 set_media_exit_media(Doc, MediaExitMedia) ->
     kz_json:set_value([<<"media">>, <<"exit_media">>], MediaExitMedia, Doc).
 
--spec media_greeting(doc()) -> api_ne_binary().
--spec media_greeting(doc(), Default) -> ne_binary() | Default.
+-spec media_greeting(doc()) -> kz_term:api_ne_binary().
+-spec media_greeting(doc(), Default) -> kz_term:ne_binary() | Default.
 media_greeting(Doc) ->
     media_greeting(Doc, 'undefined').
 media_greeting(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"media">>, <<"greeting">>], Doc, Default).
 
--spec set_media_greeting(doc(), ne_binary()) -> doc().
+-spec set_media_greeting(doc(), kz_term:ne_binary()) -> doc().
 set_media_greeting(Doc, MediaGreeting) ->
     kz_json:set_value([<<"media">>, <<"greeting">>], MediaGreeting, Doc).
 
@@ -148,25 +148,25 @@ media_transfer_media(Doc, Default) ->
 set_media_transfer_media(Doc, MediaTransferMedia) ->
     kz_json:set_value([<<"media">>, <<"transfer_media">>], MediaTransferMedia, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec record_pin(doc()) -> api_ne_binary().
--spec record_pin(doc(), Default) -> ne_binary() | Default.
+-spec record_pin(doc()) -> kz_term:api_ne_binary().
+-spec record_pin(doc(), Default) -> kz_term:ne_binary() | Default.
 record_pin(Doc) ->
     record_pin(Doc, 'undefined').
 record_pin(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"record_pin">>], Doc, Default).
 
--spec set_record_pin(doc(), ne_binary()) -> doc().
+-spec set_record_pin(doc(), kz_term:ne_binary()) -> doc().
 set_record_pin(Doc, RecordPin) ->
     kz_json:set_value([<<"record_pin">>], RecordPin, Doc).
 
@@ -181,7 +181,7 @@ retries(Doc, Default) ->
 set_retries(Doc, Retries) ->
     kz_json:set_value([<<"retries">>], Retries, Doc).
 
--spec timeout(doc()) -> api_integer().
+-spec timeout(doc()) -> kz_term:api_integer().
 -spec timeout(doc(), Default) -> integer() | Default.
 timeout(Doc) ->
     timeout(Doc, 'undefined').

@@ -38,7 +38,7 @@ music_on_hold(Doc, Default) ->
 set_music_on_hold(Doc, MusicOnHold) ->
     kz_json:set_value([<<"music_on_hold">>], MusicOnHold, Doc).
 
--spec music_on_hold_media_id(doc()) -> api_binary().
+-spec music_on_hold_media_id(doc()) -> kz_term:api_binary().
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
 music_on_hold_media_id(Doc) ->
     music_on_hold_media_id(Doc, 'undefined').
@@ -49,13 +49,13 @@ music_on_hold_media_id(Doc, Default) ->
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
     kz_json:set_value([<<"music_on_hold">>, <<"media_id">>], MusicOnHoldMediaId, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
