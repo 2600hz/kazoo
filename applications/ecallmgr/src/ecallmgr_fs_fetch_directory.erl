@@ -48,12 +48,13 @@ maybe_sip_auth_response(Node, Id, JObj) ->
 
 -spec maybe_kamailio_association(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_handlecall_ret().
 maybe_kamailio_association(Node, Id, JObj) ->
-    kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj)).
+    lager:debug_unsafe("KAMAILIO ~s", [kz_json:encode(JObj, ['pretty'])]),
+    kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj), JObj).
 
--spec kamailio_association(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> fs_handlecall_ret().
-kamailio_association(Node, Id, 'undefined', _AccountId) -> directory_not_found(Node, Id);
-kamailio_association(Node, Id, _EndpointId, 'undefined') -> directory_not_found(Node, Id);
-kamailio_association(Node, Id, EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+-spec kamailio_association(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> fs_handlecall_ret().
+kamailio_association(Node, Id, 'undefined', _AccountId, _) -> directory_not_found(Node, Id);
+kamailio_association(Node, Id, _EndpointId, 'undefined', _) -> directory_not_found(Node, Id);
+kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(AccountId), _) ->
     case kz_endpoint:profile(EndpointId, AccountId) of
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
@@ -64,9 +65,12 @@ kamailio_association(Node, Id, EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
             directory_not_found(Node, Id)
     end;
-kamailio_association(Node, Id, EndpointId, Realm) ->
+kamailio_association(Node, Id, _EndpointId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
+    EndpointId = kzd_fetch:ccv(JObj, <<"Authorizing-ID">>),
+    kamailio_association(Node, Id, EndpointId, AccountId, JObj);
+kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
     case kapps_util:get_account_by_realm(Realm) of
-        {'ok', AccountId} -> kamailio_association(Node, Id, EndpointId, AccountId);
+        {'ok', Account} -> kamailio_association(Node, Id, EndpointId, kz_util:format_account_id(Account), JObj);
         _ ->
             lager:debug("account by realm '~s' not found", [Realm]),
             directory_not_found(Node, Id)
