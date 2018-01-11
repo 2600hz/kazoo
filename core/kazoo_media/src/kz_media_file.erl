@@ -70,19 +70,26 @@ maybe_proxy(JObj, #media_store_path{db = Db
     lager:debug("fetching attachment url for '~p' , '~p', '~p'", [Db, Id, Attachment]),
     StreamType = kz_media_util:convert_stream_type(kz_json:get_value(<<"Stream-Type">>, JObj)),
     case kz_datamgr:attachment_url(Db, Id, Attachment, [{'stream_type',StreamType} | Options]) of
-        {'error', 'not_found'} -> <<>>;
-        {'proxy', _} -> proxy_uri(JObj, Store);
-        <<_/binary>> = URI -> URI
+        {'error', 'not_found'} ->
+            lager:debug("no attachment URL found"),
+            <<>>;
+        {'proxy', _Proxy} ->
+            lager:debug("building proxy URI: ~p", [_Proxy]),
+            proxy_uri(Store, StreamType);
+        <<_/binary>> = URI ->
+            lager:debug("using URI ~s"),
+            URI
     end.
 
--spec proxy_uri(kz_json:object(), media_store_path()) ->
+-spec proxy_uri(media_store_path(), kz_term:ne_binary()) ->
                        kz_term:ne_binary() | {'error', 'no_stream_strategy'}.
-proxy_uri(JObj, #media_store_path{db = Db
-                                 ,id = Id
-                                 ,att = Attachment
-                                 ,opt=Options
-                                 }=Store) ->
-    StreamType = kz_media_util:convert_stream_type(kz_json:get_value(<<"Stream-Type">>, JObj)),
+proxy_uri(#media_store_path{db = Db
+                           ,id = Id
+                           ,att = Attachment
+                           ,opt=Options
+                           }=Store
+         ,StreamType
+         ) ->
     _ = maybe_prepare_proxy(StreamType, Store),
     Host = case kapps_config:get_ne_binary(?CONFIG_CAT, <<"proxy_hostname">>) of
                'undefined' -> kz_network_utils:get_hostname();
