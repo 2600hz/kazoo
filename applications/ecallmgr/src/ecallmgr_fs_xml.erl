@@ -773,7 +773,7 @@ get_profile_params(Props) when is_list(Props) ->
 get_profile_params(JObj) ->
     get_profile_params(
       kz_json:to_proplist(
-        kz_json:get_value(<<"Custom-Profile-Vars">>, JObj, kz_json:new())
+        kz_json:get_json_value(<<"Custom-Profile-Vars">>, JObj, kz_json:new())
        ) ++ [{<<"Context">>, ?DEFAULT_FREESWITCH_CONTEXT}]).
 
 -spec get_profile_param(tuple(), kz_term:proplist()) -> kz_term:proplist().
@@ -789,7 +789,7 @@ get_channel_params(Props) when is_list(Props) ->
 get_channel_params(JObj) ->
     get_channel_params(
       kz_json:to_proplist(
-        kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
+        kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
        )).
 
 -spec get_channel_params_fold(kz_term:ne_binary(), kz_term:ne_binary()) ->
