@@ -304,7 +304,7 @@ success(JObj, Props, Req0) ->
     Headers = maps:from_list([{kz_term:to_binary(H), kz_term:to_binary(V)}
                               || {H, V} <- props:get_value('headers', Props, [])
                              ]),
-    lager:info("replying with 200: ~s", [Body]),
+    lager:info("replying with 200"),
     cowboy_req:reply(200, Headers, Req1).
 
 -spec failure(any(), cowboy_req:req()) -> cowboy_req:req().
