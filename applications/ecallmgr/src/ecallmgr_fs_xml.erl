@@ -92,7 +92,8 @@ directory_resp_endpoint_xml(Endpoint, JObj) ->
     Number = kz_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],Endpoint),
     ProfileEls = [variable_el(K, V) || {K, V} <- get_profile_params(Endpoint)],
     ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
-    UserEl = user_el(user_el_props(Number, UserId, Expires), [VariablesEl, ProfileVariablesEl]),
+    UserProps = props:filter_undefined(user_el_props(Number, UserId, Expires)),
+    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl]),
     DomainEl = domain_el(DomainName, UserEl),
     SectionEl = section_el(<<"directory">>, DomainEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
