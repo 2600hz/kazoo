@@ -82,15 +82,15 @@ get_services_plan(ServicesJObj, ServicePlans) ->
                ,kzd_services:plan_ids(ServicesJObj)
                ).
 
--spec get_service_plans_fold(ne_binary(), kz_json:object()) ->
-                                    fun((ne_binary(), ne_binary(), kz_json:object(), plans()) ->
+-spec get_service_plans_fold(api_binary(), kz_json:object()) ->
+                                    fun((ne_binary(), plans()) ->
                                                plans()).
 get_service_plans_fold(ResellerId, ServicesJObj) ->
     fun(PlanId, ServicePlans) ->
             get_services_plan(PlanId, ResellerId, ServicesJObj, ServicePlans)
     end.
 
--spec get_services_plan(ne_binary(), ne_binary(), kz_json:object(), plans()) -> plans().
+-spec get_services_plan(ne_binary(), api_binary(), kz_json:object(), plans()) -> plans().
 get_services_plan(PlanId, ResellerId, ServicesJObj, ServicePlans) ->
     AccountId = kzd_services:plan_account_id(ServicesJObj, PlanId, ResellerId),
     Overrides = kzd_services:plan_overrides(ServicesJObj, PlanId),
@@ -122,7 +122,7 @@ get_object_plans(ServicesJObj, ServicePlans) ->
                ,Props
                ).
 
--spec get_object_plans_fold(ne_binary()) ->
+-spec get_object_plans_fold(api_binary()) ->
                                    fun(({ne_binary(), kz_json:object()}, plans()) ->
                                               plans()).
 get_object_plans_fold(ResellerId) ->
@@ -130,6 +130,7 @@ get_object_plans_fold(ResellerId) ->
             get_object_plan(PlanId, ResellerId, JObj, ServicePlans)
     end.
 
+-spec get_object_plan(ne_binary(), api_binary(), kz_json:object(), plans()) -> plans().
 get_object_plan(PlanId, ResellerId, JObj, ServicePlans) ->
     AccountId = kz_json:get_ne_value(<<"account_id">>, JObj, ResellerId),
     Overrides = kz_json:get_ne_value(<<"overrides">>, JObj, kz_json:new()),

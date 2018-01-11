@@ -56,20 +56,20 @@
 -spec cumulative_merge_scheme() -> kz_json:paths().
 cumulative_merge_scheme() ->
     [{?ACTIVATION_CHARGE, fun kz_json:find/2}
-    ,{?MINIMUM, fun kzd_item_plan:cumulative_merge_sum/2}
+    ,{?MINIMUM, fun ?MODULE:cumulative_merge_sum/2}
     ,{?FLAT_RATES, fun kz_json:find/2}
-    ,{?RATES, fun kzd_item_plan:cumulative_merge_object/2}
+    ,{?RATES, fun ?MODULE:cumulative_merge_object/2}
     ,{?RATE, fun kz_json:find/2}
-    ,{?EXCEPTIONS, fun kzd_item_plan:cumulative_merge_list/2}
-    ,{?CASCADE, fun  kzd_item_plan:cumulative_merge_or/2}
+    ,{?EXCEPTIONS, fun ?MODULE:cumulative_merge_list/2}
+    ,{?CASCADE, fun  ?MODULE:cumulative_merge_or/2}
     ,{?MASQUERADE, fun kz_json:find/2}
     ,{?NAME, fun kz_json:find/2}
     ,{[?DISCOUNTS, ?SINGLE, ?RATE], fun kz_json:find/2}
-    ,{[?DISCOUNTS, ?SINGLE, ?RATES], fun kzd_item_plan:cumulative_merge_object/2}
+    ,{[?DISCOUNTS, ?SINGLE, ?RATES], fun ?MODULE:cumulative_merge_object/2}
     ,{[?DISCOUNTS, ?CUMULATIVE, ?RATE], fun kz_json:find/2}
-    ,{[?DISCOUNTS, ?CUMULATIVE, ?RATES], fun kzd_item_plan:cumulative_merge_object/2}
-    ,{[?DISCOUNTS, ?CUMULATIVE, ?MAXIMUM], fun kzd_item_plan:cumulative_merge_sum/2}
-    ,{?ENABLED, fun kzd_item_plan:cumulative_merge_and/2}
+    ,{[?DISCOUNTS, ?CUMULATIVE, ?RATES], fun ?MODULE:cumulative_merge_object/2}
+    ,{[?DISCOUNTS, ?CUMULATIVE, ?MAXIMUM], fun ?MODULE:cumulative_merge_sum/2}
+    ,{?ENABLED, fun ?MODULE:cumulative_merge_and/2}
     ].
 
 -spec cumulative_merge_sum(kz_json:path(), kz_json:objects()) -> non_neg_integer().
