@@ -283,8 +283,8 @@ channel_ccvs([_|_]=Props) ->
     end;
 channel_ccvs(JObj) ->
     kz_json:to_proplist(kz_json:get_first_defined([<<"Custom-Channel-Vars">>
-                                   ,<<"custom_channel_vars">>
-                                   ], JObj, kz_json:new())).
+                                                  ,<<"custom_channel_vars">>
+                                                  ], JObj, kz_json:new())).
 
 -spec channel_cavs(channel() | kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 channel_cavs(#channel{cavs='undefined'}) -> [];
