@@ -169,7 +169,7 @@ json_getter_fun(Schema, 'undefined') ->
 json_getter_fun(Schema, <<"string">>) ->
     case kz_json:get_integer_value(<<"minLength">>, Schema) of
         N when is_integer(N), N > 0 ->
-            {"get_ne_binary_value", "ne_binary()"};
+            {"get_ne_binary_value", "kz_term:ne_binary()"};
         _ ->
             {"get_binary_value", "binary()"}
     end;
@@ -190,8 +190,8 @@ list_return_subtype(Schema, 'undefined') ->
             {'ok', RefSchema} = kz_json_schema:fload(Ref),
             list_return_subtype(RefSchema, kz_json:get_value(<<"type">>, RefSchema))
     end;
-list_return_subtype(_Schema, <<"string">>) -> "ne_binaries()";
-list_return_subtype(_Schema, <<"integer">>) -> "integers()";
+list_return_subtype(_Schema, <<"string">>) -> "kz_term:ne_binaries()";
+list_return_subtype(_Schema, <<"integer">>) -> "kz_term:integers()";
 list_return_subtype(_Schema, <<"number">>) -> "[number()]";
 list_return_subtype(_Schema, <<"object">>) -> "kz_json:objects()";
 list_return_subtype(_Schema, _Type) ->
@@ -215,8 +215,8 @@ default_value(_Schema, _JSONGetterFun, Default) ->
     kz_term:to_binary(Default).
 
 default_return_type("kz_json:" ++ Type, "'undefined'") ->
-    "api_" ++ Type;
+    "kz_term:api_" ++ Type;
 default_return_type("any()", _) -> "any()";
-default_return_type(Type, "'undefined'") ->
-    ["api_" | Type];
+default_return_type("kz_term:" ++ Type, "'undefined'") ->
+    ["kz_term:api_" | Type];
 default_return_type(Type, _Default) -> Type.
