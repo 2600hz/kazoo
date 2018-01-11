@@ -454,7 +454,7 @@ handle_cast({'stop', _Cause}, #state{stop_on_destroy='true'
     {'stop', 'normal', State};
 handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
     lager:info("instructed to stop and no flows left"),
-    {'stop', 'normal', State#state{destroyed='true'}};
+    {'stop', 'normal', State};
 handle_cast({'stop', Cause}, #state{flows=[]
                                    ,call=Call
                                    }=State) ->
