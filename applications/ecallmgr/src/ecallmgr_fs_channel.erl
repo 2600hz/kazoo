@@ -420,6 +420,7 @@ handling_locally(Node, OtherLeg) ->
 
 -spec new(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 new(Node, UUID, JObj) ->
+    lager:debug("adding new channel ~s", [UUID]),
     ecallmgr_fs_channels:new(jobj_to_record(Node, UUID, JObj)).
 
 -spec update(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
