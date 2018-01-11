@@ -35,8 +35,8 @@
 -export_type([plan/0, plans/0]).
 -define(DEFAULT_PRIORITIES
        ,kz_json:from_list(
-          [{<<"simple">>, 10}
-          ,{<<"cumulative">>, 20}
+          [{<<"simple">>, 25}
+          ,{<<"cumulative">>, 50}
           ])
        ).
 -define(MERGE_STRATEGY_PRIORITIES
@@ -353,7 +353,7 @@ merge_to_single(JObj, Merged) ->
 
 -spec merge_plan_strategy_sort(merge_strategy_group(), merge_strategy_group()) -> boolean().
 merge_plan_strategy_sort({A, _}, {B, _}) ->
-    merge_strategy_priority(A) =< merge_strategy_priority(B).
+    merge_strategy_priority(A) > merge_strategy_priority(B).
 
 -spec merge_plan_plans(merge_strategy_groups(), kz_json:objects()) -> kz_json:objects().
 merge_plan_plans([], Merged) -> Merged;
@@ -388,7 +388,7 @@ cumulative_merge_keys(Root, Key) ->
 
 -spec merge_plan_plans_sort(merge_strategy_plan(), merge_strategy_plan()) -> boolean().
 merge_plan_plans_sort({A, _}, {B, _}) ->
-    A =< B.
+    A > B.
 
 -spec simple_merge_plans(merge_strategy_plan(), kz_json:object()) -> kz_json:object().
 simple_merge_plans({_, PlanJObj}, Merged) ->

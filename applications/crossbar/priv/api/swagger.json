@@ -23807,6 +23807,25 @@
                     "description": "Describes the service plan offering",
                     "type": "string"
                 },
+                "merge": {
+                    "description": "Optionally defines a strategy and priorty to merge multiple service plans together",
+                    "properties": {
+                        "priority": {
+                            "description": "The priority among the service plans with the merge strategy",
+                            "minimum": 0,
+                            "type": "integer"
+                        },
+                        "strategy": {
+                            "description": "The merge strategy, like strategies are merged together based on their priority",
+                            "enum": [
+                                "simple",
+                                "cumulative"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "name": {
                     "description": "A friendly name for the service plan",
                     "maxLength": 128,
@@ -28539,6 +28558,14 @@
                     "default": "kz_bookkeeper_local",
                     "description": "services master account bookkeeper",
                     "type": "string"
+                },
+                "merge_strategy_priority": {
+                    "default": {
+                        "cumulative": 20,
+                        "simple": 10
+                    },
+                    "description": "the object keys map to merge strategies and the values are expected to be an integer defining the merge priority between strategies",
+                    "type": "object"
                 },
                 "modules": {
                     "description": "services modules"
