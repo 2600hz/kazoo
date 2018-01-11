@@ -273,8 +273,11 @@ matches([<<"#">>, B | Bs], [B | Rs]) ->
             matches(Bs, Rs)
     end;
 
-matches([<<"#">>, <<"*">> | _]=Bs, [_ | Rs]) ->
-    matches(Bs, Rs);
+%% matches([<<"#">>, <<"*">> | _]=Bs, [_ | Rs]) ->
+%%     matches(Bs, Rs);
+
+matches([<<"#">>, <<"*">> | Bs], [_ | Rs]) ->
+    matches([<<"#">> | Bs], Rs);
 
 matches([<<"#">> | _]=Bs, [_ | Rs]) ->
     matches(Bs, Rs); % otherwise leave the # in to continue matching
