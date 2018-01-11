@@ -48,7 +48,6 @@ maybe_sip_auth_response(Node, Id, JObj) ->
 
 -spec maybe_kamailio_association(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_handlecall_ret().
 maybe_kamailio_association(Node, Id, JObj) ->
-    lager:debug_unsafe("KAMAILIO ~s", [kz_json:encode(JObj, ['pretty'])]),
     kamailio_association(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj), JObj).
 
 -spec kamailio_association(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> fs_handlecall_ret().
