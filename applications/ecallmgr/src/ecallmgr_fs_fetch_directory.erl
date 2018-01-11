@@ -88,7 +88,8 @@ kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
             end;
         AccountId ->
             lager:debug("got the account_id ~s from x-header", [AccountId]),
-            kamailio_association(Node, Id, EndpointId, AccountId, JObj)
+            JObjRetry = kz_json:set_value(<<"Requested-Domain-Name">>, Realm, JObj),
+            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry)
     end.
 
 -spec directory_not_found(atom(), kz_term:ne_binary()) -> fs_handlecall_ret().
