@@ -59,7 +59,9 @@ kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(Ac
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
             {'ok', Xml} = ecallmgr_fs_xml:directory_resp_endpoint_xml(Endpoint, JObj),
-            lager:debug("sending directory XML to ~w: ~s", [Node, Xml]),
+            lager:debug_unsafe("SENDING ENDPOINT ~s", [kz_json:encode(Endpoint, ['pretty'])]),
+            lager:debug_unsafe("SENDING JOBJ ~s", [kz_json:encode(JObj, ['pretty'])]),
+            lager:debug_unsafe("sending directory XML to ~w: ~s", [Node, iolist_to_binary(Xml)]),
             freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml));
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
@@ -67,17 +69,26 @@ kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(Ac
     end;   
 kamailio_association(Node, Id, UserId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
-        'undefined' -> lookup_user(Node, Id, <<"password">>, JObj);
-        EndpointId -> kamailio_association(Node, Id, EndpointId, AccountId, kz_json:set_value(<<"Requested-User-ID">>, UserId, JObj))
+        'undefined' -> directory_not_found(Node, Id);
+        EndpointId ->
+            lager:debug("got the endpoint_id ~s for user ~s", [EndpointId, UserId]),
+            JObjRetry = kz_json:set_value(<<"Requested-User-ID">>, UserId, JObj),
+            kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry)
     end;
 kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Account-ID">>, JObj) of
         'undefined' ->
             case kapps_util:get_account_by_realm(Realm) of
-                {'ok', Account} -> kamailio_association(Node, Id, EndpointId, kz_util:format_account_id(Account), kz_json:set_value(<<"Requested-Domain-Name">>, Realm, JObj));
-                _ -> lookup_user(Node, Id, <<"password">>, JObj)
+                {'ok', Account} ->
+                    lager:debug("got the account_id ~s from realm ~s", [kz_util:format_account_id(Account), Realm]),
+                    JObjRetry = kz_json:set_value(<<"Requested-Domain-Name">>, Realm, JObj),
+                    AccountId = kz_util:format_account_id(Account),
+                    kamailio_association(Node, Id, EndpointId, AccountId, JObjRetry);
+                _ -> directory_not_found(Node, Id)
             end;
-        AccountId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
+        AccountId ->
+            lager:debug("got the account_id ~s from x-header", [AccountId]),
+            kamailio_association(Node, Id, EndpointId, AccountId, JObj)
     end.
 
 -spec directory_not_found(atom(), kz_term:ne_binary()) -> fs_handlecall_ret().
