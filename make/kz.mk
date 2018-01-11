@@ -132,7 +132,7 @@ $(PLT):
 
 dialyze: TO_DIALYZE ?= $(abspath ebin)
 dialyze: $(PLT) compile
-	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
 
 REBAR=$(ROOT)/deps/.erlang.mk/rebar/rebar
