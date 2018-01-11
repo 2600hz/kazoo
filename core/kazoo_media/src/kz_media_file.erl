@@ -77,7 +77,7 @@ maybe_proxy(JObj, #media_store_path{db = Db
             lager:debug("building proxy URI: ~p", [_Proxy]),
             proxy_uri(Store, StreamType);
         <<_/binary>> = URI ->
-            lager:debug("using URI ~s"),
+            lager:debug("using URI ~s", [URI]),
             URI
     end.
 
