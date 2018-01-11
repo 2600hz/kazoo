@@ -64,20 +64,23 @@ kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(Ac
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
             directory_not_found(Node, Id)
     end;
-kamailio_association(Node, Id, _EndpointId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
-    case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
-        'undefined' -> lookup_user(Node, Id, <<"password">>, JObj);
-        EndpointId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
-    end;
-kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
-    case kz_json:get_ne_binary_value(<<"X-ecallmgr_Account-ID">>, JObj) of
-        'undefined' ->
-            case kapps_util:get_account_by_realm(Realm) of
-                {'ok', Account} -> kamailio_association(Node, Id, EndpointId, kz_util:format_account_id(Account), JObj);
-                _ -> lookup_user(Node, Id, <<"password">>, JObj)
-            end;
-        AccountId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
-    end.
+kamailio_association(Node, Id, _EndpointId, _Realm, JObj) ->
+    lookup_user(Node, Id, <<"password">>, JObj).
+    
+%% kamailio_association(Node, Id, _EndpointId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
+%%     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
+%%         'undefined' -> lookup_user(Node, Id, <<"password">>, JObj);
+%%         EndpointId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
+%%     end;
+%% kamailio_association(Node, Id, EndpointId, Realm, JObj) ->
+%%     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Account-ID">>, JObj) of
+%%         'undefined' ->
+%%             case kapps_util:get_account_by_realm(Realm) of
+%%                 {'ok', Account} -> kamailio_association(Node, Id, EndpointId, kz_util:format_account_id(Account), JObj);
+%%                 _ -> lookup_user(Node, Id, <<"password">>, JObj)
+%%             end;
+%%         AccountId -> kamailio_association(Node, Id, EndpointId, AccountId, JObj)
+%%     end.
 
 -spec directory_not_found(atom(), kz_term:ne_binary()) -> fs_handlecall_ret().
 directory_not_found(Node, FetchId) ->
