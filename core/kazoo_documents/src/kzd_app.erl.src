@@ -1,6 +1,7 @@
 -module(kzd_app).
 
 -export([new/0]).
+-export([allowed_users/1, allowed_users/2, set_allowed_users/2]).
 -export([api_url/1, api_url/2, set_api_url/2]).
 -export([author/1, author/2, set_author/2]).
 -export([i18n/1, i18n/2, set_i18n/2]).
@@ -10,10 +11,12 @@
 -export([name/1, name/2, set_name/2]).
 -export([phase/1, phase/2, set_phase/2]).
 -export([price/1, price/2, set_price/2]).
+-export([published/1, published/2, set_published/2]).
 -export([screenshots/1, screenshots/2, set_screenshots/2]).
 -export([source_url/1, source_url/2, set_source_url/2]).
 -export([tags/1, tags/2, set_tags/2]).
 -export([urls/1, urls/2, set_urls/2]).
+-export([users/1, users/2, set_users/2]).
 -export([version/1, version/2, set_version/2]).
 
 
@@ -26,7 +29,18 @@
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
--spec api_url(doc()) -> api_binary().
+-spec allowed_users(doc()) -> kz_term:api_binary().
+-spec allowed_users(doc(), Default) -> binary() | Default.
+allowed_users(Doc) ->
+    allowed_users(Doc, 'undefined').
+allowed_users(Doc, Default) ->
+    kz_json:get_binary_value([<<"allowed_users">>], Doc, Default).
+
+-spec set_allowed_users(doc(), binary()) -> doc().
+set_allowed_users(Doc, AllowedUsers) ->
+    kz_json:set_value([<<"allowed_users">>], AllowedUsers, Doc).
+
+-spec api_url(doc()) -> kz_term:api_binary().
 -spec api_url(doc(), Default) -> binary() | Default.
 api_url(Doc) ->
     api_url(Doc, 'undefined').
@@ -37,18 +51,18 @@ api_url(Doc, Default) ->
 set_api_url(Doc, ApiUrl) ->
     kz_json:set_value([<<"api_url">>], ApiUrl, Doc).
 
--spec author(doc()) -> api_ne_binary().
--spec author(doc(), Default) -> ne_binary() | Default.
+-spec author(doc()) -> kz_term:api_ne_binary().
+-spec author(doc(), Default) -> kz_term:ne_binary() | Default.
 author(Doc) ->
     author(Doc, 'undefined').
 author(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"author">>], Doc, Default).
 
--spec set_author(doc(), ne_binary()) -> doc().
+-spec set_author(doc(), kz_term:ne_binary()) -> doc().
 set_author(Doc, Author) ->
     kz_json:set_value([<<"author">>], Author, Doc).
 
--spec i18n(doc()) -> api_object().
+-spec i18n(doc()) -> kz_term:api_object().
 -spec i18n(doc(), Default) -> kz_json:object() | Default.
 i18n(Doc) ->
     i18n(Doc, 'undefined').
@@ -59,7 +73,7 @@ i18n(Doc, Default) ->
 set_i18n(Doc, I18n) ->
     kz_json:set_value([<<"i18n">>], I18n, Doc).
 
--spec icon(doc()) -> api_binary().
+-spec icon(doc()) -> kz_term:api_binary().
 -spec icon(doc(), Default) -> binary() | Default.
 icon(Doc) ->
     icon(Doc, 'undefined').
@@ -70,7 +84,7 @@ icon(Doc, Default) ->
 set_icon(Doc, Icon) ->
     kz_json:set_value([<<"icon">>], Icon, Doc).
 
--spec license(doc()) -> api_binary().
+-spec license(doc()) -> kz_term:api_binary().
 -spec license(doc(), Default) -> binary() | Default.
 license(Doc) ->
     license(Doc, 'undefined').
@@ -92,18 +106,18 @@ masqueradable(Doc, Default) ->
 set_masqueradable(Doc, Masqueradable) ->
     kz_json:set_value([<<"masqueradable">>], Masqueradable, Doc).
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec phase(doc()) -> api_binary().
+-spec phase(doc()) -> kz_term:api_binary().
 -spec phase(doc(), Default) -> binary() | Default.
 phase(Doc) ->
     phase(Doc, 'undefined').
@@ -114,29 +128,40 @@ phase(Doc, Default) ->
 set_phase(Doc, Phase) ->
     kz_json:set_value([<<"phase">>], Phase, Doc).
 
--spec price(doc()) -> api_integer().
--spec price(doc(), Default) -> integer() | Default.
+-spec price(doc()) -> kz_term:api_number().
+-spec price(doc(), Default) -> number() | Default.
 price(Doc) ->
     price(Doc, 'undefined').
 price(Doc, Default) ->
-    kz_json:get_integer_value([<<"price">>], Doc, Default).
+    kz_json:get_float_value([<<"price">>], Doc, Default).
 
--spec set_price(doc(), integer()) -> doc().
+-spec set_price(doc(), number()) -> doc().
 set_price(Doc, Price) ->
     kz_json:set_value([<<"price">>], Price, Doc).
 
--spec screenshots(doc()) -> api_ne_binaries().
--spec screenshots(doc(), Default) -> ne_binaries() | Default.
+-spec published(doc()) -> kz_term:api_boolean().
+-spec published(doc(), Default) -> boolean() | Default.
+published(Doc) ->
+    published(Doc, 'undefined').
+published(Doc, Default) ->
+    kz_json:get_boolean_value([<<"published">>], Doc, Default).
+
+-spec set_published(doc(), boolean()) -> doc().
+set_published(Doc, Published) ->
+    kz_json:set_value([<<"published">>], Published, Doc).
+
+-spec screenshots(doc()) -> kz_term:api_ne_binaries().
+-spec screenshots(doc(), Default) -> kz_term:ne_binaries() | Default.
 screenshots(Doc) ->
     screenshots(Doc, 'undefined').
 screenshots(Doc, Default) ->
     kz_json:get_list_value([<<"screenshots">>], Doc, Default).
 
--spec set_screenshots(doc(), ne_binaries()) -> doc().
+-spec set_screenshots(doc(), kz_term:ne_binaries()) -> doc().
 set_screenshots(Doc, Screenshots) ->
     kz_json:set_value([<<"screenshots">>], Screenshots, Doc).
 
--spec source_url(doc()) -> api_binary().
+-spec source_url(doc()) -> kz_term:api_binary().
 -spec source_url(doc(), Default) -> binary() | Default.
 source_url(Doc) ->
     source_url(Doc, 'undefined').
@@ -147,18 +172,18 @@ source_url(Doc, Default) ->
 set_source_url(Doc, SourceUrl) ->
     kz_json:set_value([<<"source_url">>], SourceUrl, Doc).
 
--spec tags(doc()) -> api_ne_binaries().
--spec tags(doc(), Default) -> ne_binaries() | Default.
+-spec tags(doc()) -> kz_term:api_ne_binaries().
+-spec tags(doc(), Default) -> kz_term:ne_binaries() | Default.
 tags(Doc) ->
     tags(Doc, 'undefined').
 tags(Doc, Default) ->
     kz_json:get_list_value([<<"tags">>], Doc, Default).
 
--spec set_tags(doc(), ne_binaries()) -> doc().
+-spec set_tags(doc(), kz_term:ne_binaries()) -> doc().
 set_tags(Doc, Tags) ->
     kz_json:set_value([<<"tags">>], Tags, Doc).
 
--spec urls(doc()) -> api_object().
+-spec urls(doc()) -> kz_term:api_object().
 -spec urls(doc(), Default) -> kz_json:object() | Default.
 urls(Doc) ->
     urls(Doc, 'undefined').
@@ -169,7 +194,18 @@ urls(Doc, Default) ->
 set_urls(Doc, Urls) ->
     kz_json:set_value([<<"urls">>], Urls, Doc).
 
--spec version(doc()) -> api_binary().
+-spec users(doc()) -> kz_term:api_ne_binaries().
+-spec users(doc(), Default) -> kz_term:ne_binaries() | Default.
+users(Doc) ->
+    users(Doc, 'undefined').
+users(Doc, Default) ->
+    kz_json:get_list_value([<<"users">>], Doc, Default).
+
+-spec set_users(doc(), kz_term:ne_binaries()) -> doc().
+set_users(Doc, Users) ->
+    kz_json:set_value([<<"users">>], Users, Doc).
+
+-spec version(doc()) -> kz_term:api_binary().
 -spec version(doc(), Default) -> binary() | Default.
 version(Doc) ->
     version(Doc, 'undefined').

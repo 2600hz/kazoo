@@ -157,7 +157,7 @@ json_getter_fun(Schema, <<"array">>) ->
 json_getter_fun(_Schema, <<"integer">>) ->
     {"get_integer_value", "integer()"};
 json_getter_fun(_Schema, <<"number">>) ->
-    {"get_value", "number()"};
+    {"get_float_value", "number()"};
 json_getter_fun(Schema, 'undefined') ->
     case kz_json:get_value(<<"$ref">>, Schema) of
         'undefined' ->

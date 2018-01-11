@@ -4,6 +4,15 @@
     "additionalProperties": false,
     "description": "Appstore applications",
     "properties": {
+        "allowed_users": {
+            "description": "User type allowed to access the app",
+            "enum": [
+                "specific",
+                "all",
+                "admins"
+            ],
+            "type": "string"
+        },
         "api_url": {
             "description": "Application api url",
             "format": "uri",
@@ -78,7 +87,11 @@
         "price": {
             "description": "Application price",
             "minimum": 0,
-            "type": "integer"
+            "type": "number"
+        },
+        "published": {
+            "description": "is the app published",
+            "type": "boolean"
         },
         "screenshots": {
             "items": {
@@ -99,6 +112,13 @@
         },
         "urls": {
             "type": "object"
+        },
+        "users": {
+            "description": "User IDs authorized to use the app (when allowed_users = 'specific')",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
         },
         "version": {
             "description": "Application version",
