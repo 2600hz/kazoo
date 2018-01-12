@@ -22,21 +22,21 @@
         {
             "folder": "new",
             "media_id": "vmbox01-msg02-migrate-retries1",
-            "migrate_retries": 1,
+            "migration_tries": 1,
             "migration_error": "conflict",
             "timestamp": 63675606808
         },
         {
             "folder": "new",
             "media_id": "vmbox01-msg03-migrate-retries2",
-            "migrate_retries": 2,
+            "migration_tries": 2,
             "migration_error": "conflict",
             "timestamp": 63675806808
         },
         {
             "folder": "new",
             "media_id": "vmbox01-msg04-migrate-retries3",
-            "migrate_retries": 3,
+            "migration_tries": 3,
             "migration_error": "conflict",
             "timestamp": 63675806818
         },
@@ -53,7 +53,7 @@
             "timestamp": "undefined"
         },
         {
-            "media_id": "vmbox01-msg07-private-media-timestamp",
+            "media_id": "vmbox01-msg08-private-media-timestamp",
             "timestamp": null
         },
         {

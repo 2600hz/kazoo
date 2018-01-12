@@ -1,2 +1,3 @@
 view_name, view_options, view_file_name
 maintenance/listing_by_type, [{key,<<"user">>},include_docs], maintenance+listing_by_type-ba9ee0020a95e519332f16eacf0a3324.json
+all_docs, [{keys,[<<"vmbox01-msg05-private-media-timestamp">>,<<"vmbox01-msg06-no-timestamp">>,<<"vmbox01-msg07-private-media-timestamp">>,<<"vmbox01-msg08-private-media-timestamp">>]},include_docs], all_docs-fcddeddffd2329a34456284c853aefad.json
