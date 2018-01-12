@@ -19,7 +19,7 @@ get_uri(Id, JObj) ->
     lager:debug("tts server for ~s at ~p", [Id, _TTSServer]),
 
     Format = kz_json:get_ne_binary_value(<<"Format">>, JObj, <<"wav">>),
-    Host = kz_network_utils:get_hostname(),
+    Host = kz_media_util:proxy_host(),
     Port = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
     StreamType = kz_media_util:convert_stream_type(kz_json:get_ne_binary_value(<<"Stream-Type">>, JObj)),
 
