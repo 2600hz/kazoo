@@ -15,6 +15,25 @@
             "description": "Describes the service plan offering",
             "type": "string"
         },
+        "merge": {
+            "description": "Optionally defines a strategy and priorty to merge multiple service plans together",
+            "properties": {
+                "priority": {
+                    "description": "The priority among the service plans with the merge strategy",
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "strategy": {
+                    "description": "The merge strategy, like strategies are merged together based on their priority",
+                    "enum": [
+                        "simple",
+                        "cumulative"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "name": {
             "description": "A friendly name for the service plan",
             "maxLength": 128,

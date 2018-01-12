@@ -13,6 +13,14 @@
             "description": "services master account bookkeeper",
             "type": "string"
         },
+        "merge_strategy_priority": {
+            "default": {
+                "cumulative": 20,
+                "simple": 10
+            },
+            "description": "the object keys map to merge strategies and the values are expected to be an integer defining the merge priority between strategies",
+            "type": "object"
+        },
         "modules": {
             "description": "services modules"
         },

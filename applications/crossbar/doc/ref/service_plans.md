@@ -13,6 +13,9 @@ Key | Description | Type | Default | Required
 `bookkeepers` |   | `object()` |   | `false`
 `category` | Optional category used for grouping service plans | `string()` |   | `false`
 `description` | Describes the service plan offering | `string()` |   | `false`
+`merge.priority` | The priority among the service plans with the merge strategy | `integer()` |   | `false`
+`merge.strategy` | The merge strategy, like strategies are merged together based on their priority | `string('simple' | 'cumulative')` |   | `false`
+`merge` | Optionally defines a strategy and priorty to merge multiple service plans together | `object()` |   | `false`
 `name` | A friendly name for the service plan | `string(1..128)` |   | `true`
 `plan./^[0-9a-zA-Z_]+$/` |   | `object()` |   | `false`
 `plan` | Outlines the service plan for various services | `object()` |   | `true`

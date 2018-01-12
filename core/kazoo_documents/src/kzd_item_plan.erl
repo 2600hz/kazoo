@@ -7,6 +7,13 @@
 %%%-------------------------------------------------------------------
 -module(kzd_item_plan).
 
+-export([cumulative_merge_scheme/0
+        ,cumulative_merge_sum/2
+        ,cumulative_merge_object/2
+        ,cumulative_merge_list/2
+        ,cumulative_merge_or/2
+        ,cumulative_merge_and/2
+        ]).
 -export([minimum/1, minimum/2
         ,flat_rates/1, flat_rates/2
         ,rates/1, rates/2
@@ -43,7 +50,84 @@
 -define(DISCOUNTS, <<"discounts">>).
 -define(SINGLE, <<"single">>).
 -define(CUMULATIVE, <<"cumulative">>).
+-define(MAXIMUM, <<"maximum">>).
 -define(ENABLED, <<"enabled">>).
+
+-spec cumulative_merge_scheme() -> kz_json:paths().
+cumulative_merge_scheme() ->
+    [{?ACTIVATION_CHARGE, fun kz_json:find/2}
+    ,{?MINIMUM, fun ?MODULE:cumulative_merge_sum/2}
+    ,{?FLAT_RATES, fun kz_json:find/2}
+    ,{?RATES, fun ?MODULE:cumulative_merge_object/2}
+    ,{?RATE, fun kz_json:find/2}
+    ,{?EXCEPTIONS, fun ?MODULE:cumulative_merge_list/2}
+    ,{?CASCADE, fun  ?MODULE:cumulative_merge_or/2}
+    ,{?MASQUERADE, fun kz_json:find/2}
+    ,{?NAME, fun kz_json:find/2}
+    ,{[?DISCOUNTS, ?SINGLE, ?RATE], fun kz_json:find/2}
+    ,{[?DISCOUNTS, ?SINGLE, ?RATES], fun ?MODULE:cumulative_merge_object/2}
+    ,{[?DISCOUNTS, ?CUMULATIVE, ?RATE], fun kz_json:find/2}
+    ,{[?DISCOUNTS, ?CUMULATIVE, ?RATES], fun ?MODULE:cumulative_merge_object/2}
+    ,{[?DISCOUNTS, ?CUMULATIVE, ?MAXIMUM], fun ?MODULE:cumulative_merge_sum/2}
+    ,{?ENABLED, fun ?MODULE:cumulative_merge_and/2}
+    ].
+
+-spec cumulative_merge_sum(kz_json:path(), kz_json:objects()) -> non_neg_integer().
+cumulative_merge_sum(Key, [JObj|JObjs]) ->
+    lists:foldl(fun(J, 'undefined') ->
+                        kz_json:get_integer_value(Key, J);
+                   (J, Value) ->
+                        Value + kz_json:get_integer_value(Key, J, 0)
+                end, kz_json:get_integer_value(Key, JObj), JObjs).
+
+-spec cumulative_merge_object(kz_json:path(), kz_json:objects()) -> kz_json:object().
+cumulative_merge_object(Key, [JObj|JObjs]) ->
+    lists:foldl(fun(J, 'undefined') ->
+                        kz_json:get_value(Key, J);
+                   (J, Value) ->
+                        kz_json:merge(kz_json:get_value(Key, J, kz_json:new()), Value)
+                end, kz_json:get_value(Key, JObj), JObjs).
+
+-spec cumulative_merge_list(kz_json:path(), kz_json:objects()) -> list().
+cumulative_merge_list(Key, [JObj|JObjs]) ->
+    case lists:foldl(fun(J, 'undefined') ->
+                             kz_json:get_value(Key, J);
+                        (J, Value) ->
+                             lists:merge(
+                               kz_json:get_list_value(Key, J, [])
+                                        ,Value
+                              )
+                     end, kz_json:get_value(Key, JObj), JObjs)
+    of
+        'undefined' -> 'undefined';
+        List -> sets:to_list(sets:from_list(List))
+    end.
+
+-spec cumulative_merge_or(kz_json:path(), kz_json:objects()) -> boolean().
+cumulative_merge_or(Key, [JObj|JObjs]) ->
+    lists:foldl(fun(J, 'undefined') ->
+                        kz_json:get_value(Key, J);
+                   (J, Value) ->
+                        case kz_json:get_value(Key, J) of
+                            'undefined' -> Value;
+                            Boolean ->
+                                kz_term:is_true(Boolean)
+                                    orelse Value
+                        end
+                end, kz_json:get_value(Key, JObj), JObjs).
+
+-spec cumulative_merge_and(kz_json:path(), kz_json:objects()) -> boolean().
+cumulative_merge_and(Key, [JObj|JObjs]) ->
+    lists:foldl(fun(J, 'undefined') ->
+                        kz_json:get_value(Key, J);
+                   (J, Value) ->
+                        case kz_json:get_value(Key, J) of
+                            'undefined' -> Value;
+                            Boolean ->
+                                kz_term:is_true(Boolean)
+                                    andalso Value
+                        end
+                end, kz_json:get_value(Key, JObj), JObjs).
 
 -spec keys(doc()) -> kz_json:path().
 keys(ItemPlan) ->
@@ -96,7 +180,7 @@ should_cascade(ItemPlan, Default) ->
 masquerade_as(ItemPlan) ->
     masquerade_as(ItemPlan, 'undefined').
 masquerade_as(ItemPlan, Default) ->
-    kz_json:get_value(?MASQUERADE, ItemPlan, Default).
+    kz_json:get_ne_value(?MASQUERADE, ItemPlan, Default).
 
 -spec name(doc()) -> api_binary().
 name(ItemPlan) ->
