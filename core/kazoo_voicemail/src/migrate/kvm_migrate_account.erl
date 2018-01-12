@@ -54,7 +54,7 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
     Db = kvm_util:get_db(AccountId),
     case kz_datamgr:get_results(Db, ?LEGACY_MSG_LISTING, ViewOpts) of
         {'ok', []} ->
-            ?SUP_LOG_WARNING("    [~s] no legacy voicemail messages left", [AccountId]),
+            ?SUP_LOG_WARNING("  [~s] no legacy voicemail messages left", [log_account_id(AccountId)]),
             kvm_migrate_crawler:account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth);
         {'ok', ViewResults} ->
             migrate_messages(AccountId, ViewResults),
@@ -64,9 +64,12 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
             _ = kapps_util:update_views(Db, Views, 'true'),
             start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server);
         {'error', R} ->
-            ?SUP_LOG_ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, R]),
+            ?SUP_LOG_ERROR("  [~s] failed to fetch legacy voicemail messages: ~p", [log_account_id(AccountId), R]),
             kvm_migrate_crawler:account_maybe_failed(Server, AccountId, FirstOfMonth, LastOfMonth, R)
     end.
+
+log_account_id(Account) ->
+    kz_util:format_account_id(Account).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,27 +79,27 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 -spec manual_migrate(kz_term:ne_binary()) -> 'ok'.
 -spec manual_migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
 manual_migrate(AccountId) ->
-    ?SUP_LOG_WARNING("######## Beginning migration for account ~s~n~n", [AccountId]),
+    ?SUP_LOG_WARNING(":: beginning migrating voicemails for account ~s", [log_account_id(AccountId)]),
     manual_migrate_loop(AccountId, 1).
 
 manual_migrate_loop(AccountId, LoopCount) ->
-    ?SUP_LOG_WARNING("    [~s] migration cycle #~b", [AccountId, LoopCount]),
+    ?SUP_LOG_WARNING("  [~s] start migration cycle #~b", [log_account_id(AccountId), LoopCount]),
     ViewOpts = [{'limit', ?MAX_BULK_INSERT}
                ,'descending'
                ],
     Db = kvm_util:get_db(AccountId),
     case kz_datamgr:get_results(Db, ?LEGACY_MSG_LISTING, ViewOpts) of
         {'ok', []} ->
-            ?SUP_LOG_WARNING("    [~s] no legacy voicemail messages left", [AccountId]),
+            ?SUP_LOG_WARNING("  [~s] no legacy voicemail messages left", [log_account_id(AccountId)]),
             print_summary(AccountId),
-            ?SUP_LOG_WARNING("~n~n######## Account ~s migration is done ########", [AccountId]);
+            ?SUP_LOG_WARNING(":: voicemail migration process for account ~s is done", [log_account_id(AccountId)])
         {'ok', ViewResults} ->
             migrate_messages(AccountId, ViewResults),
             timer:sleep(?TIME_BETWEEN_ACCOUNT_CRAWLS),
             case is_latest_modb(AccountId) of
                 'true' ->
-                    ?SUP_LOG_WARNING("    [~s] reached to the latest available modb", [AccountId]),
-                    ?SUP_LOG_WARNING("~n~n######## Account ~s migration is done ########", [AccountId]);
+                    ?SUP_LOG_WARNING("  [~s] reached to the latest available modb", [log_account_id(AccountId)]),
+                    ?SUP_LOG_WARNING(":: voicemail migration process for account ~s is done", [log_account_id(AccountId)])
                 'false' ->
                     manual_migrate_loop(AccountId, LoopCount + 1)
             end;
@@ -105,25 +108,25 @@ manual_migrate_loop(AccountId, LoopCount) ->
             _ = kapps_util:update_views(Db, Views, 'true'),
             manual_migrate_loop(AccountId, LoopCount);
         {'error', _R} ->
-            ?SUP_LOG_ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, _R]),
+            ?SUP_LOG_ERROR("  [~s] failed to fetch legacy voicemail message: ~p", [log_account_id(AccountId), _R]),
             print_summary(AccountId),
-            ?SUP_LOG_WARNING("~n~n######## Account ~s migration is done ########", [AccountId])
+            ?SUP_LOG_WARNING(":: voicemail migration process for account ~s is done", [log_account_id(AccountId)])
     end.
 
 manual_migrate(AccountId, ?NE_BINARY = BoxId) ->
     manual_migrate(AccountId, [BoxId]);
 manual_migrate(AccountId, BoxIds) ->
-    ?SUP_LOG_WARNING("######## Beginning migration for ~b mailbox(es) in account ~s~n~n", [length(BoxIds), AccountId]),
+    ?SUP_LOG_WARNING(":: beginning migrating voicemails for ~b mailbox(es) in account ~s", [length(BoxIds), AccountId]),
     case get_messages_from_vmboxes(AccountId, BoxIds) of
         {'ok', []} ->
-            ?SUP_LOG_WARNING("    [~s] no legacy voicemail messages left", [AccountId]);
+            ?SUP_LOG_WARNING("  [~s] no legacy voicemail messages left", [log_account_id(AccountId)]);
         {'ok', ViewResults} ->
             migrate_messages(AccountId, ViewResults);
         {'error', _R} ->
-            ?SUP_LOG_ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, _R])
+            ?SUP_LOG_ERROR("  [~s] failed to fetch legacy voicemail message: ~p", [log_account_id(AccountId), _R])
     end,
     print_summary(AccountId),
-    ?SUP_LOG_WARNING("~n~n######## Account ~s migration is done ########", [AccountId]).
+    ?SUP_LOG_WARNING(":: voicemail migration process for account ~s is done", [log_account_id(AccountId)])
 
 %%%===================================================================
 %%% Internal functions
@@ -139,7 +142,7 @@ migrate_messages(AccountId, ViewResults) ->
     MsgCount = length(ViewResults),
     _ = update_process_key(?TOTAL_MESSAGES, MsgCount),
 
-    ?SUP_LOG_WARNING("    [~s] processing ~b voicemail messages", [AccountId, MsgCount]),
+    ?SUP_LOG_WARNING("  [~s] processing ~b voicemail messages", [log_account_id(AccountId), MsgCount]),
     MsgsDict = process_messages(AccountId, ViewResults),
     maybe_migrate(AccountId, ViewResults, MsgsDict, dict:fetch_keys(MsgsDict)).
 
@@ -153,7 +156,7 @@ maybe_migrate(AccountId, ViewResults, MsgsDict, Dbs) when is_list(Dbs) ->
     NewMsgsDict = check_dbs_existence(Dbs, MsgsDict),
     maybe_migrate(AccountId, ViewResults, NewMsgsDict, dict:size(NewMsgsDict));
 maybe_migrate(_AccountId, _ViewResults, _MsgsDict, 0) ->
-    lager:debug("    [~s] none of modbs for processed messages is exists", [_AccountId]);
+    lager:debug("  [~s] none of modbs for processed messages is exists", [log_account_id(_AccountId)]);
 maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
     do_migrate(MsgsDict),
     update_mailboxes(AccountId, ViewResults).
@@ -169,7 +172,9 @@ do_migrate(MsgsDict) ->
 
 -spec bulk_save_modb(kz_term:ne_binary(), kz_json:objects(), list()) -> 'ok'.
 bulk_save_modb(Db, Js, _Acc) ->
+
     ?DEV_LOG("M ~p~n", [Js]),
+
     case kz_datamgr:save_docs(Db, Js) of
         {'ok', Saved} ->
             _ = normalize_bulk_result(Db, Saved),
@@ -198,11 +203,11 @@ update_mailboxes(AccountId, ViewResults) ->
             case kz_datamgr:save_docs(Db, NewBoxJObjs) of
                 {'ok', _} -> 'ok';
                 {'error', R} ->
-                    ?SUP_LOG_ERROR("    [~s] failed to save new message array into mailboxes", [AccountId]),
+                    ?SUP_LOG_ERROR("  [~s] failed to save new message array into mailboxes", [log_account_id(AccountId)]),
                     failed_to_update_mailbox(ViewResults, R)
             end;
         {'error', R} ->
-            ?SUP_LOG_ERROR("    [~s] failed to open mailboxes for update", [AccountId]),
+            ?SUP_LOG_ERROR("  [~s] failed to open mailboxes for update", [log_account_id(AccountId)]),
             failed_to_update_mailbox(ViewResults, R)
     end.
 
@@ -268,7 +273,7 @@ get_messages_from_vmboxes(AccountId, ExpectedBoxIds) ->
     case kz_datamgr:open_cache_docs(kz_util:format_account_db(AccountId), ExpectedBoxIds) of
         {'ok', JObjs} -> {'ok', normalize_mailbox_results(AccountId, JObjs)};
         {'error', _E} = Error ->
-            ?SUP_LOG_ERROR("    [~s] failed to open mailbox(es)", [AccountId]),
+            ?SUP_LOG_ERROR("  [~s] failed to open mailbox(es)", [log_account_id(AccountId)]),
             Error
     end.
 
@@ -291,7 +296,9 @@ generate_lagecy_view_result(AccountId, BoxJObj) ->
     Mailbox = kz_json:get_value(<<"mailbox">>, BoxJObj),
     Timezone = kz_json:get_value(<<"timezone">>, BoxJObj),
     Messages = kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, []),
+
     ?DEV_LOG("source_id ~p", [BoxId]),
+
     Fun = fun(M, Acc) ->
                   Timestamp = kz_json:get_integer_value(<<"timestamp">>, M),
                   Value = kz_json:from_list(
@@ -346,7 +353,7 @@ get_timestamp_from_private_media(AccountId, JObjs) ->
         {'ok', PrivateMedias} ->
             get_timestamp_from_private_media(WithIds, WithoutIds, PrivateMedias);
         {'error', _Reason} ->
-            lager:error("failed to open voicemail message private media to find their timestamp, setting it to current time: ~p", [_Reason]),
+            ?SUP_LOG_ERROR("  [~s] failed to open voicemail message private media to find their timestamp, setting it to current time: ~p", [log_account_id(AccountId), _Reason]),
             [kz_json:set_value([<<"metadata">>, <<"timestamp">>], kz_time:now_s(), J) || J <- WithIds ++ WithoutIds]
     end.
 
@@ -409,8 +416,7 @@ normalize_bulk_result(Db, [S | Saved], Dict) ->
             %% successful
             normalize_bulk_result(Db, Saved, dict:append(<<"succeeded">>, Id, Dict));
         Reason ->
-            lager:debug("    [~s] failed to save voicemail message ~s in db ~s: ~p"
-                       ,[kz_util:format_account_id(Db), Id, Db, Reason]),
+            lager:debug("  [~s] failed to save voicemail message ~s in db ~s: ~p", [log_account_id(Db), Id, Db, Reason]),
             normalize_bulk_result(Db, Saved, dict:append(<<"failed">>, {Id, Reason}, Dict))
     end.
 
@@ -476,7 +482,9 @@ create_message(AccountId, FakeVMBoxMsgJObj, DefaultExt) ->
                ,{<<"handler">>, AttHandler}
                ],
     Att = kz_json:from_list([{AttName, kz_json:from_list(AttProps)}]),
+
     ?DEV_LOG("source_id ~p", [kz_json:get_value(<<"source_id">>, BoxJObj)]),
+
     Props = props:filter_undefined(
               [{<<"Box-Id">>, kz_json:get_value(<<"source_id">>, BoxJObj)}
               ,{<<"Media-ID">>, kzd_box_message:media_id(Metadata)}
@@ -494,6 +502,9 @@ create_message(AccountId, FakeVMBoxMsgJObj, DefaultExt) ->
               ,{<<"Document-Timestamp">>, Timestamp}
               ,{<<"Attachment-Name">>, AttName}
               ]),
+
+    ?DEV_LOG("~n~n AccountId ~p~nProps~p~n~n", [AccountId, Props]),
+
     Msg = kzd_box_message:new(AccountId, Props),
     UpdateProps =
         [{<<"metadata">>, kzd_box_message:set_media_id(kz_doc:id(Msg), Metadata)}
@@ -583,11 +594,11 @@ migration_result(Server, AccountId, FirstOfMonth, LastOfMonth) ->
         'true' ->
             kvm_migrate_crawler:update_stats(Server, AccountId, Props),
             kvm_migrate_crawler:account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth),
-            ?SUP_LOG_WARNING("    [~s] reached to the latest available modb", [AccountId]);
+            ?SUP_LOG_WARNING("  [~s] reached to the latest available modb", [log_account_id(AccountId)]);
         'false' ->
             kvm_migrate_crawler:update_stats(Server, AccountId, Props),
-            ?SUP_LOG_WARNING("    [~s] finished a migrate cycle: [processed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
-                            ,[AccountId, TotalMsgs, TotalSucceeded, TotalFailed, MODbFailed]
+            ?SUP_LOG_WARNING("  [~s] finished a migrate cycle: [processed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
+                            ,[log_account_id(AccountId), TotalMsgs, TotalSucceeded, TotalFailed, MODbFailed]
                             )
     end.
 
@@ -611,8 +622,8 @@ print_summary(_AccountId, ShouldCheckMODB) ->
     _TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
     _TotalFailed = get_stats(?TOTAL_FAILED),
 
-    ?SUP_LOG_WARNING("    [~s] finished a migrate cycle: [processed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
-                    ,[_AccountId, TotalMsgs, _TotalSucceeded, _TotalFailed, MODbFailed]
+    ?SUP_LOG_WARNING("  [~s] finished a migrate cycle: [processed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
+                    ,[log_account_id(_AccountId), TotalMsgs, _TotalSucceeded, _TotalFailed, MODbFailed]
                     ),
 
     case ShouldCheckMODB of
