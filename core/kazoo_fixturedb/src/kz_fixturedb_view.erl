@@ -66,7 +66,9 @@ all_docs(Server, DbName, Options) ->
 
 -spec prepare_view_result(server_map(), kz_term:ne_binary(), kz_json:objects(), kz_data:options()) -> kz_json:objects().
 prepare_view_result(Server, DbName, Result, Options) ->
-    case props:get_value(include_docs, Options, false) of
+    case props:get_value(include_docs, Options, false)
+        andalso kz_term:is_false(props:get_first_defined([reduce, group, group_level], Options, false))
+    of
         false -> sort_and_limit(Result, Options);
         true ->
             [kz_json:set_value(<<"doc">>, Opened, V)
