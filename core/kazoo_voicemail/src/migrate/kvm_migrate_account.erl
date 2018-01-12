@@ -453,7 +453,7 @@ maybe_get_timestamp(AccountId, JObjs) when is_binary(AccountId) ->
                             ),
     case kz_datamgr:open_docs(kvm_util:get_db(AccountId), maps:keys(WithIds)) of
         {'ok', PrivateMedias} ->
-            get_timestamp(PrivateMedias);
+            get_timestamp(WithIds, PrivateMedias);
         {'error', _Reason} ->
             ?SUP_LOG_ERROR("  [~s] failed to open  private media to find timestamp, setting current time as timestamp: ~p", [log_account_id(AccountId), _Reason]),
             Fun = fun(_, JObj) ->
@@ -465,12 +465,12 @@ maybe_get_timestamp(AccountId, JObjs) when is_binary(AccountId) ->
             maps:to_list(maps:map(Fun, WithIds))
     end.
 
--spec get_timestamp(kz_json:objects()) -> kz_json:objects().
-get_timestamp(PrivateMedias) ->
+-spec get_timestamp(map(), kz_json:objects()) -> kz_json:objects().
+get_timestamp(WithIds, PrivateMedias) ->
     Fun = fun(PrivateMedia, {TimeMap, Messages}) ->
                   Id = kz_doc:id(PrivateMedia),
                   Doc = kz_json:get_value(<<"doc">>, PrivateMedia, kz_json:new()),
-                  Message = maps:get(Id, PrivateMedias),
+                  Message = maps:get(Id, WithIds),
 
                   BoxTimestamp = kz_json:get_integer_value(<<"box_timestamp">>, Message, kz_time:now_s()),
                   Timestamp = kz_doc:modified(Doc, kz_doc:created(Doc, BoxTimestamp)),
