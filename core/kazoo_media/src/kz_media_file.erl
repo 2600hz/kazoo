@@ -91,10 +91,7 @@ proxy_uri(#media_store_path{db = Db
          ,StreamType
          ) ->
     _ = maybe_prepare_proxy(StreamType, Store),
-    Host = case kapps_config:get_ne_binary(?CONFIG_CAT, <<"proxy_hostname">>) of
-               'undefined' -> kz_network_utils:get_hostname();
-               ProxyHostname -> ProxyHostname
-           end,
+    Host = kz_media_util:proxy_host(),
     Port = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
     Permissions = case StreamType =:= <<"store">> of
                       'true' -> 'proxy_store';

@@ -8,7 +8,9 @@
 -module(kz_media_util).
 
 -export([recording_url/2]).
--export([base_url/2, base_url/3]).
+-export([base_url/2, base_url/3
+        ,proxy_host/0
+        ]).
 -export([convert_stream_type/1
         ,normalize_media/3, normalize_media/4
         ,normalize_media_file/3, normalize_media_file/4
@@ -689,3 +691,10 @@ store_path_from_doc(JObj, AName) ->
                      ,att = AName
                      ,opt = props:filter_undefined(Opts)
                      }.
+
+-spec proxy_host() -> kz_term:ne_binary().
+proxy_host() ->
+    case kapps_config:get_ne_binary(?CONFIG_CAT, <<"proxy_hostname">>) of
+        'undefined' -> kz_network_utils:get_hostname();
+        ProxyHostname -> ProxyHostname
+    end.
