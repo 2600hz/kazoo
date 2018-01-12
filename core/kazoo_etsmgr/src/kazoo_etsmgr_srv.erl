@@ -184,10 +184,12 @@ handle_info({'EXIT', Pid, 'killed'}, #state{give_away_pid=Pid}=State) ->
 handle_info({'EXIT', Pid, 'shutdown'}, #state{give_away_pid=Pid}=State) ->
     lager:debug("ets mgr ~p shutdown", [Pid]),
     {'noreply', State#state{give_away_pid='undefined'}};
+handle_info({'EXIT', _Pid, _Reason}, #state{give_away_pid='undefined'}=State) ->
+    {'noreply', State};
 handle_info({'ETS-TRANSFER', Tbl, Pid, _Data}, #state{table_id=Tbl
                                                      ,give_away_pid=Pid
                                                      }=State) ->
-    lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
+    lager:debug("ets table '~p' transferred back to ourselves", [Tbl]),
     send_give_away_retry(Tbl),
     {'noreply', State#state{give_away_pid='undefined'}};
 handle_info({'give_away', Tbl}, #state{table_id=Tbl
