@@ -107,10 +107,9 @@ start_stream(Req, Meta, Bin, ContentType) ->
     kz_media_proxy_util:stream_body(Req1, ChunkSize, Bin, 'undefined', 'false'),
     Req1.
 
--spec terminate(any(), Req, state()) -> Req.
-terminate(_Reason, Req, _State) ->
-    lager:debug("terminating proxy req: ~p", [_Reason]),
-    Req.
+-spec terminate(any(), cowboy_req:req(), state()) -> 'ok'.
+terminate(_Reason, _Req, _State) ->
+    lager:debug("terminating proxy req: ~p", [_Reason]).
 
 -spec maybe_strip_extension(file:filename_all()) -> file:filename_all().
 maybe_strip_extension(Id) -> filename:rootname(Id).
