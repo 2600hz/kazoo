@@ -1,0 +1,26 @@
+{
+    "_attachments": {
+        "vm-new_message.mp3": {
+            "content_type": "audio/mpeg",
+            "digest": "md5-OOR82kIsFLbZyH7dslIl2A==",
+            "length": 2916,
+            "revpos": 2,
+            "stub": true
+        }
+    },
+    "_id": "vmbox01-msg01-should-migrate",
+    "_rev": "1-1eaea95d0193811ffda4e2ec3f7ead50",
+    "description": "voicemail message media",
+    "media_source": "recording",
+    "name": "mailbox 1001 message 10-19-2017 16:15:08",
+    "owner_id": "user0000000000000000000000000001",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
+    "pvt_account_id": "account0000000000000000000000001",
+    "pvt_created": 63675605708,
+    "pvt_modified": 63675605708,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "media",
+    "source_id": "vmbox01",
+    "source_type": "voicemail",
+    "streamable": true
+}
