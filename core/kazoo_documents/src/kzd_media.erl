@@ -15,16 +15,20 @@
 -export([language/1, language/2, set_language/2]).
 -export([media_source/1, media_source/2, set_media_source/2]).
 -export([name/1, name/2, set_name/2]).
--export([prompt_id/1, prompt_id/2, set_prompt_id/2]).
+-export([prompt_id/1, prompt_id/2, set_prompt_id/2
+        ,is_prompt/1
+        ]).
 -export([source_id/1, source_id/2, set_source_id/2]).
 -export([source_type/1, source_type/2, set_source_type/2]).
 -export([streamable/1, streamable/2, set_streamable/2]).
 -export([tts/1, tts/2, set_tts/2]).
 -export([tts_text/1, tts_text/2, set_tts_text/2]).
 -export([tts_voice/1, tts_voice/2, set_tts_voice/2]).
-
+-export([type/0, type/1, set_type/1]).
 
 -include("kz_documents.hrl").
+
+-define(PVT_TYPE, <<"media">>).
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
@@ -112,6 +116,10 @@ prompt_id(Doc, Default) ->
 set_prompt_id(Doc, PromptId) ->
     kz_json:set_value([<<"prompt_id">>], PromptId, Doc).
 
+-spec is_prompt(doc()) -> boolean().
+is_prompt(Doc) ->
+    prompt_id(Doc) =/= 'undefined'.
+
 -spec source_id(doc()) -> kz_term:api_ne_binary().
 -spec source_id(doc(), Default) -> kz_term:ne_binary() | Default.
 source_id(Doc) ->
@@ -177,3 +185,11 @@ tts_voice(Doc, Default) ->
 -spec set_tts_voice(doc(), binary()) -> doc().
 set_tts_voice(Doc, TtsVoice) ->
     kz_json:set_value([<<"tts">>, <<"voice">>], TtsVoice, Doc).
+
+-spec type() -> kz_term:ne_binary().
+-spec type(doc()) -> kz_term:ne_binary().
+type() -> ?PVT_TYPE.
+type(Doc) -> kz_doc:type(Doc, ?PVT_TYPE).
+
+-spec set_type(doc()) -> doc().
+set_type(Doc) -> kz_doc:set_type(Doc, ?PVT_TYPE).
