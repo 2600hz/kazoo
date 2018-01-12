@@ -33,6 +33,9 @@
         ,grouping_category/1, grouping_category/2
 
         ,all_items_key/0
+
+        ,merge_strategy/1
+        ,merge_priority/1
         ]).
 
 -include("kz_documents.hrl").
@@ -49,6 +52,11 @@
 -define(ACTIVATION_CHARGE, <<"activation_charge">>).
 -define(ALL, <<"_all">>).
 -define(BOOKKEEPERS, <<"bookkeepers">>).
+-define(MERGE, <<"merge">>).
+-define(MERGE_STRATEGY, [?MERGE, <<"strategy">>]).
+-define(MERGE_PRIORITY, [?MERGE, <<"priority">>]).
+
+-define(DEFAULT_MERGE_PRIORITY, 0).
 
 -spec new() -> doc().
 new() ->
@@ -192,3 +200,11 @@ grouping_category(ServicePlan) ->
     grouping_category(ServicePlan, 'undefined').
 grouping_category(ServicePlan, Default) ->
     kz_json:get_ne_binary_value(<<"category">>, ServicePlan, Default).
+
+-spec merge_strategy(doc()) -> kz_term:ne_binary().
+merge_strategy(ServicePlan) ->
+    kz_json:get_ne_binary_value(?MERGE_STRATEGY, ServicePlan).
+
+-spec merge_priority(doc()) -> kz_term:ne_binary().
+merge_priority(ServicePlan) ->
+    kz_json:get_integer_value(?MERGE_PRIORITY, ServicePlan, ?DEFAULT_MERGE_PRIORITY).

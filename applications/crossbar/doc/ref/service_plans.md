@@ -17,6 +17,9 @@ Key | Description | Type | Default | Required
 `manual_recurring.[].quantity` | How many of the item are allowed | `integer()` |   | `false`
 `manual_recurring.[].rates` | Item's rate | `number()` |   | `false`
 `manual_recurring` | Monthly recurring items | `array(object())` |   | `false`
+`merge.priority` | The priority among the service plans with the merge strategy | `integer()` |   | `false`
+`merge.strategy` | The merge strategy, like strategies are merged together based on their priority | `string('simple' | 'cumulative')` |   | `false`
+`merge` | Optionally defines a strategy and priorty to merge multiple service plans together | `object()` |   | `false`
 `name` | A friendly name for the service plan | `string(1..128)` |   | `true`
 `plan./.+/` | Category name | `object()` |   | `false`
 `plan` | Outlines the service plan for various services | `object()` |   | `true`
