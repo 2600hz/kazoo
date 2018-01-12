@@ -907,6 +907,7 @@ build_general_load_params(Context, View, Options) ->
           ,{'should_paginate', cb_context:should_paginate(Context)}
           ,{'total_queried', 0}
           ,{'view', View}
+          ,{'has_qs_filter', crossbar_filter:is_defined(Context)}
           ])
     catch
         throw:{'error', ErrorMsg} ->
