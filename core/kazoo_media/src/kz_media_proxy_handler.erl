@@ -1,8 +1,8 @@
 -module(kz_media_proxy_handler).
+-behaviour(cowboy_handler).
 
 -export([init/2
         ,terminate/3
-        ,handle/2
         ]).
 
 -include("kazoo_media.hrl").
