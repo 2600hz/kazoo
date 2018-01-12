@@ -13,6 +13,7 @@
 -export([fetch/2]).
 
 -export([new/0]).
+-export([account_id/1]).
 -export([allowed_users/1, allowed_users/2, set_allowed_users/2]).
 -export([api_url/1, api_url/2, set_api_url/2]).
 -export([author/1, author/2, set_author/2]).
@@ -41,6 +42,10 @@
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?MODULE_STRING).
+
+-spec account_id(doc()) -> kz_term:api_ne_binary().
+account_id(Doc) ->
+    kz_doc:account_id(Doc).
 
 -spec allowed_users(doc()) -> kz_term:api_binary().
 -spec allowed_users(doc(), Default) -> binary() | Default.
