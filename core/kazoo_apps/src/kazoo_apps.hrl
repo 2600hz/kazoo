@@ -8,6 +8,7 @@
 -define(APP_NAME, <<"kazoo_apps">>).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP, 'kazoo_apps').
+-define(CONFIG_CAT, <<"kapps_controller">>).
 
 -define(DEFAULT_KAPPS, ['blackhole'
                        ,'callflow'

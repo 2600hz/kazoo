@@ -20,7 +20,7 @@
 
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    start_modules(),
+    _ = kz_util:spawn(fun start_modules/0, []),
     garbage_collect(self()),
     'ignore'.
 

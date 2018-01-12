@@ -1190,7 +1190,11 @@ update_schemas() ->
     kz_datamgr:suppress_change_notice(),
     lager:notice("starting system schemas update"),
     kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
-    lager:notice("finished system schemas update").
+    lager:notice("finished system schemas update"),
+    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
+         || {Config, Error} <- kapps_maintenance:validate_system_configs()
+        ],
+    'ok'.
 
 -spec db_init() -> 'ok'.
 db_init() ->
