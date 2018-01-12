@@ -11,7 +11,7 @@
 -export([start_worker/2
         ]).
 
--export([manual_migrate/1, manual_migrate/2
+-export([manual_account_migrate/1, manual_vmbox_migrate/2
         ]).
 
 -include("kz_voicemail.hrl").
@@ -73,9 +73,8 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 %% @doc Manual migration for an Account or a list of account's mailboxes
 %% @end
 %%--------------------------------------------------------------------
--spec manual_migrate(kz_term:ne_binary()) -> 'ok'.
--spec manual_migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
-manual_migrate(AccountId) ->
+-spec manual_account_migrate(kz_term:ne_binary()) -> 'ok'.
+manual_account_migrate(AccountId) ->
     ?SUP_LOG_WARNING(":: beginning migrating voicemails for account ~s", [log_account_id(AccountId)]),
     manual_migrate_loop(AccountId, 1).
 
@@ -110,9 +109,10 @@ manual_migrate_loop(AccountId, LoopCount) ->
             ?SUP_LOG_WARNING(":: voicemail migration process for account ~s is done", [log_account_id(AccountId)])
     end.
 
-manual_migrate(AccountId, ?NE_BINARY = BoxId) ->
-    manual_migrate(AccountId, [BoxId]);
-manual_migrate(AccountId, BoxIds) ->
+-spec manual_vmbox_migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
+manual_vmbox_migrate(AccountId, ?NE_BINARY = BoxId) ->
+    manual_vmbox_migrate(AccountId, [BoxId]);
+manual_vmbox_migrate(AccountId, BoxIds) ->
     ?SUP_LOG_WARNING(":: beginning migrating voicemails for ~b mailbox(es) in account ~s", [length(BoxIds), AccountId]),
     case get_messages_from_vmboxes(AccountId, BoxIds) of
         {'ok', []} ->

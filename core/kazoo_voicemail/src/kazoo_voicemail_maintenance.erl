@@ -43,14 +43,14 @@ migrate() ->
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
 -spec migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object()) -> 'ok'.
 migrate(?NE_BINARY = AccountId) ->
-    kvm_migrate_account:manual_migrate(AccountId);
+    kvm_migrate_account:manual_account_migrate(AccountId);
 migrate(AccountJObj) ->
     migrate(kz_doc:id(AccountJObj)).
 
 migrate(AccountId, ?NE_BINARY = BoxId) ->
     migrate(AccountId, [BoxId]);
 migrate(AccountId, BoxIds) when is_list(BoxIds) ->
-    kvm_migrate_account:manual_migrate(AccountId, BoxIds);
+    kvm_migrate_account:manual_vmbox_migrate(AccountId, BoxIds);
 migrate(AccountId, Box) ->
     migrate(AccountId, kz_doc:id(Box)).
 
