@@ -52,7 +52,7 @@ authorized_apps(AccountId, UserId) ->
 -spec allowed_app(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 allowed_app(AccountId, AppId) ->
     case [App || App <- allowed_apps(AccountId),
-                 AppId =:= kzd_app:id(App)
+                 AppId =:= kz_doc:id(App)
          ]
     of
         [App|_] ->

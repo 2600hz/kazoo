@@ -699,7 +699,7 @@ format_app(Lang, AppJObj) ->
     I18N = kzd_app:i18n(AppJObj),
     DefaultLabel = kz_json:get_value([?DEFAULT_LANGUAGE, <<"label">>], I18N),
     kz_json:from_list(
-      [{<<"id">>, kzd_app:id(AppJObj)}
+      [{<<"id">>, kz_doc:id(AppJObj)}
       ,{<<"name">>, kzd_app:name(AppJObj)}
       ,{<<"api_url">>, kzd_app:api_url(AppJObj)}
       ,{<<"source_url">>, kzd_app:source_url(AppJObj)}
