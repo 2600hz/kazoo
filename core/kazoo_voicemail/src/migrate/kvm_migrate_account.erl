@@ -140,22 +140,22 @@ migrate_messages(AccountId, ViewResults) ->
     _ = update_process_key(?TOTAL_MESSAGES, MsgCount),
 
     ?SUP_LOG_WARNING("  [~s] processing ~b voicemail messages", [log_account_id(AccountId), MsgCount]),
-    MsgsDict = process_messages(AccountId, ViewResults),
-    maybe_migrate(AccountId, ViewResults, MsgsDict, dict:fetch_keys(MsgsDict)).
+    MsgsMap = process_messages(AccountId, ViewResults),
+    maybe_migrate(AccountId, ViewResults, MsgsMap, maps:keys(MsgsMap)).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Check Db existence and process with migration
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_migrate(kz_term:ne_binary(), kz_json:objects(), dict:dict(), kz_term:ne_binaries() | non_neg_integer()) -> 'ok'.
-maybe_migrate(AccountId, ViewResults, MsgsDict, Dbs) when is_list(Dbs) ->
-    NewMsgsDict = check_dbs_existence(Dbs, MsgsDict),
-    maybe_migrate(AccountId, ViewResults, NewMsgsDict, dict:size(NewMsgsDict));
-maybe_migrate(_AccountId, _ViewResults, _MsgsDict, 0) ->
-    lager:debug("  [~s] none of modbs for processed messages is exists", [log_account_id(_AccountId)]);
-maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
-    do_migrate(MsgsDict),
+-spec maybe_migrate(kz_term:ne_binary(), kz_json:objects(), map(), kz_term:ne_binaries() | non_neg_integer()) -> 'ok'.
+maybe_migrate(AccountId, ViewResults, MsgsMap, Dbs) when is_list(Dbs) ->
+    NewMsgsMap = check_dbs_existence(Dbs, MsgsMap),
+    maybe_migrate(AccountId, ViewResults, NewMsgsMap, maps:size(NewMsgsMap));
+maybe_migrate(_AccountId, _ViewResults, _MsgsMap, 0) ->
+    lager:debug("  [~s] none of modbs for migrating messages in this cycle are exists", [log_account_id(_AccountId)]);
+maybe_migrate(AccountId, ViewResults, MsgsMap, _DbCount) ->
+    maps:fold(fun bulk_save_modb/3, [], MsgsMap),
     update_mailboxes(AccountId, ViewResults).
 
 %%--------------------------------------------------------------------
@@ -163,18 +163,11 @@ maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec do_migrate(dict:dict()) -> 'ok'.
-do_migrate(MsgsDict) ->
-    dict:fold(fun bulk_save_modb/3, [], MsgsDict).
-
 -spec bulk_save_modb(kz_term:ne_binary(), kz_json:objects(), list()) -> 'ok'.
 bulk_save_modb(Db, Js, _Acc) ->
-
-    ?DEV_LOG("M ~p~n", [Js]),
-
     case kz_datamgr:save_docs(Db, Js) of
         {'ok', Saved} ->
-            _ = normalize_bulk_result(Db, Saved),
+            _ = normalize_bulk_result(Db, Saved, #{<<"succeeded">> => [], <<"failed">> => []}),
             'ok';
         {'error', R} ->
             update_stats(?FAILED, Js, R),
@@ -229,7 +222,6 @@ update_mailbox_jobjs(BoxJObjs) ->
 
 -spec update_message_array(kz_json:object(), map(), map(), map()) -> kz_json:object().
 update_message_array(BoxJObj, MODbFailed, Failed, NoTimestamp) ->
-    Messages = kz_json:get_value(<<"messages">>, BoxJObj, []),
     %% check if messages are failed or not, if not remove them from message array
     Fun = fun(Msg, Acc) ->
                   Timestamp = kz_json:get_integer_value(<<"timestamp">>, Msg),
@@ -239,7 +231,7 @@ update_message_array(BoxJObj, MODbFailed, Failed, NoTimestamp) ->
                       M -> [M|Acc]
                   end
           end,
-    NewMessages = [Fun(M) || M <- Messages],
+    NewMessages = lists:foldl(Fun, [], kz_json:get_value(<<"messages">>, BoxJObj, [])),
     kz_json:set_value(?VM_KEY_MESSAGES, NewMessages, BoxJObj).
 
 -spec update_vmbox_message(kz_json:object(), map(), map(), map(), kz_term:binary(), kz_time:api_seconds()) -> kz_term:api_object().
@@ -259,18 +251,14 @@ update_vmbox_message(Message, MODbFailed, Failed, NoTimestamp, Id, 'undefined') 
 update_vmbox_message(Message, MODbFailed, Failed, _, Id, Timestamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     MsgId = kazoo_modb_util:modb_id(Year, Month, Id),
-    M = maps:is_key(MsgId, MODbFailed),
-    F = maps:is_key(MsgId, Failed),
 
-    case {M, F} of
-        {'true', _} ->
-            Error = maps:fetch(MsgId, MODbFailed),
-            kz_json:set_value(<<"migration_error">>, kz_term:to_binary(Error), Message);
-        {_, 'true'} ->
-            Error = maps:fetch(MsgId, Failed),
-            kz_json:set_value(<<"migration_error">>, kz_term:to_binary(Error), Message);
-        _ ->
-            'undefined'
+    case {maps:get(MsgId, MODbFailed, 'undefined'), maps:get(MsgId, Failed, 'undefined')} of
+        {'undefined', 'undefined'} ->
+            'undefined';
+        {MODBError, _} when MODBError =/= 'undefined' ->
+            kz_json:set_value(<<"migration_error">>, kz_term:to_binary(MODBError), Message);
+        {_, Error} ->
+            kz_json:set_value(<<"migration_error">>, kz_term:to_binary(Error), Message)
     end.
 %%--------------------------------------------------------------------
 %% @private
@@ -281,119 +269,61 @@ update_vmbox_message(Message, MODbFailed, Failed, _, Id, Timestamp) ->
 -spec get_messages_from_vmboxes(kz_term:ne_binary(), kz_term:ne_binaries()) -> db_ret().
 get_messages_from_vmboxes(AccountId, ExpectedBoxIds) ->
     case kz_datamgr:open_cache_docs(kz_util:format_account_db(AccountId), ExpectedBoxIds) of
-        {'ok', JObjs} -> {'ok', normalize_mailbox_results(AccountId, JObjs)};
+        {'ok', JObjs} -> {'ok', normalize_mailbox_results(JObjs)};
         {'error', _E} = Error ->
             ?SUP_LOG_ERROR("  [~s] failed to open mailbox(es)", [log_account_id(AccountId)]),
             Error
     end.
 
--spec normalize_mailbox_results(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
-normalize_mailbox_results(AccountId, JObjs) ->
-    lists:foldl(fun(J, Acc) -> normalize_fold(AccountId, J, Acc) end, [], JObjs).
+-spec normalize_mailbox_results(kz_json:objects()) -> kz_json:objects().
+normalize_mailbox_results(JObjs) ->
+    [create_legacy_view_result(BoxJObj, Message)
+     || JObj <- JObjs,
+        BoxJObj <- [kz_json:get_value(<<"doc">>, JObj)],
+        Message <- kz_json:get_list_value(?VM_KEY_MESSAGES, BoxJObj, [])
+    ].
 
--spec normalize_fold(kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_fold(AccountId, JObj, Acc) ->
-    case has_messages(JObj) of
-        'false' -> Acc;
-        'true' ->
-            generate_lagecy_view_result(AccountId, kz_json:get_value(<<"doc">>, JObj)) ++ Acc
-    end.
-
--spec generate_lagecy_view_result(kz_term:ne_binary(), kz_json:object()) -> kz_json:objects().
-generate_lagecy_view_result(AccountId, BoxJObj) ->
+-spec create_legacy_view_result(kz_json:object(), kz_json:object()) -> kz_json:object().
+create_legacy_view_result(BoxJObj, Message) ->
     BoxId = kz_doc:id(BoxJObj),
     OwnerId = kz_json:get_value(<<"owner_id">>, BoxJObj),
     Mailbox = kz_json:get_value(<<"mailbox">>, BoxJObj),
     Timezone = kz_json:get_value(<<"timezone">>, BoxJObj),
-    Messages = kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, []),
 
-    ?DEV_LOG("source_id ~p", [BoxId]),
-
-    Fun = fun(M, Acc) ->
-                  Timestamp = kz_json:get_integer_value(<<"timestamp">>, M),
-                  Value = kz_json:from_list(
-                            props:filter_empty(
-                              [{<<"source_id">>, BoxId}
-                              ,{<<"owner_id">>, OwnerId}
-                              ,{<<"timezone">>, Timezone}
-                              ,{<<"mailbox">>, Mailbox}
-                              ,{<<"metadata">>, kz_json:set_value(<<"timestamp">>, Timestamp, M)}
-                              ])),
-                  [kz_json:from_list(
-                     props:filter_empty(
-                       [{<<"id">>, BoxId}
-                       ,{<<"key">>, kz_json:get_integer_value(<<"timestamp">>, M)}
-                       ,{<<"value">>, Value}
-                       ,{<<"_id">>, BoxId}
-                       ]))
-                   | Acc
-                  ]
-          end,
-    maybe_get_timestamp(AccountId, lists:foldl(Fun, [], Messages)).
-
--spec has_messages(kz_json:object()) -> boolean().
-has_messages(JObj) ->
-    [] =/= kz_json:get_value([<<"doc">>, ?VM_KEY_MESSAGES], JObj, []).
-
--spec maybe_get_timestamp(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
-maybe_get_timestamp(_, []) -> [];
-maybe_get_timestamp(AccountId, LeagcyMsgs) ->
-    maybe_get_timestamp(AccountId, LeagcyMsgs, {[], []}).
-
--spec maybe_get_timestamp(kz_term:ne_binary(), kz_json:objects(), {kz_json:objects(), kz_json:objects()}) -> kz_json:objects().
-maybe_get_timestamp(_, [], {OK, []}) ->
-    OK;
-maybe_get_timestamp(AccountId, [], {OK, KO}) ->
-    OK ++ get_timestamp_from_private_media(AccountId, KO);
-maybe_get_timestamp(AccountId, [H|LeagcyMsgs], {OK, KO}) ->
-    case kz_json:get_integer_value([<<"metadata">>, <<"timestamp">>], H) of
-        'undefined' ->
-            maybe_get_timestamp(AccountId, LeagcyMsgs, {OK, [H|KO]});
-        _ ->
-            maybe_get_timestamp(AccountId, LeagcyMsgs, {[H|OK], KO})
-    end.
-
--spec get_timestamp_from_private_media(kz_term:ne_binary() | kz_term:ne_binaries(), kz_json:objects()) -> kz_json:objects().
-get_timestamp_from_private_media(AccountId, JObjs) when is_binary(AccountId) ->
-    WithIds = [Id
-               || J <- JObjs,
-                  Id <- [kz_json:get_ne_binary_value([<<"metadata">>, <<"media_id">>], J)],
-                  Id =/= 'undefined'
-              ],
-    case kz_datamgr:open_docs(kvm_util:get_db(AccountId), WithIds) of
-        {'ok', PrivateMedias} ->
-            get_timestamp_from_private_media(WithIds, PrivateMedias);
-        {'error', _Reason} ->
-            ?SUP_LOG_ERROR("  [~s] failed to open voicemail message private media to find their timestamp, setting it to current time: ~p", [log_account_id(AccountId), _Reason]),
-            [kz_json:set_value([<<"metadata">>, <<"timestamp">>], kz_time:now_s(), J) || J <- WithIds]
-    end;
-get_timestamp_from_private_media(WithIds, PrivateMedias) when is_list(WithIds) ->
-    Fun = fun(PrivateMedia, {TimeMap, Messages}) ->
-                  Id = kz_doc:id(PrivateMedia),
-                  [Msg] = lists:filter(fun(J) -> kz_json:get_value([<<"metadata">>, <<"media_id">>], J) =:= Id end, WithIds),
-                  Doc = kz_json:get_value(<<"doc">>, PrivateMedia, kz_json:new()),
-                  Timestamp = kz_doc:modified(Doc, kz_doc:created(Doc, kz_time:now_s())),
-                  {[{Id, Timestamp}|TimeMap], [kz_json:set_value([<<"metadata">>, <<"timestamp">>], Timestamp, Msg)|Messages]}
-          end,
-    {NoTimeMap, Msgs} = lists:foldl(Fun, {[], []}, PrivateMedias),
-    update_stats('no_timestamp', NoTimeMap),
-    Msgs.
+    BoxTimestamp = kz_doc:modified(BoxJObj, kz_doc:created(BoxJObj, kz_time:now_s())),
+    Timestamp = kz_json:get_integer_value(<<"timestamp">>, Message),
+    Value = kz_json:from_list(
+              [{<<"source_id">>, BoxId}
+              ,{<<"owner_id">>, OwnerId}
+              ,{<<"timezone">>, Timezone}
+              ,{<<"box_timestamp">>, BoxTimestamp}
+              ,{<<"mailbox">>, Mailbox}
+              ,{<<"metadata">>, kz_json:set_value(<<"timestamp">>, Timestamp, Message)}
+              ]
+             ),
+    kz_json:from_list(
+      [{<<"id">>, BoxId}
+      ,{<<"key">>, Timestamp}
+      ,{<<"value">>, Value}
+      ,{<<"_id">>, BoxId}
+      ]
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Check Db existence and remove messages that non exists dbs
 %% @end
 %%--------------------------------------------------------------------
--spec check_dbs_existence(kz_term:ne_binaries(), dict:dict()) -> dict:dict().
-check_dbs_existence([], MsgsDict) -> MsgsDict;
-check_dbs_existence([Db | Dbs], MsgsDict) ->
+-spec check_dbs_existence(kz_term:ne_binaries(), map()) -> map().
+check_dbs_existence([], MsgsMap) -> MsgsMap;
+check_dbs_existence([Db | Dbs], MsgsMap) ->
     case kz_datamgr:db_exists(Db) of
         'true' ->
-            check_dbs_existence(Dbs, MsgsDict);
+            check_dbs_existence(Dbs, MsgsMap);
         'false' ->
             lager:warning("modb ~s is not exists", [Db]),
-            update_stats(?FAILED_MODB, dict:fetch(Db, MsgsDict), <<"modb_not_exists">>),
-            check_dbs_existence(Dbs, dict:erase(Db, MsgsDict))
+            update_stats(?FAILED_MODB, maps:get(Db, MsgsMap), <<"modb_not_exists">>),
+            check_dbs_existence(Dbs, maps:remove(Db, MsgsMap))
     end.
 
 %%--------------------------------------------------------------------
@@ -401,34 +331,24 @@ check_dbs_existence([Db | Dbs], MsgsDict) ->
 %% @doc Normalize bulk save results and update stats accordingly
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_bulk_result(kz_term:ne_binary(), kz_json:objects()) ->
+-spec normalize_bulk_result(kz_term:ne_binary(), kz_json:objects(), map()) ->
                                    {non_neg_integer(), non_neg_integer()}.
--spec normalize_bulk_result(kz_term:ne_binary(), kz_json:objects(), dict:dict()) ->
-                                   {non_neg_integer(), non_neg_integer()}.
-normalize_bulk_result(Db, Saved) ->
-    DefaultDict = dict:from_list([{<<"succeeded">>, []}
-                                 ,{<<"failed">>, []}
-                                 ]),
-    normalize_bulk_result(Db, Saved, DefaultDict).
-
-normalize_bulk_result(_Db, [], Dict) ->
-    Succeeded = dict:fetch(<<"succeeded">>, Dict),
-    Failed = dict:fetch(<<"failed">>, Dict),
+normalize_bulk_result(_Db, [], #{<<"succeeded">> := Succeeded, <<"failed">> := Failed}) ->
     update_stats(?FAILED, Failed),
     update_stats(?SUCCEEDED, Succeeded),
     {length(Succeeded), length(Failed)};
-normalize_bulk_result(Db, [S | Saved], Dict) ->
+normalize_bulk_result(Db, [S | Saved], #{<<"succeeded">> := Succeeded, <<"failed">> := Failed}=Map) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>, <<"_id">>], S),
     case kz_json:get_value(<<"error">>, S) of
         'undefined' ->
             %% successful
-            normalize_bulk_result(Db, Saved, dict:append(<<"succeeded">>, Id, Dict));
+            normalize_bulk_result(Db, Saved, Map#{<<"succeeded">> => [Id|Succeeded]});
         <<"conflict">> ->
             %% successful
-            normalize_bulk_result(Db, Saved, dict:append(<<"succeeded">>, Id, Dict));
+            normalize_bulk_result(Db, Saved, Map#{<<"succeeded">> => [Id|Succeeded]});
         Reason ->
-            lager:debug("  [~s] failed to save voicemail message ~s in db ~s: ~p", [log_account_id(Db), Id, Db, Reason]),
-            normalize_bulk_result(Db, Saved, dict:append(<<"failed">>, {Id, Reason}, Dict))
+            lager:debug("  [~s] failed to save voice mail message ~s in db ~s: ~p", [log_account_id(Db), Id, Db, Reason]),
+            normalize_bulk_result(Db, Saved, Map#{<<"failed">> => [{Id, Reason}|Failed]})
     end.
 
 %%--------------------------------------------------------------------
@@ -443,34 +363,29 @@ normalize_bulk_result(Db, [S | Saved], Dict) ->
 %% kazoo_data bulk operation for faster db writes.
 %% @end
 %%--------------------------------------------------------------------
--spec process_messages(kz_term:ne_binary(), kz_json:objects()) -> dict:dict().
+-spec process_messages(kz_term:ne_binary(), kz_json:objects()) -> map().
 process_messages(AccountId, JObjs) ->
     DefaultExt = ?DEFAULT_VM_EXTENSION,
-    Fun = fun(J, {Acc, NoTimestamp}) ->
-                  Value = kz_json:get_value(<<"value">>, J),
-                  case kz_json:get_ne_binary_value([<<"metadata">>, <<"timestamp">>], Value) =/= 'undefined'
-                        andalso kz_json:get_integer_value([<<"metadata">>, <<"timestamp">>], Value)
-                  of
-                      'false' -> {Acc, NoTimestamp};
-                      'undefined' ->
-                          {Acc, [Value|NoTimestamp]};
-                      _ ->
-                          Doc = create_message(AccountId, Value, DefaultExt),
-                          {dict:append(kz_doc:account_db(Doc), Doc, Acc), NoTimestamp}
-                  end
-          end,
-    {Dict, NeedTimestamp} = lists:foldl(Fun, {dict:new(), []}, JObjs),
-    process_messages(AccountId, DefaultExt, Dict, NeedTimestamp).
+    {Map, NeedTimestamp} = lists:foldl(fun(J, Acc) -> check_create_and_map(AccountId, J, DefaultExt, Acc) end, {#{}, []}, JObjs),
+    TimestampUpdated = maybe_get_timestamp(AccountId, NeedTimestamp),
+    lists:foldl(fun(J, Acc) -> create_and_map(AccountId, J, DefaultExt, Acc) end, Map, TimestampUpdated).
 
--spec process_messages(kz_term:ne_binary(), kz_term:ne_binary(), dict:dict(), kz_json:objects()) -> dict:dict().
-process_messages(_, _, Dict, []) -> Dict;
-process_messages(AccountId, DefaultExt, Dict, NeedTimestamp) ->
-    JObjs = maybe_get_timestamp(AccountId, NeedTimestamp),
-    Fun = fun(JObj, Acc) ->
-                  Doc = create_message(AccountId, JObj, DefaultExt),
-                  dict:append(kz_doc:account_db(Doc), Doc, Acc)
-          end,
-    lists:foldl(Fun, Dict, JObjs).
+-spec check_create_and_map(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), {map(), kz_json:objects()}) -> {map(), kz_json:objects()}.
+check_create_and_map(AccountId, JObj, DefaultExt, {Map, NoTimestamp}) ->
+    Value = kz_json:get_value(<<"value">>, JObj),
+
+    case kz_json:get_ne_binary_value([<<"metadata">>, <<"media_id">>], Value) =/= 'undefined'
+        andalso kz_json:get_integer_value([<<"metadata">>, <<"timestamp">>], Value)
+    of
+        'false' -> {Map, NoTimestamp};
+        'undefined' -> {Map, [Value|NoTimestamp]};
+        _ -> {create_and_map(AccountId, Value, DefaultExt, Map), NoTimestamp}
+    end.
+
+-spec create_and_map(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), map()) -> map().
+create_and_map(AccountId, JObj, DefaultExt, Map) ->
+    Doc = create_message(AccountId, JObj, DefaultExt),
+    maps:update_with(kz_doc:account_db(Doc), fun(List) -> [Doc|List] end, [Doc], Map).
 
 -spec create_message(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 create_message(AccountId, FakeVMBoxMsgJObj, DefaultExt) ->
@@ -497,8 +412,6 @@ create_message(AccountId, FakeVMBoxMsgJObj, DefaultExt) ->
                ],
     Att = kz_json:from_list([{AttName, kz_json:from_list(AttProps)}]),
 
-    ?DEV_LOG("source_id ~p", [kz_json:get_value(<<"source_id">>, BoxJObj)]),
-
     Props = props:filter_undefined(
               [{<<"Box-Id">>, kz_json:get_value(<<"source_id">>, BoxJObj)}
               ,{<<"Media-ID">>, kzd_box_message:media_id(Metadata)}
@@ -517,8 +430,6 @@ create_message(AccountId, FakeVMBoxMsgJObj, DefaultExt) ->
               ,{<<"Attachment-Name">>, AttName}
               ]),
 
-    ?DEV_LOG("~n~n AccountId ~p~nProps~p~n~n", [AccountId, Props]),
-
     Msg = kzd_box_message:new(AccountId, Props),
     UpdateProps =
         [{<<"metadata">>, kzd_box_message:set_media_id(kz_doc:id(Msg), Metadata)}
@@ -527,6 +438,48 @@ create_message(AccountId, FakeVMBoxMsgJObj, DefaultExt) ->
         ,{<<"pvt_attachments">>, Att}
         ],
     kz_json:set_values(UpdateProps, Msg).
+
+%% @doc try to get private_media to read its create/modified timestamp to set as
+%% voice mail message timestamp.
+%% @end
+-spec maybe_get_timestamp(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
+maybe_get_timestamp(_, []) -> [];
+maybe_get_timestamp(AccountId, JObjs) when is_binary(AccountId) ->
+    WithIds = maps:from_list([{Id, J}
+                              || J <- JObjs,
+                                 Id <- [kz_json:get_ne_binary_value([<<"metadata">>, <<"media_id">>], J)],
+                                 Id =/= 'undefined'
+                             ]
+                            ),
+    case kz_datamgr:open_docs(kvm_util:get_db(AccountId), maps:keys(WithIds)) of
+        {'ok', PrivateMedias} ->
+            get_timestamp(PrivateMedias);
+        {'error', _Reason} ->
+            ?SUP_LOG_ERROR("  [~s] failed to open  private media to find timestamp, setting current time as timestamp: ~p", [log_account_id(AccountId), _Reason]),
+            Fun = fun(_, JObj) ->
+                          kz_json:set_value([<<"metadata">>, <<"timestamp">>]
+                                           ,kz_json:get_integer_value(<<"box_timestamp">>, JObj, kz_time:now_s())
+                                           ,JObj
+                                           )
+                  end,
+            maps:to_list(maps:map(Fun, WithIds))
+    end.
+
+-spec get_timestamp(kz_json:objects()) -> kz_json:objects().
+get_timestamp(PrivateMedias) ->
+    Fun = fun(PrivateMedia, {TimeMap, Messages}) ->
+                  Id = kz_doc:id(PrivateMedia),
+                  Doc = kz_json:get_value(<<"doc">>, PrivateMedia, kz_json:new()),
+                  Message = maps:get(Id, PrivateMedias),
+
+                  BoxTimestamp = kz_json:get_integer_value(<<"box_timestamp">>, Message, kz_time:now_s()),
+                  Timestamp = kz_doc:modified(Doc, kz_doc:created(Doc, BoxTimestamp)),
+
+                  {[{Id, Timestamp}|TimeMap], [kz_json:set_value([<<"metadata">>, <<"timestamp">>], Timestamp, Message)|Messages]}
+          end,
+    {NoTimeMap, Msgs} = lists:foldl(Fun, {[], []}, PrivateMedias),
+    update_stats('no_timestamp', NoTimeMap),
+    Msgs.
 
 %%--------------------------------------------------------------------
 %% @private
