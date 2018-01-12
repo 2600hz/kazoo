@@ -351,8 +351,8 @@ local_sdp(Doc, Default) ->
 set_local_sdp(Doc, LocalSdp) ->
     kz_json:set_value([<<"local_sdp">>], LocalSdp, Doc).
 
--spec kz_types:media_server(doc()) -> kz_term:api_binary().
--spec kz_types:media_server(doc(), Default) -> binary() | Default.
+-spec media_server(doc()) -> kz_term:api_binary().
+-spec media_server(doc(), Default) -> binary() | Default.
 media_server(Doc) ->
     media_server(Doc, 'undefined').
 media_server(Doc, Default) ->
