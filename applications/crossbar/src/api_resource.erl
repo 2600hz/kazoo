@@ -81,6 +81,14 @@ rest_init(Req, Opts) ->
 
     Context0 = cb_context:setters(cb_context:new(), Setters),
 
+    lager:info("~s: ~s?~s from ~s"
+              ,[cb_context:method(Context0)
+               ,Path
+               ,cb_context:raw_qs(Context0)
+               ,cb_context:client_ip(Context0)
+               ]
+              ),
+
     case api_util:get_req_data(Context0, Req) of
         {'stop', Req1, Context1} ->
             lager:debug("getting request data failed, stopping"),
@@ -92,13 +100,6 @@ rest_init(Req, Opts) ->
             Event = api_util:create_event_name(Context3, <<"init">>),
             {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
             Context5 = maybe_decode_start_key(Context4),
-            lager:info("~s: ~s?~s from ~s"
-                      ,[cb_context:method(Context5)
-                       ,Path
-                       ,cb_context:raw_qs(Context5)
-                       ,cb_context:client_ip(Context5)
-                       ]
-                      ),
             {'cowboy_rest'
             ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context5), Req10)
             ,Context5
