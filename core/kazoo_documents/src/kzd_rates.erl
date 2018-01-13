@@ -79,7 +79,7 @@ set_direction(Doc, Direction) ->
 internal_rate_cost(Doc) ->
     internal_rate_cost(Doc, 'undefined').
 internal_rate_cost(Doc, Default) ->
-    kz_json:get_value([<<"internal_rate_cost">>], Doc, Default).
+    kz_json:get_float_value([<<"internal_rate_cost">>], Doc, Default).
 
 -spec set_internal_rate_cost(doc(), number()) -> doc().
 set_internal_rate_cost(Doc, InternalRateCost) ->
@@ -123,7 +123,7 @@ set_prefix(Doc, Prefix) ->
 rate_cost(Doc) ->
     rate_cost(Doc, 'undefined').
 rate_cost(Doc, Default) ->
-    kz_json:get_value([<<"rate_cost">>], Doc, Default).
+    kz_json:get_float_value([<<"rate_cost">>], Doc, Default).
 
 -spec set_rate_cost(doc(), number()) -> doc().
 set_rate_cost(Doc, RateCost) ->
@@ -178,7 +178,7 @@ set_rate_nocharge_time(Doc, RateNochargeTime) ->
 rate_surcharge(Doc) ->
     rate_surcharge(Doc, 'undefined').
 rate_surcharge(Doc, Default) ->
-    kz_json:get_value([<<"rate_surcharge">>], Doc, Default).
+    kz_json:get_float_value([<<"rate_surcharge">>], Doc, Default).
 
 -spec set_rate_surcharge(doc(), number()) -> doc().
 set_rate_surcharge(Doc, RateSurcharge) ->
