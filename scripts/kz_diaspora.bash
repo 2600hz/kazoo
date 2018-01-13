@@ -368,7 +368,7 @@ kz_type_modules() {
                     xml_things
                     whapp_info
                     kapps_info
-                    media_server
+#                    media_server
                     media_serve
                     )
     local kz_term=(text
