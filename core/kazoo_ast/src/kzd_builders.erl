@@ -54,7 +54,7 @@ accessors_from_properties(Properties) ->
                  ).
 
 base_module(SchemaName) ->
-    ["-module(kzd_", clean_name(SchemaName), ").\n"].
+    ["-", "module(kzd_", clean_name(SchemaName), ").\n"].
 
 clean_name([_|_]=Names) ->
     [clean_name(Name) || Name <- Names];
