@@ -17,6 +17,8 @@
 
 -include("kazoo_apps.hrl").
 
+-define(CONFIG_CAT, <<"kapps_controller">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -108,7 +110,7 @@ maybe_add_autostart_application(Application) ->
     case lists:member(Application, Configured) of
         'true' -> io:format("started application ~s~n", [Application]);
         'false' ->
-            persist_application([Application|Configured]),
+            _ = persist_application([Application|Configured]),
             io:format("started and added ~s to autostart applications~n", [Application])
     end.
 
@@ -118,7 +120,7 @@ maybe_remove_autostart_application(Application) ->
     case lists:member(Application, Configured) of
         'false' -> io:format("stopped kazoo application ~s~n", [Application]);
         'true' ->
-            persist_application(lists:delete(Application,Configured)), 
+            _ = persist_application(lists:delete(Application,Configured)),
             io:format("stopped and removed ~s from autostart applications~n", [Application])
     end.
 
