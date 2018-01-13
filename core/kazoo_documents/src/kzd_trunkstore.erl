@@ -98,7 +98,7 @@ set_account_credits(Doc, AccountCredits) ->
 account_credits_prepay(Doc) ->
     account_credits_prepay(Doc, 'undefined').
 account_credits_prepay(Doc, Default) ->
-    kz_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], Doc, Default).
+    kz_json:get_float_value([<<"account">>, <<"credits">>, <<"prepay">>], Doc, Default).
 
 -spec set_account_credits_prepay(doc(), number()) -> doc().
 set_account_credits_prepay(Doc, AccountCreditsPrepay) ->
