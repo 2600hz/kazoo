@@ -10,7 +10,7 @@
 -spec build_accessors() -> 'ok'.
 build_accessors() ->
     filelib:fold_files(kz_ast_util:schema_path(<<>>)
-                      ,<<"^[a-z_]+\\.json$">>
+                      ,"^[a-z_]+\\.json$"
                       ,'false'
                       ,fun build_accessor/2
                       ,'ok'

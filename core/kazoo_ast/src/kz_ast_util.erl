@@ -134,11 +134,11 @@ format_name_part(Part) ->
 default_schema_priv_dir() ->
     kz_term:to_binary(code:priv_dir('crossbar')).
 
--spec schema_path(binary()) -> file:filename_all().
+-spec schema_path(binary()) -> file:filename_all() | file:dirname_all().
 schema_path(Base) ->
     schema_path(Base, default_schema_priv_dir()).
 
--spec schema_path(binary(), file:filename_all()) -> file:filename_all().
+-spec schema_path(binary(), file:filename_all()) -> file:filename_all() | file:dirname_all().
 schema_path(Base, PrivDir) ->
     case filename:join([PrivDir
                        ,<<"couchdb">>
