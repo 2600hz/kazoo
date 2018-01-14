@@ -372,6 +372,11 @@
             "description": "ecallmgr redirect via proxy",
             "type": "boolean"
         },
+        "restrict_channel_event_publisher": {
+            "default": true,
+            "description": "ecallmgr restrict_channel_event_publisher",
+            "type": "boolean"
+        },
         "restrict_channel_state_publisher": {
             "default": false,
             "description": "ecallmgr restrict channel state publisher",
