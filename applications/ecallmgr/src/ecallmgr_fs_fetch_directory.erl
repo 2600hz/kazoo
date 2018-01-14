@@ -66,7 +66,7 @@ kamailio_association(Node, Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(Ac
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
             directory_not_found(Node, Id)
-    end;   
+    end;
 kamailio_association(Node, Id, UserId, ?MATCH_ACCOUNT_RAW(AccountId), JObj) ->
     case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
         'undefined' -> directory_not_found(Node, Id);
