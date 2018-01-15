@@ -32,6 +32,8 @@
         ,add_view_to_index/4, add_att_to_index/4
 
         ,update_pvt_doc_hash/0, update_pvt_doc_hash/1
+
+        ,start_me/0
         ]).
 
 -include("kz_fixturedb.hrl").
@@ -119,6 +121,16 @@ update_revision(JObj) ->
 %%%===================================================================
 %%% Handy functions to use from shell to managing files
 %%%===================================================================
+
+-spec start_me() -> 'ok'.
+start_me() ->
+    {ok, _} = application:ensure_all_started(kazoo_config),
+    {ok, _} = kazoo_data_link_sup:start_link(),
+
+    _ = lager:set_loglevel(lager_console_backend, none),
+    _ = lager:set_loglevel(lager_file_backend, none),
+    _ = lager:set_loglevel(lager_syslog_backend, none),
+    'ok'.
 
 -spec get_doc_path(kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_doc_path(DbName, DocId) ->
