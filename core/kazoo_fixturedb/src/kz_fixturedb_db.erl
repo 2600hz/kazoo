@@ -51,7 +51,7 @@ db_info(Server, DbName) ->
 -spec db_exists(server_map(), kz_term:ne_binary()) -> boolean().
 db_exists(Server, DbName) ->
     #{url := Url} = kz_fixturedb_server:maybe_use_app_connection(Server, DbName),
-    filelib:is_dir(kz_term:to_list(Url)).
+    filelib:is_dir(filename:join([Url ++ "/", kz_term:to_binary(DbName)])).
 
 -spec db_archive(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 db_archive(_, _, _) ->

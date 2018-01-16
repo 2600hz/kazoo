@@ -71,7 +71,7 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 %% Start a manual migration for all mailboxes in an Account
 %% @end
 %%--------------------------------------------------------------------
--spec manual_account_migrate(kz_term:ne_binary()) -> 'ok'.
+-spec manual_account_migrate(kz_term:ne_binary()) -> kz_term:proplist().
 manual_account_migrate(Account) ->
     AccountId = kz_util:format_account_id(Account),
     ?SUP_LOG_WARNING(":: beginning migrating voicemails for account ~s", [AccountId]),
@@ -86,7 +86,7 @@ manual_account_migrate(Account) ->
 %% Start a manual migration for specified mailboxes in an Account
 %% @end
 %%--------------------------------------------------------------------
--spec manual_vmbox_migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
+-spec manual_vmbox_migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_term:proplist().
 manual_vmbox_migrate(Account, ?NE_BINARY = BoxId) ->
     manual_vmbox_migrate(Account, [BoxId]);
 manual_vmbox_migrate(Account, BoxIds) ->
@@ -103,7 +103,7 @@ manual_vmbox_migrate(Account, BoxIds) ->
 %% @doc
 %% Main migration loop
 %% @end
--spec migration_loop(#ctx{}) -> 'ok'.
+-spec migration_loop(#ctx{}) -> 'ok' | kz_term:proplist().
 migration_loop(#ctx{account_id = _AccountId, retries = Retries}=Ctx) when Retries > 3 ->
     ?SUP_LOG_WARNING("  [~s] reached to maximum retry", [_AccountId]),
     account_is_done(Ctx);
@@ -137,7 +137,7 @@ get_messages(#ctx{mode = <<"vmboxes">>, account_db = AccountDb, manual_vmboxes =
 %% @doc
 %% Do action on get_messages result. If we have something to process, reset context first.
 %% @end
--spec handle_result(#ctx{}, db_ret()) -> 'ok'.
+-spec handle_result(#ctx{}, db_ret()) -> 'ok' | kz_term:proplist().
 handle_result(#ctx{account_id = _AccountId}=Ctx, {'ok', []}) ->
     ?SUP_LOG_WARNING("  [~s] no legacy voicemail messages left", [_AccountId]),
     account_is_done(Ctx);
@@ -152,14 +152,14 @@ handle_result(#ctx{account_id = _AccountId, account_db = AccountDb, retries = Re
     migration_loop(Ctx#ctx{retries = Retries + 1});
 handle_result(#ctx{account_id = _AccountId}=Ctx, {'error', Reason}) ->
     ?SUP_LOG_ERROR("  [~s] failed to fetch legacy voicemail messages: ~p", [_AccountId, Reason]),
-    account_maybe_failed(Ctx, Reason).
+    get_messages_failed(Ctx, Reason).
 
 %% @private
 %% @doc
 %% Check first to see we're hit the oldest MODB, if not and we're in manual account mode
 %% go to next loop, otherwise report summary and go down.
 %% @end
--spec maybe_next_cycle(#ctx{}) -> 'ok'.
+-spec maybe_next_cycle(#ctx{}) -> 'ok' | kz_term:proplist().
 maybe_next_cycle(#ctx{account_id = _AccountId
                      ,total_msgs = TotalMsgs, no_modb = NoModb
                      }=Ctx) when TotalMsgs == length(NoModb) ->
@@ -179,7 +179,7 @@ maybe_next_cycle(#ctx{mode = <<"vmboxes">>}=Ctx) ->
 %% @doc
 %% Last cycle was hit MODB
 %% @end
--spec hit_last_modb(#ctx{}) -> 'ok'.
+-spec hit_last_modb(#ctx{}) -> 'ok' | kz_term:proplist().
 hit_last_modb(#ctx{mode = <<"worker">>, account_id = AccountId
                   ,total_stats = TotalStats, server = Server
                   ,startkey = StartKey, endkey = EndKey
@@ -193,25 +193,25 @@ hit_last_modb(Ctx) ->
 %% @doc
 %% Migration finished, going down
 %% @end
+-spec account_is_done(#ctx{}) -> 'ok' | kz_term:proplist().
 account_is_done(#ctx{mode = <<"worker">>, account_id = AccountId
                     ,startkey = StartKey, endkey = EndKey
                     ,server = Server}) ->
     kvm_migrate_crawler:account_is_done(Server, AccountId, StartKey, EndKey);
 account_is_done(#ctx{account_id = _AccountId, total_stats = TotalStats}) ->
-    Props = total_stats_to_prop(TotalStats),
     ?SUP_LOG_WARNING(":: voicemail migration process for account ~s has been finished", [_AccountId]),
-    _ = [?SUP_LOG_WARNING("~s: ~b", [K, V]) || {K, V} <- Props],
-    'ok'.
+    total_stats_to_prop(TotalStats).
 
 %% @private
 %% @doc
 %% If this manual migration, check tries and maybe retry again.
 %% @end
-account_maybe_failed(#ctx{mode = <<"worker">>, account_id = AccountId
+-spec get_messages_failed(#ctx{}, any()) -> 'ok' | kz_term:proplist().
+get_messages_failed(#ctx{mode = <<"worker">>, account_id = AccountId
                          ,startkey = StartKey, endkey = EndKey, server = Server
                          }, Reason) ->
     kvm_migrate_crawler:account_maybe_failed(Server, AccountId, StartKey, EndKey, Reason);
-account_maybe_failed(#ctx{account_id = _AccountId, retries = Retries}=Ctx, _) ->
+get_messages_failed(#ctx{account_id = _AccountId, retries = Retries}=Ctx, _) ->
     ?SUP_LOG_WARNING(":: maybe retrying again", [_AccountId]),
     migration_loop(Ctx#ctx{retries = Retries + 1}).
 
