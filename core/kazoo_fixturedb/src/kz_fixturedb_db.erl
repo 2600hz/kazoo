@@ -67,7 +67,7 @@ db_list(Server, _Options) ->
 
 -spec get_dbs_list(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_dbs_list(ServerUrl, ServerUrl) ->
-    [kz_term:to_binary(Db) || Db <- get_dbs_list(ServerUrl)];
+    [kz_term:to_binary(filename:basename(Db)) || Db <- get_dbs_list(ServerUrl)];
 get_dbs_list(ServerUrl, AppUrl) ->
     lists:usort([kz_term:to_binary(Db)
                  || Db <- get_dbs_list(ServerUrl) ++ get_dbs_list(AppUrl)
