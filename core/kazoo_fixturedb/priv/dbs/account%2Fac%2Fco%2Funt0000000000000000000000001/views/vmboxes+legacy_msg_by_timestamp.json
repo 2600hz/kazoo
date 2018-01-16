@@ -3,6 +3,7 @@
         "id": "vmbox01",
         "key": null,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "timestamp": null
@@ -15,6 +16,7 @@
         "id": "vmbox01",
         "key": null,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "folder": "saved",
@@ -43,6 +45,7 @@
         "id": "vmbox01",
         "key": null,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "from": "15554443344@10.0.1.1",
@@ -56,6 +59,7 @@
         "id": "vmbox01",
         "key": null,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "media_id": "vmbox01-msg07-private-media-timestamp",
@@ -69,6 +73,7 @@
         "id": "vmbox01",
         "key": null,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "media_id": "vmbox01-msg08-private-media-timestamp",
@@ -82,6 +87,7 @@
         "id": "vmbox01",
         "key": 63675605708,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "call_id": "af671260365e0d9c5c6ef80dfa00cd47",
@@ -102,6 +108,7 @@
         "id": "vmbox01",
         "key": 63675606808,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "folder": "new",
@@ -116,6 +123,7 @@
         "id": "vmbox01",
         "key": 63675806808,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "folder": "new",
@@ -130,6 +138,7 @@
         "id": "vmbox01",
         "key": 63675806818,
         "value": {
+            "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
                 "folder": "new",

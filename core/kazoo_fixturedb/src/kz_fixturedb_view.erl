@@ -73,11 +73,17 @@ prepare_view_result(Server, DbName, Result, Options) ->
     of
         false -> sort_and_limit(Result, Options);
         true ->
-            [kz_json:set_value(<<"doc">>, Opened, V)
+            [kz_json:set_value(<<"doc">>, JObjOrUndefined, V)
              || V <- sort_and_limit(Result, Options),
-                {OkError, Opened} <- [kz_fixturedb_doc:open_doc(Server, DbName, kz_doc:id(V), Options)],
-                OkError =/= error
+                JObjOrUndefined <- [include_doc_or_undefined(Server, DbName, kz_doc:id(V), Options)]
             ]
+    end.
+
+-spec include_doc_or_undefined(server_map(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_data:options()) -> kz_term:api_object().
+include_doc_or_undefined(Server, DbName, DocId, Options) ->
+    case kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options) of
+        {ok, JObj} -> JObj;
+        {error, _} -> undefined
     end.
 
 -spec sort_and_limit(kz_json:objects(), kz_data:options()) -> kz_json:objects().

@@ -22,9 +22,7 @@ kvm_migrate_account_test_() ->
 setup_fixtures() ->
     ?LOG_DEBUG(":: Setting up Voice mail Manual Migration test"),
 
-
-    {ok, _} = application:ensure_all_started(kazoo_config),
-    {ok, LinkPid} = kazoo_data_link_sup:start_link(),
+    Pid = kz_fixturedb_util:start_me(),
 
     meck:new(kz_datamgr, [unstick, passthrough]),
     meck:expect(kz_datamgr, get_results, check_kz_datamgr_history()),
@@ -32,23 +30,17 @@ setup_fixtures() ->
     meck:new(kz_fixturedb_db, [unstick, passthrough]),
     meck:expect(kz_fixturedb_db, db_exists, this_month_db_exists()),
 
-    % lager:set_loglevel(lager_console_backend, none),
-    % lager:set_loglevel(lager_file_backend, none),
-    % lager:set_loglevel(lager_syslog_backend, none),
+    Pid.
 
-    LinkPid.
-
-cleanup(LinkPid) ->
-    _ = erlang:exit(LinkPid, normal),
-    _ = application:stop(kazoo_config),
-    ?LOG_DEBUG(":: Stopped Kazoo FixtureDB"),
+cleanup(Pid) ->
+    kz_fixturedb_util:stop_me(Pid),
     meck:unload().
 
 test_manual_voicemail_account() ->
     Result = [{<<"total_processed">>, 10}
-             ,{<<"total_succeeded">>, 8}
+             ,{<<"total_succeeded">>, 7}
              ,{<<"total_failed">>, 0}
-             ,{<<"total_no_modb">>, 0}
+             ,{<<"total_no_modb">>, 1}
              ,{<<"total_no_timestamp">>, 4}
              ,{<<"total_no_ids">>, 2}
              ],
@@ -71,6 +63,8 @@ validate_mock() ->
 this_month_db_exists() ->
     fun(Server, Db) ->
             %% why meck can't call the original mfa properly?
+            %% meck_code_gen:get_current_call/1 returns undefined and it cause bad_match
+            %% in meck:passthrough/1
             kz_datamgr:db_classification(Db) =:= 'modb'
                 andalso is_db_under_test(Db, kazoo_modb:get_modb(kz_util:format_account_id(Db)))
                 orelse erlang:apply('kz_fixturedb_db_meck_original', db_exists, [Server, Db])

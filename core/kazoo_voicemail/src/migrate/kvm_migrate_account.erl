@@ -453,7 +453,6 @@ check_create_and_map(JObj, {Ctx, BoxSet, MsgMap, NoTimestamp}) ->
         andalso kz_json:get_integer_value([<<"metadata">>, <<"timestamp">>], Value)
     of
         'false' ->
-            %%TODO: maybe add box_id to set
             {ctx_field_update(Ctx, 'no_ids', 1), BoxSet, MsgMap, NoTimestamp};
         'undefined' ->
             {Ctx, sets:add_element(kz_doc:id(JObj), BoxSet), MsgMap, [Value|NoTimestamp]};
