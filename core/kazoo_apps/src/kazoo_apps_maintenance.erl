@@ -71,7 +71,7 @@ ready() ->
         'false' ->
             io:format("some kazoo applications are not running~n", []),
             {'no_return', 2}
-        end.
+    end.
 
 -spec check() -> kz_term:sup_no_return().
 check() ->
