@@ -208,8 +208,8 @@ account_is_done(#ctx{account_id = _AccountId, total_stats = TotalStats}) ->
 %% @end
 -spec get_messages_failed(#ctx{}, any()) -> 'ok' | kz_term:proplist().
 get_messages_failed(#ctx{mode = <<"worker">>, account_id = AccountId
-                         ,startkey = StartKey, endkey = EndKey, server = Server
-                         }, Reason) ->
+                        ,startkey = StartKey, endkey = EndKey, server = Server
+                        }, Reason) ->
     kvm_migrate_crawler:account_maybe_failed(Server, AccountId, StartKey, EndKey, Reason);
 get_messages_failed(#ctx{account_id = _AccountId, retries = Retries}=Ctx, _) ->
     ?SUP_LOG_WARNING(":: maybe retrying again", [_AccountId]),

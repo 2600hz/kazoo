@@ -36,7 +36,7 @@
                 "          source_id: doc._id,",
                 "          owner_id: doc.owner_id,",
                 "          mailbox: doc.mailbox,",
-                "          box_timestamp: parseInt(doc.modified || doc.created, 10);",
+                "          box_timestamp: parseInt(doc.modified || doc.created, 10),",
                 "          timezone: doc.timezone,",
                 "          metadata: {",
                 "            timestamp: timestamp,",
