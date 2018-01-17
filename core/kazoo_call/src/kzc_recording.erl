@@ -582,7 +582,7 @@ handler_fields_for_protocol(<<"http", _/binary>>
     ,<<"&account_id=">>, AccountId
     ,<<"&start=">>, {'field', <<"start">>}
     ,<<"&duration_ms=">>, {'field', <<"duration_ms">>}
-    ,<<"&api_id=">>, DocId
+    ,<<"&recording_id=">>, DocId
     ].
 
 -spec check_url(kz_term:ne_binary()) -> {binary(), kz_term:ne_binary()}.
