@@ -2,14 +2,18 @@
 
 -export([new/0
         ,default/0
-        ,save/1, save/2
-        ,mappings/1
         ,format/2
+        ,format_host/2
+        ,format_mapping/2
+        ,mappings/1
         ,name/1
+        ,save/1, save/2
         ]).
 
 -export([a/1, a/2, set_a/2]).
--export([cname/1, cname/2, set_cname/2]).
+-export([cname/1, cname/2, set_cname/2
+        ,cname_hosts/1
+        ]).
 -export([mx/1, mx/2, set_mx/2]).
 -export([naptr/1, naptr/2, set_naptr/2]).
 -export([srv/1, srv/2, set_srv/2]).
@@ -101,6 +105,10 @@ cname(Doc, Default) ->
 -spec set_cname(doc(), kz_json:object()) -> doc().
 set_cname(Doc, Cname) ->
     kz_json:set_value([<<"CNAME">>], Cname, Doc).
+
+-spec cname_hosts(doc()) -> kz_term:ne_binaries().
+cname_hosts(Domains) ->
+    kz_json:get_keys(<<"CNAME">>, Domains).
 
 -spec mx(doc()) -> kz_term:api_object().
 -spec mx(doc(), Default) -> kz_json:object() | Default.
