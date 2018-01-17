@@ -36,7 +36,7 @@
              ,account_db :: kz_term:ne_binary()
              ,startkey = 'undefined' :: kz_term:api_seconds()
              ,endkey = 'undefined' :: kz_term:api_seconds()
-             ,server = 'undefined' :: kz_term:api_ne_binary()
+             ,server = 'undefined' :: kz_term:api_pid()
              ,manual_vmboxes = 'undefined' :: kz_term:api_ne_binaries()
              ,last_error = 'undefined' :: kz_term:ne_binary()
              ,retries = 0 :: non_neg_integer()
@@ -229,8 +229,8 @@ account_is_done(#ctx{account_id = _AccountId, total_stats = TotalStats}) ->
 %% @end
 -spec account_is_failed(#ctx{}, kz_term:ne_binary()) -> 'ok' | kz_term:proplist().
 account_is_failed(#ctx{mode = <<"worker">>, account_id = AccountId
-                        ,startkey = StartKey, endkey = EndKey, server = Server
-                        }, Reason) ->
+                      ,startkey = StartKey, endkey = EndKey, server = Server
+                      }, Reason) ->
     kvm_migrate_crawler:account_maybe_failed(Server, AccountId, StartKey, EndKey, Reason);
 account_is_failed(Ctx, _) ->
     account_is_done(Ctx).

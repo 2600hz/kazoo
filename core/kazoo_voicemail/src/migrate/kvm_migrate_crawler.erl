@@ -135,9 +135,9 @@ init(Pid) ->
 %%--------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'account_is_done', {_ ,_ ,_ ,Reason}=MaybeDone}, _From, #state{account_queue = Queue
-                                                         ,total_account_failed = TotalAccFailed
-                                                         ,failed_accounts = FailedAccounts
-                                                         }=State) ->
+                                                                           ,total_account_failed = TotalAccFailed
+                                                                           ,failed_accounts = FailedAccounts
+                                                                           }=State) ->
     {IsFailed, AccountId, NewQueue} = maybe_remove_account_from_queue(MaybeDone, Queue),
     NewState = case IsFailed of
                    'true' ->
@@ -439,6 +439,6 @@ print_summary(#state{total_account = TotalAccount
     io:format("Total succeeded: ~b~n", [TotalSucceeded]),
     io:format("Total failed: ~b~n", [TotalFailed]),
     io:format("Total Account with failed migrated messages: ~b~n~n", [TotalAccFailed]),
-    io:format("Accounts with failed migrated messages:~n~n").
+    io:format("Accounts with failed migrated messages:~n~n"),
     _ = [io:format(" ~s: ~s~n", [AccountId, Reason]) || {AccountId, Reason} <- FailedAccounts],
     'ok'.
