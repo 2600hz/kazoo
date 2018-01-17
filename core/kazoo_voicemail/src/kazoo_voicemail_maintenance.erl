@@ -48,16 +48,21 @@ migrate() ->
 -spec migrate(ne_binary()) -> 'ok'.
 -spec migrate(ne_binary(), ne_binary() | ne_binaries() | kz_json:object()) -> 'ok'.
 migrate(?NE_BINARY = AccountId) ->
-    kvm_migrate_account:manual_migrate(AccountId);
+    print_migration_stats(kvm_migrate_account:manual_account_migrate(AccountId));
 migrate(AccountJObj) ->
     migrate(kz_doc:id(AccountJObj)).
 
 migrate(AccountId, ?NE_BINARY = BoxId) ->
     migrate(AccountId, [BoxId]);
 migrate(AccountId, BoxIds) when is_list(BoxIds) ->
-    kvm_migrate_account:manual_migrate(AccountId, BoxIds);
+    print_migration_stats(kvm_migrate_account:manual_vmbox_migrate(AccountId, BoxIds));
 migrate(AccountId, Box) ->
     migrate(AccountId, kz_doc:id(Box)).
+
+-spec print_migration_stats(kz_term:proplist()) -> 'ok'.
+print_migration_stats(Props) ->
+    _ = [io:format("~s: ~b~n", [K, V]) || {K, V} <- Props],
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
