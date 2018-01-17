@@ -31,7 +31,6 @@ pages:
     - 'applications/crossbar/doc/services.md'
     - 'applications/crossbar/doc/transactions.md'
     - 'applications/crossbar/doc/whitelabeling.md'
-
 - 'Voice APIs':
   - 'Connectivity':
     - 'applications/crossbar/doc/access_lists.md'
@@ -109,7 +108,6 @@ pages:
     - 'applications/crossbar/doc/onboarding.md'
     - 'applications/crossbar/doc/signup.md'
     - 'applications/crossbar/doc/templates.md'
-
 - 'Integrations':
   - 'Pivot':
     - 'Intro': 'applications/pivot/doc/README.md'
@@ -144,7 +142,6 @@ pages:
     - 'applications/webhooks/doc/README.md' ###
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
-    
 - 'Administration APIs'
   - 'Billing':
     - 'applications/crossbar/doc/cdrs.md'
@@ -162,7 +159,6 @@ pages:
       - 'Netherlands - Amsterdam': 'doc/internationalization/examples/dialplan/NL_Amsterdam.md'
       - ' Netherlands - Rotterdam': 'doc/internationalization/examples/dialplan/NL_Rotterdam.md'
   - 'System Prompts': 'doc/internationalization/prompts.md'
-  
 - 'Applications':
   - 'Callflows':
     - 'applications/callflow/doc/README.md' ###
@@ -242,7 +238,6 @@ pages:
     - 'Branch BNumber': 'applications/callflow/doc/branch_bnumber.md'
     - 'Deprecated':
         - 'Offnet': 'applications/callflow/doc/offnet.md'
-
 - 'System Administration'
   - 'Call Inspector':
     - 'applications/call_inspector/doc/README.md'
@@ -306,7 +301,6 @@ pages:
     - 'applications/teletype/doc/maintenance.md'
   - 'Trunkstore': ###
     - 'applications/trunkstore/doc/README.md' ###
-    
 - 'Core':
   - 'Kazoo Endpoints':
     - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
@@ -383,7 +377,6 @@ pages:
     - 'core/kazoo_proper/doc/rates.md' ##
   - 'Kazoo Performance Testing': ##
       - 'core/kazoo_perf/doc/maintenance.md' ##
-      
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
