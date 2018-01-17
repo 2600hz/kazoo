@@ -11,14 +11,26 @@
         ]).
 
 -export([a/1, a/2, set_a/2]).
--export([cname/1, cname/2, set_cname/2
-        ,cname_hosts/1
-        ,cname_host_mappings/2, cname_host_mappings/3
-        ]).
+-export([cname/1, cname/2, set_cname/2]).
 -export([mx/1, mx/2, set_mx/2]).
 -export([naptr/1, naptr/2, set_naptr/2]).
 -export([srv/1, srv/2, set_srv/2]).
 -export([txt/1, txt/2, set_txt/2]).
+
+-export([cname_host_mappings/2, cname_host_mappings/3
+        ,mx_host_mappings/2, mx_host_mappings/3
+        ,a_record_host_mappings/2, a_record_host_mappings/3
+        ,naptr_host_mappings/2, naptr_host_mappings/3
+        ,srv_host_mappings/2, srv_host_mappings/3
+        ,txt_host_mappings/2, txt_host_mappings/3
+
+        ,cname_hosts/1
+        ,mx_hosts/1
+        ,a_record_hosts/1
+        ,naptr_hosts/1
+        ,srv_hosts/1
+        ,txt_hosts/1
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -84,7 +96,6 @@ is_valid(Domains, {'ok', SchemaJObj}) ->
             {'false', Errors}
     end.
 
-
 -spec a(doc()) -> kz_term:api_object().
 -spec a(doc(), Default) -> kz_json:object() | Default.
 a(Doc) ->
@@ -95,6 +106,18 @@ a(Doc, Default) ->
 -spec set_a(doc(), kz_json:object()) -> doc().
 set_a(Doc, A) ->
     kz_json:set_value([<<"A">>], A, Doc).
+
+-spec a_record_hosts(doc()) -> kz_term:ne_binaries().
+a_record_hosts(Domains) ->
+    kz_json:get_keys(a(Domains)).
+
+-spec a_record_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+-spec a_record_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
+a_record_host_mappings(Domains, Host) ->
+    a_record_host_mappings(Domains, Host, []).
+
+a_record_host_mappings(Domains, Host, Default) ->
+    host_mappings(a(Domains), Host, Default).
 
 -spec cname(doc()) -> kz_term:api_object().
 -spec cname(doc(), Default) -> kz_json:object() | Default.
@@ -109,7 +132,7 @@ set_cname(Doc, Cname) ->
 
 -spec cname_hosts(doc()) -> kz_term:ne_binaries().
 cname_hosts(Domains) ->
-    kz_json:get_keys(<<"CNAME">>, Domains).
+    kz_json:get_keys(cname(Domains)).
 
 -spec cname_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 -spec cname_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
@@ -117,7 +140,7 @@ cname_host_mappings(Domains, Host) ->
     cname_host_mappings(Domains, Host, []).
 
 cname_host_mappings(Domains, Host, Default) ->
-    kz_json:get_value([<<"CNAME">>, Host, <<"mappings">>], Domains, Default).
+    host_mappings(cname(Domains), Host, Default).
 
 -spec mx(doc()) -> kz_term:api_object().
 -spec mx(doc(), Default) -> kz_json:object() | Default.
@@ -130,6 +153,18 @@ mx(Doc, Default) ->
 set_mx(Doc, Mx) ->
     kz_json:set_value([<<"MX">>], Mx, Doc).
 
+-spec mx_hosts(doc()) -> kz_term:ne_binaries().
+mx_hosts(Domains) ->
+    kz_json:get_keys(mx(Domains)).
+
+-spec mx_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+-spec mx_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
+mx_host_mappings(Domains, Host) ->
+    mx_host_mappings(Domains, Host, []).
+
+mx_host_mappings(Domains, Host, Default) ->
+    host_mappings(mx(Domains), Host, Default).
+
 -spec naptr(doc()) -> kz_term:api_object().
 -spec naptr(doc(), Default) -> kz_json:object() | Default.
 naptr(Doc) ->
@@ -140,6 +175,18 @@ naptr(Doc, Default) ->
 -spec set_naptr(doc(), kz_json:object()) -> doc().
 set_naptr(Doc, Naptr) ->
     kz_json:set_value([<<"NAPTR">>], Naptr, Doc).
+
+-spec naptr_hosts(doc()) -> kz_term:ne_binaries().
+naptr_hosts(Domains) ->
+    kz_json:get_keys(naptr(Domains)).
+
+-spec naptr_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+-spec naptr_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
+naptr_host_mappings(Domains, Host) ->
+    naptr_host_mappings(Domains, Host, []).
+
+naptr_host_mappings(Domains, Host, Default) ->
+    host_mappings(naptr(Domains), Host, Default).
 
 -spec srv(doc()) -> kz_term:api_object().
 -spec srv(doc(), Default) -> kz_json:object() | Default.
@@ -152,6 +199,18 @@ srv(Doc, Default) ->
 set_srv(Doc, Srv) ->
     kz_json:set_value([<<"SRV">>], Srv, Doc).
 
+-spec srv_hosts(doc()) -> kz_term:ne_binaries().
+srv_hosts(Domains) ->
+    kz_json:get_keys(srv(Domains)).
+
+-spec srv_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+-spec srv_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
+srv_host_mappings(Domains, Host) ->
+    srv_host_mappings(Domains, Host, []).
+
+srv_host_mappings(Domains, Host, Default) ->
+    host_mappings(srv(Domains), Host, Default).
+
 -spec txt(doc()) -> kz_term:api_object().
 -spec txt(doc(), Default) -> kz_json:object() | Default.
 txt(Doc) ->
@@ -162,6 +221,18 @@ txt(Doc, Default) ->
 -spec set_txt(doc(), kz_json:object()) -> doc().
 set_txt(Doc, Txt) ->
     kz_json:set_value([<<"TXT">>], Txt, Doc).
+
+-spec txt_hosts(doc()) -> kz_term:ne_binaries().
+txt_hosts(Domains) ->
+    kz_json:get_keys(txt(Domains)).
+
+-spec txt_host_mappings(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+-spec txt_host_mappings(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
+txt_host_mappings(Domains, Host) ->
+    txt_host_mappings(Domains, Host, []).
+
+txt_host_mappings(Domains, Host, Default) ->
+    host_mappings(txt(Domains), Host, Default).
 
 -spec format(doc(), kz_term:ne_binary()) -> doc().
 format(Domains, WhitelabelDomain) ->
@@ -213,3 +284,9 @@ mappings(JObj) ->
 -spec name(kz_json:object()) -> kz_term:api_binary().
 name(JObj) ->
     kz_json:get_value(<<"name">>, JObj).
+
+-spec host_mappings(kz_term:api_object(), kz_term:ne_binary(), Default) ->
+                           kz_term:ne_binaries() | Default.
+host_mappings('undefined', _Host, Default) -> Default;
+host_mappings(Domain, Host, Default) ->
+    kz_json:get_value([Host, <<"mapping">>], Domain, Default).
