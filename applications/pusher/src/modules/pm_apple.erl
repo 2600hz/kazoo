@@ -18,7 +18,7 @@
 -record(state, {tab :: ets:tid()}).
 -type state() :: #state{}.
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [],[]).
 
@@ -27,11 +27,11 @@ init([]) ->
     kz_util:put_callid(?MODULE),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
     TokenApp = kz_json:get_value(<<"Token-App">>, JObj),
     maybe_send_push_notification(get_apns(TokenApp, ETS), JObj),
@@ -39,7 +39,7 @@ handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Request, State) ->
     {'noreply', State}.
 
@@ -52,7 +52,7 @@ terminate(_Reason, #state{tab=ETS}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(api_pid(), kz_json:object()) -> any().
+-spec maybe_send_push_notification(kz_term:api_pid(), kz_json:object()) -> any().
 maybe_send_push_notification('undefined', _) -> 'ok';
 maybe_send_push_notification(Pid, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
@@ -71,7 +71,7 @@ maybe_send_push_notification(Pid, JObj) ->
                           ,#{apns_topic => APNsTopic}
                           ).
 
--spec get_apns(api_binary(), ets:tid()) -> api_pid().
+-spec get_apns(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
 get_apns('undefined', _) -> 'undefined';
 get_apns(App, ETS) ->
     case ets:lookup(ETS, App) of
@@ -79,13 +79,13 @@ get_apns(App, ETS) ->
         [{App, Pid}] -> Pid
     end.
 
--spec maybe_load_apns(api_binary(), ets:tid()) -> api_pid().
+-spec maybe_load_apns(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
 maybe_load_apns(App, ETS) ->
     CertBin = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"certificate">>], 'undefined', App),
     Host = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"host">>], ?DEFAULT_APNS_HOST, App),
     maybe_load_apns(App, ETS, CertBin, Host).
 
--spec maybe_load_apns(api_binary(), ets:tid(), api_ne_binary(), ne_binary()) -> api_pid().
+-spec maybe_load_apns(kz_term:api_binary(), ets:tid(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:api_pid().
 maybe_load_apns(App, _, 'undefined', _) ->
     lager:debug("apple pusher certificate for app ~s not found", [App]),
     'undefined';
@@ -126,6 +126,6 @@ apns_topic(JObj) ->
     end.
 
 %% Retains the old behaviour
--spec default_apns_topic(ne_binary()) -> ne_binary().
+-spec default_apns_topic(kz_term:ne_binary()) -> kz_term:ne_binary().
 default_apns_topic(TokenApp) ->
     re:replace(TokenApp, <<"\\.(?:dev|prod)$">>, <<>>, [{'return', 'binary'}]).

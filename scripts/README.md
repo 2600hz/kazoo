@@ -14,6 +14,11 @@ A simple script to query the Erlang VMs process count
 10
 ```
 
+## apps_of_app.escript
+
+Calculates application interdependencies, correcting .app.src files as necessary. Also can be used to detect circular references.
+
+For now, we just calculate app files in `applications/` since `core/` is a tangled mess right now (and is typically installed as one lump package anyway).
 
 ## bump-copyright-year.sh
 
@@ -230,7 +235,7 @@ done (warnings were emitted)
 
 ## dialyze-usage.bash
 
-Given a module name, such as 'props' or 'kz\_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possilbe ;)
+Given a module name, such as 'props' or 'kz\_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possible ;)
 
 The more heavily utilized the module is, the longer this will take to run!
 
@@ -303,6 +308,40 @@ Script for updating Erlang code to account for functions that have moved modules
 -   kz\_util to alternative modules
 -   kz\_json to kz\_doc for public/private fields
 
+
+## `list-ext-deps.escript`
+
+This escript gathers information from all `.beam` files in the filesystem tree specified by a list of directories provided to it on the command line, determines which external calls these files collectively make, and compares these calls with the applications provided by the Erlang runtime under which the script is running.
+
+The end result is a list of OTP applications that this set of `.beam` files collectively make calls to (i.e. depend on).
+
+* NOTE: The `.beam` files *must* be compiled with debug information for this script to be useful.
+
+### Example
+
+In this example, we find the names of all the Erlang applications which the `.beam` files in `applications/`, `core/`, and `deps` depend on.
+
+```
+$ scripts/list-ext-deps.escript core applications deps 2> /tmp/errors.log
+common_test
+compiler
+crypto
+erts
+eunit
+inets
+kernel
+mnesia
+observer
+public_key
+runtime_tools
+sasl
+ssl
+stdlib
+syntax_tools
+tools
+xmerl
+```
+  
 
 ## `no_raw_json.escript`
 

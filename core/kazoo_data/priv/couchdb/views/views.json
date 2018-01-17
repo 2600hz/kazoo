@@ -1,0 +1,9 @@
+{
+    "_id": "_design/views",
+    "language": "javascript",
+    "views": {
+        "views_by_classification": {
+            "map": "function(doc) {if (doc.pvt_type != 'view_definition' || doc.pvt_deleted) return; emit(doc.classification, null);}"
+        }
+    }
+}

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -25,25 +25,25 @@
                             ]).
 -define(TRANSFERRED_TYPES, []).
 
--spec transferred(api_terms()) ->
+-spec transferred(kz_term:api_terms()) ->
                          {'ok', iolist()} |
-                         {'error', ne_binary()}.
+                         {'error', kz_term:ne_binary()}.
 transferred(API) ->
     case transferred_v(API) of
         'true' -> kz_api:build_message(API, ?TRANSFERRED_HEADERS, ?OPTIONAL_TRANSFERRED_HEADERS);
         'false' -> {'error', <<"API failed validation for transferred">>}
     end.
 
--spec transferred_v(api_terms()) -> boolean().
+-spec transferred_v(kz_term:api_terms()) -> boolean().
 transferred_v(API) ->
     kz_api:validate(API, ?TRANSFERRED_HEADERS, ?TRANSFERRED_VALUES, ?TRANSFERRED_TYPES).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props),
     bind_q(Queue, CallId, props:get_value('restrict_to', Props)).
 
--spec bind_q(ne_binary(), api_binary(), kz_proplist() | 'undefined') -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist() | 'undefined') -> 'ok'.
 bind_q(_Queue, 'undefined', 'undefined') -> 'ok';
 bind_q(Queue, CallId, 'undefined') ->
     bind_for_transferred(Queue, CallId);
@@ -56,12 +56,12 @@ bind_q(Queue, CallId, ['transferred'|Restrictions]) ->
 bind_q(Queue, CallId, [_Restriction|Restrictions]) ->
     bind_q(Queue, CallId, Restrictions).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props),
     unbind_q(Queue, CallId, props:get_value('restrict_to', Props)).
 
--spec unbind_q(ne_binary(), api_binary(), kz_proplist() | 'undefined') -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist() | 'undefined') -> 'ok'.
 unbind_q(_Queue, 'undefined', 'undefined') -> 'ok';
 unbind_q(Queue, CallId, 'undefined') ->
     unbind_for_transferred(Queue, CallId);
@@ -78,23 +78,23 @@ unbind_q(Queue, CallId, [_Restriction|Restrictions]) ->
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
--spec publish_transferred(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_transferred(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_transferred(TargetCallId, API) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSFERRED_VALUES, fun transferred/1),
     amqp_util:kapps_publish(transferred_routing_key(TargetCallId), Payload).
 
--spec bind_for_transferred(ne_binary(), ne_binary()) -> 'ok'.
+-spec bind_for_transferred(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_for_transferred(Queue, CallId) ->
     manipulate_queue_bindings(Queue, transferred_routing_key(CallId), fun amqp_util:bind_q_to_kapps/2).
 
--spec unbind_for_transferred(ne_binary(), ne_binary()) -> 'ok'.
+-spec unbind_for_transferred(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 unbind_for_transferred(Queue, CallId) ->
     manipulate_queue_bindings(Queue, transferred_routing_key(CallId), fun amqp_util:unbind_q_from_kapps/2).
 
--spec manipulate_queue_bindings(ne_binary(), ne_binary(), fun()) -> 'ok'.
+-spec manipulate_queue_bindings(kz_term:ne_binary(), kz_term:ne_binary(), fun()) -> 'ok'.
 manipulate_queue_bindings(Queue, RoutingKey, Fun) ->
     Fun(Queue, RoutingKey).
 
--spec transferred_routing_key(ne_binary()) -> ne_binary().
+-spec transferred_routing_key(kz_term:ne_binary()) -> kz_term:ne_binary().
 transferred_routing_key(<<_/binary>> = CallId) ->
     <<"konami.transferred.", CallId/binary>>.

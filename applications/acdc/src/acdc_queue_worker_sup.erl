@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -35,39 +35,39 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(MgrPid, AcctId, QueueId) ->
     supervisor:start_link(?SERVER, [MgrPid, AcctId, QueueId]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(WorkerSup) -> supervisor:terminate_child('acdc_queues_sup', WorkerSup).
 
--spec listener(pid()) -> api_pid().
+-spec listener(pid()) -> kz_term:api_pid().
 listener(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec shared_queue(pid()) -> api_pid().
+-spec shared_queue(pid()) -> kz_term:api_pid().
 shared_queue(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_shared') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec start_shared_queue(pid(), pid(), ne_binary(), ne_binary(), api_integer()) -> sup_startchild_ret().
+-spec start_shared_queue(pid(), pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_types:sup_startchild_ret().
 start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority) ->
     supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_shared', [FSMPid, AcctId, QueueId, Priority])).
 
--spec fsm(pid()) -> api_pid().
+-spec fsm(pid()) -> kz_term:api_pid().
 fsm(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_fsm') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec start_fsm(pid(), pid(), kz_json:object()) -> sup_startchild_ret().
+-spec start_fsm(pid(), pid(), kz_json:object()) -> kz_types:sup_startchild_ret().
 start_fsm(WorkerSup, MgrPid, QueueJObj) ->
     ListenerPid = self(),
     supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).
@@ -113,7 +113,7 @@ print_status([{K, V}|T]) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init(Args) ->
     RestartStrategy = 'one_for_all',
     MaxRestarts = 2,

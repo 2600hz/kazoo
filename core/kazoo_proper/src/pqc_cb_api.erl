@@ -23,11 +23,11 @@
         ]
        ).
 
--type state() :: #{'auth_token' => ne_binary()
-                  ,'account_id' => ne_binary()
-                  ,'request_id' => ne_binary()
+-type state() :: #{'auth_token' => kz_term:ne_binary()
+                  ,'account_id' => kz_term:ne_binary()
+                  ,'request_id' => kz_term:ne_binary()
                   ,'trace_file' => kz_data_tracing:trace_ref()
-                  ,'start' => kz_now()
+                  ,'start' => kz_time:now()
                   }.
 
 -export_type([state/0
@@ -61,8 +61,8 @@ authenticate() ->
                        ),
     create_api_state(Resp, RequestId, Trace).
 
--spec api_key() -> ne_binary().
--spec api_key(ne_binary()) -> ne_binary().
+-spec api_key() -> kz_term:ne_binary().
+-spec api_key(kz_term:ne_binary()) -> kz_term:ne_binary().
 api_key() ->
     case kapps_util:get_master_account_id() of
         {'ok', MasterAccountId} ->
@@ -100,11 +100,11 @@ create_api_state(<<_/binary>> = RespJSON, RequestId, Trace) ->
 -spec v2_base_url() -> string().
 v2_base_url() -> ?API_BASE.
 
--spec auth_account_id(state()) -> ne_binary().
+-spec auth_account_id(state()) -> kz_term:ne_binary().
 auth_account_id(#{'account_id' := AccountId}) -> AccountId.
 
--spec request_headers(state()) -> kz_proplist().
--spec request_headers(state(), kz_proplist()) -> kz_proplist().
+-spec request_headers(state()) -> kz_term:proplist().
+-spec request_headers(state(), kz_term:proplist()) -> kz_term:proplist().
 request_headers(API) ->
     request_headers(API, []).
 
@@ -120,8 +120,8 @@ request_headers(#{'auth_token' := AuthToken
                      ]
                     ).
 
--spec default_request_headers() -> kz_proplist().
--spec default_request_headers(ne_binary()) -> kz_proplist().
+-spec default_request_headers() -> kz_term:proplist().
+-spec default_request_headers(kz_term:ne_binary()) -> kz_term:proplist().
 default_request_headers() ->
     [{<<"content-type">>, <<"application/json">>}
     ,{<<"accept">>, <<"application/json">>}
@@ -139,12 +139,12 @@ default_request_headers(RequestId) ->
 -type response() :: binary() |
                     {'error', binary()}.
 
--type fun_2() :: fun((string(), kz_proplist()) -> kz_http:ret()).
--type fun_3() :: fun((string(), kz_proplist(), iodata()) -> kz_http:ret()).
+-type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
+-type fun_3() :: fun((string(), kz_term:proplist(), iodata()) -> kz_http:ret()).
 
--spec make_request(expected_codes(), fun_2(), string(), kz_proplist()) ->
+-spec make_request(expected_codes(), fun_2(), string(), kz_term:proplist()) ->
                           response().
--spec make_request(expected_codes(), fun_3(), string(), kz_proplist(), iodata()) ->
+-spec make_request(expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
                           response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
     ?INFO("~p: ~s", [HTTP, URL]),
@@ -192,7 +192,7 @@ handle_response(_ExpectedCode, {'error', _}=E) ->
     E.
 
 
--spec start_trace(ne_binary()) -> {'ok', kz_data_tracing:trace_ref()}.
+-spec start_trace(kz_term:ne_binary()) -> {'ok', kz_data_tracing:trace_ref()}.
 start_trace(RequestId) ->
     lager:md([{'request_id', RequestId}]),
     put('now', kz_time:now()),

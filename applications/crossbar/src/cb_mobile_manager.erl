@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -59,7 +59,7 @@ handle_resp(_Error) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec req_uri(ne_binaries()) -> api_list().
+-spec req_uri(kz_term:ne_binaries()) -> kz_term:api_list().
 req_uri(ExplodedPath) ->
     case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"url">>) of
         'undefined' -> 'undefined';
@@ -74,10 +74,10 @@ req_uri(ExplodedPath) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec req_headers(ne_binary()) -> kz_proplist().
+-spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(AuthToken) ->
     props:filter_undefined(
-      [{"Content-Type", "application/json"}
-      ,{"X-Auth-Token", kz_term:to_list(AuthToken)}
-      ,{"User-Agent", kz_term:to_list(erlang:node())}
+      [{"content-type", "application/json"}
+      ,{"x-auth-token", kz_term:to_list(AuthToken)}
+      ,{"user-agent", kz_term:to_list(erlang:node())}
       ]).

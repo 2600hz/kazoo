@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -31,7 +31,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec resume(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resume(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resume(Prop) when is_list(Prop) ->
     case resume_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESUME_HEADERS, ?OPTIONAL_RESUME_HEADERS);
@@ -39,16 +39,16 @@ resume(Prop) when is_list(Prop) ->
     end;
 resume(JObj) -> resume(kz_json:to_proplist(JObj)).
 
--spec resume_v(api_terms()) -> boolean().
+-spec resume_v(kz_term:api_terms()) -> boolean().
 resume_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESUME_HEADERS, ?RESUME_VALUES, ?RESUME_TYPES);
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, _Props) ->
     amqp_util:bind_q_to_kapps(Q, ?RESUME_ROUTING_KEY).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, _Props) ->
     amqp_util:unbind_q_from_kapps(Q, ?RESUME_ROUTING_KEY).
 
@@ -65,7 +65,7 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_resume(api_terms()) -> 'ok'.
+-spec publish_resume(kz_term:api_terms()) -> 'ok'.
 publish_resume(JObj) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?RESUME_VALUES, fun resume/1),
     amqp_util:kapps_publish(?RESUME_ROUTING_KEY, Payload).

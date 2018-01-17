@@ -85,7 +85,7 @@ correct_parallel() ->
               )
            ).
 
--type cache() :: [{ne_binary(), {ne_binary(), gregorian_seconds()}}].
+-type cache() :: [{kz_term:ne_binary(), {kz_term:ne_binary(), kz_time:gregorian_seconds()}}].
 initial_state() ->
     #model{}.
 

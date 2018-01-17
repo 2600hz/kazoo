@@ -35,11 +35,11 @@ start(Name, Key) ->
 stop(Name) ->
     gen_server:call(Name, stop).
 
--spec push(server_ref(), list(), any()) -> ok.
+-spec push(kz_types:server_ref(), list(), any()) -> ok.
 push(Name, RegIds, Message) ->
     push(Name, RegIds, Message, ?RETRY).
 
--spec push(server_ref(), list(), any(), non_neg_integer()) -> ok.
+-spec push(kz_types:server_ref(), list(), any(), non_neg_integer()) -> ok.
 push(Name, RegIds, Message, Retry) ->
     gen_server:cast(Name, {send, RegIds, Message, Retry}).
 

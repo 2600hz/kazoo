@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%%
 %%% @contributors
 %%% Peter Defebvre
@@ -15,7 +15,8 @@
 -include("webhooks.hrl").
 
 -define(ID, kz_term:to_binary(?MODULE)).
--define(NAME, <<"parking">>).
+-define(HOOK_NAME, <<"parking">>).
+-define(NAME, <<"Call Parking">>).
 -define(DESC, <<"Events when calls get parked/retrieved">>).
 -define(METADATA
        ,kz_json:from_list([{<<"_id">>, ?ID}
@@ -57,7 +58,7 @@ bindings_and_responders() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
@@ -68,10 +69,10 @@ handle(JObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_event(api_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_send_event(kz_term:api_binary(), kz_json:object()) -> 'ok'.
 maybe_send_event('undefined', _JObj) -> 'ok';
 maybe_send_event(AccountId, JObj) ->
-    case webhooks_util:find_webhooks(?NAME, AccountId) of
+    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
         [] -> lager:debug("no hooks to handle for ~s", [AccountId]);
         Hooks -> webhooks_util:fire_hooks(JObj, Hooks)
     end.
@@ -83,12 +84,13 @@ maybe_send_event(AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec format(kz_json:object()) -> kz_json:object().
 format(JObj) ->
-    RemoveKeys = [
-                  <<"Node">>
+    AccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    JObj1 = kz_json:set_value(<<"Account-ID">>, AccountId, JObj),
+    RemoveKeys = [<<"Node">>
                  ,<<"Msg-ID">>
                  ,<<"App-Version">>
                  ,<<"App-Name">>
                  ,<<"Event-Category">>
                  ,<<"Custom-Channel-Vars">>
                  ],
-    kz_json:normalize_jobj(JObj, RemoveKeys, []).
+    kz_json:normalize_jobj(JObj1, RemoveKeys, []).

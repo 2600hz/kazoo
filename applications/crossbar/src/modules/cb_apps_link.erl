@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -130,7 +130,7 @@ auth_info(Context) ->
       ,{<<"is_master">>, AccountId =:= MasterAccountId}
       ]).
 
--spec get_request_account(cb_context:context()) -> ne_binary().
+-spec get_request_account(cb_context:context()) -> kz_term:ne_binary().
 get_request_account(Context) ->
     RequestNouns = cb_context:req_nouns(Context),
     case props:get_value(<<"accounts">>, RequestNouns) of

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
 %%% Handle CRUD operations for Directories
@@ -150,24 +150,22 @@ maybe_load_last_data(Context) ->
             cb_context:add_system_error(Error, Context)
     end.
 
--spec load_last_data(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_last_data(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_last_data(Context, File) ->
     {'ok', AttachBin} = file:read_file(File),
     BaseName = kz_term:to_binary(filename:basename(File)),
-    cb_context:setters(
-      Context,[{fun cb_context:set_resp_status/2, 'success'}
-              ,{fun cb_context:set_resp_data/2, AttachBin}
-              ,{fun cb_context:add_resp_headers/2,
-                [{<<"Content-Disposition">>, <<"attachment; filename=", BaseName/binary>>}
-                ,{<<"Content-Type">>, extension_to_content_type(
-                                        kz_term:to_lower_binary(
-                                          filename:extension(BaseName)))
-                 }
-                ,{<<"Content-Length">>, byte_size(AttachBin)}
-                ]}
-              ]).
+    ContentType = extension_to_content_type(kz_term:to_lower_binary(filename:extension(BaseName))),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, AttachBin}
+                       ,{fun cb_context:add_resp_headers/2,
+                         #{<<"content-disposition">> => <<"attachment; filename=", BaseName/binary>>
+                          ,<<"content-type">> => ContentType
+                          }
+                        }
+                       ]).
 
--spec extension_to_content_type(ne_binary()) -> ne_binary().
+-spec extension_to_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 extension_to_content_type(<<".gzip">>) -> ?MIME_TYPE_GZIP;
 extension_to_content_type(<<".zip">>) -> ?MIME_TYPE_ZIP2;
 extension_to_content_type(<<".rar">>) -> ?MIME_TYPE_RAR;

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -16,11 +16,11 @@
 -export([fetch_access_code/2, fetch_access_code/3]).
 -export([run/2]).
 
--spec get_json_from_url(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec get_json_from_url(kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url) ->
     get_json_from_url(Url, []).
 
--spec get_json_from_url(ne_binary(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec get_json_from_url(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
     case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{ssl, [{versions, ['tlsv1.2']}]}]) of
         {'ok', 200, _RespHeaders, Body} ->
@@ -37,14 +37,14 @@ get_json_from_url(Url, ReqHeaders) ->
             {'error', Else}
     end.
 
--spec fetch_access_code(ne_binary() | map(), ne_binary() ) ->
+-spec fetch_access_code(kz_term:ne_binary() | map(), kz_term:ne_binary() ) ->
                                {'ok', kz_json:object()} |
                                {'error', any()}.
 fetch_access_code(AppId, AuthorizationCode) ->
     fetch_access_code(AppId, AuthorizationCode, <<"postmessage">>).
 
 
--spec fetch_access_code(ne_binary() | map(), ne_binary(), ne_binary()) ->
+-spec fetch_access_code(kz_term:ne_binary() | map(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                {'ok', kz_json:object()} |
                                {'error', any()}.
 fetch_access_code(AppId, AuthorizationCode, RedirectUri)

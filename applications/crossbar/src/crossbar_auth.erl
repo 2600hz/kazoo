@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,6 +10,7 @@
 -export([create_auth_token/2
         ,validate_auth_token/1, validate_auth_token/2
         ,authorize_auth_token/1
+        ,reset_identity_secret/1
         ,log_success_auth/4, log_success_auth/5, log_success_auth/6
         ,log_failed_auth/4, log_failed_auth/5, log_failed_auth/6
         ,get_inherited_config/1
@@ -58,7 +59,7 @@ create_auth_token(Context, AuthModule) ->
             create_auth_token(Context, Method, JObj)
     end.
 
--spec create_auth_token(cb_context:context(), ne_binary(), kz_json:object()) ->
+-spec create_auth_token(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                cb_context:context().
 create_auth_token(Context, Method, JObj) ->
     Data = cb_context:req_data(Context),
@@ -122,8 +123,8 @@ create_auth_token(Context, Method, JObj) ->
             cb_context:add_system_error(401, 'invalid_credentials', MFAReq, Context)
     end.
 
--spec maybe_create_token(cb_context:context(), kz_proplist(), kz_json:object(), ne_binary(), boolean()) ->
-                                {'ok', ne_binary()} |
+-spec maybe_create_token(cb_context:context(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary(), boolean()) ->
+                                {'ok', kz_term:ne_binary()} |
                                 {'error', any()} |
                                 {'error', any(), any()}.
 maybe_create_token(_Context, Claims, _AuthConfig, _Method, 'false') ->
@@ -155,9 +156,9 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
         {'error', 401, _MFAReq}=Retry -> Retry
     end.
 
--spec validate_auth_token(map() | ne_binary()) ->
+-spec validate_auth_token(map() | kz_term:ne_binary()) ->
                                  {ok, kz_json:object()} | {error, any()}.
--spec validate_auth_token(map() | ne_binary(), kz_proplist()) ->
+-spec validate_auth_token(map() | kz_term:ne_binary(), kz_term:proplist()) ->
                                  {ok, kz_json:object()} | {error, any()}.
 validate_auth_token(Token) ->
     validate_auth_token(Token, []).
@@ -168,13 +169,24 @@ validate_auth_token(Token, Options) ->
         Other -> Other
     end.
 
--spec authorize_auth_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec authorize_auth_token(map() | kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 authorize_auth_token(Token) ->
     kz_auth:authorize_token(Token).
 
--spec maybe_db_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec maybe_db_token(map() | kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Update pvt_signature_secret for user
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_identity_secret(cb_context:context()) -> cb_context:context().
+reset_identity_secret(Context) ->
+    Doc = kz_auth_identity:reset_doc_secret(cb_context:doc(Context)),
+    cb_context:set_doc(Context, Doc).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -183,7 +195,7 @@ maybe_db_token(AuthToken) ->
 %% authentication configuration
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_config(api_ne_binary()) -> kz_json:object().
+-spec get_account_config(kz_term:api_ne_binary()) -> kz_json:object().
 get_account_config(AccountId) ->
     kapps_account_config:get_hierarchy(AccountId, ?AUTH_CONFIG_CAT, <<"auth_modules">>, ?DEFAULT_AUTH_CONFIG).
 
@@ -192,7 +204,7 @@ get_inherited_config(Context) ->
     AccountId = cb_context:account_id(Context),
     get_inherited_config(AccountId, kz_services:is_reseller(AccountId)).
 
--spec get_inherited_config(ne_binary(), boolean()) -> kz_json:object().
+-spec get_inherited_config(kz_term:ne_binary(), boolean()) -> kz_json:object().
 get_inherited_config(_, 'true') ->
     kapps_config:get_json(?AUTH_CONFIG_CAT, <<"auth_modules">>);
 get_inherited_config(AccountId, 'false') ->
@@ -201,15 +213,15 @@ get_inherited_config(AccountId, 'false') ->
 
 %% @private
 %% Utility func to generate method's config path
--spec method_config_path(ne_binary(), ne_binary()) -> kz_json:path().
+-spec method_config_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
 method_config_path(Method, Key) -> [Method, Key].
 
 %% @private
 %% Utility func to generate method's multi-factor config path
--spec method_mfa_path(ne_binary(), ne_binary()) -> kz_json:path().
+-spec method_mfa_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
 method_mfa_path(Method, Key) -> [Method, <<"multi_factor">>, Key].
 
--spec token_auth_expiry(ne_binary(), kz_json:object()) -> non_neg_integer().
+-spec token_auth_expiry(kz_term:ne_binary(), kz_json:object()) -> non_neg_integer().
 token_auth_expiry(Method, AuthConfig) ->
     Path = method_config_path(Method, <<"token_auth_expiry_s">>),
     case kz_json:get_integer_value(Path, AuthConfig, 0) of
@@ -229,7 +241,7 @@ token_auth_expiry(Method, AuthConfig) ->
 %% Check if is authenticator module is enabled or not
 %% @end
 %%--------------------------------------------------------------------
--spec is_auth_module_enabled(ne_binary(), kz_json:object()) -> boolean().
+-spec is_auth_module_enabled(kz_term:ne_binary(), kz_json:object()) -> boolean().
 is_auth_module_enabled(Method, Config) ->
     kz_json:is_true(method_config_path(Method, <<"enabled">>), Config, 'true').
 
@@ -239,7 +251,7 @@ is_auth_module_enabled(Method, Config) ->
 %% Checks if authenticator module is configured to do multi factor auth
 %% @end
 %%--------------------------------------------------------------------
--spec is_multi_factor_enabled(kz_proplist(), kz_json:object()) -> boolean().
+-spec is_multi_factor_enabled(kz_term:proplist(), kz_json:object()) -> boolean().
 is_multi_factor_enabled(Claims, AuthConfig) ->
     MasterId = master_account_id(),
     Method = props:get_ne_binary_value(<<"method">>, Claims),
@@ -264,13 +276,13 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
 %% * If account ids are not same, return 'include_subaccounts' boolean
 %% @end
 %%--------------------------------------------------------------------
--spec multi_factor_allowed_for_account(api_binary(), api_binary(), api_binary(), boolean()) -> boolean().
+-spec multi_factor_allowed_for_account(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
 multi_factor_allowed_for_account(?NE_BINARY=Master, ?NE_BINARY=Master, _, _) -> 'true';
 multi_factor_allowed_for_account(_Master, _ClaimAccountId, 'undefined', _) -> 'true';
 multi_factor_allowed_for_account(_Master, AccountId, AccountId, _) -> 'true';
 multi_factor_allowed_for_account(_Master, _ClaimAccountId, _ParentAccount, IncludeSubAcc) -> IncludeSubAcc.
 
--spec master_account_id() -> api_ne_binary().
+-spec master_account_id() -> kz_term:api_ne_binary().
 master_account_id() ->
     case kapps_util:get_master_account_id() of
         {'ok', Id} -> Id;
@@ -285,15 +297,15 @@ master_account_id() ->
 %% Log successful authentication if configured to do so
 %% @end
 %%--------------------------------------------------------------------
--spec log_success_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> 'ok'.
+-spec log_success_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.
 log_success_auth(AuthModule, AuthType, Reason, Context) ->
     log_success_auth(AuthModule, AuthType, Reason, Context, 'undefined', 'undefined').
 
--spec log_success_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary()) -> 'ok'.
+-spec log_success_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> 'ok'.
 log_success_auth(AuthModule, AuthType, Reason, Context, AccountId) ->
     log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined').
 
--spec log_success_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary(), api_object()) -> 'ok'.
+-spec log_success_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:api_object()) -> 'ok'.
 log_success_auth(AuthModule, AuthType, Reason, Context, 'undefined', AuthConfig) ->
     case cb_context:account_id(Context) of
         'undefined' -> 'ok';
@@ -315,15 +327,15 @@ log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) -
 %% Log failed authentication if configured to do so
 %% @end
 %%--------------------------------------------------------------------
--spec log_failed_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> 'ok'.
+-spec log_failed_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.
 log_failed_auth(AuthModule, AuthType, Reason, Context) ->
     log_failed_auth(AuthModule, AuthType, Reason, Context, 'undefined', 'undefined').
 
--spec log_failed_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary()) -> 'ok'.
+-spec log_failed_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> 'ok'.
 log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId) ->
     log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, 'undefined').
 
--spec log_failed_auth(atom() | ne_binary(), ne_binary(), ne_binary(), cb_context:context(), api_binary(), api_object()) -> 'ok'.
+-spec log_failed_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:api_object()) -> 'ok'.
 log_failed_auth(AuthModule, AuthType, Reason, Context, 'undefined', AuthConfig) ->
     case cb_context:account_id(Context) of
         'undefined' -> 'ok';
@@ -339,13 +351,13 @@ log_failed_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) ->
             log_attempts(Context, AccountId, Method, <<"failed">>, AuthType, Reason)
     end.
 
--spec is_log_type_enabled(ne_binary(), ne_binary(), kz_json:object()) -> boolean().
+-spec is_log_type_enabled(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> boolean().
 is_log_type_enabled(<<"failed">>, Method, AuthConfig) ->
     kz_json:is_true(method_config_path(Method, <<"log_failed_attempts">>), AuthConfig);
 is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
     kz_json:is_true(method_config_path(Method, <<"log_successful_attempts">>), AuthConfig).
 
--spec log_attempts(cb_context:context(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec log_attempts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 log_attempts(Context, AccountId, Method, Status, AuthType, Reason) ->
     Now = kz_time:now_s(),
     MODB = kz_util:format_account_mod_id(AccountId, Now),
@@ -357,7 +369,7 @@ log_attempts(Context, AccountId, Method, Status, AuthType, Reason) ->
             ,{<<"status">>, Status}
             ,{<<"auth_module">>, Method}
             ,{<<"message">>, Reason}
-            ,{<<"client_headers">>, kz_json:from_list(cb_context:req_headers(Context))}
+            ,{<<"client_headers">>, kz_json:from_map(cb_context:req_headers(Context))}
             ,{<<"client_ip">>, cb_context:client_ip(Context)}
             ,{<<"crossbar_request_id">>, cb_context:req_id(Context)}
             ,{<<"timestamp">>, Now}
@@ -369,7 +381,7 @@ log_attempts(Context, AccountId, Method, Status, AuthType, Reason) ->
     _ = kazoo_modb:save_doc(MODB, maybe_add_metadata(cb_context:doc(Context), Doc)),
     'ok'.
 
--spec maybe_add_metadata(api_object(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_metadata(kz_term:api_object(), kz_json:object()) -> kz_json:object().
 maybe_add_metadata(ContextDoc, Doc) ->
     case kz_term:is_empty(ContextDoc) of
         'true' -> Doc;

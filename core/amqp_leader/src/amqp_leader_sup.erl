@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -28,11 +28,11 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_leader(atom(), atoms(), list(), atom(), list(), list()) -> startlink_ret().
+-spec start_leader(atom(), kz_term:atoms(), list(), atom(), list(), list()) -> kz_types:startlink_ret().
 start_leader(Name, Nodes, Opts, Module, [], []) ->
     supervisor:start_child(?SERVER
                           ,?SUPER_NAME_ARGS_TYPE(Name
@@ -53,7 +53,7 @@ start_leader(Name, Nodes, Opts, Module, [], []) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

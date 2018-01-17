@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,7 +13,7 @@
 -export([event/4]).
 -export([reply/4]).
 
--spec event(map(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec event(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, Name, Data) ->
     #{subscribed_key := SubscribedKey
      ,subscription_key := SubscriptionKey
@@ -29,7 +29,7 @@ event(Binding, RK, Name, Data) ->
     SessionPid ! {'send_data', kz_json:from_list(Msg)},
     'ok'.
 
--spec reply(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec reply(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 reply(SessionPid, RequestId, Status, Data) ->
     lager:debug("sending reply data: ~s : ~s : ~p", [RequestId, Status, Data]),
     Msg = [{<<"action">>, <<"reply">>}

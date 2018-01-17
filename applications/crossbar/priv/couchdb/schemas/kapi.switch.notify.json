@@ -3,6 +3,12 @@
     "_id": "kapi.switch.notify",
     "description": "AMQP API for switch.notify",
     "properties": {
+        "Body": {
+            "type": "string"
+        },
+        "Content-Type": {
+            "type": "string"
+        },
         "Event": {
             "type": "string"
         },

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -25,19 +25,18 @@
         ]).
 
 -include("blackhole.hrl").
--include("kapi_blackhole.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_websockets.hrl").
 
 -define(SERVER, ?MODULE).
 
--record(state, {bindings :: ets:tid()
-               }).
+-record(state, {bindings :: ets:tid()}).
 -type state() :: #state{}.
 
 -type mod_inited() :: 'ok' | {'error', atom()} |
                       'stopped'. %% stopped instead of inited
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'blackhole', [{'restrict_to', ['get', 'module_req']}]}]).
+-define(BINDINGS, [{'websockets', [{'restrict_to', ['get', 'module_req']}]}]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
                      ,[{<<"*">>, <<"*">>}]
@@ -54,7 +53,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -67,7 +66,7 @@ start_link() ->
                            ,[]
                            ).
 
--spec handle_amqp_event(kz_json:object(), kz_proplist(), gen_listener:basic_deliver() | ne_binary()) -> 'ok'.
+-spec handle_amqp_event(kz_json:object(), kz_term:proplist(), gen_listener:basic_deliver() | kz_term:ne_binary()) -> 'ok'.
 handle_amqp_event(EventJObj, _Props, ?MODULE_REQ_ROUTING_KEY) ->
     handle_module_req(EventJObj);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
@@ -82,9 +81,9 @@ handle_amqp_event(EventJObj, Props, BasicDeliver) ->
     handle_amqp_event(EventJObj, Props, gen_listener:routing_key_used(BasicDeliver)).
 
 -spec handle_module_req(kz_json:object()) -> 'ok'.
--spec handle_module_req(kz_json:object(), atom(), ne_binary(), boolean()) -> 'ok'.
+-spec handle_module_req(kz_json:object(), atom(), kz_term:ne_binary(), boolean()) -> 'ok'.
 handle_module_req(EventJObj) ->
-    'true' = kapi_blackhole:module_req_v(EventJObj),
+    'true' = kapi_websockets:module_req_v(EventJObj),
     lager:debug("recv module_req: ~p", [EventJObj]),
     handle_module_req(EventJObj
                      ,kz_json:get_atom_value(<<"Module">>, EventJObj)
@@ -129,7 +128,7 @@ maybe_persist(BHModule, 'true', 'ok') ->
             persist_module(BHModule, Mods)
     end.
 
--spec persist_module(atom(), ne_binaries()) -> boolean().
+-spec persist_module(atom(), kz_term:ne_binaries()) -> boolean().
 persist_module(Module, Mods) ->
     case blackhole_config:set_default_autoload_modules(
            [kz_term:to_binary(Module)
@@ -151,14 +150,14 @@ send_module_resp(EventJObj, Started, Persisted) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(EventJObj),
-    kapi_blackhole:publish_module_resp(ServerId, Resp).
+    kapi_websockets:publish_module_resp(ServerId, Resp).
 
--spec maybe_start_error(mod_inited()) -> api_ne_binary().
+-spec maybe_start_error(mod_inited()) -> kz_term:api_ne_binary().
 maybe_start_error('ok') -> 'undefined';
 maybe_start_error('stopped') -> 'undefined';
 maybe_start_error({'error', E}) -> kz_term:to_binary(E).
 
--spec send_error_module_resp(kz_json:object(), ne_binary()) -> 'ok'.
+-spec send_error_module_resp(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_error_module_resp(EventJObj, Error) ->
     Resp = [{<<"Persisted">>, 'false'}
            ,{<<"Started">>, 'false'}
@@ -167,10 +166,10 @@ send_error_module_resp(EventJObj, Error) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(EventJObj),
-    kapi_blackhole:publish_module_resp(ServerId, Resp).
+    kapi_websockets:publish_module_resp(ServerId, Resp).
 
--type bh_amqp_binding() :: {'amqp', atom(), kz_proplist()}.
--type bh_hook_binding() :: {'hook', ne_binary()} | {'hook', ne_binary(), ne_binary()}.
+-type bh_amqp_binding() :: {'amqp', atom(), kz_term:proplist()}.
+-type bh_hook_binding() :: {'hook', kz_term:ne_binary()} | {'hook', kz_term:ne_binary(), kz_term:ne_binary()}.
 -type bh_event_binding() :: bh_amqp_binding() | bh_hook_binding().
 -type bh_event_bindings() :: [bh_event_binding()].
 
@@ -223,7 +222,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -237,7 +236,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_bh_bindings', Bindings}, #state{bindings=ETS}=State) ->
     _ = add_bh_bindings(ETS, Bindings),
     {'noreply', State};
@@ -270,7 +269,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), kz_json:object()), state()) ->
+-spec handle_info(?HOOK_EVT(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()), state()) ->
                          {'noreply', state()}.
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
     _ = kz_util:spawn(fun handle_hook_event/3, [AccountId, EventType, JObj]),
@@ -286,7 +285,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -320,11 +319,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec encode_call_id(kz_json:object()) -> ne_binary().
+-spec encode_call_id(kz_json:object()) -> kz_term:ne_binary().
 encode_call_id(JObj) ->
     amqp_util:encode(kz_call_event:call_id(JObj)).
 
--spec handle_hook_event(ne_binary(), ne_binary(), kz_json:object()) -> any().
+-spec handle_hook_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> any().
 handle_hook_event(AccountId, EventType, JObj) ->
     RK = kz_binary:join([<<"call">>
                         ,AccountId

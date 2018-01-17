@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Wait for Bindings
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("kazoo_bindings.hrl").
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     wait_for_bindings('false').
 

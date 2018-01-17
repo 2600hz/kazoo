@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -196,7 +196,7 @@ maybe_filter_rates('true', JObj) ->
     kz_json:set_value(<<"result">>, Results, JObj).
 
 -spec maybe_apply_limit(kz_json:object()) -> kz_json:object().
--spec maybe_apply_limit(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec maybe_apply_limit(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_apply_limit(JObj) ->
     maybe_apply_limit(maybe_apply_limit(JObj, <<"result">>)
                      ,<<"inexplicit_result">>

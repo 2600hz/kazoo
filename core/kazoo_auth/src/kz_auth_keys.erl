@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -130,7 +130,7 @@ maybe_get_key(#{auth_provider := #{name := <<"kazoo">>}
     Token#{key_id => KeyId};
 maybe_get_key(#{}=Token) -> Token.
 
--spec key_id(ne_binary(), ne_binary(), map()) -> api_binary().
+-spec key_id(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> kz_term:api_binary().
 key_id(<<"payload">>, Field, #{payload := Payload}) ->
     maps:get(Field, Payload, 'undefined');
 key_id(<<"header">>, Field, Token) ->
@@ -233,19 +233,19 @@ extract_key(#{}=Token) ->
     lager:debug("public key not obtained : ~p", [Token]),
     Token.
 
--spec public_key(ne_binary()) -> public_key:rsa_public_key().
+-spec public_key(kz_term:ne_binary()) -> public_key:rsa_public_key().
 public_key(KeyId) ->
     {'ok', Key} = private_key(KeyId),
     get_public_key_from_private_key(Key).
 
--spec private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
+-spec private_key(kz_term:ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 private_key(KeyId) ->
     case lookup({'private', KeyId}) of
         {'error', 'not_found'} -> load_private_key(KeyId);
         Found -> Found
     end.
 
--spec load_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
+-spec load_private_key(kz_term:ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 load_private_key(KeyId) ->
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, KeyId) of
         {'ok', JObj} -> load_private_key_attachment(JObj);
@@ -265,12 +265,12 @@ load_private_key_attachment(JObj) ->
             save_private_key(JObj, Key)
     end.
 
--spec new_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
+-spec new_private_key(kz_term:ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 new_private_key(KeyId) ->
     {'ok', Key} = gen_private_key(),
     new_private_key(KeyId, Key).
 
--spec new_private_key(ne_binary(), public_key:rsa_private_key()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
+-spec new_private_key(kz_term:ne_binary(), public_key:rsa_private_key()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 new_private_key(KeyId, Key) ->
     Doc = [{<<"pvt_type">>, <<"system_key">>}
           ,{<<"_id">>, KeyId}
@@ -328,12 +328,12 @@ erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
 %% * generate a new private key and put it in cache
 %% @end
 %%--------------------------------------------------------------------
--spec reset_kazoo_private_key() -> {'ok', ne_binary()} | {'error', any()}.
+-spec reset_kazoo_private_key() -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 reset_kazoo_private_key() ->
     lager:warning("trying to reset kazoo private key"),
     reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
 
--spec reset_private_key(map() | ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec reset_private_key(map() | kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 reset_private_key(#{pvt_server_key := KeyId}) ->
     reset_private_key(KeyId);
 reset_private_key(#{}) ->

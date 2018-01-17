@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -36,7 +36,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     case gen_server:start_link(?SERVER, ?MODULE, [], []) of
         {'error', {'already_started', Pid}}
@@ -61,7 +61,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', state(), kz_timeout()}.
+-spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
     {'ok', #state{}, ?POLLING_INTERVAL}.
 
@@ -79,7 +79,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State, ?POLLING_INTERVAL}.
 
@@ -93,7 +93,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -108,7 +108,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('timeout', State) ->
     ViewOptions = ['reduce'
                   ,'group'
@@ -119,6 +119,11 @@ handle_info('timeout', State) ->
         {'ok', AccountIds} ->
             _ = distribute_accounts(AccountIds),
             _ = garbage_collect(),
+            {'noreply', State, ?POLLING_INTERVAL};
+        {'error', 'not_found'} ->
+            _ = kz_datamgr:db_create(?KZ_FAXES_DB),
+            Views = kapps_util:get_views_json('fax', "views"),
+            _ = kapps_util:update_views(?KZ_FAXES_DB, Views, 'true'),
             {'noreply', State, ?POLLING_INTERVAL};
         {'error', _Reason} ->
             lager:debug("failed to fetch fax account jobs: ~p", [_Reason]),
@@ -158,13 +163,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec distribute_accounts(ne_binaries()) -> ne_binaries().
+-spec distribute_accounts(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 distribute_accounts([]) -> [];
 distribute_accounts([AccountId|AccountIds]) ->
     maybe_start_account(fax_jobs:is_running(AccountId), AccountId),
     distribute_accounts(AccountIds).
 
--spec maybe_start_account(boolean(), ne_binary()) -> 'ok'.
+-spec maybe_start_account(boolean(), kz_term:ne_binary()) -> 'ok'.
 maybe_start_account('true', _AccountId) -> 'ok';
 maybe_start_account('false', AccountId) ->
     lager:debug("sending start fax account jobs for ~s", [AccountId]),

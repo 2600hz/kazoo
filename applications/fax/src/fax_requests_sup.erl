@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -32,15 +32,15 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(kapps_call:call(), kz_json:object(), fax_storage()) -> sup_startchild_ret().
+-spec new(kapps_call:call(), kz_json:object(), fax_storage()) -> kz_types:sup_startchild_ret().
 new(Call, JObj, Storage) ->
     supervisor:start_child(?SERVER, [Call, JObj, Storage]).
 
--spec workers() -> pids().
+-spec workers() -> kz_term:pids().
 workers() ->
     [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
@@ -57,7 +57,7 @@ workers() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,

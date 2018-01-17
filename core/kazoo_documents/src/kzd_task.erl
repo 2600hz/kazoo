@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2017, 2600Hz
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
 %%% Task document
 %%% @end
@@ -37,7 +37,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary(), kz_tasks:id()) ->
+-spec fetch(kz_term:ne_binary(), kz_tasks:id()) ->
                    {ok, kz_json:object()} |
                    {error, any()}.
 fetch(Account, TaskId) ->
@@ -53,7 +53,7 @@ fetch(Account, TaskId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(doc()) -> ne_binary().
+-spec id(doc()) -> kz_term:ne_binary().
 id(JObj) ->
     kz_doc:id(JObj).
 
@@ -62,65 +62,65 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> <<"task">>.
 
 %% @public
--spec node(doc()) -> ne_binary() | 'undefined'.
+-spec node(doc()) -> kz_term:ne_binary() | 'undefined'.
 node(Doc) ->
     kz_json:get_ne_binary_value(?PVT_WORKER_NODE, Doc).
 
 %% @public
--spec account_id(doc()) -> ne_binary().
+-spec account_id(doc()) -> kz_term:ne_binary().
 account_id(Doc) ->
     kz_json:get_ne_binary_value(?PVT_ACCOUNT_ID, Doc).
 
 %% @public
--spec auth_account_id(doc()) -> ne_binary().
+-spec auth_account_id(doc()) -> kz_term:ne_binary().
 auth_account_id(Doc) ->
     kz_json:get_ne_binary_value(?PVT_AUTH_ACCOUNT_ID, Doc).
 
 %% @public
--spec category(doc()) -> ne_binary().
+-spec category(doc()) -> kz_term:ne_binary().
 category(Doc) ->
     kz_json:get_ne_binary_value(?PVT_CATEGORY, Doc).
 
 %% @public
--spec action(doc()) -> ne_binary().
+-spec action(doc()) -> kz_term:ne_binary().
 action(Doc) ->
     kz_json:get_ne_binary_value(?PVT_ACTION, Doc).
 
 %% @public
--spec status(doc()) -> ne_binary().
+-spec status(doc()) -> kz_term:ne_binary().
 status(Doc) ->
     kz_json:get_ne_binary_value(?PVT_STATUS, Doc).
 
 %% @public
--spec file_name(doc()) -> ne_binary().
+-spec file_name(doc()) -> kz_term:ne_binary().
 file_name(Doc) ->
     kz_json:get_ne_binary_value(?PVT_FILENAME, Doc).
 
 %% @public
--spec start_timestamp(doc()) -> api_seconds().
+-spec start_timestamp(doc()) -> kz_time:api_seconds().
 start_timestamp(Doc) ->
     kz_json:get_integer_value(?PVT_STARTED_AT, Doc).
 
 %% @public
--spec end_timestamp(doc()) -> api_seconds().
+-spec end_timestamp(doc()) -> kz_time:api_seconds().
 end_timestamp(Doc) ->
     kz_json:get_integer_value(?PVT_FINISHED_AT, Doc).
 
 %% @public
--spec total_count(doc()) -> api_pos_integer().
+-spec total_count(doc()) -> kz_term:api_pos_integer().
 total_count(Doc) ->
     kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc).
 
 %% @public
--spec failure_count(doc()) -> api_non_neg_integer().
+-spec failure_count(doc()) -> kz_term:api_non_neg_integer().
 failure_count(Doc) ->
     kz_json:get_integer_value(?PVT_TOTAL_ROWS_FAILED, Doc).
 
 %% @public
--spec success_count(doc()) -> api_non_neg_integer().
+-spec success_count(doc()) -> kz_term:api_non_neg_integer().
 success_count(Doc) ->
     kz_json:get_integer_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc).

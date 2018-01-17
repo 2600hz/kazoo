@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -129,7 +129,7 @@ content_types_provided(Context, ?MATCH_REPORT_PREFIX(Report)) ->
     content_types_provided_for_report(Context, Report);
 content_types_provided(Context, _) -> Context.
 
--spec content_types_provided_for_report(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec content_types_provided_for_report(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 content_types_provided_for_report(Context, Report) ->
     File = <<"/tmp/", Report/binary, ".json">>,
     case filelib:is_file(File) of
@@ -169,7 +169,7 @@ validate_thing(Context, ?HTTP_POST) ->
 search_summary(Context) ->
     search_result(Context, search_req(Context, <<"summary">>)).
 
--spec search_detail(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec search_detail(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 search_detail(Context, Extension) ->
     search_result(Context, search_req(Context, <<"detail">>, Extension)).
 
@@ -182,11 +182,11 @@ search_result(Context, {'ok', JObj}) ->
 search_result(Context, {'error', Error}) ->
     cb_context:add_system_error(Error, Context).
 
--spec search_req(cb_context:context(), ne_binary()) -> search_result().
+-spec search_req(cb_context:context(), kz_term:ne_binary()) -> search_result().
 search_req(Context, SearchType) ->
     search_req(Context, SearchType, 'undefined').
 
--spec search_req(cb_context:context(), ne_binary(), api_binary()) -> search_result().
+-spec search_req(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> search_result().
 search_req(Context, SearchType, Username) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
           ,{<<"Username">>, Username}
@@ -218,17 +218,17 @@ collect_results([Response | _], {Count, Max}) ->
         V -> {'false', {V, Max}}
     end.
 
--spec search_resp_value(ne_binary()) -> 0..1.
+-spec search_resp_value(kz_term:ne_binary()) -> 0..1.
 search_resp_value(<<"search_resp">>) -> 1;
 search_resp_value(_) -> 0.
 
 -type acc_function() :: fun((kz_json:object(), kz_json:object()) -> kz_json:object()).
 
--spec accumulator_fun(ne_binary()) -> acc_function().
+-spec accumulator_fun(kz_term:ne_binary()) -> acc_function().
 accumulator_fun(<<"summary">>) -> fun kz_json:sum/2;
 accumulator_fun(<<"detail">>) -> fun kz_json:merge/2.
 
--spec process_responses(kz_json:objects(), ne_binary(), atom()) -> {'ok', kz_json:object()}.
+-spec process_responses(kz_json:objects(), kz_term:ne_binary(), atom()) -> {'ok', kz_json:object()}.
 process_responses(JObjs, SearchType, Timeout) ->
     Fun = accumulator_fun(SearchType),
     Subscriptions = extract_subscriptions(JObjs, Fun),
@@ -256,12 +256,12 @@ validate_presence_thing(Context, [{<<"presence">>, _}
 validate_presence_thing(Context, _ReqNouns) ->
     crossbar_util:response_faulty_request(Context).
 
--spec load_device(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_device(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_device(Context, ThingId) ->
     %% validating device
     crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
 
--spec load_presence_for_user(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_presence_for_user(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_presence_for_user(Context, UserId) ->
     %% load the user_doc if it has a presence_id set, otherwise load all the user's devices
     Context1 = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())),
@@ -337,13 +337,13 @@ post(Context) ->
     Things = cb_context:doc(Context),
     post_things(Context, Things, kz_json:get_value(<<"action">>, ReqData)).
 
--spec post(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec post(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 post(Context, Extension) ->
     _ = collect_report(Context, Extension),
     publish_presence_reset(Context, Extension),
     crossbar_util:response_202(<<"reset command sent for extension ", Extension/binary>>, Context).
 
--spec post_things(cb_context:context(), kz_json:object() | kz_json:objects(), ne_binary()) ->
+-spec post_things(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:ne_binary()) ->
                          cb_context:context().
 post_things(Context, Things, <<"reset">>) ->
     _ = collect_report(Context, Things),
@@ -352,7 +352,7 @@ post_things(Context, Things, <<"set">>) ->
     State = kz_json:get_value(<<"state">>, cb_context:req_data(Context)),
     send_command(Context, fun(C, Id) -> publish_presence_update(C, Id, State) end, Things).
 
--type presence_command_fun() :: fun((cb_context:context(), api_binary()) -> any()).
+-type presence_command_fun() :: fun((cb_context:context(), kz_term:api_binary()) -> any()).
 -spec send_command(cb_context:context(), presence_command_fun(), kz_json:object() | kz_json:objects()) ->
                           cb_context:context().
 send_command(Context, _CommandFun, []) ->
@@ -364,7 +364,7 @@ send_command(Context, CommandFun, [_|_]=Things) ->
 send_command(Context, CommandFun, Thing) ->
     send_command(Context, CommandFun, [Thing]).
 
--spec publish_presence_reset(cb_context:context(), api_binary()) -> 'ok'.
+-spec publish_presence_reset(cb_context:context(), kz_term:api_binary()) -> 'ok'.
 publish_presence_reset(_Context, 'undefined') -> 'ok';
 publish_presence_reset(Context, PresenceId) ->
     Realm = cb_context:account_realm(Context),
@@ -376,7 +376,7 @@ publish_presence_reset(Context, PresenceId) ->
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
 
--spec publish_presence_update(cb_context:context(), api_binary(), ne_binary()) -> 'ok'.
+-spec publish_presence_update(cb_context:context(), kz_term:api_binary(), kz_term:ne_binary()) -> 'ok'.
 publish_presence_update(_Context, 'undefined', _PresenceState) -> 'ok';
 publish_presence_update(Context, PresenceId, PresenceState) ->
     Realm = cb_context:account_realm(Context),
@@ -385,14 +385,9 @@ publish_presence_update(Context, PresenceId, PresenceState) ->
     %% persist presence setting
     {'ok', _} = kz_datamgr:update_doc(AccountDb, ?MANUAL_PRESENCE_DOC, [{PresenceId, PresenceState}]),
     PresenceString = <<PresenceId/binary, "@", Realm/binary>>,
-    API = [{<<"Presence-ID">>, PresenceString}
-          ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash('md5', PresenceString))}
-          ,{<<"State">>, PresenceState}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    kz_amqp_worker:cast(API, fun kapi_presence:publish_update/1).
+    kapps_call_command:presence(PresenceState, PresenceString, kz_term:to_hex_binary(crypto:hash(md5, PresenceString))).
 
--spec find_presence_id(kz_json:object()) -> api_binary().
+-spec find_presence_id(kz_json:object()) -> kz_term:api_binary().
 find_presence_id(JObj) ->
     case kz_device:is_device(JObj) of
         'true' -> kz_device:presence_id(JObj);
@@ -409,7 +404,7 @@ load_report(Context, Report) ->
             cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, Report}]), Context)
     end.
 
--spec set_report(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec set_report(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 set_report(Context, File) ->
     Name = kz_term:to_binary(filename:basename(File)),
     Headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}],
@@ -421,14 +416,14 @@ set_report(Context, File) ->
                        ]
                       ).
 
--spec collect_report(cb_context:context(), ne_binary() | kz_json:object() | kz_json:objects()) -> any().
+-spec collect_report(cb_context:context(), kz_term:ne_binary() | kz_json:object() | kz_json:objects()) -> any().
 collect_report(_Context, []) ->
     lager:debug("nothing to collect");
 collect_report(Context, Param) ->
     lager:debug("collecting report for ~s", [Param]),
     kz_util:spawn(fun send_report/2, [search_detail(Context, Param), Param]).
 
--spec send_report(cb_context:context(), ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
+-spec send_report(cb_context:context(), kz_term:ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
 send_report(Context, Extension)
   when is_binary(Extension) ->
     Msg = <<"presence reset received for extension ", Extension/binary>>,
@@ -458,7 +453,7 @@ format_and_send_report(Context, Msg) ->
               ],
     kz_notify:detailed_alert(Subject, Msg, Props, Headers).
 
--spec save_report(cb_context:context()) -> {ne_binary(), ne_binary()}.
+-spec save_report(cb_context:context()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 save_report(Context) ->
     JObj = kz_json:encode(cb_context:resp_data(Context)),
     Report = kz_binary:rand_hex(16),

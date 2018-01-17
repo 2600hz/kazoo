@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -55,7 +55,7 @@ is_ready() ->
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom() | pid()) -> startlink_ret().
+-spec start_link(atom() | pid()) -> kz_types:startlink_ret().
 start_link(Name) ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(Name)}
                                      ,{'responders', ?RESPONDERS}
@@ -100,7 +100,7 @@ init([Name]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), {pid(), any()}, state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), {pid(), any()}, state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('is_ready', From, #state{pending = Pids} = State) ->
     NewState = maybe_ready(State#state{pending = [From | Pids]}),
     {'noreply', NewState};
@@ -118,7 +118,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'is_ready', Pid, Ref}, #state{pending = Pending} = State) ->
     NewState = maybe_ready(State#state{pending = [{Pid, Ref} | Pending]}),
     {'noreply', NewState};
@@ -147,7 +147,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:warning("~s unhandled info ~p", [node(), _Info]),
     {'noreply', State}.

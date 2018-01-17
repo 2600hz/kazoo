@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
@@ -30,12 +30,12 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--type start_args() :: [atom() | api_ne_binary() | kz_json:object()].
--spec start_proc(start_args()) -> sup_startchild_ret().
+-type start_args() :: [atom() | kz_term:api_ne_binary() | kz_json:object()].
+-spec start_proc(start_args()) -> kz_types:sup_startchild_ret().
 start_proc(Args) ->
     supervisor:start_child(?SERVER, Args).
 
@@ -52,7 +52,7 @@ start_proc(Args) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,

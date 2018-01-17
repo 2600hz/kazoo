@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz Inc
+%%% @copyright (C) 2015-2018, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -71,7 +71,7 @@ handle_req(JObj, 'true') ->
 
 -spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
-    PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
+    PortReqId = kz_json:get_first_defined([<<"port_request_id">>, [<<"port">>, <<"port_id">>]], DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
     ReqData = kz_json:set_value(<<"port_request">>
@@ -114,11 +114,11 @@ handle_port_request(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec user_data(kz_json:object()) -> kz_proplist().
+-spec user_data(kz_json:object()) -> kz_term:proplist().
 user_data(DataJObj) ->
     user_data(DataJObj, teletype_util:is_preview(DataJObj)).
 
--spec user_data(kz_json:object(), boolean()) -> kz_proplist().
+-spec user_data(kz_json:object(), boolean()) -> kz_term:proplist().
 user_data(DataJObj, 'true') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     teletype_util:user_params(teletype_util:find_account_admin(AccountId));

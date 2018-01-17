@@ -1,18 +1,10 @@
-{application, cdr,
- [
-  {description, "Listen and record CDR events into CouchDB"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [cdr_sup]}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]}
- ,{mod, {cdr_app, []}}
- ]}.
+{application,cdr,
+             [{applications,[kazoo,kazoo_amqp,kazoo_config,kazoo_data,
+                             kazoo_documents,kazoo_modb,kazoo_stdlib,kernel,
+                             lager,stdlib]},
+              {description,"Listen and record CDR events into CouchDB"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{cdr_app,[]}},
+              {modules,[]},
+              {registered,[cdr_sup]},
+              {vsn,"4.0.0"}]}.

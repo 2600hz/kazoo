@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -66,7 +66,7 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -88,38 +88,38 @@ pool_name() ->
                 Name
     end.
 
--spec add_amqp_pool(atom() | binary(), binary(), integer(), integer()) -> sup_startchild_ret().
+-spec add_amqp_pool(atom() | binary(), binary(), integer(), integer()) -> kz_types:sup_startchild_ret().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow) ->
     add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, []).
 
--spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) -> sup_startchild_ret() when
+-spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) -> kz_types:sup_startchild_ret() when
       UUID :: atom() | binary(),
       Broker :: binary(),
       PoolSize :: integer(),
       PoolOverflow :: integer(),
-      Bindings :: kz_proplist().
+      Bindings :: kz_term:proplist().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) ->
     add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, []).
 
--type exchange() :: {ne_binary(), ne_binary(), kz_proplist()}.
+-type exchange() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()}.
 -type exchanges() :: [exchange()].
 
--spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) -> sup_startchild_ret() when
+-spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) -> kz_types:sup_startchild_ret() when
       UUID :: atom() | binary(),
       Broker :: binary(),
       PoolSize :: integer(),
       PoolOverflow :: integer(),
-      Bindings :: kz_proplist(),
+      Bindings :: kz_term:proplist(),
       Exchanges :: exchanges().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
     add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, 'false').
 
--spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) -> sup_startchild_ret() when
+-spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) -> kz_types:sup_startchild_ret() when
       UUID :: atom() | binary(),
       Broker :: binary(),
       PoolSize :: integer(),
       PoolOverflow :: integer(),
-      Bindings :: kz_proplist(),
+      Bindings :: kz_term:proplist(),
       Exchanges :: exchanges(),
       ServerAck :: boolean().
 add_amqp_pool(Uuid, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) ->
@@ -127,7 +127,7 @@ add_amqp_pool(Uuid, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerA
     Args = ?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck),
     supervisor:start_child(?SERVER, ?POOL_NAME_ARGS(UUID, Args)).
 
--spec pool_pid(atom() | binary()) -> api_pid().
+-spec pool_pid(atom() | binary()) -> kz_term:api_pid().
 pool_pid(Pool) ->
     ID = kz_term:to_atom(Pool, 'true'),
     case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?SERVER), Id == ID] of
@@ -149,7 +149,7 @@ pool_pid(Pool) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

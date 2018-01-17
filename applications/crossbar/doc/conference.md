@@ -48,6 +48,11 @@ Key | Description | Type | Default | Required
 
 
 
+##### Keys under development
+
+- `require_moderator`
+- `wait_for_moderator`
+
 #### Perform an action on a conference
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
@@ -81,7 +86,7 @@ Key | Description | Type | Default | Required
 `caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false`
 `caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
 `endpoints.[]` |   | `string()` |   | `true`
-`endpoints` |   | `array(string())` |   | `true`
+`endpoints` |   | `array(string() | device())` |   | `true`
 `target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false`
 `timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
 
@@ -90,7 +95,7 @@ Key | Description | Type | Default | Required
 ###### Endpoints
 
 Dial-able endpoints are
-1. Devices (by device id)
+1. Devices (by device id or [device JSON](./devices.md))
 2. Users (by user id)
 3. Phone Numbers
 4. SIP URIs (`sip:user@realm`)
@@ -277,6 +282,15 @@ curl -v -X PUT \
     -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
+```
+
+Sometimes you may get a HTTP/1.1 304 Not Modified response from crossbar for simliar API calls. If you do, add a random string filter to the end of the call to ensure the request is viewed as 'unique'. For example:
+
+```shell
+curl -v -X PUT \
+    -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}?random={RANDOM_BIT}
 ```
 
  Action | Description

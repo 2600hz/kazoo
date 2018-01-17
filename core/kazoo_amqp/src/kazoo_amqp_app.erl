@@ -10,7 +10,7 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     kz_amqp_sup:start_link().
 

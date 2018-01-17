@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Listener for reg_success, and reg_query AMQP requests
 %%% @end
@@ -71,46 +71,46 @@
 -define(EXPIRES_MISSING_VALUE, 0).
 
 -record(state, {started = kz_time:now_s()
-               ,queue :: api_binary()
+               ,queue :: kz_term:api_binary()
                }).
 -type state() :: #state{}.
 
--record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
-                      ,username :: api_ne_binary() | '_'
-                      ,realm :: api_ne_binary() | '_' | '$1'
-                      ,network_port :: api_ne_binary() | '_'
-                      ,network_ip :: api_ne_binary() | '_'
-                      ,to_host = ?DEFAULT_REALM :: ne_binary() | '_'
-                      ,to_user = <<"nouser">> :: ne_binary() | '_'
-                      ,from_host = ?DEFAULT_REALM :: ne_binary() | '_'
-                      ,from_user = <<"nouser">> :: ne_binary() | '_'
-                      ,call_id :: api_ne_binary() | '_'
-                      ,user_agent :: api_ne_binary() | '_'
+-record(registration, {id :: {kz_term:ne_binary(), kz_term:ne_binary()} | '_' | '$1'
+                      ,username :: kz_term:api_ne_binary() | '_'
+                      ,realm :: kz_term:api_ne_binary() | '_' | '$1'
+                      ,network_port :: kz_term:api_ne_binary() | '_'
+                      ,network_ip :: kz_term:api_ne_binary() | '_'
+                      ,to_host = ?DEFAULT_REALM :: kz_term:ne_binary() | '_'
+                      ,to_user = <<"nouser">> :: kz_term:ne_binary() | '_'
+                      ,from_host = ?DEFAULT_REALM :: kz_term:ne_binary() | '_'
+                      ,from_user = <<"nouser">> :: kz_term:ne_binary() | '_'
+                      ,call_id :: kz_term:api_ne_binary() | '_'
+                      ,user_agent :: kz_term:api_ne_binary() | '_'
                       ,expires = ?EXPIRES_MISSING_VALUE :: non_neg_integer() | '_' | '$1'
-                      ,contact :: api_ne_binary() | '_'
-                      ,previous_contact :: api_binary() | '_'
-                      ,original_contact :: api_ne_binary() | '_'
-                      ,last_registration = kz_time:now_s() :: gregorian_seconds() | '_' | '$2'
-                      ,initial_registration = kz_time:now_s() :: gregorian_seconds() | '_'
-                      ,registrar_node :: api_ne_binary() | '_'
-                      ,registrar_hostname :: api_ne_binary() | '_'
+                      ,contact :: kz_term:api_ne_binary() | '_'
+                      ,previous_contact :: kz_term:api_binary() | '_'
+                      ,original_contact :: kz_term:api_ne_binary() | '_'
+                      ,last_registration = kz_time:now_s() :: kz_time:gregorian_seconds() | '_' | '$2'
+                      ,initial_registration = kz_time:now_s() :: kz_time:gregorian_seconds() | '_'
+                      ,registrar_node :: kz_term:api_ne_binary() | '_'
+                      ,registrar_hostname :: kz_term:api_ne_binary() | '_'
                       ,suppress_unregister = 'true' :: boolean() | '_'
                       ,register_overwrite_notify = 'false' :: boolean() | '_'
-                      ,account_db :: api_binary() | '_'
-                      ,account_id :: api_binary() | '_'
-                      ,authorizing_id :: api_binary() | '_'
-                      ,authorizing_type :: api_binary() | '_'
-                      ,owner_id :: api_binary() | '_'
-                      ,presence_id :: api_binary() | '_'
+                      ,account_db :: kz_term:api_binary() | '_'
+                      ,account_id :: kz_term:api_binary() | '_'
+                      ,authorizing_id :: kz_term:api_binary() | '_'
+                      ,authorizing_type :: kz_term:api_binary() | '_'
+                      ,owner_id :: kz_term:api_binary() | '_'
+                      ,presence_id :: kz_term:api_binary() | '_'
                       ,initial = 'true' :: boolean() | '_'
-                      ,account_realm :: api_binary() | '_' | '$2'
-                      ,account_name :: api_binary() | '_'
-                      ,proxy :: api_binary() | '_'
-                      ,proxy_ip :: api_binary() | '_'
-                      ,proxy_port :: api_integer() | '_'
-                      ,bridge_uri :: api_binary() | '_'
-                      ,source_ip :: api_binary() | '_'
-                      ,source_port :: api_binary() | '_'
+                      ,account_realm :: kz_term:api_binary() | '_' | '$2'
+                      ,account_name :: kz_term:api_binary() | '_'
+                      ,proxy :: kz_term:api_binary() | '_'
+                      ,proxy_ip :: kz_term:api_binary() | '_'
+                      ,proxy_port :: kz_term:api_integer() | '_'
+                      ,bridge_uri :: kz_term:api_binary() | '_'
+                      ,source_ip :: kz_term:api_binary() | '_'
+                      ,source_port :: kz_term:api_binary() | '_'
                       }).
 
 -type registration() :: #registration{}.
@@ -123,7 +123,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -136,20 +136,20 @@ start_link() ->
                            ,[]
                            ).
 
--spec handle_reg_success(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_reg_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_reg_success(JObj, _Props) ->
     'true' = kapi_registration:success_v(JObj),
     _ = kz_util:put_callid(JObj),
     Registration = create_registration(JObj),
     insert_registration(Registration).
 
--spec handle_reg_query(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_reg_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_reg_query(JObj, Props) ->
     'true' = kapi_registration:query_req_v(JObj),
     _ = kz_util:put_callid(JObj),
     maybe_resp_to_query(JObj, props:get_value('registrar_age', Props)).
 
--spec handle_reg_flush(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_reg_flush(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_reg_flush(JObj, _Props) ->
     'true' = kapi_registration:flush_v(JObj),
     Username = kz_json:get_value(<<"Username">>, JObj),
@@ -159,7 +159,7 @@ handle_reg_flush(JObj, _Props) ->
                ),
     flush(Username, Realm).
 
--spec handle_fs_reg(atom(), kz_proplist()) -> 'ok'.
+-spec handle_fs_reg(atom(), kz_term:proplist()) -> 'ok'.
 handle_fs_reg(Node, Props) ->
     kz_util:put_callid(kzd_freeswitch:call_id(Props)),
 
@@ -181,8 +181,8 @@ handle_fs_reg(Node, Props) ->
                ),
     kz_amqp_worker:cast(Req, fun kapi_registration:publish_success/1).
 
--spec lookup_contact(ne_binary(), ne_binary()) ->
-                            {'ok', ne_binary()} |
+-spec lookup_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                            {'ok', kz_term:ne_binary()} |
                             {'error', 'not_found'}.
 lookup_contact(<<>>, _Username) -> {'error', 'not_found'};
 lookup_contact(_Realm, <<>>) -> {'error', 'not_found'};
@@ -203,8 +203,8 @@ lookup_contact(<<_/binary>> = Realm, <<_/binary>> = Username) ->
             {'ok', Contact}
     end.
 
--spec lookup_original_contact(ne_binary(), ne_binary()) ->
-                                     {'ok', ne_binary()} |
+-spec lookup_original_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                     {'ok', kz_term:ne_binary()} |
                                      {'error', 'not_found'}.
 lookup_original_contact(Realm, Username) ->
     case kz_term:is_empty(Realm)
@@ -222,7 +222,7 @@ lookup_original_contact(Realm, Username) ->
             end
     end.
 
--spec lookup_registration(ne_binary(), ne_binary()) ->
+-spec lookup_registration(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', 'not_found'}.
 lookup_registration(Realm, Username) ->
@@ -232,7 +232,7 @@ lookup_registration(Realm, Username) ->
         'undefined' -> fetch_registration(Username, Realm)
     end.
 
--spec get_registration(ne_binary(), ne_binary()) -> 'undefined' | registration().
+-spec get_registration(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | registration().
 get_registration(Realm, Username) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{}=Registration] -> Registration;
@@ -249,7 +249,7 @@ summary() ->
         ],
     print_summary(ets:select(?MODULE, MatchSpec, 1)).
 
--spec summary(text()) -> 'ok'.
+-spec summary(kz_term:text()) -> 'ok'.
 summary(Realm) when not is_binary(Realm) ->
     summary(kz_term:to_binary(Realm));
 summary(Realm) ->
@@ -279,7 +279,7 @@ details() ->
         ],
     print_details(ets:select(?MODULE, MatchSpec, 1)).
 
--spec details(text()) -> 'ok'.
+-spec details(kz_term:text()) -> 'ok'.
 details(User) when not is_binary(User) ->
     details(kz_term:to_binary(User));
 details(User) ->
@@ -303,7 +303,7 @@ details(User) ->
             print_details(ets:select(?MODULE, MatchSpec, 1))
     end.
 
--spec details(text(), text()) -> 'ok'.
+-spec details(kz_term:text(), kz_term:text()) -> 'ok'.
 details(Username, Realm) when not is_binary(Username) ->
     details(kz_term:to_binary(Username), Realm);
 details(Username, Realm) when not is_binary(Realm) ->
@@ -326,7 +326,7 @@ sync() ->
 flush() ->
     gen_server:cast(?SERVER, 'flush').
 
--spec flush(text()) -> 'ok'.
+-spec flush(kz_term:text()) -> 'ok'.
 flush(Realm) when not is_binary(Realm)->
     flush(kz_term:to_binary(Realm));
 flush(Realm) ->
@@ -335,7 +335,7 @@ flush(Realm) ->
         _Else -> gen_server:cast(?SERVER, {'flush', Realm})
     end.
 
--spec flush(text() | 'undefined', text()) -> 'ok'.
+-spec flush(kz_term:text() | 'undefined', kz_term:text()) -> 'ok'.
 flush('undefined', Realm) ->
     flush(Realm);
 flush(Username, Realm) when not is_binary(Realm) ->
@@ -382,7 +382,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
@@ -396,7 +396,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('registrar_sync', #state{queue=Q}=State) ->
     Payload = kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION),
     kz_amqp_worker:cast(Payload, fun kapi_registration:publish_sync/1),
@@ -464,7 +464,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('expire', State) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = expire_objects(),
@@ -549,7 +549,7 @@ insert_registration(#registration{}=Registration) ->
                 ,Registration#registration.contact
                 ]).
 
--spec fetch_registration(ne_binary(), ne_binary()) ->
+-spec fetch_registration(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                 {'ok', kz_json:object()} |
                                 {'error', 'not_found'}.
 fetch_registration(Username, Realm) ->
@@ -566,7 +566,7 @@ fetch_registration(Username, Realm) ->
             {'error', 'not_found'}
     end.
 
--spec query_for_registration(api_terms()) ->
+-spec query_for_registration(kz_term:api_terms()) ->
                                     {'ok', kz_json:objects()} |
                                     {'error', any()}.
 query_for_registration(Reg) ->
@@ -576,7 +576,7 @@ query_for_registration(Reg) ->
                                ,2 * ?MILLISECONDS_IN_SECOND
                                ).
 
--spec find_newest_fetched_registration(ne_binary(), ne_binary(), kz_json:objects()) ->
+-spec find_newest_fetched_registration(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
                                               {'ok', kz_json:object()} |
                                               {'error', 'not_found'}.
 find_newest_fetched_registration(Username, Realm, JObjs) ->
@@ -625,8 +625,8 @@ sort_fetched_registrations(A, B) ->
     kz_json:get_integer_value(<<"Event-Timestamp">>, B) =<
         kz_json:get_integer_value(<<"Event-Timestamp">>, A).
 
--spec fetch_contact(ne_binary(), ne_binary()) ->
-                           {'ok', ne_binary()} |
+-spec fetch_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                           {'ok', kz_term:ne_binary()} |
                            {'error', 'not_found'}.
 fetch_contact(Username, Realm) ->
     case fetch_registration(Username, Realm) of
@@ -641,8 +641,8 @@ fetch_contact(Username, Realm) ->
             Error
     end.
 
--spec fetch_original_contact(ne_binary(), ne_binary()) ->
-                                    {'ok', ne_binary()} |
+-spec fetch_original_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                    {'ok', kz_term:ne_binary()} |
                                     {'error', 'not_found'}.
 fetch_original_contact(Username, Realm) ->
     case fetch_registration(Username, Realm) of
@@ -711,7 +711,7 @@ build_query_spec(JObj, CountOnly) ->
      }
     ].
 
--spec build_query_spec_maybe_username(ne_binary(), kz_json:object()) -> any().
+-spec build_query_spec_maybe_username(kz_term:ne_binary(), kz_json:object()) -> any().
 build_query_spec_maybe_username(Realm, JObj) ->
     case kz_json:get_value(<<"Username">>, JObj) of
         'undefined' ->
@@ -780,7 +780,7 @@ filter(Fields, JObj) ->
                  )
      ).
 
--spec registration_id(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+-spec registration_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 registration_id(Username, Realm) ->
     {kz_term:to_lower_binary(Username), kz_term:to_lower_binary(Realm)}.
 
@@ -904,7 +904,7 @@ augment_registration(Reg, JObj) ->
                                                   )
                     }.
 
--spec fix_contact(api_binary()) -> api_binary().
+-spec fix_contact(kz_term:api_binary()) -> kz_term:api_binary().
 fix_contact('undefined') -> 'undefined';
 fix_contact(Contact) ->
     binary:replace(Contact
@@ -913,7 +913,7 @@ fix_contact(Contact) ->
                   ,['global']
                   ).
 
--spec bridge_uri(api_binary(), api_binary(), binary(), binary()) -> api_binary().
+-spec bridge_uri(kz_term:api_binary(), kz_term:api_binary(), binary(), binary()) -> kz_term:api_binary().
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
 bridge_uri('undefined', _Proxy, _, _) -> 'undefined';
 bridge_uri(Contact, Proxy, Username, Realm) ->
@@ -931,14 +931,14 @@ bridge_uri(Contact, Proxy, Username, Realm) ->
                     },
     kzsip_uri:ruri(BridgeUri).
 
--spec bridge_uri_options(map()) -> kz_proplist().
+-spec bridge_uri_options(map()) -> kz_term:proplist().
 bridge_uri_options(Options) ->
     Routines = [fun bridge_uri_transport/2
                ,fun bridge_uri_path/2
                ],
     lists:foldl(fun(Fun, Acc) -> Fun(Options, Acc) end, [], Routines).
 
--spec bridge_uri_transport(map(), kz_proplist()) -> kz_proplist().
+-spec bridge_uri_transport(map(), kz_term:proplist()) -> kz_term:proplist().
 bridge_uri_transport(#{uri_contact := UriContact}, Acc) ->
     case application:get_env(?APP, 'use_transport_for_fs_path', 'false') of
         'true' ->
@@ -949,11 +949,11 @@ bridge_uri_transport(#{uri_contact := UriContact}, Acc) ->
         'false' -> Acc
     end.
 
--spec bridge_uri_path(map(), kz_proplist()) -> kz_proplist().
+-spec bridge_uri_path(map(), kz_term:proplist()) -> kz_term:proplist().
 bridge_uri_path(#{uri_proxy := UriProxy}, Acc) ->
     [{<<"fs_path">>, kzsip_uri:ruri(UriProxy)} | Acc].
 
--spec existing_or_new_registration(ne_binary(), ne_binary()) -> registration().
+-spec existing_or_new_registration(kz_term:ne_binary(), kz_term:ne_binary()) -> registration().
 existing_or_new_registration(Username, Realm) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
         [#registration{contact=Contact}=Reg] ->
@@ -1162,7 +1162,7 @@ registration_notify(#registration{previous_contact=PrevContact
               ]),
     kapi_presence:publish_register_overwrite(Props).
 
--spec to_props(registration()) -> kz_proplist().
+-spec to_props(registration()) -> kz_term:proplist().
 to_props(Reg) ->
     props:filter_undefined(
       [{<<"Username">>, Reg#registration.username}
@@ -1209,7 +1209,7 @@ oldest_registrar() ->
     kz_nodes:whapp_zone_count(?APP_NAME) =:= 1
         orelse kz_nodes:whapp_oldest_node(?APP_NAME, 'true') =:= node().
 
--spec get_fs_contact(kz_proplist()) -> ne_binary().
+-spec get_fs_contact(kz_term:proplist()) -> kz_term:ne_binary().
 get_fs_contact(Props) ->
     Contact = props:get_first_defined([<<"Contact">>, <<"contact">>], Props),
     [User, AfterAt] = binary:split(Contact, <<"@">>), % only one @ allowed
@@ -1279,14 +1279,14 @@ print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
 print_property(Key, Value, _) ->
     io:format("~-19s: ~s~n", [Key, kz_term:to_binary(Value)]).
 
--type contact_param() :: {'uri', ne_binary()} |
-                         {'hostport', ne_binary()} |
-                         {'transport', ne_binary()} |
-                         {'fs_path', ne_binary()} |
-                         {'received', ne_binary()}.
+-type contact_param() :: {'uri', kz_term:ne_binary()} |
+                         {'hostport', kz_term:ne_binary()} |
+                         {'transport', kz_term:ne_binary()} |
+                         {'fs_path', kz_term:ne_binary()} |
+                         {'received', kz_term:ne_binary()}.
 -type contact_params() :: [contact_param()].
 
--spec breakup_contact(text()) -> contact_params().
+-spec breakup_contact(kz_term:text()) -> contact_params().
 breakup_contact(Contact) when is_binary(Contact) ->
     C = binary:replace(Contact, [<<$'>>, <<$<>>, <<$>>>, <<"sip:">>], <<>>, ['global']),
     [Uri|Parameters] = binary:split(C, <<";">>, ['global']),
@@ -1295,7 +1295,7 @@ breakup_contact(Contact) when is_binary(Contact) ->
 breakup_contact(Contact) ->
     breakup_contact(kz_term:to_binary(Contact)).
 
--spec proxy_path(api_binary(), api_binary(), api_integer()) -> binary().
+-spec proxy_path(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_integer()) -> binary().
 proxy_path('undefined', 'undefined', 'undefined') -> <<>>;
 proxy_path('undefined', 'undefined', Port) -> proxy_path('undefined', <<>>, Port);
 proxy_path('undefined', IP, 'undefined') -> IP;
@@ -1307,7 +1307,7 @@ proxy_path(Proxy, _, Port) ->
         _ -> Proxy1
     end.
 
--spec find_contact_parameters(ne_binaries(), kz_proplist()) -> kz_proplist().
+-spec find_contact_parameters(kz_term:ne_binaries(), kz_term:proplist()) -> kz_term:proplist().
 find_contact_parameters([], Props) -> Props;
 find_contact_parameters([<<"transport=", Transport/binary>>|Parameters], Props) ->
     find_contact_parameters(Parameters, [{'transport', kz_term:to_lower_binary(Transport)}|Props]);
@@ -1318,7 +1318,7 @@ find_contact_parameters([<<"received=", Received/binary>>|Parameters], Props) ->
 find_contact_parameters([_|Parameters], Props) ->
     find_contact_parameters(Parameters, Props).
 
--spec get_contact_hostport(ne_binary()) -> ne_binary().
+-spec get_contact_hostport(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_contact_hostport(Uri) ->
     case binary:split(Uri, <<"@">>) of
         [_, Hostport] -> Hostport;

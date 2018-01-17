@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -36,6 +36,6 @@ init() ->
 
 %%% Triggerables
 
--spec clean_modb(ne_binary()) -> 'ok'.
+-spec clean_modb(kz_term:ne_binary()) -> 'ok'.
 clean_modb(AccountMODb) ->
     kazoo_modb:maybe_archive_modb(AccountMODb).

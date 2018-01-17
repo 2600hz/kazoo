@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz Inc
+%%% @copyright (C) 2018, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -33,7 +33,7 @@ get_attachments(DataJObj, 'false') ->
                ,kz_doc:attachment_names(Doc)
                ).
 
--spec get_attachment_fold(kz_json:path(), attachments(), ne_binary(), kz_json:object()) ->
+-spec get_attachment_fold(kz_json:path(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
                                  attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     {'ok', Attachment} = kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
@@ -51,7 +51,7 @@ fix_email(ReqData, OnlyAdmin) ->
     Emails = get_emails(ReqData, AccountId, OnlyAdmin),
     kz_json:set_value(<<"to">>, Emails, ReqData).
 
--spec get_emails(kz_json:object(), api_binary(), boolean()) -> ne_binaries().
+-spec get_emails(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_term:ne_binaries().
 get_emails(_ReqData, AccountId, 'true') ->
     ResellerId = teletype_util:find_reseller_id(AccountId),
 
@@ -76,7 +76,7 @@ get_emails(ReqData, AccountId, 'false') ->
         {ResellerEmail, _} -> lists:usort([ResellerEmail] ++ PortReqEmail)
     end.
 
--spec find_reseller_port_email(api_binary()) -> api_binary().
+-spec find_reseller_port_email(kz_term:api_binary()) -> kz_term:api_binary().
 find_reseller_port_email(AccountId) ->
     case kz_whitelabel:fetch(AccountId) of
         {'error', _R} -> 'undefined';
@@ -84,7 +84,7 @@ find_reseller_port_email(AccountId) ->
             kz_whitelabel:port_email(JObj)
     end.
 
--spec get_port_req_email(kz_json:object()) -> binaries().
+-spec get_port_req_email(kz_json:object()) -> kz_term:binaries().
 get_port_req_email(ReqData) ->
     Keys = [[<<"port_request">>, <<"customer_contact">>]
            ,[<<"port_request">>, <<"notifications">>, <<"email">>, <<"send_to">>]
@@ -106,6 +106,7 @@ fix_port_request_data(JObj, DataJObj) ->
                ,fun fix_transfer_date/2
                ,fun fix_scheduled_date/2
                ,fun fix_ui_metadata/2
+               ,fun maybe_add_reason/2
                ],
     lists:foldl(fun(F, J) -> F(J, DataJObj) end, JObj, Routines).
 
@@ -115,7 +116,7 @@ fix_numbers(JObj, _DataJObj) ->
     Numbers = kz_json:foldl(fun fix_number_fold/3, [], NumbersJObj),
     kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
--spec fix_number_fold(kz_json:key(), kz_json:json_term(), ne_binaries()) -> ne_binaries().
+-spec fix_number_fold(kz_json:key(), kz_json:json_term(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 fix_number_fold(Number, _Value, Acc) ->
     [Number|Acc].
 
@@ -189,3 +190,31 @@ fix_scheduled_date(JObj, _DataJObj) ->
 -spec fix_ui_metadata(kz_json:object(), kz_json:object()) -> kz_json:object().
 fix_ui_metadata(JObj, _DataJObj) ->
     kz_json:delete_keys([<<"ui_metadata">>, <<"ui_flags">>], JObj).
+
+-spec maybe_add_reason(kz_json:object(), kz_json:object()) -> kz_json:object().
+maybe_add_reason(JObj, DataJObj) ->
+    case kz_json:get_ne_json_value(<<"reason">>, DataJObj) of
+        'undefined' -> JObj;
+        Reason ->
+            UserInfo = get_commenter_info(kz_json:get_ne_binary_value(<<"account_id">>, Reason)
+                                         ,kz_json:get_ne_binary_value(<<"user_id">>, Reason)
+                                         ),
+            Timestamp = kz_json:get_integer_value(<<"timestamp">>, Reason),
+            Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, DataJObj)),
+            Props = [{<<"content">>, kz_json:get_ne_binary_value(<<"content">>, Reason)}
+                    ,{<<"date">>, Date}
+                    ,{<<"user">>, kz_json:from_list(UserInfo)}
+                    ],
+            kz_json:set_value(<<"transition_reason">>, kz_json:from_list(Props), JObj)
+    end.
+
+-spec get_commenter_info(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:proplist().
+get_commenter_info(?NE_BINARY=AccountId, ?NE_BINARY=UserId) ->
+    case kzd_user:fetch(AccountId, UserId) of
+        {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
+        {'error', _Reason} ->
+            lager:debug("failed to get commenter info: account_id ~s user_id ~s", [AccountId, UserId]),
+            []
+    end;
+get_commenter_info(_, _) ->
+    [].

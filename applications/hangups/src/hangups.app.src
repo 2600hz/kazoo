@@ -1,19 +1,11 @@
-{application, hangups,
- [
-  {description, "Listen for abnormal hangups and store them in Couch"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [hangups_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 , folsom
-                 ]},
-  {mod, {hangups_app, []}}
- ]}.
+{application,hangups,
+             [{applications,[folsom,kazoo,kazoo_amqp,kazoo_apps,kazoo_config,
+                             kazoo_documents,kazoo_endpoint,
+                             kazoo_number_manager,kazoo_stdlib,kernel,lager,
+                             stdlib]},
+              {description,"Listen for abnormal hangups and store them in Couch"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{hangups_app,[]}},
+              {modules,[]},
+              {registered,[hangups_sup]},
+              {vsn,"4.0.0"}]}.

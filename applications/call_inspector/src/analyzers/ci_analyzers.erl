@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz INC
+%%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -12,6 +12,6 @@
 
 -include("call_inspector.hrl").
 
--spec new_chunk(ne_binary(), ci_chunk:chunk()) -> 'ok'.
+-spec new_chunk(kz_term:ne_binary(), ci_chunk:chunk()) -> 'ok'.
 new_chunk(_CallId, _Chunk) ->
     'ok'.

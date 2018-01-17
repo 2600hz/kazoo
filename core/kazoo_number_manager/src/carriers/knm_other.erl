@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -89,7 +89,7 @@ is_local() -> 'false'.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
                           {'ok', list()} |
                           {'bulk', list()} |
                           {'error', any()}.
@@ -109,8 +109,8 @@ find_numbers(Prefix, Quantity, Options) ->
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {'ok', kz_json:object()} |
-                                      {'error', any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+                                              {'error', any()}.
 check_numbers(Numbers) ->
     FormatedNumbers = [knm_converters:to_npan(Number) || Number <- Numbers],
     case ?PHONEBOOK_URL of
@@ -239,7 +239,7 @@ format_check_numbers_success(Body) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_numbers(ne_binary(), ne_binary(), ne_binary(), knm_search:options()) ->
+-spec get_numbers(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
                          {'ok', list()} |
                          {'error', 'not_available'}.
 get_numbers(Url, Prefix, Quantity, Options) ->
@@ -249,7 +249,7 @@ get_numbers(Url, Prefix, Quantity, Options) ->
     Results = query_for_numbers(Uri),
     handle_number_query_results(Results, Options).
 
--spec query_for_numbers(ne_binary()) -> kz_http:http_ret().
+-spec query_for_numbers(kz_term:ne_binary()) -> kz_http:http_ret().
 -ifdef(TEST).
 query_for_numbers(<<?NUMBER_PHONEBOOK_URL_L, _/binary>>=URI) ->
     ?LOG_DEBUG("number pb url ~s resp: ~s", [URI, kz_json:encode(?NUMBERS_RESPONSE)]),
@@ -297,7 +297,7 @@ format_found(QID, DID, CarrierData) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_blocks(ne_binary(), ne_binary(), ne_binary(), knm_search:options()) ->
+-spec get_blocks(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
                         {'ok', list()} |
                         {'error', 'not_available'}.
 -ifdef(TEST).

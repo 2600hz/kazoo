@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
@@ -30,7 +30,7 @@
 
 -record(state, {counter = #{} :: map()}).
 -type state() :: #state{}.
--type counter_element() :: {gregorian_seconds(), non_neg_integer()}.
+-type counter_element() :: {kz_time:gregorian_seconds(), non_neg_integer()}.
 
 -define(SERVER, ?MODULE).
 
@@ -53,7 +53,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                      ,{'bindings', ?BINDINGS}
@@ -97,7 +97,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -111,7 +111,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -125,7 +125,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('timeout', #state{counter = Counter} = State) ->
     _ = erlang:send_after(?REFRESH_TIMEOUT * ?MILLISECONDS_IN_SECOND, self(), 'timeout'),
     case ?REFRESH_ENABLED of
@@ -193,7 +193,7 @@ refresh_views(Counter) ->
     _ = maybe_spawn_refresh_process(RefreshList),
     NewCounter.
 
--spec handle_account(map(), api_binary()) -> map().
+-spec handle_account(map(), kz_term:api_binary()) -> map().
 handle_account(Counter, 'undefined') -> Counter;
 handle_account(Counter, AccountId) ->
     RefreshThreshold = ?REFRESH_THRESHOLD,
@@ -209,17 +209,17 @@ handle_account(Counter, AccountId) ->
 value({ok, Value}) -> Value;
 value(_) -> {kz_time:now_s(), 0}.
 
--spec update_account_view(ne_binary(), gregorian_seconds(), gregorian_seconds()) -> any().
+-spec update_account_view(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> any().
 update_account_view(AccountId, From, To) ->
     Dbs = kazoo_modb:get_range(AccountId, From, To),
     lager:info("refresh cdr view account:~p db:~p from:~p to:~p", [AccountId, Dbs, From, To]),
     [ kz_datamgr:get_results(Db, ?VIEW_TO_UPDATE, [{startkey, From}, {endkey, To}]) || Db <- Dbs ].
 
--spec update_accounts_view([{ne_binary(), gregorian_seconds(), gregorian_seconds()}]) -> any().
+-spec update_accounts_view([{kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}]) -> any().
 update_accounts_view(UpdateList) ->
     [ update_account_view(AccountId, From, To) || {AccountId, From, To} <- UpdateList ].
 
--spec maybe_spawn_refresh_process([{ne_binary(), gregorian_seconds(), gregorian_seconds()}]) -> any().
+-spec maybe_spawn_refresh_process([{kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}]) -> any().
 maybe_spawn_refresh_process([]) -> ok;
 maybe_spawn_refresh_process(RefreshList) ->
     _ = kz_util:spawn(fun update_accounts_view/1, [RefreshList]).

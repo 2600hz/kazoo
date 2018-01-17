@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -36,7 +36,7 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec start_inbound_listener(amqp_listener_connection()) -> startlink_ret().
+-spec start_inbound_listener(amqp_listener_connection()) -> kz_types:startlink_ret().
 start_inbound_listener(Connection) ->
     supervisor:start_child(?SERVER, [Connection]).
 
@@ -48,7 +48,7 @@ start_listeners() ->
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     R = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     case R of
@@ -70,7 +70,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
@@ -107,7 +107,7 @@ connections_fold(K, V, Acc) ->
                                  },
     [C | Acc].
 
--spec connection_options(api_object()) -> kz_proplist().
+-spec connection_options(kz_term:api_object()) -> kz_term:proplist().
 connection_options('undefined') ->
     connection_options(?DEFAULT_EXCHANGE_OPTIONS_JOBJ);
 connection_options(JObj) ->

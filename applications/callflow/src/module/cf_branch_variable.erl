@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Try to branch based on the value of a variable.
@@ -24,7 +24,7 @@
 
 -export([handle/2]).
 
--type variable_key() :: api_ne_binary() | api_ne_binaries().
+-type variable_key() :: kz_term:api_ne_binary() | kz_term:api_ne_binaries().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -56,7 +56,7 @@ maybe_branch_to_named_child(ChildName, Call) ->
 %% user and device, it search in merged attributes in endpoint.
 %% @end
 %%--------------------------------------------------------------------
--spec find_child_in_scope(ne_binary(), variable_key(), kapps_call:call()) -> api_binary().
+-spec find_child_in_scope(kz_term:ne_binary(), variable_key(), kapps_call:call()) -> kz_term:api_binary().
 find_child_in_scope(_Scope, 'undefined', _Call) ->
     lager:warning("no variable is specified"),
     'undefined';
@@ -101,7 +101,7 @@ find_child_in_scope(<<"merged">>, Variable, Call) ->
 %% name of the callflow branch.
 %% @end
 %%--------------------------------------------------------------------
--spec find_child_in_doc(api_binary(), ne_binary(), kapps_call:call()) -> api_binary().
+-spec find_child_in_doc(kz_term:api_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_binary().
 find_child_in_doc('undefined', _Variable, _Call) ->
     lager:debug("could not find document for current scope"),
     'undefined';
@@ -122,12 +122,12 @@ find_child_in_doc(DocId, Variable, Call) ->
 %% fall back to the default children '_'.
 %% @end
 %%--------------------------------------------------------------------
--spec find_child_in_branch(any(), kapps_call:call()) -> api_binary().
+-spec find_child_in_branch(any(), kapps_call:call()) -> kz_term:api_binary().
 find_child_in_branch(ChildName, Call) ->
     {'branch_keys', Keys} = cf_exe:get_branch_keys(Call),
     find_child_in_branch(ChildName, Call, Keys).
 
--spec find_child_in_branch(any(), kapps_call:call(), kz_json:paths()) -> api_binary().
+-spec find_child_in_branch(any(), kapps_call:call(), kz_json:paths()) -> kz_term:api_binary().
 find_child_in_branch('undefined', _Call, _Keys) -> 'undefined';
 find_child_in_branch(?NE_BINARY = ChildName, _Call, Keys) ->
     case lists:member(ChildName, Keys) of
@@ -146,7 +146,7 @@ find_child_in_branch(ChildName, Call, Keys) ->
 
 %% Utility Funcations
 
--spec device_owner(kapps_call:call()) -> ne_binary().
+-spec device_owner(kapps_call:call()) -> kz_term:ne_binary().
 device_owner(Call) ->
     DeviceId = kapps_call:authorizing_id(Call),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of

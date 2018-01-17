@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -9,26 +9,67 @@
 
 -include("callflow.hrl").
 -include("module/cf_temporal_route.hrl").
+
+-ifdef(PROPER).
+-include_lib("proper/include/proper.hrl").
+-endif.
+
 -include_lib("eunit/include/eunit.hrl").
+
+-define(SORTED_WDAYS, [<<"monday">>
+                      ,<<"tuesday">>
+                      ,<<"wednesday">>
+                      ,<<"thursday">>
+                      ,<<"friday">>
+                      ,<<"saturday">>
+                      ,<<"sunday">>
+                      ]).
+
+-ifdef(PROPER).
+proper_test_() ->
+    {"Runs " ?MODULE_STRING " PropEr tests"
+    ,[{atom_to_list(F)
+      ,fun () ->
+               ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
+                                                      ,{'numtests', 500}
+                                                      ]))
+       end
+      }
+      || {F, 0} <- ?MODULE:module_info('exports'),
+         F > 'prop_',
+         F < 'prop`'
+     ]
+    }.
+-endif.
+
+sort_wdays_test_() ->
+    Shuffled = kz_term:shuffle_list(?SORTED_WDAYS),
+    ?_assertEqual(?SORTED_WDAYS, cf_temporal_route:sort_wdays(Shuffled)).
 
 monday_failure_test_() ->
     Date = {Y=2017,M=6,D=12},
     Time = {11,47,7},
     Seconds = calendar:datetime_to_gregorian_seconds({Date, Time}),
 
-    Rule = {rule,<<"TESTRULEID">>,undefined,<<"TODTest">>,<<"weekly">>,1,[],[<<"monday">>],<<"first">>,1,Date,0,86400},
-    #rule{wtime_start=TStart}=Rule,
+    Rule = #rule{id = <<"TESTRULEID">>
+                ,enabled = 'undefined'
+                ,name = <<"TODTest">>
+                ,cycle = <<"weekly">>
+                ,interval = 1
+                ,days = []
+                ,wdays = [<<"monday">>]
+                ,ordinal = <<"first">>
+                ,month = 1
+                ,start_date = Date
+                ,wtime_start = TStart = 0
+                ,wtime_stop = 86400
+                },
 
     PrevDay  = kz_date:normalize({Y, M, D - 1}),
     BaseDate = cf_temporal_route:next_rule_date(Rule, PrevDay),
     BaseTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
 
     ?_assertNot(Seconds < (BaseTime + TStart)).
-
-sort_wdays_test() ->
-    Sorted = [<<"monday">>, <<"tuesday">>, <<"wednesday">>, <<"thursday">>, <<"friday">>, <<"saturday">>, <<"sunday">>],
-    Shuffled = kz_term:shuffle_list(Sorted),
-    ?assertEqual(Sorted, cf_temporal_route:sort_wdays(Shuffled)).
 
 daily_recurrence_test_() ->
     %% basic increment
@@ -209,13 +250,28 @@ weekly_recurrence_test_() ->
     ,?_assertEqual({2011,1,31}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"monday">>], start_date={2004,1,1}}, {2011,1,1}))
     ,?_assertEqual({2011,1,18}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"tuesday">>], start_date={2005,2,8}}, {2011,1,1}))
     ,?_assertEqual({2011,2,2}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"wensday">>], start_date={2006,3,15}}, {2011,1,1}))
-    ,?_assertEqual({2011,1,20}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"thursday">>], start_date={2007,4,22}}, {2011,1,1}))
+    ,?_assertEqual({2011,1,13}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"thursday">>], start_date={2007,4,22}}, {2011,1,1}))
     ,?_assertEqual({2011,2,4}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"friday">>], start_date={2008,5,29}}, {2011,1,1}))
     ,?_assertEqual({2011,1,22}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"saturday">>], start_date={2009,6,1}}, {2011,1,1}))
     ,?_assertEqual({2011,1,2}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=5, wdays=[<<"sunday">>], start_date={2010,7,8}}, {2011,1,1}))
      %% long span
     ,?_assertEqual({2011,1,10}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=4, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,1,1}))
     ,?_assertEqual({2011,5,2}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=4, wdays=[<<"monday">>], start_date={1983,4,11}}, {2011,4,11}))
+    ,?_assertEqual({2018,1,8}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={1983,4,11}}, {2018,1,7}))
+    ,?_assertEqual({2018,1,8}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>], start_date={1983,4,11}}, {2018,1,7}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>], start_date={1983,4,11}}, {2018,1,8}))
+    ,?_assertEqual({2018,1,16}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"tuesday">>], start_date={1983,4,11}}, {2018,1,9}))
+    ,?_assertEqual({2018,1,17}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"wednesday">>], start_date={1983,4,11}}, {2018,1,10}))
+    ,?_assertEqual({2018,1,18}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"thursday">>], start_date={1983,4,11}}, {2018,1,11}))
+    ,?_assertEqual({2018,1,19}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"friday">>], start_date={1983,4,11}}, {2018,1,12}))
+    ,?_assertEqual({2018,1,20}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"saturday">>], start_date={1983,4,11}}, {2018,1,13}))
+    ,?_assertEqual({2018,1,21}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"sunday">>], start_date={1983,4,11}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={1983,4,11}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,8}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={2018,1,1}}, {2018,1,7}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>,<<"tuesday">>,<<"wednesday">>,<<"thursday">>,<<"friday">>,<<"saturday">>,<<"sunday">>], start_date={2018,1,1}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>], start_date={2018,1,1}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,15}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"monday">>], start_date={2018,1,2}}, {2018,1,14}))
+    ,?_assertEqual({2018,1,16}, cf_temporal_route:next_rule_date(#rule{cycle = <<"weekly">>, interval=1, wdays=[<<"tuesday">>], start_date={2018,1,2}}, {2018,1,15}))
     ].
 
 monthly_every_recurrence_test_() ->

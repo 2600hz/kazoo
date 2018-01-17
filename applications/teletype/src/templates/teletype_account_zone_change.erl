@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz Inc
+%%% @copyright (C) 2015-2018, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -93,7 +93,7 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec zones_data(kz_json:object()) -> kz_proplist().
+-spec zones_data(kz_json:object()) -> kz_term:proplist().
 zones_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'false' ->

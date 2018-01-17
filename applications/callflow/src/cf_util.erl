@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -56,7 +56,7 @@
 -define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
 -define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
 -define(OPERATOR_KEY, kapps_config:get_ne_binary(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
--define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
+
 -define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
 
 %%--------------------------------------------------------------------
@@ -65,7 +65,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec presence_probe(kz_json:object(), kz_proplist()) -> any().
+-spec presence_probe(kz_json:object(), kz_term:proplist()) -> any().
 presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
     Username = kz_json:get_value(<<"Username">>, JObj),
@@ -77,7 +77,7 @@ presence_probe(JObj, _Props) ->
                             Fun(Username, Realm) =:= 'not_found'
                     end, ProbeRepliers).
 
--spec presence_parking_slot(ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+-spec presence_parking_slot(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 presence_parking_slot(Username, Realm) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', AccountDb} ->
@@ -85,7 +85,7 @@ presence_parking_slot(Username, Realm) ->
         _E -> 'not_found'
     end.
 
--spec maybe_presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+-spec maybe_presence_parking_slot_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
     case kz_cache:fetch_local(?CACHE_NAME, ?PARKING_PRESENCE_KEY(AccountDb, Username)) of
         {'ok', 'false'} -> 'not_found';
@@ -95,7 +95,7 @@ maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
             maybe_presence_parking_flow(Username, Realm, AccountDb)
     end.
 
--spec maybe_presence_parking_flow(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+-spec maybe_presence_parking_flow(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_flow(Username, Realm, AccountDb) ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     _ = cf_flow:lookup(Username, AccountId),
@@ -113,25 +113,25 @@ maybe_presence_parking_flow(Username, Realm, AccountDb) ->
             end
     end.
 
--spec presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec presence_parking_slot_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 presence_parking_slot_resp(Username, Realm, AccountDb, SlotNumber) ->
     cf_park:update_presence(SlotNumber, <<Username/binary, "@", Realm/binary>>, AccountDb).
 
--spec manual_presence(ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+-spec manual_presence(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 manual_presence(Username, Realm) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', AccountDb} -> check_manual_presence(Username, Realm, AccountDb);
         _E -> 'not_found'
     end.
 
--spec check_manual_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec check_manual_presence(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 check_manual_presence(Username, Realm, AccountDb) ->
     case kz_cache:fetch_local(?CACHE_NAME, ?MANUAL_PRESENCE_KEY(AccountDb)) of
         {'ok', JObj} -> manual_presence_resp(Username, Realm, JObj);
         {'error', 'not_found'} -> fetch_manual_presence_doc(Username, Realm, AccountDb)
     end.
 
--spec fetch_manual_presence_doc(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+-spec fetch_manual_presence_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 fetch_manual_presence_doc(Username, Realm, AccountDb) ->
     case kz_datamgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
         {'ok', JObj} ->
@@ -144,7 +144,7 @@ fetch_manual_presence_doc(Username, Realm, AccountDb) ->
         {'error', _} -> 'not_found'
     end.
 
--spec manual_presence_resp(ne_binary(), ne_binary(), kz_json:object()) -> 'ok' | 'not_found'.
+-spec manual_presence_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok' | 'not_found'.
 manual_presence_resp(Username, Realm, JObj) ->
     PresenceId = <<Username/binary, "@", Realm/binary>>,
     case kz_json:get_value(PresenceId, JObj) of
@@ -164,13 +164,13 @@ manual_presence_resp(Username, Realm, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec presence_mwi_query(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec presence_mwi_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
     'true' = kapi_presence:mwi_query_v(JObj),
     _ = kz_util:put_callid(JObj),
     mwi_query(JObj).
 
--spec notification_register(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec notification_register(kz_json:object(), kz_term:proplist()) -> 'ok'.
 notification_register(JObj, _Props) ->
     'true' = kapi_notifications:register_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -187,7 +187,7 @@ mwi_query(JObj) ->
         _Else -> 'ok'
     end.
 
--spec maybe_vm_mwi_resp(api_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_vm_mwi_resp(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_vm_mwi_resp('undefined', _Realm, _AccountDb, _JObj) -> 'ok';
 maybe_vm_mwi_resp(<<_/binary>> = VMNumber, Realm, AccountDb, JObj) ->
     case mailbox(AccountDb, VMNumber) of
@@ -195,12 +195,12 @@ maybe_vm_mwi_resp(<<_/binary>> = VMNumber, Realm, AccountDb, JObj) ->
         {'error', _} -> mwi_resp(VMNumber, Realm, AccountDb, JObj)
     end.
 
--spec vm_mwi_resp(kz_json:object(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec vm_mwi_resp(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 vm_mwi_resp(Doc, VMNumber, Realm, JObj) ->
     {New, Saved} = vm_count(Doc),
-    send_mwi_update(New, Saved, VMNumber, Realm, JObj).
+    kz_endpoint:send_mwi_update(New, Saved, VMNumber, Realm, JObj).
 
--spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec mwi_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 mwi_resp(Username, Realm, AccountDb, JObj) ->
     case owner_ids_by_sip_username(AccountDb, Username) of
         {'ok', [<<_/binary>> = OwnerId]} ->
@@ -208,15 +208,10 @@ mwi_resp(Username, Realm, AccountDb, JObj) ->
         _Else -> 'ok'
     end.
 
--spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec mwi_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
     {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-    send_mwi_update(New, Saved, Username, Realm, JObj).
-
--spec is_unsolicited_mwi_enabled(ne_binary()) -> boolean().
-is_unsolicited_mwi_enabled(AccountId) ->
-    kapps_config:get_is_true(?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
-        andalso kz_term:is_true(kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+    kz_endpoint:send_mwi_update(New, Saved, Username, Realm, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -224,125 +219,17 @@ is_unsolicited_mwi_enabled(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type mwi_update_return() :: 'missing_account_db' |
-                             'missing_owner_id'.
--spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
+-spec unsolicited_owner_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
                                           'ok' |
-                                          {'error', mwi_update_return()} |
+                                          {'error', atom()} |
                                           kz_datamgr:data_error().
--spec unsolicited_owner_mwi_update(ne_binary(), ne_binary(), boolean()) ->
-                                          'ok' |
-                                          {'error', mwi_update_return()} |
-                                          kz_datamgr:data_error().
-unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
-unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
-    unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
+    kz_endpoint:unsolicited_owner_mwi_update(AccountDb, OwnerId).
 
-unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
-    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
-unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
-    ViewOptions = [{'key', [OwnerId, <<"device">>]}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-            lists:foreach(
-              fun(JObj) -> maybe_send_mwi_update(JObj, AccountId, New, Saved) end
-                         ,JObjs
-             );
-        {'error', _R}=E ->
-            lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
-            E
-    end.
-
--spec maybe_send_mwi_update(kz_json:object(), ne_binary(), integer(), integer()) -> 'ok'.
-maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
-    J = kz_json:get_value(<<"doc">>, JObj),
-    Username = kz_device:sip_username(J),
-    Realm = kz_endpoint:get_sip_realm(J, AccountId),
-    OwnerId = get_endpoint_owner(J),
-    case kz_device:sip_method(J) =:= <<"password">>
-        andalso Username =/= 'undefined'
-        andalso Realm =/= 'undefined'
-        andalso OwnerId =/= 'undefined'
-        andalso kz_device:unsolicitated_mwi_updates(J)
-    of
-        'true' -> send_mwi_update(New, Saved, Username, Realm);
-        'false' -> 'ok'
-    end.
-
--spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
+-spec unsolicited_endpoint_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
                                              'ok' | {'error', any()}.
--spec unsolicited_endpoint_mwi_update(ne_binary(), ne_binary(), boolean()) ->
-                                             'ok' | {'error', any()}.
-unsolicited_endpoint_mwi_update('undefined', _) ->
-    {'error', 'missing_account_db'};
-unsolicited_endpoint_mwi_update(_, 'undefined') ->
-    {'error', 'missing_owner_id'};
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
-    unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
-
-unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
-    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
-unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
-    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
-        {'error', _}=E -> E;
-        {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
-    end.
-
--spec maybe_send_endpoint_mwi_update(ne_binary(), kz_json:object()) ->
-                                            'ok' | {'error', 'not_appropriate'}.
--spec maybe_send_endpoint_mwi_update(ne_binary(), kz_json:object(), boolean()) ->
-                                            'ok' | {'error', 'not_appropriate'}.
-
-maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
-    maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
-
-maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
-    lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
-maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    Username = kz_device:sip_username(JObj),
-    Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
-    OwnerId = get_endpoint_owner(JObj),
-    case kz_device:sip_method(JObj) =:= <<"password">>
-        andalso Username =/= 'undefined'
-        andalso Realm =/= 'undefined'
-    of
-        'false' -> {'error', 'not_appropriate'};
-        'true' ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            send_mwi_update(New, Saved, Username, Realm)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--type vm_count() :: non_neg_integer().
--spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm) ->
-    send_mwi_update(New, Saved, Username, Realm, kz_json:new()).
-
--spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm, JObj) ->
-    Command = [{<<"To">>, <<Username/binary, "@", Realm/binary>>}
-              ,{<<"Messages-New">>, New}
-              ,{<<"Messages-Saved">>, Saved}
-              ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("updating MWI for ~s@~s (~p/~p)", [Username, Realm, New, Saved]),
-    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
+    kz_endpoint:unsolicited_endpoint_mwi_update(AccountDb, EndpointId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -350,7 +237,7 @@ send_mwi_update(New, Saved, Username, Realm, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec alpha_to_dialpad(ne_binary()) -> ne_binary().
+-spec alpha_to_dialpad(kz_term:ne_binary()) -> kz_term:ne_binary().
 alpha_to_dialpad(Value) ->
     << <<(dialpad_digit(C))>> || <<C>> <= kz_term:to_lower_binary(Value), is_alpha(C) >>.
 
@@ -405,8 +292,8 @@ dialpad_digit(WXYZ) when WXYZ =:= $w
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec owner_ids_by_sip_username(ne_binary(), ne_binary()) ->
-                                       {'ok', ne_binaries()} |
+-spec owner_ids_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                       {'ok', kz_term:ne_binaries()} |
                                        {'error', any()}.
 owner_ids_by_sip_username(AccountDb, Username) ->
     case kz_cache:peek_local(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username)) of
@@ -415,8 +302,8 @@ owner_ids_by_sip_username(AccountDb, Username) ->
             get_owner_ids_by_sip_username(AccountDb, Username)
     end.
 
--spec get_owner_ids_by_sip_username(ne_binary(), ne_binary()) ->
-                                           {'ok', ne_binaries()} |
+-spec get_owner_ids_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                           {'ok', kz_term:ne_binaries()} |
                                            {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
@@ -438,8 +325,8 @@ get_owner_ids_by_sip_username(AccountDb, Username) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec endpoint_id_by_sip_username(ne_binary(), ne_binary()) ->
-                                         {'ok', ne_binary()} |
+-spec endpoint_id_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                         {'ok', kz_term:ne_binary()} |
                                          {'error', 'not_found'}.
 endpoint_id_by_sip_username(AccountDb, Username) ->
     case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username)) of
@@ -448,8 +335,8 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
             get_endpoint_id_by_sip_username(AccountDb, Username)
     end.
 
--spec get_endpoint_id_by_sip_username(ne_binary(), ne_binary()) ->
-                                             {'ok', ne_binary()} |
+-spec get_endpoint_id_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                             {'ok', kz_term:ne_binary()} |
                                              {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
@@ -470,8 +357,8 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_operator_callflow(ne_binary()) -> {'ok', kz_json:object()} |
-                                            kz_datamgr:data_error().
+-spec get_operator_callflow(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                                    kz_datamgr:data_error().
 get_operator_callflow(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     Options = [{'key', ?OPERATOR_KEY}
@@ -493,7 +380,7 @@ get_operator_callflow(Account) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure({'fail', kz_json:object()} | api_binary(), kapps_call:call()) ->
+-spec handle_bridge_failure({'fail', kz_json:object()} | kz_term:api_binary(), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = kapps_util:get_call_termination_reason(Reason),
@@ -509,7 +396,7 @@ handle_bridge_failure(Failure, Call) ->
             'not_found'
     end.
 
--spec handle_bridge_failure(api_binary(), api_binary(), kapps_call:call()) ->
+-spec handle_bridge_failure(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
@@ -526,7 +413,7 @@ handle_bridge_failure(Cause, Code, Call) ->
 %% Send and wait for a call failure cause response
 %% @end
 %%--------------------------------------------------------------------
--spec send_default_response(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec send_default_response(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 send_default_response(Cause, Call) ->
     case cf_exe:wildcard_is_empty(Call) of
         'false' -> lager:debug("non-empty wildcard; not sending ~s", [Cause]);
@@ -540,29 +427,7 @@ send_default_response(Cause, Call) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoint_owner(kz_json:object()) -> api_binary().
-get_endpoint_owner(JObj) ->
-    maybe_get_endpoint_hotdesk_owner(JObj).
-
--spec maybe_get_endpoint_hotdesk_owner(kz_json:object()) -> api_binary().
-maybe_get_endpoint_hotdesk_owner(JObj) ->
-    case kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
-        [] -> maybe_get_endpoint_assigned_owner(JObj);
-        [OwnerId] -> OwnerId;
-        [_|_] -> 'undefined'
-    end.
-
--spec maybe_get_endpoint_assigned_owner(kz_json:object()) -> api_binary().
-maybe_get_endpoint_assigned_owner(JObj) ->
-    kz_json:get_ne_value(<<"owner_id">>, JObj).
-
--spec apply_dialplan(ne_binary(), api_object()) -> ne_binary().
+-spec apply_dialplan(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:ne_binary().
 apply_dialplan(N, 'undefined') -> N;
 apply_dialplan(Number, DialPlan) ->
     Regexs = kz_json:get_keys(DialPlan),
@@ -571,7 +436,7 @@ apply_dialplan(Number, DialPlan) ->
         _ -> maybe_apply_dialplan(Regexs, DialPlan, Number)
     end.
 
--spec maybe_apply_dialplan(kz_json:path(), kz_json:object(), ne_binary()) -> ne_binary().
+-spec maybe_apply_dialplan(kz_json:path(), kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_apply_dialplan([], _, Number) -> Number;
 maybe_apply_dialplan([<<"system">>], DialPlan, Number) ->
     SystemDialPlans = load_system_dialplans(kz_json:get_value(<<"system">>, DialPlan)),
@@ -585,7 +450,7 @@ maybe_apply_dialplan([Key|_]=Keys, DialPlan, Number) ->
         Regex -> apply_dialplan(Regex, Keys, DialPlan, Number)
     end.
 
--spec apply_dialplan(ne_binary(), kz_json:path(), kz_json:object(), ne_binary()) -> ne_binary().
+-spec apply_dialplan(kz_term:ne_binary(), kz_json:path(), kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
 apply_dialplan(Regex, [Key|Keys], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
@@ -605,14 +470,14 @@ apply_dialplan(Regex, [Key|Keys], DialPlan, Number) ->
             end
     end.
 
--spec load_system_dialplans(ne_binaries()) -> kz_json:object().
+-spec load_system_dialplans(kz_term:ne_binaries()) -> kz_json:object().
 load_system_dialplans(Names) ->
     LowerNames = [kz_term:to_lower_binary(Name) || Name <- Names],
     Plans = kapps_config:get_all_kvs(<<"dialplans">>),
     lists:foldl(fold_system_dialplans(LowerNames), kz_json:new(), Plans).
 
--spec fold_system_dialplans(ne_binaries()) ->
-                                   fun(({ne_binary(), kz_json:object()}, kz_json:object()) -> kz_json:object()).
+-spec fold_system_dialplans(kz_term:ne_binaries()) ->
+                                   fun(({kz_term:ne_binary(), kz_json:object()}, kz_json:object()) -> kz_json:object()).
 fold_system_dialplans(Names) ->
     fun({Key, Val}, Acc) when is_list(Val) ->
             lists:foldl(fun(ValElem, A) -> maybe_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
@@ -620,7 +485,7 @@ fold_system_dialplans(Names) ->
             maybe_dialplan_suits({Key, Val}, Acc, Names)
     end.
 
--spec maybe_dialplan_suits({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
+-spec maybe_dialplan_suits({kz_term:ne_binary(), kz_json:object()} ,kz_json:object(), kz_term:ne_binaries()) -> kz_json:object().
 maybe_dialplan_suits({Key, Val}=KV, Acc, Names) ->
     Name = kz_term:to_lower_binary(kz_json:get_value(<<"name">>, Val)),
     case lists:member(Name, Names) of
@@ -628,7 +493,7 @@ maybe_dialplan_suits({Key, Val}=KV, Acc, Names) ->
         'false' -> maybe_system_dialplan_name(KV, Acc, Names)
     end.
 
--spec maybe_system_dialplan_name({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
+-spec maybe_system_dialplan_name({kz_term:ne_binary(), kz_json:object()} ,kz_json:object(), kz_term:ne_binaries()) -> kz_json:object().
 maybe_system_dialplan_name({Key, Val}, Acc, Names) ->
     Name = kz_term:to_lower_binary(Key),
     case lists:member(Name, Names) of
@@ -638,7 +503,7 @@ maybe_system_dialplan_name({Key, Val}, Acc, Names) ->
         'false' -> Acc
     end.
 
--spec index_of(ne_binary(), list()) -> api_integer().
+-spec index_of(kz_term:ne_binary(), list()) -> kz_term:api_integer().
 index_of(Value, List) ->
     Map = lists:zip(List, lists:seq(1, length(List))),
     case dict:find(Value, dict:from_list(Map)) of
@@ -661,23 +526,23 @@ start_event_listener(Call, Mod, Args) ->
             {'error', _R}
     end.
 
--spec event_listener_name(kapps_call:call(), atom() | ne_binary()) -> ne_binary().
+-spec event_listener_name(kapps_call:call(), atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
 event_listener_name(Call, Module) ->
     <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_term:to_binary(Module))/binary>>.
 
--spec caller_belongs_to_group(ne_binary(), kapps_call:call()) -> boolean().
+-spec caller_belongs_to_group(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 caller_belongs_to_group(GroupId, Call) ->
     maybe_belongs_to_group(kapps_call:authorizing_id(Call), GroupId, Call).
 
--spec maybe_belongs_to_group(ne_binary(), ne_binary(), kapps_call:call()) -> boolean().
+-spec maybe_belongs_to_group(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> boolean().
 maybe_belongs_to_group(TargetId, GroupId, Call) ->
     lists:member(TargetId, find_group_endpoints(GroupId, Call)).
 
--spec caller_belongs_to_user(ne_binary(), kapps_call:call()) -> boolean().
+-spec caller_belongs_to_user(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 caller_belongs_to_user(UserId, Call) ->
     lists:member(kapps_call:authorizing_id(Call), find_user_endpoints([UserId],[],Call)).
 
--spec find_group_endpoints(ne_binary(), kapps_call:call()) -> ne_binaries().
+-spec find_group_endpoints(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 find_group_endpoints(GroupId, Call) ->
     GroupsJObj = kz_attributes:groups(Call),
     case [kz_json:get_value(<<"value">>, JObj)
@@ -691,8 +556,8 @@ find_group_endpoints(GroupId, Call) ->
             find_endpoints(Ids, GroupEndpoints, Call)
     end.
 
--spec find_endpoints(ne_binaries(), kz_json:object(), kapps_call:call()) ->
-                            ne_binaries().
+-spec find_endpoints(kz_term:ne_binaries(), kz_json:object(), kapps_call:call()) ->
+                            kz_term:ne_binaries().
 find_endpoints(Ids, GroupEndpoints, Call) ->
     {DeviceIds, UserIds} =
         lists:partition(fun(Id) ->
@@ -700,14 +565,14 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
                         end, Ids),
     find_user_endpoints(UserIds, lists:sort(DeviceIds), Call).
 
--spec find_user_endpoints(ne_binaries(), ne_binaries(), kapps_call:call()) ->
-                                 ne_binaries().
+-spec find_user_endpoints(kz_term:ne_binaries(), kz_term:ne_binaries(), kapps_call:call()) ->
+                                 kz_term:ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
 find_user_endpoints(UserIds, DeviceIds, Call) ->
     UserDeviceIds = kz_attributes:owned_by(UserIds, <<"device">>, Call),
     lists:merge(lists:sort(UserDeviceIds), DeviceIds).
 
--spec find_channels(ne_binaries(), kapps_call:call()) -> kz_json:objects().
+-spec find_channels(kz_term:ne_binaries(), kapps_call:call()) -> kz_json:objects().
 find_channels(Usernames, Call) ->
     Realm = kz_account:fetch_realm(kapps_call:account_id(Call)),
     lager:debug("finding channels for realm ~p, usernames ~p", [Realm, Usernames]),
@@ -726,7 +591,7 @@ find_channels(Usernames, Call) ->
             []
     end.
 
--spec check_value_of_fields(kz_proplist(), boolean(), kz_json:object(), kapps_call:call()) ->
+-spec check_value_of_fields(kz_term:proplist(), boolean(), kz_json:object(), kapps_call:call()) ->
                                    boolean().
 check_value_of_fields(Perms, Def, Data, Call) ->
     case lists:dropwhile(fun({K, _F}) ->
@@ -739,22 +604,22 @@ check_value_of_fields(Perms, Def, Data, Call) ->
         [{K, F}|_] -> F(kz_json:get_value(K, Data), Call)
     end.
 
--spec sip_users_from_device_ids(ne_binaries(), kapps_call:call()) -> ne_binaries().
+-spec sip_users_from_device_ids(kz_term:ne_binaries(), kapps_call:call()) -> kz_term:ne_binaries().
 sip_users_from_device_ids(EndpointIds, Call) ->
     lists:foldl(fun(EID, Acc) -> sip_users_from_device_id(EID, Acc, Call) end
                ,[]
                ,EndpointIds
                ).
 
--spec sip_users_from_device_id(ne_binary(), ne_binaries(), kapps_call:call()) ->
-                                      ne_binaries().
+-spec sip_users_from_device_id(kz_term:ne_binary(), kz_term:ne_binaries(), kapps_call:call()) ->
+                                      kz_term:ne_binaries().
 sip_users_from_device_id(EndpointId, Acc, Call) ->
     case sip_user_from_device_id(EndpointId, Call) of
         'undefined' -> Acc;
         Username -> [Username|Acc]
     end.
 
--spec sip_user_from_device_id(ne_binary(), kapps_call:call()) -> api_binary().
+-spec sip_user_from_device_id(kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_binary().
 sip_user_from_device_id(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
@@ -762,7 +627,7 @@ sip_user_from_device_id(EndpointId, Call) ->
             kz_device:sip_username(Endpoint)
     end.
 
--spec wait_for_noop(kapps_call:call(), ne_binary()) ->
+-spec wait_for_noop(kapps_call:call(), kz_term:ne_binary()) ->
                            {'ok', kapps_call:call()} |
                            {'error', 'channel_hungup' | kz_json:object()}.
 wait_for_noop(Call, NoopId) ->
@@ -774,7 +639,7 @@ wait_for_noop(Call, NoopId) ->
             {'ok', Call}
     end.
 
--spec process_event(kapps_call:call(), ne_binary(), kz_json:object()) ->
+-spec process_event(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) ->
                            {'ok', kapps_call:call()} |
                            {'error', any()}.
 process_event(Call, NoopId, JObj) ->
@@ -807,7 +672,7 @@ process_event(Call, NoopId, JObj) ->
             wait_for_noop(Call, NoopId)
     end.
 
--spec get_timezone(kz_json:object(), kapps_call:call()) -> ne_binary().
+-spec get_timezone(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
 get_timezone(JObj, Call) ->
     case kz_json:get_ne_binary_value(<<"timezone">>, JObj) of
         'undefined'   -> kz_account:timezone(kapps_call:account_id(Call));
@@ -825,8 +690,8 @@ start_task(Fun, Args, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec mailbox(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                           {'error', any()}.
+-spec mailbox(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                                           {'error', any()}.
 mailbox(AccountDb, VMNumber) ->
     try kz_term:to_integer(VMNumber) of
         Number -> maybe_cached_mailbox(AccountDb, Number)
@@ -834,16 +699,16 @@ mailbox(AccountDb, VMNumber) ->
         _E:_R ->  {'error', 'not_found'}
     end.
 
--spec maybe_cached_mailbox(ne_binary(), integer()) -> {'ok', kz_json:object()} |
-                                                      {'error', any()}.
+-spec maybe_cached_mailbox(kz_term:ne_binary(), integer()) -> {'ok', kz_json:object()} |
+                                                              {'error', any()}.
 maybe_cached_mailbox(AccountDb, VMNumber) ->
     case kz_cache:peek_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} -> get_mailbox(AccountDb, VMNumber)
     end.
 
--spec get_mailbox(ne_binary(), integer()) -> {'ok', kz_json:object()} |
-                                             {'error', any()}.
+-spec get_mailbox(kz_term:ne_binary(), integer()) -> {'ok', kz_json:object()} |
+                                                     {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
     ViewOptions = [{'key', VMNumber}, 'include_docs'],
     case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
@@ -872,8 +737,7 @@ vm_count(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
+-spec vm_count_by_owner(kz_term:ne_binary(), kz_term:ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
 

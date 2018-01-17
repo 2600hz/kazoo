@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handle channel move logic
 %%% @end
@@ -13,7 +13,7 @@
 
 -include("ecallmgr.hrl").
 
--spec move(ne_binary(), atom(), atom()) -> boolean().
+-spec move(kz_term:ne_binary(), atom(), atom()) -> boolean().
 move(UUID, ONode, NNode) ->
     OriginalNode = kz_term:to_atom(ONode),
     NewNode = kz_term:to_atom(NNode),
@@ -35,7 +35,7 @@ move(UUID, ONode, NNode) ->
     end.
 
 %% listens for the event from FS with the XML
--spec wait_for_teardown(ne_binary(), atom()) ->
+-spec wait_for_teardown(kz_term:ne_binary(), atom()) ->
                                {'ok', kzd_freeswitch:data()} |
                                {'error', 'timeout'}.
 wait_for_teardown(UUID, OriginalNode) ->
@@ -50,14 +50,14 @@ wait_for_teardown(UUID, OriginalNode) ->
             {'error', 'timeout'}
     end.
 
--spec rebuild_channel(ne_binary(), atom(), kz_proplist()) -> boolean().
+-spec rebuild_channel(kz_term:ne_binary(), atom(), kz_term:proplist()) -> boolean().
 rebuild_channel(UUID, NewNode, Evt) ->
     catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(NewNode, UUID)}),
     lager:debug("waiting for message with metadata for channel ~s so we can move it to ~s", [UUID, NewNode]),
     resume(UUID, NewNode, Evt),
     wait_for_completion(UUID, NewNode).
 
--spec resume(ne_binary(), atom(), kz_proplist()) -> 'ok'.
+-spec resume(kz_term:ne_binary(), atom(), kz_term:proplist()) -> 'ok'.
 resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
 
@@ -75,7 +75,7 @@ resume(UUID, NewNode, Evt) ->
 %% <sip_uri><sip:user@realm:port>;tag=abc</sip_uri>
 %% So this is an awesome search/replace list to convert the '<sip:'
 %% and its corresponding '>' to %3C and %3E as they should be
--spec fix_metadata(ne_binary()) -> ne_binary().
+-spec fix_metadata(kz_term:ne_binary()) -> kz_term:ne_binary().
 fix_metadata(Meta) ->
     Replacements = [{<<"<sip:">>, <<"%3Csip:">>}
                    ,{<<"><sip">>, <<"%3E<sip">>}
@@ -88,7 +88,7 @@ fix_metadata(Meta) ->
                         iolist_to_binary(re:replace(MetaAcc, S, R, ['global']))
                 end, Meta, Replacements).
 
--spec wait_for_completion(ne_binary(), atom()) -> boolean().
+-spec wait_for_completion(kz_term:ne_binary(), atom()) -> boolean().
 wait_for_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of move", [NewNode]),
     receive
@@ -104,7 +104,7 @@ wait_for_completion(UUID, NewNode) ->
             'false'
     end.
 
--spec teardown_sbd(ne_binary(), atom()) -> 'ok'.
+-spec teardown_sbd(kz_term:ne_binary(), atom()) -> 'ok'.
 teardown_sbd(UUID, OriginalNode) ->
     catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,9 +29,9 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {parent :: pid()
-               ,broker :: ne_binary()
-               ,self_binary = kz_term:to_binary(pid_to_list(self())) :: ne_binary()
-               ,zone :: ne_binary()
+               ,broker :: kz_term:ne_binary()
+               ,self_binary = kz_term:to_binary(pid_to_list(self())) :: kz_term:ne_binary()
+               ,zone :: kz_term:ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -42,15 +42,15 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(pid(), ne_binary(), kz_proplist()) -> startlink_ret().
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Parent, Broker, Params) ->
     gen_listener:start_link(?SERVER, Params, [Parent, Broker]).
 
--spec broker(server_ref()) -> ne_binary().
+-spec broker(kz_types:server_ref()) -> kz_term:ne_binary().
 broker(Pid) ->
     gen_listener:call(Pid, 'get_broker').
 
--spec stop(server_ref()) -> 'ok'.
+-spec stop(kz_types:server_ref()) -> 'ok'.
 stop(Pid) ->
     gen_listener:call(Pid, {'stop', self()}).
 
@@ -69,7 +69,7 @@ stop(Pid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([pid() | ne_binary()]) -> {'ok', state()}.
+-spec init([pid() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([Parent, Broker]=L) ->
     lager:debug("federating listener ~p on broker ~s", L),
     _ = kz_amqp_channel:consumer_broker(Broker),
@@ -93,7 +93,7 @@ init([Parent, Broker]=L) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), any(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), any(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'stop', Parent}, _From, #state{parent=Parent}=State) ->
     {'stop', 'normal', 'ok', State};
 handle_call('get_broker', _From, #state{broker=Broker}=State) ->
@@ -111,7 +111,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
@@ -127,7 +127,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 

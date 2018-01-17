@@ -1,22 +1,12 @@
-{application, blackhole,
- [
-  {description, "blackhole - websocket"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [blackhole_listener, blackhole_sup, blackhole_tracking]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , public_key
-                 , ssl
-                 , inets
-
-                 , kazoo_apps
-                 , kazoo_auth
-
-                 , lager
-                 , ranch
-                 , cowboy
-                 ]},
-  {mod, {blackhole_app, []}}
- ]}.
+{application,blackhole,
+             [{applications,[cowboy,kazoo,kazoo_amqp,kazoo_apps,kazoo_auth,
+                             kazoo_bindings,kazoo_config,kazoo_documents,
+                             kazoo_modb,kazoo_stdlib,kazoo_token_buckets,
+                             kernel,lager,ssl,stdlib]},
+              {description,"blackhole - websocket"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{blackhole_app,[]}},
+              {modules,[]},
+              {registered,[blackhole_listener,blackhole_sup,
+                           blackhole_tracking]},
+              {vsn,"4.0.0"}]}.

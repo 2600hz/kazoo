@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -22,9 +22,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {subs_pid :: api_pid()
-               ,subs_ref :: api_reference()
-               ,queue :: api_binary()
+-record(state, {subs_pid :: kz_term:api_pid()
+               ,subs_ref :: kz_term:api_reference()
+               ,queue :: kz_term:api_binary()
                ,consuming = 'false' :: boolean()
                ,sync = 'false' :: boolean()
                }).
@@ -62,7 +62,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                      ,{'responders', ?RESPONDERS}
@@ -107,7 +107,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -121,7 +121,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
     case omnipresence_sup:subscriptions_srv() of
         'undefined' ->
@@ -169,7 +169,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
                                                      ,subs_ref=Ref
                                                      }=State) ->

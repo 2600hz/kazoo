@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz, INC
+%%% @copyright (C) 2011-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -26,7 +26,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary(), ne_binary()) ->
+-spec get(kz_term:ne_binary(), kz_term:ne_binary()) ->
                  {'ok', integer()} |
                  {'error', any()}.
 get(Account, Name) ->
@@ -49,22 +49,22 @@ get(Account, Name) ->
 credit(Ledger) ->
     credit(kazoo_ledger:account_id(Ledger), Ledger).
 
--spec credit(ne_binary(), ledger()) -> save_return().
+-spec credit(kz_term:ne_binary(), ledger()) -> save_return().
 credit(LedgerId, Ledger) ->
     create(LedgerId, ?CREDIT, Ledger).
 
--spec credit(ne_binary(), ne_binary()
-            ,ne_binary(), kz_proplist()) -> save_return().
+-spec credit(kz_term:ne_binary(), kz_term:ne_binary()
+            ,kz_term:ne_binary(), kz_term:proplist()) -> save_return().
 credit(LedgerId, SrcService, SrcId, Usage) ->
     credit(LedgerId, SrcService, SrcId, Usage, []).
 
--spec credit(ne_binary(), ne_binary(), ne_binary()
-            ,kz_proplist(), kz_proplist()) -> save_return().
+-spec credit(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+            ,kz_term:proplist(), kz_term:proplist()) -> save_return().
 credit(LedgerId, SrcService, SrcId, Usage, Props) ->
     credit(LedgerId, SrcService, SrcId, Usage, Props, LedgerId).
 
--spec credit(ne_binary(), ne_binary(), ne_binary()
-            ,kz_proplist(), kz_proplist(), ne_binary()) -> save_return().
+-spec credit(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+            ,kz_term:proplist(), kz_term:proplist(), kz_term:ne_binary()) -> save_return().
 credit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
     create(LedgerId, ?CREDIT, SrcService, SrcId, Usage, Props, AccountId).
 
@@ -78,22 +78,22 @@ credit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
 debit(Ledger) ->
     debit(kazoo_ledger:account_id(Ledger), Ledger).
 
--spec debit(ne_binary(), ledger()) -> save_return().
+-spec debit(kz_term:ne_binary(), ledger()) -> save_return().
 debit(LedgerId, Ledger) ->
     create(LedgerId, ?DEBIT, Ledger).
 
--spec debit(ne_binary(), ne_binary()
-           ,ne_binary(), kz_proplist()) -> save_return().
+-spec debit(kz_term:ne_binary(), kz_term:ne_binary()
+           ,kz_term:ne_binary(), kz_term:proplist()) -> save_return().
 debit(LedgerId, SrcService, SrcId, Usage) ->
     debit(LedgerId, SrcService, SrcId, Usage, []).
 
--spec debit(ne_binary(), ne_binary(), ne_binary()
-           ,kz_proplist(), kz_proplist()) -> save_return().
+-spec debit(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+           ,kz_term:proplist(), kz_term:proplist()) -> save_return().
 debit(LedgerId, SrcService, SrcId, Usage, Props) ->
     debit(LedgerId, SrcService, SrcId, Usage, Props, LedgerId).
 
--spec debit(ne_binary(), ne_binary(), ne_binary()
-           ,kz_proplist(), kz_proplist(), ne_binary()) -> save_return().
+-spec debit(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+           ,kz_term:proplist(), kz_term:proplist(), kz_term:ne_binary()) -> save_return().
 debit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
     create(LedgerId, ?DEBIT, SrcService, SrcId, Usage, Props, AccountId).
 
@@ -107,8 +107,8 @@ debit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), ne_binary(), ne_binary(), ne_binary()
-            ,kz_proplist(), kz_proplist(),ne_binary()) -> save_return().
+-spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+            ,kz_term:proplist(), kz_term:proplist(),kz_term:ne_binary()) -> save_return().
 create(LedgerId, Type, SrcService, SrcId, Usage, Props, AccountId) ->
     Routines = [{fun kazoo_ledger:set_source_service/2, SrcService}
                ,{fun kazoo_ledger:set_source_id/2, SrcId}
@@ -118,7 +118,7 @@ create(LedgerId, Type, SrcService, SrcId, Usage, Props, AccountId) ->
                ],
     create(LedgerId, Type, lists:foldl(fun apply_routine/2, kazoo_ledger:new(), Routines)).
 
--spec create(ne_binary(), ne_binary(), ledger()) -> save_return().
+-spec create(kz_term:ne_binary(), kz_term:ne_binary(), ledger()) -> save_return().
 create(LedgerId, Type, Ledger) ->
     Routines = [{fun kazoo_ledger:set_type/2, Type}
                ,{fun kazoo_ledger:save/2, LedgerId}
@@ -131,7 +131,7 @@ create(LedgerId, Type, Ledger) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_account(ledger(), ne_binary()) -> ledger().
+-spec set_account(ledger(), kz_term:ne_binary()) -> ledger().
 set_account(Ledger, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Routines = [{fun kazoo_ledger:set_account_id/2, AccountId}
@@ -145,7 +145,7 @@ set_account(Ledger, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_usage(ledger(), kz_proplist()) -> ledger().
+-spec set_usage(ledger(), kz_term:proplist()) -> ledger().
 set_usage(Ledger, []) -> Ledger;
 set_usage(Ledger, [{<<"type">>, Val}|Usage]) ->
     set_usage(kazoo_ledger:set_usage_type(Ledger, Val), Usage);
@@ -162,7 +162,7 @@ set_usage(Ledger, [_|Usage]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_extra(ledger(), kz_proplist()) -> ledger().
+-spec set_extra(ledger(), kz_term:proplist()) -> ledger().
 set_extra(Ledger, []) -> Ledger;
 set_extra(Ledger, [{<<"amount">>, Val}|Props]) ->
     set_extra(kazoo_ledger:set_amount(Ledger, Val), Props);

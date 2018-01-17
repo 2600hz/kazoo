@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -42,7 +42,7 @@ handle(_Data, Call) ->
     end,
     cf_exe:stop(Call).
 
--spec get_channels(ne_binary(), kapps_call:call()) -> dict:dict().
+-spec get_channels(kz_term:ne_binary(), kapps_call:call()) -> dict:dict().
 get_channels(OwnerId, Call) ->
     DeviceIds = kz_attributes:owned_by(OwnerId, <<"device">>, Call),
     lager:debug("devices owned by ~p: ~p", [OwnerId, DeviceIds]),

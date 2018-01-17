@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% The goal is to model how a token bucket works and, using PropEr,

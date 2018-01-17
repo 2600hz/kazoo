@@ -6,6 +6,10 @@
         "bill": {
             "description": "Billing information of the losing carrier",
             "properties": {
+                "carrier": {
+                    "description": "The name of the losing carrier",
+                    "type": "string"
+                },
                 "extended_address": {
                     "description": "The suite/floor/apt of the billing address the losing carrier has on record",
                     "type": "string"

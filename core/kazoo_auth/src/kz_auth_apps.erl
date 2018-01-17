@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -16,11 +16,11 @@
         ]).
 
 
--spec get_auth_app(ne_binary()) -> map() | {'error', ne_binary()}.
+-spec get_auth_app(kz_term:ne_binary()) -> map() | {'error', kz_term:ne_binary()}.
 get_auth_app(AppId) ->
     get_auth_app(AppId, 'none').
 
--spec get_auth_app(ne_binary(), atom()) -> map() | {'error', ne_binary()}.
+-spec get_auth_app(kz_term:ne_binary(), atom()) -> map() | {'error', kz_term:ne_binary()}.
 get_auth_app(AppId, Option) ->
     case do_get_auth_app(AppId) of
         {'error', _} = Error -> Error;
@@ -38,7 +38,7 @@ get_auth_app(AppId, Option) ->
         #{}=App -> App
     end.
 
--spec do_get_auth_app(ne_binary()) -> map() | {'error', ne_binary()}.
+-spec do_get_auth_app(kz_term:ne_binary()) -> map() | {'error', kz_term:ne_binary()}.
 do_get_auth_app(<<"kazoo">>) ->
     #{name => <<"kazoo">>
      ,pvt_server_key => ?SYSTEM_KEY_ID

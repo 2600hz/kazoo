@@ -51,22 +51,22 @@ default_cost() ->
 default_internal_cost() ->
     kapps_config:get_float(?APP_NAME, <<"default_rate_internal_cost">>, 0.0).
 
--spec filter_list() -> ne_binaries().
+-spec filter_list() -> kz_term:ne_binaries().
 filter_list() ->
     kapps_config:get(?APP_NAME, <<"filter_list">>, [<<"direction">>
                                                    ,<<"route_options">>
                                                    ,<<"routes">>
                                                    ]).
 
--spec default_ratedeck() -> ne_binary().
+-spec default_ratedeck() -> kz_term:ne_binary().
 default_ratedeck() ->
     kapps_config:get_ne_binary(?APP_NAME, <<"default_ratedeck">>, ?KZ_RATES_DB).
 
--spec mobile_rate() -> api_object().
+-spec mobile_rate() -> kz_term:api_object().
 mobile_rate() ->
     kapps_config:get_json(?APP_NAME, <<"mobile_rate">>).
 
--spec ratedecks() -> ne_binaries().
+-spec ratedecks() -> kz_term:ne_binaries().
 ratedecks() ->
     {'ok', Dbs} = kz_datamgr:db_list([{'startkey', ?KZ_RATES_DB}
                                      ,{'endkey',   ?UNENCODED_RATEDECK_DB(<<"\ufff0">>)}
@@ -108,16 +108,16 @@ trie_module() ->
 trie_build_timeout_ms() ->
     kapps_config:get_integer(?APP_NAME, <<"trie_build_timeout_ms">>, ?MILLISECONDS_IN_MINUTE).
 
--spec rate_version() -> api_ne_binary().
+-spec rate_version() -> kz_term:api_ne_binary().
 rate_version() ->
     kapps_config:get_ne_binary(?APP_NAME, <<"rate_version">>).
 
--spec set_rate_version(ne_binary()) -> 'ok'.
+-spec set_rate_version(kz_term:ne_binary()) -> 'ok'.
 set_rate_version(Version) ->
     kapps_config:set_string(?APP_NAME, <<"rate_version">>, Version),
     'ok'.
 
--spec should_account_filter_by_resource(ne_binary()) -> boolean().
+-spec should_account_filter_by_resource(kz_term:ne_binary()) -> boolean().
 should_account_filter_by_resource(AccountId) ->
     kapps_account_config:get_from_reseller(AccountId, ?APP_NAME, <<"filter_by_resource_id">>, 'false').
 

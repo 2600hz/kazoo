@@ -1,0 +1,189 @@
+{
+    "_id": "kapps_controller",
+    "default": {
+        "console_log_level": "info",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "error",
+        "kapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5"
+        ],
+        "syslog_log_level": "info"
+    },
+    "kazoo_apps@bar.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA1"
+    },
+    "kazoo_apps@baz.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA2"
+    },
+    "kazoo_apps@buzz": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA1"
+    },
+    "kazoo_apps@different.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA1"
+    },
+    "kazoo_apps@fizz.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA1"
+    },
+    "kazoo_apps@fizzbuzz.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA3"
+    },
+    "kazoo_apps@foo.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA2"
+    },
+    "kazoo_apps@hello.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5",
+            "callflow",
+            "fax",
+            "teletype",
+            "conference"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA4"
+    },
+    "kazoo_apps@other.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA2"
+    },
+    "kazoo_apps@printf.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA4"
+    },
+    "kazoo_apps@some.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "sysconf",
+            "reorder",
+            "pivot",
+            "registrar",
+            "stepswitch",
+            "media_mgr",
+            "callflow",
+            "cdr",
+            "jonny5"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA1"
+    },
+    "kazoo_apps@world.server.com": {
+        "console_log_level": "debug",
+        "cookie": "CERT_BIGCOUCH",
+        "error_log_level": "debug",
+        "kapps": [
+            "crossbar",
+            "webhooks"
+        ],
+        "syslog_log_level": "debug",
+        "zone": "zone_QA3"
+    }
+}

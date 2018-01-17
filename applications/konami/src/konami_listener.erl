@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -55,7 +55,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                      ,{'responders', ?RESPONDERS}
@@ -64,7 +64,7 @@ start_link() ->
                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
--spec handle_metaflow(kz_json:object(), kz_proplist()) -> no_return().
+-spec handle_metaflow(kz_json:object(), kz_term:proplist()) -> no_return().
 handle_metaflow(JObj, Props) ->
     'true' = kapi_metaflow:binding_v(JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
@@ -76,7 +76,7 @@ handle_metaflow(JObj, Props) ->
          ),
     'ok'.
 
--spec handle_route_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_route_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_route_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
     kz_util:put_callid(JObj),
@@ -89,7 +89,7 @@ handle_route_req(JObj, _Props) ->
                          ,Call
                          ).
 
--spec handle_channel_create(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_channel_create(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_channel_create(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     kz_util:put_callid(JObj),
@@ -102,7 +102,7 @@ handle_channel_create(JObj, _Props) ->
                          ,Call
                          ).
 
--spec maybe_start_metaflows(api_binary(), api_binary(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_start_metaflows(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 maybe_start_metaflows('undefined', _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
     lager:debug("no account id for ~s(~s) owned by ~s", [_AuthorizingId, _AuthorizingType, _OwnerId]);
 maybe_start_metaflows(AccountId, <<"device">>, DeviceId, OwnerId, CallId) ->
@@ -119,7 +119,7 @@ maybe_start_metaflows(_AccountId, _AuthorizingType, _AuthorizingId, _OwnerId, _C
                ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]
                ).
 
--spec maybe_start_device_metaflows(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_start_device_metaflows(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 maybe_start_device_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
     {'ok', Endpoint} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
@@ -127,7 +127,7 @@ maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
                                                 ),
     maybe_start_metaflows(AccountId, Call, kz_json:get_value(<<"metaflows">>, Endpoint)).
 
--spec maybe_start_user_metaflows(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec maybe_start_user_metaflows(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 maybe_start_user_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_user_metaflows(AccountId, UserId, Call) ->
     {'ok', User} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
@@ -135,7 +135,7 @@ maybe_start_user_metaflows(AccountId, UserId, Call) ->
                                             ),
     maybe_start_metaflows(AccountId, Call, kz_json:get_value(<<"metaflows">>, User)).
 
--spec maybe_start_metaflows(ne_binary(), kapps_call:call(), api_object()) -> 'ok'.
+-spec maybe_start_metaflows(kz_term:ne_binary(), kapps_call:call(), kz_term:api_object()) -> 'ok'.
 maybe_start_metaflows(_AccountId, _Call, 'undefined') -> 'ok';
 maybe_start_metaflows(_AccountId, _Call, Metaflows) ->
     lager:debug("starting ~p", [Metaflows]).
@@ -173,7 +173,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -187,7 +187,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -205,7 +205,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -217,7 +217,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action":"logout" | "login" | "toggle" | "bridge"
@@ -25,12 +25,12 @@
 -define(HOTDESK_ID_LENGTH, kapps_config:get_integer(?HD_CONFIG_CAT, <<"max_hotdesk_id_length">>, 10)).
 
 -record(hotdesk, {enabled = 'false' :: boolean()
-                 ,hotdesk_id :: api_binary()
-                 ,pin :: api_binary()
+                 ,hotdesk_id :: kz_term:api_binary()
+                 ,pin :: kz_term:api_binary()
                  ,require_pin = 'false' :: boolean()
                  ,keep_logged_in_elsewhere = 'false' :: boolean()
-                 ,owner_id :: api_binary()
-                 ,endpoint_ids = [] :: ne_binaries()
+                 ,owner_id :: kz_term:api_binary()
+                 ,endpoint_ids = [] :: kz_term:ne_binaries()
                  ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
                  }).
 -type hotdesk() :: #hotdesk{}.
@@ -64,7 +64,7 @@ hotdesk_id(Data, <<"logout">>, Call) ->
 hotdesk_id(Data, _, _) ->
     kz_json:get_ne_binary_value(<<"id">>, Data).
 
--spec handle_action(ne_binary(), hotdesk(), kapps_call:call()) -> 'ok'.
+-spec handle_action(kz_term:ne_binary(), hotdesk(), kapps_call:call()) -> 'ok'.
 handle_action(<<"bridge">>, #hotdesk{enabled='false'}, Call) ->
     cf_exe:continue(Call);
 handle_action(<<"bridge">>, Hotdesk, Call) ->
@@ -191,7 +191,7 @@ maybe_logout_elsewhere(Hotdesk, Call) ->
 get_authorizing_id(Hotdesk, Call) ->
     login_authorizing_id(kapps_call:authorizing_id(Call), Hotdesk, Call).
 
--spec login_authorizing_id(api_binary(), hotdesk(), kapps_call:call()) ->
+-spec login_authorizing_id(kz_term:api_binary(), hotdesk(), kapps_call:call()) ->
                                   kapps_api_std_return().
 login_authorizing_id('undefined', _, Call) ->
     kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -239,7 +239,7 @@ maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
     H = remove_from_endpoints(Hotdesk, Call),
     logged_out(H, Call).
 
--spec keep_logged_in_elsewhere(api_binary(), hotdesk(), kapps_call:call()) ->
+-spec keep_logged_in_elsewhere(kz_term:api_binary(), hotdesk(), kapps_call:call()) ->
                                       kapps_api_std_return().
 keep_logged_in_elsewhere('undefined', Hotdesk, Call) ->
     logged_out(Hotdesk, Call);
@@ -271,7 +271,7 @@ logged_out(_, Call) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_hotdesk_profile(api_binary(), kz_json:object(), kapps_call:call()) ->
+-spec get_hotdesk_profile(kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
                                  hotdesk() |
                                  {'error', any()}.
 get_hotdesk_profile('undefined', Data, Call) ->
@@ -320,7 +320,7 @@ find_hotdesk_profile(Call, Data, Max, Loop) ->
             E
     end.
 
--spec lookup_hotdesk_id(ne_binary(), kz_json:object(), kapps_call:call()) ->
+-spec lookup_hotdesk_id(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
                                hotdesk() |
                                {'error', any()}.
 lookup_hotdesk_id(HotdeskId, Data, Call) ->
@@ -365,8 +365,8 @@ remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
     _ = update_hotdesk_endpoint(AccountDb, EndpointId, Fun),
     remove_from_endpoints(Hotdesk#hotdesk{endpoint_ids=Endpoints}, Call).
 
--spec update_hotdesk_endpoint(ne_binary(), api_binary() | kz_json:object(), function()) ->
-                                     kz_jobj_return().
+-spec update_hotdesk_endpoint(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object(), function()) ->
+                                     kz_term:jobj_return().
 update_hotdesk_endpoint(_, 'undefined', _) -> {'error', 'not_found'};
 update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) ->
     case kz_datamgr:open_doc(AccountDb, EndpointId) of
@@ -388,7 +388,7 @@ update_hotdesk_endpoint(AccountDb, JObj, Fun) ->
             E
     end.
 
--spec get_endpoint_ids(ne_binary(), kapps_call:call()) -> ne_binaries().
+-spec get_endpoint_ids(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 get_endpoint_ids(OwnerId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', OwnerId}],

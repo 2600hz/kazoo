@@ -1,6 +1,6 @@
 ROOT = ..
 
-MAKEDIRS = */Makefile
+MAKEDIRS = $(sort $(wildcard */Makefile))
 
 .PHONY: all compile compile-test clean clean-test eunit test first $(MAKEDIRS)
 
@@ -25,9 +25,9 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 first:
-	$(MAKE) -C kazoo_stdlib/ $(ACTION)
-	$(MAKE) -C kazoo_amqp/ $(ACTION)
-	$(MAKE) -C kazoo_data/ $(ACTION)
+	@$(MAKE) -C kazoo_stdlib/ $(ACTION)
+	@$(MAKE) -C kazoo_amqp/ $(ACTION)
+	@$(MAKE) -C kazoo_data/ $(ACTION)
 
 $(MAKEDIRS): first
-	$(MAKE) -C $(@D) $(ACTION)
+	@$(MAKE) -C $(@D) $(ACTION)

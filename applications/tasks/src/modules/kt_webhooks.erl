@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,7 +29,7 @@ init() ->
 
 %%% Triggerables
 
--spec cleanup(ne_binary()) -> 'ok'.
+-spec cleanup(kz_term:ne_binary()) -> 'ok'.
 cleanup(?KZ_WEBHOOKS_DB) ->
     lager:debug("checking ~s for abandoned accounts", [?KZ_WEBHOOKS_DB]),
     cleanup_orphaned_hooks();
@@ -68,7 +68,7 @@ cleanup_orphaned_hooks(Accounts) ->
         andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)]),
     'ok'.
 
--spec delete_account_webhooks(ne_binary()) -> 'ok'.
+-spec delete_account_webhooks(kz_term:ne_binary()) -> 'ok'.
 delete_account_webhooks(AccountId) ->
     case fetch_account_hooks(AccountId) of
         {'ok', []} -> 'ok';
@@ -79,7 +79,7 @@ delete_account_webhooks(AccountId) ->
             lager:debug("deleted ~p hooks from account ~s", [length(ViewJObjs), AccountId])
     end.
 
--spec fetch_account_hooks(ne_binary()) -> kazoo_data:get_results_return().
+-spec fetch_account_hooks(kz_term:ne_binary()) -> kazoo_data:get_results_return().
 fetch_account_hooks(AccountId) ->
     kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                           ,<<"webhooks/accounts_listing">>

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Handle route requests off AMQP
 %%% @end
@@ -17,7 +17,7 @@
 -spec init() -> 'ok'.
 init() -> 'ok'.
 
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(ApiJObj, _Options) ->
     'true' = kapi_route:req_v(ApiJObj),
     kz_util:put_callid(ApiJObj),

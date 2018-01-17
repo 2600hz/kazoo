@@ -13,8 +13,16 @@
         },
         "endpoints": {
             "items": {
-                "description": "Device or User IDs, DIDs or extensions, SIP URIs",
-                "type": "string"
+                "oneOf": [
+                    {
+                        "description": "Device or User IDs, DIDs or extensions, SIP URIs",
+                        "type": "string"
+                    },
+                    {
+                        "$ref": "devices",
+                        "description": "Device document"
+                    }
+                ]
             },
             "minItems": 1,
             "type": "array"

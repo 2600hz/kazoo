@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Caller calls in and gets the first available call from the queue
 %%% @end
@@ -12,7 +12,7 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--spec connect(kapps_call:call(), ne_binary()) -> 'ok'.
+-spec connect(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 connect(_Call, _QueueId) ->
     %% no!
     ok.

@@ -1,5 +1,5 @@
 %%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "pin":"1234"
@@ -125,14 +125,14 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
 %%  for this module will be resulted to an empty binary)
 %% @end
 %%--------------------------------------------------------------------
--spec collect_destination_number(kapps_call:call(), kz_json:object(), pos_integer()) -> ne_binary().
+-spec collect_destination_number(kapps_call:call(), kz_json:object(), pos_integer()) -> kz_term:ne_binary().
 collect_destination_number(Call, Data, Interdigit) ->
     MaxDigits = kz_json:get_integer_value(<<"max_digits">>, Data, 15),
     Timeout = kapps_call_command:default_collect_timeout(),
     lager:debug("collecting max ~p digits for destination number", [MaxDigits]),
     try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout).
 
--spec try_collect_destination_number(kapps_call:call(), pos_integer(), pos_integer(), pos_integer()) -> ne_binary().
+-spec try_collect_destination_number(kapps_call:call(), pos_integer(), pos_integer(), pos_integer()) -> kz_term:ne_binary().
 try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout) ->
     case kapps_call_command:collect_digits(MaxDigits, Timeout, Interdigit, Call) of
         {'ok', <<>>} -> try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout);
@@ -147,7 +147,7 @@ try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_restrict_call(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_restrict_call(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_restrict_call(Data, Call, Number, Flow) ->
     case should_restrict_call(Data, Call, Number) of
         'true' ->
@@ -236,7 +236,7 @@ keep_original_cid(Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_cid(ne_binary(), ne_binary(), kapps_call:call()) -> kapps_call:call().
+-spec set_cid(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_call:call().
 set_cid(Number, Name, Call) ->
     Props = [{<<"Retain-CID">>, 'true'}
             ,{<<"Caller-ID-Number">>, Number}
@@ -253,7 +253,7 @@ set_cid(Number, Name, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_restrict_call(kz_json:object(), kapps_call:call(), ne_binary()) -> boolean().
+-spec should_restrict_call(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> boolean().
 should_restrict_call(Data, Call, Number) ->
     case kz_json:is_true(<<"enforce_call_restriction">>, Data, 'false') of
         'false' -> 'false';
@@ -265,7 +265,7 @@ should_restrict_call(Data, Call, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_restrict_call_by_account(kapps_call:call(), ne_binary()) -> boolean().
+-spec should_restrict_call_by_account(kapps_call:call(), kz_term:ne_binary()) -> boolean().
 should_restrict_call_by_account(Call, Number) ->
     case kz_account:fetch(kapps_call:account_id(Call)) of
         {'error', _} -> 'false';

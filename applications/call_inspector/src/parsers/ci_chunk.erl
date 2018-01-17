@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz INC
+%%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -35,17 +35,17 @@
 - export([pick_ref_parser/1]).
 -endif.
 
--record(ci_chunk, {call_id :: api_ne_binary()
-                  ,data = [] :: ne_binaries()
-                  ,timestamp :: api_float()
-                  ,ref_timestamp :: api_float()
-                  ,src_ip :: api_ne_binary()
-                  ,src_port :: api_pos_integer()
-                  ,dst_ip :: api_ne_binary()
-                  ,dst_port :: api_pos_integer()
-                  ,parser :: api_ne_binary()
-                  ,label :: api_ne_binary()
-                  ,c_seq :: api_ne_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
+-record(ci_chunk, {call_id :: kz_term:api_ne_binary()
+                  ,data = [] :: kz_term:ne_binaries()
+                  ,timestamp :: kz_term:api_float()
+                  ,ref_timestamp :: kz_term:api_float()
+                  ,src_ip :: kz_term:api_ne_binary()
+                  ,src_port :: kz_term:api_pos_integer()
+                  ,dst_ip :: kz_term:api_ne_binary()
+                  ,dst_port :: kz_term:api_pos_integer()
+                  ,parser :: kz_term:api_ne_binary()
+                  ,label :: kz_term:api_ne_binary()
+                  ,c_seq :: kz_term:api_ne_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                   }).
 -type chunk() :: #ci_chunk{}.
 
@@ -74,63 +74,63 @@ setters(#ci_chunk{}=Chunk, Setters) ->
     NewChunk = lists:foldl(Apply, Chunk, Setters),
     NewChunk#ci_chunk{ref_timestamp = ci_parsers_util:timestamp()}.
 
--spec call_id(chunk(), ne_binary()) -> chunk().
+-spec call_id(chunk(), kz_term:ne_binary()) -> chunk().
 ?SETTER(call_id).
--spec call_id(chunk()) -> api_binary().
+-spec call_id(chunk()) -> kz_term:api_binary().
 ?GETTER(call_id).
 
--spec data(chunk(), ne_binaries()) -> chunk().
+-spec data(chunk(), kz_term:ne_binaries()) -> chunk().
 ?SETTER(data).
--spec data(chunk()) -> ne_binaries().
+-spec data(chunk()) -> kz_term:ne_binaries().
 ?GETTER(data).
--spec append_data(chunk(), ne_binary()) -> chunk().
+-spec append_data(chunk(), kz_term:ne_binary()) -> chunk().
 append_data(#ci_chunk{data=D}=Chunk, Data) ->
     Chunk#ci_chunk{data=[Data|D]}.
 
--spec timestamp(chunk(), api_float()) -> chunk().
+-spec timestamp(chunk(), kz_term:api_float()) -> chunk().
 ?SETTER(timestamp).
--spec timestamp(chunk()) -> api_float().
+-spec timestamp(chunk()) -> kz_term:api_float().
 ?GETTER(timestamp).
 
 -spec ref_timestamp(chunk()) -> float().
 ?GETTER(ref_timestamp).
 
--spec src_ip(chunk(), ne_binary()) -> chunk().
+-spec src_ip(chunk(), kz_term:ne_binary()) -> chunk().
 src_ip(#ci_chunk{}=Chunk, Val) ->
     Chunk#ci_chunk{src_ip = resolve(Val)}.
--spec src_ip(chunk()) -> api_binary().
+-spec src_ip(chunk()) -> kz_term:api_binary().
 ?GETTER(src_ip).
 
 -spec src_port(chunk(), pos_integer()) -> chunk().
 ?SETTER(src_port).
--spec src_port(chunk()) -> api_pos_integer().
+-spec src_port(chunk()) -> kz_term:api_pos_integer().
 ?GETTER(src_port).
 
--spec dst_ip(chunk(), ne_binary()) -> chunk().
+-spec dst_ip(chunk(), kz_term:ne_binary()) -> chunk().
 dst_ip(#ci_chunk{}=Chunk, Val) ->
     Chunk#ci_chunk{dst_ip = resolve(Val)}.
--spec dst_ip(chunk()) -> api_binary().
+-spec dst_ip(chunk()) -> kz_term:api_binary().
 ?GETTER(dst_ip).
 
 -spec dst_port(chunk(), pos_integer()) -> chunk().
 ?SETTER(dst_port).
--spec dst_port(chunk()) -> api_pos_integer().
+-spec dst_port(chunk()) -> kz_term:api_pos_integer().
 ?GETTER(dst_port).
 
 -spec parser(chunk(), atom()) -> chunk().
 parser(#ci_chunk{}=Chunk, Parser) ->
     Chunk#ci_chunk{parser = kz_term:to_binary(Parser)}.
--spec parser(chunk()) -> api_binary().
+-spec parser(chunk()) -> kz_term:api_binary().
 ?GETTER(parser).
 
--spec label(chunk(), ne_binary()) -> chunk().
+-spec label(chunk(), kz_term:ne_binary()) -> chunk().
 ?SETTER(label).
--spec label(chunk()) -> api_binary().
+-spec label(chunk()) -> kz_term:api_binary().
 ?GETTER(label).
 
--spec c_seq(chunk(), ne_binary()) -> chunk().
+-spec c_seq(chunk(), kz_term:ne_binary()) -> chunk().
 ?SETTER(c_seq).
--spec c_seq(chunk()) -> api_binary().
+-spec c_seq(chunk()) -> kz_term:api_binary().
 ?GETTER(c_seq).
 
 -spec to_json(chunk()) -> kz_json:object().
@@ -165,14 +165,14 @@ from_json(JObj) ->
              ,c_seq = kz_json:get_value(<<"c_seq">>, JObj)
              }.
 
--spec src(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
+-spec src(chunk() | kz_term:ne_binary()) -> kz_term:ne_binary() | {kz_term:ne_binary(), pos_integer()}.
 src(#ci_chunk{src_ip = Ip, src_port = Port}) ->
     <<Ip/binary, ":", (kz_term:to_binary(Port))/binary>>;
 src(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
     {IP, kz_term:to_integer(Port)}.
 
--spec dst(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
+-spec dst(chunk() | kz_term:ne_binary()) -> kz_term:ne_binary() | {kz_term:ne_binary(), pos_integer()}.
 dst(#ci_chunk{dst_ip = Ip, dst_port = Port}) ->
     <<Ip/binary, ":", (kz_term:to_binary(Port))/binary>>;
 dst(Bin = <<_/binary>>) ->
@@ -191,7 +191,7 @@ is_chunk(_) -> 'false'.
 %% `Chunks` needs to be ordered (e.g. using reorder_dialog/1).
 %% @end
 %%--------------------------------------------------------------------
--spec get_dialog_entities([chunk()]) -> ne_binaries().
+-spec get_dialog_entities([chunk()]) -> kz_term:ne_binaries().
 get_dialog_entities(Chunks) ->
     get_dialog_entities(Chunks, []).
 get_dialog_entities([], Acc) ->
@@ -220,14 +220,14 @@ reorder_dialog(Chunks) ->
     lager:debug("reordering '~s' using parser '~s'", [call_id(hd(Chunks)), RefParser]),
     do_reorder_dialog(RefParser, Chunks).
 
--spec pick_ref_parser([chunk()]) -> ne_binary().
+-spec pick_ref_parser([chunk()]) -> kz_term:ne_binary().
 pick_ref_parser(Chunks) ->
     GroupedByParser = group_by(fun parser/1, Chunks),
     Counted = lists:keymap(fun erlang:length/1, 2, GroupedByParser),
     {RefParser,_Max} = lists:last(lists:keysort(2, Counted)),
     RefParser.
 
--spec do_reorder_dialog(ne_binary(), [chunk()]) -> [chunk()].
+-spec do_reorder_dialog(kz_term:ne_binary(), [chunk()]) -> [chunk()].
 do_reorder_dialog(RefParser, Chunks) ->
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq_number/1, Chunks)),
     lists:flatmap(fun({_CSeq, ByCSeq}) ->
@@ -243,7 +243,7 @@ do_reorder_dialog(RefParser, Chunks) ->
                  ,GroupedByCSeq
                  ).
 
--spec sort_split_uniq(ne_binary(), [chunk()]) -> {[chunk()], [chunk()]}.
+-spec sort_split_uniq(kz_term:ne_binary(), [chunk()]) -> {[chunk()], [chunk()]}.
 sort_split_uniq(RefParser, Chunks) ->
     Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
     {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
@@ -332,7 +332,7 @@ is_duplicate([], _) ->
 is_duplicate([_|Chunks], Chunk) ->
     is_duplicate(Chunks, Chunk).
 
--spec c_seq_number(chunk()) -> ne_binary().
+-spec c_seq_number(chunk()) -> kz_term:ne_binary().
 c_seq_number(Chunk) ->
     [Number, _Tag] = binary:split(c_seq(Chunk), <<$\s>>),
     Number.
@@ -354,5 +354,5 @@ group_as_dict(Fun, List) ->
         end,
     lists:foldl(F, dict:new(), List).
 
--spec resolve(ne_binary()) -> ne_binary().
+-spec resolve(kz_term:ne_binary()) -> kz_term:ne_binary().
 resolve(IP) -> IP.

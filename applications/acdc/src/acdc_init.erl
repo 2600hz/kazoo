@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
@@ -47,7 +47,7 @@ init_db() ->
     _ = kz_datamgr:db_create(?KZ_ACDC_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>).
 
--spec init_acct(ne_binary()) -> 'ok'.
+-spec init_acct(kz_term:ne_binary()) -> 'ok'.
 init_acct(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -59,7 +59,7 @@ init_acct(Account) ->
     init_acct_queues(AccountDb, AccountId),
     init_acct_agents(AccountDb, AccountId).
 
--spec init_acct_queues(ne_binary()) -> any().
+-spec init_acct_queues(kz_term:ne_binary()) -> any().
 init_acct_queues(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -67,7 +67,7 @@ init_acct_queues(Account) ->
     lager:debug("init acdc account queues: ~s", [AccountId]),
     init_acct_queues(AccountDb, AccountId).
 
--spec init_acct_agents(ne_binary()) -> any().
+-spec init_acct_agents(kz_term:ne_binary()) -> any().
 init_acct_agents(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -75,19 +75,19 @@ init_acct_agents(Account) ->
     lager:debug("init acdc account agents: ~s", [AccountId]),
     init_acct_agents(AccountDb, AccountId).
 
--spec init_acct_queues(ne_binary(), ne_binary()) -> any().
+-spec init_acct_queues(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 init_acct_queues(AccountDb, AccountId) ->
     init_queues(AccountId
                ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
                ).
 
--spec init_acct_agents(ne_binary(), ne_binary()) -> any().
+-spec init_acct_agents(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 init_acct_agents(AccountDb, AccountId) ->
     init_agents(AccountId
                ,kz_datamgr:get_results(AccountDb, <<"queues/agents_listing">>, [])
                ).
 
--spec init_queues(ne_binary(), kazoo_data:get_results_return()) -> any().
+-spec init_queues(kz_term:ne_binary(), kazoo_data:get_results_return()) -> any().
 init_queues(_, {'ok', []}) -> 'ok';
 init_queues(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading queues in account ~s, trying again in a moment", [AccountId]),
@@ -105,7 +105,7 @@ init_queues(AccountId, {'ok', Qs}) ->
     acdc_stats:init_db(AccountId),
     [acdc_queues_sup:new(AccountId, kz_doc:id(Q)) || Q <- Qs].
 
--spec init_agents(ne_binary(), kazoo_data:get_results_return()) -> any().
+-spec init_agents(kz_term:ne_binary(), kazoo_data:get_results_return()) -> any().
 init_agents(_, {'ok', []}) -> 'ok';
 init_agents(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading agents in account ~s, trying again in a moment", [AccountId]),
@@ -137,7 +137,7 @@ try_again(AccountId, F) ->
               F(AccountDb, AccountId)
       end).
 
--spec spawn_previously_logged_in_agent(ne_binary(), ne_binary()) -> any().
+-spec spawn_previously_logged_in_agent(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 spawn_previously_logged_in_agent(AccountId, AgentId) ->
     kz_util:spawn(
       fun() ->

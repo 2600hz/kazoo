@@ -159,7 +159,7 @@ See the [installation](./doc/installation.md) page to build.
 * Have a look at our:
     * [KAZOO developer documentation](https://docs.2600hz.com/dev/)
     * [UI developer documentation](https://docs.2600hz.com/ui/)
-    * [System adminstrator documentation](https://docs.2600hz.com/sysadmin/)
+    * [System administrator documentation](https://docs.2600hz.com/sysadmin/)
 * Bugs and feature requests can be found [here](http://tickets.2600hz.org)
 * [Learn you some Erlang!](http://learnyousomeerlang.com/)
 * Check out the [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/FreeSWITCH+Explained)

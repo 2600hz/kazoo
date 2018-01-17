@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% When implementing carrier modules, these callbacks are a must!
@@ -13,7 +13,7 @@
 
 -include("knm.hrl").
 
--callback find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
+-callback find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
     {'ok', knm_number:knm_numbers()} |
     {'bulk', knm_number:knm_numbers()} |
     {'error', any()}.
@@ -33,6 +33,6 @@
 -callback is_local() ->
     boolean().
 
--callback check_numbers(ne_binaries()) ->
+-callback check_numbers(kz_term:ne_binaries()) ->
     {'ok', kz_json:object()} |
     {'error', any()}.

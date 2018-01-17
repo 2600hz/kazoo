@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% A Number Manager module for carrier: VoIPInnovations.com
 %%%
 %%% @end
 %%% @contributors
-%%%   Pierre Fenoll
+%%%   Pierre Fenoll, Joe Black
 %%%-------------------------------------------------------------------
 -module(knm_voip_innovations).
 -behaviour(knm_gen_carrier).
@@ -73,7 +73,7 @@
 
 -define(API_SUCCESS, <<"100">>).
 
--type soap_response() :: {'ok', xml_el()} | {'error', any()}.
+-type soap_response() :: {'ok', kz_types:xml_el()} | {'error', any()}.
 -type to_json_ret() :: {'ok', kz_json:object() | kz_json:objects()} |
                        {'error', any()}.
 
@@ -109,8 +109,8 @@ is_number_billable(_Number) -> 'true'.
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
-                                      {error, any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
+                                              {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 
@@ -120,7 +120,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
                           {'ok', list()} |
                           {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
@@ -192,7 +192,7 @@ should_lookup_cnam() -> 'true'.
 
 %%% Internals
 
--spec 'remove +1'(ne_binary()) -> ne_binary().
+-spec 'remove +1'(kz_term:ne_binary()) -> kz_term:ne_binary().
 'remove +1'(<<"+", Rest/binary>>) ->
     'remove +1'(Rest);
 'remove +1'(<<"1", Rest/binary>>) ->
@@ -200,7 +200,7 @@ should_lookup_cnam() -> 'true'.
 'remove +1'(Else) ->
     Else.
 
--spec to_numbers(to_json_ret(), ne_binary()) ->
+-spec to_numbers(to_json_ret(), kz_term:ne_binary()) ->
                         {'ok', [tuple()]} |
                         {'error', any()}.
 to_numbers({'error',_R}=Error, _) ->
@@ -348,7 +348,7 @@ body("assignDID", Numbers=[_|_]) ->
     ["<tns:didParams>",
      [ ["<tns:DIDParam>"
         "<tns:tn>", Number, "</tns:tn>"
-        "<tns:epg>", ?VI_ENDPOINT_GROUP, "</tns:epg>"
+        "<tns:endpointId>", ?VI_ENDPOINT_GROUP, "</tns:endpointId>"
         "</tns:DIDParam>"]
        || Number <- Numbers
      ],
@@ -371,7 +371,7 @@ soap_request(Action, Body) ->
               ,{"User-Agent", ?KNM_USER_AGENT}
               ,{"Content-Type", "text/xml;charset=UTF-8"}
               ],
-    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}, {versions, ['tlsv1.2']}]}
                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ,{'body_format', 'string'}
@@ -402,7 +402,7 @@ handle_response({'error', _}=E) ->
     lager:debug("request error: ~p", [E]),
     E.
 
--spec verify_response(xml_el()) -> soap_response().
+-spec verify_response(kz_types:xml_el()) -> soap_response().
 verify_response(Xml) ->
     RespCode = kz_xml:get_value("//responseCode/text()", Xml),
     RespMsg = kz_xml:get_value("//responseMessage/text()", Xml),

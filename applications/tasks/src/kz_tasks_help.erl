@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2017, 2600Hz INC
+%%% @copyright (C) 2016-2018, 2600Hz INC
 %%% @doc
 %%% Discover available tasks.
 %%% @end
@@ -35,8 +35,8 @@ help() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec help(ne_binary()) -> {'ok', kz_json:object()} |
-                           kz_tasks:help_error().
+-spec help(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                   kz_tasks:help_error().
 help(Category=?NE_BINARY) ->
     HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category]),
     JObj = parse_apis(HelpJObj),
@@ -50,8 +50,8 @@ help(Category=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec help(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                        kz_tasks:help_error().
+-spec help(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                                        kz_tasks:help_error().
 help(Category=?NE_BINARY, Action=?NE_BINARY) ->
     HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category, Action]),
     JObj = parse_apis(HelpJObj),
@@ -65,7 +65,7 @@ help(Category=?NE_BINARY, Action=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_lookup_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_lookup_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_lookup_req(JObj, _Props) ->
     'true' = kapi_tasks:lookup_req_v(JObj),
     Help =
@@ -108,14 +108,14 @@ lookup_result(Category, Action, {ok, JObj}) ->
 parse_apis(HelpJObj) ->
     parse_apis(kz_json:to_proplist(HelpJObj), kz_json:new()).
 
--spec parse_apis(kz_proplist(), kz_json:object()) -> kz_json:object().
+-spec parse_apis(kz_term:proplist(), kz_json:object()) -> kz_json:object().
 parse_apis([], Acc) -> Acc;
 parse_apis([{Category, Actions}|HelpProps], Acc) ->
     lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
     NewAcc = kz_json:set_value(Category, Actions, Acc),
     parse_apis(HelpProps, NewAcc).
 
--spec verify_unicity_map({ne_binary(), kz_json:object()}) -> 'ok'.
+-spec verify_unicity_map({kz_term:ne_binary(), kz_json:object()}) -> 'ok'.
 verify_unicity_map({_Action, API}) ->
     Fields0 = kz_tasks:possible_fields(API),
     Fields = [kz_term:to_lower_binary(Field) || Field <- Fields0],

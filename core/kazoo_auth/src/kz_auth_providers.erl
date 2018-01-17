@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -27,7 +27,7 @@ kazoo_auth_provider() ->
      ,jwt_user_id_signature_hash => <<"sha256">>
      }.
 
--spec provider_by_issuer(ne_binary()) -> map() | {'error', any()}.
+-spec provider_by_issuer(kz_term:ne_binary()) -> map() | {'error', any()}.
 provider_by_issuer(<<"kazoo">>) ->
     kazoo_auth_provider();
 provider_by_issuer(Issuer) ->
@@ -43,7 +43,7 @@ provider_by_issuer(Issuer) ->
 %% Internal functions
 %% ====================================================================
 
--spec get_auth_provider(ne_binary()) -> map() | {'error', any()}.
+-spec get_auth_provider(kz_term:ne_binary()) -> map() | {'error', any()}.
 get_auth_provider(<<"kazoo">>) ->
     kazoo_auth_provider();
 get_auth_provider(ProviderId) ->

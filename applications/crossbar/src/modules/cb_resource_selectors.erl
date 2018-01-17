@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%%
@@ -51,9 +51,9 @@ init() ->
     ok.
 
 -spec authorize(cb_context:context()) ->
-                       boolean() | {'halt', cb_context:context()}.
+                       boolean() | {'stop', cb_context:context()}.
 -spec authorize(cb_context:context(), req_nouns()) ->
-                       boolean() | {'halt', cb_context:context()}.
+                       boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
@@ -67,13 +67,13 @@ authorize(_Context, _Nouns) ->
 
 -spec maybe_authorize_admin(cb_context:context()) ->
                                    'true' |
-                                   {'halt', cb_context:context()}.
+                                   {'stop', cb_context:context()}.
 maybe_authorize_admin(Context) ->
     case cb_context:is_superduper_admin(Context) of
         'true' ->
             lager:debug("authz the request for global resources"),
             'true';
-        'false' -> {'halt', Context}
+        'false' -> {'stop', Context}
     end.
 
 %%--------------------------------------------------------------------
@@ -242,7 +242,7 @@ delete(Context, _UUID) ->
 load_rules(Context) ->
     crossbar_doc:load(?RULES_PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?RULES_PVT_TYPE)).
 
--spec summary(cb_context:context(), api_binaries(), api_binary(), boolean()) -> cb_context:context().
+-spec summary(cb_context:context(), kz_term:api_binaries(), kz_term:api_binary(), boolean()) -> cb_context:context().
 summary(Context, Prefix, ViewName, Reduce) ->
     case kz_term:is_true(Reduce) of
         'true' ->
@@ -261,25 +261,25 @@ summary(Context, Prefix, ViewName, Reduce) ->
     RespEnvelope = fix_envelope_start_keys(cb_context:resp_envelope(Context1), Prefix),
     cb_context:set_resp_envelope(Context1, RespEnvelope).
 
--spec build_start_key(cb_context:context(), api_binaries()) -> api_binaries().
+-spec build_start_key(cb_context:context(), kz_term:api_binaries()) -> kz_term:api_binaries().
 build_start_key(Context, PrefixKeys) ->
     case cb_context:req_value(Context, <<"start_key">>) of
         'undefined' -> PrefixKeys;
         StartKey -> build_key(PrefixKeys, StartKey)
     end.
 
--spec build_end_key(cb_context:context(), api_binaries()) -> api_binaries().
+-spec build_end_key(cb_context:context(), kz_term:api_binaries()) -> kz_term:api_binaries().
 build_end_key(Context, PrefixKeys) ->
     case cb_context:req_value(Context, <<"end_key">>) of
         'undefined' -> build_key(PrefixKeys, <<16#fff0/utf8>>);
         EndKey -> build_key(PrefixKeys, EndKey)
     end.
 
--spec build_key(api_binaries(), api_binary()) -> api_binaries().
+-spec build_key(kz_term:api_binaries(), kz_term:api_binary()) -> kz_term:api_binaries().
 build_key(PrefixKeys, Suffix) ->
     lists:reverse([Suffix | lists:reverse(PrefixKeys)]).
 
--spec fix_envelope_start_keys(kz_json:object(), api_binaries()) -> kz_json:object().
+-spec fix_envelope_start_keys(kz_json:object(), kz_term:api_binaries()) -> kz_json:object().
 fix_envelope_start_keys(JObj, Prefix) ->
     lists:foldl(fun(K,J) ->
                         case {kz_json:get_value(K, J), Prefix} of

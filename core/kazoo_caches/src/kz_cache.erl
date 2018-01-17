@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Simple cache server
 %%% @end
@@ -66,7 +66,7 @@
 -define(DATABASE_BINDING, [{'type', <<"database">>}]).
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
-                          {'expires', kz_timeout()} |
+                          {'expires', timeout()} |
                           {'callback', 'undefined' | callback_fun()}
                          ].
 -export_type([store_options/0]).
@@ -79,9 +79,9 @@
                ,channel_reconnect_flush = 'false' :: boolean()
                ,new_node_flush = 'false' :: boolean()
                ,expire_node_flush = 'false' :: boolean()
-               ,expire_period = ?EXPIRE_PERIOD :: kz_timeout()
+               ,expire_period = ?EXPIRE_PERIOD :: timeout()
                ,expire_period_ref :: reference()
-               ,props = [] :: kz_proplist()
+               ,props = [] :: kz_term:proplist()
                ,has_monitors = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -93,8 +93,8 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom()) -> kz_types:startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 
 start_link(Name) when is_atom(Name) ->
     start_link(Name, ?EXPIRE_PERIOD, []).
@@ -102,7 +102,7 @@ start_link(Name) when is_atom(Name) ->
 start_link(Name, Props) when is_list(Props) ->
     start_link(Name, ?EXPIRE_PERIOD, Props).
 
--spec start_link(atom(), kz_timeout(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom(), timeout(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Name, ExpirePeriod, Props) ->
     case props:get_value('origin_bindings', Props) of
         'undefined' ->
@@ -128,14 +128,14 @@ stop_local(Srv) ->
     catch gen_server:call(Srv, 'stop'),
     'ok'.
 
--spec maybe_add_db_binding(kz_proplists()) -> kz_proplists().
+-spec maybe_add_db_binding(kz_term:proplists()) -> kz_term:proplists().
 maybe_add_db_binding([]) -> [];
 maybe_add_db_binding([[]]) -> [[]];
 maybe_add_db_binding(BindingProps) ->
     [?DATABASE_BINDING | BindingProps].
 
 -spec store(any(), any()) -> 'ok'.
--spec store(any(), any(), kz_proplist()) -> 'ok'.
+-spec store(any(), any(), kz_term:proplist()) -> 'ok'.
 
 store(K, V) -> store(K, V, []).
 
@@ -164,21 +164,21 @@ filter(Pred) when is_function(Pred, 2) -> filter_local(?SERVER, Pred).
 -spec dump() -> 'ok'.
 dump() -> dump('false').
 
--spec dump(text()) -> 'ok'.
+-spec dump(kz_term:text()) -> 'ok'.
 dump(ShowValue) -> dump_local(?SERVER, ShowValue).
 
 -spec wait_for_key(any()) -> {'ok', any()} |
                              {'error', 'timeout'}.
--spec wait_for_key(any(), kz_timeout()) -> {'ok', any()} |
-                                           {'error', 'timeout'}.
+-spec wait_for_key(any(), timeout()) -> {'ok', any()} |
+                                        {'error', 'timeout'}.
 
 wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 
 wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
--spec store_local(server_ref(), any(), any()) -> 'ok'.
--spec store_local(server_ref(), any(), any(), kz_proplist()) -> 'ok'.
+-spec store_local(kz_types:server_ref(), any(), any()) -> 'ok'.
+-spec store_local(kz_types:server_ref(), any(), any(), kz_term:proplist()) -> 'ok'.
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
@@ -223,7 +223,7 @@ erase_local(Srv, K) ->
         {'ok', _} -> gen_server:call(Srv, {'erase', K})
     end.
 
--spec flush_local(text() | atom()) -> 'ok'.
+-spec flush_local(kz_term:text() | atom()) -> 'ok'.
 flush_local(Srv) when not is_atom(Srv) ->
     flush_local(kz_term:to_atom(Srv));
 flush_local(Srv) ->
@@ -266,10 +266,10 @@ filter_local(Srv, Pred) when is_function(Pred, 2) ->
              ,Srv
              ).
 
--spec dump_local(text()) -> 'ok'.
+-spec dump_local(kz_term:text()) -> 'ok'.
 dump_local(Srv) -> dump_local(Srv, 'false').
 
--spec dump_local(text(), text() | boolean()) -> 'ok'.
+-spec dump_local(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 dump_local(Srv, ShowValue) when not is_atom(Srv) ->
     dump_local(kz_term:to_atom(Srv), ShowValue);
 dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
@@ -291,7 +291,7 @@ dump_table(Tab, ShowValue) ->
         ],
     'ok'.
 
--spec display_cache_obj(cache_obj(), boolean(), gregorian_seconds()) -> 'ok'.
+-spec display_cache_obj(cache_obj(), boolean(), kz_time:gregorian_seconds()) -> 'ok'.
 display_cache_obj(#cache_obj{key=Key
                             ,value=Value
                             ,timestamp=Timestamp
@@ -330,8 +330,8 @@ wait_for_key_local(Srv, Key, Timeout) when is_integer(Timeout) ->
     {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}, WaitFor),
     wait_for_response(Ref, WaitFor).
 
--spec wait_for_response(reference(), kz_timeout()) -> {'ok', any()} |
-                                                      {'error', 'timeout'}.
+-spec wait_for_response(reference(), timeout()) -> {'ok', any()} |
+                                                   {'error', 'timeout'}.
 wait_for_response(Ref, WaitFor) ->
     receive
         {'exists', Ref, Value} -> {'ok', Value};
@@ -355,19 +355,19 @@ wait_for_response(Ref, WaitFor) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_timeout() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | timeout() | kz_term:proplist()]) -> {'ok', state()}.
 init([Name, ExpirePeriod, Props]) ->
     kz_util:put_callid(Name),
     init(Name, ExpirePeriod, Props, props:get_value('origin_bindings', Props)).
 
--spec init(atom(), kz_timeout(), kz_proplist(), api_list()) -> {'ok', state()}.
+-spec init(atom(), timeout(), kz_term:proplist(), kz_term:api_list()) -> {'ok', state()}.
 init(Name, ExpirePeriod, Props, 'undefined') ->
     init(Name, ExpirePeriod, Props);
 init(Name, ExpirePeriod, Props, _Bindings) ->
     kapi_conf:declare_exchanges(),
     init(Name, ExpirePeriod, Props).
 
--spec init(atom(), kz_timeout(), kz_proplist()) -> {'ok', state()}.
+-spec init(atom(), timeout(), kz_term:proplist()) -> {'ok', state()}.
 init(Name, ExpirePeriod, Props) ->
     Tab = ets:new(Name
                  ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
@@ -430,7 +430,7 @@ to_tab(Tab, Suffix) ->
 monitor_response_fun(Pid, Ref) ->
     fun(_, Value, Reason) -> Pid ! {Reason, Ref, Value} end.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'tables'}, _From, #state{pointer_tab=PointerTab
                                      ,monitor_tab=MonitorTab
                                      }=State) ->
@@ -480,7 +480,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'store', CacheObj}, State) ->
     State1 = handle_store(CacheObj, State),
     {'noreply', State1};
@@ -580,7 +580,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
            ,#state{expire_period_ref=Ref
                   ,expire_period=Period
@@ -654,7 +654,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_props_expires(kz_proplist()) -> kz_timeout().
+-spec get_props_expires(kz_term:proplist()) -> timeout().
 get_props_expires(Props) ->
     case props:get_value('expires', Props) of
         'undefined' -> ?EXPIRES;
@@ -664,14 +664,14 @@ get_props_expires(Props) ->
             Expires
     end.
 
--spec get_props_callback(kz_proplist()) -> 'undefined' | callback_fun().
+-spec get_props_callback(kz_term:proplist()) -> 'undefined' | callback_fun().
 get_props_callback(Props) ->
     case props:get_value('callback', Props) of
         'undefined' -> 'undefined';
         Fun when is_function(Fun, 3) -> Fun
     end.
 
--spec get_props_origin(kz_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
+-spec get_props_origin(kz_term:proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec expire_objects(ets:tab(), [ets:tab()]) -> non_neg_integer().
@@ -906,7 +906,7 @@ handle_document_change(JObj, State) ->
     _Keys =/= []
         andalso lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
--spec handle_document_change(ne_binary(), ne_binary(), ne_binary(), state()) ->
+-spec handle_document_change(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), state()) ->
                                     list().
 handle_document_change(Db, <<"database">>, _Id, #state{pointer_tab=PTab}=State) ->
     MatchSpec = match_db_changed(Db),
@@ -929,7 +929,7 @@ handle_document_change(Db, Type, Id
                ,Objects
                ).
 
--spec match_db_changed(ne_binary()) -> ets:match_spec().
+-spec match_db_changed(kz_term:ne_binary()) -> ets:match_spec().
 match_db_changed(Db) ->
     [{#cache_obj{origin = {'db', Db}, _ = '_'}
      ,[]
@@ -945,7 +945,7 @@ match_db_changed(Db) ->
      }
     ].
 
--spec match_doc_changed(ne_binary(), ne_binary(), ne_binary()) -> ets:match_spec().
+-spec match_doc_changed(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ets:match_spec().
 match_doc_changed(Db, Type, Id) ->
     [{#cache_obj{origin = {'db', Db}, _ = '_'}
      ,[]

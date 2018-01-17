@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "presence_id":"foo" // for "foo@bar.com"
@@ -29,7 +29,7 @@ handle(Data, Call) ->
     update_presence(Status, PresenceId, Call),
     cf_exe:continue(Call).
 
--spec update_presence(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
+-spec update_presence(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 update_presence(<<"idle">>, PresenceId, Call) ->
     _ = kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"terminated">>}]),
     kapps_call_command:presence(<<"terminated">>, PresenceId, kz_term:to_hex_binary(crypto:hash(md5, PresenceId)));

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Manage the ETS table separate from the main process to use the ETS table
 %%% Protects against the main writer dying
@@ -48,9 +48,9 @@
              ]).
 
 -record(state, {table_id :: atom()
-               ,give_away_pid :: api_pid()
+               ,give_away_pid :: kz_term:api_pid()
                ,find_me_fun :: find_me_fun() | undefined
-               ,find_me_pid_ref :: api_pid_ref()
+               ,find_me_pid_ref :: kz_term:api_pid_ref()
                ,gift_data :: any()
                }).
 -type state() :: #state{}.
@@ -62,12 +62,12 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(start_args()) -> startlink_ret().
+-spec start_link(start_args()) -> kz_types:startlink_ret().
 start_link(Opts) ->
     'true' = valid_options(Opts),
     gen_server:start_link(?SERVER, [Opts], []).
 
--spec start_link(atom(), start_args()) -> startlink_ret().
+-spec start_link(atom(), start_args()) -> kz_types:startlink_ret().
 start_link(Name, Opts) ->
     'true' = valid_options(Opts),
     gen_server:start_link({'local', Name}, ?MODULE, [Opts], []).
@@ -140,7 +140,7 @@ opt_gift_data(Opts) -> props:get_value('gift_data', Opts, 'ok').
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -155,7 +155,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'begin', TableId, TableOptions}, #state{gift_data=GiftData}=State) ->
     TID = ets:new(TableId, TableOptions),
 
@@ -177,17 +177,19 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'EXIT', Pid, 'killed'}, #state{give_away_pid=Pid}=State) ->
     lager:debug("ets mgr ~p killed", [Pid]),
     {'noreply', State#state{give_away_pid='undefined'}};
 handle_info({'EXIT', Pid, 'shutdown'}, #state{give_away_pid=Pid}=State) ->
     lager:debug("ets mgr ~p shutdown", [Pid]),
     {'noreply', State#state{give_away_pid='undefined'}};
+handle_info({'EXIT', _Pid, _Reason}, #state{give_away_pid='undefined'}=State) ->
+    {'noreply', State};
 handle_info({'ETS-TRANSFER', Tbl, Pid, _Data}, #state{table_id=Tbl
                                                      ,give_away_pid=Pid
                                                      }=State) ->
-    lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
+    lager:debug("ets table '~p' transferred back to ourselves", [Tbl]),
     send_give_away_retry(Tbl),
     {'noreply', State#state{give_away_pid='undefined'}};
 handle_info({'give_away', Tbl}, #state{table_id=Tbl

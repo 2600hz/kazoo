@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Basic auth module
 %%%
@@ -43,10 +43,10 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) ->
                           'false' |
-                          {'true' | 'halt', cb_context:context()}.
+                          {'true' | 'stop', cb_context:context()}.
 -spec authenticate(cb_context:context(), atom()) ->
                           'false' |
-                          {'true' | 'halt', cb_context:context()}.
+                          {'true' | 'stop', cb_context:context()}.
 authenticate(Context) ->
     authenticate(Context, cb_context:auth_token_type(Context)).
 
@@ -60,13 +60,13 @@ authenticate(Context, 'basic') ->
         'true' -> check_basic_token(Context, cb_context:auth_token(Context));
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
-            {'halt', cb_context:add_system_error('too_many_requests', Context)}
+            {'stop', cb_context:add_system_error('too_many_requests', Context)}
     end;
 authenticate(_Context, _TokenType) -> 'false'.
 
--spec check_basic_token(cb_context:context(), api_binary()) ->
+-spec check_basic_token(cb_context:context(), kz_term:api_binary()) ->
                                'false' |
-                               {'true' | 'halt', cb_context:context()}.
+                               {'true' | 'stop', cb_context:context()}.
 check_basic_token(_Context, <<>>) -> 'false';
 check_basic_token(_Context, 'undefined') -> 'false';
 check_basic_token(Context, AuthToken) ->
@@ -75,9 +75,9 @@ check_basic_token(Context, AuthToken) ->
         {'error', 'not_found'} -> maybe_check_credentials(Context, AuthToken)
     end.
 
--spec maybe_check_credentials(cb_context:context(), api_binary()) ->
+-spec maybe_check_credentials(cb_context:context(), kz_term:api_binary()) ->
                                      'false' |
-                                     {'true' | 'halt', cb_context:context()}.
+                                     {'true' | 'stop', cb_context:context()}.
 maybe_check_credentials(Context, AuthToken) ->
     lager:debug("checking basic token: '~s'", [AuthToken]),
     case binary:split(base64:decode(AuthToken), <<":">>) of
@@ -86,17 +86,17 @@ maybe_check_credentials(Context, AuthToken) ->
              'false'
     end.
 
--spec check_credentials(cb_context:context(), ne_binary(), api_binary()) ->
+-spec check_credentials(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                'false' |
-                               {'true' | 'halt', cb_context:context()}.
+                               {'true' | 'stop', cb_context:context()}.
 check_credentials(Context, AccountId, Credentials) ->
     lager:debug("checking credentials '~s' for account '~s'", [Credentials, AccountId]),
     BasicType = kapps_account_config:get(AccountId, ?AUTH_CONFIG_CAT, ?BASIC_AUTH_KEY, ?BASIC_AUTH_TYPE),
     check_credentials(Context, AccountId, Credentials, BasicType).
 
--spec check_credentials(cb_context:context(), ne_binary(), ne_binary() | {ne_binary(), ne_binary()}, ne_binary()) ->
+-spec check_credentials(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary()) ->
                                'false' |
-                               {'true' | 'halt', cb_context:context()}.
+                               {'true' | 'stop', cb_context:context()}.
 check_credentials(Context, AccountId, {Username, Password}, _BasicType) ->
     {MD5, _SHA1} = cb_modules_util:pass_hashes(Username, Password),
     check_credentials(Context, AccountId, MD5, <<"md5">>);
@@ -116,7 +116,7 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
         _ -> 'false'
     end.
 
--spec get_credential_doc(ne_binary(), ne_binary(), ne_binary()) -> api_object().
+-spec get_credential_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_credential_doc(AccountId, View, Key) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Options = [{'key', Key}, 'include_docs'],
@@ -127,7 +127,7 @@ get_credential_doc(AccountId, View, Key) ->
 
 -spec is_expired(cb_context:context(), kz_json:object()) ->
                         boolean() |
-                        {'halt', cb_context:context()}.
+                        {'stop', cb_context:context()}.
 is_expired(Context, JObj) ->
     AccountId = kz_doc:account_id(JObj),
     AccountDb = kz_util:format_account_db(AccountId),
@@ -147,7 +147,7 @@ is_expired(Context, JObj) ->
                   ]
                  ),
             Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
-            {'halt', Context1}
+            {'stop', Context1}
     end.
 
 -spec set_auth_doc(cb_context:context(), kz_json:object()) ->

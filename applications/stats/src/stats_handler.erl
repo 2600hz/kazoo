@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,20 +19,20 @@
 
 -include("stats.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'no_node_name' |
-                                                     'no_tables' |
-                                                     'no_items' |
-                                                     'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'no_node_name' |
+                                                          'no_tables' |
+                                                          'no_items' |
+                                                          'ok'.
 handle_req(JObj, _Props) ->
     Items = kz_json:recursive_to_proplist(JObj),
     Nodename = props:get_value(<<"nodename">>, Items),
     store_items(Nodename, table_def(), Items).
 
--spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_event(JObj, Props) ->
     lager:debug("event occurred ~p ~p",[JObj, Props]).
 
--spec get_db(ne_binary()) -> list().
+-spec get_db(kz_term:ne_binary()) -> list().
 get_db(Table) ->
     case kz_cache:peek_local(?CACHE_NAME, Table) of
         {'ok', Records} -> Records;
@@ -101,11 +101,11 @@ collect_items([{Domain, Items} | Rest], Db) ->
            ],
     collect_items(Rest, lists:keystore(Domain, 1, Db, {Domain, NewData})).
 
--spec send(kz_json:objects() | ne_binary()) -> 'ok'.
+-spec send(kz_json:objects() | kz_term:ne_binary()) -> 'ok'.
 send(Payload) when is_list(Payload) -> send(kz_json:encode(Payload));
 send(Payload) -> amqp_util:targeted_publish(<<"statistics">>, Payload).
 
--spec get_next(ne_binary(), list(), list()) -> ['endOfTable' | {list(), list()}].
+-spec get_next(kz_term:ne_binary(), list(), list()) -> ['endOfTable' | {list(), list()}].
 get_next(Table, Row, Col)
   when is_list(Col), is_list(Row), is_binary(Table) ->
     get_next2(Row, Col, get_db(Table), table_order(Table)).

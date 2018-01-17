@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% Root supervisor tree for stepswitch routing WhApp
 %%% @end
@@ -28,7 +28,6 @@
                   ,?SUPER('stepswitch_cnam_pool_sup')
                   ,?SUPER('stepswitch_request_sup')
                   ,?WORKER('stepswitch_listener')
-                  ,?WORKER('stepswitch_maint_listener')
                   ]).
 
 %% ===================================================================
@@ -39,7 +38,7 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -56,7 +55,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

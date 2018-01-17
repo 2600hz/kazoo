@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz Inc
+%%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -22,12 +22,12 @@
 
 -spec init() -> 'ok'.
 init() ->
-    blackhole_bindings:bind(<<"blackhole.authorize.subscribe">>, ?MODULE, 'authorize'),
-    blackhole_bindings:bind(<<"blackhole.validate.subscribe">>, ?MODULE, 'validate'),
-    blackhole_bindings:bind(<<"blackhole.validate.unsubscribe">>, ?MODULE, 'validate'),
-    blackhole_bindings:bind(<<"blackhole.command.subscribe">>, ?MODULE, 'subscribe'),
-    blackhole_bindings:bind(<<"blackhole.command.unsubscribe">>, ?MODULE, 'unsubscribe'),
-    blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close'),
+    _ = blackhole_bindings:bind(<<"blackhole.authorize.subscribe">>, ?MODULE, 'authorize'),
+    _ = blackhole_bindings:bind(<<"blackhole.validate.subscribe">>, ?MODULE, 'validate'),
+    _ = blackhole_bindings:bind(<<"blackhole.validate.unsubscribe">>, ?MODULE, 'validate'),
+    _ = blackhole_bindings:bind(<<"blackhole.command.subscribe">>, ?MODULE, 'subscribe'),
+    _ = blackhole_bindings:bind(<<"blackhole.command.unsubscribe">>, ?MODULE, 'unsubscribe'),
+    _ = blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close'),
     'ok'.
 
 -spec authorize(bh_context:context(), kz_json:object()) -> bh_context:context().
@@ -50,7 +50,7 @@ validate(Context, Payload) ->
         Keys -> validate_data(Context, Payload, Keys)
     end.
 
--spec validate_data(bh_context:context(), kz_json:object(), ne_binaries()) -> bh_context:context().
+-spec validate_data(bh_context:context(), kz_json:object(), kz_term:ne_binaries()) -> bh_context:context().
 validate_data(Context, Payload, Keys) ->
     case ?SUBSCRIBE_KEYS -- Keys of
         [] -> validate_subscription(Context, Payload);
@@ -72,7 +72,7 @@ validate_subscription(Context, Payload) ->
     Res = blackhole_bindings:map(Event, [Context, Map]),
     validate_result(Context, Res).
 
--spec validate_result(bh_context:context(), ne_binaries()) -> bh_context:context().
+-spec validate_result(bh_context:context(), kz_term:ne_binaries()) -> bh_context:context().
 validate_result(Context, []) -> Context;
 validate_result(Context, Res) ->
     case blackhole_bindings:failed(Res) of
@@ -115,14 +115,14 @@ unsubscribe(Context, Payload) ->
         Bindings -> remove_event_bindings(Context, Bindings)
     end.
 
--spec event(map(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec event(map(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, EventJObj) ->
     kz_util:put_callid(EventJObj),
     Name = event_name(EventJObj),
     NormJObj = kz_json:normalize_jobj(EventJObj),
     blackhole_data_emitter:event(Binding, RK, Name, NormJObj).
 
--spec event_name(kz_json:object()) -> ne_binary().
+-spec event_name(kz_json:object()) -> kz_term:ne_binary().
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 

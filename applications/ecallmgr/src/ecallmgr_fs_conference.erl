@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017 2600Hz INC
+%%% @copyright (C) 2011-2018 2600Hz INC
 %%% @doc
 %%% Execute conference commands
 %%% @end
@@ -44,8 +44,8 @@
                            ]).
 
 -record(state, {node = 'undefined' :: atom()
-               ,options = [] :: kz_proplist()
-               ,events = [] :: ne_binaries()
+               ,options = [] :: kz_term:proplist()
+               ,events = [] :: kz_term:ne_binaries()
                }).
 -type state() :: #state{}.
 
@@ -56,8 +56,8 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom()) -> kz_types:startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
@@ -72,7 +72,7 @@ start_link(Node, Options) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
--spec init([node() | kz_proplist()]) -> {'ok', state()}.
+-spec init([node() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
@@ -100,7 +100,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
@@ -114,7 +114,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind_to_events', #state{node=Node}=State) ->
     case gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"conference::maintenance">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_OPTION_MSG(Node)}) =:= 'true'
@@ -135,7 +135,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'event', Props}, #state{node=Node
                                     ,events=Events
                                     ,options=Options
@@ -182,7 +182,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec init_props(kzd_freeswitch:data(), kz_proplist()) -> kzd_freeswitch:data().
+-spec init_props(kzd_freeswitch:data(), kz_term:proplist()) -> kzd_freeswitch:data().
 init_props(Props, Options) ->
     case props:get_is_true(<<"Publish-Channel-State">>, Props) of
         'undefined' ->
@@ -193,14 +193,14 @@ init_props(Props, Options) ->
         _Value -> Props
     end.
 
--spec handle_conference_event(atom(), ne_binaries(), kzd_freeswitch:data(), kz_proplist()) -> 'ok'.
+-spec handle_conference_event(atom(), kz_term:ne_binaries(), kzd_freeswitch:data(), kz_term:proplist()) -> 'ok'.
 handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
     Props = init_props(FSProps, Options),
     Action = props:get_value(<<"Action">>, Props),
     process_event(Action, Props, Node),
     maybe_publish_event(Action, Props, Node, Events).
 
--spec process_event(ne_binary(), kzd_freeswitch:data(), atom()) -> any().
+-spec process_event(kz_term:ne_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_event(<<"conference-create">>, Props, Node) ->
     _ = ecallmgr_fs_conferences:create(Props, Node),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
@@ -269,7 +269,7 @@ publish_event(Action, #conference{handling_locally=IsLocal} = Conference, Props,
         'false' -> lager:debug("conference control on another node, not publishing event ~s", [Action])
     end.
 
--spec publish_event(kz_proplist()) -> 'ok'.
+-spec publish_event(kz_term:proplist()) -> 'ok'.
 publish_event(Event) ->
     kz_amqp_worker:cast(Event, fun kapi_conference:publish_event/1).
 

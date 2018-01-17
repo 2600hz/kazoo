@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2017, 2600Hz
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -47,13 +47,15 @@
 -define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".numbers">>).
 -define(IMPORT_DEFAULTS_TO_CARRIER
         %% Defaults to knm_carriers:default_carrier()'s default value
-       ,kapps_config:get_binary(?MOD_CAT, <<"import_defaults_to_carrier">>, ?CARRIER_LOCAL)).
+       ,kapps_config:get_binary(?MOD_CAT, <<"import_defaults_to_carrier">>, ?CARRIER_LOCAL)
+       ).
 
 -define(DB_DUMP_BULK_SIZE
-       ,kapps_config:get_integer(?MOD_CAT, <<"db_page_size">>, 1000)).
+       ,kapps_config:get_integer(?MOD_CAT, <<"db_page_size">>, 1000)
+       ).
 
--define(ON_SETTING_PUBLIC_FIELDS,
-        "To add a public field 'MyPub' to a number, create a column named 'opaque.MyPub'.\n"
+-define(ON_SETTING_PUBLIC_FIELDS
+       ,"To add a public field 'MyPub' to a number, create a column named 'opaque.MyPub'.\n"
         "Note: to nest a public field 'my_nested_field' under 'my_field', name the column thusly: 'opaque.my_field.my_nested_field'.\n"
         "Note: some fields may be disabled by configuration in which case it is forbidden to set them.\n"
        ).
@@ -96,7 +98,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".ported_in">>, ?MODULE, 'ported_in'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(ne_binary()) -> kz_tasks:output_header().
+-spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
 output_header(<<"list">>) ->
     list_output_header();
 output_header(<<"list_all">>) ->
@@ -108,7 +110,7 @@ output_header(<<"dump_", _/binary>>) ->
 output_header(?NE_BINARY) ->
     result_output_header().
 
--spec cleanup(ne_binary(), any()) -> any().
+-spec cleanup(kz_term:ne_binary(), any()) -> any().
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
@@ -119,11 +121,11 @@ cleanup(<<"import">>, AccountIds) ->
         end,
     lists:foreach(F, sets:to_list(AccountIds)),
     kz_datamgr:enable_change_notice();
-cleanup(?NE_BINARY, _) -> ok.
+cleanup(?NE_BINARY, _) -> 'ok'.
 
 -spec result_output_header() -> kz_tasks:output_header().
 result_output_header() ->
-    {replace, list_output_header() ++ [?OUTPUT_CSV_HEADER_ERROR]}.
+    {'replace', list_output_header() ++ [?OUTPUT_CSV_HEADER_ERROR]}.
 
 -spec list_output_header() -> kz_tasks:output_header().
 list_output_header() ->
@@ -155,7 +157,7 @@ list_output_header() ->
     ,<<"failover.sip">>
     ].
 
--spec list_doc() -> ne_binary().
+-spec list_doc() -> kz_term:ne_binary().
 list_doc() ->
     <<"For each number found, returns fields:\n"
       "* `e164`: phone number represented as E164 (with a leading `+` sign).\n"
@@ -202,15 +204,15 @@ optional_public_fields() ->
 -spec help(kz_json:object()) -> kz_json:object().
 help(JObj) -> help(JObj, <<?CATEGORY>>).
 
--spec help(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category) ->
     lists:foldl(fun(Action, J) -> help(J, Category, Action) end, JObj, ?ACTIONS).
 
--spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category, Action) ->
     kz_json:set_value([Category, Action], kz_json:from_map(action(Action)), JObj).
 
--spec action(ne_binary()) -> map().
+-spec action(kz_term:ne_binary()) -> map().
 action(<<"list">>) ->
     #{<<"description">> => <<"List all numbers assigned to the account starting the task">>
      ,<<"doc">> => list_doc()
@@ -332,70 +334,70 @@ action(<<"delete">>) ->
 
 %%% Verifiers
 
--spec e164(ne_binary()) -> boolean().
+-spec e164(kz_term:ne_binary()) -> boolean().
 e164(<<"+", _/binary>>) -> 'true';
 e164(_) -> 'false'.
 
--spec account_id(ne_binary()) -> boolean().
+-spec account_id(kz_term:ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
 account_id(_) -> 'false'.
 
--spec carrier_module(ne_binary()) -> boolean().
+-spec carrier_module(kz_term:ne_binary()) -> boolean().
 carrier_module(Data) ->
     lists:member(Data, knm_carriers:all_modules()).
 
--spec state(ne_binary()) -> boolean().
+-spec state(kz_term:ne_binary()) -> boolean().
 state(Data) ->
     knm_phone_number:is_state(Data).
 
--spec ported_in(ne_binary()) -> boolean().
+-spec ported_in(kz_term:ne_binary()) -> boolean().
 ported_in(Cell) -> is_cell_boolean(Cell).
 
--spec 'cnam.inbound'(ne_binary()) -> boolean().
+-spec 'cnam.inbound'(kz_term:ne_binary()) -> boolean().
 'cnam.inbound'(Cell) -> is_cell_boolean(Cell).
 
--spec 'prepend.enabled'(ne_binary()) -> boolean().
+-spec 'prepend.enabled'(kz_term:ne_binary()) -> boolean().
 'prepend.enabled'(Cell) -> is_cell_boolean(Cell).
 
--spec force_outbound(ne_binary()) -> boolean().
+-spec force_outbound(kz_term:ne_binary()) -> boolean().
 force_outbound(Cell) -> is_cell_boolean(Cell).
 
 
 %% @private
--spec is_cell_boolean(ne_binary()) -> boolean().
-is_cell_boolean(<<"true">>) -> true;
-is_cell_boolean(<<"false">>) -> true;
-is_cell_boolean(_) -> false.
+-spec is_cell_boolean(kz_term:ne_binary()) -> boolean().
+is_cell_boolean(<<"true">>) -> 'true';
+is_cell_boolean(<<"false">>) -> 'true';
+is_cell_boolean(_) -> 'false'.
 
 %% @private
--spec is_cell_true(api_ne_binary()) -> boolean().
-is_cell_true(undefined) -> undefined;
-is_cell_true(<<"true">>) -> true;
-is_cell_true(_) -> false.
+-spec is_cell_true(kz_term:api_ne_binary()) -> boolean().
+is_cell_true('undefined') -> 'undefined';
+is_cell_true(<<"true">>) -> 'true';
+is_cell_true(_) -> 'false'.
 
 %%% Appliers
 
 -spec list(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-list(#{account_id := ForAccount}, init) ->
+list(#{account_id := ForAccount}, 'init') ->
     ToList = [{ForAccount, NumberDb} || NumberDb <- knm_util:get_all_number_dbs()],
-    {ok, ToList};
-list(_, []) -> stop;
+    {'ok', ToList};
+list(_, []) -> 'stop';
 list(#{auth_account_id := AuthBy}, Todo) ->
     list_assigned_to(AuthBy, Todo).
 
--spec list_numbers(ne_binary(), ne_binaries()) -> [kz_csv:row()].
+-spec list_numbers(kz_term:ne_binary(), kz_term:ne_binaries()) -> [kz_csv:row()].
 list_numbers(AuthBy, E164s) ->
-    Options = [{auth_by, AuthBy}
-              ,{batch_run, true}
+    Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
               ],
     #{ok := Ns, ko := KOs} = knm_numbers:get(E164s, Options),
     maps:fold(fun list_bad_rows/3, [], KOs)
         ++ [list_number(N) || N <- Ns].
 
-list_bad_rows(E164, not_reconcilable, Rows) ->
+list_bad_rows(E164, 'not_reconcilable', Rows) ->
     %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
     %% Their fields are not queriable but we return the id to show it exists.
-    Row = [E164 | lists:duplicate(length(list_output_header()) - 1, undefined)],
+    Row = [E164 | lists:duplicate(length(list_output_header()) - 1, 'undefined')],
     [Row|Rows];
 list_bad_rows(_E164, _R, Rows) ->
     lager:error("wild number ~s appeared: ~p", [_E164, _R]),
@@ -439,45 +441,45 @@ list_number(N) ->
      ,<<"failover.sip">> => quote(kz_json:get_ne_binary_value(?FAILOVER_SIP, Failover))
      }.
 
--spec account_name(api_ne_binary()) -> api_ne_binary().
+-spec account_name(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 account_name(MaybeAccountId) ->
     case kz_account:fetch_name(MaybeAccountId) of
-        undefined -> undefined;
+        'undefined' -> 'undefined';
         Name -> quote(Name)
     end.
 
--spec quote(api_ne_binary()) -> api_ne_binary().
-quote(undefined) -> undefined;
+-spec quote(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+quote('undefined') -> 'undefined';
 quote(Bin) -> <<$\", Bin/binary, $\">>.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-list_all(#{account_id := Account}, init) ->
+list_all(#{account_id := Account}, 'init') ->
     ForAccounts = [Account | kapps_util:account_descendants(Account)],
     ToList = [{ForAccount, NumberDb}
               || ForAccount <- ForAccounts,
                  NumberDb <- knm_util:get_all_number_dbs()
              ],
-    {ok, ToList};
+    {'ok', ToList};
 list_all(_, []) -> stop;
 list_all(_, Todo) ->
     list_assigned_to(?KNM_DEFAULT_AUTH_BY, Todo).
 
 -spec find(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 find(#{auth_account_id := AuthBy}, _IterValue, Args=#{<<"e164">> := Num}) ->
-    handle_result(Args, knm_number:get(Num, [{auth_by,AuthBy}])).
+    handle_result(Args, knm_number:get(Num, [{'auth_by', AuthBy}])).
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump(ExtraArgs, init) ->
+dump(ExtraArgs, 'init') ->
     init_dump(ExtraArgs);
-dump(_, []) -> stop;
+dump(_, []) -> 'stop';
 dump(_, Todo) ->
     dump_next(fun db_and_view_for_dump/1, Todo).
 
 init_dump(ExtraArgs) ->
-    {ok, MasterAccountId} = kapps_util:get_master_account_id(),
-    case maps:get(auth_account_id, ExtraArgs) of
-        MasterAccountId -> {ok, knm_util:get_all_number_dbs()};
-        _ -> stop
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    case maps:get('auth_account_id', ExtraArgs) of
+        MasterAccountId -> {'ok', knm_util:get_all_number_dbs()};
+        _ -> 'stop'
     end.
 
 dump_by_state(State, Todo) ->
@@ -485,53 +487,53 @@ dump_by_state(State, Todo) ->
     dump_next(ViewFun, Todo).
 
 -spec dump_aging(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_aging(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_aging(_, []) -> stop;
+dump_aging(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_aging(_, []) -> 'stop';
 dump_aging(_, Todo) -> dump_by_state(?NUMBER_STATE_AGING, Todo).
 
 -spec dump_available(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_available(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_available(_, []) -> stop;
+dump_available(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_available(_, []) -> 'stop';
 dump_available(_, Todo) -> dump_by_state(?NUMBER_STATE_AVAILABLE, Todo).
 
 -spec dump_deleted(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_deleted(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_deleted(_, []) -> stop;
+dump_deleted(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_deleted(_, []) -> 'stop';
 dump_deleted(_, Todo) -> dump_by_state(?NUMBER_STATE_DELETED, Todo).
 
 -spec dump_discovery(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_discovery(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_discovery(_, []) -> stop;
+dump_discovery(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_discovery(_, []) -> 'stop';
 dump_discovery(_, Todo) -> dump_by_state(?NUMBER_STATE_DISCOVERY, Todo).
 
 -spec dump_in_service(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_in_service(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_in_service(_, []) -> stop;
+dump_in_service(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_in_service(_, []) -> 'stop';
 dump_in_service(_, Todo) -> dump_by_state(?NUMBER_STATE_IN_SERVICE, Todo).
 
 -spec dump_port_in(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_port_in(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_port_in(_, []) -> stop;
+dump_port_in(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_port_in(_, []) -> 'stop';
 dump_port_in(_, Todo) -> dump_by_state(?NUMBER_STATE_PORT_IN, Todo).
 
 -spec dump_port_out(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_port_out(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_port_out(_, []) -> stop;
+dump_port_out(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_port_out(_, []) -> 'stop';
 dump_port_out(_, Todo) -> dump_by_state(?NUMBER_STATE_PORT_OUT, Todo).
 
 -spec dump_released(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_released(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_released(_, []) -> stop;
+dump_released(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_released(_, []) -> 'stop';
 dump_released(_, Todo) -> dump_by_state(?NUMBER_STATE_RELEASED, Todo).
 
 -spec dump_reserved(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump_reserved(ExtraArgs, init) -> init_dump(ExtraArgs);
-dump_reserved(_, []) -> stop;
+dump_reserved(ExtraArgs, 'init') -> init_dump(ExtraArgs);
+dump_reserved(_, []) -> 'stop';
 dump_reserved(_, Todo) -> dump_by_state(?NUMBER_STATE_RESERVED, Todo).
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
                     {kz_tasks:return(), sets:set()}.
-import(ExtraArgs, init, Args) ->
+import(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
     import(ExtraArgs, IterValue, Args);
@@ -551,12 +553,12 @@ import(#{account_id := Account
              }
       ) ->
     AccountId = select_account_id(AccountId0, Account),
-    Options = [{auth_by, AuthAccountId}
-              ,{batch_run, true}
-              ,{assign_to, AccountId}
-              ,{module_name, import_module_name(AuthAccountId, Carrier)}
-              ,{ported_in, PortedIn =:= <<"true">>}
-              ,{public_fields, public_fields(Args)}
+    Options = [{'auth_by', AuthAccountId}
+              ,{'batch_run', 'true'}
+              ,{'assign_to', AccountId}
+              ,{'module_name', import_module_name(AuthAccountId, Carrier)}
+              ,{'ported_in', PortedIn =:= <<"true">>}
+              ,{'public_fields', public_fields(Args)}
                | import_state(AuthAccountId, State)
               ],
     Row = handle_result(Args, knm_number:create(E164, Options)),
@@ -581,7 +583,7 @@ pub_fields(Args=#{<<"cnam.inbound">> := CNAMInbound
                  ,<<"failover.e164">> := FailoverE164
                  ,<<"failover.sip">> := FailoverSIP
                  }) ->
-    RenameCarrier = maps:get(?FEATURE_RENAME_CARRIER, Args, undefined),
+    RenameCarrier = maps:get(?FEATURE_RENAME_CARRIER, Args, 'undefined'),
     [props:filter_undefined([{?FEATURE_RENAME_CARRIER, RenameCarrier}])
     ,cnam(props:filter_undefined(
             [{?CNAM_DISPLAY_NAME, CNAMOutbound}
@@ -620,7 +622,7 @@ ringback(Props) -> maybe_nest(?FEATURE_RINGBACK, Props).
 failover(Props) -> maybe_nest(?FEATURE_FAILOVER, Props).
 
 %% @private
--spec maybe_nest(ne_binary(), kz_proplist()) -> kz_proplist().
+-spec maybe_nest(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 maybe_nest(_, []) -> [];
 maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
@@ -629,26 +631,26 @@ import_module_name(AuthBy, Carrier) ->
     case kz_util:is_system_admin(AuthBy)
         andalso Carrier
     of
-        false -> ?IMPORT_DEFAULTS_TO_CARRIER;
-        undefined -> ?IMPORT_DEFAULTS_TO_CARRIER;
+        'false' -> ?IMPORT_DEFAULTS_TO_CARRIER;
+        'undefined' -> ?IMPORT_DEFAULTS_TO_CARRIER;
         _ -> Carrier
     end.
 
 %% @private
 import_state(AuthBy, State) ->
     case kz_util:is_system_admin(AuthBy)
-        andalso undefined =/= State
+        andalso 'undefined' =/= State
     of
-        false -> [];
-        true -> [{state, State}]
+        'false' -> [];
+        'true' -> [{'state', State}]
     end.
 
 %% @private
 additional_fields_to_json(Args) ->
     F = fun (Field, JObj) ->
-                Path = binary:split(Field, <<$.>>, [global]),
-                case maps:get(<<"opaque.",Field/binary>>, Args) of
-                    undefined -> JObj;
+                Path = binary:split(Field, <<$.>>, ['global']),
+                case maps:get(<<"opaque.", Field/binary>>, Args, 'undefined') of
+                    'undefined' -> JObj;
                     Value ->
                         lager:debug("setting public field ~p to ~p", [Path, Value]),
                         kz_json:set_value(Path, Value, JObj)
@@ -670,15 +672,14 @@ additional_fields(Args) ->
 select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
 select_account_id(_, AccountId) -> AccountId.
 
-
 -spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 assign_to(#{auth_account_id := AuthBy, account_id := Account}
          ,_IterValue
          ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
          ) ->
     AccountId = select_account_id(AccountId0, Account),
-    Options = [{auth_by, AuthBy}
-              ,{batch_run, true}
+    Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
               ],
     handle_result(Args, knm_number:move(Num, AccountId, Options)).
 
@@ -687,8 +688,8 @@ update_merge(#{auth_account_id := AuthBy}
             ,_IterValue
             ,Args=#{<<"e164">> := Num}
             ) ->
-    Options = [{auth_by, AuthBy}
-              ,{batch_run, true}
+    Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
               ],
     Updates = [{fun knm_phone_number:update_doc/2, public_fields(Args)}],
     handle_result(Args, knm_number:update(Num, Updates, Options)).
@@ -698,8 +699,8 @@ update_overwrite(#{auth_account_id := AuthBy}
                 ,_IterValue
                 ,Args=#{<<"e164">> := Num}
                 ) ->
-    Options = [{auth_by, AuthBy}
-              ,{batch_run, true}
+    Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
               ],
     Updates = [{fun knm_phone_number:reset_doc/2, public_fields(Args)}],
     handle_result(Args, knm_number:update(Num, Updates, Options)).
@@ -709,8 +710,8 @@ release(#{auth_account_id := AuthBy}
        ,_IterValue
        ,Args=#{<<"e164">> := Num}
        ) ->
-    Options = [{auth_by, AuthBy}
-              ,{batch_run, true}
+    Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
               ],
     handle_result(Args, knm_number:release(Num, Options)).
 
@@ -719,9 +720,9 @@ reserve(#{auth_account_id := AuthBy, account_id := Account}
        ,_IterValue
        ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
        ) ->
-    Options = [{auth_by, AuthBy}
-              ,{batch_run, true}
-              ,{assign_to, select_account_id(AccountId0, Account)}
+    Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
+              ,{'assign_to', select_account_id(AccountId0, Account)}
               ],
     handle_result(Args, knm_number:reserve(Num, Options)).
 
@@ -730,8 +731,8 @@ delete(#{auth_account_id := AuthBy}
       ,_IterValue
       ,Args=#{<<"e164">> := Num}
       ) ->
-    Options = [{auth_by, AuthBy}
-              ,{batch_run, true}
+    Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
               ],
     handle_result(Args, knm_number:delete(Num, Options)).
 
@@ -754,29 +755,29 @@ handle_result(Args, {error, KNMError}) ->
              end,
     format_result(Args, kz_term:to_binary(Reason)).
 
--spec format_result(kz_tasks:args(), ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
+-spec format_result(kz_tasks:args(), kz_term:ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
 format_result(Args, Reason=?NE_BINARY) ->
     Args#{?OUTPUT_CSV_HEADER_ERROR => Reason};
 format_result(_, N) ->
     Map = list_number(N),
     Map#{?OUTPUT_CSV_HEADER_ERROR => undefined}.
 
--type accountid_or_startkey_and_numberdbs() :: [{ne_binary() | ne_binaries(), ne_binary()}].
--spec list_assigned_to(ne_binary(), accountid_or_startkey_and_numberdbs()) ->
-                              {ok | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
+-type accountid_or_startkey_and_numberdbs() :: [{kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()}].
+-spec list_assigned_to(kz_term:ne_binary(), accountid_or_startkey_and_numberdbs()) ->
+                              {ok | error  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
 list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
     ViewOptions = [{limit,?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
         {ok, []} -> {ok, Rest};
         {error, _R} ->
             lager:error("could not get ~p's numbers in ~s: ~p", [ViewOptions, NumberDb, _R]),
-            {ok, Rest};
+            {error, Rest};
         {ok, Keys} ->
             Rows = list_numbers(AuthBy, [lists:last(Key) || Key <- Keys]),
             {Rows, [{lists:last(Keys),NumberDb}|Rest]}
     end.
 
--spec view_for_list_assigned(ne_binary() | ne_binaries()) -> kz_datamgr:view_options().
+-spec view_for_list_assigned(kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_datamgr:view_options().
 view_for_list_assigned(?MATCH_ACCOUNT_RAW(AccountId)) ->
     [{startkey, [AccountId]}
     ,{endkey, [AccountId, kz_json:new()]}
@@ -787,9 +788,9 @@ view_for_list_assigned(StartKey=[AccountId,_]) ->
     ,{skip, 1}
     ].
 
--type startkey_or_numberdb() :: ne_binary() | ne_binaries().
--spec dump_next(fun((startkey_or_numberdb()) -> {ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
-                       {ok | [kz_csv:row()], [startkey_or_numberdb()]}.
+-type startkey_or_numberdb() :: kz_term:ne_binary() | kz_term:ne_binaries().
+-spec dump_next(fun((startkey_or_numberdb()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
+                       {ok | error | [kz_csv:row()], [startkey_or_numberdb()]}.
 dump_next(ViewFun, [Next|Rest]) ->
     {NumberDb, MoreViewOptions} = ViewFun(Next),
     ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
@@ -797,13 +798,13 @@ dump_next(ViewFun, [Next|Rest]) ->
         {ok, []} -> {ok, Rest};
         {error, _R} ->
             lager:error("could not get ~p from ~s: ~p", [ViewOptions, NumberDb, _R]),
-            {ok, Rest};
+            {error, Rest};
         {ok, Keys} ->
             Rows = list_numbers(?KNM_DEFAULT_AUTH_BY, [lists:last(Key) || Key <- Keys]),
             {Rows, [lists:last(Keys)|Rest]}
     end.
 
--spec db_and_view_for_dump(ne_binary() | ne_binaries()) -> {ne_binary(), kz_datamgr:view_options()}.
+-spec db_and_view_for_dump(kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
 db_and_view_for_dump(NumberDb=?NE_BINARY) -> {NumberDb, []};
 db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
     ViewOpts = [{startkey, StartKey}
@@ -811,7 +812,7 @@ db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
                ],
     {knm_converters:to_db(LastNum), ViewOpts}.
 
--spec db_and_view_for_dump_by_state(ne_binary(), ne_binary() | ne_binaries()) -> {ne_binary(), kz_datamgr:view_options()}.
+-spec db_and_view_for_dump_by_state(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
 db_and_view_for_dump_by_state(State, NumberDb=?NE_BINARY) ->
     ViewOptions = [{startkey, [State]}
                   ,{endkey, [State, kz_json:new()]}

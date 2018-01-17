@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Handler for sms inbound AMQP payload
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("doodle.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist(), gen_listener:basic_deliver()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist(), gen_listener:basic_deliver()) -> 'ok'.
 handle_req(JObj, Props, Deliver) ->
     Srv = props:get_value('server', Props),
     case kapi_sms:inbound_v(JObj) of
@@ -55,7 +55,7 @@ maybe_relay_request(JObj) ->
             process_sms_req(FetchId, CallId, JObjReq)
     end.
 
--spec process_sms_req(ne_binary(), ne_binary(), kz_json:object()) -> 'ack' | 'nack'.
+-spec process_sms_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ack' | 'nack'.
 process_sms_req(FetchId, CallId, JObj) ->
     Req = kz_json:set_values([{<<"Msg-ID">>, FetchId}
                              ,{<<"Call-ID">>, CallId}
@@ -77,7 +77,7 @@ process_sms_req(FetchId, CallId, JObj) ->
             send_route_win(FetchId, CallId, RespJObj)
     end.
 
--spec send_route_win(ne_binary(), ne_binary(), kz_json:object()) -> 'ack'.
+-spec send_route_win(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ack'.
 send_route_win(FetchId, CallId, JObj) ->
     ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
@@ -97,7 +97,7 @@ send_route_win(FetchId, CallId, JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
+-spec set_account_id(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                             kz_json:object().
 set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = knm_number_options:account_id(NumberProps),
@@ -111,7 +111,7 @@ set_account_id(_Inception, NumberProps, JObj) ->
                       ,JObj
      ).
 
--spec set_inception(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
+-spec set_inception(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                            kz_json:object().
 set_inception(<<"off-net">>, _, JObj) ->
     Request = kz_json:get_value(<<"From">>, JObj),
@@ -119,7 +119,7 @@ set_inception(<<"off-net">>, _, JObj) ->
 set_inception(_Inception, _, JObj) ->
     kz_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj).
 
--spec set_mdn(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
+-spec set_mdn(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                      kz_json:object().
 set_mdn(<<"on-net">>, NumberProps, JObj) ->
     Number = knm_number_options:number(NumberProps),
@@ -141,7 +141,7 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
     end;
 set_mdn(_Inception, _NumberProps, JObj) -> JObj.
 
--spec set_static(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
+-spec set_static(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                         kz_json:object().
 set_static(_Inception, _, JObj) ->
     kz_json:set_values([{<<"Resource-Type">>, <<"sms">>}
@@ -151,12 +151,12 @@ set_static(_Inception, _, JObj) ->
                       ,JObj
                       ).
 
--spec delete_headers(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
+-spec delete_headers(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                             kz_json:object().
 delete_headers(_, _, JObj) ->
     kz_api:remove_defaults(JObj).
 
--spec set_realm(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
+-spec set_realm(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                        kz_json:object().
 set_realm(_, _, JObj) ->
     Realm = kz_json:get_value(?CCV(<<"Account-Realm">>), JObj),
@@ -170,6 +170,6 @@ set_realm(_, _, JObj) ->
                       end, [], Keys),
     kz_json:set_values(KVs, JObj).
 
--spec set_realm_value(K, ne_binary(), ne_binary()) -> {K, ne_binary()}.
+-spec set_realm_value(K, kz_term:ne_binary(), kz_term:ne_binary()) -> {K, kz_term:ne_binary()}.
 set_realm_value(K, Value, Realm) ->
     {K, <<Value/binary, "@", Realm/binary>>}.

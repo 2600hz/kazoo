@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Init to be done
 %%% @end
@@ -15,7 +15,7 @@
 
 -include("kazoo_apps.hrl").
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     _ = sanity_checks(), %% one day make this true
     _ = kz_util:spawn(fun init/0),

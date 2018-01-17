@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% handler for route requests, responds if reorder match
 %%% @end
@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     case kz_term:is_empty(AccountId) of
@@ -23,17 +23,98 @@ handle_req(JObj, Props) ->
             maybe_known_number(ControllerQ, JObj)
     end.
 
--spec maybe_known_number(ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_known_number(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_known_number(ControllerQ, JObj) ->
     Number = get_dest_number(JObj),
     case knm_number:lookup_account(Number) of
-        {'ok', _, _} -> send_known_number_response(JObj, ControllerQ);
+        {'ok', _, _} -> choose_response(ControllerQ, JObj, 'false', <<"known_number">>);
         {'error', _R} ->
             lager:debug("~s is not associated with any account, ~p", [Number, _R]),
-            send_unknown_number_response(JObj, ControllerQ, knm_converters:is_reconcilable(Number))
+            Reconcilable = knm_converters:is_reconcilable(Number),
+            choose_response(ControllerQ, JObj, Reconcilable, <<"unknown_number">>)
     end.
 
--spec get_dest_number(kz_json:object()) -> ne_binary().
+-spec choose_response(kz_term:ne_binary(), kz_json:object(), boolean(), kz_term:ne_binary()) -> 'ok'.
+choose_response(ControllerQ, JObj, Reconcilable, Type) ->
+    case kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"action">>], <<"respond">>) of
+        <<"respond">> -> send_response(JObj, ControllerQ, Reconcilable, Type);
+        <<"transfer">> -> maybe_send_transfer(JObj, ControllerQ, Reconcilable, Type);
+        <<"bridge">> -> maybe_send_bridge(JObj, ControllerQ, Reconcilable, Type)
+    end.
+
+-spec send_response(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
+send_response(JObj, ControllerQ, Reconcilable, <<"unknown_number">> = Type) ->
+    Code = kapps_config:get_binary(?APP_NAME, [Type, <<"response_code">>], <<"604">>),
+    Message = kapps_config:get_binary(?APP_NAME, [Type, <<"response_message">>], <<"Nope Nope Nope">>),
+    send_response(JObj, ControllerQ, Reconcilable, Code, Message);
+send_response(JObj, ControllerQ, Reconcilable, <<"known_number">> = Type) ->
+    Code = kapps_config:get_binary(?APP_NAME, [Type, <<"response_code">>], <<"686">>),
+    Message = kapps_config:get_binary(?APP_NAME, [Type, <<"response_message">>], <<"PICNIC">>),
+    send_response(JObj, ControllerQ, Reconcilable, Code, Message).
+
+-spec send_response(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
+send_response(JObj, ControllerQ, Reconcilable, Code, Message) ->
+    lager:debug("sending response: ~s ~s", [Code, Message]),
+    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Method">>, <<"error">>}
+           ,{<<"Route-Error-Code">>, Code}
+           ,{<<"Route-Error-Message">>, Message}
+           ,{<<"Defer-Response">>, (not Reconcilable)}
+            | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
+
+-spec maybe_send_transfer(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
+maybe_send_transfer(JObj, ControllerQ, Reconcilable, Type) ->
+    case kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"transfer_target">>]) of
+        'undefined' -> send_response(JObj, ControllerQ, Reconcilable, Type);
+        Number -> send_transfer(JObj, ControllerQ, Reconcilable, Number)
+    end.
+
+-spec send_transfer(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
+send_transfer(JObj, ControllerQ, Reconcilable, Number) ->
+    lager:debug("sending transfer to ~s", [Number]),
+    Route = kz_json:from_list([{<<"Invite-Format">>, <<"loopback">>}
+                              ,{<<"Route">>, Number}
+                              ,{<<"To-DID">>, Number}
+                              ]),
+    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Method">>, <<"bridge">>}
+           ,{<<"Routes">>, [Route]}
+           ,{<<"Defer-Response">>, (not Reconcilable)}
+            | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
+
+-spec maybe_send_bridge(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary()) -> 'ok'.
+maybe_send_bridge(JObj, ControllerQ, Reconcilable, Type) ->
+    AccountId = kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"bridge_account_id">>]),
+    EndpointId = kapps_config:get_ne_binary(?CONFIG_CAT, [Type, <<"bridge_endpoint_id">>]),
+    case kz_term:is_empty(AccountId)
+        orelse kz_term:is_empty(EndpointId)
+    of
+        'true' -> send_response(JObj, ControllerQ, Reconcilable, Type);
+        'false' ->
+            Routines = [{fun kapps_call:set_account_id/2, AccountId}],
+            Call = kapps_call:exec(Routines, kapps_call:from_route_req(JObj)),
+            Endpoint = kz_endpoint:build(EndpointId, Call),
+            send_bridge(JObj, ControllerQ, Reconcilable, Type, Endpoint)
+    end.
+
+-spec send_bridge(kz_json:object(), kz_term:ne_binary(), boolean(), kz_term:ne_binary(), kz_term:jobjs_return()) -> 'ok'.
+send_bridge(JObj, ControllerQ, Reconcilable, _Type, {'ok', Routes}) ->
+    lager:debug("sending bridge to endpoint", []),
+    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Method">>, <<"bridge">>}
+           ,{<<"Routes">>, Routes}
+           ,{<<"Defer-Response">>, (not Reconcilable)}
+            | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp);
+send_bridge(JObj, ControllerQ, Type, Reconcilable, _) ->
+    send_response(JObj, ControllerQ, Type, Reconcilable).
+
+-spec get_dest_number(kz_json:object()) -> kz_term:ne_binary().
 get_dest_number(JObj) ->
     {User, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     case kapps_config:get_is_true(?CONFIG_CAT, <<"assume_inbound_e164">>, false) of
@@ -47,34 +128,8 @@ get_dest_number(JObj) ->
             Number
     end.
 
--spec assume_e164(ne_binary()) -> ne_binary().
+-spec assume_e164(kz_term:ne_binary()) -> kz_term:ne_binary().
 assume_e164(<<$+, _/binary>> = Number) -> Number;
 assume_e164(Number) -> <<$+, Number/binary>>.
 
--spec send_known_number_response(kz_json:object(), ne_binary()) -> 'ok'.
-send_known_number_response(JObj, Q) ->
-    ErrorCode = kapps_config:get_binary(?APP_NAME, <<"known-error-code">>, <<"686">>),
-    ErrorMsg = kapps_config:get_binary(?APP_NAME, <<"known-error-message">>, <<"PEBCAK">>),
-    lager:debug("sending known number response: ~s ~s", [ErrorCode, ErrorMsg]),
-    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-           ,{<<"Method">>, <<"error">>}
-           ,{<<"Route-Error-Code">>, ErrorCode}
-           ,{<<"Route-Error-Message">>, ErrorMsg}
-           ,{<<"Defer-Response">>, <<"true">>}
-            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-           ],
-    kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec send_unknown_number_response(kz_json:object(), ne_binary(), boolean()) -> 'ok'.
-send_unknown_number_response(JObj, Q, Reconcilable) ->
-    ErrorCode = kapps_config:get_binary(?APP_NAME, <<"unknown-error-code">>, <<"604">>),
-    ErrorMsg = kapps_config:get_binary(?APP_NAME, <<"unknown-error-message">>, <<"Nope Nope Nope">>),
-    lager:debug("sending unknown number response: ~s ~s", [ErrorCode, ErrorMsg]),
-    Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-           ,{<<"Method">>, <<"error">>}
-           ,{<<"Route-Error-Code">>, ErrorCode}
-           ,{<<"Route-Error-Message">>, ErrorMsg}
-           ,{<<"Defer-Response">>, (not Reconcilable)}
-            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-           ],
-    kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).

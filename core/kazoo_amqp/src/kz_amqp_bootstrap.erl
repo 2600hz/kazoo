@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Karls Hackity Hack....
 %%% We want to block during startup until we have a AMQP connection
@@ -36,7 +36,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -79,7 +79,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -93,7 +93,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -107,7 +107,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('timeout', State) ->
     _ = kz_amqp_sup:stop_bootstrap(),
     {'noreply', State};
@@ -145,19 +145,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec add_zones(kz_proplist()) -> 'ok'.
+-spec add_zones(kz_term:proplist()) -> 'ok'.
 add_zones([]) -> 'ok';
 add_zones([{ZoneName, Brokers}|Zones]) ->
     _ = add_brokers(Brokers, ZoneName),
     add_zones(Zones).
 
--spec add_brokers(ne_binaries(), atom()) -> 'ok'.
+-spec add_brokers(kz_term:ne_binaries(), atom()) -> 'ok'.
 add_brokers([], _) -> 'ok';
 add_brokers([Broker|Brokers], ZoneName) ->
     _ = kz_amqp_connections:add(Broker, ZoneName),
     add_brokers(Brokers, ZoneName).
 
--spec get_config() -> kz_proplist().
+-spec get_config() -> kz_term:proplist().
 get_config() ->
     get_from_zone(kz_config:zone()).
 %%     case kz_config:get(kz_config:get_node_section_name(), 'zone') of
@@ -165,18 +165,18 @@ get_config() ->
 %%         _Else -> get_from_amqp()
 %%     end.
 %%
-%% -spec get_from_amqp() -> kz_proplist().
+%% -spec get_from_amqp() -> kz_term:proplist().
 %% get_from_amqp() ->
 %%     [{'local', kz_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}].
 
--spec get_zones() -> kz_proplist().
+-spec get_zones() -> kz_term:proplist().
 get_zones() ->
     case kz_config:get_section('zone') of
         [] -> kz_config:get_section('amqp');
         Zones -> Zones
     end.
 
--spec get_from_zone(atom()) -> kz_proplist().
+-spec get_from_zone(atom()) -> kz_term:proplist().
 get_from_zone(ZoneName) ->
     Zones = get_zones(),
     Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
@@ -185,7 +185,7 @@ get_from_zone(ZoneName) ->
         _Else -> Props
     end.
 
--spec get_from_zone(atom(), kz_proplist(), dict:dict()) -> dict:dict().
+-spec get_from_zone(atom(), kz_term:proplist(), dict:dict()) -> dict:dict().
 get_from_zone(_, [], Dict) -> Dict;
 get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
     case props:get_first_defined(['name', 'zone'], Zone) of
@@ -196,7 +196,7 @@ get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
             get_from_zone(ZoneName, Zones, import_zone(RemoteZoneName, Zone, Dict))
     end.
 
--spec import_zone(atom(), kz_proplist(), dict:dict()) -> dict:dict().
+-spec import_zone(atom(), kz_term:proplist(), dict:dict()) -> dict:dict().
 import_zone(_, [], Dict) -> Dict;
 import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
     case dict:find(ZoneName, Dict) of

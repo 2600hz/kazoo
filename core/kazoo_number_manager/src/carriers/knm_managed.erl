@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -53,8 +53,8 @@ is_local() -> 'true'.
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
-                                      {error, any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
+                                              {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
@@ -64,7 +64,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", _/binary>>=Prefix, Quantity, Options) ->
@@ -73,7 +73,7 @@ find_numbers(<<"+", _/binary>>=Prefix, Quantity, Options) ->
 find_numbers(Prefix, Quantity, Options) ->
     find_numbers(<<"+",Prefix/binary>>, Quantity, Options).
 
--spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), knm_search:options()) ->
+-spec find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_binary(), knm_search:options()) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
 find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
@@ -90,7 +90,7 @@ find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
         Result -> Result
     end.
 
--spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), knm_search:options()) ->
+-spec do_find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_binary(), knm_search:options()) ->
                                         {'ok', list()} |
                                         {'error', any()}.
 do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
@@ -161,7 +161,7 @@ disconnect_number(Number) ->
                         %%                       ,{?PVT_ASSIGNED_TO, <<>>}
                        ]).
 
--spec generate_numbers(ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
+-spec generate_numbers(kz_term:ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
 generate_numbers(_AccountId, _Number, 0) -> 'ok';
 generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
   when Quantity > 0
@@ -170,11 +170,11 @@ generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
     {'ok', _JObj} = save_doc(AccountId, <<"+",(kz_term:to_binary(Number))/binary>>),
     generate_numbers(AccountId, Number+1, Quantity-1).
 
--spec import_numbers(ne_binary(), ne_binaries()) -> kz_json:object().
+-spec import_numbers(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 import_numbers(AccountId, Numbers) ->
     import_numbers(AccountId, Numbers, kz_json:new()).
 
--spec import_numbers(ne_binary(), ne_binaries(), kz_json:object()) -> kz_json:object().
+-spec import_numbers(kz_term:ne_binary(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
 import_numbers(_AccountId, [], JObj) -> JObj;
 import_numbers(AccountId, [Number | Numbers], JObj) ->
     NewJObj =
@@ -189,8 +189,8 @@ import_numbers(AccountId, [Number | Numbers], JObj) ->
         end,
     import_numbers(AccountId, Numbers, NewJObj).
 
--spec save_doc(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                            {'error', any()}.
+-spec save_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                                            {'error', any()}.
 save_doc(AccountId, Number) ->
     JObj = kz_json:from_list([{<<"_id">>, knm_converters:normalize(Number)}
                              ,{<<"pvt_account_id">>, AccountId}
@@ -210,7 +210,7 @@ save_doc(JObj) ->
         Result -> Result
     end.
 
--spec update_doc(knm_number:knm_number(), kz_proplist()) ->
+-spec update_doc(knm_number:knm_number(), kz_term:proplist()) ->
                         knm_number:knm_number().
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),

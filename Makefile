@@ -3,6 +3,10 @@ RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
+# You can override this when calling make, e.g. make JOBS=1
+# to prevent parallel builds, or make JOBS="8".
+JOBS ?= 1
+
 KAZOODIRS = core/Makefile applications/Makefile
 
 .PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell
@@ -13,7 +17,7 @@ compile: ACTION = all
 compile: deps kazoo
 
 $(KAZOODIRS):
-	$(MAKE) -C $(@D) $(ACTION)
+	@$(MAKE) -C $(@D) $(ACTION)
 
 clean: ACTION = clean
 clean: $(KAZOODIRS)
@@ -58,17 +62,17 @@ clean-deps:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2017.07.06/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
-	$(MAKE) -C deps/ all
+	@$(MAKE) -C deps/ all
 deps/Makefile: .erlang.mk
 	mkdir -p deps
-	$(MAKE) -f erlang.mk deps
+	@$(MAKE) -f erlang.mk deps
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
-	$(MAKE) -j -C core/ all
+	@$(MAKE) -j$(JOBS) -C core/ all
 
 apps: core
-	$(MAKE) -j -C applications/ all
+	@$(MAKE) -j$(JOBS) -C applications/ all
 
 kazoo: apps
 
@@ -128,12 +132,13 @@ read-release-cookie:
 
 fixture_shell: ERL_CRASH_DUMP = "$(ROOT)/$(shell date +%s)_ecallmgr_erl_crash.dump"
 fixture_shell: ERL_LIBS = "$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications:$(shell echo $(ROOT)/deps/rabbitmq_erlang_client-*/deps)"
+fixture_shell: NODE_NAME ?= fixturedb
 fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
-		erl -name fixturedb -s reloader "$$@"
+		erl -name '$(NODE_NAME)' -s reloader "$$@"
 
 DIALYZER ?= dialyzer
-DIZLYZER += --statistics --no_native
+DIALYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
@@ -158,7 +163,9 @@ dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
 dialyze-it: $(PLT)
-	@if [ -n "$(TO_DIALYZE)" ]; then $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); fi;
+	@if [ -n "$(TO_DIALYZE)" ]; then \
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); \
+	fi;
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -197,6 +204,9 @@ $(FMT):
 fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/master -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
+
+app_applications:
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
@@ -270,6 +280,7 @@ circle-docs:
 circle-codechecks:
 	@./scripts/code_checks.bash $(CHANGED)
 	@$(MAKE) code_checks
+	@$(MAKE) app_applications
 	@./scripts/validate-js.sh $(CHANGED)
 
 circle-fmt:
@@ -293,8 +304,7 @@ circle-unstaged:
 	echo 'Maybe try `make apis` and see if that fixes anything ;)'
 	exit 1
 
-circle-dialyze:
-	@$(MAKE) build-plt
+circle-dialyze: build-plt
 	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze
 
 circle-release:

@@ -29,7 +29,7 @@
 -type json_terms() :: [json_term()].
 
 -type json_array()  :: json_terms().
--type json_string() :: ne_binary() | atom().
+-type json_string() :: kz_term:ne_binary() | atom().
 -type json_number() :: integer() | float().
 
 -type object() :: ?JSON_WRAPPER(json_proplist()) | ?EMPTY_JSON_OBJECT.

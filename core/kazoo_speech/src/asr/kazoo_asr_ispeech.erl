@@ -10,7 +10,7 @@
 -define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
 -define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
 
--spec default_url() -> ne_binary().
+-spec default_url() -> kz_term:ne_binary().
 default_url() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/json">>).
 
@@ -18,7 +18,7 @@ default_url() ->
 default_api_key() ->
     kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>).
 
--spec default_preferred_content_type() -> ne_binary().
+-spec default_preferred_content_type() -> kz_term:ne_binary().
 default_preferred_content_type() ->
     PreferredContentType = kapps_config:get_binary(?MOD_CONFIG_CAT
                                                   ,<<"asr_preferred_content_type">>
@@ -26,7 +26,7 @@ default_preferred_content_type() ->
                                                   ),
     validate_content_type(PreferredContentType).
 
--spec validate_content_type(binary()) -> ne_binary().
+-spec validate_content_type(binary()) -> kz_term:ne_binary().
 validate_content_type(ContentType) ->
     case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
         'true' -> ContentType;
@@ -35,14 +35,14 @@ validate_content_type(ContentType) ->
             ?DEFAULT_ASR_CONTENT_TYPE
     end.
 
--spec freeform(binary(), ne_binary(), ne_binary(), kz_proplist()) -> asr_resp().
+-spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options) ->
     case maybe_convert_content(Content, ContentType) of
         {'error', _}=E -> E;
         {Content1, ContentType1} -> exec_freeform(Content1, ContentType1, Locale, Options)
     end.
 
--spec commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                       provider_return().
 commands(Content, Commands, ContentType, Locale, Options) ->
     case maybe_convert_content(Content, ContentType) of
@@ -50,7 +50,7 @@ commands(Content, Commands, ContentType, Locale, Options) ->
         {Content1, ContentType1} -> exec_commands(Content1, Commands, ContentType1, Locale, Options)
     end.
 
--spec make_request(ne_binary(), kz_proplist(), iolist(), kz_proplist()) -> kz_http:ret().
+-spec make_request(kz_term:ne_binary(), kz_term:proplist(), iolist(), kz_term:proplist()) -> kz_http:ret().
 make_request(BaseUrl, Headers, Body, Opts) ->
     case props:get_value('receiver', Opts) of
         Pid when is_pid(Pid) ->
@@ -83,7 +83,7 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
 %% Send a freeform ASR request to iSpeech
 %% @end
 %%--------------------------------------------------------------------
--spec exec_freeform(binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                            asr_resp().
 exec_freeform(Content, ContentType, Locale, Options) ->
     BaseUrl = default_url(),
@@ -108,7 +108,7 @@ exec_freeform(Content, ContentType, Locale, Options) ->
 %% Send a command list ASR request to iSpeech
 %% @end
 %%--------------------------------------------------------------------
--spec exec_commands(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec exec_commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                            provider_return().
 exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
     BaseUrl = default_url(),
@@ -140,7 +140,7 @@ exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
 %% Convert audio file/content-type if initial format not supported
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_convert_content(binary(), ne_binary()) -> conversion_return().
+-spec maybe_convert_content(binary(), kz_term:ne_binary()) -> conversion_return().
 maybe_convert_content(Content, ContentType) ->
     case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
         'true' -> {Content, ContentType};

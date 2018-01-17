@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
 %%% @end
@@ -17,7 +17,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec decode_base64(ne_binary()) -> {api_binary(), ne_binary()}.
+-spec decode_base64(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:ne_binary()}.
 decode_base64(Base64) ->
     case binary:split(Base64, <<",">>) of
         %% http://tools.ietf.org/html/rfc4648
@@ -30,20 +30,23 @@ decode_base64(Base64) ->
             {'undefined', corrected_base64_decode(Base64)}
     end.
 
--spec get_content_type(ne_binary()) -> api_binary().
+-spec get_content_type(kz_term:ne_binary()) -> kz_term:api_binary().
 get_content_type(MediaType) ->
     get_content_type(MediaType, kz_binary:truncate_left(MediaType, 6)).
 
 get_content_type(MediaType, <<"base64">>) ->
     get_content_type(kz_binary:truncate_right(MediaType, byte_size(MediaType) - 7), 'undefined');
 get_content_type(MediaType, _) ->
-    case cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2) of
+    try cow_http_hd:parse_accept(MediaType) of
         [{{Type, SubType, _Options}, _, _}] ->
-            kz_binary:join([Type, SubType], <<"/">>);
-        {'error', 'badarg'} -> 'undefined'
+            kz_binary:join([Type, SubType], <<"/">>)
+    catch
+        _E:_R ->
+            lager:debug("failed to parse ~p: ~s: ~p", [MediaType, _E, _R]),
+            {'error', 'badarg'}
     end.
 
--spec corrected_base64_decode(ne_binary()) -> ne_binary().
+-spec corrected_base64_decode(kz_term:ne_binary()) -> kz_term:ne_binary().
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 =:= 3 ->
     base64:decode(<<Base64/binary, "=">>);
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 =:= 2 ->

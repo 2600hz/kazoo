@@ -4,7 +4,7 @@
 
 -include("kazoo_proper.hrl").
 
--spec search_account_by_name(pqc_cb_api:state(), ne_binary()) -> pqc_cb_api:response().
+-spec search_account_by_name(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 search_account_by_name(API, Name) ->
     URL = search_url(API),
     RequestHeaders = pqc_cb_api:request_headers(API),

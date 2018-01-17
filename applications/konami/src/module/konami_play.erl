@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Play a media file
 %%% Data = {
@@ -29,7 +29,7 @@ handle(Data, Call) ->
     end,
     {'continue', Call}.
 
--spec play(kz_json:object(), kapps_call:call(), ne_binary()) -> any().
+-spec play(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> any().
 play(Data, Call, Media) ->
     case kz_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';
@@ -45,7 +45,7 @@ play(Data, Call, Media) ->
                                    ,Call
      ).
 
--spec leg(kz_json:object(), kapps_call:call()) -> ne_binary().
+-spec leg(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
 leg(Data, Call) ->
     case kz_json:get_value(<<"dtmf_leg">>, Data) =:= kapps_call:call_id(Call) of
         'true' ->
@@ -54,7 +54,7 @@ leg(Data, Call) ->
             play_on(kz_json:get_value(<<"leg">>, Data, <<"both">>), 'b')
     end.
 
--spec play_on(ne_binary(), 'a' | 'b') -> ne_binary().
+-spec play_on(kz_term:ne_binary(), 'a' | 'b') -> kz_term:ne_binary().
 play_on(<<"both">>, _) -> <<"Both">>;
 play_on(<<"self">>, 'a') -> <<"A">>;
 play_on(<<"self">>, 'b') -> <<"B">>;
@@ -74,7 +74,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
--spec number_builder_check(api_object()) -> api_object().
+-spec number_builder_check(kz_term:api_object()) -> kz_term:api_object().
 number_builder_check('undefined') ->
     number_builder_media(kz_json:new());
 number_builder_check(NumberJObj) ->
@@ -84,7 +84,7 @@ number_builder_check(NumberJObj) ->
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
     number_builder_check_option(NumberJObj, Option).
 
--spec number_builder_check_option(kz_json:object(), string()) -> api_object().
+-spec number_builder_check_option(kz_json:object(), string()) -> kz_term:api_object().
 number_builder_check_option(NumberJObj, "e") ->
     number_builder_media(NumberJObj);
 number_builder_check_option(_NumberJObj, "d") ->
@@ -98,18 +98,18 @@ number_builder_media(NumberJObj) ->
     {'ok', [Media]} = io:fread("What media file would you like to play? ", "~s"),
     number_builder_leg(NumberJObj, kz_term:to_binary(Media)).
 
--spec number_builder_leg(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec number_builder_leg(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 number_builder_leg(NumberJObj, Media) ->
     {'ok', [Leg]} = io:fread("On what leg of the call ('self', 'peer', or 'both')? ", "~s"),
     metaflow_jobj(NumberJObj, Media, kz_term:to_binary(Leg)).
 
--spec metaflow_jobj(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec metaflow_jobj(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 metaflow_jobj(NumberJObj, Media, Leg) ->
     kz_json:set_values([{<<"module">>, <<"play">>}
                        ,{<<"data">>, play_data(Media, Leg)}
                        ], NumberJObj).
 
--spec play_data(ne_binary(), ne_binary()) -> kz_json:object().
+-spec play_data(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 play_data(Media, Leg) ->
     kz_json:from_list([{<<"id">>, Media}
                       ,{<<"leg">>, Leg}

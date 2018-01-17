@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -68,11 +68,11 @@ validate(Context) ->
                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).
 
--spec maybe_add_name(kz_proplist()) -> kz_json:object().
+-spec maybe_add_name(kz_term:proplist()) -> kz_json:object().
 maybe_add_name(KVs) ->
     maybe_add_name(KVs, kz_json:new()).
 
--spec maybe_add_name(kz_proplist(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_name(kz_term:proplist(), kz_json:object()) -> kz_json:object().
 maybe_add_name([], Acc) -> Acc;
 maybe_add_name([{K, V} | KVs], Acc0)
   when is_list(V) ->

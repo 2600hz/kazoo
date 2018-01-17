@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,11 +18,11 @@
 %% ====================================================================
 -export([store_file/3, store_file/4]).
 
--spec store_file(ne_binary(), ne_binary(), ne_binary() | function()) -> 'ok' | {'error', any()}.
+-spec store_file(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | function()) -> 'ok' | {'error', any()}.
 store_file(Node, Filename, Url) ->
     store_file(Node, Filename, Url, #{}).
 
--spec store_file(ne_binary(), ne_binary(), ne_binary() | function(), map()) -> 'ok' | {'error', any()}.
+-spec store_file(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | function(), map()) -> 'ok' | {'error', any()}.
 store_file(Node, Filename, Url, Map) ->
     App = kz_util:calling_app(),
     store_file(Filename, Url, storage_retries(App), storage_timeout(App), Map#{media_server => Node}).
@@ -32,7 +32,7 @@ store_file(Node, Filename, Url, Map) ->
 %% ====================================================================
 
 
--spec store_file_args(ne_binary(), ne_binary() | function()) -> kz_proplist().
+-spec store_file_args(kz_term:ne_binary(), kz_term:ne_binary() | function()) -> kz_term:proplist().
 store_file_args(Filename, UrlFun) ->
     Url = case is_function(UrlFun, 0) of
               'true' -> UrlFun();
@@ -43,7 +43,7 @@ store_file_args(Filename, UrlFun) ->
     ,{<<"Http-Method">>, <<"put">>}
     ].
 
--spec store_file(ne_binary(), ne_binary() | function(), pos_integer(), kz_timeout(), map()) ->
+-spec store_file(kz_term:ne_binary(), kz_term:ne_binary() | function(), pos_integer(), timeout(), map()) ->
                         'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
     Msg = case kz_maps:get('alert_msg', Map) of
@@ -60,7 +60,7 @@ store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
           end,
     do_store_file(Tries, Timeout, API, Msg, Map).
 
--spec do_store_file(pos_integer(), kz_timeout(), function(), ne_binary(), map()) ->
+-spec do_store_file(pos_integer(), timeout(), function(), kz_term:ne_binary(), map()) ->
                            'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, #{media_server := Node}=Map) ->
     Payload = API(),
@@ -86,8 +86,8 @@ do_store_file(Tries, Timeout, API, Msg, #{media_server := Node}=Map) ->
             retry_store_file(Tries - 1, Timeout, API, Msg, kz_term:to_binary(Error), Map)
     end.
 
--spec retry_store_file(integer(), kz_timeout(), kz_proplist() | function()
-                      ,ne_binary(), ne_binary(), map()) ->
+-spec retry_store_file(integer(), timeout(), kz_term:proplist() | function()
+                      ,kz_term:ne_binary(), kz_term:ne_binary(), map()) ->
                               'ok' | {'error', any()}.
 retry_store_file(0, _Timeout, _API, Msg, Error, Map) ->
     lager:critical("~s : ~s", [Msg, Error]),
@@ -108,10 +108,10 @@ maybe_add_debug_data(JObj, Map) ->
         Data -> Map#{error_details => Data}
     end.
 
--spec storage_timeout(ne_binary()) -> pos_integer().
+-spec storage_timeout(kz_term:ne_binary()) -> pos_integer().
 storage_timeout(App) ->
     ?STORAGE_TIMEOUT(App).
 
--spec storage_retries(ne_binary()) -> pos_integer().
+-spec storage_retries(kz_term:ne_binary()) -> pos_integer().
 storage_retries(App) ->
     ?STORAGE_RETRIES(App).

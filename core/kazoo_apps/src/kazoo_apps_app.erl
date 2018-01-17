@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -15,15 +15,16 @@
 -export([start/0]).
 
 
--spec start() -> {'ok', atoms()}.
+-spec start() -> {'ok', kz_term:atoms()}.
 start() ->
+    _ = io:setopts('user', [{'encoding', 'unicode'}]),
     {'ok', _Apps} = application:ensure_all_started(?APP).
 
 %% Application callbacks
 
 %% @public
 %% @doc Implement the application start behaviour
--spec start(application:start_type(), any()) -> startapp_ret().
+-spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     kazoo_apps_sup:start_link().
 

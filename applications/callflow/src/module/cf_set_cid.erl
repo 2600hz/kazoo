@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% params:
@@ -34,13 +34,13 @@ handle(Data, Call) ->
     cf_exe:continue(Call1).
 
 
--spec set_cid_name(api_binary(), kapps_call:call()) -> kapps_call:call().
+-spec set_cid_name(kz_term:api_binary(), kapps_call:call()) -> kapps_call:call().
 set_cid_name(<<>>, Call) ->
     kapps_call:kvs_erase('rewrite_cid_name', Call);
 set_cid_name(Name, Call) ->
     kapps_call:kvs_store('rewrite_cid_name', Name, Call).
 
--spec set_cid_number(api_binary(), kapps_call:call()) -> kapps_call:call().
+-spec set_cid_number(kz_term:api_binary(), kapps_call:call()) -> kapps_call:call().
 set_cid_number(<<>>, Call) ->
     kapps_call:kvs_erase('rewrite_cid_number', Call);
 set_cid_number(Number, Call) ->

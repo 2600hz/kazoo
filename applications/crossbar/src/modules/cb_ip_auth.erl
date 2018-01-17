@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Account IP auth module
 %%%
@@ -82,7 +82,7 @@ authenticate_nouns(_Context, [{<<"ip_auth">>, _}]) ->
 authenticate_nouns(Context, _Nouns) ->
     authenticate_ip(Context, cb_context:client_ip(Context)).
 
--spec authenticate_ip(cb_context:context(), ne_binary()) ->
+-spec authenticate_ip(cb_context:context(), kz_term:ne_binary()) ->
                              'false' |
                              {'true', cb_context:context()}.
 authenticate_ip(Context, IpKey) ->

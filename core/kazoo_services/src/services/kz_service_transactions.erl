@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -20,12 +20,12 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec current_billing_period(ne_binary(), atom()) ->
+-spec current_billing_period(kz_term:ne_binary(), atom()) ->
                                     kz_json:objects() | atom().
 current_billing_period(AccountId, 'subscriptions') ->
     kz_bookkeeper_braintree:subscriptions(AccountId).
 
--spec current_billing_period(ne_binary(), atom(), {gregorian_seconds(), gregorian_seconds()}) ->
+-spec current_billing_period(kz_term:ne_binary(), atom(), {kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}) ->
                                     {'error', 'not_found'} |
                                     {'error', 'unknown_error'} |
                                     {'ok', kz_transaction:transactions()}.

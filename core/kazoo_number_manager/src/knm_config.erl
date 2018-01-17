@@ -27,11 +27,11 @@ should_age() ->
 should_permanently_delete() ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, 'false').
 
--spec released_state() -> ne_binary().
+-spec released_state() -> kz_term:ne_binary().
 released_state() ->
     kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE).
 
--spec locality_url() -> api_ne_binary().
+-spec locality_url() -> kz_term:api_ne_binary().
 locality_url() ->
     kapps_config:get_ne_binary(?LOCALITY_CONFIG_CAT, <<"url">>, ?DEFAULT_LOCALITY_URL).
 

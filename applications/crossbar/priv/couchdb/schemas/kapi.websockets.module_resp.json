@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.websockets.module_resp",
+    "description": "AMQP API for websockets.module_resp",
+    "properties": {
+        "Error": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "websockets"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "module_resp"
+            ],
+            "type": "string"
+        },
+        "Persisted": {
+            "type": "boolean"
+        },
+        "Started": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "Persisted",
+        "Started"
+    ],
+    "type": "object"
+}

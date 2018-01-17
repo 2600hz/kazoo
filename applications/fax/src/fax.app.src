@@ -1,29 +1,15 @@
-{application, fax,
- [
-  {description, "Fax - Why is everyone faxinated with fax?"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [fax_cache, fax_worker_pool_sup, fax_requests_sup, fax_xmpp_sup, fax_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , public_key
-                 , inets
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_apps
-                 , kazoo_data
-                 , kazoo_globals
-                 , kazoo_modb
-                 , kazoo_oauth
-
-                 , cowboy
-                 , escalus
-                 , gen_smtp
-                 , lager
-                 , poolboy
-                 , ranch
-                 ]},
-  {mod, {fax_app, []}}
- ]}.
+{application,fax,
+             [{applications,[cowboy,crypto,escalus,exml,gen_smtp,kazoo,
+                             kazoo_amqp,kazoo_apps,kazoo_caches,kazoo_call,
+                             kazoo_config,kazoo_data,kazoo_documents,
+                             kazoo_globals,kazoo_media,kazoo_modb,
+                             kazoo_number_manager,kazoo_oauth,kazoo_schemas,
+                             kazoo_services,kazoo_stdlib,kazoo_web,kernel,
+                             lager,stdlib]},
+              {description,"Fax - Why is everyone faxinated with fax?"},
+              {env,[{is_kazoo_app,true}]},
+              {mod,{fax_app,[]}},
+              {modules,[]},
+              {registered,[fax_cache,fax_worker_pool_sup,fax_requests_sup,
+                           fax_xmpp_sup,fax_sup]},
+              {vsn,"4.0.0"}]}.

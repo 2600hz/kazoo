@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Track the FreeSWITCH channel information, and provide accessors
 %%% @end
@@ -89,7 +89,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
                                                          ,{'bindings', ?BINDINGS}
@@ -98,7 +98,7 @@ start_link() ->
                                                          ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
 
--spec sync(atom(), ne_binaries()) -> 'ok'.
+-spec sync(atom(), kz_term:ne_binaries()) -> 'ok'.
 sync(Node, Channels) ->
     gen_server:cast(?SERVER, {'sync_channels', Node, Channels}).
 
@@ -110,7 +110,7 @@ summary() ->
                  }],
     print_summary(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
--spec summary(text()) -> 'ok'.
+-spec summary(kz_term:text()) -> 'ok'.
 summary(Node) when not is_atom(Node) ->
     summary(kz_term:to_atom(Node, 'true'));
 summary(Node) ->
@@ -128,7 +128,7 @@ details() ->
                  }],
     print_details(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
--spec details(text()) -> 'ok'.
+-spec details(kz_term:text()) -> 'ok'.
 details(UUID) when not is_binary(UUID) ->
     details(kz_term:to_binary(UUID));
 details(UUID) ->
@@ -144,7 +144,7 @@ show_all() ->
                       [ecallmgr_fs_channel:to_json(Channel) | Acc]
               end, [], ?CHANNELS_TBL).
 
--spec per_minute_accounts() -> ne_binaries().
+-spec per_minute_accounts() -> kz_term:ne_binaries().
 per_minute_accounts() ->
     MatchSpec = [{#channel{account_id = '$1'
                           ,account_billing = <<"per_minute">>
@@ -165,7 +165,7 @@ per_minute_accounts() ->
                 ],
     lists:usort(lists:flatten(ets:select(?CHANNELS_TBL, MatchSpec))).
 
--spec per_minute_channels(ne_binary()) -> [{atom(), ne_binary()}].
+-spec per_minute_channels(kz_term:ne_binary()) -> [{atom(), kz_term:ne_binary()}].
 per_minute_channels(AccountId) ->
     MatchSpec = [{#channel{node = '$1'
                           ,uuid = '$2'
@@ -196,23 +196,23 @@ flush_node(Node) ->
 new(#channel{}=Channel) ->
     gen_server:call(?SERVER, {'new_channel', Channel}).
 
--spec destroy(ne_binary(), atom()) -> 'ok'.
+-spec destroy(kz_term:ne_binary(), atom()) -> 'ok'.
 destroy(UUID, Node) ->
     gen_server:cast(?SERVER, {'destroy_channel', UUID, Node}).
 
--spec update(ne_binary(), pos_integer(), any()) -> 'ok'.
+-spec update(kz_term:ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
 
 
--spec updates(ne_binary(), channel_updates()) -> 'ok'.
+-spec updates(kz_term:ne_binary(), channel_updates()) -> 'ok'.
 updates(UUID, Updates) ->
     gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
 
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CHANNELS_TBL, 'size').
 
--spec match_presence(ne_binary()) -> kz_proplist_kv(ne_binary(), atom()).
+-spec match_presence(kz_term:ne_binary()) -> kz_term:proplist_kv(kz_term:ne_binary(), atom()).
 match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1'
                           ,presence_id = '$2'
@@ -223,7 +223,7 @@ match_presence(PresenceId) ->
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
 
--spec handle_query_auth_id(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_query_auth_id(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_query_auth_id(JObj, _Props) ->
     'true' = kapi_call:query_auth_id_req_v(JObj),
     AuthId = kz_json:get_value(<<"Auth-ID">>, JObj),
@@ -238,7 +238,7 @@ handle_query_auth_id(JObj, _Props) ->
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     kapi_call:publish_query_auth_id_resp(ServerId, Resp).
 
--spec handle_query_user_channels(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_query_user_channels(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_query_user_channels(JObj, _Props) ->
     'true' = kapi_call:query_user_channels_req_v(JObj),
     UserChannels0 = case kz_json:get_value(<<"Realm">>, JObj) of
@@ -256,7 +256,7 @@ handle_query_user_channels(JObj, _Props) ->
     UserChannels2 = lists:keymerge(1, UserChannels0, UserChannels1),
     handle_query_users_channels(JObj, UserChannels2).
 
--spec handle_query_users_channels(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_query_users_channels(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_query_users_channels(JObj, Cs) ->
     Channels = [Channel || {_, Channel} <- Cs],
     send_user_query_resp(JObj, Channels).
@@ -284,7 +284,7 @@ send_user_query_resp(JObj, Cs) ->
     lager:debug("sending back channel data to ~s", [ServerId]),
     kapi_call:publish_query_user_channels_resp(ServerId, Resp).
 
--spec handle_query_account_channels(kz_json:object(), ne_binary()) -> 'ok'.
+-spec handle_query_account_channels(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_query_account_channels(JObj, _) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     case find_account_channels(AccountId) of
@@ -302,7 +302,7 @@ send_account_query_resp(JObj, Cs) ->
     lager:debug("sending back channel data to ~s", [ServerId]),
     kapi_call:publish_query_account_channels_resp(ServerId, Resp).
 
--spec handle_query_channels(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_query_channels(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_query_channels(JObj, _Props) ->
     'true' = kapi_call:query_channels_req_v(JObj),
     Fields = kz_json:get_value(<<"Fields">>, JObj, []),
@@ -321,7 +321,7 @@ handle_query_channels(JObj, _Props) ->
             kapi_call:publish_query_channels_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec handle_channel_status(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_channel_status(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     'true' = kapi_call:channel_status_req_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -353,14 +353,14 @@ handle_channel_status(JObj, _Props) ->
             kapi_call:publish_channel_status_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec maybe_send_empty_channel_resp(ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_send_empty_channel_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_empty_channel_resp(CallId, JObj) ->
     case kz_json:is_true(<<"Active-Only">>, JObj) of
         'true' -> 'ok';
         'false' -> send_empty_channel_resp(CallId, JObj)
     end.
 
--spec send_empty_channel_resp(ne_binary(), kz_json:object()) -> 'ok'.
+-spec send_empty_channel_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_empty_channel_resp(CallId, JObj) ->
     Resp = [{<<"Call-ID">>, CallId}
            ,{<<"Status">>, <<"terminated">>}
@@ -414,7 +414,7 @@ start_cleanup_ref() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'new_channel', Channel}, _, State) ->
     ets:insert(?CHANNELS_TBL, Channel),
     {'reply', 'ok', State};
@@ -518,7 +518,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, _Msg}, #state{max_channel_cleanup_ref=Ref}=State) ->
     maybe_cleanup_old_channels(),
     {'noreply', State#state{max_channel_cleanup_ref=start_cleanup_ref()}};
@@ -569,7 +569,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec find_by_auth_id(ne_binary()) ->
+-spec find_by_auth_id(kz_term:ne_binary()) ->
                              {'ok', kz_json:objects()} |
                              {'error', 'not_found'}.
 find_by_auth_id(AuthorizingId) ->
@@ -584,7 +584,7 @@ find_by_auth_id(AuthorizingId) ->
                            ]}
     end.
 
--spec has_channels_for_owner(ne_binary()) -> boolean().
+-spec has_channels_for_owner(kz_term:ne_binary()) -> boolean().
 has_channels_for_owner(OwnerId) ->
     MatchSpec = [{#channel{owner_id = '$1'
                           ,_ = '_'
@@ -597,8 +597,8 @@ has_channels_for_owner(OwnerId) ->
     lager:info("Found ~p channels", [Count]),
     Count > 0.
 
--spec find_by_authorizing_id(ne_binaries()) -> [] | kz_proplist().
--spec find_by_authorizing_id(ne_binaries(), kz_proplist()) -> [] | kz_proplist().
+-spec find_by_authorizing_id(kz_term:ne_binaries()) -> [] | kz_term:proplist().
+-spec find_by_authorizing_id(kz_term:ne_binaries(), kz_term:proplist()) -> [] | kz_term:proplist().
 find_by_authorizing_id(AuthIds) ->
     find_by_authorizing_id(AuthIds, []).
 
@@ -615,7 +615,7 @@ find_by_authorizing_id([AuthId|AuthIds], Acc) ->
             find_by_authorizing_id(AuthIds, lists:keymerge(1, Acc, Cs))
     end.
 
--spec find_by_user_realm(api_binary() | ne_binaries(), ne_binary()) -> [] | kz_proplist().
+-spec find_by_user_realm(kz_term:api_binary() | kz_term:ne_binaries(), kz_term:ne_binary()) -> [] | kz_term:proplist().
 find_by_user_realm('undefined', Realm) ->
     Pattern = #channel{realm=kz_term:to_lower_binary(Realm)
                       ,_='_'},
@@ -665,7 +665,7 @@ find_by_user_realm(Username, Realm) ->
             ]
     end.
 
--spec find_account_channels(ne_binary()) ->
+-spec find_account_channels(kz_term:ne_binary()) ->
                                    {'ok', kz_json:objects()} |
                                    {'error', 'not_found'}.
 find_account_channels(<<"all">>) ->
@@ -685,18 +685,18 @@ find_account_channels(AccountId) ->
                    ]}
     end.
 
--spec build_matchspec_ors(ne_binaries()) -> tuple() | 'false'.
+-spec build_matchspec_ors(kz_term:ne_binaries()) -> tuple() | 'false'.
 build_matchspec_ors(Usernames) ->
     lists:foldl(fun build_matchspec_ors_fold/2
                ,'false'
                ,Usernames
                ).
 
--spec build_matchspec_ors_fold(ne_binary(), tuple() | 'false') -> tuple().
+-spec build_matchspec_ors_fold(kz_term:ne_binary(), tuple() | 'false') -> tuple().
 build_matchspec_ors_fold(Username, Acc) ->
     {'or', {'=:=', '$1', kz_term:to_lower_binary(Username)}, Acc}.
 
--spec query_channels(ne_binaries(), api_binary()) -> kz_json:object().
+-spec query_channels(kz_term:ne_binaries(), kz_term:api_binary()) -> kz_json:object().
 query_channels(Fields, 'undefined') ->
     query_channels(ets:match_object(?CHANNELS_TBL, #channel{_='_'}, 1)
                   ,Fields
@@ -708,7 +708,7 @@ query_channels(Fields, CallId) ->
                   ,kz_json:new()
                   ).
 
--spec query_channels({[channel()], ets:continuation()} | '$end_of_table', ne_binary() | ne_binaries(), kz_json:object()) ->
+-spec query_channels({[channel()], ets:continuation()} | '$end_of_table', kz_term:ne_binary() | kz_term:ne_binaries(), kz_json:object()) ->
                             kz_json:object().
 query_channels('$end_of_table', _, Channels) -> Channels;
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
@@ -793,7 +793,7 @@ handle_channels_disconnected(LocalChannels) ->
 handle_channel_disconnected(Channel) ->
     publish_channel_connection_event(Channel, [{<<"Event-Name">>, <<"CHANNEL_DISCONNECTED">>}]).
 
--spec publish_channel_connection_event(channel(), kz_proplist()) -> 'ok'.
+-spec publish_channel_connection_event(channel(), kz_term:proplist()) -> 'ok'.
 publish_channel_connection_event(#channel{uuid=UUID
                                          ,direction=Direction
                                          ,node=Node
@@ -819,7 +819,7 @@ publish_channel_connection_event(#channel{uuid=UUID
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
     lager:debug("published channel connection event for ~s", [UUID]).
 
--spec channel_call_state(boolean()) -> api_binary().
+-spec channel_call_state(boolean()) -> kz_term:api_binary().
 channel_call_state('true') ->
     <<"ANSWERED">>;
 channel_call_state('false') ->
@@ -844,7 +844,7 @@ connection_ccvs(#channel{account_id=AccountId
       ,{<<"Owner-ID">>, OwnerId}
       ]).
 
--spec connection_cavs(channel()) -> api_object().
+-spec connection_cavs(channel()) -> kz_term:api_object().
 connection_cavs(#channel{cavs=CAVs}) when is_list(CAVs) ->
     kz_json:from_list(CAVs);
 connection_cavs(#channel{}) -> 'undefined'.
@@ -900,7 +900,7 @@ cleanup_old_channels(MaxAge) ->
             N
     end.
 
--type old_channel() :: [ne_binary() | atom() | gregorian_seconds()].
+-type old_channel() :: [kz_term:ne_binary() | atom() | kz_time:gregorian_seconds()].
 -type old_channels() :: [old_channel(),...].
 
 -spec hangup_old_channels(old_channels()) -> 'ok'.

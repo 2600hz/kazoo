@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz Inc
+%%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -66,13 +66,13 @@ bindings(_Context, #{account_id := AccountId
 %%% Internal functions
 %%%==================================================================
 
--spec command_binding_options(ne_binary()) -> kz_proplist().
+-spec command_binding_options(kz_term:ne_binary()) -> kz_term:proplist().
 command_binding_options(ConfId) ->
     [{'restrict_to', [{'command', ConfId}]}
     ,'federate'
     ].
 
--spec event_binding_options(ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+-spec event_binding_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 event_binding_options(AccountId, ConferenceId, CallId) ->
     [{'restrict_to', [{'event', [{'account_id', AccountId}
                                 ,{'conference_id', ConferenceId}

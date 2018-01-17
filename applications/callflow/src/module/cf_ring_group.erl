@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -39,15 +39,14 @@ handle(Data, Call) ->
 maybe_set_alert(Data, Call) ->
     AlertPath = custom_alert_path(kapps_call:inception(Call)),
     case kz_json:get_ne_binary_value([<<"ringtones">>, AlertPath], Data) of
-        'undefined' ->
-            Call;
+        'undefined' -> Call;
         Alert ->
             lager:debug("setting alert to ~s", [Alert]),
-            kapps_call:set_custom_sip_header(<<"Alert-Info">>, Alert, Call)
+            kapps_call:kvs_store(<<"Override-Ringtone">>, Alert, Call)
     end.
 
--spec custom_alert_path(api_binary()) -> ne_binary().
-custom_alert_path(_Inception='undefined') -> <<"internal">>;
+-spec custom_alert_path(kz_term:api_ne_binary()) -> kz_term:ne_binary().
+custom_alert_path('undefined') -> <<"internal">>;
 custom_alert_path(_Inception) -> <<"external">>.
 
 -spec repeat(kz_json:object(), kapps_call:call(), non_neg_integer()) -> 'ok'.
@@ -114,7 +113,7 @@ attempt_endpoints(Endpoints, Data, Call) ->
 get_endpoints(Data, Call) ->
     receive_endpoints(start_builders(Data, Call)).
 
--spec receive_endpoints(pids()) -> kz_json:objects().
+-spec receive_endpoints(kz_term:pids()) -> kz_json:objects().
 receive_endpoints(Builders) ->
     lists:foldl(fun receive_endpoint_fold/2, [], Builders).
 
@@ -126,13 +125,13 @@ receive_endpoint_fold(Pid, Acc) ->
         {Pid, _} -> Acc
     end.
 
--spec start_builders(kz_json:object(), kapps_call:call()) -> pids().
+-spec start_builders(kz_json:object(), kapps_call:call()) -> kz_term:pids().
 start_builders(Data, Call) ->
     [start_builder(EndpointId, Member, Call)
      || {EndpointId, Member} <- resolve_endpoint_ids(Data, Call)
     ].
 
--spec start_builder(ne_binary(), kz_json:object(), kapps_call:call()) -> pid().
+-spec start_builder(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> pid().
 start_builder(EndpointId, Member, Call) ->
     S = self(),
     kz_util:spawn(
@@ -147,10 +146,10 @@ is_member_active(Member) ->
     DisableUntil = kz_json:get_value(<<"disable_until">>, Member, 0),
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()) > DisableUntil.
 
--type endpoint() :: {ne_binary(), kz_json:object()}.
+-type endpoint() :: {kz_term:ne_binary(), kz_json:object()}.
 -type endpoints() :: [endpoint()].
 
--type weighted_endpoint() :: {integer(), {ne_binary(), kz_json:object()}}.
+-type weighted_endpoint() :: {integer(), {kz_term:ne_binary(), kz_json:object()}}.
 -type weighted_endpoints() :: [weighted_endpoint()].
 
 -spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> endpoints().
@@ -171,7 +170,7 @@ resolve_endpoint_ids(Data, Call) ->
     Strategy = strategy(Data),
     order_endpoints(Strategy, FilteredEndpoints).
 
--spec order_endpoints(ne_binary(), weighted_endpoints()) -> endpoints().
+-spec order_endpoints(kz_term:ne_binary(), weighted_endpoints()) -> endpoints().
 order_endpoints(Method, Endpoints)
   when Method =:= ?DIAL_METHOD_SIMUL
        orelse Method =:= ?DIAL_METHOD_SINGLE ->
@@ -179,7 +178,7 @@ order_endpoints(Method, Endpoints)
 order_endpoints(<<"weighted_random">>, Endpoints) ->
     weighted_random_sort(Endpoints).
 
--type endpoint_intermediate() :: {ne_binary(), ne_binary(), group_weight(), api_object()}.
+-type endpoint_intermediate() :: {kz_term:ne_binary(), kz_term:ne_binary(), group_weight(), kz_term:api_object()}.
 -type endpoint_intermediates() :: [endpoint_intermediate()].
 
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->
@@ -215,7 +214,7 @@ resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
             [{Type, Id, Weight, Member}|EndpointIds]
     end.
 
--spec get_user_endpoint_ids(kz_json:object(), endpoint_intermediates(), ne_binary(), group_weight(), kapps_call:call()) ->
+-spec get_user_endpoint_ids(kz_json:object(), endpoint_intermediates(), kz_term:ne_binary(), group_weight(), kapps_call:call()) ->
                                    endpoint_intermediates().
 get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
     lists:foldr(fun(EndpointId, Acc) ->
@@ -229,7 +228,7 @@ get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
                ,kz_attributes:owned_by(Id, <<"device">>, Call)
                ).
 
--spec get_group_members(kz_json:object(), ne_binary(), group_weight(), kz_json:object(), kapps_call:call()) -> kz_json:objects().
+-spec get_group_members(kz_json:object(), kz_term:ne_binary(), group_weight(), kz_json:object(), kapps_call:call()) -> kz_json:objects().
 get_group_members(Member, Id, GroupWeight, Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:open_cache_doc(AccountDb, Id) of
@@ -286,7 +285,7 @@ order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member) ->
             orddict:store(Weight, GroupMember, Acc)
     end.
 
--spec create_group_member(ne_binary(), kz_json:object(), group_weight(), kz_json:object()) ->
+-spec create_group_member(kz_term:ne_binary(), kz_json:object(), group_weight(), kz_json:object()) ->
                                  kz_json:object().
 create_group_member(Key, Endpoint, GroupWeight, Member) ->
     DefaultDelay = kz_json:get_integer_value(<<"delay">>, Member),
@@ -352,11 +351,11 @@ group_weight(Endpoint, Default) ->
         N -> N
     end.
 
--spec strategy(kz_json:object()) -> ne_binary().
+-spec strategy(kz_json:object()) -> kz_term:ne_binary().
 strategy(Data) ->
     kz_json:get_binary_value(<<"strategy">>, Data, ?DIAL_METHOD_SIMUL).
 
--spec freeswitch_strategy(kz_json:object()) -> ne_binary().
+-spec freeswitch_strategy(kz_json:object()) -> kz_term:ne_binary().
 freeswitch_strategy(Data) ->
     case strategy(Data) of
         ?DIAL_METHOD_SIMUL -> ?DIAL_METHOD_SIMUL;

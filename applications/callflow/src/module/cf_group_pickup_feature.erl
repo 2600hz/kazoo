@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%% Pickup a call in the specified group/device/user/extension
 %%%
@@ -76,9 +76,9 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec build_pickup_params(ne_binary(), ne_binary(), kapps_call:call()) ->
-                                 {'ok', kz_proplist()} |
-                                 {'error', ne_binary()}.
+-spec build_pickup_params(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
+                                 {'ok', kz_term:proplist()} |
+                                 {'error', kz_term:ne_binary()}.
 build_pickup_params(Number, <<"device">>, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of
@@ -105,9 +105,9 @@ build_pickup_params(_ ,'undefined', _) ->
 build_pickup_params(_, Other, _) ->
     {'error', <<Other/binary," not implemented">>}.
 
--spec params_from_data(ne_binary(), kz_json:object(), kapps_call:call()) ->
-                              {'ok', kz_proplist()} |
-                              {'error', ne_binary()}.
+-spec params_from_data(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
+                              {'ok', kz_term:proplist()} |
+                              {'error', kz_term:ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
     EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     {'ok', [{<<"user_id">>, EndpointId}]};

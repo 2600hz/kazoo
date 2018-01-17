@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -29,15 +29,15 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_conference_control(node(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+-spec start_conference_control(node(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret().
 start_conference_control(Node, ConferenceId, InstanceId) ->
     supervisor:start_child(?SERVER, [Node, ConferenceId, InstanceId]).
 
--spec stop_conference_control(node(), ne_binary(), ne_binary()) -> any().
+-spec stop_conference_control(node(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 stop_conference_control(Node, ConferenceId, InstanceId) ->
     [Pid ! {'stop', {Node, ConferenceId, InstanceId}}
      || {_, Pid, _, _}
@@ -57,7 +57,7 @@ stop_conference_control(Node, ConferenceId, InstanceId) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,8 +18,8 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binaries()) -> {'ok', kz_json:object()} |
-                              {'error', 'lookup_failed' | 'missing_url'}.
+-spec fetch(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+                                      {'error', 'lookup_failed' | 'missing_url'}.
 fetch(Numbers) when is_list(Numbers)->
     case knm_config:locality_url() of
         'undefined' ->
@@ -35,8 +35,8 @@ fetch(Numbers) when is_list(Numbers)->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prefix(text(), text(), text()) -> {'ok', kz_json:object()} |
-                                        {'error', kz_json:object()}.
+-spec prefix(kz_term:text(), kz_term:text(), kz_term:text()) -> {'ok', kz_json:object()} |
+                                                                {'error', kz_json:object()}.
 prefix(Url, Country, City) ->
     ReqParam = kz_util:uri_encode(City),
     Uri = lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam]),
@@ -59,7 +59,7 @@ prefix(Url, Country, City) ->
 %%% Internal functions
 %%%===================================================================
 
--spec fetch_req(ne_binaries(), ne_binary()) -> kz_http:http_ret().
+-spec fetch_req(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_http:http_ret().
 fetch_req(Numbers, Url) ->
     ReqBody = kz_json:from_list([{<<"data">>, Numbers}]),
     Uri = <<Url/binary, "/locality/metadata">>,

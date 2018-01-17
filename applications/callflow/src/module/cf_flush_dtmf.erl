@@ -27,6 +27,6 @@ handle(Data, Call) ->
     Collection = collection_name(Data),
     cf_exe:continue(kapps_call:set_dtmf_collection('undefined', Collection, Call)).
 
--spec collection_name(kz_json:object()) -> ne_binary().
+-spec collection_name(kz_json:object()) -> kz_term:ne_binary().
 collection_name(Data) ->
     kz_json:get_ne_binary_value(<<"collection_name">>, Data, <<"default">>).
