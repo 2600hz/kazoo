@@ -81,13 +81,22 @@ open_cache_doc(Server, DbName, DocId, Options) ->
                              data_error().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
-    lager:debug("misses: ~p", [MissedDocIds]),
-    case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
+    case MissedDocIds =/= []
+        andalso kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options))
+    of
         {error, _}=E -> E;
-        {ok, Opened} ->
-            FromBulk = disassemble_jobjs(DbName, Options, Opened),
-            {ok, assemble_jobjs(DocIds, Cached, FromBulk)}
+        Other ->
+            prepare_jobjs(DbName, DocIds, Options, Cached, Other)
     end.
+
+-spec prepare_jobjs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist(), docs_returned(), {ok, kz_json:objects()} | 'false') ->
+                           {'ok', kz_json:objects()} |
+                           data_error().
+prepare_jobjs(DbName, DocIds, Options, Cached, false) ->
+    prepare_jobjs(DbName, DocIds, Options, Cached, {ok, []});
+prepare_jobjs(DbName, DocIds, Options, Cached, {ok, Opened}) ->
+    FromBulk = disassemble_jobjs(DbName, Options, Opened),
+    {ok, assemble_jobjs(DocIds, Cached, FromBulk)}.
 
 fetch_locals(DbName, DocIds) ->
     F = fun (DocId, {Cached, Missed}) ->
