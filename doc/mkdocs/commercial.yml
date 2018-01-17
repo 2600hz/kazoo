@@ -2,8 +2,8 @@ site_name: Commercial Reference
 
 pages:
 - 'index.md'
-- 'the Basics':
-  - 'Quick Start'
+- 'The Basics':
+  - 'Quick Start':
     - 'applications/crossbar/doc/basics.md'
     - 'applications/crossbar/doc/api_authentication.md'
   - 'API Basics':
@@ -144,8 +144,8 @@ pages:
     - 'applications/webhooks/doc/README.md' ###
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
-    
-- 'Administration APIs'
+
+- 'Administration APIs':
   - 'Billing':
     - 'applications/crossbar/doc/cdrs.md'
     - 'applications/crossbar/doc/ledgers.md'
@@ -162,7 +162,7 @@ pages:
       - 'Netherlands - Amsterdam': 'doc/internationalization/examples/dialplan/NL_Amsterdam.md'
       - ' Netherlands - Rotterdam': 'doc/internationalization/examples/dialplan/NL_Rotterdam.md'
   - 'System Prompts': 'doc/internationalization/prompts.md'
-  
+
 - 'Applications':
   - 'Callflows':
     - 'applications/callflow/doc/README.md' ###
@@ -243,7 +243,7 @@ pages:
     - 'Deprecated':
         - 'Offnet': 'applications/callflow/doc/offnet.md'
 
-- 'System Administration'
+- 'System Administration':
   - 'Call Inspector':
     - 'applications/call_inspector/doc/README.md'
   - 'CDR': ###
@@ -306,7 +306,7 @@ pages:
     - 'applications/teletype/doc/maintenance.md'
   - 'Trunkstore': ###
     - 'applications/trunkstore/doc/README.md' ###
-    
+
 - 'Core':
   - 'Kazoo Endpoints':
     - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
@@ -383,7 +383,7 @@ pages:
     - 'core/kazoo_proper/doc/rates.md' ##
   - 'Kazoo Performance Testing': ##
       - 'core/kazoo_perf/doc/maintenance.md' ##
-      
+
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
