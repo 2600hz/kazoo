@@ -45,7 +45,7 @@ get_results(Server, DbName, Design, Options) ->
     case kz_fixturedb_util:open_view(Db, kz_term:to_binary(Design), Options) of
         {ok, Result} -> {ok, prepare_view_result(Server, DbName, Result, Options)};
         {error, _} ->
-            ?SUP_LOG_DEBUG("view file ~s does not not exists, view_options ~p"
+            ?SUP_LOG_ERROR("view file ~s does not not exists, view_options ~p"
                           ,[kz_fixturedb_util:view_path(Db, Design, Options), Options]
                           ),
             {error, invalid_view_name}
