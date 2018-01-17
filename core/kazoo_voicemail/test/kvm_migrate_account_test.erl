@@ -14,6 +14,7 @@ kvm_migrate_account_test_() ->
     ,fun setup_fixtures/0
     ,fun cleanup/1
     ,fun(_) -> [{"Testing manual account voicemail migration", test_manual_voicemail_account()}
+               ,{"Testing manual mailbox migration", test_manual_mailbox()}
                ,{"Validating mocked functions", validate_mock()}
                ]
      end
@@ -36,12 +37,28 @@ cleanup(Pid) ->
     kz_fixturedb_util:stop_me(Pid),
     meck:unload().
 
+test_manual_mailbox() ->
+    Result = [{<<"total_processed">>, 10}
+             ,{<<"total_succeeded">>, 6}
+              %% couldn't find a better way, "vmbox01-msg06-now_s" for manual mailbox migration
+              %% is getting it's own timestamp from vmbox (since the vmbox is opened by directly)
+              %% so its modb is 201709 and it would failed because this db is not exists.
+              %% But for account migration test, I explicitly removed box_timestamp to force testing
+              %% setting missing timestamp to now_s (see is_db_under_test/1)
+             ,{<<"total_failed">>, 2}
+             ,{<<"total_no_ids">>, 2}
+             ],
+    [{"Trying to migrate test mailbox"
+     ,?_assertEqual(Result, kvm_migrate_account:manual_vmbox_migrate(<<"account0000000000000000000000001">>, <<"vmbox01">>))
+     }
+    ].
+
 test_manual_voicemail_account() ->
+    %% But for account migration test, I explicitly removed box_timestamp to force testing
+    %% setting missing timestamp to now_s (see above)
     Result = [{<<"total_processed">>, 10}
              ,{<<"total_succeeded">>, 7}
-             ,{<<"total_failed">>, 0}
-             ,{<<"total_no_modb">>, 1}
-             ,{<<"total_no_timestamp">>, 4}
+             ,{<<"total_failed">>, 1}
              ,{<<"total_no_ids">>, 2}
              ],
     [{"Trying to migrate test account"

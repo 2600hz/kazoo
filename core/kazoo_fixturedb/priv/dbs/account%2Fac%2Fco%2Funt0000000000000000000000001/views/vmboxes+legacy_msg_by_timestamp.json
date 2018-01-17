@@ -34,7 +34,7 @@
             "mailbox": "1001",
             "metadata": {
                 "folder": "saved",
-                "media_id": "vmbox01-msg06-no-timestamp",
+                "media_id": "vmbox01-msg06-now_s",
                 "timestamp": null
             },
             "owner_id": "user0000000000000000000000000001",
@@ -76,7 +76,7 @@
             "box_timestamp": 63673774878,
             "mailbox": "1001",
             "metadata": {
-                "media_id": "vmbox01-msg08-private-media-timestamp",
+                "media_id": "vmbox01-msg08-no_private_media-box_timestamp",
                 "timestamp": null
             },
             "owner_id": "user0000000000000000000000000001",
