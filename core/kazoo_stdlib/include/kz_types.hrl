@@ -244,6 +244,12 @@
             io:format(F ++ "\n", A)
         end
        ).
+-define(SUP_LOG_INFO(F, A),
+        begin
+            lager:info(F, A),
+            io:format(F ++ "\n", A)
+        end
+       ).
 -define(SUP_LOG_WARNING(F, A),
         begin
             lager:warning(F, A),
@@ -257,12 +263,13 @@
         end
        ).
 
--define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(DEV_LOG(F), ?DEV_LOG(F, [])).
-
 -define(SUP_LOG_DEBUG(F), ?SUP_LOG_DEBUG(F, [])).
+-define(SUP_LOG_INFO(F), ?SUP_LOG_INFO(F, [])).
 -define(SUP_LOG_WARNING(F), ?SUP_LOG_WARNING(F, [])).
 -define(SUP_LOG_ERROR(F), ?SUP_LOG_ERROR(F, [])).
+
+-define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(DEV_LOG(F), ?DEV_LOG(F, [])).
 
 -define(KAZOO_TYPES_INCLUDED, 'true').
 -endif.
