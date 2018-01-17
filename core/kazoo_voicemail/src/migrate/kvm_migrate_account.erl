@@ -27,7 +27,6 @@
 -record(total_stats, {total_processed = 0 :: non_neg_integer()
                      ,total_succeeded = 0 :: non_neg_integer()
                      ,total_no_modb = 0 :: non_neg_integer()
-                     ,total_no_timestamp = 0 :: non_neg_integer()
                      ,total_no_ids = 0 :: non_neg_integer()
                      ,total_failed = 0 :: non_neg_integer()
                      }).
@@ -39,6 +38,7 @@
              ,endkey = 'undefined' :: kz_term:api_seconds()
              ,server = 'undefined' :: kz_term:api_ne_binary()
              ,manual_vmboxes = 'undefined' :: kz_term:api_ne_binaries()
+             ,last_error = 'undefined' :: kz_term:ne_binary()
              ,retries = 0 :: non_neg_integer()
              ,defualt_extension = ?DEFAULT_VM_EXTENSION :: kz_term:ne_binary()
              ,total_msgs = 0 :: non_neg_integer()
@@ -74,7 +74,7 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 -spec manual_account_migrate(kz_term:ne_binary()) -> kz_term:proplist().
 manual_account_migrate(Account) ->
     AccountId = kz_util:format_account_id(Account),
-    ?SUP_LOG_WARNING(":: beginning migrating voicemails for account ~s", [AccountId]),
+    ?SUP_LOG_INFO(":: beginning migrating voicemails for account ~s", [AccountId]),
     migration_loop(#ctx{mode = <<"account">>
                        ,account_id = AccountId
                        ,account_db = kz_util:format_account_db(AccountId)
@@ -91,7 +91,7 @@ manual_vmbox_migrate(Account, ?NE_BINARY = BoxId) ->
     manual_vmbox_migrate(Account, [BoxId]);
 manual_vmbox_migrate(Account, BoxIds) ->
     AccountId = kz_util:format_account_id(Account),
-    ?SUP_LOG_WARNING(":: beginning migrating voicemails for ~b mailbox(es) in account ~s", [length(BoxIds), AccountId]),
+    ?SUP_LOG_INFO(":: beginning migrating voicemails for ~b mailbox(es) in account ~s", [length(BoxIds), AccountId]),
     migration_loop(#ctx{mode = <<"vmboxes">>
                        ,account_id = AccountId
                        ,account_db = kz_util:format_account_db(AccountId)
@@ -104,9 +104,13 @@ manual_vmbox_migrate(Account, BoxIds) ->
 %% Main migration loop
 %% @end
 -spec migration_loop(#ctx{}) -> 'ok' | kz_term:proplist().
-migration_loop(#ctx{account_id = _AccountId, retries = Retries}=Ctx) when Retries > 3 ->
-    ?SUP_LOG_WARNING("  [~s] reached to maximum retry", [_AccountId]),
-    account_is_done(Ctx);
+migration_loop(#ctx{account_id = _AccountId, retries = Retries, last_error = LastError}=Ctx) when Retries > 3 ->
+    Reason = case LastError of
+                 'undefined' -> <<"maximum retries">>;
+                 _ -> <<"maximum retries, last error was ", LastError/binary>>
+             end,
+    ?SUP_LOG_WARNING("  [~s] reached to ~s", [_AccountId, Reason]),
+    account_is_failed(Ctx, Reason);
 migration_loop(Ctx) ->
     handle_result(Ctx, get_messages(Ctx)).
 
@@ -139,20 +143,35 @@ get_messages(#ctx{mode = <<"vmboxes">>, account_db = AccountDb, manual_vmboxes =
 %% @end
 -spec handle_result(#ctx{}, db_ret()) -> 'ok' | kz_term:proplist().
 handle_result(#ctx{account_id = _AccountId}=Ctx, {'ok', []}) ->
-    ?SUP_LOG_WARNING("  [~s] no legacy voicemail messages left", [_AccountId]),
+    ?SUP_LOG_INFO("  [~s] no legacy voicemail messages left", [_AccountId]),
     account_is_done(Ctx);
 handle_result(#ctx{account_id = _AccountId}=Ctx, {'ok', ViewResults}) ->
     MsgCount = length(ViewResults),
-    ?SUP_LOG_WARNING("  [~s] processing ~b voicemail messages", [_AccountId, MsgCount]),
-    maybe_next_cycle(migrate_messages(reset_context(Ctx#ctx{total_msgs = MsgCount}), ViewResults));
+
+    ?SUP_LOG_INFO("  [~s] processing ~b voicemail messages", [_AccountId, MsgCount]),
+
+    NewCtx = reset_context_msgs(Ctx#ctx{total_msgs = MsgCount
+                                       ,last_error = 'undefined'
+                                       }
+                               ),
+    maybe_next_cycle(migrate_messages(NewCtx, ViewResults));
 handle_result(#ctx{account_id = _AccountId, account_db = AccountDb, retries = Retries}=Ctx, {'error', 'not_found'}) when Retries > 3 ->
     ?SUP_LOG_WARNING("  [~s] refreshing view", [_AccountId]),
     Views = kapps_maintenance:get_all_account_views(),
     _ = kapps_util:update_views(AccountDb, Views, 'true'),
-    migration_loop(Ctx#ctx{retries = Retries + 1});
-handle_result(#ctx{account_id = _AccountId}=Ctx, {'error', Reason}) ->
+
+    timer:sleep(?TIME_BETWEEN_ACCOUNT_CRAWLS),
+    migration_loop(Ctx#ctx{retries = Retries + 1
+                          ,last_error = <<"missing view">>
+                          }
+                  );
+handle_result(#ctx{account_id = _AccountId, retries = Retries}=Ctx, {'error', Reason}) ->
     ?SUP_LOG_ERROR("  [~s] failed to fetch legacy voicemail messages: ~p", [_AccountId, Reason]),
-    get_messages_failed(Ctx, Reason).
+    timer:sleep(?TIME_BETWEEN_ACCOUNT_CRAWLS),
+    migration_loop(Ctx#ctx{retries = Retries + 1
+                          ,last_error = kz_term:to_binary(io_lib:format("get legacy messages failed: ~p", [Reason]))
+                          }
+                  ).
 
 %% @private
 %% @doc
@@ -160,10 +179,13 @@ handle_result(#ctx{account_id = _AccountId}=Ctx, {'error', Reason}) ->
 %% go to next loop, otherwise report summary and go down.
 %% @end
 -spec maybe_next_cycle(#ctx{}) -> 'ok' | kz_term:proplist().
+maybe_next_cycle(#ctx{last_error = LastError, retries = Retries}=Ctx) when is_binary(LastError) ->
+    timer:sleep(?TIME_BETWEEN_ACCOUNT_CRAWLS),
+    migration_loop(Ctx#ctx{retries = Retries + 1});
 maybe_next_cycle(#ctx{account_id = _AccountId
                      ,total_msgs = TotalMsgs, no_modb = NoModb
                      }=Ctx) when TotalMsgs == length(NoModb) ->
-    ?SUP_LOG_WARNING("  [~s] reached to the last/oldest available modb", [_AccountId]),
+    ?SUP_LOG_INFO("  [~s] reached to the last/oldest available modb", [_AccountId]),
     hit_last_modb(Ctx);
 maybe_next_cycle(#ctx{mode = <<"worker">>, account_id = AccountId
                      ,server = Server, total_stats = TotalStats}) ->
@@ -172,7 +194,6 @@ maybe_next_cycle(#ctx{mode = <<"account">>}=Ctx) ->
     timer:sleep(?TIME_BETWEEN_ACCOUNT_CRAWLS),
     migration_loop(Ctx);
 maybe_next_cycle(#ctx{mode = <<"vmboxes">>}=Ctx) ->
-    %% No migration loop?
     account_is_done(Ctx).
 
 %% @private
@@ -199,21 +220,20 @@ account_is_done(#ctx{mode = <<"worker">>, account_id = AccountId
                     ,server = Server}) ->
     kvm_migrate_crawler:account_is_done(Server, AccountId, StartKey, EndKey);
 account_is_done(#ctx{account_id = _AccountId, total_stats = TotalStats}) ->
-    ?SUP_LOG_WARNING(":: voicemail migration process for account ~s has been finished", [_AccountId]),
+    ?SUP_LOG_INFO(":: voicemail migration process for account ~s has been finished", [_AccountId]),
     total_stats_to_prop(TotalStats).
 
 %% @private
 %% @doc
 %% If this manual migration, check tries and maybe retry again.
 %% @end
--spec get_messages_failed(#ctx{}, any()) -> 'ok' | kz_term:proplist().
-get_messages_failed(#ctx{mode = <<"worker">>, account_id = AccountId
+-spec account_is_failed(#ctx{}, kz_term:ne_binary()) -> 'ok' | kz_term:proplist().
+account_is_failed(#ctx{mode = <<"worker">>, account_id = AccountId
                         ,startkey = StartKey, endkey = EndKey, server = Server
                         }, Reason) ->
     kvm_migrate_crawler:account_maybe_failed(Server, AccountId, StartKey, EndKey, Reason);
-get_messages_failed(#ctx{account_id = _AccountId, retries = Retries}=Ctx, _) ->
-    ?SUP_LOG_WARNING(":: maybe retrying again", [_AccountId]),
-    migration_loop(Ctx#ctx{retries = Retries + 1}).
+account_is_failed(Ctx, _) ->
+    account_is_done(Ctx).
 
 %%%===================================================================
 %%% Internal functions
@@ -239,7 +259,7 @@ maybe_migrate(Ctx0, BoxIds, MsgMap, Dbs) when is_list(Dbs) ->
     {Ctx1, NewMsgMap} = check_dbs_existence(Ctx0, Dbs, MsgMap),
     maybe_migrate(Ctx1, BoxIds, NewMsgMap, maps:size(NewMsgMap));
 maybe_migrate(#ctx{account_id = _AccountId}=Ctx, _BoxIds, _MsgsMap, 0) ->
-    lager:debug("  [~s] none of the modbs for migrating messages in this cycle are exists", [_AccountId]),
+    ?SUP_LOG_DEBUG("  [~s] none of the modbs are exists, considered it the last modb", [_AccountId]),
     Ctx;
 maybe_migrate(Ctx, BoxIds, MsgMap, _DbCount) ->
     update_mailboxes(maps:fold(fun bulk_save_modb/3, Ctx, MsgMap), BoxIds).
@@ -266,8 +286,15 @@ bulk_save_modb(Db, JObjs, #ctx{account_id = _AccountId}=Ctx) ->
 %%--------------------------------------------------------------------
 -spec update_mailboxes(#ctx{}, kz_term:ne_binaries()) -> #ctx{}.
 update_mailboxes(#ctx{account_id = _AccountId
+                     ,total_msgs = TotalMsgs
+                     ,failed = [{_Id, Reason}|_]=Failed
+                     ,no_modb = NoModb
+                     ,no_ids = NoIds
+                     }=Ctx, _) when TotalMsgs == length(Failed) + length(NoModb) + NoIds ->
+    ?SUP_LOG_ERROR("  [~s] bulk save failed for all docs: ~p", [_AccountId, Reason]),
+    update_total_stats(Ctx#ctx{last_error = kz_term:to_binary(io_lib:format("bulk save failed: ~p", [Reason]))});
+update_mailboxes(#ctx{account_id = _AccountId
                      ,account_db = AccountDb
-                     ,retries = Retries
                      }=Ctx, BoxIds) ->
     case kz_datamgr:open_cache_docs(AccountDb, BoxIds) of
         {'ok', BoxJObjs} ->
@@ -276,11 +303,11 @@ update_mailboxes(#ctx{account_id = _AccountId
                 {'ok', _} -> update_total_stats(Ctx);
                 {'error', _Reason} ->
                     ?SUP_LOG_ERROR("  [~s] failed to save new message array into mailboxes: ~p", [_AccountId, _Reason]),
-                    reset_context(Ctx#ctx{retries = Retries + 1})
+                    reset_context_msgs(Ctx#ctx{last_error = kz_term:to_binary(io_lib:format("update vmbox failed: ~p", [_Reason]))})
             end;
         {'error', _Reason} ->
             ?SUP_LOG_ERROR("  [~s] failed to open mailboxes for update: ~p", [_AccountId, _Reason]),
-            reset_context(Ctx#ctx{retries = Retries + 1})
+            reset_context_msgs(Ctx#ctx{last_error = kz_term:to_binary(io_lib:format("open vmbox failed: ~p", [_Reason]))})
     end.
 
 -spec update_mailbox_jobjs(#ctx{}, kz_json:objects()) -> kz_json:objects().
@@ -311,7 +338,6 @@ update_vmbox_message(Message, _, _, _, 'undefined', _) ->
     %% no media_id = no migration
     kz_json:set_value(<<"migration_error">>, <<"no_media_id">>, Message);
 update_vmbox_message(Message, MODbFailed, Failed, NoTimestamp, Id, 'undefined') ->
-    %% if we don't remove the message here migration would stuck in loop.
     %% messages without timestamp should be migrated anyway
     %% either by their private media modified/created time or kz_time:now_s()
     case maps:get(Id, NoTimestamp, 'undefined') of
@@ -553,7 +579,7 @@ all_no_timestamp(Id, JObj, {NoTime, JAcc}) ->
 -spec get_timestamp(#ctx{}, map(), kz_json:objects()) -> {#ctx{}, kz_json:objects()}.
 get_timestamp(Ctx, IdsMap, PrivateMedias) ->
     Fun = fun(PrivateMedia, {TimeMap, Messages}) ->
-                  Id = kz_doc:id(PrivateMedia),
+                  Id = kz_doc:id(PrivateMedia, kz_json:get_value(<<"key">>, PrivateMedia)),
                   Doc = kz_json:get_value(<<"doc">>, PrivateMedia, kz_json:new()),
                   Message = maps:get(Id, IdsMap),
 
@@ -581,8 +607,8 @@ ctx_field_update(#ctx{failed = Failed}=Ctx, 'failed', Value) ->
 ctx_field_update(#ctx{succeeded = Succeeded}=Ctx, 'succeeded', Ids) ->
     Ctx#ctx{succeeded = Ids ++ Succeeded}.
 
--spec reset_context(#ctx{}) -> #ctx{}.
-reset_context(Ctx) ->
+-spec reset_context_msgs(#ctx{}) -> #ctx{}.
+reset_context_msgs(Ctx) ->
     Ctx#ctx{succeeded = [], no_modb = []
            ,no_timestamp = [], no_ids = 0
            ,failed = []
@@ -595,7 +621,7 @@ update_total_stats(#ctx{total_msgs = TotalMsgs, no_ids = CurrNoIds
                        ,account_id = _AccountId
                        ,total_stats = #total_stats{total_processed = TotalProcessed, total_succeeded = TotalSucceeded
                                                   ,total_failed = TotalFailed, total_no_modb = TotalNoModb
-                                                  ,total_no_timestamp = TotalNoTime, total_no_ids = TotalNoIds
+                                                  ,total_no_ids = TotalNoIds
                                                   }=TotalStats
                        }=Ctx) ->
     CurrSucceeded = length(Succeeded),
@@ -603,15 +629,14 @@ update_total_stats(#ctx{total_msgs = TotalMsgs, no_ids = CurrNoIds
     CurrNoModb = length(NoModb),
     CurrNoTime = length(NoTime),
 
-    ?SUP_LOG_WARNING("  [~s] finished a cycle, processed: ~b succeeded: ~b save_failed: ~b no_modb: ~b no_timestamp: ~b no_ids: ~b"
-                    ,[_AccountId, TotalMsgs, CurrSucceeded, CurrFailed, CurrNoModb, CurrNoTime, CurrNoIds]
-                    ),
+    ?SUP_LOG_INFO("  [~s] finished a cycle, processed: ~b succeeded: ~b save_failed: ~b no_modb: ~b fix_timestamp: ~b no_ids: ~b"
+                 ,[_AccountId, TotalMsgs, CurrSucceeded, CurrFailed, CurrNoModb, CurrNoTime, CurrNoIds]
+                 ),
 
     Ctx#ctx{total_stats = TotalStats#total_stats{total_processed = TotalMsgs + TotalProcessed
                                                 ,total_succeeded = CurrSucceeded + TotalSucceeded
                                                 ,total_failed = CurrFailed + TotalFailed
                                                 ,total_no_modb = CurrNoModb + TotalNoModb
-                                                ,total_no_timestamp = CurrNoTime + TotalNoTime
                                                 ,total_no_ids = CurrNoIds + TotalNoIds
                                                 }
            }.
@@ -619,11 +644,9 @@ update_total_stats(#ctx{total_msgs = TotalMsgs, no_ids = CurrNoIds
 -spec total_stats_to_prop(#total_stats{}) -> kz_term:proplist().
 total_stats_to_prop(#total_stats{total_processed = Processed, total_succeeded = Succeeded
                                 ,total_failed = Failed, total_no_modb = TotalNoModb
-                                ,total_no_timestamp = NoTime, total_no_ids = NoIds}) ->
+                                ,total_no_ids = NoIds}) ->
     [{<<"total_processed">>, Processed}
     ,{<<"total_succeeded">>, Succeeded}
-    ,{<<"total_failed">>, Failed}
-    ,{<<"total_no_modb">>, TotalNoModb}
-    ,{<<"total_no_timestamp">>, NoTime}
+    ,{<<"total_failed">>, Failed + TotalNoModb}
     ,{<<"total_no_ids">>, NoIds}
     ].
