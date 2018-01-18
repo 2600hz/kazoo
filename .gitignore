@@ -6,6 +6,7 @@
 *.sasl
 *.plt
 *.app
+.deps.mk
 *.beam
 *.so
 *.o
