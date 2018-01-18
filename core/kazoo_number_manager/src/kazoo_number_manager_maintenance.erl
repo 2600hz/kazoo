@@ -165,12 +165,7 @@ convert_carrier_module_number(Num, Target) ->
 %%--------------------------------------------------------------------
 -spec refresh_numbers_dbs() -> 'ok'.
 refresh_numbers_dbs() ->
-    {'ok', Databases} = kz_datamgr:db_info(),
-    NumberDbs = [Db
-                 || Db <- Databases,
-                    kzs_util:db_classification(Db) =:= 'numbers'
-                        orelse kzs_util:db_classification(Db) =:= 'system_numbers'
-                ],
+    NumberDbs = knm_util:get_all_number_dbs(),
     refresh_numbers_dbs(NumberDbs, length(NumberDbs)).
 
 -spec refresh_numbers_dbs(ne_binaries(), non_neg_integer()) -> 'ok'.
@@ -188,7 +183,7 @@ refresh_numbers_db(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
                                               ),
     'ok';
 refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
-    NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
+    NumberDb = knm_converters:to_db(Suffix),
     refresh_numbers_db(NumberDb);
 refresh_numbers_db(<<"+", _/binary>> = Num) ->
     refresh_numbers_db(knm_converters:to_db(Num));
