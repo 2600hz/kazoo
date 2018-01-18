@@ -95,5 +95,5 @@ modb_id(Year, Month, Id) ->
     <<(kz_term:to_binary(Year))/binary
       ,(kz_date:pad_month(Month))/binary
       ,"-"
-      ,(Id)/binary
+      ,(kz_term:to_binary(Id))/binary
     >>.

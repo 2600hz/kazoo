@@ -1,0 +1,82 @@
+{
+    "_id": "vmbox01",
+    "_rev": "1-ffc1614b441b0bef2d8df1d6b3a6c60d",
+    "check_if_owner": true,
+    "delete_after_notify": false,
+    "is_setup": false,
+    "mailbox": "3367",
+    "media": {},
+    "media_extension": "mp3",
+    "messages": [
+        {
+            "call_id": "af671260365e0d9c5c6ef80dfa00cd47",
+            "caller_id_name": "NO ONE",
+            "caller_id_number": "15554443344",
+            "folder": "new",
+            "from": "15554443344@10.0.1.1",
+            "length": 20520,
+            "media_id": "vmbox01-msg01-should-migrate",
+            "timestamp": 63675605708,
+            "to": "1001@4a6863.sip.2600hz.local"
+        },
+        {
+            "folder": "new",
+            "media_id": "vmbox01-msg02-migrate-retries1",
+            "migration_error": "conflict",
+            "migration_tries": 1,
+            "timestamp": 63675606808
+        },
+        {
+            "folder": "new",
+            "media_id": "vmbox01-msg03-migrate-retries2",
+            "migration_error": "conflict",
+            "migration_tries": 2,
+            "timestamp": 63675806808
+        },
+        {
+            "folder": "new",
+            "media_id": "vmbox01-msg04-migrate-retries3",
+            "migration_error": "conflict",
+            "migration_tries": 3,
+            "timestamp": 63675806818
+        },
+        {
+            "folder": "saved",
+            "media_id": "vmbox01-msg05-private-media-timestamp"
+        },
+        {
+            "folder": "saved",
+            "media_id": "vmbox01-msg06-now_s"
+        },
+        {
+            "media_id": "vmbox01-msg07-private-media-timestamp",
+            "timestamp": "undefined"
+        },
+        {
+            "media_id": "vmbox01-msg08-no_private_media-box_timestamp",
+            "timestamp": null
+        },
+        {
+            "from": "15554443344@10.0.1.1"
+        },
+        {}
+    ],
+    "name": "User One's VMBox",
+    "not_configurable": false,
+    "notify_email_addresses": [],
+    "owner_id": "user0000000000000000000000000001",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
+    "pvt_account_id": "account0000000000000000000000001",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000001",
+    "pvt_created": 63673774878,
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63673774878,
+    "pvt_request_id": "68a8aca520e14e45fe983be8b647bcd7",
+    "pvt_type": "vmbox",
+    "pvt_vsn": "1",
+    "require_pin": false,
+    "save_after_notify": false,
+    "skip_greeting": false,
+    "skip_instructions": false
+}
