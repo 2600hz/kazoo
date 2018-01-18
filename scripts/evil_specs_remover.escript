@@ -71,8 +71,8 @@ search_for_evil_specs(Paths) ->
 parse_args([], {Opts, Paths}) ->
     Patss = [Path
              || Path <- Paths,
-                        filelib:is_file(Path)
-                            orelse filelib:is_dir(Path)
+                filelib:is_file(Path)
+                    orelse filelib:is_dir(Path)
             ],
     case Patss of
         [] ->
@@ -106,8 +106,8 @@ check_result(Result, [Path], Options) ->
             %% since this is a single file ag won't print filename
             %% adding "file_name:" to the result here
             Lines = [<<(list_to_binary(Path))/binary, ":", Line/binary>>
-                     || Line <- binary:split(Result, <<"\n">>, [global]),
-                                Line =/= <<>>
+                         || Line <- binary:split(Result, <<"\n">>, [global]),
+                            Line =/= <<>>
                     ],
             process_ag_result(Lines, Options)
     end;
