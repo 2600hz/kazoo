@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% Handles starting/stopping a call recording
@@ -469,31 +469,31 @@ store_recording_meta(#state{call=Call
     Start = Timestamp - Seconds,
 
     BaseMediaDoc = kz_json:from_list(
-                     [{<<"name">>, MediaName}
-                     ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                     [{<<"_id">>, DocId}
+                     ,{<<"call_id">>, CallId}
+                     ,{<<"callee_id_name">>, kapps_call:callee_id_name(Call)}
+                     ,{<<"callee_id_number">>, kapps_call:callee_id_number(Call)}
+                     ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
+                     ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
+                     ,{<<"cdr_id">>, CdrId}
                      ,{<<"content_type">>, kz_mime:from_extension(Ext)}
-                     ,{<<"media_type">>, Ext}
-                     ,{<<"media_source">>, <<"recorded">>}
-                     ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
-                     ,{<<"from">>, kapps_call:from(Call)}
-                     ,{<<"to">>, kapps_call:to(Call)}
-                     ,{<<"request">>, kapps_call:request(Call)}
+                     ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(EventJObj)}
+                     ,{<<"description">>, <<"recording ", MediaName/binary>>}
                      ,{<<"direction">>, kapps_call:direction(Call)}
-                     ,{<<"start">>, Start}
                      ,{<<"duration">>, Seconds}
                      ,{<<"duration_ms">>, Length}
-                     ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
-                     ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
-                     ,{<<"callee_id_number">>, kapps_call:callee_id_number(Call)}
-                     ,{<<"callee_id_name">>, kapps_call:callee_id_name(Call)}
-                     ,{<<"call_id">>, CallId}
-                     ,{<<"owner_id">>, kapps_call:owner_id(Call)}
-                     ,{<<"url">>, Url}
-                     ,{<<"cdr_id">>, CdrId}
+                     ,{<<"from">>, kapps_call:from(Call)}
                      ,{<<"interaction_id">>, InteractionId}
-                     ,{<<"_id">>, DocId}
+                     ,{<<"media_source">>, <<"recorded">>}
+                     ,{<<"media_type">>, Ext}
+                     ,{<<"name">>, MediaName}
                      ,{<<"origin">>, Origin}
-                     ,{<<"custom_channel_vars">>, kz_call_event:custom_channel_vars(EventJObj)}
+                     ,{<<"owner_id">>, kapps_call:owner_id(Call)}
+                     ,{<<"request">>, kapps_call:request(Call)}
+                     ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
+                     ,{<<"start">>, Start}
+                     ,{<<"to">>, kapps_call:to(Call)}
+                     ,{<<"url">>, Url}
                      ]
                     ),
 
@@ -566,34 +566,23 @@ handler_fields_for_protocol(<<"http", _/binary>>
                            ,Url
                            ,#state{account_id=AccountId
                                   ,format=Ext
+                                  ,doc_id=DocId
                                   }
                            ) ->
     {S1, S2} = check_url(Url),
-    [<<S1/binary, "call_recording_">>
-    ,{'field', <<"call_id">>}
-    ,<<".", Ext/binary>>
-    ,<<S2/binary, "from=">>
-    ,{'field', <<"from">>}
-    ,<<"&to=">>
-    ,{'field', <<"to">>}
-    ,<<"&caller_id_name=">>
-    ,{'field', <<"caller_id_name">>}
-    ,<<"&caller_id_number=">>
-    ,{'field', <<"caller_id_number">>}
-    ,<<"&call_id=">>
-    ,{'field', <<"call_id">>}
-    ,<<"&cdr_id=">>
-    ,{'field', <<"cdr_id">>}
-    ,<<"&interaction_id=">>
-    ,{'field', <<"interaction_id">>}
-    ,<<"&owner_id=">>
-    ,{'field', <<"owner_id">>}
-    ,<<"&account_id=">>
-    ,AccountId
-    ,<<"&start=">>
-    ,{'field', <<"start">>}
-    ,<<"&duration_ms=">>
-    ,{'field', <<"duration_ms">>}
+    [<<S1/binary, "call_recording_">>, {'field', <<"call_id">>},<<".", Ext/binary>>
+    ,<<S2/binary, "from=">>, {'field', <<"from">>}
+    ,<<"&to=">>, {'field', <<"to">>}
+    ,<<"&caller_id_name=">>, {'field', <<"caller_id_name">>}
+    ,<<"&caller_id_number=">>, {'field', <<"caller_id_number">>}
+    ,<<"&call_id=">>, {'field', <<"call_id">>}
+    ,<<"&cdr_id=">>, {'field', <<"cdr_id">>}
+    ,<<"&interaction_id=">>, {'field', <<"interaction_id">>}
+    ,<<"&owner_id=">>, {'field', <<"owner_id">>}
+    ,<<"&account_id=">>, AccountId
+    ,<<"&start=">>, {'field', <<"start">>}
+    ,<<"&duration_ms=">>, {'field', <<"duration_ms">>}
+    ,<<"&recording_id=">>, DocId
     ].
 
 -spec check_url(kz_term:ne_binary()) -> {binary(), kz_term:ne_binary()}.
