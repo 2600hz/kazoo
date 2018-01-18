@@ -74,10 +74,8 @@ migrate_faxes(Account, Options) ->
     recover_private_media(Account),
     migrate_faxes_to_modb(Account, Options).
 
--spec migrate_private_media(kz_term:ne_binary()) -> 'ok'.
--spec migrate_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
--spec maybe_migrate_private_media(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 
+-spec migrate_private_media(kz_term:ne_binary()) -> 'ok'.
 migrate_private_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
@@ -93,6 +91,7 @@ migrate_private_media(Account) ->
             io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E3])
     end.
 
+-spec maybe_migrate_private_media(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_migrate_private_media(AccountDb, JObj) ->
     DocId = kz_doc:id(JObj),
     case kz_datamgr:open_doc(AccountDb, DocId) of
@@ -103,15 +102,14 @@ maybe_migrate_private_media(AccountDb, JObj) ->
             io:format("document ~s not found in database ~s : ~p~n", [DocId, AccountDb, Error])
     end.
 
+-spec migrate_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
     {'ok', _} = kz_datamgr:ensure_saved(AccountDb, kz_doc:set_type(Doc, <<"fax">>)),
     'ok';
 migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
 
--spec recover_private_media(kz_term:ne_binary()) -> 'ok'.
--spec recover_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
--spec maybe_recover_private_media(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 
+-spec recover_private_media(kz_term:ne_binary()) -> 'ok'.
 recover_private_media(Account) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
@@ -127,20 +125,20 @@ recover_private_media(Account) ->
             io:format("unable to fetch fax docs in db ~s: ~p~n", [AccountDb, E3])
     end.
 
+-spec maybe_recover_private_media(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_recover_private_media(AccountDb, JObj) ->
     {'ok', Doc } = kz_datamgr:open_doc(AccountDb, kz_doc:id(JObj)),
     recover_private_media(AccountDb, Doc, kz_json:get_value(<<"media_type">>, Doc)).
 
+-spec recover_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 recover_private_media(_AccountDb, _Doc, <<"tiff">>) ->
     'ok';
 recover_private_media(AccountDb, Doc, _MediaType) ->
     {'ok', _ } = kz_datamgr:ensure_saved(AccountDb, kz_doc:set_type(Doc, <<"private_media">>)),
     'ok'.
 
--spec migrate_faxes_to_modb(kz_term:ne_binary(),  kz_term:proplist()) -> 'ok'.
--spec maybe_migrate_fax_to_modb(kz_term:ne_binary(), kz_json:object(),  kz_term:proplist()) -> 'ok'.
--spec migrate_fax_to_modb(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(),  kz_term:proplist()) -> 'ok'.
 
+-spec migrate_faxes_to_modb(kz_term:ne_binary(),  kz_term:proplist()) -> 'ok'.
 migrate_faxes_to_modb(Account, Options) ->
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
@@ -156,6 +154,7 @@ migrate_faxes_to_modb(Account, Options) ->
             io:format("unable to fetch fax docs in db ~s: ~p~n", [AccountDb, E3])
     end.
 
+-spec maybe_migrate_fax_to_modb(kz_term:ne_binary(), kz_json:object(),  kz_term:proplist()) -> 'ok'.
 maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
     DocId = kz_doc:id(JObj),
     case kz_datamgr:open_doc(AccountDb, DocId) of
@@ -175,6 +174,7 @@ maybe_migrate_fax_to_modb(AccountDb, JObj, Options) ->
             io:format("unable to get document ~s for fax migration : ~p",[DocId, E])
     end.
 
+-spec migrate_fax_to_modb(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(),  kz_term:proplist()) -> 'ok'.
 migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     Timestamp = kz_doc:created(JObj, kz_time:now_s()),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
@@ -201,10 +201,10 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 flush() -> kz_cache:flush_local(?CACHE_NAME).
 
 -spec account_jobs(kz_term:ne_binary()) -> 'no_return'.
--spec account_jobs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 account_jobs(AccountId) ->
     account_jobs(AccountId, <<"pending">>).
 
+-spec account_jobs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 account_jobs(AccountId, State) ->
     io:format("+--------------------------------+-------------------+-----------------+----------------------------------+----------------------------------+----------------------+----------------------+~n", []),
     FormatString = "| ~-30s | ~-17s | ~-15s | ~-32s | ~-32s | ~-20s | ~-20s |~n",
@@ -235,10 +235,10 @@ account_jobs(AccountId, State) ->
     'no_return'.
 
 -spec faxbox_jobs(kz_term:ne_binary()) -> 'no_return'.
--spec faxbox_jobs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 faxbox_jobs(FaxboxId) ->
     faxbox_jobs(FaxboxId, <<"pending">>).
 
+-spec faxbox_jobs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 faxbox_jobs(FaxboxId, State) ->
     io:format("+--------------------------------+-------------------+-----------------+----------------------------------+----------------------------------+----------------------+----------------------+~n", []),
     FormatString = "| ~-30s | ~-17s | ~-15s | ~-32s | ~-32s | ~-20s | ~-20s |~n",
@@ -324,7 +324,6 @@ restart_job(JobID) ->
     'no_return'.
 
 -spec update_job(binary(), binary()) -> 'ok' | {'error', any()}.
--spec update_job(binary(), binary(), kz_json:object()) -> 'ok' | {'error', any()}.
 update_job(JobID, State) ->
     case kz_datamgr:open_doc(?KZ_FAXES_DB, JobID) of
         {'error', _}=E -> E;
@@ -332,6 +331,7 @@ update_job(JobID, State) ->
             update_job(JobID, State, JObj)
     end.
 
+-spec update_job(binary(), binary(), kz_json:object()) -> 'ok' | {'error', any()}.
 update_job(JobID, State, JObj) ->
     case kz_json:get_value(<<"pvt_job_status">>, JObj) of
         State ->
@@ -420,7 +420,6 @@ next_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
 -spec load_smtp_attachment(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec load_smtp_attachment(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> 'ok'.
 load_smtp_attachment(DocId, Filename) ->
     case file:read_file(Filename) of
         {'ok', FileContents} ->
@@ -429,6 +428,7 @@ load_smtp_attachment(DocId, Filename) ->
             io:format("error obtaining file ~s contents for docid ~s : ~p~n", [Filename, DocId, Error])
     end.
 
+-spec load_smtp_attachment(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> 'ok'.
 load_smtp_attachment(DocId, Filename, FileContents) ->
     CT = kz_mime:from_filename(Filename),
     case kz_datamgr:open_cache_doc(?KZ_FAXES_DB, DocId) of

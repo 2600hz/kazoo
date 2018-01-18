@@ -228,17 +228,19 @@ declare_exchanges() ->
     amqp_util:sysconf_exchange().
 
 -spec publish_get_req(kz_term:api_terms()) -> 'ok'.
--spec publish_get_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_get_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_REQ_VALUES, fun get_req/1),
     amqp_util:sysconf_publish(routing_key_get(), Payload, ContentType).
 
 -spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_resp(RespQ, Api, ContentType) ->
     PrepareOptions = [{'formatter', fun get_resp/1}
                      ,{'remove_recursive', 'false'}
@@ -247,25 +249,28 @@ publish_get_resp(RespQ, Api, ContentType) ->
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_set_req(kz_term:api_terms()) -> 'ok'.
--spec publish_set_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_set_req(JObj) ->
     publish_set_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_set_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_set_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_REQ_VALUES, fun set_req/1),
     amqp_util:sysconf_publish(routing_key_set(), Payload, ContentType).
 
 -spec publish_set_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_set_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_set_resp(RespQ, JObj) ->
     publish_set_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_set_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_set_resp(RespQ, Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_RESP_VALUES, fun set_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_flush_req(kz_term:api_terms()) -> 'ok'.
--spec publish_flush_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush_req(JObj) ->
     publish_flush_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flush_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_FLUSH_REQ_VALUES, fun flush_req/1),
     amqp_util:sysconf_publish(routing_key_flush(), Payload, ContentType).
@@ -281,22 +286,25 @@ routing_key_flush() ->
 
 
 -spec get_category(kz_json:object()) -> kz_term:api_binary().
--spec get_category(kz_json:object(), Default) -> kz_term:ne_binary() | Default.
 get_category(JObj) ->
     get_category(JObj, 'undefined').
+
+-spec get_category(kz_json:object(), Default) -> kz_term:ne_binary() | Default.
 get_category(JObj, Default) ->
     kz_json:get_value(?CAT_KEY, JObj, Default).
 
 -spec get_key(kz_json:object()) -> kz_term:api_binary().
--spec get_key(kz_json:object(), Default) -> kz_term:ne_binary() | Default.
 get_key(JObj) ->
     get_key(JObj, 'undefined').
+
+-spec get_key(kz_json:object(), Default) -> kz_term:ne_binary() | Default.
 get_key(JObj, Default) ->
     kz_json:get_value(?KEY_KEY, JObj, Default).
 
 -spec get_value(kz_json:object()) -> kz_term:api_object().
--spec get_value(kz_json:object(), Default) -> kz_json:object() | Default.
 get_value(JObj) ->
     get_value(JObj, 'undefined').
+
+-spec get_value(kz_json:object(), Default) -> kz_json:object() | Default.
 get_value(JObj, Default) ->
     kz_json:get_value(?VALUE_KEY, JObj, Default).

@@ -35,8 +35,8 @@ empty() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_updated_items(items(), items()) -> items().
--spec get_updated_items(any(), kz_service_item:item(), items(), items()) -> items().
 get_updated_items(UpdatedItems, ExistingItems) ->
     dict:fold(fun(Key, UpdatedItem, DifferingItems) ->
                       get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems)
@@ -45,6 +45,7 @@ get_updated_items(UpdatedItems, ExistingItems) ->
              ,UpdatedItems
              ).
 
+-spec get_updated_items(any(), kz_service_item:item(), items(), items()) -> items().
 get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems) ->
     case get_item(Key, ExistingItems) of
         'error' -> DifferingItems;

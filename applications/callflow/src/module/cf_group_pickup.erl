@@ -103,10 +103,11 @@ connect_to_a_channel(Channels, Call) ->
 
 -spec sort_channels(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                            {kz_term:ne_binaries(), kz_term:ne_binaries()}.
--spec sort_channels(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary(), {kz_term:ne_binaries(), kz_term:ne_binaries()}) ->
-                           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 sort_channels(Channels, MyUUID, MyMediaServer) ->
     sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
+
+-spec sort_channels(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary(), {kz_term:ne_binaries(), kz_term:ne_binaries()}) ->
+                           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 sort_channels([], _MyUUID, _MyMediaServer, Acc) -> Acc;
 sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_ne_binary_value(<<"uuid">>, Channel)

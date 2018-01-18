@@ -238,7 +238,6 @@ lowerbound(DocTimestamp, QSTimestamp) ->
     QSTimestamp =< DocTimestamp.
 
 -spec should_filter(binary(), kz_term:ne_binary()) -> boolean().
--spec should_filter(kz_json:object(), kz_term:ne_binary(), kz_json:json_term()) -> boolean().
 should_filter(Val, Val) -> 'true';
 should_filter(Val, FilterVal) ->
     try kz_json:unsafe_decode(FilterVal) of
@@ -251,6 +250,7 @@ should_filter(Val, FilterVal) ->
         _Error -> 'false'
     end.
 
+-spec should_filter(kz_json:object(), kz_term:ne_binary(), kz_json:json_term()) -> boolean().
 should_filter(Doc, Key, Val) ->
     Keys = binary_key_to_json_key(Key),
     should_filter(kz_json:get_binary_value(Keys, Doc, <<>>)

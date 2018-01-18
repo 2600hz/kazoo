@@ -22,12 +22,12 @@
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
                     {'continue', kapps_call:call()}.
--spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
-                    kapps_call:call().
 handle(Data, Call) ->
     Call1 = handle(Data, Call, get_action(kz_json:get_ne_binary_value(<<"action">>, Data))),
     {'continue', Call1}.
 
+-spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
+                    kapps_call:call().
 handle(Data, Call, <<"start">>) ->
     lager:debug("starting recording, see you on the other side"),
     kapps_call:start_recording(Data, Call);

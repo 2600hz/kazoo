@@ -110,10 +110,10 @@ pp(#kazoo_model{accounts=Account
 api(#kazoo_model{'api'=API}) -> API.
 
 -spec ratedeck(model()) -> rate_data().
--spec ratedeck(model(), kz_term:ne_binary()) -> rate_data().
 ratedeck(Model) ->
     ratedeck(Model, ?KZ_RATES_DB).
 
+-spec ratedeck(model(), kz_term:ne_binary()) -> rate_data().
 ratedeck(#kazoo_model{'ratedecks'=Ratedecks}, Name) ->
     maps:get(Name, Ratedecks, #{}).
 
@@ -301,13 +301,13 @@ add_number_to_account(#kazoo_model{'numbers'=Numbers}=Model, AccountId, Number, 
     Model#kazoo_model{'numbers'=Numbers#{Number => NumberData}}.
 
 -spec add_service_plan(model() | service_plans(), kzd_service_plan:doc()) -> model() | service_plans().
--spec add_service_plan(model(), kz_term:ne_binary(), kzd_service_plan:doc()) -> model().
 add_service_plan(#kazoo_model{'service_plans'=Plans}=Model, ServicePlan) ->
     Model#kazoo_model{'service_plans'=add_service_plan(Plans, ServicePlan)};
 add_service_plan(Plans, ServicePlan) ->
     Id = kz_doc:id(ServicePlan),
     lists:ukeysort(1, [{Id, ServicePlan} | Plans]).
 
+-spec add_service_plan(model(), kz_term:ne_binary(), kzd_service_plan:doc()) -> model().
 add_service_plan(Model, AccountId, ServicePlan) ->
     add_service_plan_to_account(add_service_plan(Model, ServicePlan)
                                ,AccountId

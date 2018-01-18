@@ -146,12 +146,12 @@ maybe_authorize(_Verb, _Nouns) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?CARRIERS_INFO) ->
     [?HTTP_GET];
 allowed_methods(?FIX) ->
@@ -169,6 +169,7 @@ allowed_methods(?CHECK) ->
 allowed_methods(_PhoneNumber) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?FIX, _PhoneNumber) ->
     [?HTTP_POST];
 allowed_methods(?COLLECTION, ?ACTIVATE) ->
@@ -192,11 +193,11 @@ allowed_methods(_PhoneNumber, ?IDENTIFY) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?CARRIERS_INFO) -> 'true';
 resource_exists(?FIX) -> 'true';
 resource_exists(?PREFIX) -> 'true';
@@ -205,6 +206,7 @@ resource_exists(?CHECK) -> 'true';
 resource_exists(?CLASSIFIERS) -> 'true';
 resource_exists(_PhoneNumber) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists(?FIX, _PhoneNumber) -> 'true';
 resource_exists(_PhoneNumber, ?ACTIVATE) -> 'true';
 resource_exists(_PhoneNumber, ?RESERVE) -> 'true';
@@ -244,10 +246,8 @@ maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_phone_numbers(Context, cb_context:req_verb(Context), cb_context:account_id(Context)).
 
@@ -261,6 +261,7 @@ validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
         _Prefix -> maybe_find_numbers(Context)
     end.
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?CARRIERS_INFO) ->
     case pick_account_and_reseller_id(Context) of
         {error, Reason} ->
@@ -303,6 +304,7 @@ validate_number(Context, _Number, ?HTTP_PUT) ->
 validate_number(Context, _Number, ?HTTP_DELETE) ->
     validate_delete(Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?FIX, _Num) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                             ,kz_json:new()
@@ -388,7 +390,6 @@ post(Context, Number) ->
     set_response(Result, Context).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
     Results = collection_process(Context, ?HTTP_PUT),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
@@ -405,6 +406,7 @@ put(Context, Number) ->
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Context, CB).
 
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
     CB = fun() -> put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
@@ -575,11 +577,12 @@ should_include_ports(Context) ->
     kz_term:is_true(cb_context:req_value(Context, <<"include_ports">>, 'true')).
 
 %% @private
+
 -spec maybe_add_port_request_numbers(cb_context:context()) -> kz_json:object().
--spec maybe_add_port_request_numbers(cb_context:context(), boolean()) -> kz_json:object().
 maybe_add_port_request_numbers(Context) ->
     maybe_add_port_request_numbers(Context, should_include_ports(Context)).
 
+-spec maybe_add_port_request_numbers(cb_context:context(), boolean()) -> kz_json:object().
 maybe_add_port_request_numbers(_Context, 'false') -> kz_json:new();
 maybe_add_port_request_numbers(Context, 'true') ->
     AccountId = cb_context:account_id(Context),
@@ -618,14 +621,15 @@ normalize_view_results(JObj, Acc) ->
     ].
 
 %% @private
+
 -spec normalize_port_view_result(kz_json:object()) -> kz_json:object().
--spec normalize_port_view_result(kz_json:key(), kz_json:json_term()) -> kz_json:object().
 normalize_port_view_result(JObj) ->
     Number = kz_json:get_value([<<"key">>, ?PORT_NUMBER_KEY_INDEX], JObj),
     Properties = kz_json:get_value(<<"value">>, JObj),
 
     normalize_port_view_result(Number, Properties).
 
+-spec normalize_port_view_result(kz_json:key(), kz_json:json_term()) -> kz_json:object().
 normalize_port_view_result(Number, Properties) ->
     kz_json:from_list([{Number, Properties}]).
 
@@ -735,11 +739,13 @@ find_prefix(Context) ->
 %% @private
 %% @doc Validates a collection-type numbers field.
 %%--------------------------------------------------------------------
+
 -spec validate_collection_request(cb_context:context()) -> cb_context:context().
--spec validate_collection_request(cb_context:context(), any()) -> cb_context:context().
 validate_collection_request(Context) ->
     Numbers = kz_json:get_value(?COLLECTION_NUMBERS, cb_context:req_data(Context)),
     validate_collection_request(Context, Numbers).
+
+-spec validate_collection_request(cb_context:context(), any()) -> cb_context:context().
 validate_collection_request(Context, 'undefined') ->
     Msg = kz_json:from_list([{<<"message">>, <<"list of numbers missing">>}
                             ]),
@@ -1081,9 +1087,11 @@ maybe_ask_for_state(StateAskedFor) -> [{state, StateAskedFor}].
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec has_tokens(cb_context:context()) -> boolean().
--spec has_tokens(cb_context:context(), pos_integer()) -> boolean().
 has_tokens(Context) -> has_tokens(Context, 1).
+
+-spec has_tokens(cb_context:context(), pos_integer()) -> boolean().
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
     Cost = cb_modules_util:token_cost(Context, Count),

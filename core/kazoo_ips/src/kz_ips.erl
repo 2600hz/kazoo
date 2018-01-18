@@ -24,14 +24,14 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec available() -> {'ok', kz_json:objects()} |
                      {'error', any()}.
+available() -> available('undefined').
+
 -spec available(kz_term:api_binary()) ->
                        {'ok', kz_json:objects()} |
                        {'error', any()}.
-
-available() -> available('undefined').
-
 available(Zone) -> available(Zone, 1).
 
 -spec available(kz_term:api_binary(), non_neg_integer()) ->

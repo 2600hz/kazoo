@@ -66,7 +66,6 @@ sip_channel_xml(Props) ->
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 -spec authn_resp_xml(kz_term:api_terms()) -> {'ok', iolist()}.
--spec authn_resp_xml(kz_term:ne_binary(), kz_json:object()) -> {'ok', kz_types:xml_els()}.
 authn_resp_xml([_|_]=RespProp) ->
     authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
                   ,kz_json:from_list(RespProp)
@@ -89,6 +88,7 @@ authn_resp_xml(JObj) ->
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
     end.
 
+-spec authn_resp_xml(kz_term:ne_binary(), kz_json:object()) -> {'ok', kz_types:xml_els()}.
 authn_resp_xml(<<"gsm">>, JObj) ->
     PassEl1 = param_el(<<"password">>, kz_json:get_value(<<"Auth-Password">>, JObj)),
     PassEl2 = param_el(<<"nonce">>, kz_json:get_value(<<"Auth-Nonce">>, JObj)),
@@ -123,8 +123,6 @@ authn_resp_xml(_Method, _JObj) ->
     empty_response().
 
 -spec reverse_authn_resp_xml(kz_term:api_terms()) -> {'ok', iolist()}.
--spec reverse_authn_resp_xml(kz_term:ne_binary(), kz_json:object()) ->
-                                    {'ok', kz_types:xml_els()}.
 reverse_authn_resp_xml([_|_]=RespProp) ->
     reverse_authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
                           ,kz_json:from_list(RespProp)
@@ -139,6 +137,8 @@ reverse_authn_resp_xml(JObj) ->
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
     end.
 
+-spec reverse_authn_resp_xml(kz_term:ne_binary(), kz_json:object()) ->
+                                    {'ok', kz_types:xml_els()}.
 reverse_authn_resp_xml(<<"password">>, JObj) ->
     UserId = kz_json:get_value(<<"User-ID">>, JObj),
 
@@ -229,9 +229,8 @@ route_resp_xml(Section, RespJObj, Props) ->
 
 %% Prop = Route Response
 -type route_resp_fold_acc() :: {pos_integer(), kz_types:xml_els()}.
+
 -spec route_resp_fold(kz_json:object(), route_resp_fold_acc()) ->
-                             route_resp_fold_acc().
--spec route_resp_fold(kz_json:object(), route_resp_fold_acc(), kz_term:ne_binary()) ->
                              route_resp_fold_acc().
 route_resp_fold(RouteJObj, {Idx, Acc}) ->
     case ecallmgr_util:build_channel(RouteJObj) of
@@ -240,6 +239,8 @@ route_resp_fold(RouteJObj, {Idx, Acc}) ->
             route_resp_fold(RouteJObj, {Idx, Acc}, Channel)
     end.
 
+-spec route_resp_fold(kz_json:object(), route_resp_fold_acc(), kz_term:ne_binary()) ->
+                             route_resp_fold_acc().
 route_resp_fold(RouteJObj, {Idx, Acc}, Channel) ->
     RouteJObj1 =
         case kz_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
@@ -728,12 +729,14 @@ acl_node_el(Type, CIDR) ->
                }.
 
 -spec acl_list_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
--spec acl_list_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
--spec acl_list_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), kz_types:xml_els()) -> kz_types:xml_el().
 acl_list_el(Name) ->
     acl_list_el(Name, <<"deny">>).
+
+-spec acl_list_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
 acl_list_el(Name, Default) ->
     acl_list_el(Name, Default, []).
+
+-spec acl_list_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), kz_types:xml_els()) -> kz_types:xml_el().
 acl_list_el(Name, Default, Children) ->
     #xmlElement{name='list'
                ,attributes=[xml_attrib('name', Name)
@@ -778,7 +781,6 @@ channel_el(UUID, Desc, Content) ->
                }.
 
 -spec section_el(kz_types:xml_attrib_value(), kz_types:xml_el() | kz_types:xml_els()) -> kz_types:xml_el().
--spec section_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), kz_types:xml_el() | kz_types:xml_els()) -> kz_types:xml_el().
 section_el(Name, #xmlElement{}=Content) ->
     section_el(Name, [Content]);
 section_el(Name, Content) ->
@@ -787,6 +789,7 @@ section_el(Name, Content) ->
                ,content=Content
                }.
 
+-spec section_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), kz_types:xml_el() | kz_types:xml_els()) -> kz_types:xml_el().
 section_el(Name, Desc, #xmlElement{}=Content) ->
     section_el(Name, Desc, [Content]);
 section_el(Name, Desc, Content) ->
@@ -969,12 +972,12 @@ context_el(Name, Children) ->
                }.
 
 -spec extension_el(kz_types:xml_els()) -> kz_types:xml_el().
--spec extension_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value() | 'undefined', kz_types:xml_els()) -> kz_types:xml_el().
 extension_el(Children) ->
     #xmlElement{name='extension'
                ,content=Children
                }.
 
+-spec extension_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value() | 'undefined', kz_types:xml_els()) -> kz_types:xml_el().
 extension_el(Name, 'undefined', Children) ->
     #xmlElement{name='extension'
                ,attributes=[xml_attrib('name', Name)]
@@ -1008,18 +1011,20 @@ condition_el(Children, Field, Expression) ->
                }.
 
 -spec action_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
--spec action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
--spec action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), boolean()) -> kz_types:xml_el().
 action_el(App) ->
     #xmlElement{name='action'
                ,attributes=[xml_attrib('application', App)]
                }.
+
+-spec action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
 action_el(App, Data) ->
     #xmlElement{name='action'
                ,attributes=[xml_attrib('application', App)
                            ,xml_attrib('data', Data)
                            ]
                }.
+
+-spec action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), boolean()) -> kz_types:xml_el().
 action_el(App, Data, Inline) ->
     #xmlElement{name='action'
                ,attributes=[xml_attrib('application', App)

@@ -98,9 +98,10 @@ to_phone_number_setters(Options) ->
     ].
 
 -spec dry_run(options()) -> boolean().
--spec dry_run(options(), Default) -> boolean() | Default.
 dry_run(Options) ->
     dry_run(Options, 'false').
+
+-spec dry_run(options(), Default) -> boolean() | Default.
 dry_run(Options, Default) ->
     R = props:get_is_true('dry_run', Options, Default),
     _ = R
@@ -108,9 +109,10 @@ dry_run(Options, Default) ->
     R.
 
 -spec batch_run(options()) -> boolean().
--spec batch_run(options(), Default) -> boolean() | Default.
 batch_run(Options) ->
     batch_run(Options, 'false').
+
+-spec batch_run(options(), Default) -> boolean() | Default.
 batch_run(Options, Default) ->
     R = props:get_is_true(batch_run, Options, Default),
     _ = R
@@ -125,16 +127,18 @@ mdn_run(Options) ->
     R.
 
 -spec assign_to(options()) -> kz_term:api_binary().
--spec assign_to(options(), Default) -> kz_term:ne_binary() | Default.
 assign_to(Options) ->
     assign_to(Options, 'undefined').
+
+-spec assign_to(options(), Default) -> kz_term:ne_binary() | Default.
 assign_to(Options, Default) ->
     props:get_binary_value('assign_to', Options, Default).
 
 -spec auth_by(options()) -> kz_term:api_binary().
--spec auth_by(options(), Default) -> kz_term:ne_binary() | Default.
 auth_by(Options) ->
     auth_by(Options, 'undefined').
+
+-spec auth_by(options(), Default) -> kz_term:ne_binary() | Default.
 auth_by(Options, Default) ->
     props:get_binary_value('auth_by', Options, Default).
 
@@ -143,9 +147,10 @@ public_fields(Options) ->
     props:get_value('public_fields', Options, kz_json:new()).
 
 -spec state(options()) -> kz_term:api_binary().
--spec state(options(), Default) -> kz_term:ne_binary() | Default.
 state(Options) ->
     state(Options, 'undefined').
+
+-spec state(options(), Default) -> kz_term:ne_binary() | Default.
 state(Options, Default) ->
     props:get_binary_value('state', Options, Default).
 

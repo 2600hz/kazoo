@@ -28,12 +28,12 @@
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> bt_discount().
--spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_discount().
 
+-spec xml_to_record(bt_xml()) -> bt_discount().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/discount").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_discount().
 xml_to_record(Xml, Base) ->
     #bt_discount{id = kz_xml:get_value([Base, "/id/text()"], Xml)
                 ,amount = kz_xml:get_value([Base, "/amount/text()"], Xml)
@@ -49,12 +49,12 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_discount()) -> kz_term:proplist() | bt_xml().
--spec record_to_xml(bt_discount(), boolean()) -> kz_term:proplist() | bt_xml().
 
+-spec record_to_xml(bt_discount()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Discount) ->
     record_to_xml(Discount, false).
 
+-spec record_to_xml(bt_discount(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Discount, ToString) ->
     Props = [{'id', Discount#bt_discount.id}
             ,{'amount', Discount#bt_discount.amount}

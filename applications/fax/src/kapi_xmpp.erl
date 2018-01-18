@@ -88,8 +88,9 @@ declare_exchanges() ->
 
 
 -spec publish_event(kz_term:api_terms()) -> 'ok'.
--spec publish_event(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_event(Event) -> publish_event(Event, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_event(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_event(Event, ContentType) when is_list(Event) ->
     JID = props:get_value(<<"JID">>, Event),
     EventName = props:get_value(<<"Event-Name">>, Event),

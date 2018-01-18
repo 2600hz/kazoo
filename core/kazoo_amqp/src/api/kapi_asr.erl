@@ -142,10 +142,12 @@ declare_exchanges() ->
 %% prepare and publish an asr request
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?ASR_REQ_VALUES, fun req/1),
     amqp_util:callctl_publish(?KEY_ASR_REQ, Payload, ContentType).
@@ -155,10 +157,12 @@ publish_req(Req, ContentType) ->
 %% prepare and publish an asr response
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Resp, ?ASR_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
@@ -168,10 +172,12 @@ publish_resp(Queue, Resp, ContentType) ->
 %% prepare and publish an asr error
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(Queue, Error, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Error, ?ASR_ERROR_VALUES, fun error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

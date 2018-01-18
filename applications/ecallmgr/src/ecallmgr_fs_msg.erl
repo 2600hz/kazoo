@@ -55,9 +55,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+
 -spec start_link(atom()) -> kz_types:startlink_ret().
--spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     NodeBin = kz_term:to_binary(Node),
     gen_listener:start_link(?SERVER
@@ -286,9 +288,6 @@ send_error(Node, JObj, Err) ->
 -spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object()) ->
                              {'ok', kz_term:proplist()} |
                              {'error', kz_term:ne_binary()}.
--spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary()) ->
-                             {'ok', kz_term:proplist()} |
-                             {'error', kz_term:ne_binary()}.
 format_endpoint(Endpoint, Props, JObj) ->
     format_endpoint(
       Endpoint
@@ -297,6 +296,9 @@ format_endpoint(Endpoint, Props, JObj) ->
                    ,kz_json:get_value(<<"Invite-Format">>, Endpoint)
      ).
 
+-spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary()) ->
+                             {'ok', kz_term:proplist()} |
+                             {'error', kz_term:ne_binary()}.
 format_endpoint(Endpoint, Props, JObj, <<"route">>) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     case kz_json:is_true(<<"Bounce-Back">>, CCVs, 'false') of

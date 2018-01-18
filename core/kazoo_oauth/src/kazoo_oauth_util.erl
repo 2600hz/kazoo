@@ -113,10 +113,10 @@ pem_to_rsa(PemFileContents) ->
     public_key:pem_entry_decode(RSAEntry).
 
 -spec jwt(oauth_service_app(), kz_json:json_term()) -> kz_term:ne_binary().
--spec jwt(oauth_service_app(), kz_json:json_term(), kz_term:ne_binary()) -> kz_term:ne_binary().
 jwt(#oauth_service_app{email=AccountEmail}=App, Scope) ->
     jwt(App, Scope, AccountEmail).
 
+-spec jwt(oauth_service_app(), kz_json:json_term(), kz_term:ne_binary()) -> kz_term:ne_binary().
 jwt(#oauth_service_app{private_key=PrivateKey
                       ,public_key=PublicKey
                       ,provider=#oauth_provider{auth_url=URL}

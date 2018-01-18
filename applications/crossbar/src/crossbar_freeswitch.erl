@@ -524,10 +524,11 @@ xml_file_name(?FS_CHATPLAN) -> "chatplan.xml";
 xml_file_name(?FS_DIRECTORY) -> "directory.xml".
 
 -spec xml_file_from_config(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY) -> kz_term:ne_binary().
--spec xml_file_from_config(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY, kz_term:ne_binary()) -> kz_term:ne_binary().
 xml_file_from_config(Module) ->
     KeyName = <<(kz_term:to_binary(Module))/binary,"_top_dir_file_content">>,
     xml_file_from_config(Module, KeyName).
+
+-spec xml_file_from_config(?FS_CHATPLAN | ?FS_DIALPLAN | ?FS_DIRECTORY, kz_term:ne_binary()) -> kz_term:ne_binary().
 xml_file_from_config(Module, KeyName) ->
     xml_file_from_config(Module, kapps_config:get_binary(?MOD_CONFIG_CAT, KeyName), KeyName).
 

@@ -68,11 +68,12 @@ id() -> ?ID.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec apps(kz_json:object()) -> kz_json:object().
--spec apps(kz_json:object(), any()) -> kz_json:object().
 apps(JObj) ->
     kz_json:get_value(?APPS, JObj, kz_json:new()).
 
+-spec apps(kz_json:object(), any()) -> kz_json:object().
 apps(JObj, Default) ->
     kz_json:get_value(?APPS, JObj, Default).
 
@@ -86,11 +87,12 @@ set_apps(JObj, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec blacklist(kz_json:object()) -> kz_term:ne_binaries().
--spec blacklist(kz_json:object(), Default) -> kz_term:ne_binaries() | Default.
 blacklist(JObj) ->
     kz_json:get_value(?BLACKLIST, JObj, []).
 
+-spec blacklist(kz_json:object(), Default) -> kz_term:ne_binaries() | Default.
 blacklist(JObj, Default) ->
     kz_json:get_value(?BLACKLIST, JObj, Default).
 

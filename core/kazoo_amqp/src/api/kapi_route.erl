@@ -236,25 +236,28 @@ get_route_req_routing(Api) ->
     end.
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
     publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ROUTE_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_win(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_win(RespQ, JObj) ->
     publish_win(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_win(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_win(RespQ, Win, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

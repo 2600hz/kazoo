@@ -22,8 +22,8 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
--spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> kapps_call:call().
 handle(Data0, Call) ->
     Label = kz_json:get_ne_binary_value(<<"label">>, Data0, kapps_call:kvs_fetch('cf_flow_name', Call)),
     Origin = <<"callflow : ", Label/binary>>,
@@ -32,6 +32,7 @@ handle(Data0, Call) ->
       handle(Data, Call, get_action(Data))
      ).
 
+-spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> kapps_call:call().
 handle(Data, Call, <<"start">>) ->
     cf_exe:update_call(kapps_call:start_recording(Data, Call));
 

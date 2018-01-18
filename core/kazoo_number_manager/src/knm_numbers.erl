@@ -159,27 +159,35 @@ prev_assigned_to(#{todo := Ns}) ->
     end.
 
 %% @public
+
 -spec options(t()) -> options().
--spec options(options(), t()) -> t().
 options(#{options := V}) -> V.
+
+-spec options(options(), t()) -> t().
 options(V, T) -> T#{options => V}.
 
 %% @public
+
 -spec plan(t()) -> plan().
--spec plan(plan(), t()) -> t().
 plan(#{plan := V}) -> V.
+
+-spec plan(plan(), t()) -> t().
 plan(V, T) -> T#{plan => V}.
 
 %% @public
+
 -spec services(t()) -> services().
--spec services(services(), t()) -> t().
 services(#{services := V}) -> V.
+
+-spec services(services(), t()) -> t().
 services(V, T) -> T#{services => V}.
 
 %% @public
+
 -spec transactions(t()) -> transactions().
--spec transactions(transactions(), t()) -> t().
 transactions(#{transactions := V}) -> V.
+
+-spec transactions(transactions(), t()) -> t().
 transactions(V, T) -> T#{transactions => V}.
 
 %% @public
@@ -187,15 +195,19 @@ transactions(V, T) -> T#{transactions => V}.
 transaction(V, T=#{transactions := Vs}) -> T#{transactions => [V | Vs]}.
 
 %% @public
+
 -spec charges(t()) -> charges().
--spec charges(charges(), t()) -> t().
 charges(#{charges := V}) -> V.
+
+-spec charges(charges(), t()) -> t().
 charges(V, T) -> T#{charges => V}.
 
 %% @public
+
 -spec charge(kz_term:ne_binary(), t()) -> non_neg_integer().
--spec charge(kz_term:ne_binary(), non_neg_integer(), t()) -> t().
 charge(K, #{charges := Vs}) -> props:get_value(K, Vs, 0).
+
+-spec charge(kz_term:ne_binary(), non_neg_integer(), t()) -> t().
 charge(K, V, T=#{charges := Vs}) -> T#{charges => [{K, V} | Vs]}.
 
 %% @public
@@ -232,9 +244,11 @@ ko(N, Reason, T) ->
 %% Note: each number in `Nums' has to be normalized.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get(kz_term:ne_binaries()) -> ret().
--spec get(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 get(Nums) -> get(Nums, knm_number_options:default()).
+
+-spec get(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 get(Nums, Options) -> ret(do_get(Nums, Options)).
 
 -spec do_get(kz_term:ne_binaries(), knm_number_options:options()) -> t().
@@ -246,10 +260,11 @@ do_get(Nums, Options) ->
          ]).
 
 -spec do_get_pn(kz_term:ne_binaries(), knm_number_options:options()) -> t_pn().
--spec do_get_pn(kz_term:ne_binaries(), knm_number_options:options(), reason_t()) -> t_pn().
 do_get_pn(Nums, Options) ->
     {Yes, No} = are_reconcilable(Nums),
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No)).
+
+-spec do_get_pn(kz_term:ne_binaries(), knm_number_options:options(), reason_t()) -> t_pn().
 do_get_pn(Nums, Options, Error) ->
     {Yes, No} = are_reconcilable(Nums),
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)).
@@ -326,11 +341,12 @@ create(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec move(kz_term:ne_binaries(), kz_term:ne_binary()) -> ret().
--spec move(kz_term:ne_binaries(), kz_term:ne_binary(), knm_number_options:options()) -> ret().
 move(Nums, MoveTo) ->
     move(Nums, MoveTo, knm_number_options:default()).
 
+-spec move(kz_term:ne_binaries(), kz_term:ne_binary(), knm_number_options:options()) -> ret().
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     Options = [{assign_to, MoveTo} | Options0],
     {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
@@ -347,12 +363,14 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
 %% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update(kz_term:ne_binaries(), knm_phone_number:set_functions()) -> ret().
--spec update(kz_term:ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
 update(Nums, Routines) ->
     update(Nums, Routines, knm_number_options:default()).
 
 -ifdef(TEST).
+
+-spec update(kz_term:ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
 update([?NE_BINARY|_]=Nums, Routines, Options) ->
     Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
     do_update(do_get_pn(Nums, Options, Reason), Routines);
@@ -365,6 +383,8 @@ update(Ns, Updates, Options) ->
     T1 = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Routines) end, T0),
     ret(do(fun save_numbers/1, T1)).
 -else.
+
+-spec update(kz_term:ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
 update(Nums, Routines, Options) ->
     Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
     do_update(do_get_pn(Nums, Options, Reason), Routines).
@@ -382,11 +402,12 @@ do_update(T0, Routines) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec release(kz_term:ne_binaries()) -> ret().
--spec release(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 release(Nums) ->
     release(Nums, knm_number_options:default()).
 
+-spec release(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 release(Nums, Options) ->
     ret(pipe(do_get_pn(Nums, Options)
             ,[fun try_release/1
@@ -452,11 +473,12 @@ reserve(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec assign_to_app(kz_term:ne_binaries(), kz_term:api_ne_binary()) -> ret().
--spec assign_to_app(kz_term:ne_binaries(), kz_term:api_ne_binary(), knm_number_options:options()) -> ret().
 assign_to_app(Nums, App) ->
     assign_to_app(Nums, App, knm_number_options:default()).
 
+-spec assign_to_app(kz_term:ne_binaries(), kz_term:api_ne_binary(), knm_number_options:options()) -> ret().
 assign_to_app(Nums, App, Options) ->
     Setters = [{fun knm_phone_number:set_used_by/2, App}],
     ret(pipe(do_get_pn(Nums, Options)
@@ -528,11 +550,14 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 
 %% @private
 -type reason_t() :: atom() | fun((num())-> knm_errors:error()).
+
 -spec new(knm_number_options:options(), nums()) -> t().
--spec new(knm_number_options:options(), nums(), nums()) -> t().
--spec new(knm_number_options:options(), nums(), nums(), reason_t()) -> t().
 new(Options, ToDos) -> new(Options, ToDos, []).
+
+-spec new(knm_number_options:options(), nums(), nums()) -> t().
 new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, not_reconcilable).
+
+-spec new(knm_number_options:options(), nums(), nums(), reason_t()) -> t().
 new(Options, ToDos, KOs, Reason) ->
     #{todo => ToDos
      ,ok => []

@@ -75,16 +75,16 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_, ?CHANNELS) ->
     [?HTTP_GET];
 allowed_methods(_, ?PHOTO) ->
@@ -94,14 +94,16 @@ allowed_methods(_, ?VCARD) ->
 
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
--spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
 content_types_provided(Context) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
                                                                   ,{<<"text">>, <<"directory">>}]}]);
@@ -116,13 +118,14 @@ content_types_provided(Context, _, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 
+-spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, ?CHANNELS) -> 'true';
 resource_exists(_, ?VCARD) -> 'true'.
 
@@ -135,15 +138,17 @@ resource_exists(_, ?VCARD) -> 'true'.
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_resource(cb_context:context()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate_resource(Context) -> Context.
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context, UserId) -> validate_user_id(UserId, Context).
+
+-spec validate_resource(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
 
 -spec validate_user_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
--spec validate_user_id(kz_term:api_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
@@ -156,6 +161,7 @@ validate_user_id(UserId, Context) ->
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
+-spec validate_user_id(kz_term:api_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context, Doc) ->
     case kz_doc:is_soft_deleted(Doc) of
         'true' ->
@@ -225,14 +231,16 @@ authorize_users(_Nouns, _Verb) -> 'false'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_users(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, UserId) ->
     validate_user(Context, UserId, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, UserId, ?CHANNELS) ->
     Options = [{'key', [UserId, <<"device">>]}
               ,'include_docs'

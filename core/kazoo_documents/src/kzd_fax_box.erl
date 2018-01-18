@@ -34,9 +34,10 @@ new() ->
 type() -> ?PVT_TYPE.
 
 -spec owner_id(doc()) -> kz_term:api_binary().
--spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(Box) ->
     owner_id(Box, 'undefined').
+
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(Box, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
@@ -60,8 +61,9 @@ owner_timezone(Box, Default) ->
     end.
 
 -spec retries(doc()) -> kz_term:api_integer().
--spec retries(doc(), Default) -> integer() | Default.
 retries(Box) ->
     retries(Box, 'undefined').
+
+-spec retries(doc(), Default) -> integer() | Default.
 retries(Box, Default) ->
     kz_json:get_integer_value(?KEY_RETRIES, Box, Default).

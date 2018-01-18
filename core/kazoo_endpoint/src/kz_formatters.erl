@@ -102,10 +102,6 @@ maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
 
 -spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_json:objects()) ->
                                     kz_json:object().
--spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:objects()) ->
-                                    kz_json:object().
--spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
-                                    kz_json:object().
 maybe_apply_formatters(JObj, <<"Request">> = RequestKey, Formatters) ->
     [RequestUser, RequestRealm] = binary:split(kz_json:get_value(<<"Request">>, JObj), <<"@">>),
     maybe_apply_formatters(JObj, RequestKey, RequestUser, RequestRealm, Formatters);
@@ -118,6 +114,8 @@ maybe_apply_formatters(JObj, <<"From">> = FromKey, Formatters) ->
 maybe_apply_formatters(JObj, <<_/binary>> = Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, kz_json:get_value(Key, JObj), Formatters).
 
+-spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:objects()) ->
+                                    kz_json:object().
 maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
 maybe_apply_formatters(JObj, Key, Value, [_|_]=Formatters) ->
     Funs = [fun maybe_strip/4
@@ -210,6 +208,8 @@ maybe_match(JObj, Key, Value, Formatter) ->
         'nomatch' -> 'false'
     end.
 
+-spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
+                                    kz_json:object().
 maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
 maybe_apply_formatters(JObj, Key, User, Realm, Formatters) ->
     Funs = [fun maybe_strip/5
@@ -318,21 +318,21 @@ maybe_match(Regex, Value) ->
         'nomatch' -> 'nomatch'
     end.
 
--spec apply_formatter(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                             kz_json:object().
--spec apply_formatter(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                             kz_json:object().
 apply_formatter(Captured, Formatter) ->
     list_to_binary([kz_json:get_binary_value(<<"prefix">>, Formatter, <<>>)
                    ,Captured
                    ,kz_json:get_binary_value(<<"suffix">>, Formatter, <<>>)
                    ]).
 
+-spec apply_formatter(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                             kz_json:object().
 apply_formatter(JObj, Key, Captured, Formatter) ->
     Value = apply_formatter(Captured, Formatter),
     lager:debug("updating ~s to '~s'", [Key, Value]),
     kz_json:set_value(Key, Value, JObj).
 
+-spec apply_formatter(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                             kz_json:object().
 apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
     User = apply_formatter(Captured, Formatter),
     lager:debug("updating ~s user to '~s'@~s", [Key, User, Realm]),

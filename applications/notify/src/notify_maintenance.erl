@@ -266,12 +266,8 @@ module_exists(Module) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec compare_template_system_config(kz_term:proplist()) -> 'ok'.
--spec compare_template_system_config(kz_term:proplist(), kz_json:object()) -> 'ok'.
--spec compare_template_system_config(kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_binary()) ->
-                                            'default' | 'file' |
-                                            'doc' | 'ok'.
 
+-spec compare_template_system_config(kz_term:proplist()) -> 'ok'.
 compare_template_system_config([]) -> 'ok';
 compare_template_system_config([{FileId, Id}|Match]) ->
     File = [?TEMPLATE_PATH, "/" ,kz_term:to_list(FileId)],
@@ -295,6 +291,7 @@ compare_template_system_config([{FileId, Id}|Match]) ->
             compare_template_system_config(Match)
     end.
 
+-spec compare_template_system_config(kz_term:proplist(), kz_json:object()) -> 'ok'.
 compare_template_system_config([], JObj) ->
     Id = kz_doc:id(JObj),
     case kz_datamgr:save_doc(?SYSTEM_CONFIG_DB, JObj) of
@@ -327,6 +324,9 @@ compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
             end
     end.
 
+-spec compare_template_system_config(kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_binary()) ->
+                                            'default' | 'file' |
+                                            'doc' | 'ok'.
 compare_template_system_config('undefined', _, _) ->
     io:format("default template is undefined~n");
 compare_template_system_config(_, 'undefined', _) ->

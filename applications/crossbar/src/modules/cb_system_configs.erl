@@ -60,8 +60,6 @@ init() ->
 -type authorize_return() :: boolean() | {'stop', cb_context:context()}.
 
 -spec authorize(cb_context:context()) -> authorize_return().
--spec authorize(cb_context:context(), path_token()) -> authorize_return().
--spec authorize(cb_context:context(), path_token(), path_token()) -> authorize_return().
 authorize(Context) ->
     case cb_context:is_superduper_admin(Context)
         andalso cb_context:req_nouns(Context) of
@@ -69,7 +67,11 @@ authorize(Context) ->
         [{<<"system_configs">>, _}] -> 'true';
         _ -> {'stop', cb_context:add_system_error('bad_identifier', Context)}
     end.
+
+-spec authorize(cb_context:context(), path_token()) -> authorize_return().
 authorize(Context, _Id) -> authorize(Context).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> authorize_return().
 authorize(Context, _Id, _Node) -> authorize(Context).
 
 %%--------------------------------------------------------------------
@@ -79,13 +81,16 @@ authorize(Context, _Id, _Node) -> authorize(Context).
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_SystemConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT, ?HTTP_PATCH].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_SystemConfigId, _Node) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
@@ -98,11 +103,14 @@ allowed_methods(_SystemConfigId, _Node) ->
 %%    /system_configs/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_Id) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_Id, _Node) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -222,10 +230,12 @@ put(Context, _Id) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
     crossbar_doc:save(Context).
+
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id, Node) ->
     Ctx = crossbar_doc:save(Context),
     case cb_context:resp_status(Ctx) of
@@ -235,9 +245,10 @@ post(Context, Id, Node) ->
     end.
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
--spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id) ->
     post(Context, Id).
+
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, Node) ->
     post(Context, Id, Node).
 
@@ -247,18 +258,19 @@ patch(Context, Id, Node) ->
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
+
 -spec delete(cb_context:context(), path_token()) ->
-                    cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) ->
-                    cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), kz_term:api_object() | kz_json:objects()) ->
                     cb_context:context().
 delete(Context, _Id) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
 
+-spec delete(cb_context:context(), path_token(), path_token()) ->
+                    cb_context:context().
 delete(Context, Id, Node) ->
     delete(Context, Id, Node, cb_context:doc(Context)).
 
+-spec delete(cb_context:context(), path_token(), path_token(), kz_term:api_object() | kz_json:objects()) ->
+                    cb_context:context().
 delete(Context, Id, _Node, 'undefined') ->
     crossbar_util:response_bad_identifier(Id, Context);
 delete(Context, Id, Node, Doc) ->

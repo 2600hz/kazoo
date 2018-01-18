@@ -28,13 +28,14 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                   {'error', atom()}.
--spec get(kz_term:ne_binary(), kz_time:api_seconds(), kz_time:api_seconds()) -> {'ok', kz_json:object()} |
-                                                                                {'error', atom()}.
 get(Account) ->
     get(Account, undefined, undefined).
 
+-spec get(kz_term:ne_binary(), kz_time:api_seconds(), kz_time:api_seconds()) -> {'ok', kz_json:object()} |
+                                                                                {'error', atom()}.
 get(Account, undefined, undefined) ->
     case kazoo_modb:get_results(Account, ?TOTAL_BY_SERVICE_LEGACY, [group]) of
         {'error', _R}=Error -> Error;

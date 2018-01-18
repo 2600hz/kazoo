@@ -45,18 +45,18 @@
 -type dedicated() :: #dedicated{}.
 
 -spec ips_url() -> string().
--spec ips_url(pqc_cb_accounts:account_id()) -> string().
 ips_url() ->
     string:join([pqc_cb_api:v2_base_url(), "ips"], "/").
 
+-spec ips_url(pqc_cb_accounts:account_id()) -> string().
 ips_url(AccountId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "ips"], "/").
 
 -spec ip_url(kz_term:text()) -> string().
--spec ip_url(pqc_cb_accounts:account_id(), kz_term:text()) -> string().
 ip_url(IP) ->
     string:join([pqc_cb_api:v2_base_url(), "ips", kz_term:to_list(IP)], "/").
 
+-spec ip_url(pqc_cb_accounts:account_id(), kz_term:text()) -> string().
 ip_url(AccountId, IP) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "ips", kz_term:to_list(IP)], "/").
 
@@ -268,13 +268,13 @@ delete_ip(API, ?DEDICATED(IP, _Host, _Zone)) ->
 -define(DEDICATED_IPS, [?DEDICATED(<<"1.2.3.4">>, <<"a.host.com">>, <<"zone-1">>)]).
 
 -spec cleanup() -> any().
--spec cleanup(pqc_cb_api:state()) -> any().
 cleanup() ->
     ?INFO("CLEANUP ALL THE THINGS"),
     kz_data_tracing:clear_all_traces(),
 
     cleanup(pqc_cb_api:authenticate()).
 
+-spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),

@@ -102,11 +102,11 @@ send_park(#ts_callflow_state{route_req_jobj=JObj
     wait_for_win(State, ?WAIT_FOR_WIN_TIMEOUT).
 
 -spec wait_for_win(state(), pos_integer()) -> {'won' | 'lost', state()}.
--spec wait_for_win(state(), pos_integer(), kapps_call_command:request_return()) ->
-                          {'won' | 'lost', state()}.
 wait_for_win(State, Timeout) ->
     wait_for_win(State, Timeout, kapps_call_command:receive_event(Timeout)).
 
+-spec wait_for_win(state(), pos_integer(), kapps_call_command:request_return()) ->
+                          {'won' | 'lost', state()}.
 wait_for_win(State, Timeout, {'ok', JObj}) ->
     case kapi_route:win_v(JObj) of
         'true' -> route_won(State, JObj);
@@ -132,13 +132,13 @@ route_won(#ts_callflow_state{amqp_worker=Worker, kapps_call=Call}=State, RouteWi
 
 -spec wait_for_bridge(state(), kz_term:api_integer()) ->
                              {'hangup' | 'error' | 'bridged', state()}.
--spec wait_for_bridge(state(), kz_term:api_integer(), kapps_call_command:request_return()) ->
-                             {'hangup' | 'error' | 'bridged', state()}.
 wait_for_bridge(State, 'undefined') ->
     wait_for_bridge(State, 20);
 wait_for_bridge(State, Timeout) ->
     wait_for_bridge(State, Timeout, kapps_call_command:receive_event(Timeout * 1000)).
 
+-spec wait_for_bridge(state(), kz_term:api_integer(), kapps_call_command:request_return()) ->
+                             {'hangup' | 'error' | 'bridged', state()}.
 wait_for_bridge(State, Timeout, {'ok', EventJObj}) ->
     case process_event_for_bridge(State, EventJObj) of
         'ignore' -> wait_for_bridge(State, Timeout);
@@ -152,11 +152,11 @@ wait_for_bridge(State, Timeout, {'error', 'timeout'}) ->
 
 -spec process_event_for_bridge(state(), kz_json:object()) ->
                                       'ignore' | {'hangup' | 'error' | 'bridged', state()}.
--spec process_event_for_bridge(state(), kz_json:object(), event_type()) ->
-                                      'ignore' | {'hangup' | 'error' | 'bridged', state()}.
 process_event_for_bridge(State, JObj) ->
     process_event_for_bridge(State, JObj, get_event_type(JObj)).
 
+-spec process_event_for_bridge(state(), kz_json:object(), event_type()) ->
+                                      'ignore' | {'hangup' | 'error' | 'bridged', state()}.
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg} = State
                         ,JObj
                         ,{<<"resource">>, <<"offnet_resp">>, _}
@@ -330,8 +330,9 @@ get_worker_queue(#ts_callflow_state{amqp_worker=Worker}) ->
     gen_listener:queue_name(Worker).
 
 -spec get_aleg_id(state()) -> kz_term:api_binary().
--spec get_bleg_id(state()) -> kz_term:api_binary().
 get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) -> ALeg.
+
+-spec get_bleg_id(state()) -> kz_term:api_binary().
 get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) -> ALeg.
 
 -spec get_call_cost(state()) -> float().
@@ -384,9 +385,10 @@ pre_park_action() ->
     end.
 
 -spec is_success(kz_term:ne_binary(), kz_json:object()) -> boolean().
--spec is_success(kz_term:ne_binaries(), kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_success(Key, JObj) ->
     kz_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
+
+-spec is_success(kz_term:ne_binaries(), kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_success(Key, JObj, Default) ->
     kz_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
 

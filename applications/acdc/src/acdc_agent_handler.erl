@@ -263,10 +263,10 @@ handle_originate_resp(JObj, Props) ->
     end.
 
 -spec handle_member_message(kz_json:object(), kz_term:proplist()) -> 'ok'.
--spec handle_member_message(kz_json:object(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 handle_member_message(JObj, Props) ->
     handle_member_message(JObj, Props, kz_json:get_value(<<"Event-Name">>, JObj)).
 
+-spec handle_member_message(kz_json:object(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 handle_member_message(JObj, Props, <<"connect_req">>) ->
     'true' = kapi_acdc_queue:member_connect_req_v(JObj),
     acdc_agent_fsm:member_connect_req(props:get_value('fsm_pid', Props), JObj);
@@ -277,10 +277,10 @@ handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
 
 -spec handle_agent_message(kz_json:object(), kz_term:proplist()) -> 'ok'.
--spec handle_agent_message(kz_json:object(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 handle_agent_message(JObj, Props) ->
     handle_agent_message(JObj, Props, kz_json:get_value(<<"Event-Name">>, JObj)).
 
+-spec handle_agent_message(kz_json:object(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 handle_agent_message(JObj, Props, <<"connect_timeout">>) ->
     'true' = kapi_acdc_queue:agent_timeout_v(JObj),
     acdc_agent_fsm:agent_timeout(props:get_value('fsm_pid', Props), JObj);

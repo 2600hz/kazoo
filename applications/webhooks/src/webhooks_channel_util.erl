@@ -101,9 +101,10 @@ format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
                    ).
 
 -spec base_hook_event(kz_json:object(), kz_term:api_binary()) -> kz_json:object().
--spec base_hook_event(kz_json:object(), kz_term:api_binary(), kz_term:proplist()) -> kz_json:object().
 base_hook_event(JObj, AccountId) ->
     base_hook_event(JObj, AccountId, []).
+
+-spec base_hook_event(kz_json:object(), kz_term:api_binary(), kz_term:proplist()) -> kz_json:object().
 base_hook_event(JObj, AccountId, Acc) ->
     WasGlobal = kz_term:is_true(ccv(JObj, <<"Global-Resource">>)),
 
@@ -141,19 +142,20 @@ resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
 
 -spec ccv(kz_json:object(), kz_json:path()) ->
                  kz_term:api_binary().
--spec ccv(kz_json:object(), kz_json:path(), Default) ->
-                 kz_term:ne_binary() | Default.
 ccv(JObj, Key) ->
     ccv(JObj, Key, 'undefined').
+
+-spec ccv(kz_json:object(), kz_json:path(), Default) ->
+                 kz_term:ne_binary() | Default.
 ccv(JObj, Key, Default) ->
     kz_call_event:custom_channel_var(JObj, Key, Default).
 
 -spec non_reserved_ccvs(kz_call_event:doc()) -> kz_term:api_object().
--spec non_reserved_ccvs(kz_json:object(), kz_term:api_ne_binaries()) -> kz_term:api_object().
 non_reserved_ccvs(JObj) ->
     CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
     non_reserved_ccvs(CCVs, kapps_config:get_ne_binaries(<<"call_command">>, <<"reserved_ccv_keys">>)).
 
+-spec non_reserved_ccvs(kz_json:object(), kz_term:api_ne_binaries()) -> kz_term:api_object().
 non_reserved_ccvs(_CCVs, 'undefined') -> 'undefined';
 non_reserved_ccvs(CCVs, Keys) ->
     kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).

@@ -65,9 +65,10 @@
 -define(REASON_CODE, <<"pvt_status_reason_code">>).
 
 -spec billing_id(doc()) -> kz_term:api_binary().
--spec billing_id(doc(), Default) -> kz_term:ne_binary() | Default.
 billing_id(JObj) ->
     billing_id(JObj, kz_doc:account_id(JObj)).
+
+-spec billing_id(doc(), Default) -> kz_term:ne_binary() | Default.
 billing_id(JObj, Default) ->
     kz_json:get_value(?BILLING_ID, JObj, Default).
 
@@ -76,64 +77,73 @@ set_billing_id(JObj, BillingId) ->
     kz_json:set_value(?BILLING_ID, BillingId, JObj).
 
 -spec is_reseller(doc()) -> boolean().
--spec is_reseller(doc(), Default) -> boolean() | Default.
 is_reseller(JObj) ->
     is_reseller(JObj, 'false').
+
+-spec is_reseller(doc(), Default) -> boolean() | Default.
 is_reseller(JObj, Default) ->
     kz_json:is_true(?IS_RESELLER, JObj, Default).
 
 -spec reseller_id(doc()) -> kz_term:api_binary().
--spec reseller_id(doc(), Default) -> kz_term:ne_binary() | Default.
 reseller_id(JObj) ->
     reseller_id(JObj, 'undefined').
+
+-spec reseller_id(doc(), Default) -> kz_term:ne_binary() | Default.
 reseller_id(JObj, Default) ->
     kz_json:get_value(?RESELLER_ID, JObj, Default).
 
 -spec is_dirty(doc()) -> boolean().
--spec is_dirty(doc(), Default) -> boolean() | Default.
 is_dirty(JObj) ->
     is_dirty(JObj, 'false').
+
+-spec is_dirty(doc(), Default) -> boolean() | Default.
 is_dirty(JObj, Default) ->
     kz_json:is_true(?IS_DIRTY, JObj, Default).
 
 -spec is_deleted(doc()) -> boolean().
--spec is_deleted(doc(), Default) -> boolean() | Default.
 is_deleted(JObj) ->
     is_deleted(JObj, 'false').
+
+-spec is_deleted(doc(), Default) -> boolean() | Default.
 is_deleted(JObj, Default) ->
     kz_json:is_true(?IS_DELETED, JObj, Default).
 
 -spec status(doc()) -> kz_term:ne_binary().
--spec status(doc(), Default) -> kz_term:ne_binary() | Default.
 status(JObj) ->
     status(JObj, status_good()).
+
+-spec status(doc(), Default) -> kz_term:ne_binary() | Default.
 status(JObj, Default) ->
     kz_json:get_value(?STATUS, JObj, Default).
 
 -spec tree(doc()) -> kz_term:ne_binaries().
--spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(JObj) ->
     tree(JObj, []).
+
+-spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(JObj, Default) ->
     kz_json:get_value(?TREE, JObj, Default).
 
 -spec reason(doc()) -> kz_term:ne_binaries().
--spec reason(doc(), Default) -> kz_term:ne_binaries() | Default.
 reason(JObj) ->
     reason(JObj, 'undefined').
+
+-spec reason(doc(), Default) -> kz_term:ne_binaries() | Default.
 reason(JObj, Default) ->
     kz_json:get_value(?REASON, JObj, Default).
 
 -spec reason_code(doc()) -> kz_term:ne_binaries().
--spec reason_code(doc(), Default) -> kz_term:ne_binaries() | Default.
 reason_code(JObj) ->
     reason_code(JObj, 'undefined').
+
+-spec reason_code(doc(), Default) -> kz_term:ne_binaries() | Default.
 reason_code(JObj, Default) ->
     kz_json:get_value(?REASON_CODE, JObj, Default).
 
 -spec type() -> kz_term:ne_binary().
--spec type(kz_json:object()) -> kz_term:ne_binary().
 type() -> <<"service">>.
+
+-spec type(kz_json:object()) -> kz_term:ne_binary().
 type(JObj) ->
     kz_doc:type(JObj, type()).
 
@@ -144,9 +154,10 @@ status_good() -> <<"good_standing">>.
 status_delinquent() -> <<"delinquent">>.
 
 -spec plans(doc()) -> kz_json:object().
--spec plans(doc(), Default) -> kz_json:object() | Default.
 plans(JObj) ->
     plans(JObj, kz_json:new()).
+
+-spec plans(doc(), Default) -> kz_json:object() | Default.
 plans(JObj, Default) ->
     kz_json:get_json_value(?PLANS, JObj, Default).
 
@@ -155,51 +166,58 @@ plan_ids(JObj) ->
     kz_json:get_keys(?PLANS, JObj).
 
 -spec plan(doc(), kz_term:ne_binary()) -> kz_json:object().
--spec plan(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 plan(JObj, PlanId) ->
     plan(JObj, PlanId, kz_json:new()).
+
+-spec plan(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 plan(JObj, PlanId, Default) ->
     kz_json:get_json_value([?PLANS, PlanId], JObj, Default).
 
 -spec plan_account_id(doc(), kz_term:ne_binary()) -> kz_term:api_binary().
--spec plan_account_id(doc(), kz_term:ne_binary(), Default) -> kz_term:api_binary() | Default.
 plan_account_id(JObj, PlanId) ->
     plan_account_id(JObj, PlanId, 'undefined').
+
+-spec plan_account_id(doc(), kz_term:ne_binary(), Default) -> kz_term:api_binary() | Default.
 plan_account_id(JObj, PlanId, Default) ->
     kzd_service_plan:account_id(plan(JObj, PlanId), Default).
 
 -spec plan_overrides(doc(), kz_term:ne_binary()) -> kz_json:object().
--spec plan_overrides(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 plan_overrides(JObj, PlanId) ->
     plan_overrides(JObj, PlanId, kz_json:new()).
+
+-spec plan_overrides(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 plan_overrides(JObj, PlanId, Default) ->
     kzd_service_plan:overrides(plan(JObj, PlanId), Default).
 
 -spec quantities(doc()) -> kz_json:object().
--spec quantities(doc(), Default) -> kz_json:object() | Default.
 quantities(JObj) ->
     quantities(JObj, kz_json:new()).
+
+-spec quantities(doc(), Default) -> kz_json:object() | Default.
 quantities(JObj, Default) ->
     kz_json:get_json_value(?QUANTITIES, JObj, Default).
 
 -spec category_quantities(doc(), kz_term:ne_binary()) -> kz_json:object().
--spec category_quantities(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 category_quantities(JObj, CategoryId) ->
     category_quantities(JObj, CategoryId, kz_json:new()).
+
+-spec category_quantities(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 category_quantities(JObj, CategoryId, Default) ->
     kz_json:get_json_value([?QUANTITIES, CategoryId], JObj, Default).
 
 -spec item_quantity(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
--spec item_quantity(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> integer() | Default.
 item_quantity(JObj, CategoryId, ItemId) ->
     item_quantity(JObj, CategoryId, ItemId, 0).
+
+-spec item_quantity(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> integer() | Default.
 item_quantity(JObj, CategoryId, ItemId, Default) ->
     kz_json:get_integer_value([?QUANTITIES, CategoryId, ItemId], JObj, Default).
 
 -spec transactions(doc()) -> kz_json:objects().
--spec transactions(doc(), Default) -> kz_json:objects() | Default.
 transactions(JObj) ->
     transactions(JObj, []).
+
+-spec transactions(doc(), Default) -> kz_json:objects() | Default.
 transactions(JObj, Default) ->
     kz_json:get_value(?TRANSACTIONS, JObj, Default).
 

@@ -156,7 +156,6 @@ migrate_recorded_name(Db) ->
     end.
 
 -spec do_recorded_name_migration(kz_term:ne_binary(), kz_json:object()) -> any().
--spec do_recorded_name_migration(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) -> any().
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = kz_doc:id(VMBox),
     case kz_json:get_value(?RECORDED_NAME_KEY, VMBox) of
@@ -167,6 +166,7 @@ do_recorded_name_migration(Db, VMBox) ->
             {'ok', _} = kz_datamgr:save_doc(Db, kz_json:delete_key(?RECORDED_NAME_KEY, VMBox))
     end.
 
+-spec do_recorded_name_migration(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) -> any().
 do_recorded_name_migration(_Db, _MediaId, 'undefined') ->
     lager:info("no owner id on vm box");
 do_recorded_name_migration(Db, MediaId, OwnerId) ->

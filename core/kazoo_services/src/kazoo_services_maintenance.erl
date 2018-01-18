@@ -121,12 +121,12 @@ refresh() ->
 %% full reseller tree (as it normally does when changes occur)
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile() -> 'no_return'.
--spec reconcile(kz_term:text()) -> 'no_return'.
 
+-spec reconcile() -> 'no_return'.
 reconcile() ->
     reconcile('all').
 
+-spec reconcile(kz_term:text()) -> 'no_return'.
 reconcile('all') ->
     Accounts = kapps_util:get_all_accounts('raw'),
     Total = length(Accounts),

@@ -12,9 +12,6 @@
 
 -spec authenticate(kz_json:object()) -> {'ok', kz_json:object()} |
                                         {'error', kz_term:ne_binary()}.
--spec authenticate(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', kz_term:ne_binary()}.
 authenticate(JObj) ->
     case {kz_json:get_value(<<"access_token">>, JObj)
          ,kz_json:get_value(<<"provider">>, JObj)
@@ -29,6 +26,9 @@ authenticate(JObj) ->
         {AccessToken, ProviderId} -> authenticate(AccessToken, ProviderId, JObj)
     end.
 
+-spec authenticate(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                          {'ok', kz_json:object()} |
+                          {'error', kz_term:ne_binary()}.
 authenticate(AccessToken, ProviderId, JObj) ->
     case kazoo_oauth_util:verify_token(ProviderId, AccessToken) of
         {'ok', Token} -> maybe_add_oauth_user(JObj, Token);

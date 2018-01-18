@@ -62,7 +62,6 @@ authenticate() ->
     create_api_state(Resp, RequestId, Trace).
 
 -spec api_key() -> kz_term:ne_binary().
--spec api_key(kz_term:ne_binary()) -> kz_term:ne_binary().
 api_key() ->
     case kapps_util:get_master_account_id() of
         {'ok', MasterAccountId} ->
@@ -72,6 +71,7 @@ api_key() ->
             throw('no_master_account')
     end.
 
+-spec api_key(kz_term:ne_binary()) -> kz_term:ne_binary().
 api_key(MasterAccountId) ->
     case kz_account:fetch(MasterAccountId) of
         {'ok', MasterAccount} ->
@@ -104,10 +104,10 @@ v2_base_url() -> ?API_BASE.
 auth_account_id(#{'account_id' := AccountId}) -> AccountId.
 
 -spec request_headers(state()) -> kz_term:proplist().
--spec request_headers(state(), kz_term:proplist()) -> kz_term:proplist().
 request_headers(API) ->
     request_headers(API, []).
 
+-spec request_headers(state(), kz_term:proplist()) -> kz_term:proplist().
 request_headers(#{'auth_token' := AuthToken
                  ,'request_id' := RequestId
                  }
@@ -121,12 +121,12 @@ request_headers(#{'auth_token' := AuthToken
                     ).
 
 -spec default_request_headers() -> kz_term:proplist().
--spec default_request_headers(kz_term:ne_binary()) -> kz_term:proplist().
 default_request_headers() ->
     [{<<"content-type">>, <<"application/json">>}
     ,{<<"accept">>, <<"application/json">>}
     ].
 
+-spec default_request_headers(kz_term:ne_binary()) -> kz_term:proplist().
 default_request_headers(RequestId) ->
     NowMS = kz_time:now_ms(),
     APIRequestID = kz_term:to_list(RequestId) ++ "-" ++ integer_to_list(NowMS),
@@ -144,12 +144,13 @@ default_request_headers(RequestId) ->
 
 -spec make_request(expected_codes(), fun_2(), string(), kz_term:proplist()) ->
                           response().
--spec make_request(expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
-                          response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
     ?INFO("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders)).
+
+-spec make_request(expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
+                          response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
     ?INFO("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
@@ -158,10 +159,11 @@ make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
 
 -spec create_envelope(kz_json:json_term()) ->
                              kz_json:object().
--spec create_envelope(kz_json:json_term(), kz_json:object()) ->
-                             kz_json:object().
 create_envelope(Data) ->
     create_envelope(Data, kz_json:new()).
+
+-spec create_envelope(kz_json:json_term(), kz_json:object()) ->
+                             kz_json:object().
 create_envelope(Data, Envelope) ->
     kz_json:set_value(<<"data">>, Data, Envelope).
 

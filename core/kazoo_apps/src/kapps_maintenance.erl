@@ -73,8 +73,9 @@ binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
     <<CommonPath/binary, ".", Specific/binary>>.
 
 -spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
--spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
 bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
+
+-spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
 unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
@@ -238,17 +239,18 @@ blocking_refresh(Pause) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec refresh() -> 'no_return'.
--spec refresh(kz_term:ne_binaries(), kz_term:text() | non_neg_integer()) -> 'no_return'.
--spec refresh(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
     refresh(Databases, 2 * ?MILLISECONDS_IN_SECOND).
 
+-spec refresh(kz_term:ne_binaries(), kz_term:text() | non_neg_integer()) -> 'no_return'.
 refresh(Databases, Pause) ->
     Total = length(Databases),
     refresh(Databases, kz_term:to_integer(Pause), Total).
 
+-spec refresh(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
@@ -454,9 +456,8 @@ get_medias(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_limits() -> 'ok'.
--spec migrate_limits(atom() | string() | binary()) -> 'ok'.
 
+-spec migrate_limits() -> 'ok'.
 migrate_limits() ->
     migrate_all_limits(kapps_util:get_all_accounts()).
 
@@ -474,6 +475,7 @@ migrate_limits_fold(AccountDb, Current, Total) ->
         end,
     Current + 1.
 
+-spec migrate_limits(atom() | string() | binary()) -> 'ok'.
 migrate_limits(Account) when not is_binary(Account) ->
     migrate_limits(kz_term:to_binary(Account));
 migrate_limits(Account) ->
@@ -544,9 +546,8 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_media() -> 'ok'.
--spec migrate_media(atom() | string() | binary()) -> 'ok'.
 
+-spec migrate_media() -> 'ok'.
 migrate_media() ->
     Accounts = kapps_util:get_all_accounts(),
     Total = length(Accounts),
@@ -558,6 +559,7 @@ migrate_media_fold(AccountDb, Current, Total) ->
     _ = migrate_media(AccountDb),
     Current + 1.
 
+-spec migrate_media(atom() | string() | binary()) -> 'ok'.
 migrate_media(Account) when not is_binary(Account) ->
     migrate_media(kz_term:to_binary(Account));
 migrate_media(Account) ->
@@ -884,11 +886,8 @@ maybe_delete_db(Database) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec purge_doc_type(kz_term:ne_binaries() | kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_json:objects()} |
-                            {'error', _} |
-                            'ok'.
--spec purge_doc_type(kz_term:ne_binaries() | kz_term:ne_binary(), kz_term:ne_binary(), integer()) ->
                             {'ok', kz_json:objects()} |
                             {'error', _} |
                             'ok'.
@@ -917,6 +916,10 @@ purge_doc_type(Type, Account) when not is_binary(Account) ->
                   ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   ).
 
+-spec purge_doc_type(kz_term:ne_binaries() | kz_term:ne_binary(), kz_term:ne_binary(), integer()) ->
+                            {'ok', kz_json:objects()} |
+                            {'error', _} |
+                            'ok'.
 purge_doc_type(Type, Account, ChunkSize) ->
     Db = kz_util:format_account_id(Account, 'encoded'),
     Opts = [{'key', Type}
@@ -933,9 +936,10 @@ purge_doc_type(Type, Account, ChunkSize) ->
     end.
 
 -spec call_id_status(kz_term:ne_binary()) -> 'ok'.
--spec call_id_status(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
 call_id_status(CallId) ->
     call_id_status(CallId, 'false').
+
+-spec call_id_status(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
 call_id_status(CallId, Verbose) ->
     Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
            | kz_api:default_headers(<<"shell">>, <<"0">>)

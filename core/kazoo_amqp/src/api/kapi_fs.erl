@@ -55,9 +55,10 @@ declare_exchanges() ->
     amqp_util:callctl_exchange().
 
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Queue, JObj) ->
     publish_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Queue, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?FS_REQ_VALUES, fun req/1),
     amqp_util:callctl_publish(Queue, Payload, ContentType).

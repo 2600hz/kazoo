@@ -49,9 +49,8 @@ authorized_log({'true', _}) -> "";
 authorized_log('true') -> "";
 authorized_log('false') -> " not".
 
--spec kill_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
--spec kill_channel(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
 
+-spec kill_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
 kill_channel(Props, Node) ->
     Direction = kzd_freeswitch:call_direction(Props),
     ResourceType = kzd_freeswitch:resource_type(Props, <<"audio">>),
@@ -59,6 +58,7 @@ kill_channel(Props, Node) ->
     lager:debug("killing unauthorized channel"),
     kill_channel(Direction, ResourceType, CallId, Node).
 
+-spec kill_channel(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
 kill_channel(_, <<"sms">>, _CallId, _Node) -> 'ok';
 kill_channel(<<"inbound">>, _, CallId, Node) ->
     %% Give any pending route requests a chance to cleanly terminate this call,

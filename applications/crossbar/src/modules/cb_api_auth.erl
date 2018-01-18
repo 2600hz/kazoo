@@ -138,8 +138,6 @@ on_successful_validation(Context) ->
     end.
 
 -spec validate_by_api_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec validate_by_api_key(cb_context:context(), kz_term:ne_binary(), kz_json:object() | kz_json:objects()) ->
-                                 cb_context:context().
 validate_by_api_key(Context, ApiKey) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_API
                                      ,[{'key', ApiKey}]
@@ -151,6 +149,8 @@ validate_by_api_key(Context, ApiKey) ->
         _Status -> Context1
     end.
 
+-spec validate_by_api_key(cb_context:context(), kz_term:ne_binary(), kz_json:object() | kz_json:objects()) ->
+                                 cb_context:context().
 validate_by_api_key(Context, ApiKey, []) ->
     lager:debug("api key '~s' not associated with any accounts"
                ,[ApiKey]

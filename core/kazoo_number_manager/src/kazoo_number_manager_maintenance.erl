@@ -234,14 +234,15 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     end.
 
 %% @public
+
 -spec fix_accounts_numbers([kz_term:ne_binary()]) -> 'ok'.
--spec fix_account_numbers(kz_term:ne_binary()) -> 'ok'.
 fix_accounts_numbers(Accounts) ->
     AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
     _ = purge_discovery(),
     _ = purge_deleted(),
     foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, AccountDbs).
 
+-spec fix_account_numbers(kz_term:ne_binary()) -> 'ok'.
 fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ?SUP_LOG_DEBUG("########## fixing [~s] ##########", [AccountDb]),
     ?SUP_LOG_DEBUG("[~s] getting numbers from account db", [AccountDb]),
@@ -312,7 +313,6 @@ migrate(Account) ->
     'ok'.
 
 -spec migrate_unassigned_numbers() -> 'ok'.
--spec migrate_unassigned_numbers(kz_term:ne_binary(), integer()) -> 'ok'.
 migrate_unassigned_numbers() ->
     ?SUP_LOG_DEBUG("********** fixing unassigned numbers **********", []),
     pforeach(fun migrate_unassigned_numbers/1, knm_util:get_all_number_dbs()),
@@ -330,6 +330,7 @@ migrate_unassigned_numbers(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
 migrate_unassigned_numbers(Number) ->
     migrate_unassigned_numbers(knm_converters:to_db(Number)).
 
+-spec migrate_unassigned_numbers(kz_term:ne_binary(), integer()) -> 'ok'.
 migrate_unassigned_numbers(NumberDb, Offset) ->
     ViewOptions = [{limit, kz_datamgr:max_bulk_insert()}
                   ,{skip, Offset}

@@ -120,9 +120,9 @@ update_call(Call, Routines) ->
     gen_server:call(Srv, {'update_call', Routines}).
 
 -spec continue(kapps_call:call() | pid()) -> 'ok'.
--spec continue(kz_term:ne_binary(), kapps_call:call() | pid()) -> 'ok'.
 continue(Srv) -> continue(?DEFAULT_CHILD_KEY, Srv).
 
+-spec continue(kz_term:ne_binary(), kapps_call:call() | pid()) -> 'ok'.
 continue(Key, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'continue', Key});
 continue(Key, Call) ->
@@ -144,9 +144,9 @@ branch(Flow, Call) ->
     branch(Flow, Srv).
 
 -spec next(kapps_call:call() | pid()) -> kz_term:api_object().
--spec next(kz_term:ne_binary(), kapps_call:call() | pid()) -> kz_term:api_object().
 next(Srv) -> next(?DEFAULT_CHILD_KEY, Srv).
 
+-spec next(kz_term:ne_binary(), kapps_call:call() | pid()) -> kz_term:api_object().
 next(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'next', Key});
 next(Key, Call) ->
@@ -172,10 +172,10 @@ remove_termination_handler(Call, {_,_,_}=Handler) ->
     remove_termination_handler(kapps_call:kvs_fetch('consumer_pid', Call), Handler).
 
 -spec stop(kapps_call:call() | pid()) -> 'ok'.
--spec stop(kapps_call:call() | pid(), kz_term:api_ne_binary()) -> 'ok'.
 stop(Srv) ->
     stop(Srv, 'undefined').
 
+-spec stop(kapps_call:call() | pid(), kz_term:api_ne_binary()) -> 'ok'.
 stop(Srv, Cause) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'stop', Cause});
 stop(Call, Cause) ->
@@ -238,9 +238,8 @@ is_channel_destroyed(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     is_channel_destroyed(Srv).
 
--spec callid(kapps_call:call() | pid()) -> kz_term:ne_binary().
--spec callid(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_term:ne_binary().
 
+-spec callid(kapps_call:call() | pid()) -> kz_term:ne_binary().
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', 1000),
     kz_util:put_callid(CallId),
@@ -249,6 +248,7 @@ callid(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     callid(Srv).
 
+-spec callid(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_term:ne_binary().
 callid(_, Call) ->
     callid(Call).
 
@@ -259,11 +259,12 @@ queue_name(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     queue_name(Srv).
 
--spec control_queue(kapps_call:call() | pid()) -> kz_term:ne_binary().
--spec control_queue(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_term:ne_binary().
 
+-spec control_queue(kapps_call:call() | pid()) -> kz_term:ne_binary().
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
+
+-spec control_queue(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_term:ne_binary().
 control_queue(_, Call) -> control_queue(Call).
 
 -spec get_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:keys()}.
@@ -284,11 +285,11 @@ get_all_branch_keys(Call) ->
 -spec attempt(kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
+attempt(Srv) -> attempt(?DEFAULT_CHILD_KEY, Srv).
+
 -spec attempt(kz_term:ne_binary(), kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
-attempt(Srv) -> attempt(?DEFAULT_CHILD_KEY, Srv).
-
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
 attempt(Key, Call) ->
@@ -892,9 +893,10 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 -spec hangup_call(kapps_call:call()) -> 'ok'.
--spec hangup_call(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 hangup_call(Call) ->
     hangup_call(Call, 'undefined').
+
+-spec hangup_call(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 hangup_call(Call, Cause) ->
     Cmd = [{<<"Event-Name">>, <<"command">>}
           ,{<<"Event-Category">>, <<"call">>}

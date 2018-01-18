@@ -57,10 +57,10 @@ delete_account(API, AccountId) ->
     pqc_cb_api:make_request([200], fun kz_http:delete/2, URL, RequestHeaders).
 
 -spec cleanup_accounts(kz_term:ne_binaries()) -> 'ok'.
--spec cleanup_accounts(pqc_cb_api:state(), kz_term:ne_binaries()) -> 'ok'.
 cleanup_accounts(AccountNames) ->
     cleanup_accounts(pqc_cb_api:authenticate(), AccountNames).
 
+-spec cleanup_accounts(pqc_cb_api:state(), kz_term:ne_binaries()) -> 'ok'.
 cleanup_accounts(API, AccountNames) ->
     _ = [cleanup_account(API, AccountName) || AccountName <- AccountNames],
     kt_cleanup:cleanup_soft_deletes(?KZ_ACCOUNTS_DB).

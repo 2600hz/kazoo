@@ -32,20 +32,20 @@ count_current_subscriptions() ->
 -define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~50.s | ~10.s | ~20.s |~n").
 
 -spec current_subscriptions() -> 'ok'.
--spec current_subscriptions(kz_term:ne_binary()) -> 'ok'.
--spec current_subscriptions(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 current_subscriptions() ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
         ets:tab2list(omnip_subscriptions:table_id())
        )).
 
+-spec current_subscriptions(kz_term:ne_binary()) -> 'ok'.
 current_subscriptions(Realm) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
         omnip_subscriptions:search_for_subscriptions('_', kz_term:to_binary(Realm))
        )).
 
+-spec current_subscriptions(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 current_subscriptions(Realm, User) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(

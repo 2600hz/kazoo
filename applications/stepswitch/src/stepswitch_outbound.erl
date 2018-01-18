@@ -40,13 +40,14 @@ handle_req(OffnetJObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec handle_audio_req(kapi_offnet_resource:req()) -> any().
--spec handle_audio_req(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_audio_req(OffnetReq) ->
     Number = stepswitch_util:get_outbound_destination(OffnetReq),
     lager:debug("received outbound audio resource request for ~s: ~p", [Number, OffnetReq]),
     handle_audio_req(Number, OffnetReq).
 
+-spec handle_audio_req(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_audio_req(Number, OffnetReq) ->
     case knm_number:lookup_account(Number) of
         {'ok', _AccountId, Props} -> maybe_force_outbound(Props, OffnetReq);

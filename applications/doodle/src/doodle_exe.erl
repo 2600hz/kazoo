@@ -101,9 +101,9 @@ update_call(Call) ->
     gen_server:cast(Srv, {'update_call', Call}).
 
 -spec continue(kapps_call:call() | pid()) -> 'ok'.
--spec continue(kz_term:ne_binary(), kapps_call:call() | pid()) -> 'ok'.
 continue(Srv) -> continue(<<"_">>, Srv).
 
+-spec continue(kz_term:ne_binary(), kapps_call:call() | pid()) -> 'ok'.
 continue(Key, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'continue', Key});
 continue(Key, Call) ->
@@ -156,9 +156,8 @@ callid_update(CallId, Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     callid_update(CallId, Srv).
 
--spec callid(kapps_call:call() | pid()) -> kz_term:ne_binary().
--spec callid(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 
+-spec callid(kapps_call:call() | pid()) -> kz_term:ne_binary().
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND),
     kz_util:put_callid(CallId),
@@ -167,6 +166,7 @@ callid(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     callid(Srv).
 
+-spec callid(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 callid(_, Call) ->
     callid(Call).
 
@@ -177,11 +177,12 @@ queue_name(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     queue_name(Srv).
 
--spec control_queue(kapps_call:call() | pid()) -> kz_term:ne_binary().
--spec control_queue(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_term:ne_binary().
 
+-spec control_queue(kapps_call:call() | pid()) -> kz_term:ne_binary().
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
+
+-spec control_queue(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_term:ne_binary().
 control_queue(_, Call) -> control_queue(Call).
 
 -spec get_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:path()}.
@@ -201,11 +202,11 @@ get_all_branch_keys(Call) ->
 -spec attempt(kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
+attempt(Srv) -> attempt(<<"_">>, Srv).
+
 -spec attempt(kz_json:path(), kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
-attempt(Srv) -> attempt(<<"_">>, Srv).
-
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
 attempt(Key, Call) ->

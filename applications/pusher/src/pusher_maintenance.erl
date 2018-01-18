@@ -20,10 +20,10 @@ add_google_app(AppId, Secret) ->
     'ok'.
 
 -spec add_apple_app(binary(), binary()) -> 'ok' | {'error', any()}.
--spec add_apple_app(binary(), binary(), binary()) -> 'ok' | {'error', any()}.
 add_apple_app(AppId, Certfile) ->
     add_apple_app(AppId, Certfile, ?DEFAULT_APNS_HOST).
 
+-spec add_apple_app(binary(), binary(), binary()) -> 'ok' | {'error', any()}.
 add_apple_app(AppId, Certfile, Host) ->
     case file:read_file(Certfile) of
         {'ok', Binary} ->

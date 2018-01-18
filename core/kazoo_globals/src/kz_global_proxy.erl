@@ -31,10 +31,10 @@ start_link(Global) ->
     gen_server:start_link(?MODULE, [Global], []).
 
 -spec stop(pid()) -> 'ok'.
--spec stop(pid(), any()) -> 'ok'.
 stop(Pid) ->
     stop(Pid, 'normal').
 
+-spec stop(pid(), any()) -> 'ok'.
 stop(Pid, Reason) ->
     gen_server:cast(Pid, {'$proxy_stop', Reason}).
 

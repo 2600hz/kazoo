@@ -44,9 +44,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+
 -spec start_link() -> kz_types:startlink_ret().
--spec start_link(pos_integer()) -> kz_types:startlink_ret().
 start_link() -> start_link(?SEND_INTERVAL).
+
+-spec start_link(pos_integer()) -> kz_types:startlink_ret().
 start_link(Send_stats) ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [Send_stats], []).
 
@@ -59,9 +61,9 @@ getdb() ->
     gen_server:call(?SERVER, 'get_db').
 
 -spec increment_counter(any()) -> 'ok'.
--spec increment_counter(any(), any()) -> 'ok'.
 increment_counter(Item) -> send_counter(Item, 1).
 
+-spec increment_counter(any(), any()) -> 'ok'.
 increment_counter(Realm, Item) ->
     gen_server:cast(?SERVER, {'add', Realm, Item, 1}).
 

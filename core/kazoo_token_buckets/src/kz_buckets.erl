@@ -83,23 +83,22 @@ start_link() ->
 %% StartIfMissing :: start the token bucket if it doesn't exist yet
 %% @end
 %%--------------------------------------------------------------------
--spec consume_token(kz_term:ne_binary()) -> boolean().
--spec consume_token(kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> boolean().
 
+-spec consume_token(kz_term:ne_binary()) -> boolean().
 consume_token(Name) ->
     consume_tokens(Name, 1).
 
+-spec consume_token(kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> boolean().
 consume_token(<<_/binary>> = App, <<_/binary>> = Name) ->
     consume_tokens(App, Name, 1);
 consume_token(Name, StartIfMissing) ->
     consume_tokens(?DEFAULT_APP, Name, 1, StartIfMissing).
 
 -spec consume_tokens(kz_term:ne_binary(), integer()) -> boolean().
--spec consume_tokens(kz_term:ne_binary(), kz_term:ne_binary() | integer(), integer() | boolean()) -> boolean().
--spec consume_tokens(kz_term:ne_binary(), kz_term:ne_binary(), integer(), boolean()) -> boolean().
 consume_tokens(Key, Count) ->
     consume_tokens(Key, Count, 'true').
 
+-spec consume_tokens(kz_term:ne_binary(), kz_term:ne_binary() | integer(), integer() | boolean()) -> boolean().
 consume_tokens(<<_/binary>> = App, <<_/binary>> = Key, Count) when is_integer(Count) ->
     consume_tokens(App, Key, Count, 'true');
 consume_tokens(<<_/binary>> = Key, Count, StartIfMissing) when is_integer(Count),
@@ -107,6 +106,7 @@ consume_tokens(<<_/binary>> = Key, Count, StartIfMissing) when is_integer(Count)
                                                                ->
     consume_tokens(?DEFAULT_APP, Key, Count, StartIfMissing).
 
+-spec consume_tokens(kz_term:ne_binary(), kz_term:ne_binary(), integer(), boolean()) -> boolean().
 consume_tokens(App, Key, Count, StartIfMissing) ->
     consume_tokens(App, Key, Count, StartIfMissing, fun kz_token_bucket:consume/2).
 
@@ -121,11 +121,12 @@ consume_tokens(App, Key, Count, StartIfMissing) ->
 %% remaining tokens and return false
 %% @end
 %%--------------------------------------------------------------------
+
 -spec consume_tokens_until(kz_term:ne_binary(), pos_integer()) -> boolean().
--spec consume_tokens_until(kz_term:ne_binary(), kz_term:ne_binary() | pos_integer(), pos_integer() | boolean()) -> boolean().
 consume_tokens_until(Key, Count) ->
     consume_tokens_until(?DEFAULT_APP, Key, Count, 'true').
 
+-spec consume_tokens_until(kz_term:ne_binary(), kz_term:ne_binary() | pos_integer(), pos_integer() | boolean()) -> boolean().
 consume_tokens_until(App=?NE_BINARY, Key=?NE_BINARY, Count)
   when is_integer(Count) ->
     consume_tokens_until(App, Key, Count, 'true');
@@ -163,10 +164,10 @@ maybe_start_bucket(App, Key, Count, 'true', BucketFun) ->
     end.
 
 -spec get_bucket(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_pid().
--spec get_bucket(kz_term:ne_binary(), kz_term:ne_binary(), 'record'|'server') -> kz_term:api_pid() | bucket().
 get_bucket(App, Key) ->
     get_bucket(App, Key, 'server').
 
+-spec get_bucket(kz_term:ne_binary(), kz_term:ne_binary(), 'record'|'server') -> kz_term:api_pid() | bucket().
 get_bucket(App, Key, 'record') ->
     case ets:lookup(table_id(), {App, Key}) of
         [] -> 'undefined';
@@ -182,9 +183,10 @@ get_bucket(App, Key, 'server') ->
     end.
 
 -spec exists(kz_term:ne_binary()) -> boolean().
--spec exists(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 exists(Key) ->
     exists(?DEFAULT_APP, Key).
+
+-spec exists(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 exists(App, Key) ->
     case ets:lookup(table_id(), {App, Key}) of
         [] -> 'false';
@@ -196,22 +198,26 @@ exists(App, Key) ->
 
 -spec start_bucket(kz_term:ne_binary()) ->
                           'ok' | 'error' | 'exists'.
--spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          'ok' | 'error' | 'exists'.
--spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) ->
-                          'ok' | 'error' | 'exists'.
--spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
-                          'ok' | 'error' | 'exists'.
--spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
-                          'ok' | 'error' | 'exists'.
 start_bucket(Name) ->
     start_bucket(?DEFAULT_APP, Name).
+
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                          'ok' | 'error' | 'exists'.
 start_bucket(App, Name) ->
     start_bucket(App, Name, ?MAX_TOKENS(App)).
+
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) ->
+                          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens) ->
     start_bucket(App, Name, MaxTokens, ?FILL_RATE(App)).
+
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
+                          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens, FillRate) ->
     start_bucket(App, Name, MaxTokens, FillRate, kz_token_bucket:default_fill_time(App)).
+
+-spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
+                          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens, FillRate, FillTime) ->
     case exists(App, Name) of
         'true' ->

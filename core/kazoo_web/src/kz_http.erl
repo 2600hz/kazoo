@@ -65,95 +65,116 @@
 %% @public
 %% @doc Send synchronous request
 %%--------------------------------------------------------------------
+
 -spec get(string()) -> ret().
--spec get(string(), kz_term:proplist()) -> ret().
--spec get(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 get(Url) ->
     req('get', Url, [], [], []).
+
+-spec get(string(), kz_term:proplist()) -> ret().
 get(Url, Headers) ->
     req('get', Url, Headers, [], []).
+
+-spec get(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 get(Url, Headers, Options) ->
     req('get', Url, Headers, [], Options).
 
 -spec options(string()) -> ret().
--spec options(string(), kz_term:proplist()) -> ret().
--spec options(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 options(Url) ->
     req('options', Url, [], [], []).
+
+-spec options(string(), kz_term:proplist()) -> ret().
 options(Url, Headers) ->
     req('options', Url, Headers, [], []).
+
+-spec options(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 options(Url, Headers, Options) ->
     req('options', Url, Headers, [], Options).
 
 -spec head(string()) -> ret().
--spec head(string(), kz_term:proplist()) -> ret().
--spec head(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 head(Url) ->
     req('head', Url, [], [], []).
+
+-spec head(string(), kz_term:proplist()) -> ret().
 head(Url, Headers) ->
     req('head', Url, Headers, [], []).
+
+-spec head(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 head(Url, Headers, Options) ->
     req('head', Url, Headers, [], Options).
 
 -spec trace(string()) -> ret().
--spec trace(string(), kz_term:proplist()) -> ret().
--spec trace(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 trace(Url) ->
     req('trace', Url, [], [], []).
+
+-spec trace(string(), kz_term:proplist()) -> ret().
 trace(Url, Headers) ->
     req('trace', Url, Headers, [], []).
+
+-spec trace(string(), kz_term:proplist(), kz_term:proplist()) -> ret().
 trace(Url, Headers, Options) ->
     req('trace', Url, Headers, [], Options).
 
 -spec delete(string()) -> ret().
--spec delete(string(), kz_term:proplist()) -> ret().
--spec delete(string(), kz_term:proplist(), http_body()) -> ret().
--spec delete(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 delete(Url) ->
     req('delete', Url, [], [], []).
+
+-spec delete(string(), kz_term:proplist()) -> ret().
 delete(Url, Headers) ->
     req('delete', Url, Headers, [], []).
+
+-spec delete(string(), kz_term:proplist(), http_body()) -> ret().
 delete(Url, Headers, Body) ->
     req('delete', Url, Headers, Body, []).
+
+-spec delete(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 delete(Url, Headers, Body, Options) ->
     req('delete', Url, Headers, Body, Options).
 
 -spec post(string()) -> ret().
--spec post(string(), kz_term:proplist()) -> ret().
--spec post(string(), kz_term:proplist(), http_body()) -> ret().
--spec post(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 post(Url) ->
     req('post', Url, [], [], []).
+
+-spec post(string(), kz_term:proplist()) -> ret().
 post(Url, Headers) ->
     req('post', Url, Headers, [], []).
+
+-spec post(string(), kz_term:proplist(), http_body()) -> ret().
 post(Url, Headers, Body) ->
     req('post', Url, Headers, Body, []).
+
+-spec post(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 post(Url, Headers, Body, Options) ->
     req('post', Url, Headers, Body, Options).
 
 -spec patch(string()) -> ret().
--spec patch(string(), kz_term:proplist()) -> ret().
--spec patch(string(), kz_term:proplist(), http_body()) -> ret().
--spec patch(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 patch(Url) ->
     req('patch', Url, [], [], []).
+
+-spec patch(string(), kz_term:proplist()) -> ret().
 patch(Url, Headers) ->
     req('patch', Url, Headers, [], []).
+
+-spec patch(string(), kz_term:proplist(), http_body()) -> ret().
 patch(Url, Headers, Body) ->
     req('patch', Url, Headers, Body, []).
+
+-spec patch(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 patch(Url, Headers, Body, Options) ->
     req('patch', Url, Headers, Body, Options).
 
 -spec put(string()) -> ret().
--spec put(string(), kz_term:proplist()) -> ret().
--spec put(string(), kz_term:proplist(), http_body()) -> ret().
--spec put(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 put(Url) ->
     req('put', Url, [], [], []).
+
+-spec put(string(), kz_term:proplist()) -> ret().
 put(Url, Headers) ->
     req('put', Url, Headers, [], []).
+
+-spec put(string(), kz_term:proplist(), http_body()) -> ret().
 put(Url, Headers, Body) ->
     req('put', Url, Headers, Body, []).
+
+-spec put(string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 put(Url, Headers, Body, Options) ->
     req('put', Url, Headers, Body, Options).
 
@@ -161,19 +182,24 @@ put(Url, Headers, Body, Options) ->
 %% @public
 %% @doc Send a synchronous HTTP request
 %%--------------------------------------------------------------------
+
 -spec req(string()) -> ret().
--spec req(method(), string()) -> ret().
--spec req(method(), string(), kz_term:proplist()) -> ret().
--spec req(method(), string(), kz_term:proplist(), http_body()) -> ret().
--spec req(method(), string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 req(Url) ->
     req('get', Url, [], [], []).
+
+-spec req(method(), string()) -> ret().
 req(Method, Url) ->
     req(Method, Url, [], [], []).
+
+-spec req(method(), string(), kz_term:proplist()) -> ret().
 req(Method, Url, Headers) ->
     req(Method, Url, Headers, [], []).
+
+-spec req(method(), string(), kz_term:proplist(), http_body()) -> ret().
 req(Method, Url, Headers, Body) ->
     req(Method, Url, Headers, Body, []).
+
+-spec req(method(), string(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 req(Method, Url, Hdrs, Body, Opts) ->
     {Headers, Options} = maybe_basic_auth(Hdrs, Opts),
     Request = build_request(Method, Url, Headers, Body),
@@ -183,19 +209,24 @@ req(Method, Url, Hdrs, Body, Opts) ->
 %% @public
 %% @doc Send an asynchronous HTTP request
 %%--------------------------------------------------------------------
+
 -spec async_req(pid(), kz_term:text()) -> ret().
--spec async_req(pid(), method(), kz_term:text()) -> ret().
--spec async_req(pid(), method(), kz_term:text(), kz_term:proplist()) -> ret().
--spec async_req(pid(), method(), kz_term:text(), kz_term:proplist(), http_body()) -> ret().
--spec async_req(pid(), method(), kz_term:text(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 async_req(Pid, Url) ->
     async_req(Pid, 'get', Url, [], [], []).
+
+-spec async_req(pid(), method(), kz_term:text()) -> ret().
 async_req(Pid, Method, Url) ->
     async_req(Pid, Method, Url, [], [], []).
+
+-spec async_req(pid(), method(), kz_term:text(), kz_term:proplist()) -> ret().
 async_req(Pid, Method, Url, Headers) ->
     async_req(Pid, Method, Url, Headers, []).
+
+-spec async_req(pid(), method(), kz_term:text(), kz_term:proplist(), http_body()) -> ret().
 async_req(Pid, Method, Url, Headers, Body) ->
     async_req(Pid, Method, Url, Headers, Body, []).
+
+-spec async_req(pid(), method(), kz_term:text(), kz_term:proplist(), http_body(), kz_term:proplist()) -> ret().
 async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
     {Headers, Options} = maybe_basic_auth(Hdrs, Opts),
     Request = build_request(Method, Url, Headers, Body),

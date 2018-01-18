@@ -282,10 +282,10 @@ json_to_querystring(JObj, Prefix) ->
     fold_kvs(Ks, Vs, Prefix, []).
 
 -spec props_to_querystring(kz_term:proplist()) -> iolist().
--spec props_to_querystring(kz_term:proplist(), binary() | kz_term:ne_binaries()) -> iolist().
 props_to_querystring(Props) ->
     props_to_querystring(Props, <<>>).
 
+-spec props_to_querystring(kz_term:proplist(), binary() | kz_term:ne_binaries()) -> iolist().
 props_to_querystring(Props, Prefix) ->
     {Vs, Ks} = props:get_values_and_keys(Props),
     fold_kvs([kz_term:to_binary(K) || K <- Ks], Vs, Prefix, []).

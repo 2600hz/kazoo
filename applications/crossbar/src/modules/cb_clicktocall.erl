@@ -66,13 +66,16 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_C2CId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_C2CId, ?CONNECT_CALL) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_C2CId, ?HISTORY) ->
@@ -86,11 +89,14 @@ allowed_methods(_C2CId, ?HISTORY) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, ?CONNECT_CALL) -> 'true';
 resource_exists(_, ?HISTORY) -> 'true'.
 
@@ -145,9 +151,8 @@ is_c2c_url(_Context, _Nouns) -> 'false'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_c2cs(Context, cb_context:req_verb(Context)).
 
@@ -156,6 +161,7 @@ validate_c2cs(Context, ?HTTP_GET) ->
 validate_c2cs(Context, ?HTTP_PUT) ->
     create_c2c(Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_c2c(Context, Id, cb_context:req_verb(Context)).
 
@@ -168,15 +174,17 @@ validate_c2c(Context, Id, ?HTTP_PATCH) ->
 validate_c2c(Context, Id, ?HTTP_DELETE) ->
     load_c2c(Id, Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Id, ?HISTORY) ->
     load_c2c_history(Id, Context);
 validate(Context, Id, ?CONNECT_CALL) ->
     establish_c2c(Id, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _) ->
     crossbar_doc:save(Context).
+
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _, ?CONNECT_CALL) ->
     Context.
 
@@ -311,12 +319,12 @@ clear_history_set_type(Context) ->
 %%
 %% @end
 %%-------------------------------------------------------------------
+
 -spec originate_call(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
--spec originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
--spec originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), boolean()) -> cb_context:context().
 originate_call(C2CId, Context) ->
     originate_call(C2CId, Context, get_c2c_contact(cb_context:req_value(Context, <<"contact">>))).
 
+-spec originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 originate_call(_C2CId, Context, 'undefined') ->
     Message = <<"The contact extension for this click to call has not been set">>,
     cb_context:add_validation_error(<<"contact">>
@@ -331,6 +339,7 @@ originate_call(C2CId, Context, Contact) ->
         Whitelist -> originate_call(C2CId, Context, Contact, match_regexps(Whitelist, Contact))
     end.
 
+-spec originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), boolean()) -> cb_context:context().
 originate_call(_C2CId, Context, Contact, 'false') ->
     crossbar_util:response_400(<<"Contact doesnt match whitelist">>, Contact, Context);
 originate_call(C2CId, Context, Contact, 'true') ->

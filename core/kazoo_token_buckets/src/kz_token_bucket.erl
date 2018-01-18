@@ -72,12 +72,15 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+
 -spec start_link(pos_integer(), pos_integer()) -> kz_types:startlink_ret().
--spec start_link(pos_integer(), pos_integer(), boolean()) -> kz_types:startlink_ret().
--spec start_link(pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> kz_types:startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
+
+-spec start_link(pos_integer(), pos_integer(), boolean()) -> kz_types:startlink_ret().
 start_link(Max, FillRate, FillAsBlock) ->
     start_link(Max, FillRate, FillAsBlock, default_fill_time()).
+
+-spec start_link(pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> kz_types:startlink_ret().
 start_link(Max, FillRate, FillAsBlock, FillTime)
   when is_integer(FillRate), FillRate > 0,
        is_integer(Max), Max > 0,
@@ -139,9 +142,10 @@ tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 set_name(Srv, Name) -> gen_server:cast(Srv, {'name', Name}).
 
 -spec default_fill_time() -> fill_rate_time().
--spec default_fill_time(kz_term:ne_binary()) -> fill_rate_time().
 default_fill_time() ->
     default_fill_time(?DEFAULT_APP).
+
+-spec default_fill_time(kz_term:ne_binary()) -> fill_rate_time().
 default_fill_time(App) ->
     normalize_fill_time(?FILL_TIME(App)).
 

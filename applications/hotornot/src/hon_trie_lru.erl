@@ -43,10 +43,10 @@
 -type rate_entries() :: [rate_entry()].
 
 -spec start_link(kz_term:ne_binary()) -> {'ok', pid()}.
--spec start_link(kz_term:ne_binary(), pos_integer()) -> {'ok', pid()}.
 start_link(RatedeckDb) ->
     start_link(RatedeckDb, hotornot_config:lru_expires_s()).
 
+-spec start_link(kz_term:ne_binary(), pos_integer()) -> {'ok', pid()}.
 start_link(RatedeckDb, ExpiresS) ->
     ProcName = hon_trie:trie_proc_name(RatedeckDb),
     gen_server:start_link({'local', ProcName}, ?MODULE, [RatedeckDb, ExpiresS], []).

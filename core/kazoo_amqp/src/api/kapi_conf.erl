@@ -155,10 +155,10 @@ doc_type_update_v(JObj) ->
     doc_type_update_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(binary(), kz_term:proplist()) -> 'ok'.
--spec bind_q(binary(), kz_term:proplist(), kz_term:api_atoms()) -> 'ok'.
 bind_q(Q, Props) ->
     bind_q(Q, Props, props:get_value('restrict_to', Props)).
 
+-spec bind_q(binary(), kz_term:proplist(), kz_term:api_atoms()) -> 'ok'.
 bind_q(Q, Props, 'undefined') ->
     bind_for_doc_changes(Q, Props);
 bind_q(Q, Props, ['doc_updates'|Restrict]) ->
@@ -204,10 +204,10 @@ bind_for_doc_types(Q, Props) ->
     end.
 
 -spec unbind_q(binary(), kz_term:proplist()) -> 'ok'.
--spec unbind_q(binary(), kz_term:proplist(), kz_term:api_atoms()) -> 'ok'.
 unbind_q(Q, Props) ->
     unbind_q(Q, Props, props:get_value('restrict_to', Props)).
 
+-spec unbind_q(binary(), kz_term:proplist(), kz_term:api_atoms()) -> 'ok'.
 unbind_q(Q, Props, 'undefined') ->
     unbind_for_doc_changes(Q, Props);
 unbind_q(Q, Props, ['doc_updates'|Restrict]) ->
@@ -272,25 +272,28 @@ get_routing_key(Props) ->
     amqp_util:document_routing_key(Action, Db, Type, Id).
 
 -spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, JObj) ->
     publish_doc_update(Action, Db, Type, Id, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
     amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).
 
 -spec publish_db_update(action(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_db_update(action(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_db_update(Action, Db, JObj) ->
     publish_db_update(Action, Db, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_db_update(action(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_db_update(Action, Db, Change, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
     amqp_util:document_change_publish(Action, Db, <<"database">>, Db, Payload, ContentType).
 
 -spec publish_doc_type_update(kz_term:api_terms()) -> 'ok'.
--spec publish_doc_type_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_type_update(JObj) ->
     publish_doc_type_update(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_doc_type_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_doc_type_update(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?DOC_TYPE_UPDATE_VALUES, fun doc_type_update/1),
     amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).

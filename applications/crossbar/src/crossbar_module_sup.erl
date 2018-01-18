@@ -35,9 +35,10 @@ start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_child(module()) -> kz_types:sup_startchild_ret().
--spec start_child(module(), 'worker' | 'supervisor') -> kz_types:sup_startchild_ret().
 start_child(Mod) ->
     start_child(Mod, 'worker').
+
+-spec start_child(module(), 'worker' | 'supervisor') -> kz_types:sup_startchild_ret().
 start_child(Mod, 'worker') ->
     supervisor:start_child(?SERVER, ?WORKER(Mod));
 start_child(Mod, 'supervisor') ->

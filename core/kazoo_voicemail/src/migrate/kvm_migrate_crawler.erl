@@ -263,8 +263,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec spawn_worker(state()) -> state().
--spec maybe_spawn_worker(state(), next_account_ret()) -> state().
 spawn_worker(#state{account_queue = Queue
                    ,retention_passed = IsRetPassed
                    ,workers = Workers
@@ -272,6 +272,7 @@ spawn_worker(#state{account_queue = Queue
     NextAccount = get_next_account(Queue, Workers, IsRetPassed),
     maybe_spawn_worker(State, NextAccount).
 
+-spec maybe_spawn_worker(state(), next_account_ret()) -> state().
 maybe_spawn_worker(#state{account_ids = AccountIds
                          }=State, 'retention_passed') ->
     ?SUP_LOG_WARNING(":: all voicemails in retention duration are migrated, beginning a migrating older voicemails", []),

@@ -336,12 +336,13 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
                              {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()} |
                              {'error', 'timeout'} |
                              {'error', kz_term:ne_binary(), kz_term:ne_binary()}.
+wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
+    wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, []).
+
 -spec wait_for_bowout(kz_term:ne_binary(), kz_term:api_ne_binary(), pos_integer(), kz_term:proplist()) ->
                              {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()} |
                              {'error', 'timeout'} |
                              {'error', kz_term:ne_binary(), kz_term:ne_binary()}.
-wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout) ->
-    wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, []).
 wait_for_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps) ->
     Start = kz_time:now_s(),
     receive

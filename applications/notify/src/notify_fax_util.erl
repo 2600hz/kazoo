@@ -65,13 +65,14 @@ get_attachment(UseDb, Category, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
--spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer()) ->
                                    {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
 raw_attachment_binary(Db, FaxId) ->
     raw_attachment_binary(Db, FaxId, 2).
 
+-spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer()) ->
+                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
 raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
     lager:debug("get raw attachment ~s / ~s", [Db, FaxId]),
 

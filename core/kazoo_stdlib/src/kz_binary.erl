@@ -60,10 +60,11 @@ pad_left(Bin, _Size, _Value) -> Bin.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec join([kz_term:text()]) -> binary().
--spec join([kz_term:text()], iodata() | char()) -> binary().
 
+-spec join([kz_term:text()]) -> binary().
 join(Bins) -> join(Bins, <<", ">>).
+
+-spec join([kz_term:text()], iodata() | char()) -> binary().
 join([], _) -> <<>>;
 join([Bin], _) -> kz_term:to_binary(Bin);
 join([Bin|Bins], Sep) ->
@@ -86,10 +87,10 @@ remove_white_spaces(Bin) ->
     << <<X>> || <<X>> <= Bin, X =/= $\s >>.
 
 -spec clean(binary()) -> binary().
--spec clean(binary(), kz_term:proplist()) -> binary().
 clean(Bin) ->
     clean(Bin, []).
 
+-spec clean(binary(), kz_term:proplist()) -> binary().
 clean(Bin, Opts) ->
     Routines = [fun remove_white_spaces/2],
     lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
@@ -98,11 +99,9 @@ clean(Bin, Opts) ->
 -type strip_options() :: [strip_option()].
 
 -spec strip(binary()) -> binary().
--spec strip(binary(), strip_option() | strip_options()) -> binary().
--spec strip_left(binary(), char() | binary()) -> binary().
--spec strip_right(binary(), char() | binary()) -> binary().
 strip(B) -> strip(B, 'both').
 
+-spec strip(binary(), strip_option() | strip_options()) -> binary().
 strip(B, 'left') -> strip_left(B, $\s);
 strip(B, 'right') -> strip_right(B, $\s);
 strip(B, 'both') -> strip_right(strip_left(B, $\s), $\s);
@@ -110,9 +109,11 @@ strip(B, C) when is_integer(C) -> strip_right(strip_left(B, C), C);
 strip(B, Cs) when is_list(Cs) ->
     lists:foldl(fun(C, Acc) -> strip(Acc, C) end, B, Cs).
 
+-spec strip_left(binary(), char() | binary()) -> binary().
 strip_left(<<C, B/binary>>, C) -> strip_left(B, C);
 strip_left(B, _) -> B.
 
+-spec strip_right(binary(), char() | binary()) -> binary().
 strip_right(C, C) -> <<>>;
 strip_right(<<C, B/binary>>, C) ->
     case strip_right(B, C) of
@@ -129,11 +130,12 @@ strip_right(<<>>, _) -> <<>>.
 %% Ensure a binary is a maximum given size, truncating it if not.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec truncate(binary(), non_neg_integer()) -> binary().
--spec truncate(binary(), non_neg_integer(), 'left' | 'right') -> binary().
 truncate(Bin, Size) ->
     truncate(Bin, Size, 'right').
 
+-spec truncate(binary(), non_neg_integer(), 'left' | 'right') -> binary().
 truncate(Bin, Size, 'left') ->
     truncate_left(Bin, Size);
 truncate(Bin, Size, 'right') ->
@@ -177,10 +179,10 @@ from_hex(Bin) ->
     kz_term:to_binary(from_hex_string(kz_term:to_list(Bin))).
 
 -spec from_hex_string(list()) -> list().
--spec from_hex_string(list(), list()) -> list().
 from_hex_string(Str) ->
     from_hex_string(Str, []).
 
+-spec from_hex_string(list(), list()) -> list().
 from_hex_string([], Acc) -> lists:reverse(Acc);
 from_hex_string([Div, Rem | T], Acc) ->
     Lo = hex_char_to_binary(Rem),

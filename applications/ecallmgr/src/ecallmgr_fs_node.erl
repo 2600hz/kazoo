@@ -155,9 +155,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+
 -spec start_link(atom()) -> kz_types:startlink_ret().
--spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) when is_atom(Node) ->
     QueueName = <<(kz_term:to_binary(Node))/binary
                   ,"-"
@@ -259,9 +261,10 @@ find_srv(Node) when is_atom(Node) ->
     ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
 
 -spec fetch_timeout() -> pos_integer().
--spec fetch_timeout(fs_node()) -> pos_integer().
 fetch_timeout() ->
     ecallmgr_config:get_integer(<<"fetch_timeout">>, ?DEFAULT_FETCH_TIMEOUT).
+
+-spec fetch_timeout(fs_node()) -> pos_integer().
 fetch_timeout(_Node) ->
     %% TODO: eventually expose this timeout via mod_kazoo and decrement a bit.
     fetch_timeout().
@@ -440,10 +443,10 @@ code_change(_OldVsn, State, _Extra) ->
                        {'error', 'retry'}.
 
 -spec run_start_cmds(atom(), kz_term:proplist()) -> kz_term:pid_ref().
--spec run_start_cmds(atom(), kz_term:proplist(), pid()) -> any().
 run_start_cmds(Node, Options) ->
     kz_util:spawn_monitor(fun run_start_cmds/3, [Node, Options, self()]).
 
+-spec run_start_cmds(atom(), kz_term:proplist(), pid()) -> any().
 run_start_cmds(Node, Options, Parent) ->
     kz_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
@@ -524,9 +527,10 @@ process_cmd(Node, Options, JObj, Acc0) ->
                  ).
 
 -spec process_cmd(atom(), kz_term:proplist(), kz_term:ne_binary(), kz_json:json_term(), cmd_results()) -> cmd_results().
--spec process_cmd(atom(), kz_term:proplist(), kz_term:ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc) ->
     process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'binary').
+
+-spec process_cmd(atom(), kz_term:proplist(), kz_term:ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat).
 
@@ -612,9 +616,10 @@ channels_as_json(Node) ->
     end.
 
 -spec probe_capabilities(atom()) -> 'ok'.
--spec probe_capabilities(atom(), kz_json:objects()) -> 'ok'.
 probe_capabilities(Node) ->
     probe_capabilities(Node, ecallmgr_config:get_jsons(<<"capabilities">>, ?DEFAULT_CAPABILITIES)).
+
+-spec probe_capabilities(atom(), kz_json:objects()) -> 'ok'.
 probe_capabilities(Node, PossibleCapabilities) ->
     kz_util:put_callid(Node),
     F = fun(Capability) -> maybe_add_capability(Node, Capability) end,

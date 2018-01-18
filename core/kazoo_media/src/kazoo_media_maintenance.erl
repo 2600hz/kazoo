@@ -55,10 +55,10 @@ set_account_language(Account, Language) ->
     end.
 
 -spec import_prompts(file:filename_all()) -> 'ok'.
--spec import_prompts(file:filename_all(), kz_term:text()) -> 'ok'.
 import_prompts(DirPath) ->
     import_prompts(DirPath, kz_media_util:default_prompt_language()).
 
+-spec import_prompts(file:filename_all(), kz_term:text()) -> 'ok'.
 import_prompts(DirPath, Lang) ->
     case filelib:is_dir(DirPath) of
         'false' ->
@@ -91,13 +91,12 @@ import_prompts_from_files(Files, Lang) ->
         (Err = (catch import_prompt(File, Lang))) =/= 'ok'
     ].
 
--spec import_prompt(file:filename_all()) -> 'ok' | {'error', any()}.
--spec import_prompt(file:filename_all(), kz_term:text()) -> 'ok' | {'error', any()}.
--spec import_prompt(file:filename_all(), kz_term:text(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 
+-spec import_prompt(file:filename_all()) -> 'ok' | {'error', any()}.
 import_prompt(Path) ->
     import_prompt(Path, kz_media_util:default_prompt_language()).
 
+-spec import_prompt(file:filename_all(), kz_term:text()) -> 'ok' | {'error', any()}.
 import_prompt(Path, Lang) ->
     kz_datamgr:db_create(?KZ_MEDIA_DB),
     timer:sleep(250),
@@ -110,6 +109,7 @@ import_prompt(Path, Lang) ->
             Error
     end.
 
+-spec import_prompt(file:filename_all(), kz_term:text(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 import_prompt(Path0, Lang0, Contents) ->
     Lang = kz_term:to_binary(Lang0),
     Path = kz_term:to_binary(Path0),
@@ -188,12 +188,12 @@ media_description(PromptName, Lang) ->
 -spec upload_prompt(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                            'ok' |
                            {'error', any()}.
--spec upload_prompt(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), non_neg_integer()) ->
-                           'ok' |
-                           {'error', any()}.
 upload_prompt(ID, AttachmentName, Contents, Options) ->
     upload_prompt(ID, AttachmentName, Contents, Options, 3).
 
+-spec upload_prompt(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), non_neg_integer()) ->
+                           'ok' |
+                           {'error', any()}.
 upload_prompt(_ID, _AttachmentName, _Contents, _Options, 0) ->
     io:format("  retries exceeded for uploading ~s to ~s~n", [_AttachmentName, _ID]),
     {'error', 'retries_exceeded'};
@@ -254,10 +254,10 @@ refresh() ->
     'ok'.
 
 -spec maybe_migrate_system_config(kz_term:ne_binary()) -> 'ok'.
--spec maybe_migrate_system_config(kz_term:ne_binary(), boolean()) -> 'ok'.
 maybe_migrate_system_config(ConfigId) ->
     maybe_migrate_system_config(ConfigId, 'false').
 
+-spec maybe_migrate_system_config(kz_term:ne_binary(), boolean()) -> 'ok'.
 maybe_migrate_system_config(ConfigId, DeleteAfter) ->
     case kz_datamgr:open_doc(?KZ_CONFIG_DB, ConfigId) of
         {'error', 'not_found'} -> 'ok';

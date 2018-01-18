@@ -90,10 +90,12 @@ declare_exchanges() ->
 %% prepare and publish a nodes advertise message
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_advertise(kz_term:api_terms()) -> 'ok'.
--spec publish_advertise(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_advertise(JObj) ->
     publish_advertise(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_advertise(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_advertise(Advertise, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Advertise, ?ADVERTISE_VALUES, fun advertise/1),
     amqp_util:nodes_publish(Payload, ContentType).

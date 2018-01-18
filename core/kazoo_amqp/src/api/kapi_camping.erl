@@ -61,9 +61,10 @@ declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?REQ_ROUTING_KEY(get_account_id(Req))).

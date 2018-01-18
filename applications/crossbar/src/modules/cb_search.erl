@@ -50,11 +50,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?MULTI) ->
     [?HTTP_GET].
 
@@ -67,9 +68,11 @@ allowed_methods(?MULTI) ->
 %%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?MULTI) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -77,11 +80,12 @@ resource_exists(?MULTI) -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authorize(cb_context:context()) -> boolean().
--spec authorize(cb_context:context(), path_token()) -> boolean().
 authorize(Context) ->
     cb_context:auth_account_id(Context) =/= 'undefined'.
 
+-spec authorize(cb_context:context(), path_token()) -> boolean().
 authorize(Context, ?MULTI) ->
     cb_context:auth_account_id(Context) =/= 'undefined'.
 
@@ -95,12 +99,13 @@ authorize(Context, ?MULTI) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     Type = cb_context:req_value(Context, <<"t">>),
     validate_search(Context, Type).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?MULTI) ->
     Type = cb_context:req_value(Context, <<"t">>),
     validate_multi(Context, Type).
@@ -114,11 +119,8 @@ validate(Context, ?MULTI) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_search(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
--spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                             cb_context:context().
--spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                             cb_context:context().
 validate_search(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"search needs a document type to search on">>}
                                 ,{<<"target">>, ?SEARCHABLE}
@@ -129,6 +131,8 @@ validate_search(Context, <<"account">>=Type) ->
 validate_search(Context, Type) ->
     validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
 
+-spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
+                             cb_context:context().
 validate_search(Context, _Type, 'undefined') ->
     NeedViewMsg = kz_json:from_list([{<<"message">>, <<"search needs a view to search in">>}
                                     ,{<<"target">>, available_query_options(cb_context:account_db(Context))}
@@ -143,6 +147,8 @@ validate_search(Context, Type, Query) ->
             Context1
     end.
 
+-spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
+                             cb_context:context().
 validate_search(Context, _Type, _Query, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"search needs a value to search for">>}]),
     cb_context:add_validation_error(<<"v">>, <<"required">>, Message, Context);
@@ -183,12 +189,13 @@ validate_multi(Context, Type, Query) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_query(cb_context:context(), kz_term:proplist() | kz_term:ne_binary()) -> cb_context:context().
--spec validate_query(cb_context:context(), kz_term:proplist(), kz_term:proplist() | kz_term:ne_binary()) -> cb_context:context().
 validate_query(Context, Query) ->
     QueryOptions = available_query_options(cb_context:account_db(Context)),
     validate_query(Context, QueryOptions, Query).
 
+-spec validate_query(cb_context:context(), kz_term:proplist(), kz_term:proplist() | kz_term:ne_binary()) -> cb_context:context().
 validate_query(Context, Available, []) ->
     case cb_context:resp_status(Context) of
         'success' -> Context;
@@ -238,11 +245,12 @@ available_query_options(AccountDb) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec format_query_options(kz_term:ne_binaries()) -> kz_term:ne_binaries().
--spec format_query_option(kz_term:ne_binary()) -> kz_term:ne_binary().
 format_query_options(Views) ->
     [format_query_option(View) || View <- Views].
 
+-spec format_query_option(kz_term:ne_binary()) -> kz_term:ne_binary().
 format_query_option(<<"search_by_", Name/binary>>) -> Name;
 format_query_option(Name) -> Name.
 
@@ -272,12 +280,13 @@ search(Context, Type, Query, Val, Opts) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec multi_search(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
--spec multi_search(cb_context:context(), kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) -> cb_context:context().
 multi_search(Context, Type, Props) ->
     Context1 = cb_context:set_should_paginate(Context, 'false'),
     multi_search(Context1, Type, Props , kz_json:new()).
 
+-spec multi_search(cb_context:context(), kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) -> cb_context:context().
 multi_search(Context, _Type, [], Acc) ->
     cb_context:set_resp_data(Context, Acc);
 multi_search(Context, Type, [{<<"by_", Query/binary>>, Val}|Props], Acc) ->

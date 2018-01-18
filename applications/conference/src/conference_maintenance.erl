@@ -32,13 +32,13 @@ blocking_refresh() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec refresh() -> 'started'.
--spec refresh(kz_term:text()) -> 'ok'.
 
+-spec refresh() -> 'started'.
 refresh() ->
     _ = kz_util:spawn(fun blocking_refresh/0),
     'started'.
 
+-spec refresh(kz_term:text()) -> 'ok'.
 refresh(<<Account/binary>>) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     Views = kapps_util:get_views_json('conference', "views"),

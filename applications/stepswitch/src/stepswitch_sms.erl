@@ -333,11 +333,11 @@ send_amqp_sms(Payload, Pool) ->
     end.
 
 -spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary()) -> 'ok'.
--spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary(), boolean()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolExists = kz_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)) =/= 'undefined',
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolExists).
 
+-spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:api_binary(), boolean()) -> 'ok'.
 maybe_add_broker(_Broker, _Exchange, _RouteId, _ExchangeType, _ExchangeOptions, _BrokerName, 'true') -> 'ok';
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, 'false') ->
     Exchanges = [{Exchange, ExchangeType, ExchangeOptions}],

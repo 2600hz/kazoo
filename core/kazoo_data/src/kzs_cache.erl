@@ -152,7 +152,6 @@ remove_cache_options(Options) ->
     props:delete_keys(['cache_failures'], Options).
 
 -spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error()) -> 'ok'.
--spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error(), kz_term:atoms()) -> 'ok'.
 maybe_cache_failure(DbName, DocId, Options, {'error', _}=Error) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
@@ -162,6 +161,7 @@ maybe_cache_failure(DbName, DocId, Options, {'error', _}=Error) ->
         _ -> 'ok'
     end.
 
+-spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error(), kz_term:atoms()) -> 'ok'.
 maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
     _ = lists:member(ErrorCode, ErrorCodes)
         andalso add_to_doc_cache(DbName, DocId, Error),

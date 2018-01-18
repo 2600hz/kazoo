@@ -49,13 +49,13 @@ set_values([K|KVs], Props) ->
 
 -spec set_value(kz_term:proplist_property(), kz_term:proplist()) ->
                        kz_term:proplist().
--spec set_value(kz_term:proplist_key(), kz_term:proplist_value(), kz_term:proplist()) ->
-                       kz_term:proplist().
 set_value({K, V}, Props) ->
     set_value(K, V, Props);
 set_value(K, Props) ->
     set_value(K, 'true', Props).
 
+-spec set_value(kz_term:proplist_key(), kz_term:proplist_value(), kz_term:proplist()) ->
+                       kz_term:proplist().
 set_value([K], V, Props) ->
     [{K, V} | [KV || KV <- Props, not do_keys_match(KV, K)]];
 set_value([K|Ks], V, Props) ->
@@ -72,13 +72,13 @@ do_keys_match(_K1, _K2) -> 'false'.
 
 -spec insert_value(kz_term:proplist_property(), kz_term:proplist()) ->
                           kz_term:proplist().
--spec insert_value(kz_term:proplist_key(), kz_term:proplist_value(), kz_term:proplist()) ->
-                          kz_term:proplist().
 insert_value({K, V}, Props) ->
     insert_value(K, V, Props);
 insert_value(K, Props) ->
     insert_value(K, 'true', Props).
 
+-spec insert_value(kz_term:proplist_key(), kz_term:proplist_value(), kz_term:proplist()) ->
+                          kz_term:proplist().
 insert_value(K, V, Props) ->
     case get_value(K, Props) of
         'undefined' when V =/= 'undefined' -> [{K, V} | Props];
@@ -117,11 +117,11 @@ is_not_undefined({_, 'undefined'}) -> 'false';
 is_not_undefined(_V) -> 'true'.
 
 -spec get_value(kz_term:proplist_key() | [kz_term:proplist_key()], kz_term:proplist()) -> any().
--spec get_value(kz_term:proplist_key() | [kz_term:proplist_key()], kz_term:proplist(), Default) ->
-                       Default | any().
 get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
+-spec get_value(kz_term:proplist_key() | [kz_term:proplist_key()], kz_term:proplist(), Default) ->
+                       Default | any().
 get_value(_Key, [], Default) -> Default;
 get_value([Key], Props, Default) when is_binary(Key)
                                       orelse is_atom(Key) ->
@@ -144,10 +144,11 @@ get_value(Key, Props, Default) when is_list(Props) ->
     end.
 
 %% Given a list of keys, find the first one defined
+
 -spec get_first_defined([kz_term:proplist_key()], kz_term:proplist()) -> 'undefined' | any().
--spec get_first_defined([kz_term:proplist_key()], kz_term:proplist(), Default) -> Default | any().
 get_first_defined(Keys, Props) -> get_first_defined(Keys, Props, 'undefined').
 
+-spec get_first_defined([kz_term:proplist_key()], kz_term:proplist(), Default) -> Default | any().
 get_first_defined([], _Props, Default) -> Default;
 get_first_defined([H|T], Props, Default) ->
     case get_value(H, Props) of
@@ -156,14 +157,16 @@ get_first_defined([H|T], Props, Default) ->
     end.
 
 -spec get_is_true(kz_term:proplist_key(), kz_term:proplist()) -> kz_term:api_boolean().
--spec get_is_true(kz_term:proplist_key(), kz_term:proplist(), Default) -> Default | boolean().
 get_is_true(Key, Props) -> is_true(Key, Props).
+
+-spec get_is_true(kz_term:proplist_key(), kz_term:proplist(), Default) -> Default | boolean().
 get_is_true(Key, Props, Default) -> is_true(Key, Props, Default).
 
 -spec is_true(kz_term:proplist_key(), kz_term:proplist()) -> kz_term:api_boolean().
--spec is_true(kz_term:proplist_key(), kz_term:proplist(), Default) -> Default | boolean().
 is_true(Key, Props) ->
     is_true(Key, Props, 'undefined').
+
+-spec is_true(kz_term:proplist_key(), kz_term:proplist(), Default) -> Default | boolean().
 is_true(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
@@ -171,14 +174,16 @@ is_true(Key, Props, Default) ->
     end.
 
 -spec get_is_false(kz_term:proplist_key(), kz_term:proplist()) -> kz_term:api_boolean().
--spec get_is_false(kz_term:proplist_key(), kz_term:proplist(), Default) -> Default | boolean().
 get_is_false(Key, Props) -> is_false(Key, Props).
+
+-spec get_is_false(kz_term:proplist_key(), kz_term:proplist(), Default) -> Default | boolean().
 get_is_false(Key, Props, Default) -> is_false(Key, Props, Default).
 
 -spec is_false(kz_term:proplist_key(), kz_term:proplist()) -> kz_term:api_boolean().
--spec is_false(kz_term:proplist_key(), kz_term:proplist(), Default) -> boolean() | Default.
 is_false(Key, Props) ->
     is_false(Key, Props, 'undefined').
+
+-spec is_false(kz_term:proplist_key(), kz_term:proplist(), Default) -> boolean() | Default.
 is_false(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
@@ -187,10 +192,11 @@ is_false(Key, Props, Default) ->
 
 -spec get_integer_value(kz_term:proplist_key(), kz_term:proplist()) ->
                                kz_term:api_integer().
--spec get_integer_value(kz_term:proplist_key(), kz_term:proplist(), Default) ->
-                               integer() | Default.
 get_integer_value(Key, Props) ->
     get_integer_value(Key, Props, 'undefined').
+
+-spec get_integer_value(kz_term:proplist_key(), kz_term:proplist(), Default) ->
+                               integer() | Default.
 get_integer_value(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
@@ -199,10 +205,11 @@ get_integer_value(Key, Props, Default) ->
 
 -spec get_atom_value(kz_term:proplist_key(), kz_term:proplist()) ->
                             atom().
--spec get_atom_value(kz_term:proplist_key(), kz_term:proplist(), Default) ->
-                            atom() | Default.
 get_atom_value(Key, Props) ->
     get_atom_value(Key, Props, 'undefined').
+
+-spec get_atom_value(kz_term:proplist_key(), kz_term:proplist(), Default) ->
+                            atom() | Default.
 get_atom_value(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
@@ -210,10 +217,11 @@ get_atom_value(Key, Props, Default) ->
     end.
 
 -spec get_binary_value(kz_term:proplist_key() | [kz_term:proplist_key()], kz_term:proplist()) -> kz_term:api_binary().
--spec get_binary_value(kz_term:proplist_key() | [kz_term:proplist_key()], kz_term:proplist(), Default) ->
-                              kz_term:ne_binary() | Default.
 get_binary_value(Key, Props) ->
     get_binary_value(Key, Props, 'undefined').
+
+-spec get_binary_value(kz_term:proplist_key() | [kz_term:proplist_key()], kz_term:proplist(), Default) ->
+                              kz_term:ne_binary() | Default.
 get_binary_value(Keys, Props, Default) when is_list(Keys) ->
     case get_first_defined(Keys, Props) of
         'undefined' -> Default;
@@ -226,10 +234,11 @@ get_binary_value(Key, Props, Default) ->
     end.
 
 -spec get_ne_binary_value(kz_term:proplist_key(), kz_term:proplist()) -> kz_term:api_binary().
--spec get_ne_binary_value(kz_term:proplist_key(), kz_term:proplist(), Default) ->
-                                 kz_term:ne_binary() | Default.
 get_ne_binary_value(Key, Props) ->
     get_ne_binary_value(Key, Props, 'undefined').
+
+-spec get_ne_binary_value(kz_term:proplist_key(), kz_term:proplist(), Default) ->
+                                 kz_term:ne_binary() | Default.
 get_ne_binary_value(Key, Props, Default) ->
     case get_value(Key, Props) of
         'undefined' -> Default;

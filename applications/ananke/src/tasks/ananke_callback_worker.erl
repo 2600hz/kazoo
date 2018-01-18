@@ -34,10 +34,10 @@
 -type state() :: #state{}.
 
 -spec start_link(kz_term:proplist(), pos_integers()) -> {'ok', pid()} | {'error', any()}.
--spec start_link(kz_term:proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', any()}.
 start_link(Req, [_ | _] = Schedule) ->
     start_link(#state{request = Req, schedule = Schedule}).
 
+-spec start_link(kz_term:proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', any()}.
 start_link(Req, [_ | _] = Schedule, CheckFun) ->
     start_link(#state{request = Req
                      ,schedule = Schedule

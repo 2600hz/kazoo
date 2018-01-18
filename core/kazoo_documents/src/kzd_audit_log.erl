@@ -54,9 +54,10 @@ audit_account_ids(JObj) ->
     kz_json:get_keys(?KEY_AUDIT, JObj).
 
 -spec audit_account_id(doc(), kz_term:ne_binary()) -> kz_term:api_object().
--spec audit_account_id(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 audit_account_id(JObj, AccountId) ->
     audit_account_id(JObj, AccountId, 'undefined').
+
+-spec audit_account_id(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 audit_account_id(JObj, AccountId, Default) ->
     kz_json:get_json_value([?KEY_AUDIT, AccountId], JObj, Default).
 
@@ -97,9 +98,9 @@ authenticating_user_account_name(JObj) ->
     kz_json:get_value([?KEY_AUTHENTICATING_USER, ?KEY_ACCOUNT_NAME], JObj).
 
 -spec type() -> kz_term:ne_binary().
--spec type(doc()) -> kz_term:api_binary().
 type() -> ?PVT_TYPE.
 
+-spec type(doc()) -> kz_term:api_binary().
 type(JObj) -> kz_doc:type(JObj).
 
 -spec new() -> doc().
@@ -121,8 +122,6 @@ set_audit_account(JObj, AccountId, AuditJObj) ->
     kz_json:set_value([?KEY_AUDIT, AccountId], NewAudit, JObj).
 
 -spec save(kz_services:services(), doc()) -> 'ok'.
--spec save(kz_services:services(), doc(), kz_term:ne_binary()) -> 'ok'.
--spec save(kz_services:services(), doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 save(Services, AuditLog) ->
     case kz_services:have_quantities_changed(Services) of
         'true' ->
@@ -133,9 +132,11 @@ save(Services, AuditLog) ->
             lager:debug("nothing has changed for service account ~s, ignoring audit log", [kz_services:account_id(Services)])
     end.
 
+-spec save(kz_services:services(), doc(), kz_term:ne_binary()) -> 'ok'.
 save(Services, AuditLog, MasterAccountId) ->
     save(Services, AuditLog, MasterAccountId, kz_services:account_id(Services)).
 
+-spec save(kz_services:services(), doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 save(Services, AuditLog, MasterAccountId, MasterAccountId) ->
     lager:debug("maybe saving master audit log for ~s", [kz_services:account_id(Services)]),
     maybe_save_master_audit_log(Services, AuditLog, MasterAccountId);
@@ -158,12 +159,12 @@ maybe_save_audit_log_to_reseller(Services, AuditLog, MasterAccountId, AccountId,
     end.
 
 -spec maybe_save_master_audit_log(kz_services:services(), doc(), kz_term:ne_binary()) -> 'ok'.
--spec maybe_save_master_audit_log(kz_services:services(), doc(), kz_term:ne_binary(), boolean()) -> 'ok'.
 maybe_save_master_audit_log(Services, AuditLog, MasterAccountId) ->
     maybe_save_master_audit_log(Services, AuditLog, MasterAccountId
                                ,kapps_config:get_is_true(<<"services">>, <<"should_save_master_audit_logs">>, 'false')
                                ).
 
+-spec maybe_save_master_audit_log(kz_services:services(), doc(), kz_term:ne_binary(), boolean()) -> 'ok'.
 maybe_save_master_audit_log(_Services, _AuditLog, _MasterAccountId, 'false') ->
     lager:debug("reached master account, not saving audit log");
 maybe_save_master_audit_log(Services, AuditLog, MasterAccountId, 'true') ->

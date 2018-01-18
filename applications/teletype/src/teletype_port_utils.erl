@@ -20,10 +20,10 @@ is_comment_private(DataJObj) ->
     kz_json:is_true([<<"comment">>, <<"superduper_comment">>], DataJObj, 'false').
 
 -spec get_attachments(kz_json:object()) -> attachments().
--spec get_attachments(kz_json:object(), boolean()) -> attachments().
 get_attachments(DataJObj) ->
     get_attachments(DataJObj, teletype_util:is_preview(DataJObj)).
 
+-spec get_attachments(kz_json:object(), boolean()) -> attachments().
 get_attachments(_DataJObj, 'true') -> [];
 get_attachments(DataJObj, 'false') ->
     PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
@@ -42,10 +42,10 @@ get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     [{ContentType, Name, BinAttachment}|Acc].
 
 -spec fix_email(kz_json:object()) -> kz_json:object().
--spec fix_email(kz_json:object(), boolean()) -> kz_json:object().
 fix_email(ReqData) ->
     fix_email(ReqData, 'false').
 
+-spec fix_email(kz_json:object(), boolean()) -> kz_json:object().
 fix_email(ReqData, OnlyAdmin) ->
     AccountId = kz_json:get_value(<<"account_id">>, ReqData),
     Emails = get_emails(ReqData, AccountId, OnlyAdmin),

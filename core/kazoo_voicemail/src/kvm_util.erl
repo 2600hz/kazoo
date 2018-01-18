@@ -32,12 +32,12 @@
 %% @doc Generate database name based on DocId
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_db(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec get_db(kz_term:ne_binary(), kazoo_data:docid() | kz_json:object()) -> kz_term:ne_binary().
--spec get_db(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_db(AccountId) ->
     kz_util:format_account_db(AccountId).
 
+-spec get_db(kz_term:ne_binary(), kazoo_data:docid() | kz_json:object()) -> kz_term:ne_binary().
 get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
     get_db(AccountId, Year, Month);
 get_db(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
@@ -47,6 +47,7 @@ get_db(AccountId, ?NE_BINARY = _DocId) ->
 get_db(AccountId, Doc) ->
     get_db(AccountId, kz_doc:id(Doc)).
 
+-spec get_db(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_db(AccountId, Year, Month) ->
     kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
@@ -55,11 +56,12 @@ get_db(AccountId, Year, Month) ->
 %% @doc Generate a range of database names
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_range_db(kz_term:ne_binary()) -> {kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:ne_binaries()}.
--spec get_range_db(kz_term:ne_binary(), pos_integer()) -> {kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:ne_binaries()}.
 get_range_db(AccountId) ->
     get_range_db(AccountId, retention_days(AccountId)).
 
+-spec get_range_db(kz_term:ne_binary(), pos_integer()) -> {kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:ne_binaries()}.
 get_range_db(AccountId, Days) ->
     To = kz_time:now_s(),
     From = To - retention_seconds(Days),
@@ -114,11 +116,12 @@ check_doc_type(_Doc, _ExpectedType, _DocType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec check_msg_belonging(kz_term:api_ne_binary(), kz_json:object()) -> boolean().
--spec check_msg_belonging(kz_term:api_ne_binary(), kz_json:object(), kz_term:api_ne_binary()) -> boolean().
 check_msg_belonging(BoxId, JObj) ->
     check_msg_belonging(BoxId, JObj, kzd_box_message:source_id(JObj)).
 
+-spec check_msg_belonging(kz_term:api_ne_binary(), kz_json:object(), kz_term:api_ne_binary()) -> boolean().
 check_msg_belonging(_BoxId, _JObj, 'undefined') -> 'true';
 check_msg_belonging('undefined', _JObj, _SourceId) -> 'true';
 check_msg_belonging(BoxId, _JObj, BoxId) -> 'true';
@@ -318,11 +321,12 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_notify_completed_message(kz_json:objects()) -> kz_json:object().
--spec get_notify_completed_message(kz_json:objects(), kz_json:object()) -> kz_json:object().
 get_notify_completed_message(JObjs) ->
     get_notify_completed_message(JObjs, kz_json:new()).
 
+-spec get_notify_completed_message(kz_json:objects(), kz_json:object()) -> kz_json:object().
 get_notify_completed_message([], Acc) -> Acc;
 get_notify_completed_message([JObj|JObjs], Acc) ->
     case kz_json:get_value(<<"Status">>, JObj) of
@@ -339,8 +343,8 @@ get_notify_completed_message([JObj|JObjs], Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_transcribe(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:api_object().
--spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
 maybe_transcribe(AccountId, MediaId, 'true') ->
     Db = get_db(AccountId, MediaId),
     {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
@@ -361,6 +365,7 @@ maybe_transcribe(AccountId, MediaId, 'true') ->
     end;
 maybe_transcribe(_, _, 'false') -> 'undefined'.
 
+-spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
 maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->

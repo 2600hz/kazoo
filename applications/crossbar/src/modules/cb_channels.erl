@@ -52,10 +52,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_UUID) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
@@ -68,9 +70,11 @@ allowed_methods(_UUID) ->
 %%    /channels/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_UUID) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -98,10 +102,12 @@ content_types_provided(Context) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_channels(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_channel(Context, Id, cb_context:req_verb(Context)).
 
@@ -216,10 +222,10 @@ update(Context, CallId) ->
     end.
 
 -spec maybe_execute_command(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec maybe_execute_command(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 maybe_execute_command(Context, CallId) ->
     maybe_execute_command(Context, CallId, cb_context:req_value(Context, <<"action">>)).
 
+-spec maybe_execute_command(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 maybe_execute_command(Context, Transferor, <<"transfer">>) ->
     maybe_transfer(Context, Transferor);
 maybe_execute_command(Context, CallId, <<"hangup">>) ->
@@ -235,7 +241,6 @@ maybe_execute_command(Context, _CallId, _Command) ->
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
 
 -spec validate_action(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec validate_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 validate_action(Context, CallId) ->
     Ctx = read(Context, CallId),
     case cb_context:has_errors(Ctx) of
@@ -244,6 +249,7 @@ validate_action(Context, CallId) ->
             validate_action(Ctx, CallId, cb_modules_util:get_request_action(Context))
     end.
 
+-spec validate_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 validate_action(Context, _UUID, <<"metaflow">>) ->
     cb_context:validate_request_data(<<"metaflow">>, Context);
 validate_action(Context, _UUID, _Action) ->
@@ -437,7 +443,6 @@ normalize_channel(JObj) ->
      ).
 
 -spec maybe_transfer(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec maybe_transfer(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
     case kz_json:get_value(<<"other_leg_call_id">>, Channel) of
@@ -452,6 +457,7 @@ maybe_transfer(Context, Transferor) ->
             maybe_transfer(Context, Transferor, Transferee)
     end.
 
+-spec maybe_transfer(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor, Transferee) ->
     case cb_context:req_value(Context, <<"target">>) of
         'undefined' ->

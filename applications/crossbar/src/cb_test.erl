@@ -2,12 +2,12 @@
 
 -export([start/0, start/1]).
 
--spec start() -> tuple().
--spec start(pos_integer()) -> tuple().
 
+-spec start() -> tuple().
 start() ->
     start(100).
 
+-spec start(pos_integer()) -> tuple().
 start(N) ->
     start(N, N, 0, 0, []).
 

@@ -246,12 +246,12 @@ to_proplist(#kapps_conference{}=Conference) ->
 is_conference(#kapps_conference{}) -> 'true';
 is_conference(_) -> 'false'.
 
--spec from_conference_doc(kz_json:object()) -> conference().
--spec from_conference_doc(kz_json:object(), conference()) -> conference().
 
+-spec from_conference_doc(kz_json:object()) -> conference().
 from_conference_doc(JObj) ->
     from_conference_doc(JObj, #kapps_conference{}).
 
+-spec from_conference_doc(kz_json:object(), conference()) -> conference().
 from_conference_doc(JObj, Conference) ->
     Member = kz_json:get_json_value(<<"member">>, JObj),
     Moderator = kz_json:get_json_value(<<"moderator">>, JObj),
@@ -601,12 +601,12 @@ kvs_update_counter(Key, Number, #kapps_conference{kvs=Dict}=Conference) ->
 -spec flush() -> 'ok'.
 flush() -> kz_cache:flush_local(?KAPPS_CALL_CACHE).
 
--spec cache(conference()) -> 'ok'.
--spec cache(conference(), pos_integer()) -> 'ok'.
 
+-spec cache(conference()) -> 'ok'.
 cache(#kapps_conference{}=Conference) ->
     cache(Conference, 300 * ?MILLISECONDS_IN_SECOND).
 
+-spec cache(conference(), pos_integer()) -> 'ok'.
 cache(#kapps_conference{id=ConferenceId}=Conference, Expires) ->
     CacheProps = [{'expires', Expires}],
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}, Conference, CacheProps).

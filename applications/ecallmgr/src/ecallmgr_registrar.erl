@@ -1219,7 +1219,6 @@ get_fs_contact(Props) ->
                             {registrations(), any()}.
 
 -spec print_summary(ets_continuation()) -> 'ok'.
--spec print_summary(ets_continuation(), non_neg_integer()) -> 'ok'.
 print_summary('$end_of_table') ->
     io:format("No registrations found!~n", []);
 print_summary(Match) ->
@@ -1228,6 +1227,7 @@ print_summary(Match) ->
     io:format("+===============================================+========================+========================+==================================+======+~n"),
     print_summary(Match, 0).
 
+-spec print_summary(ets_continuation(), non_neg_integer()) -> 'ok'.
 print_summary('$end_of_table', Count) ->
     io:format("+-----------------------------------------------+------------------------+------------------------+----------------------------------+------+~n"),
     io:format("Found ~p registrations~n", [Count]);
@@ -1256,12 +1256,12 @@ print_summary({[#registration{username=Username
     print_summary(ets:select(Continuation), Count + 1).
 
 -spec print_details(ets_continuation()) -> 'ok'.
--spec print_details(ets_continuation(), non_neg_integer()) -> 'ok'.
 print_details('$end_of_table') ->
     io:format("No registrations found!~n", []);
 print_details(Match) ->
     print_details(Match, 0).
 
+-spec print_details(ets_continuation(), non_neg_integer()) -> 'ok'.
 print_details('$end_of_table', Count) ->
     io:format("~nFound ~p registrations~n", [Count]);
 print_details({[#registration{}=Reg], Continuation}, Count) ->

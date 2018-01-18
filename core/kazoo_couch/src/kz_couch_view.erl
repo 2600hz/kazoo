@@ -42,11 +42,12 @@ design_info(#server{}=Conn, DBName, Design) ->
 -spec all_design_docs(kz_data:connection(), kz_term:ne_binary()) ->
                              {'ok', kz_json:objects()} |
                              couchbeam_error().
+all_design_docs(#server{}=Conn, DBName) ->
+    all_design_docs(#server{}=Conn, DBName, []).
+
 -spec all_design_docs(kz_data:connection(), kz_term:ne_binary(), view_options()) ->
                              {'ok', kz_json:objects()} |
                              couchbeam_error().
-all_design_docs(#server{}=Conn, DBName) ->
-    all_design_docs(#server{}=Conn, DBName, []).
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = kz_couch_util:get_db(Conn, DBName),
     Filter = props:set_values([{'startkey', <<"_design/">>}

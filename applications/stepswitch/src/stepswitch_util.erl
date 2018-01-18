@@ -129,18 +129,18 @@ get_sip_headers(OffnetReq) ->
 maybe_remove_diversions(JObj) ->
     kz_json:delete_key(<<"Diversions">>, JObj).
 
+
 -spec get_diversions(kz_json:object()) ->
                             'undefined' |
                             kz_term:ne_binaries().
--spec get_diversions(kz_term:api_binary(), kz_term:ne_binaries()) ->
-                            'undefined' |
-                            kz_term:ne_binaries().
-
 get_diversions(JObj) ->
     Inception = kz_json:get_value(<<"Inception">>, JObj),
     Diversions = kz_json:get_value(<<"Diversions">>, JObj, []),
     get_diversions(Inception, Diversions).
 
+-spec get_diversions(kz_term:api_binary(), kz_term:ne_binaries()) ->
+                            'undefined' |
+                            kz_term:ne_binaries().
 get_diversions('undefined', _Diversion) -> 'undefined';
 get_diversions(_Inception, []) -> 'undefined';
 get_diversions(Inception, Diversions) ->
@@ -314,11 +314,11 @@ route_by() ->
 
 -spec resources_to_endpoints(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->
                                     kz_json:objects().
--spec resources_to_endpoints(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
-                                    kz_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
     resources_to_endpoints(Resources, Number, OffnetJObj, []).
 
+-spec resources_to_endpoints(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
+                                    kz_json:objects().
 resources_to_endpoints([], _Number, _OffnetJObj, Endpoints) ->
     lists:reverse(Endpoints);
 resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->

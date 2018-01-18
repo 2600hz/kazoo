@@ -478,10 +478,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec attempt_to_acquire_job(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', any()}.
--spec attempt_to_acquire_job(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                     {'ok', kz_json:object()} |
                                     {'error', any()}.
 attempt_to_acquire_job(Id, Q) ->
@@ -491,6 +489,9 @@ attempt_to_acquire_job(Id, Q) ->
             attempt_to_acquire_job(JObj, Q, kz_json:get_value(<<"pvt_job_status">>, JObj))
     end.
 
+-spec attempt_to_acquire_job(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
+                                    {'ok', kz_json:object()} |
+                                    {'error', any()}.
 attempt_to_acquire_job(JObj, Q, <<"locked">>) ->
     kz_datamgr:save_doc(?KZ_FAXES_DB
                        ,kz_json:set_values([{<<"pvt_job_status">>, <<"processing">>}

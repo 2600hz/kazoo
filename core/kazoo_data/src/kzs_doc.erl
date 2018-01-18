@@ -159,11 +159,11 @@ prepare_doc_for_del(Server, DbName, Doc) ->
       ]).
 
 -spec prepare_doc_for_save(kz_term:ne_binary(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.
--spec prepare_doc_for_save(kz_term:ne_binary(), kz_json:object(), boolean()) -> {kz_json:object(), kz_json:object()}.
 prepare_doc_for_save(Db, JObj) ->
     Doc = kz_json:delete_key(<<"id">>, JObj),
     prepare_doc_for_save(Db, Doc, kz_term:is_empty(kz_doc:id(Doc))).
 
+-spec prepare_doc_for_save(kz_term:ne_binary(), kz_json:object(), boolean()) -> {kz_json:object(), kz_json:object()}.
 prepare_doc_for_save(_Db, JObj, 'true') ->
     prepare_publish(maybe_set_docid(JObj));
 prepare_doc_for_save(Db, JObj, 'false') ->
@@ -175,10 +175,10 @@ prepare_publish(JObj) ->
     {maybe_tombstone(JObj), kz_json:from_list(kzs_publish:publish_fields(JObj))}.
 
 -spec maybe_tombstone(kz_json:object()) -> kz_json:object().
--spec maybe_tombstone(kz_json:object(), boolean()) -> kz_json:object().
 maybe_tombstone(JObj) ->
     maybe_tombstone(JObj, kz_json:is_true(<<"_deleted">>, JObj, 'false')).
 
+-spec maybe_tombstone(kz_json:object(), boolean()) -> kz_json:object().
 maybe_tombstone(JObj, 'true') ->
     kz_json:from_list(
       [{<<"_id">>, kz_doc:id(JObj)}

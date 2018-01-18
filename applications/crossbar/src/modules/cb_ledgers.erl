@@ -56,12 +56,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?AVAILABLE) ->
     [?HTTP_GET];
 allowed_methods(?CREDIT) ->
@@ -71,6 +71,7 @@ allowed_methods(?DEBIT) ->
 allowed_methods(_LedgerId) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_LedgerId, _LedgerEntryId) ->
     [?HTTP_GET].
 
@@ -83,11 +84,14 @@ allowed_methods(_LedgerId, _LedgerEntryId) ->
 %%    /ledgers/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -146,12 +150,12 @@ authorize_create(Context) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_ledgers(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?CREDIT) ->
     ReqData = cb_context:req_data(Context),
     JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?CREDIT, ReqData),
@@ -174,6 +178,7 @@ validate(Context, Id) ->
                   ],
     crossbar_view:load_modb(Context, ?LEDGER_VIEW, ViewOptions).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Ledger, Id) ->
     validate_ledger_doc(Context, Ledger, Id, cb_context:req_verb(Context)).
 

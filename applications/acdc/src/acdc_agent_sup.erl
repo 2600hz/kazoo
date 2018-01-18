@@ -37,13 +37,16 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
+
 -spec start_link(kz_json:object()) -> kz_types:startlink_ret().
--spec start_link(kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
--spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
 start_link(AgentJObj) ->
     supervisor:start_link(?SERVER, [AgentJObj]).
+
+-spec start_link(kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(ThiefCall, QueueId) ->
     supervisor:start_link(?SERVER, [ThiefCall, QueueId]).
+
+-spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
 start_link(AcctId, AgentId, AgentJObj, Queues) ->
     supervisor:start_link(?SERVER, [AcctId, AgentId, AgentJObj, Queues]).
 

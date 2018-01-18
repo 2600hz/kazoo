@@ -35,16 +35,16 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url() -> string().
--spec url(kz_term:ne_binary()) -> string().
--spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 
+-spec url() -> string().
 url() ->
     "/transactions/".
 
+-spec url(kz_term:ne_binary()) -> string().
 url(TransactionId) ->
     lists:append(["/transactions/", kz_term:to_list(TransactionId)]).
 
+-spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 url(TransactionId, Options) ->
     lists:append(["/transactions/"
                  ,kz_term:to_list(TransactionId)
@@ -107,9 +107,8 @@ find_by_customer(CustomerId, Min, Max) ->
 %% Creates a new transaction using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create(bt_transaction()) -> bt_transaction().
--spec create(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 
+-spec create(bt_transaction()) -> bt_transaction().
 create(#bt_transaction{amount=Amount}=Transaction) ->
     MaxAmount = kapps_config:get_float(?CONFIG_CAT, <<"max_amount">>, 200.00),
     case kz_term:to_float(Amount) >  MaxAmount of
@@ -121,6 +120,7 @@ create(#bt_transaction{amount=Amount}=Transaction) ->
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
+-spec create(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 create(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{customer_id=CustomerId}).
 
@@ -130,24 +130,25 @@ create(CustomerId, Transaction) ->
 %% Create a sale transaction
 %% @end
 %%--------------------------------------------------------------------
+
 -spec sale(bt_transaction()) -> bt_transaction().
--spec sale(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
 
+-spec sale(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 sale(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE
                                      ,customer_id=CustomerId
                                      }).
 
 -spec quick_sale(kz_term:ne_binary(), number() | kz_term:ne_binary()) -> bt_transaction().
--spec quick_sale(kz_term:ne_binary(), number() | kz_term:ne_binary(), kz_term:proplist()) -> bt_transaction().
 quick_sale(CustomerId, Amount) ->
     case kz_term:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
         'false' -> sale(CustomerId, #bt_transaction{amount=kz_term:to_binary(Amount)})
     end.
 
+-spec quick_sale(kz_term:ne_binary(), number() | kz_term:ne_binary(), kz_term:proplist()) -> bt_transaction().
 quick_sale(CustomerId, Amount, Props) ->
     case kz_term:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
@@ -162,11 +163,12 @@ quick_sale(CustomerId, Amount, Props) ->
 %% Create a credit transaction
 %% @end
 %%--------------------------------------------------------------------
+
 -spec credit(bt_transaction()) -> bt_transaction().
--spec credit(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 credit(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT}).
 
+-spec credit(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 credit(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT
                                      ,customer_id=CustomerId
@@ -199,12 +201,12 @@ void(TransactionId) ->
 %% Refund a transaction with status: settled or settling
 %% @end
 %%--------------------------------------------------------------------
--spec refund(bt_transaction() | kz_term:ne_binary()) -> bt_transaction().
--spec refund(bt_transaction() | kz_term:ne_binary(), kz_term:api_binary()) -> bt_transaction().
 
+-spec refund(bt_transaction() | kz_term:ne_binary()) -> bt_transaction().
 refund(TransactionId) ->
     refund(TransactionId, 'undefined').
 
+-spec refund(bt_transaction() | kz_term:ne_binary(), kz_term:api_binary()) -> bt_transaction().
 refund(#bt_transaction{id=TransactionId}, Amount) ->
     refund(TransactionId, Amount);
 refund(TransactionId, Amount) ->
@@ -219,12 +221,12 @@ refund(TransactionId, Amount) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> bt_transaction().
--spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_transaction().
 
+-spec xml_to_record(bt_xml()) -> bt_transaction().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/transaction").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_transaction().
 xml_to_record(Xml, Base) ->
     AddOnsPath = lists:flatten([Base, "/add-ons/add-on"]),
     DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
@@ -308,12 +310,12 @@ get_transaction_sources([Element|Elements], Sources) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_transaction()) -> kz_term:proplist() | bt_xml().
--spec record_to_xml(bt_transaction(), boolean()) -> kz_term:proplist() | bt_xml().
 
+-spec record_to_xml(bt_transaction()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Transaction) ->
     record_to_xml(Transaction, 'false').
 
+-spec record_to_xml(bt_transaction(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(#bt_transaction{}=Transaction, ToString) ->
     Props = [{'type', Transaction#bt_transaction.type}
             ,{'amount', Transaction#bt_transaction.amount}

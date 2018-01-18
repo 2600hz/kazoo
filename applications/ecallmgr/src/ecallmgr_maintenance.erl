@@ -156,11 +156,11 @@ carrier_acls('false') ->
     list_acls(get_acls(), ?FS_CARRIER_ACL_LIST).
 
 -spec test_carrier_ip(kz_term:ne_binary()) -> 'ok'.
--spec test_carrier_ip(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
 test_carrier_ip(IP) ->
     Nodes = ecallmgr_fs_nodes:connected(),
     test_carrier_ip(IP, Nodes).
 
+-spec test_carrier_ip(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
 test_carrier_ip(_, []) -> 'no_return';
 test_carrier_ip(IP, [Node|Nodes]) ->
     _ = test_ip_against_acl(IP, Node, ?FS_CARRIER_ACL_LIST),
@@ -232,11 +232,11 @@ sbc_acls('false') ->
     list_acls(get_acls(), ?FS_SBC_ACL_LIST).
 
 -spec test_sbc_ip(kz_term:ne_binary()) -> 'ok'.
--spec test_sbc_ip(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
 test_sbc_ip(IP) ->
     Nodes = ecallmgr_fs_nodes:connected(),
     test_sbc_ip(IP, Nodes).
 
+-spec test_sbc_ip(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'ok'.
 test_sbc_ip(_, []) -> 'no_return';
 test_sbc_ip(IP, [Node|Nodes]) ->
     _ = test_ip_against_acl(IP, Node, ?FS_SBC_ACL_LIST),
@@ -717,19 +717,20 @@ disable_local_resource_authz() ->
     io:format("turned off authz for local resources; calls to local resources will no longer require authorization~n").
 
 -spec limit_channel_uptime(kz_term:ne_binary()) -> 'ok'.
--spec limit_channel_uptime(kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> 'ok'.
 limit_channel_uptime(MaxAge) ->
     limit_channel_uptime(MaxAge, 'true').
+
+-spec limit_channel_uptime(kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> 'ok'.
 limit_channel_uptime(MaxAge, AsDefault) ->
     ecallmgr_fs_channels:set_max_channel_uptime(kz_term:to_integer(MaxAge), kz_term:is_true(AsDefault)),
     io:format("updating max channel uptime to ~p (use 0 to disable check)~n", [MaxAge]).
 
 -spec hangup_long_running_channels() -> 'ok'.
--spec hangup_long_running_channels(kz_term:text() | pos_integer()) -> 'ok'.
 hangup_long_running_channels() ->
     MaxAge = ecallmgr_fs_channels:max_channel_uptime(),
     hangup_long_running_channels(MaxAge).
 
+-spec hangup_long_running_channels(kz_term:text() | pos_integer()) -> 'ok'.
 hangup_long_running_channels(MaxAge) ->
     io:format("hanging up channels older than ~p seconds~n", [MaxAge]),
     N = ecallmgr_fs_channels:cleanup_old_channels(kz_term:to_integer(MaxAge)),

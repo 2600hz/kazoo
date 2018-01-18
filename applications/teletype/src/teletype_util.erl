@@ -61,10 +61,11 @@
 
 -spec send_email(email_map(), kz_term:ne_binary(), rendered_templates()) ->
                         'ok' | {'error', any()}.
--spec send_email(email_map(), kz_term:ne_binary(), rendered_templates(), attachments()) ->
-                        'ok' | {'error', any()}.
 send_email(Emails, Subject, RenderedTemplates) ->
     send_email(Emails, Subject, RenderedTemplates, []).
+
+-spec send_email(email_map(), kz_term:ne_binary(), rendered_templates(), attachments()) ->
+                        'ok' | {'error', any()}.
 send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     ?LOG_DEBUG("emails: ~p", [Emails]),
     To = props:get_value(<<"to">>, Emails),
@@ -98,11 +99,11 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     end.
 
 -spec maybe_log_smtp(email_map(), kz_term:ne_binary(), list(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
--spec maybe_log_smtp(email_map(), kz_term:ne_binary(), list(), kz_term:api_binary(), kz_term:api_binary(), boolean()) -> 'ok'.
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
     Skip = kz_term:is_true(get('skip_smtp_log')),
     maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, Skip).
 
+-spec maybe_log_smtp(email_map(), kz_term:ne_binary(), list(), kz_term:api_binary(), kz_term:api_binary(), boolean()) -> 'ok'.
 maybe_log_smtp(_Emails, _Subject, _RenderedTemplates, _Receipt, _Error, 'true') ->
     lager:debug("skipping smtp log");
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
@@ -288,9 +289,10 @@ smtp_tls_option(<<"always">>) -> 'always';
 smtp_tls_option(_) -> 'never'.
 
 -spec add_attachments(attachments()) -> mime_tuples().
--spec add_attachments(attachments(), mime_tuples()) -> mime_tuples().
 add_attachments(Attachments) ->
     add_attachments(Attachments, []).
+
+-spec add_attachments(attachments(), mime_tuples()) -> mime_tuples().
 add_attachments([], Acc) -> Acc;
 add_attachments([{ContentType, Filename, Content}|As], Acc) ->
     [Type, SubType] = binary:split(ContentType, <<"/">>),
@@ -484,11 +486,11 @@ find_account_rep_email(AccountJObj) ->
     find_account_rep_email(kapi_notifications:account_id(AccountJObj)).
 
 -spec find_account_admin_email(kz_term:api_binary()) -> kz_term:api_binaries().
--spec find_account_admin_email(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
     find_account_admin_email(AccountId, find_reseller_id(AccountId)).
 
+-spec find_account_admin_email(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binaries().
 find_account_admin_email('undefined', _Id) ->
     'undefined';
 find_account_admin_email(AccountId, AccountId) ->
@@ -527,11 +529,11 @@ extract_admin_emails(Users) ->
 find_reseller_id(AccountId) -> kz_services:find_reseller_id(AccountId).
 
 -spec find_account_admin(kz_term:api_binary()) -> kz_term:api_object().
--spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_user:doc().
 find_account_admin('undefined') -> 'undefined';
 find_account_admin(?MATCH_ACCOUNT_RAW(AccountId)) ->
     find_account_admin(AccountId, find_reseller_id(AccountId)).
 
+-spec find_account_admin(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kzd_user:doc().
 find_account_admin(AccountId, AccountId) ->
     query_for_account_admin(AccountId);
 find_account_admin(AccountId, ResellerId) ->
@@ -567,11 +569,11 @@ filter_for_admins(Users) ->
     ].
 
 -spec should_handle_notification(kz_json:object()) -> boolean().
--spec should_handle_notification(kz_json:object(), boolean()) -> boolean().
 should_handle_notification(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     should_handle_notification(DataJObj, is_preview(JObj)).
 
+-spec should_handle_notification(kz_json:object(), boolean()) -> boolean().
 should_handle_notification(_JObj, 'true') ->
     lager:debug("notification is a preview, handling"),
     'true';
@@ -643,12 +645,12 @@ get_parent_account_id(AccountId) ->
 
 -spec find_addresses(kz_json:object(), kz_json:object(), kz_term:ne_binary()) ->
                             email_map().
--spec find_addresses(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries(), email_map()) ->
-                            email_map().
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
     find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, AddressKeys, []).
 
+-spec find_addresses(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries(), email_map()) ->
+                            email_map().
 find_addresses(_DataJObj, _TemplateMetaJObj, _ConfigCat, [], Acc) -> Acc;
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
     find_addresses(DataJObj
@@ -660,8 +662,6 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
 
 -spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                           {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
--spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                          {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(DataJObj
                 ,TemplateMetaJObj
@@ -672,6 +672,8 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
                              )
                 ).
 
+-spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
+                          {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     %% ?LOG_DEBUG("email type for '~s' not defined in template, checking just the key", [Key]),
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),

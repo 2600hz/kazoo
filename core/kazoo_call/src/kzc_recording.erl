@@ -154,10 +154,10 @@ handle_call_event(JObj, Props) ->
     end.
 
 -spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state()}.
--spec init(kapps_call:call(), kz_json:object()) -> {'ok', state()}.
 init([Call, Data]) ->
     init(Call, Data).
 
+-spec init(kapps_call:call(), kz_json:object()) -> {'ok', state()}.
 init(Call, Data) ->
     kapps_call:put_callid(Call),
     lager:info("starting event listener for record_call"),

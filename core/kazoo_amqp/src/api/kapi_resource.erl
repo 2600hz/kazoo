@@ -148,16 +148,18 @@
 -define(ORIGINATE_UUID_TYPES, []).
 
 -spec originate_ready(kz_term:api_terms()) -> api_formatter_return().
--spec originate_ready_v(kz_term:api_terms()) -> boolean().
 originate_ready(API) ->
     kapi_dialplan:originate_ready(API).
+
+-spec originate_ready_v(kz_term:api_terms()) -> boolean().
 originate_ready_v(API) ->
     kapi_dialplan:originate_ready_v(API).
 
 -spec originate_execute(kz_term:api_terms()) -> api_formatter_return().
--spec originate_execute_v(kz_term:api_terms()) -> boolean().
 originate_execute(API) ->
     kapi_dialplan:originate_execute(API).
+
+-spec originate_execute_v(kz_term:api_terms()) -> boolean().
 originate_execute_v(API) ->
     kapi_dialplan:originate_execute_v(API).
 
@@ -351,49 +353,55 @@ declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
 -spec publish_originate_req(kz_term:api_terms()) -> 'ok'.
--spec publish_originate_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_req(JObj) ->
     publish_originate_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ORIGINATE_REQ_VALUES, fun originate_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ, [{'mandatory', 'true'}]).
 
 -spec publish_originate_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_originate_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_resp(TargetQ, JObj) ->
     publish_originate_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_RESP_VALUES, fun originate_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_originate_started(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_originate_started(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_started(TargetQ, JObj) ->
     publish_originate_started(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_started(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_started(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_STARTED_VALUES, fun originate_started/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_originate_uuid(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_originate_uuid(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_uuid(TargetQ, JObj) ->
     publish_originate_uuid(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_uuid(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_uuid(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ORIGINATE_UUID_VALUES, fun originate_uuid/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_eavesdrop_req(kz_term:api_terms()) -> 'ok'.
--spec publish_eavesdrop_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_eavesdrop_req(JObj) ->
     publish_eavesdrop_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_eavesdrop_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_eavesdrop_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?EAVESDROP_REQ_VALUES, fun eavesdrop_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_EAVESDROP_REQ).
 
 -spec publish_eavesdrop_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_eavesdrop_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_eavesdrop_resp(TargetQ, JObj) ->
     publish_eavesdrop_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_eavesdrop_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_eavesdrop_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?EAVESDROP_RESP_VALUES, fun eavesdrop_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).

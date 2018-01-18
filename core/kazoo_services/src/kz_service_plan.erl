@@ -60,11 +60,8 @@ activation_charges(CategoryId, ItemId, ServicePlan) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec create_items(kzd_service_plan:doc(), kz_service_items:items(), kz_services:services()) ->
-                          kz_service_items:items().
--spec create_items(kzd_service_plan:doc(), kz_service_items:items(), kz_services:services()
-                  ,kz_term:ne_binary(), kz_term:ne_binary()
-                  ) ->
                           kz_service_items:items().
 create_items(ServicePlan, ServiceItems, Services) ->
     lists:foldl(fun({CategoryId, ItemId}, SIs) ->
@@ -74,6 +71,10 @@ create_items(ServicePlan, ServiceItems, Services) ->
                ,get_plan_items(ServicePlan, Services)
                ).
 
+-spec create_items(kzd_service_plan:doc(), kz_service_items:items(), kz_services:services()
+                  ,kz_term:ne_binary(), kz_term:ne_binary()
+                  ) ->
+                          kz_service_items:items().
 create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
     ItemPlan = kzd_service_plan:item(ServicePlan, CategoryId, ItemId),
     create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan).
@@ -302,14 +303,14 @@ get_quantity_rate(Quantity, ItemPlan) ->
 %% summation.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_item_quantity(kz_term:ne_binary(), kz_term:ne_binary(), kzd_item_plan:doc(), kz_services:services()) ->
                                integer().
--spec get_item_quantity(kz_term:ne_binary(), kz_term:ne_binary(), kzd_item_plan:doc(), kz_services:services(), kz_term:ne_binary()) ->
-                               integer().
-
 get_item_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     get_item_quantity(CategoryId, ItemId, ItemPlan, Services, kzd_service_plan:all_items_key()).
 
+-spec get_item_quantity(kz_term:ne_binary(), kz_term:ne_binary(), kzd_item_plan:doc(), kz_services:services(), kz_term:ne_binary()) ->
+                               integer().
 get_item_quantity(CategoryId, AllItems, ItemPlan, Services, AllItems) ->
     Exceptions = kzd_item_plan:exceptions(ItemPlan),
 

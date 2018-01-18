@@ -74,12 +74,12 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?LOGO_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?ICON_REQ) ->
@@ -91,6 +91,7 @@ allowed_methods(?DOMAINS_REQ) ->
 allowed_methods(_WhitelabelDomain) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_WhitelabelDomain, ?LOGO_REQ) ->
     [?HTTP_GET];
 allowed_methods(_WhitelabelDomain, ?ICON_REQ) ->
@@ -106,17 +107,18 @@ allowed_methods(_WhitelabelDomain, ?WELCOME_REQ) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?LOGO_REQ) -> 'true';
 resource_exists(?ICON_REQ) -> 'true';
 resource_exists(?WELCOME_REQ) -> 'true';
 resource_exists(?DOMAINS_REQ) -> 'true';
 resource_exists(_) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, ?LOGO_REQ) -> 'true';
 resource_exists(_, ?WELCOME_REQ) -> 'true';
 resource_exists(_, ?ICON_REQ) -> 'true'.
@@ -412,18 +414,18 @@ validate_domains(Context, ?HTTP_POST) ->
 
 -spec load_domains(cb_context:context()) ->
                           cb_context:context().
--spec load_domains(cb_context:context(), kz_term:api_binary()) ->
-                          cb_context:context().
--spec load_domains(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                          cb_context:context().
 load_domains(Context) ->
     load_domains(Context, find_domain(Context)).
 
+-spec load_domains(cb_context:context(), kz_term:api_binary()) ->
+                          cb_context:context().
 load_domains(Context, 'undefined') ->
     missing_domain_error(Context);
 load_domains(Context, Domain) ->
     load_domains(Context, Domain, system_domains()).
 
+-spec load_domains(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+                          cb_context:context().
 load_domains(Context, Domain, SystemDomains) ->
     AccountDomains = kzd_domains:format(SystemDomains, Domain),
     cb_context:setters(Context
@@ -503,8 +505,6 @@ missing_schema_error(Context) ->
 
 -spec test_account_domains(cb_context:context()) ->
                                   cb_context:context().
--spec test_account_domains(cb_context:context(), kzd_domains:doc()) ->
-                                  cb_context:context().
 test_account_domains(Context) ->
     Context1 = load_domains(Context),
     case cb_context:resp_status(Context1) of
@@ -514,6 +514,8 @@ test_account_domains(Context) ->
             Context1
     end.
 
+-spec test_account_domains(cb_context:context(), kzd_domains:doc()) ->
+                                  cb_context:context().
 test_account_domains(Context, DomainsJObj) ->
     Options = test_network_options(Context),
     TestResults =
@@ -845,8 +847,8 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------
+
 -spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
--spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
                           case kz_term:is_empty(A) of
@@ -864,6 +866,7 @@ attachment_name(Filename, CT) ->
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
+-spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 attachment_name(AttachType, Filename, CT) ->
     <<AttachType/binary, "-", (attachment_name(Filename, CT))/binary>>.
 

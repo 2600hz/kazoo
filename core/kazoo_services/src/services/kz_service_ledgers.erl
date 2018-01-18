@@ -20,8 +20,8 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), kz_term:ne_binary() | kz_term:proplist()) -> kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     case kz_ledgers:get(AccountId) of
@@ -32,6 +32,7 @@ reconcile(Services) ->
             reconcile_account(Services, JObjs)
     end.
 
+-spec reconcile(kz_services:services(), kz_term:ne_binary() | kz_term:proplist()) -> kz_services:services().
 reconcile(Services, Type) when is_binary(Type) ->
     Services1 = reconcile(Services),
     Quantity = kz_services:updated_quantity(?CATEGORY, Type, Services1),

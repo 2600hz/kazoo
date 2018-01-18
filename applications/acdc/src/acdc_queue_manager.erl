@@ -240,13 +240,14 @@ handle_config_change(Srv, JObj) ->
     gen_listener:cast(Srv, {'update_queue_config', JObj}).
 
 -spec should_ignore_member_call(kz_types:server_ref(), kapps_call:call(), kz_json:object()) -> boolean().
--spec should_ignore_member_call(kz_types:server_ref(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 should_ignore_member_call(Srv, Call, CallJObj) ->
     should_ignore_member_call(Srv
                              ,Call
                              ,kz_json:get_value(<<"Account-ID">>, CallJObj)
                              ,kz_json:get_value(<<"Queue-ID">>, CallJObj)
                              ).
+
+-spec should_ignore_member_call(kz_types:server_ref(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 should_ignore_member_call(Srv, Call, AccountId, QueueId) ->
     K = make_ignore_key(AccountId, QueueId, kapps_call:call_id(Call)),
     gen_listener:call(Srv, {'should_ignore_member_call', K}).
@@ -916,10 +917,10 @@ update_strategy_state(Srv, L) ->
     [gen_listener:cast(Srv, {'sync_with_agent', A}) || A <- L].
 
 -spec call_position(kz_term:ne_binary(), [kapps_call:call()]) -> kz_term:api_integer().
--spec call_position(kz_term:ne_binary(), [kapps_call:call()], pos_integer()) -> pos_integer().
 call_position(CallId, Calls) ->
     call_position(CallId, Calls, 1).
 
+-spec call_position(kz_term:ne_binary(), [kapps_call:call()], pos_integer()) -> pos_integer().
 call_position(_, [], _) ->
     'undefined';
 call_position(CallId, [Call|Calls], Position) ->

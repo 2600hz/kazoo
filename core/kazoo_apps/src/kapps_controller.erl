@@ -77,10 +77,10 @@ restart_app(App) ->
     restart_app(kz_term:to_atom(App, 'true')).
 
 -spec running_apps() -> kz_term:atoms() | string().
--spec running_apps(boolean()) -> kz_term:atoms() | string().
 running_apps() ->
     running_apps('false').
 
+-spec running_apps(boolean()) -> kz_term:atoms() | string().
 running_apps(Verbose) ->
     case kz_term:is_true(Verbose) of
         'true' -> running_apps_verbose();

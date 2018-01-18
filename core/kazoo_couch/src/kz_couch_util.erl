@@ -196,11 +196,12 @@ db_url(#server{}=Conn, DbName) ->
 %% returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec get_db(kz_data:connection(), kz_term:ne_binary()) -> db().
--spec get_db(kz_data:connection(), kz_term:ne_binary(), couch_version()) -> db().
 get_db(Conn, DbName) ->
     get_db(Conn, DbName, kazoo_couch:server_version(Conn)).
 
+-spec get_db(kz_data:connection(), kz_term:ne_binary(), couch_version()) -> db().
 get_db(Conn, DbName, Driver) ->
     ConnToUse =
         case is_admin_db(DbName, Driver) of

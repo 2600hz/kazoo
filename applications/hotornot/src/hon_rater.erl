@@ -120,10 +120,10 @@ get_rate_data_from_sorted(RateReq, _ToDID, _FromDID, [Rate|_]) ->
     {'ok', rate_resp(Rate, RateReq)}.
 
 -spec maybe_get_rate_discount(kapi_rate:req()) -> kz_term:api_binary().
--spec maybe_get_rate_discount(kapi_rate:req(), kz_term:api_binary()) -> kz_term:api_binary().
 maybe_get_rate_discount(RateReq) ->
     maybe_get_rate_discount(RateReq, kz_json:get_value(<<"Account-ID">>, RateReq)).
 
+-spec maybe_get_rate_discount(kapi_rate:req(), kz_term:api_binary()) -> kz_term:api_binary().
 maybe_get_rate_discount(_RateReq, 'undefined') -> 'undefined';
 maybe_get_rate_discount(RateReq, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),

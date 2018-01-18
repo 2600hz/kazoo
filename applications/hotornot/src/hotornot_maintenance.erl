@@ -33,7 +33,6 @@ local_summary() ->
     io:format("use rates_for_did/1 to see what rates would be used for a DID~n").
 
 -spec trie_rebuild() -> 'ok'.
--spec wait_for_rebuild(pid(), reference()) -> 'ok'.
 trie_rebuild() ->
     case hotornot_config:should_use_trie() of
         'true' ->
@@ -43,6 +42,7 @@ trie_rebuild() ->
             io:format("trie usage is not configured~n")
     end.
 
+-spec wait_for_rebuild(pid(), reference()) -> 'ok'.
 wait_for_rebuild(Pid, Ref) ->
     Timeout = hotornot_config:trie_build_timeout_ms() + 500,
     receive
@@ -56,15 +56,18 @@ wait_for_rebuild(Pid, Ref) ->
     end.
 
 -spec rates_for_did(kz_term:ne_binary()) -> 'ok'.
--spec rates_for_did(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec rates_for_did(kz_term:ne_binary(), kz_term:api_ne_binary(), trunking_options()) -> 'ok'.
--spec rates_for_did(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), trunking_options()) -> 'ok'.
 rates_for_did(DID) ->
     rates_for_did(DID, 'undefined', 'undefined', []).
+
+-spec rates_for_did(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 rates_for_did(DID, AccountId) ->
     rates_for_did(DID, 'undefined', AccountId, []).
+
+-spec rates_for_did(kz_term:ne_binary(), kz_term:api_ne_binary(), trunking_options()) -> 'ok'.
 rates_for_did(DID, Direction, RouteOptions) ->
     rates_for_did(DID, Direction, 'undefined', RouteOptions).
+
+-spec rates_for_did(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), trunking_options()) -> 'ok'.
 rates_for_did(DID, Direction, AccountId, RouteOptions) when is_list(RouteOptions) ->
     case hon_util:candidate_rates(DID, AccountId) of
         {'ok', []} -> io:format("rate lookup had no results~n");

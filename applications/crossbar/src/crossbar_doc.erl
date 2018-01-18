@@ -104,23 +104,23 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
+
 -spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context()) ->
                   cb_context:context().
--spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context(), load_options()) ->
-                  cb_context:context().
--spec load(kz_term:ne_binary() | kz_term:ne_binaries(), cb_context:context(), load_options(), crossbar_status()) ->
-                  cb_context:context().
-
 load({DocType, DocId}, Context) ->
     load(DocId, Context, [{'doc_type', DocType}]);
 load(DocId, Context) ->
     load(DocId, Context, []).
 
+-spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context(), load_options()) ->
+                  cb_context:context().
 load({DocType, DocId}, Context, Options) ->
     load(DocId, Context, [{'doc_type', DocType} | Options]);
 load(DocId, Context, Options) ->
     load(DocId, Context, Options, cb_context:resp_status(Context)).
 
+-spec load(kz_term:ne_binary() | kz_term:ne_binaries(), cb_context:context(), load_options(), crossbar_status()) ->
+                  cb_context:context().
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
     case maybe_open_cache_doc(cb_context:account_db(Context), DocId, Options) of
@@ -228,10 +228,10 @@ depluralize_resource_name(Name) ->
     end.
 
 -spec handle_successful_load(cb_context:context(), kz_json:object()) -> cb_context:context().
--spec handle_successful_load(cb_context:context(), kz_json:object(), boolean()) -> cb_context:context().
 handle_successful_load(Context, JObj) ->
     handle_successful_load(Context, JObj, kz_doc:is_soft_deleted(JObj)).
 
+-spec handle_successful_load(cb_context:context(), kz_json:object(), boolean()) -> cb_context:context().
 handle_successful_load(Context, JObj, 'true') ->
     lager:debug("doc ~s(~s) is soft-deleted, returning bad_identifier"
                ,[kz_doc:id(JObj), kz_doc:revision(JObj)]
@@ -256,24 +256,24 @@ handle_successful_load(Context, JObj, 'false') ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
+
 -spec load_merge(kz_term:ne_binary(), cb_context:context()) ->
                         cb_context:context().
--spec load_merge(kz_term:ne_binary(), cb_context:context(), kz_term:proplist()) ->
-                        cb_context:context().
--spec load_merge(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:proplist()) ->
-                        cb_context:context().
--spec load_merge(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:proplist(), kz_term:api_object()) ->
-                        cb_context:context().
-
 load_merge(DocId, Context) ->
     load_merge(DocId, cb_context:doc(Context), Context, []).
 
+-spec load_merge(kz_term:ne_binary(), cb_context:context(), kz_term:proplist()) ->
+                        cb_context:context().
 load_merge(DocId, Context, Options) ->
     load_merge(DocId, cb_context:doc(Context), Context, Options).
 
+-spec load_merge(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:proplist()) ->
+                        cb_context:context().
 load_merge(DocId, DataJObj, Context, Options) ->
     load_merge(DocId, DataJObj, Context, Options, cb_context:load_merge_bypass(Context)).
 
+-spec load_merge(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:proplist(), kz_term:api_object()) ->
+                        cb_context:context().
 load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
     Context1 = load(DocId, Context, Options),
     case success =:= cb_context:resp_status(Context1) of
@@ -290,11 +290,11 @@ load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
 
 -spec patch_and_validate(kz_term:ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
--spec patch_and_validate(kz_term:ne_binary(), cb_context:context(), validate_fun(), load_options()) ->
-                                cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
     patch_and_validate(Id, Context, ValidateFun, ?TYPE_CHECK_OPTION_ANY).
 
+-spec patch_and_validate(kz_term:ne_binary(), cb_context:context(), validate_fun(), load_options()) ->
+                                cb_context:context().
 patch_and_validate(Id, Context, ValidateFun, LoadOptions) ->
     Context1 = load(Id, Context, LoadOptions),
     patch_and_validate_doc(Id, Context1, ValidateFun, cb_context:resp_status(Context1)).
@@ -322,13 +322,8 @@ patch_the_doc(RequestData, ExistingDoc) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
+
 -spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context()) ->
-                       cb_context:context().
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term() | filter_fun()) ->
-                       cb_context:context().
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer()) ->
-                       cb_context:context().
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), filter_fun()) ->
                        cb_context:context().
 load_view(View, Options, Context) ->
     load_view(View, Options, Context
@@ -337,6 +332,8 @@ load_view(View, Options, Context) ->
              ,'undefined'
              ).
 
+-spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term() | filter_fun()) ->
+                       cb_context:context().
 load_view(View, Options, Context, FilterFun)
   when is_function(FilterFun, 2);
        is_function(FilterFun, 3) ->
@@ -350,9 +347,13 @@ load_view(View, Options, Context, StartKey) ->
              ,cb_context:pagination_page_size(Context)
              ).
 
+-spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer()) ->
+                       cb_context:context().
 load_view(View, Options, Context, StartKey, PageSize) ->
     load_view(View, Options, Context, StartKey, PageSize, 'undefined').
 
+-spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), filter_fun()) ->
+                       cb_context:context().
 load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
     load_view(
       #load_view_params{view = View
@@ -453,11 +454,11 @@ load_view(#load_view_params{view = View
     end.
 
 -spec limit_by_page_size(kz_term:api_binary() | pos_integer()) -> kz_term:api_pos_integer().
--spec limit_by_page_size(cb_context:context(), kz_term:api_binary() | pos_integer()) -> kz_term:api_pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(kz_term:to_integer(B)).
 
+-spec limit_by_page_size(cb_context:context(), kz_term:api_binary() | pos_integer()) -> kz_term:api_pos_integer().
 limit_by_page_size(Context, PageSize) ->
     case cb_context:should_paginate(Context) of
         'true' -> limit_by_page_size(PageSize);
@@ -467,10 +468,10 @@ limit_by_page_size(Context, PageSize) ->
     end.
 
 -spec start_key(cb_context:context()) -> kz_json:api_json_term().
--spec start_key(kz_term:proplist(), cb_context:context()) -> kz_json:api_json_term().
 start_key(Context) ->
     cb_context:req_value(Context, <<"start_key">>).
 
+-spec start_key(kz_term:proplist(), cb_context:context()) -> kz_json:api_json_term().
 start_key(Options, Context) ->
     case props:get_value('startkey_fun', Options) of
         'undefined' -> start_key_fun(Options, Context);
@@ -557,18 +558,19 @@ load_attachment(Doc, AName, Options, Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(cb_context:context()) ->
                   cb_context:context().
--spec save(cb_context:context(), kz_term:proplist()) ->
-                  cb_context:context().
--spec save(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                  cb_context:context().
-
 save(Context) ->
     save(Context, []).
+
+-spec save(cb_context:context(), kz_term:proplist()) ->
+                  cb_context:context().
 save(Context, Options) ->
     save(Context, cb_context:doc(Context), Options).
 
+-spec save(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
+                  cb_context:context().
 save(Context, [], _Options) ->
     lager:debug("no docs to save"),
     cb_context:set_resp_status(Context, 'success');
@@ -604,19 +606,19 @@ save(Context, JObj, Options) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
+
 -spec ensure_saved(cb_context:context()) ->
                           cb_context:context().
--spec ensure_saved(cb_context:context(), kz_term:proplist()) ->
-                          cb_context:context().
--spec ensure_saved(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                          cb_context:context().
-
 ensure_saved(Context) ->
     ensure_saved(Context, []).
 
+-spec ensure_saved(cb_context:context(), kz_term:proplist()) ->
+                          cb_context:context().
 ensure_saved(Context, Options) ->
     ensure_saved(Context, cb_context:doc(Context), Options).
 
+-spec ensure_saved(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
+                          cb_context:context().
 ensure_saved(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case kz_datamgr:ensure_saved(cb_context:account_db(Context), JObj0, Options) of
@@ -725,12 +727,12 @@ maybe_delete_doc(Context, DocId) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context()) -> cb_context:context().
--spec delete(cb_context:context(), boolean()) -> cb_context:context().
 
+-spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     delete(Context, cb_context:should_soft_delete(Context)).
 
+-spec delete(cb_context:context(), boolean()) -> cb_context:context().
 delete(Context, ?SOFT_DELETE) ->
     Doc = cb_context:doc(Context),
     lager:info("soft-deleting doc ~s", [kz_doc:id(Doc)]),
@@ -973,11 +975,11 @@ handle_datamgr_pagination_success([_|_]=JObjs
 
 -spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction()) ->
                           kz_json:objects().
--spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
-                          kz_json:objects().
 apply_filter(FilterFun, JObjs, Context, Direction) ->
     apply_filter(FilterFun, JObjs, Context, Direction, crossbar_filter:is_defined(Context)).
 
+-spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
+                          kz_json:objects().
 apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
     lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
     Filtered0 = [JObj
@@ -1030,11 +1032,11 @@ handle_thing_success(Thing, Context) ->
 
 -spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context()) ->
                                  cb_context:context().
--spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context(), http_method()) ->
-                                 cb_context:context().
 handle_json_success(JObj, Context) ->
     handle_json_success(JObj, Context, cb_context:req_verb(Context)).
 
+-spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context(), http_method()) ->
+                                 cb_context:context().
 handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
     RespData = [kz_doc:public_fields(JObj)
                 || JObj <- JObjs,

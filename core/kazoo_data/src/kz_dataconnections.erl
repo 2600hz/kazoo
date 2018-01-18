@@ -54,16 +54,16 @@ add(#data_connection{tag='undefined'}=Connection) ->
 add(#data_connection{}=Connection) ->
     gen_server:cast(?SERVER, {'add_connection', Connection}).
 
--spec wait_for_connection() -> 'ok' | 'no_connection'.
--spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
--spec wait_for_connection(any(), timeout()) -> 'ok' | 'no_connection'.
 
+-spec wait_for_connection() -> 'ok' | 'no_connection'.
 wait_for_connection() ->
     wait_for_connection('local').
 
+-spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
 wait_for_connection(Tag) ->
     wait_for_connection(Tag, 'infinity').
 
+-spec wait_for_connection(any(), timeout()) -> 'ok' | 'no_connection'.
 wait_for_connection(_Tag, 0) -> 'no_connection';
 wait_for_connection(Tag, Timeout) ->
     Start = os:timestamp(),
@@ -100,12 +100,13 @@ get_server(Tag) ->
         _ -> 'undefined'
     end.
 
+
 -spec test_conn() -> {'ok', kz_json:object()} |
                      {'error', any()}.
+test_conn() -> test_conn('local').
+
 -spec test_conn(term()) -> {'ok', kz_json:object()} |
                            {'error', any()}.
-
-test_conn() -> test_conn('local').
 test_conn(Tag) ->
     case get_server(Tag) of
         'undefined' -> {'error', 'server_not_available'};

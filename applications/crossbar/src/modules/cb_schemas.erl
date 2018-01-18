@@ -61,13 +61,16 @@ authenticate_nouns(_) -> 'false'.
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_SchemaName) ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_SchemaName, ?VALIDATION_PATH_TOKEN) ->
     [?HTTP_PUT].
 
@@ -79,11 +82,14 @@ allowed_methods(_SchemaName, ?VALIDATION_PATH_TOKEN) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() ->  'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_SchemaName) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -95,16 +101,17 @@ resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     lager:debug("load summary of schemas from ~s", [?KZ_SCHEMA_DB]),
     summary(cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     read(Id, cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Id, ?VALIDATION_PATH_TOKEN) ->
     cb_context:validate_request_data(Id, Context, fun on_success/1).
 

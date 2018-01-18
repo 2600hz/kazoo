@@ -153,10 +153,10 @@ continue_to_default(Call) ->
     end.
 
 -spec nomorobo_branches({'branch_keys', kz_term:ne_binaries()}) -> kz_term:integers().
--spec nomorobo_branches(kz_term:ne_binaries(), kz_term:integers()) -> kz_term:integers().
 nomorobo_branches({'branch_keys', Keys}) ->
     nomorobo_branches(Keys, []).
 
+-spec nomorobo_branches(kz_term:ne_binaries(), kz_term:integers()) -> kz_term:integers().
 nomorobo_branches([], Branches) ->
     lists:sort(Branches);
 nomorobo_branches([?DEFAULT_CHILD_KEY|Keys], Branches) ->

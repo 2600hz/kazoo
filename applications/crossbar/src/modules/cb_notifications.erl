@@ -83,18 +83,18 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?SMTP_LOG) ->
     [?HTTP_GET];
 allowed_methods(_NotificationId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_NotificationId, ?PREVIEW) ->
     [?HTTP_POST];
 allowed_methods(?SMTP_LOG, _SMTPLogId) ->
@@ -130,15 +130,15 @@ authorize(_Context, _, _Nouns) ->
 %%    /notifications/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 
+-spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?SMTP_LOG) -> 'true';
 resource_exists(_Id) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_Id, ?PREVIEW) -> 'true';
 resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?CUSTOMER_UPDATE, ?MESSAGE) -> 'true'.
@@ -157,8 +157,6 @@ acceptable_content_types() ->
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
--spec content_types_provided_for_notifications(cb_context:context(), path_token(), http_method()) ->
-                                                      cb_context:context().
 content_types_provided(Context, ?SMTP_LOG) ->
     Context;
 content_types_provided(Context, Id) ->
@@ -166,6 +164,8 @@ content_types_provided(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     content_types_provided_for_notifications(maybe_update_db(Context), DbId, ReqVerb).
 
+-spec content_types_provided_for_notifications(cb_context:context(), path_token(), http_method()) ->
+                                                      cb_context:context().
 content_types_provided_for_notifications(Context, Id, ?HTTP_GET) ->
     Context1 = read(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -236,14 +236,13 @@ content_types_accepted_for_upload(Context, _Verb) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     ReqVerb = cb_context:req_verb(Context),
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?SMTP_LOG) ->
     crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, [{mapper, crossbar_view:map_value_fun()}]);
 validate(Context, Id) ->
@@ -251,6 +250,7 @@ validate(Context, Id) ->
     DbId = kz_notification:db_id(Id),
     validate_notification(maybe_update_db(Context), DbId, ReqVerb).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Id, ?PREVIEW) ->
     DbId = kz_notification:db_id(Id),
     update_notification(maybe_update_db(Context), DbId);
@@ -260,8 +260,6 @@ validate(Context, ?CUSTOMER_UPDATE, ?MESSAGE) ->
     may_be_validate_recipient_id(Context).
 
 -spec validate_notifications(cb_context:context(), http_method()) -> cb_context:context().
--spec validate_notification(cb_context:context(), path_token(), http_method()) ->
-                                   cb_context:context().
 validate_notifications(Context, ?HTTP_GET) ->
     summary(Context);
 validate_notifications(Context, ?HTTP_PUT) ->
@@ -285,6 +283,8 @@ validate_action(Context, _Method, Action, _AccountId) ->
            ],
     cb_context:add_validation_error(Action, <<"forbidden">>, kz_json:from_list(Resp), Context).
 
+-spec validate_notification(cb_context:context(), path_token(), http_method()) ->
+                                   cb_context:context().
 validate_notification(Context, Id, ?HTTP_GET) ->
     maybe_read(Context, Id);
 validate_notification(Context, Id, ?HTTP_POST) ->
@@ -639,11 +639,11 @@ delete_doc(Context, Id) ->
 
 -spec maybe_delete_template(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    cb_context:context().
--spec maybe_delete_template(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                   cb_context:context().
 maybe_delete_template(Context, Id, ContentType) ->
     maybe_delete_template(Context, Id, ContentType, cb_context:doc(Context)).
 
+-spec maybe_delete_template(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                   cb_context:context().
 maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
     AttachmentName = attachment_name_by_media_type(ContentType),
     case kz_doc:attachment(TemplateJObj, AttachmentName) of
@@ -680,10 +680,10 @@ accept_values(Context) ->
     media_values(AcceptValue, Tunneled).
 
 -spec media_values(kz_term:api_binary()) -> media_values().
--spec media_values(kz_term:api_binary(), kz_term:api_binary()) -> media_values().
 media_values(Media) ->
     media_values(Media, 'undefined').
 
+-spec media_values(kz_term:api_binary(), kz_term:api_binary()) -> media_values().
 media_values('undefined', 'undefined') ->
     lager:debug("no accept headers, assuming JSON"),
     [?MEDIA_VALUE(<<"application">>, <<"json">>)];
@@ -705,11 +705,11 @@ acceptable_content_types(Context) ->
     props:get_value('to_binary', cb_context:content_types_provided(Context), []).
 
 -spec maybe_read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec maybe_read(cb_context:context(), kz_term:ne_binary(), kz_term:proplist(), media_values()) -> cb_context:context().
 maybe_read(Context, Id) ->
     Acceptable = acceptable_content_types(Context),
     maybe_read(Context, Id, Acceptable, accept_values(Context)).
 
+-spec maybe_read(cb_context:context(), kz_term:ne_binary(), kz_term:proplist(), media_values()) -> cb_context:context().
 maybe_read(Context, Id, _Acceptable, [?MEDIA_VALUE(<<"application">>, <<"json">>, _, _, _)|_Accepts]) ->
     read(Context, Id);
 maybe_read(Context, Id, _Acceptable, [?MEDIA_VALUE(<<"application">>, <<"x-json">>, _, _, _)|_Accepts]) ->
@@ -737,10 +737,10 @@ is_acceptable_accept(Acceptable, Type, SubType) ->
 -type load_from() :: 'system' | 'account' | 'system_migrate'.
 
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec read(cb_context:context(), kz_term:ne_binary(), load_from()) -> cb_context:context().
 read(Context, Id) ->
     read(Context, Id, 'system').
 
+-spec read(cb_context:context(), kz_term:ne_binary(), load_from()) -> cb_context:context().
 read(Context, Id, LoadFrom) ->
     Context1 =
         case cb_context:account_db(Context) of
@@ -890,14 +890,15 @@ maybe_merge_ancestor_attachments(Context, Id) ->
     end.
 
 -spec merge_ancestor_attachments(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec merge_ancestor_attachments(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                        cb_context:context().
 merge_ancestor_attachments(Context, Id) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = cb_context:reseller_id(Context),
     merge_ancestor_attachments(Context, Id, AccountId, ResellerId).
 
 %% Last attempt was reseller, now try ?KZ_CONFIG_DB
+
+-spec merge_ancestor_attachments(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                        cb_context:context().
 merge_ancestor_attachments(Context, Id, AccountId, AccountId) ->
     lager:debug("trying attachments in ~s", [?KZ_CONFIG_DB]),
     case kz_doc:attachments(cb_context:doc(read_system(Context, Id))) of
@@ -1211,7 +1212,6 @@ fetch_available() ->
     kz_cache:fetch_local(?CACHE_NAME, {?MODULE, 'available'}).
 
 -spec summary_account(cb_context:context()) -> cb_context:context().
--spec summary_account(cb_context:context(), kz_json:objects()) -> cb_context:context().
 summary_account(Context) ->
     Context1 =
         crossbar_doc:load_view(?CB_LIST
@@ -1222,6 +1222,7 @@ summary_account(Context) ->
     lager:debug("loaded account's summary"),
     summary_account(Context1, cb_context:doc(Context1)).
 
+-spec summary_account(cb_context:context(), kz_json:objects()) -> cb_context:context().
 summary_account(Context, AccountAvailable) ->
     Available = filter_available(summary_available(Context)),
     lager:debug("loaded system available"),

@@ -140,25 +140,28 @@ declare_exchanges() ->
     amqp_util:kapps_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MEDIA_REQ_VALUES, fun req/1),
     amqp_util:kapps_publish(?MEDIA_REQ_ROUTING_KEY, Payload, ContentType).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?MEDIA_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(Queue, Error, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Error, ?MEDIA_ERROR_VALUES, fun error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

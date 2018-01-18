@@ -75,8 +75,9 @@ ratelimits_resp(Prop) when is_list(Prop) ->
 ratelimits_resp(JObj) -> ratelimits_resp(kz_json:to_proplist(JObj)).
 
 -spec publish_ratelimits_resp(kz_term:ne_binary(), kz_json:object()) -> ok.
--spec publish_ratelimits_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_ratelimits_resp(Srv, JObj) -> publish_ratelimits_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_ratelimits_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_ratelimits_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATELIMITS_RESP_VALUES, fun ratelimits_resp/1),
     amqp_util:targeted_publish(Srv, Payload, ContentType).
@@ -100,8 +101,9 @@ acls_resp(Prop) when is_list(Prop) ->
 acls_resp(JObj) -> acls_resp(kz_json:to_proplist(JObj)).
 
 -spec publish_acls_resp(kz_term:ne_binary(), kz_json:object()) -> ok.
--spec publish_acls_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_acls_resp(Srv, JObj) -> publish_acls_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_acls_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_acls_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ACL_RESP_VALUES, fun acls_resp/1),
     amqp_util:targeted_publish(Srv, Payload, ContentType).
@@ -140,9 +142,10 @@ flush_v(Prop) when is_list(Prop) ->
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
 -spec publish_flush(kz_term:api_terms()) -> 'ok'.
--spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ACL_FLUSH_VALUES, fun flush/1),
     amqp_util:basic_publish(?ACL_FRONTIER_EXCHANGE, ?ACL_ROUTE_KEY, Payload, ContentType).

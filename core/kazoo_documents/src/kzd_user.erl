@@ -53,16 +53,18 @@ fetch(_, _) ->
     {'error', 'invalid_parameters'}.
 
 -spec email(doc()) -> kz_term:api_binary().
--spec email(doc(), Default) -> kz_term:ne_binary() | Default.
 email(User) ->
     email(User, 'undefined').
+
+-spec email(doc(), Default) -> kz_term:ne_binary() | Default.
 email(User, Default) ->
     kz_json:get_ne_binary_value(?KEY_EMAIL, User, Default).
 
 -spec voicemail_notification_enabled(doc()) -> boolean().
--spec voicemail_notification_enabled(doc(), Default) -> boolean() | Default.
 voicemail_notification_enabled(User) ->
     voicemail_notification_enabled(User, 'false').
+
+-spec voicemail_notification_enabled(doc(), Default) -> boolean() | Default.
 voicemail_notification_enabled(User, Default) ->
     kz_json:is_true(<<"vm_to_email_enabled">>, User, Default).
 
@@ -232,9 +234,10 @@ timezone(JObj, Default) ->
     end.
 
 -spec presence_id(doc()) -> kz_term:api_binary().
--spec presence_id(doc(), Default) -> kz_term:ne_binary() | Default.
 presence_id(UserJObj) ->
     presence_id(UserJObj, 'undefined').
+
+-spec presence_id(doc(), Default) -> kz_term:ne_binary() | Default.
 presence_id(UserJObj, Default) ->
     kz_json:get_binary_value(?KEY_PRESENCE_ID, UserJObj, Default).
 
@@ -246,9 +249,10 @@ set_presence_id(UserJObj, Id) ->
                      ).
 
 -spec is_enabled(doc()) -> boolean().
--spec is_enabled(doc(), Default) -> boolean() | Default.
 is_enabled(JObj) ->
     is_enabled(JObj, 'true').
+
+-spec is_enabled(doc(), Default) -> boolean() | Default.
 is_enabled(JObj, Default) ->
     kz_json:is_true(?KEY_IS_ENABLED, JObj, Default).
 
@@ -314,25 +318,26 @@ name(Doc) ->
     >>.
 
 -spec first_name(doc()) -> kz_term:api_binary().
--spec first_name(doc(), Default) -> kz_term:ne_binary() | Default.
 first_name(Doc) ->
     first_name(Doc, 'undefined').
 
+-spec first_name(doc(), Default) -> kz_term:ne_binary() | Default.
 first_name(Doc, Default) ->
     kz_json:get_binary_value(?KEY_FIRST_NAME, Doc, Default).
 
 -spec last_name(doc()) -> kz_term:api_binary().
--spec last_name(doc(), Default) -> kz_term:ne_binary() | Default.
 last_name(Doc) ->
     last_name(Doc, 'undefined').
 
+-spec last_name(doc(), Default) -> kz_term:ne_binary() | Default.
 last_name(Doc, Default) ->
     kz_json:get_binary_value(?KEY_LAST_NAME, Doc, Default).
 
 -spec priv_level(doc()) -> kz_term:api_binary().
--spec priv_level(doc(), Default) -> kz_term:ne_binary() | Default.
 priv_level(Doc) ->
     priv_level(Doc, <<"user">>).
+
+-spec priv_level(doc(), Default) -> kz_term:ne_binary() | Default.
 priv_level(Doc, Default) ->
     kz_json:get_binary_value(?KEY_PRIV_LEVEL, Doc, Default).
 
@@ -343,16 +348,18 @@ set_priv_level(<<"admin">>=LVL, Doc) ->
     kz_json:set_value(?KEY_PRIV_LEVEL, LVL, Doc).
 
 -spec call_restrictions(doc()) -> kz_term:api_object().
--spec call_restrictions(doc(), Default) -> kz_json:object() | Default.
 call_restrictions(Doc) ->
     call_restrictions(Doc, 'undefined').
+
+-spec call_restrictions(doc(), Default) -> kz_json:object() | Default.
 call_restrictions(Doc, Default) ->
     kz_json:get_json_value(?KEY_CALL_RESTRICTIONS, Doc, Default).
 
 -spec classifier_restriction(doc(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
--spec classifier_restriction(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
 classifier_restriction(Doc, Classifier) ->
     classifier_restriction(Doc, Classifier, 'undefined').
+
+-spec classifier_restriction(doc(), kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
 classifier_restriction(Doc, Classifier, Default) ->
     kz_json:get_ne_binary_value([?KEY_CALL_RESTRICTIONS
                                 ,Classifier

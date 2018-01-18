@@ -31,12 +31,13 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
+-spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -78,14 +79,15 @@ feature(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
--spec maybe_update_e911(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 maybe_update_e911(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     maybe_update_e911(Number, (IsDryRun
                                orelse ?IS_SANDBOX_PROVISIONING_TRUE
                               )).
 
+-spec maybe_update_e911(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 maybe_update_e911(Number, 'true') ->
     CurrentE911 = feature(Number),
     E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),

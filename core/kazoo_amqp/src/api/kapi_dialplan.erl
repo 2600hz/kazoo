@@ -1088,14 +1088,14 @@ error_v(Prop) when is_list(Prop) ->
 error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
--spec publish_command(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_command(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 
+-spec publish_command(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_command(CtrlQ, Prop) when is_list(Prop) ->
     publish_command(CtrlQ, Prop, props:get_value(<<"Application-Name">>, Prop));
 publish_command(CtrlQ, JObj) ->
     publish_command(CtrlQ, kz_json:to_proplist(JObj)).
 
+-spec publish_command(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_command(CtrlQ, Prop, DPApp) ->
     {'ok', Payload} = build_command(Prop, DPApp),
     amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
@@ -1124,17 +1124,20 @@ build_command(JObj, DPApp) ->
     build_command(kz_json:to_proplist(JObj), DPApp).
 
 %% sending DP actions to CallControl Queue
+
 -spec publish_action(kz_term:ne_binary(), iodata()) -> 'ok'.
--spec publish_action(kz_term:ne_binary(), iodata(), kz_term:ne_binary()) -> 'ok'.
 publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_action(kz_term:ne_binary(), iodata(), kz_term:ne_binary()) -> 'ok'.
 publish_action(Queue, Payload, ContentType) ->
     amqp_util:callctl_publish(Queue, Payload, ContentType).
 
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(CallID, JObj) ->
     publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
                                                        | ?ERROR_RESP_VALUES
@@ -1142,17 +1145,19 @@ publish_error(CallID, API, ContentType) ->
     amqp_util:callevt_publish(kapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
 
 -spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_ready(ServerId, JObj) ->
     publish_originate_ready(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_ready(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun originate_ready/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_execute(ServerId, JObj) ->
     publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_execute(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun originate_execute/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
@@ -1186,13 +1191,13 @@ terminators(Bin) when is_binary(Bin) ->
 terminators('undefined') -> ?ANY_DIGIT.
 
 -spec terminators_v(kz_term:api_binaries() | binary()) -> boolean().
--spec terminator_v(kz_term:ne_binary()) -> boolean().
 terminators_v(Ts) when is_list(Ts) ->
     lists:all(fun terminator_v/1, Ts);
 terminators_v(<<>>) -> 'true';
 terminators_v(<<"none">>) -> 'true';
 terminators_v(_) -> 'false'.
 
+-spec terminator_v(kz_term:ne_binary()) -> boolean().
 terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 -spec offsite_store_url(kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().

@@ -137,17 +137,19 @@ declare_exchanges() ->
     amqp_util:sysconf_exchange().
 
 -spec publish_module_req(kz_term:api_terms()) -> 'ok'.
--spec publish_module_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_req(API) ->
     publish_module_req(API, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_module_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MODULE_REQ_VALUES, fun module_req/1),
     amqp_util:kapps_publish(?MODULE_REQ_ROUTING_KEY, Payload, ContentType).
 
 -spec publish_module_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_module_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_resp(ServerId, API) ->
     publish_module_resp(ServerId, API, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_module_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_module_resp(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MODULE_RESP_VALUES, fun module_resp/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
@@ -157,10 +159,12 @@ publish_module_resp(ServerId, API, ContentType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_get_req(kz_term:api_terms()) -> 'ok'.
--spec publish_get_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_get_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?WEBSOCKETS_GET_REQ_VALUES, fun get_req/1),
     amqp_util:sysconf_publish(?KEY_WEBSOCKETS_GET_REQ, Payload, ContentType).
@@ -170,10 +174,12 @@ publish_get_req(Api, ContentType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_get_resp(RespQ, Api, ContentType) ->
     PrepareOptions = [{'formatter', fun get_resp/1}
                      ,{'remove_recursive', 'false'}

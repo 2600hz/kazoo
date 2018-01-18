@@ -15,14 +15,14 @@
 -type bind_result() :: kazoo_bindings:bind_result().
 
 -spec bind(atom()) -> bind_result().
--spec bind(atom(), atom()) -> bind_result().
--spec bind(atom(), atom(), atom()) -> bind_result().
 bind(App) ->
     bind(App, App).
 
+-spec bind(atom(), atom()) -> bind_result().
 bind(App, Module) ->
     bind(App, Module, ?DEFAULT_FUNCTION).
 
+-spec bind(atom(), atom(), atom()) -> bind_result().
 bind(App, Module, Function)
   when is_atom(App)
        andalso is_atom(Module)
@@ -37,14 +37,14 @@ bind(App, Module, Function)
     end.
 
 -spec unbind(atom()) -> kazoo_bindings:unbind_result().
--spec unbind(atom(), atom()) -> kazoo_bindings:unbind_result().
--spec unbind(atom(), atom(), atom()) -> kazoo_bindings:unbind_result().
 unbind(App) ->
     unbind(App, App).
 
+-spec unbind(atom(), atom()) -> kazoo_bindings:unbind_result().
 unbind(App, Module) ->
     unbind(App, Module, ?DEFAULT_FUNCTION).
 
+-spec unbind(atom(), atom(), atom()) -> kazoo_bindings:unbind_result().
 unbind(App, Module, Function)
   when is_atom(App)
        andalso is_atom(Module)

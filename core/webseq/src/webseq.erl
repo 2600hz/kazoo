@@ -52,7 +52,6 @@ start(Type) ->
     end.
 
 -spec stop() -> 'ok'.
--spec stop(diagram_type()) -> 'ok'.
 stop() ->
     %% {{'n', 'l', Key}, PidToMatch, ValueToMatch}
     MatchHead = {?GPROC_KEY('$2'), '_', '$1'},
@@ -64,6 +63,7 @@ stop() ->
         Pids -> lists:foreach(fun stop_pid/1, Pids)
     end.
 
+-spec stop(diagram_type()) -> 'ok'.
 stop(Type) ->
     case get_server_ref(Type) of
         'undefined' -> 'ok';
@@ -126,8 +126,9 @@ note(Ref, Who, Dir, Note) ->
     gen_server:cast(Srv, {'write', "note ~s of ~s: ~s~n", [Dir, who(Srv, Who), what(Note)]}).
 
 -spec trunc(webseq_srv()) -> 'ok'.
--spec rotate(webseq_srv()) -> 'ok'.
 trunc(Srv) -> gen_server:cast(get_server_ref(Srv), 'trunc').
+
+-spec rotate(webseq_srv()) -> 'ok'.
 rotate(Srv) -> gen_server:cast(get_server_ref(Srv), 'rotate').
 
 -spec process_pid(kz_json:object()) -> kz_term:ne_binary().

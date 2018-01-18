@@ -55,21 +55,24 @@ default_application_timeout() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
+
 -spec send_sms(kz_json:objects(), kapps_call:call()) -> 'ok'.
--spec send_sms(kz_json:objects(), binary(), kapps_call:call()) -> 'ok'.
-
--spec b_send_sms(kz_json:objects(), kapps_call:call()) -> kapps_api_sms_return().
--spec b_send_sms(kz_json:objects(), binary(), kapps_call:call()) -> kapps_api_sms_return().
--spec b_send_sms(kz_json:objects(), binary(), integer(), kapps_call:call()) -> kapps_api_sms_return().
-
 send_sms(Endpoints, Call) -> send_sms(Endpoints, ?DEFAULT_STRATEGY, Call).
+
+-spec send_sms(kz_json:objects(), binary(), kapps_call:call()) -> 'ok'.
 send_sms(EndpointList, Strategy, Call) ->
     Endpoints = create_sms_endpoints(EndpointList, []),
     API = create_sms(Call),
     send(Strategy, API, Endpoints).
 
+-spec b_send_sms(kz_json:objects(), kapps_call:call()) -> kapps_api_sms_return().
 b_send_sms(Endpoints, Call) -> b_send_sms(Endpoints, ?DEFAULT_STRATEGY, Call).
+
+-spec b_send_sms(kz_json:objects(), binary(), kapps_call:call()) -> kapps_api_sms_return().
 b_send_sms(Endpoints, Strategy, Call) -> b_send_sms(Endpoints, Strategy, ?DEFAULT_MESSAGE_TIMEOUT, Call).
+
+-spec b_send_sms(kz_json:objects(), binary(), integer(), kapps_call:call()) -> kapps_api_sms_return().
 b_send_sms(EndpointList, Strategy, Timeout, Call) ->
     Endpoints = create_sms_endpoints(EndpointList, []),
     API = create_sms(Call),
@@ -198,11 +201,11 @@ send_amqp_sms(Payload, Pool) ->
     end.
 
 -spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
--spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary(), kz_term:api_pid()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolPid = kz_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolPid).
 
+-spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary(), kz_term:api_pid()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, 'undefined') ->
     Exchanges = [{Exchange, ExchangeType, ExchangeOptions}],
     kz_amqp_sup:add_amqp_pool(?SMS_POOL(Exchange, RouteId, BrokerName), Broker, 5, 5, [], Exchanges, 'true'),
@@ -301,10 +304,11 @@ extract_device_registrar_fold(JObj, Set) ->
 
 -spec get_correlated_msg_type(kz_json:object()) ->
                                      {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
--spec get_correlated_msg_type(kz_term:ne_binary(), kz_json:object()) ->
-                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(JObj) ->
     get_correlated_msg_type(<<"Call-ID">>, JObj).
+
+-spec get_correlated_msg_type(kz_term:ne_binary(), kz_json:object()) ->
+                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(Key, JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
     {C, N, kz_json:get_value(Key, JObj)}.

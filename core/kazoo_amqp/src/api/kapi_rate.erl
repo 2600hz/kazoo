@@ -173,26 +173,30 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATE_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_REQ).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec broadcast_resp(kz_term:api_terms()) -> 'ok'.
--spec broadcast_resp(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 broadcast_resp(JObj) ->
     broadcast_resp(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec broadcast_resp(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 broadcast_resp(Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_BROADCAST).
