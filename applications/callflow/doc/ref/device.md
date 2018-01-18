@@ -8,8 +8,8 @@
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`can_call_self` | Toggle whether devices of the same owner can call each other | `boolean()` |   | `false` |  
-`can_text_self` | Toggle whether devices of the same owner can text each other | `boolean()` |   | `false` |  
+`can_call_self` | Toggle whether devices of the same owner can call each other | `boolean()` |   | `false` | `supported`
+`can_text_self` | Toggle whether devices of the same owner can text each other | `boolean()` |   | `false` | `alpha`
 `delay` | How long to delay ringing the device, in seconds | `integer()` | `0` | `false` |  
 `dial_strategy` | Dial strategy for the device | `string('simultaneous' | 'single')` | `simultaneous` | `false` |  
 `id` | Device ID | `string()` |   | `false` |  

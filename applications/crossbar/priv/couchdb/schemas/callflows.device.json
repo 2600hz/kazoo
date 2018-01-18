@@ -4,10 +4,12 @@
     "properties": {
         "can_call_self": {
             "description": "Toggle whether devices of the same owner can call each other",
+            "support_level": "supported",
             "type": "boolean"
         },
         "can_text_self": {
             "description": "Toggle whether devices of the same owner can text each other",
+            "support_level": "alpha",
             "type": "boolean"
         },
         "delay": {
