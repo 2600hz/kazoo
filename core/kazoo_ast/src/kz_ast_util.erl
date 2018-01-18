@@ -371,21 +371,14 @@ name_to_path(Names, Last) ->
      ).
 
 support_level([], SchemaJObj) ->
-    Level = kz_json:get_ne_binary_value(<<"support_level">>, SchemaJObj),
-    io:format("level: ~p~n", [Level]),
-    Level;
+    kz_json:get_ne_binary_value(<<"support_level">>, SchemaJObj);
 support_level(["[]"|Names], SchemaJObj) ->
     ItemSchemaJObj = kz_json:get_json_value([<<"items">>], SchemaJObj),
-    io:format("items from ~p ", [Names]),
     support_level(Names, ItemSchemaJObj);
 support_level([Name|Names], SchemaJObj) ->
     case kz_json:get_json_value([<<"properties">>, Name], SchemaJObj) of
-        'undefined' ->
-            io:format("not found: ~p: ~p~n", [[Name|Names], SchemaJObj]),
-            'undefined';
-        NameSchema ->
-            io:format("name ~p ", [Name]),
-            support_level(Names, NameSchema)
+        'undefined' -> 'undefined';
+        NameSchema -> support_level(Names, NameSchema)
     end.
 
 schema_type(Settings) ->
