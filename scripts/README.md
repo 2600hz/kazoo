@@ -268,6 +268,33 @@ Checks JSON schemas for empty "description" properties and exit(1) if any are fo
 Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
 
 
+## `evil_specs_remover.escript`
+
+A script to find repeated `spec` one after another (evil specs) and move them above their corresponding functions (the way which EDoc prefers). It search evil specs using `ag` (A code-searching tool similar to ack [and grep to some degrees], but faster) which has multi-line feature continued by combination of parsing AST of each file, remove the evil specs and add to above their functions.
+
+> **Note:** This script needs [`ag`](https://github.com/ggreer/the_silver_searcher) command line to run!
+
+You can pass path to directories or files. By using `--create-backup` or `-b` option, it first create a backup of the file (`{FILE_NAME}.bak`) before replacing. For searching Kazoo default directories (`applications/*`, `core/*`) use the option `--use-kazoo-dirs` or `-k`.
+
+
+
+```shell
+evil_specs_remover.escript [--create-backup|-b] [--use-kazoo-dirs|-k] <paths_to_files_or_dir>+
+```
+
+### Example
+
+In this example, the `cb_context.erl` has 115 evil specs, 119 lines were removed (some spec was multi-lines) and 200 line was added (the script will add an empty line above the `spec` line if there isn't one to make it separate from the line above since it is more easy to read).
+
+```shell
+$ scripts/evil_specs_remover.escript -k
+Searching for evil sepcspecs...
+processing 1 file(s) with evil specspec:
+  file /home/hesaam/work/2600hz/kazoo/scripts/../applications/crossbar/src/cb_context.erl (115 specs): -119 +200
+
+🍺 finished
+```
+
 ## format-json.sh
 
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
@@ -341,7 +368,7 @@ syntax_tools
 tools
 xmerl
 ```
-  
+
 
 ## `no_raw_json.escript`
 
