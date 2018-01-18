@@ -8,16 +8,16 @@ Create buckets of minutes per time-period
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`^\w+$.amount` |   | `integer()` |   | `false`
-`^\w+$.cycle` |   | `string('minutely' | 'hourly' | 'daily' | 'weekly' | 'monthly')` |   | `false`
-`^\w+$.group_consume.[]` |   | `string()` |   | `false`
-`^\w+$.group_consume` |   | `array(string())` |   | `false`
-`^\w+$.increment` |   | `integer()` |   | `false`
-`^\w+$.minimum` |   | `integer()` |   | `false`
-`^\w+$.no_consume_time` |   | `integer()` |   | `false`
-`^\w+$` |   | `object()` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`^\w+$.amount` |   | `integer()` |   | `false` |  
+`^\w+$.cycle` |   | `string('minutely' | 'hourly' | 'daily' | 'weekly' | 'monthly')` |   | `false` |  
+`^\w+$.group_consume.[]` |   | `string()` |   | `false` |  
+`^\w+$.group_consume` |   | `array(string())` |   | `false` |  
+`^\w+$.increment` |   | `integer()` |   | `false` |  
+`^\w+$.minimum` |   | `integer()` |   | `false` |  
+`^\w+$.no_consume_time` |   | `integer()` |   | `false` |  
+`^\w+$` |   | `object()` |   | `false` |  
 
 
 

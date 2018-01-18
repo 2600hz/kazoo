@@ -8,26 +8,26 @@ Whitelabel settings
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`company_name` | The company name to display to users | `string()` |   | `false`
-`domain` | This is the whitelabeled domain that users will be entering to reach the UI | `string()` |   | `false`
-`fake_api_url` | This is a whitelabeled API URL, primarily used by the developer application | `string()` |   | `false`
-`hide_credits` | When checkef this hides the credits | `boolean()` | `false` | `false`
-`hide_powered` | When checked this hides the powered by 2600hz on the bottom right | `boolean()` | `false` | `false`
-`hide_registration` | When checked this hides the ability to register for a new account | `boolean()` | `false` | `false`
-`inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false`
-`nav.help` | The URL to use when the help link is clicked | `string()` |   | `false`
-`nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false`
-`nav` | Properties related to navigation in the UI | `object()` |   | `false`
-`outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false`
-`port.features` | The URL to use when the features link is clicked | `string()` |   | `false`
-`port.loa` | The URL to use when the LOA link is clicked | `string()` |   | `false`
-`port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false`
-`port.support_email` | The support email address to display to the user | `string()` |   | `false`
-`port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false`
-`port` | Parameters releated to whitelabeling port requests | `object()` |   | `false`
-`twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`company_name` | The company name to display to users | `string()` |   | `false` |  
+`domain` | This is the whitelabeled domain that users will be entering to reach the UI | `string()` |   | `false` |  
+`fake_api_url` | This is a whitelabeled API URL, primarily used by the developer application | `string()` |   | `false` |  
+`hide_credits` | When checkef this hides the credits | `boolean()` | `false` | `false` |  
+`hide_powered` | When checked this hides the powered by 2600hz on the bottom right | `boolean()` | `false` | `false` |  
+`hide_registration` | When checked this hides the ability to register for a new account | `boolean()` | `false` | `false` |  
+`inbound_trunks_price` | The price to show for inbound trunks, this is currently only for display purposes | `string()` |   | `false` |  
+`nav.help` | The URL to use when the help link is clicked | `string()` |   | `false` |  
+`nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false` |  
+`nav` | Properties related to navigation in the UI | `object()` |   | `false` |  
+`outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false` |  
+`port.features` | The URL to use when the features link is clicked | `string()` |   | `false` |  
+`port.loa` | The URL to use when the LOA link is clicked | `string()` |   | `false` |  
+`port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` |  
+`port.support_email` | The support email address to display to the user | `string()` |   | `false` |  
+`port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` |  
+`port` | Parameters releated to whitelabeling port requests | `object()` |   | `false` |  
+`twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` |  
 
 
 

@@ -8,9 +8,9 @@ Provides a local auth-token via a shared auth-token
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`shared_auth` | The shared token | `string(64)` |   | `true`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`shared_auth` | The shared token | `string(64)` |   | `true` |  
 
 
 

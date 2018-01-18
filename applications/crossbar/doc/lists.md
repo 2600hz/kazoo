@@ -6,11 +6,11 @@ Schema for a match list
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`description` | A friendly list description | `string(1..128)` |   | `false`
-`name` | A friendly match list name | `string(1..128)` |   | `true`
-`org` | Full legal name of the organization | `string()` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`description` | A friendly list description | `string(1..128)` |   | `false` |  
+`name` | A friendly match list name | `string(1..128)` |   | `true` |  
+`org` | Full legal name of the organization | `string()` |   | `false` |  
 
 
 

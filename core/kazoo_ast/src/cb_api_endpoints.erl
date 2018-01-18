@@ -266,6 +266,7 @@ process_schema(Filename, Definitions) ->
 -spec is_kazoo_prefixed(kz_term:ne_binaries()) -> boolean().
 is_kazoo_prefixed([]) -> 'false';
 is_kazoo_prefixed([<<"kazoo-", _/binary>>|_]) -> 'true';
+is_kazoo_prefixed([<<"support_level">>|_]) -> 'true';
 is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
 
 -spec maybe_fix_ref(kz_term:ne_binary()) -> kz_term:ne_binary().

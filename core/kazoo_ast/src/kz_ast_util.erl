@@ -190,17 +190,16 @@ app_modules(App) ->
             end
     end.
 
-
--define(TABLE_ROW(Key, Description, Type, Default, Required)
-       ,[kz_binary:join([Key, Description, Type, Default, Required]
+-define(TABLE_ROW(Key, Description, Type, Default, Required, Supported)
+       ,[kz_binary:join([Key, Description, Type, Default, Required, Supported]
                        ,<<" | ">>
                        )
         ,$\n
         ]
        ).
 -define(TABLE_HEADER
-       ,[?TABLE_ROW(<<"Key">>, <<"Description">>, <<"Type">>, <<"Default">>, <<"Required">>)
-        ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>)
+       ,[?TABLE_ROW(<<"Key">>, <<"Description">>, <<"Type">>, <<"Default">>, <<"Required">>, <<"Support Level">>)
+        ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>, <<"-------------">>)
         ]).
 
 -spec schema_to_table(kz_term:ne_binary() | kz_json:object()) -> iolist().
@@ -326,6 +325,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
                                             ,SchemaType
                                             ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
                                             ,cell_wrap(is_row_required(Names, SchemaJObj))
+                                            ,cell_wrap(support_level(Names, SchemaJObj))
                                             )
                                   | Table
                                  ]
@@ -342,21 +342,9 @@ maybe_add_ref(Refs, Settings) ->
 
 -spec is_row_required([kz_term:ne_binary() | nonempty_string()], kz_json:object()) -> boolean().
 is_row_required(Names=[_|_], SchemaJObj) ->
-    Path = lists:flatten(
-             [case Key of
-                  "[]" -> [<<"items">>];
-                  _ ->
-                      NewSize = byte_size(Key) - 2,
-                      case Key of
-                          <<"/", Regex:NewSize/binary, "/">> -> [<<"patternProperties">>, Regex];
-                          _ -> [<<"properties">>, Key]
-                      end
-              end
-              || Key <- lists:droplast(Names)
-             ] ++ [<<"required">>]
-            ),
+    Path = name_to_path(Names, <<"required">>),
     case lists:last(Names) of
-        "[]" -> false;
+        "[]" -> 'false';
         Name ->
             ARegexSize = byte_size(Name) - 2,
             lists:member(case Name of
@@ -365,6 +353,32 @@ is_row_required(Names=[_|_], SchemaJObj) ->
                          end
                         ,kz_json:get_list_value(Path, SchemaJObj, [])
                         )
+    end.
+
+name_to_path(Names, Last) ->
+    lists:flatten(
+      [case "[]" =:= Key of
+           'true' -> [<<"items">>];
+           'false' ->
+               NewSize = byte_size(Key) - 2,
+               case Key of
+                   <<"/", Regex:NewSize/binary, "/">> -> [<<"patternProperties">>, Regex];
+                   _ -> [<<"properties">>, Key]
+               end
+       end
+       || Key <- lists:droplast(Names)
+      ] ++ [Last]
+     ).
+
+support_level([], SchemaJObj) ->
+    kz_json:get_ne_binary_value(<<"support_level">>, SchemaJObj);
+support_level(["[]"|Names], SchemaJObj) ->
+    ItemSchemaJObj = kz_json:get_json_value([<<"items">>], SchemaJObj),
+    support_level(Names, ItemSchemaJObj);
+support_level([Name|Names], SchemaJObj) ->
+    case kz_json:get_json_value([<<"properties">>, Name], SchemaJObj) of
+        'undefined' -> 'undefined';
+        NameSchema -> support_level(Names, NameSchema)
     end.
 
 schema_type(Settings) ->
@@ -485,6 +499,7 @@ maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, {Table, Re
                         ,cell_wrap(<<Type/binary, "()">>)
                         ,<<" ">>
                         ,cell_wrap(is_row_required(Names, SchemaJObj))
+                        ,cell_wrap(support_level(Names, SchemaJObj))
                         )
               | Table
              ]

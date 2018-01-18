@@ -8,15 +8,15 @@ Allow a caller to search for a user/device by name instead of extension/DID
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`confirm_match` | When one match is found, require caller to confirm the match before connecting | `boolean()` | `true` | `false`
-`max_dtmf` | Cap the number of DTMF characters collected from a caller, 0 for unlimited | `integer()` | `0` | `false`
-`min_dtmf` | How many DTMF characters to collect from a caller before processing the directory | `integer()` | `3` | `false`
-`name` | The name of the directory | `string(1..)` |   | `true`
-`sort_by` | What field to sort on in matching documents when a caller enters characters | `string('first_name' | 'last_name')` | `last_name` | `false`
-`users.[]` |   | `string()` |   | `false`
-`users` | The list of users associated with this directory | `array(string())` | `[]` | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`confirm_match` | When one match is found, require caller to confirm the match before connecting | `boolean()` | `true` | `false` |  
+`max_dtmf` | Cap the number of DTMF characters collected from a caller, 0 for unlimited | `integer()` | `0` | `false` |  
+`min_dtmf` | How many DTMF characters to collect from a caller before processing the directory | `integer()` | `3` | `false` |  
+`name` | The name of the directory | `string(1..)` |   | `true` |  
+`sort_by` | What field to sort on in matching documents when a caller enters characters | `string('first_name' | 'last_name')` | `last_name` | `false` |  
+`users.[]` |   | `string()` |   | `false` |  
+`users` | The list of users associated with this directory | `array(string())` | `[]` | `false` |  
 
 
 
