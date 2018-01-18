@@ -1,9 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend
-
-DEPS_RULES = .deps.mk
--include $(DEPS_RULES)
+.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES)
 
 ## Platform detection.
 ifeq ($(PLATFORM),)
@@ -53,24 +50,42 @@ TEST_EBINS += $(EBINS) $(ROOT)/deps/proper/ebin
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
+DEPS_RULES = .deps.mk
+
 ## SOURCES provides a way to specify compilation order (left to right)
-SOURCES     ?= src/*.erl $(if $(wildcard src/*/*.erl), src/*/*.erl)
-INCLUDES    ?= src/*.hrl $(if $(wildcard include/*.hrl), include/*.hrl)
+SRCS = $(wildcard src/*.erl)
+SUB_SRCS = $(wildcard src/*/*.erl)
+SOURCES     ?= $(SRCS) $(SUB_SRCS)
+SUB_BEAMS = $(notdir $(SUB_SRCS))
+BEAMS = $(SRCS:src/%.erl=ebin/%.beam) $(SUB_BEAMS:%.erl=ebin/%.beam)
 TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
+ifeq ($(wildcard ebin/*.app),)
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
 
 ebin/$(PROJECT).app: $(SOURCES)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
 	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
+else
+include $(DEPS_RULES)
+
+compile: $(BEAMS)
+
+ebin/%.beam: src/%.erl
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
+
+ebin/%.beam: src/*/%.erl
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
+endif
+
 depend: $(DEPS_RULES)
 
 $(DEPS_RULES):
 	@rm -f $(DEPS_RULES)
-	@ERL_LIBS=$(ELIBS) erlc -v +makedep +'{makedep_output, standard_io}' $(PA) -o ebin/ $(SOURCES) > $(DEPS_RULES)
+	ERL_LIBS=$(ELIBS) erlc -v +makedep +'{makedep_output, standard_io}' $(PA) -o ebin/ $(SOURCES) > $(DEPS_RULES)
 
 app_src:
 	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find $(ROOT) -name $(PROJECT).app.src)
@@ -93,10 +108,10 @@ test/$(PROJECT).app: $(TEST_SOURCES)
 
 
 clean: clean-test
-	$(if $(wildcard cover/*), rm -r cover)
-	$(if $(wildcard ebin/*), rm ebin/*)
-	$(if $(wildcard *crash.dump), rm *crash.dump)
-	$(if $(wildcard $(DEPS_RULES)), rm $(DEPS_RULES))
+	@$(if $(wildcard cover/*), rm -r cover)
+	@$(if $(wildcard ebin/*), rm ebin/*)
+	@$(if $(wildcard *crash.dump), rm *crash.dump)
+	@$(if $(wildcard $(DEPS_RULES)), rm $(DEPS_RULES))
 
 clean-test: $(CLEAN_MOAR)
 	$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)
