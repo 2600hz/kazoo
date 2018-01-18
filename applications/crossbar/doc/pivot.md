@@ -30,6 +30,8 @@ Key | Description | Type | Default | Required
 `req_format` | What format of Pivot will the your server respond with | `string('kazoo', 'twiml')` | `kazoo` | `false`
 `voice_url` | What URL to request the initial Pivot callflow | `string` |   | `true`
 
+> Note: `cdr_url` is only applicable when using the XML (TwiML) format. When using the kazoo format, control is handed off to the Callflows app, with the Pivot process ending (and nothing waiting for the CDR). Instead, please use [webhooks](./webhooks.md) (specifically the CHANNEL_DESTROY event) to receive CDRs.
+
 #### Debugging pivot attempts
 
 You will need to edit the "data" object in the "pivot" callflow element to include a "debug" flag:
