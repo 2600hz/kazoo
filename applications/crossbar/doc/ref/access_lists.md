@@ -8,12 +8,12 @@ Access Control List entries for device or account
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`cidrs.[]` |   | `string()` |   | `true`
-`cidrs` | Classless Inter-Domain Routing IP notation for use on the access lists | `array(string())` |   | `true`
-`order` | Allow-Deny or Deny-Allow? | `string('allow,deny' | 'deny,allow')` |   | `true`
-`user_agent` | RegExp to match valid user agent strings | `string()` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`cidrs.[]` |   | `string()` |   | `true` |  
+`cidrs` | Classless Inter-Domain Routing IP notation for use on the access lists | `array(string())` |   | `true` |  
+`order` | Allow-Deny or Deny-Allow? | `string('allow,deny' | 'deny,allow')` |   | `true` |  
+`user_agent` | RegExp to match valid user agent strings | `string()` |   | `false` |  
 
 
 

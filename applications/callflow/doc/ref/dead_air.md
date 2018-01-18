@@ -8,8 +8,8 @@ Validator for the dead_air callflow's data object
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
 
 
 

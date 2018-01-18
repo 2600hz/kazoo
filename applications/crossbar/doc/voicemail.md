@@ -19,42 +19,42 @@ Schema for a voicemail box
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false`
-`delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false`
-`is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false`
-`mailbox` | The voicemail box number | `string(1..30)` |   | `true`
-`media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false`
-`media` | The media (prompt) parameters | `object()` | `{}` | `false`
-`media_extension` | Voicemail audio format | `string('mp3' | 'mp4' | 'wav')` | `mp3` | `false`
-`name` | A friendly name for the voicemail box | `string(1..128)` |   | `true`
-`not_configurable` | Determines if the user can configure this voicemail. | `boolean()` | `false` | `false`
-`notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false`
-`notify` |   | `object()` |   | `false`
-`notify_email_addresses.[]` |   | `string()` |   | `false`
-`notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false`
-`owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false`
-`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false`
-`require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false`
-`save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false`
-`skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false`
-`skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false`
-`timezone` | The default timezone | `string(5..32)` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false` |  
+`delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` |  
+`is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false` |  
+`mailbox` | The voicemail box number | `string(1..30)` |   | `true` |  
+`media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false` |  
+`media` | The media (prompt) parameters | `object()` | `{}` | `false` |  
+`media_extension` | Voicemail audio format | `string('mp3' | 'mp4' | 'wav')` | `mp3` | `false` |  
+`name` | A friendly name for the voicemail box | `string(1..128)` |   | `true` |  
+`not_configurable` | Determines if the user can configure this voicemail. | `boolean()` | `false` | `false` |  
+`notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
+`notify` |   | `object()` |   | `false` |  
+`notify_email_addresses.[]` |   | `string()` |   | `false` |  
+`notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` |  
+`owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false` |  
+`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` |  
+`require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` |  
+`save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` |  
+`skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` |  
+`skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` |  
+`timezone` | The default timezone | `string(5..32)` |   | `false` |  
 
 ##### notify.callback
 
 Schema for a callback options
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`attempts` | How many attempts without answer will system do | `integer()` |   | `false`
-`disabled` | Determines if the system will call to callback number | `boolean()` |   | `false`
-`interval_s` | How long will system wait between call back notification attempts | `integer()` |   | `false`
-`number` | Number for callback notifications about new messages | `string()` |   | `false`
-`schedule` | Schedules interval between callbacks | `array(integer())` |   | `false`
-`timeout_s` | How long will system wait for answer to callback | `integer()` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`attempts` | How many attempts without answer will system do | `integer()` |   | `false` |  
+`disabled` | Determines if the system will call to callback number | `boolean()` |   | `false` |  
+`interval_s` | How long will system wait between call back notification attempts | `integer()` |   | `false` |  
+`number` | Number for callback notifications about new messages | `string()` |   | `false` |  
+`schedule` | Schedules interval between callbacks | `array(integer())` |   | `false` |  
+`timeout_s` | How long will system wait for answer to callback | `integer()` |   | `false` |  
 
 
 
