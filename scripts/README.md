@@ -284,7 +284,7 @@ evil_specs_remover.escript [--create-backup|-b] [--use-kazoo-dirs|-k] <paths_to_
 
 ### Example
 
-In this example, the `cb_context.erl` has 115 evil specs, 119 lines were removed (some spec was multi-lines) and 200 line was added (the script will add an empty line above the `spec` line if there isn't one to make it separate from the line above since it is more easy to read).
+In this example, the `cb_context.erl` has 115 evil specs, 119 lines were removed (some spec was multi-lines) and 200 lines were added (the script will add an empty line above the `spec` line if there isn't one to make it separate from the line above since it is more easy to read).
 
 ```shell
 $ scripts/evil_specs_remover.escript -k

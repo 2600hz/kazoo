@@ -211,7 +211,7 @@ maybe_test_or_regular_function([], _, Acc) -> Acc;
 maybe_test_or_regular_function([{_, FunLine, _, _, _}|T], Map, Acc) ->
     maybe_test_or_regular_function(T, Map, [Map#{fun_pos => FunLine}|Acc]).
 
-%% this important since sometimes the order of function implementation is guarantied
+%% this important since sometimes the order of function implementation is not guarantied
 %% to be in continuance line order. Sometimes other function or other arity of the this function is implemented first
 sort_by_fun_position(#{fun_pos := Pos1}, #{fun_pos := Pos2}) ->
     Pos1 < Pos2.
