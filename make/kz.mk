@@ -64,11 +64,6 @@ TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 ifeq ($(wildcard ebin/*.app),)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
 
-ebin/$(PROJECT).app: $(SOURCES)
-	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
-
 else
 include $(DEPS_RULES)
 
@@ -80,6 +75,11 @@ ebin/%.beam: src/%.erl
 ebin/%.beam: src/*/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
 endif
+
+ebin/$(PROJECT).app: $(SOURCES)
+	@mkdir -p ebin/
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
+	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 depend: $(DEPS_RULES)
 
