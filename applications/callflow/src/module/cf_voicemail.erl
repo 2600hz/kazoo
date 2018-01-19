@@ -237,19 +237,19 @@ check_mailbox(#mailbox{exists='false'
             %% can't find mailbox, set Loop to max to play abort prompts in above func clause
             check_mailbox(Box, Call, MaxLoginAttempts + 1)
     end;
+check_mailbox(#mailbox{is_setup='false'}=Box, 'true', Call, _) ->
+    %% If this is the owner of the mailbox calling in and it is not setup then jump
+    %% right to the setup wizard
+    lager:info("caller is the owner of this mailbox, and it has not been setup yet"),
+    main_menu(Box, Call);
 check_mailbox(#mailbox{require_pin='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
     lager:info("caller is the owner of this mailbox, and requires no pin"),
     main_menu(Box, Call);
-check_mailbox(#mailbox{pin = <<>>}=Box, 'true', Call, _) ->
-    %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
-    %% right to the main menu
-    lager:info("caller is the owner of this mailbox, and it has no pin"),
-    main_menu(Box, Call);
-check_mailbox(#mailbox{pin = <<>>, require_pin='true'}, 'false', Call, _) ->
-    %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
-    %% then terminate this call.
+check_mailbox(#mailbox{pin = <<>>}, _, Call, _) ->
+    %% If the caller is not the owner or the owner with require pin set but the voicemail box
+    %% has no pin set then terminate this call.
     lager:info("attempted to sign into a mailbox with no pin"),
     _ = kapps_call_command:b_prompt(<<"vm-no_access">>, Call),
     'ok';
