@@ -9,8 +9,6 @@ GEN_ERL = src/kz_mime.erl
 
 SOURCES = src/*.erl $(GEN_ERL)
 
-CLEAN_MOAR = clean-generated
-
 all: compile
 
 compile: $(GEN_ERL)
