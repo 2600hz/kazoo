@@ -88,6 +88,7 @@
 -type deeplist() :: iolist(). %[any() | deeplist()].
 
 -type std_return() :: {'ok', any()} | {'error', any()}.
+-type sup_no_return() :: 'no_return' | {'no_return', non_neg_integer()}.
 
 -type jobj_return() :: {'ok', kz_json:object()} | {'error', any()}.
 -type jobjs_return() :: {'ok', kz_json:objects()} | {'error', any()}.
@@ -136,6 +137,7 @@
              ,api_float/0
              ,deeplist/0
              ,std_return/0
+             ,sup_no_return/0
              ,jobj_return/0
              ,jobjs_return/0
              ,ne_binary/0

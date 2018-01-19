@@ -67,13 +67,15 @@ main(CommandLineArgs, Loops) ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     stderr("Command failed: ~s~n", [String]),
                     halt(3);
-                no_return when IsMaintenanceCommand ->
+                {'no_return', Code} ->
+                    halt(Code);
+                'no_return' when IsMaintenanceCommand ->
                     halt(0);
                 Result when IsMaintenanceCommand ->
                     print_result(Result, IsVerbose),
-                    Code = case ok =:= Result of
-                               true -> 0;
-                               false -> 2
+                    Code = case 'ok' =:= Result of
+                               'true' -> 0;
+                               'false' -> 2
                            end,
                     halt(Code);
                 'no_return' ->

@@ -11,16 +11,17 @@
 
 %% API
 -export([start_link/0
+        ,ready/0
         ,start_app/1
         ,start_default_apps/0
         ,stop_app/1
         ,restart_app/1
         ,running_apps/0, running_apps/1
         ,list_apps/0
+        ,start_which_kapps/0
         ]).
 
 -include("kazoo_apps.hrl").
-
 
 %%%===================================================================
 %%% API
@@ -33,6 +34,12 @@
 start_link() ->
     _ = kz_util:spawn(fun initialize_kapps/0),
     'ignore'.
+
+-spec ready() -> boolean().
+ready() ->
+    Configured = start_which_kapps(),
+    Running = [kz_term:to_binary(App) || App <- running_apps()],
+    lists:subtract(Configured, Running) =:= [].
 
 -spec start_default_apps() -> [{atom(), 'ok' | {'error', any()}}].
 start_default_apps() ->
