@@ -98,7 +98,8 @@ parse_args([Path | Rest], {Opts, Paths}) ->
 check_result(<<>>, _, _) ->
     io:format("Hooray! no evil specsecs was found 🎉~n");
 check_result(<<"ERR:", _/binary>>=Error, _, _) ->
-    io:put_chars(Error);
+    io:put_chars(Error),
+    halt(1);
 check_result(Result, [Path], Options) ->
     case {filelib:is_dir(Path), filelib:is_file(Path)} of
         {true, _} -> process_ag_result(Result, Options);
@@ -119,7 +120,8 @@ process_ag_result(Result, Options) ->
     FilesSpecs = parse_ag_result(Options, [Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], []),
     io:format("processing ~b file(s) with evil specspec:~n", [length(FilesSpecs)]),
     _ = lists:map(fun process_file/1, FilesSpecs),
-    io:format("~n🍺 finished~n").
+    io:format("~n🍺 finished~n"),
+    halt(1).
 
 %% Get list of specs for each file from ag result by parse
 %% the first line, then get all specs for the file.
