@@ -49,9 +49,10 @@
              ]).
 
 -spec version(atom()) -> fs_api_return().
--spec version(atom(), pos_integer()) -> fs_api_return().
 version(Node) ->
     version(Node, ?TIMEOUT).
+
+-spec version(atom(), pos_integer()) -> fs_api_return().
 version(Node, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, 'version', Timeout) of
         'timeout' -> {'error', 'timeout'};
@@ -79,9 +80,10 @@ close(Node) ->
     gen_server:cast({'mod_kazoo', Node}, 'exit').
 
 -spec getpid(atom()) -> fs_api_return().
--spec getpid(atom(), pos_integer()) -> fs_api_return().
 getpid(Node) ->
     getpid(Node, ?TIMEOUT).
+
+-spec getpid(atom(), pos_integer()) -> fs_api_return().
 getpid(Node, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, 'getpid', Timeout) of
         'timeout' -> {'error', 'timeout'};
@@ -94,9 +96,10 @@ getpid(Node, Timeout) ->
     end.
 
 -spec bind(atom(), atom()) -> fs_api_return().
--spec bind(atom(), atom(), pos_integer()) -> fs_api_return().
 bind(Node, Type) ->
     bind(Node, Type, ?TIMEOUT).
+
+-spec bind(atom(), atom(), pos_integer()) -> fs_api_return().
 bind(Node, Type, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout) of
         'timeout' -> {'error', 'timeout'};
@@ -109,11 +112,11 @@ bind(Node, Type, Timeout) ->
     end.
 
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string()) -> 'ok'.
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
-                         'ok' | {'error', 'baduuid'}.
 fetch_reply(Node, FetchID, Section, Reply) ->
     gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
+-spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
+                         'ok' | {'error', 'baduuid'}.
 fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
         'timeout' -> {'error', 'timeout'};
@@ -126,12 +129,14 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     end.
 
 -spec api(atom(), kz_term:text()) -> fs_api_return().
--spec api(atom(), kz_term:text(), kz_term:text()) -> fs_api_return().
--spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd) ->
     api(Node, Cmd, "").
+
+-spec api(atom(), kz_term:text(), kz_term:text()) -> fs_api_return().
 api(Node, Cmd, Args) ->
     api(Node, Cmd, Args, ?TIMEOUT).
+
+-spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     try gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout) of
         'timeout' -> {'error', 'timeout'};
@@ -280,10 +285,12 @@ bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
     end.
 
 -type event() :: atom() | kz_json:object().
+
 -spec event(atom(), event() | [event()]) -> 'ok' | {'error', 'timeout' | 'exception'}.
--spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 event(Node, Events) ->
     event(Node, Events, ?TIMEOUT).
+
+-spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 event(Node, [_|_]=Events, Timeout) ->
     PortOpen = get('port_open'),
     try gen_server:call({'mod_kazoo', Node}, {'event', Events}, Timeout) of

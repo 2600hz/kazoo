@@ -323,10 +323,8 @@ status(ServerRef) -> gen_statem:call(ServerRef, 'status').
 %% function does not return until Module:init/1 has returned.
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
--spec start_link(pid(), kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
--spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), pid(), kz_term:proplist()) -> kz_types:startlink_ret().
 
+-spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
     pvt_start_link(kz_doc:account_id(AgentJObj)
                   ,kz_doc:id(AgentJObj)
@@ -334,6 +332,8 @@ start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
                   ,[]
                   ,'false'
                   ).
+
+-spec start_link(pid(), kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Supervisor, ThiefCall, _QueueId) ->
     pvt_start_link(kapps_call:account_id(ThiefCall)
                   ,kapps_call:owner_id(ThiefCall)
@@ -341,6 +341,8 @@ start_link(Supervisor, ThiefCall, _QueueId) ->
                   ,[]
                   ,'true'
                   ).
+
+-spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), pid(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(AccountId, AgentId, Supervisor, Props) ->
     pvt_start_link(AccountId, AgentId, Supervisor, Props, 'false').
 
@@ -360,13 +362,15 @@ pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
     gen_statem:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
 -spec new_endpoint(pid(), kz_json:object()) -> 'ok'.
--spec edited_endpoint(pid(), kz_json:object()) -> 'ok'.
--spec deleted_endpoint(pid(), kz_json:object()) -> 'ok'.
 new_endpoint(ServerRef, EP) ->
     lager:debug("sending EP to ~p: ~p", [ServerRef, EP]).
+
+-spec edited_endpoint(pid(), kz_json:object()) -> 'ok'.
 edited_endpoint(ServerRef, EP) ->
     lager:debug("sending EP to ~p: ~p", [ServerRef, EP]),
     gen_statem:cast(ServerRef, {'edited_endpoint', kz_doc:id(EP), EP}).
+
+-spec deleted_endpoint(pid(), kz_json:object()) -> 'ok'.
 deleted_endpoint(ServerRef, EP) ->
     lager:debug("sending EP to ~p: ~p", [ServerRef, EP]).
 
@@ -1502,9 +1506,10 @@ start_wrapup_timer(Timeout) when Timeout =< 0 -> start_wrapup_timer(1); % send i
 start_wrapup_timer(Timeout) -> erlang:start_timer(Timeout*1000, self(), ?WRAPUP_FINISHED).
 
 -spec start_sync_timer() -> reference().
--spec start_sync_timer(pid()) -> reference().
 start_sync_timer() ->
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, self(), ?SYNC_RESPONSE_MESSAGE).
+
+-spec start_sync_timer(pid()) -> reference().
 start_sync_timer(P) ->
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
@@ -1626,12 +1631,12 @@ hangup_call(#state{agent_listener=AgentListener
     wrapup_timer(State).
 
 -spec maybe_stop_timer(kz_term:api_reference()) -> 'ok'.
--spec maybe_stop_timer(kz_term:api_reference(), boolean()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
     _ = erlang:cancel_timer(ConnRef),
     'ok'.
 
+-spec maybe_stop_timer(kz_term:api_reference(), boolean()) -> 'ok'.
 maybe_stop_timer(TimerRef, 'true') -> maybe_stop_timer(TimerRef);
 maybe_stop_timer(_, 'false') -> 'ok'.
 
@@ -1687,12 +1692,12 @@ find_username(EP) ->
 find_sip_username(EP, 'undefined') -> kz_json:get_value(<<"To-User">>, EP);
 find_sip_username(_EP, Username) -> Username.
 
--spec find_endpoint_id(kz_json:object()) -> kz_term:api_binary().
--spec find_endpoint_id(kz_json:object(), kz_term:api_binary()) -> kz_term:api_binary().
 
+-spec find_endpoint_id(kz_json:object()) -> kz_term:api_binary().
 find_endpoint_id(EP) ->
     find_endpoint_id(EP, kz_doc:id(EP)).
 
+-spec find_endpoint_id(kz_json:object(), kz_term:api_binary()) -> kz_term:api_binary().
 find_endpoint_id(EP, 'undefined') -> kz_json:get_value(<<"Endpoint-ID">>, EP);
 find_endpoint_id(_EP, EPId) -> EPId.
 

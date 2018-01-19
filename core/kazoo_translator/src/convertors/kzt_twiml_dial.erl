@@ -218,11 +218,11 @@ force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
 
 -spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els()) ->
                                        kz_json:objects().
--spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els(), kz_json:objects()) ->
-                                       kz_json:objects().
 xml_elements_to_endpoints(Call, EPs) ->
     xml_elements_to_endpoints(Call, EPs, []).
 
+-spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els(), kz_json:objects()) ->
+                                       kz_json:objects().
 xml_elements_to_endpoints(_, [], Acc) -> Acc;
 xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
                                             ,content=DeviceIdTxt
@@ -313,10 +313,10 @@ sip_device(URI) ->
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, kapps_call:from_realm(Call)]).
 
 -spec media_processing(kapps_call:call()) -> kz_term:ne_binary().
--spec media_processing(boolean(), kz_term:api_binary()) -> kz_term:ne_binary().
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
 
+-spec media_processing(boolean(), kz_term:api_binary()) -> kz_term:ne_binary().
 media_processing('false', 'undefined') -> <<"bypass">>;
 media_processing('true', _HangupDTMF) -> <<"process">>.
 

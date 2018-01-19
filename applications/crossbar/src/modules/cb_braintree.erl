@@ -57,8 +57,8 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?CUSTOMER_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?CARDS_PATH_TOKEN) ->
@@ -72,6 +72,7 @@ allowed_methods(?CREDITS_PATH_TOKEN) ->
 allowed_methods(?CLIENT_TOKEN_PATH_TOKEN) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?CARDS_PATH_TOKEN, _CardId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(?ADDRESSES_PATH_TOKEN, _AddressId) ->
@@ -87,8 +88,8 @@ allowed_methods(?TRANSACTIONS_PATH_TOKEN, _TransactionId) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?CUSTOMER_PATH_TOKEN) -> 'true';
 resource_exists(?CARDS_PATH_TOKEN) -> 'true';
 resource_exists(?ADDRESSES_PATH_TOKEN) -> 'true';
@@ -96,6 +97,7 @@ resource_exists(?TRANSACTIONS_PATH_TOKEN) -> 'true';
 resource_exists(?CREDITS_PATH_TOKEN) -> 'true';
 resource_exists(?CLIENT_TOKEN_PATH_TOKEN) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?CARDS_PATH_TOKEN, _) -> 'true';
 resource_exists(?ADDRESSES_PATH_TOKEN, _) -> 'true';
 resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
@@ -326,7 +328,6 @@ validate_transaction(Context, TransactionId, ?HTTP_GET) ->
     end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?CUSTOMER_PATH_TOKEN) ->
     try braintree_customer:update(cb_context:fetch(Context, 'braintree')) of
         #bt_customer{}=Customer ->
@@ -342,6 +343,7 @@ post(Context, ?CUSTOMER_PATH_TOKEN) ->
             crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?CARDS_PATH_TOKEN, CardId) ->
     try braintree_card:update(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->

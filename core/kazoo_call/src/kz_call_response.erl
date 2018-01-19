@@ -29,19 +29,16 @@ config_doc_id() ->
 %% played as part of the error.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
                   {'ok', kz_term:ne_binary()} |
                   {'error', 'no_response'}.
--spec send(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                  {'ok', kz_term:ne_binary()} |
-                  {'error', 'no_response'}.
--spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                  {'ok', kz_term:ne_binary()} |
-                  {'error', 'no_response'}.
-
 send(CallId, CtrlQ, Code) ->
     send(CallId, CtrlQ, Code, 'undefined').
 
+-spec send(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                  {'ok', kz_term:ne_binary()} |
+                  {'error', 'no_response'}.
 send(<<_/binary>> = CallId, CtrlQ, Code, Cause) ->
     send(CallId, CtrlQ, Code, Cause, 'undefined');
 send(Call, Code, Cause, Media) ->
@@ -49,6 +46,9 @@ send(Call, Code, Cause, Media) ->
     CtrlQ = kapps_call:control_queue(Call),
     send(CallId, CtrlQ, Code, Cause, Media).
 
+-spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                  {'ok', kz_term:ne_binary()} |
+                  {'error', 'no_response'}.
 send(_, _, 'undefined', 'undefined', 'undefined') ->
     {'error', 'no_response'};
 send(CallId, CtrlQ, 'undefined', 'undefined', Media) ->

@@ -141,18 +141,18 @@ authenticate(_Context, _Verb, _Nouns) -> 'false'.
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_PATCH].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET];
 allowed_methods(_WebhookId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET].
 
@@ -164,11 +164,14 @@ allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_WebhookId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_WebhookId, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -180,9 +183,8 @@ resource_exists(_WebhookId, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_webhooks(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB), cb_context:req_verb(Context)).
 
@@ -197,6 +199,7 @@ validate_webhooks(Context, ?HTTP_PUT) ->
 validate_webhooks(Context, ?HTTP_PATCH) ->
     validate_collection_patch(Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, 'undefined');
 validate(Context, Id) ->
@@ -212,6 +215,7 @@ validate_webhook(Context, WebhookId, ?HTTP_PATCH) ->
 validate_webhook(Context, WebhookId, ?HTTP_DELETE) ->
     read(WebhookId, Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, WebhookId=?NE_BINARY, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, WebhookId).
 
@@ -236,10 +240,10 @@ put(Context) ->
     crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec patch(cb_context:context()) -> cb_context:context().
--spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context) ->
     reenable_hooks(Context).
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, WebhookId) ->
     post(Context, WebhookId).
 
@@ -289,10 +293,11 @@ create(Context) ->
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
 -spec validate_collection_patch(cb_context:context()) -> cb_context:context().
--spec validate_collection_patch(cb_context:context(), kz_term:api_boolean()) ->
-                                       cb_context:context().
 validate_collection_patch(Context) ->
     validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).
+
+-spec validate_collection_patch(cb_context:context(), kz_term:api_boolean()) ->
+                                       cb_context:context().
 validate_collection_patch(Context, 'undefined') ->
     Msg = kz_json:from_list([{<<"message">>, <<"re-enable is required to patch collections">>}]),
     cb_context:add_validation_error(?REENABLE, <<"required">>, Msg, Context);
@@ -523,11 +528,11 @@ maybe_update_hook(Context) ->
 
 -spec reenable_hooks(cb_context:context()) ->
                             cb_context:context().
--spec reenable_hooks(cb_context:context(), kz_term:ne_binaries()) ->
-                            cb_context:context().
 reenable_hooks(Context) ->
     reenable_hooks(Context, props:get_value(<<"accounts">>, cb_context:req_nouns(Context))).
 
+-spec reenable_hooks(cb_context:context(), kz_term:ne_binaries()) ->
+                            cb_context:context().
 reenable_hooks(Context, [AccountId]) ->
     handle_resp(Context, send_reenable_req(Context, AccountId, <<"account">>));
 reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->

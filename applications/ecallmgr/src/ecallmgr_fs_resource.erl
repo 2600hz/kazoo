@@ -48,9 +48,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+
 -spec start_link(atom()) -> kz_types:startlink_ret().
--spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}

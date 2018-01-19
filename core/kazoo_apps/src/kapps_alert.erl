@@ -43,18 +43,19 @@ fetch(AlertId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), kz_json:objects()) ->
                     {'ok', kzd_alert:doc()} |
                     {'error', any()}.
+create(Title, Message, From, To) ->
+    create(Title, Message, From, To, []).
+
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()
             ,kz_json:objects(), kz_term:proplist()
             ) ->
                     {'ok', kz_json:object()} |
                     {'required', kz_term:ne_binary()} |
                     {'error', 'disabled'}.
-create(Title, Message, From, To) ->
-    create(Title, Message, From, To, []).
-
 create('undefined', _Message, _From, _To, _Opts) ->
     {'required', kzd_alert:title()};
 create(_Title, 'undefined', _From, _To, _Opts) ->

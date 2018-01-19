@@ -61,11 +61,12 @@ authorize(_Context, _Nouns) -> 'false'.
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?ASSIGNED) ->
     [?HTTP_GET];
 allowed_methods(?ZONES) ->
@@ -84,9 +85,11 @@ allowed_methods(_IPAddress) ->
 %%    /dedicated_ips/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -99,18 +102,18 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     _ = cb_context:put_reqid(Context),
     validate_ips(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, PathToken) ->
     _ = cb_context:put_reqid(Context),
     validate_ips(Context, PathToken, cb_context:req_verb(Context)).
 
 -spec validate_ips(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
--spec validate_ips(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_ips(Context, ?HTTP_GET) ->
     load_available(Context);
 validate_ips(Context, ?HTTP_PUT) ->
@@ -118,6 +121,7 @@ validate_ips(Context, ?HTTP_PUT) ->
 validate_ips(Context, ?HTTP_POST) ->
     maybe_assign_ips(Context).
 
+-spec validate_ips(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_ips(Context, ?ASSIGNED, ?HTTP_GET) ->
     load_assigned(Context);
 validate_ips(Context, ?ZONES, ?HTTP_GET) ->
@@ -315,10 +319,10 @@ maybe_assign_ips(Context) ->
     cb_context:validate_request_data(<<"ips">>, Context, OnSuccess).
 
 -spec validate_ips_not_in_use(cb_context:context()) -> cb_context:context().
--spec validate_ips_not_in_use(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
 validate_ips_not_in_use(Context) ->
     validate_ips_not_in_use(Context, cb_context:req_value(Context, <<"ips">>)).
 
+-spec validate_ips_not_in_use(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
 validate_ips_not_in_use(Context, IPs) ->
     lists:foldl(fun validate_ip_not_in_use/2, Context, IPs).
 

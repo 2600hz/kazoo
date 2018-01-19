@@ -320,14 +320,13 @@ build(Method, Acc, JObj, Realm) ->
 -type rates_ret() :: {status(), kz_json:objects()}.
 
 -spec handle_db_response(kz_json:objects(), boolean()) -> rates_ret().
--spec handle_db_response(kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
--spec handle_db_response(kz_json:objects(), kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
 handle_db_response(JObjs, IncludeRealm) ->
     {DefaultRates, OtherRates} = lists:partition(fun is_device_defaults/1, JObjs),
     {AccountRates, DeviceRates} = lists:partition(fun frontier_utils:is_realm/1, OtherRates),
 
     handle_db_response(AccountRates, DeviceRates, DefaultRates, IncludeRealm).
 
+-spec handle_db_response(kz_json:objects(), kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
 handle_db_response(AccountRates, [], DefaultRates, IncludeRealm) ->
     lager:debug("using default rates for the device"),
     handle_db_response(AccountRates, DefaultRates, IncludeRealm);
@@ -335,6 +334,7 @@ handle_db_response(AccountRates, DeviceRates, _DefaultRates, IncludeRealm) ->
     lager:debug("found rates in the device doc"),
     handle_db_response(AccountRates, DeviceRates, IncludeRealm).
 
+-spec handle_db_response(kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
 handle_db_response([], DeviceRates, 'true') ->
     {'need_account', DeviceRates};
 handle_db_response(AccountRates, DeviceRates, _IncludeRealm) ->

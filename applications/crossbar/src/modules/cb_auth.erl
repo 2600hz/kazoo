@@ -213,10 +213,12 @@ authenticate_nouns(?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(_, _, _) -> 'false'.
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_resource(Context) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context, _Path) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+
+-spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_resource(Context, _Path, _Id) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
 
 %%--------------------------------------------------------------------

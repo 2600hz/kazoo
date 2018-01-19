@@ -79,12 +79,12 @@ authorize(Value, View) ->
 -spec get_number(kapps_call:call()) ->
                         {'num_to_dial', kz_term:ne_binary()} |
                         'ok'.
--spec get_number(kapps_call:call(), integer()) ->
-                        {'num_to_dial', kz_term:ne_binary()} |
-                        'ok'.
 get_number(Call) ->
     get_number(Call, 3).
 
+-spec get_number(kapps_call:call(), integer()) ->
+                        {'num_to_dial', kz_term:ne_binary()} |
+                        'ok'.
 get_number(Call, 0) ->
     lager:info("run out of attempts amount... hanging up"),
     kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),

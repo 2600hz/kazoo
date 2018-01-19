@@ -71,33 +71,42 @@ init() ->
 %%%===================================================================
 
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_ConferenceId) -> [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_POST, ?HTTP_PUT].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_ConferenceId, ?PARTICIPANTS) -> [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_GET, ?HTTP_PUT].
 
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, _) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_, _, _) -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_conferences(cb_context:req_verb(Context), Context).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ConferenceId) ->
     validate_conference(cb_context:req_verb(Context), Context, ConferenceId).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ConferenceId, ?PARTICIPANTS) ->
     validate_participants(cb_context:req_verb(Context), Context, ConferenceId).
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
     validate_participant(cb_context:req_verb(Context), Context, ConferenceId, ParticipantId).
 
@@ -158,19 +167,19 @@ post(Context, _ConferenceId) ->
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
 
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ConferenceId) ->
     handle_conference_action(Context, ConferenceId, cb_modules_util:get_request_action(Context)).
 
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ConferenceId, ?PARTICIPANTS) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),
     handle_participants_action(Context, ConferenceId, Action).
 
+-spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 put(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),
     participant_action(Context, ConferenceId, ParticipantId, Action).
@@ -335,13 +344,13 @@ handle_conference_action(Context, ConferenceId, Action) ->
 
 -spec play(cb_context:context(), path_token(), kz_term:api_object()) ->
                   cb_context:context().
--spec play(cb_context:context(), path_token(), pos_integer(), kz_term:api_object()) ->
-                  cb_context:context().
 play(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"play">>);
 play(Context, ConferenceId, Data) ->
     play_media(Context, ConferenceId, kz_json:get_ne_binary_value(<<"media_id">>, Data)).
 
+-spec play(cb_context:context(), path_token(), pos_integer(), kz_term:api_object()) ->
+                  cb_context:context().
 play(Context, _ConferenceId, _ParticipantId, 'undefined') ->
     data_required(Context, <<"play">>);
 play(Context, ConferenceId, ParticipantId, Data) ->
@@ -357,8 +366,6 @@ data_required(Context, Action) ->
 
 -spec play_media(cb_context:context(), path_token(), kz_term:api_ne_binary()) ->
                         cb_context:context().
--spec play_media(cb_context:context(), path_token(), pos_integer(), kz_term:api_ne_binary()) ->
-                        cb_context:context().
 play_media(Context, _ConferenceId, 'undefined') ->
     media_id_required(Context);
 play_media(Context, ConferenceId, MediaId) ->
@@ -371,6 +378,8 @@ play_media(Context, ConferenceId, MediaId) ->
             crossbar_util:response_202(<<"ok">>, Context)
     end.
 
+-spec play_media(cb_context:context(), path_token(), pos_integer(), kz_term:api_ne_binary()) ->
+                        cb_context:context().
 play_media(Context, _ConferenceId, _ParticipantId, 'undefined') ->
     media_id_required(Context);
 play_media(Context, ConferenceId, ParticipantId, MediaId) ->

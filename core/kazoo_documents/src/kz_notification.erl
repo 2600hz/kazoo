@@ -178,23 +178,25 @@ set_reply_to(JObj, ReplyTo) ->
     kz_json:set_value(?REPLY_TO, ReplyTo, JObj).
 
 -spec set_base_properties(doc()) -> doc().
--spec set_base_properties(doc(), kz_term:api_binary()) -> doc().
 set_base_properties(JObj) ->
     set_base_properties(JObj, id(JObj)).
 
+-spec set_base_properties(doc(), kz_term:api_binary()) -> doc().
 set_base_properties(JObj, Id) ->
     kz_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
                        ,{<<"_id">>, db_id(Id)}
                        ], JObj).
 
 -spec pvt_type() -> kz_term:ne_binary().
--spec pvt_type(doc()) -> kz_term:ne_binary().
 pvt_type() -> ?PVT_TYPE.
+
+-spec pvt_type(doc()) -> kz_term:ne_binary().
 pvt_type(JObj) -> kz_doc:type(JObj, ?PVT_TYPE).
 
 -spec is_enabled(doc()) -> boolean().
--spec is_enabled(doc(), Default) -> boolean() | Default.
 is_enabled(JObj) ->
     is_enabled(JObj, 'true').
+
+-spec is_enabled(doc(), Default) -> boolean() | Default.
 is_enabled(JObj, Default) ->
     kz_json:is_true(<<"enabled">>, JObj, Default).

@@ -103,25 +103,29 @@ parse_until(C, Bin) ->
     end.
 
 -spec scheme(sip_uri()) -> scheme().
--spec set_scheme(sip_uri(), scheme()) -> sip_uri().
 scheme(#sip_uri{scheme=S}) -> S.
+
+-spec set_scheme(sip_uri(), scheme()) -> sip_uri().
 set_scheme(#sip_uri{}=Sip, S) ->
     Sip#sip_uri{scheme=S}.
 
 -spec user(sip_uri()) -> kz_term:ne_binary().
--spec set_user(sip_uri(), kz_term:ne_binary()) -> sip_uri().
 user(#sip_uri{user=U}) -> U.
+
+-spec set_user(sip_uri(), kz_term:ne_binary()) -> sip_uri().
 set_user(#sip_uri{}=Sip, U) ->
     Sip#sip_uri{user=U}.
 
 -spec host(sip_uri()) -> kz_term:ne_binary().
--spec set_host(sip_uri(), kz_term:ne_binary()) -> sip_uri().
 host(#sip_uri{host=H}) -> H.
+
+-spec set_host(sip_uri(), kz_term:ne_binary()) -> sip_uri().
 set_host(#sip_uri{}=Sip, H) ->
     Sip#sip_uri{host=H}.
 
 -spec port(sip_uri()) -> pos_integer().
--spec set_port(sip_uri(), pos_integer()) -> sip_uri().
 port(#sip_uri{port=P}) -> P.
+
+-spec set_port(sip_uri(), pos_integer()) -> sip_uri().
 set_port(#sip_uri{}=Sip, P) ->
     Sip#sip_uri{port=P}.

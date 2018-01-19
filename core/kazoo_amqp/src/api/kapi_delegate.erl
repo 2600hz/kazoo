@@ -60,22 +60,24 @@ delegate_v(Prop) when is_list(Prop) ->
 delegate_v(JObj) -> delegate_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
--spec bind_q(kz_term:ne_binary(), kz_term:ne_binary(), maybe_key()) -> 'ok'.
 bind_q(Q, Props) ->
     App = props:get_binary_value('app_name', Props),
     Key = props:get_value('route_key', Props),
     bind_q(Q, App, Key).
+
+-spec bind_q(kz_term:ne_binary(), kz_term:ne_binary(), maybe_key()) -> 'ok'.
 bind_q(Q, <<_/binary>> = App, 'undefined') ->
     amqp_util:bind_q_to_kapps(Q, ?DELEGATE_ROUTING_KEY(App));
 bind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
     amqp_util:bind_q_to_kapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
--spec unbind_q(kz_term:ne_binary(), kz_term:ne_binary(), maybe_key()) -> 'ok'.
 unbind_q(Q, Props) ->
     App = props:get_binary_value('app_name', Props),
     Key = props:get_value('route_key', Props),
     unbind_q(Q, App, Key).
+
+-spec unbind_q(kz_term:ne_binary(), kz_term:ne_binary(), maybe_key()) -> 'ok'.
 unbind_q(Q, <<_/binary>> = App, 'undefined') ->
     amqp_util:unbind_q_from_kapps(Q, ?DELEGATE_ROUTING_KEY(App));
 unbind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
@@ -94,15 +96,16 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms(), maybe_key()) -> 'ok'.
--spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms(), maybe_key(), binary()) -> 'ok'.
 publish_delegate(TargetApp, API) ->
     publish_delegate(TargetApp, API, 'undefined').
 
+-spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms(), maybe_key()) -> 'ok'.
 publish_delegate(TargetApp, API, Key) ->
     publish_delegate(TargetApp, API, Key, ?DEFAULT_CONTENT_TYPE).
 
+-spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms(), maybe_key(), binary()) -> 'ok'.
 publish_delegate(<<_/binary>> = TargetApp, API, 'undefined', ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun delegate/1),
     amqp_util:kapps_publish(?DELEGATE_ROUTING_KEY(TargetApp), Payload, ContentType);

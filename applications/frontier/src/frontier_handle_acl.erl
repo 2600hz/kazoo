@@ -36,7 +36,6 @@ send_response(Reqest, Responses) ->
     kapi_frontier:publish_acls_resp(ServerID, Resp).
 
 -spec make_section(kz_json:objects(), kz_term:ne_binary()) -> kz_json:object().
--spec make_section(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary()) -> kz_json:object().
 make_section([], _) ->
     kz_json:new();
 make_section([JObj], Section) ->
@@ -44,6 +43,8 @@ make_section([JObj], Section) ->
     CIDRs = kz_json:get_value([<<"value">>, <<"acls">>, <<"cidrs">>], JObj),
     UserAgent = kz_json:get_value([<<"value">>, <<"acls">>, <<"user_agent">>], JObj),
     make_section(Section, Order, CIDRs, UserAgent).
+
+-spec make_section(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary()) -> kz_json:object().
 make_section(_, Order, CIDRs, _) when Order =:= 'undefined'
                                       orelse CIDRs =:= 'undefined' ->
     kz_json:new();

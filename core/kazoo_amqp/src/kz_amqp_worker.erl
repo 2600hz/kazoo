@@ -181,21 +181,22 @@ default_timeout() -> 2 * ?MILLISECONDS_IN_SECOND.
                           {'returned', kz_json:object(), kz_json:object()} |
                           {'timeout', kz_json:objects()} |
                           {'error', any()}.
+
 -spec call(kz_term:api_terms(), publish_fun(), validate_fun()) ->
-                  request_return().
--spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout()) ->
-                  request_return().
--spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), pid()  | atom()) ->
                   request_return().
 call(Req, PubFun, VFun) ->
     call(Req, PubFun, VFun, default_timeout()).
 
+-spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout()) ->
+                  request_return().
 call(Req, PubFun, VFun, Timeout) ->
     case next_worker() of
         {'error', _}=E -> E;
         Worker -> call(Req, PubFun, VFun, Timeout, Worker)
     end.
 
+-spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), pid()  | atom()) ->
+                  request_return().
 call(Req, PubFun, VFun, Timeout, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
@@ -221,10 +222,10 @@ call(Req, PubFun, VFun, Timeout, Worker) when is_pid(Worker) ->
 -type pool_error() :: 'pool_full' | 'poolboy_fault'.
 
 -spec next_worker() -> pid() | {'error', pool_error()}.
--spec next_worker(atom()) -> pid() | {'error', pool_error()}.
 next_worker() ->
     next_worker(worker_pool()).
 
+-spec next_worker(atom()) -> pid() | {'error', pool_error()}.
 next_worker(Pool) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
         'full' -> {'error', 'pool_full'};
@@ -260,18 +261,19 @@ checkin_worker(Worker, Pool) ->
 
 -spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
                          request_return().
--spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding()) ->
-                         request_return().
--spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding(), pid()) ->
-                         request_return().
 call_custom(Req, PubFun, VFun, Bind) ->
     call_custom(Req, PubFun, VFun, default_timeout(), Bind).
+
+-spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding()) ->
+                         request_return().
 call_custom(Req, PubFun, VFun, Timeout, Bind) ->
     case next_worker() of
         {'error', _}=E -> E;
         Worker -> call_custom(Req, PubFun, VFun, Timeout, Bind, Worker)
     end.
 
+-spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding(), pid()) ->
+                         request_return().
 call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     gen_listener:add_binding(Worker, Bind),
@@ -290,15 +292,11 @@ call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
 
 -spec call_collect(kz_term:api_terms(), publish_fun()) ->
                           request_return().
--spec call_collect(kz_term:api_terms(), publish_fun(), timeout_or_until()) ->
-                          request_return().
--spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout()) ->
-                          request_return().
--spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout(), pid()) ->
-                          request_return().
 call_collect(Req, PubFun) ->
     call_collect(Req, PubFun, default_timeout()).
 
+-spec call_collect(kz_term:api_terms(), publish_fun(), timeout_or_until()) ->
+                          request_return().
 call_collect(Req, PubFun, UntilFun) when is_function(UntilFun) ->
     call_collect(Req, PubFun, UntilFun, default_timeout());
 call_collect(Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
@@ -312,6 +310,8 @@ call_collect(Req, PubFun, {_, _, _, _}=Until) ->
 call_collect(Req, PubFun, Timeout) ->
     call_collect(Req, PubFun, collect_until_timeout(), Timeout).
 
+-spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout()) ->
+                          request_return().
 call_collect(_Req, _PubFun, 'undefined', _Timeout) ->
     lager:debug("no VFun, no responses"),
     {'ok', []};
@@ -369,6 +369,8 @@ call_collect(Req, PubFun, UntilFun, Timeout)
             call_collect(Req, PubFun, UntilFun, Timeout, Worker)
     end.
 
+-spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout(), pid()) ->
+                          request_return().
 call_collect(Req, PubFun, {UntilFun, Acc}, Timeout, Worker)
   when is_function(UntilFun, 2) ->
     call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker);
@@ -394,10 +396,10 @@ call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
                        {'returned', kz_json:object(), kz_json:object()}.
 
 -spec cast(kz_term:api_terms(), publish_fun()) -> cast_return().
--spec cast(kz_term:api_terms(), publish_fun(), pid() | atom()) -> cast_return().
 cast(Req, PubFun) ->
     cast(Req, PubFun, worker_pool()).
 
+-spec cast(kz_term:api_terms(), publish_fun(), pid() | atom()) -> cast_return().
 cast(Req, PubFun, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
@@ -1056,10 +1058,12 @@ publish_api(PublishFun, ReqProps) ->
     end.
 
 -type relay_fun() :: fun((pid() | atom(), any()) -> any()).
+
 -spec relay_event(pid(), kz_json:object()) -> any().
--spec relay_event(pid(), kz_json:object(), relay_fun()) -> any().
 relay_event(Pid, JObj) ->
     relay_event(Pid, JObj, fun erlang:send/2).
+
+-spec relay_event(pid(), kz_json:object(), relay_fun()) -> any().
 relay_event(Pid, JObj, RelayFun) ->
     RelayFun(Pid, {'amqp_msg', JObj}).
 

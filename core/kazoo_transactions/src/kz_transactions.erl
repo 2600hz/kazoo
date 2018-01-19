@@ -315,13 +315,14 @@ fetch_bookkeeper(Account, From, To) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec de_duplicate_transactions(kz_transactions(), kz_transactions()) -> kz_transactions().
--spec de_duplicate_transactions(kz_term:proplist(), kz_term:proplist(), kz_transactions()) -> kz_transactions().
 de_duplicate_transactions(Transactions, BookkeeperTransactions) ->
     PropsTr = transactions_to_props(Transactions),
     PropsBTr = transactions_to_props(BookkeeperTransactions),
     de_duplicate_transactions(PropsTr, PropsBTr, []).
 
+-spec de_duplicate_transactions(kz_term:proplist(), kz_term:proplist(), kz_transactions()) -> kz_transactions().
 de_duplicate_transactions([], BookkeeperTransactions, Acc) ->
     [Transaction || {_, Transaction} <- BookkeeperTransactions] ++ Acc;
 de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, Acc) ->
@@ -351,10 +352,10 @@ transaction_to_prop_fold(Transaction, Acc) ->
 -type save_acc() :: [{'ok' | 'error', kz_transaction:transaction()}].
 
 -spec save(kz_transactions()) -> save_acc().
--spec save(kz_transactions(), save_acc()) -> save_acc().
 save(L) ->
     save(L, []).
 
+-spec save(kz_transactions(), save_acc()) -> save_acc().
 save([], Acc) ->
     lists:reverse(Acc);
 save([Transaction | Transactions], Acc) ->
@@ -374,10 +375,10 @@ save([Transaction | Transactions], Acc) ->
 -type remove_acc() :: ['ok' | {'error', kz_transaction:transaction()}].
 
 -spec remove(kz_transactions()) -> remove_acc().
--spec remove(kz_transactions(), remove_acc()) -> remove_acc().
 remove(Transactions) ->
     remove(Transactions, []).
 
+-spec remove(kz_transactions(), remove_acc()) -> remove_acc().
 remove([], Acc) ->
     lists:reverse(Acc);
 remove([Transaction | Transactions], Acc) ->

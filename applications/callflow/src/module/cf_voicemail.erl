@@ -205,23 +205,23 @@ handle(Data, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec check_mailbox(mailbox(), kapps_call:call()) ->
                            'ok' | {'error', 'channel_hungup'}.
--spec check_mailbox(mailbox(), kapps_call:call(), non_neg_integer()) ->
-                           'ok' | {'error', 'channel_hungup'}.
--spec check_mailbox(mailbox(), boolean(), kapps_call:call(), non_neg_integer()) ->
-                           'ok' | {'error', 'channel_hungup'}.
-
 check_mailbox(Box, Call) ->
     %% Wrapper to initalize the attempt counter
     Resp = check_mailbox(Box, Call, 1),
     _ = send_mwi_update(Box, Call),
     Resp.
 
+-spec check_mailbox(mailbox(), kapps_call:call(), non_neg_integer()) ->
+                           'ok' | {'error', 'channel_hungup'}.
 check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
     IsOwner = is_owner(Call, OwnerId),
     check_mailbox(Box, IsOwner, Call, Loop).
 
+-spec check_mailbox(mailbox(), boolean(), kapps_call:call(), non_neg_integer()) ->
+                           'ok' | {'error', 'channel_hungup'}.
 check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
     lager:info("maximum number of invalid attempts to check mailbox"),
@@ -237,19 +237,19 @@ check_mailbox(#mailbox{exists='false'
             %% can't find mailbox, set Loop to max to play abort prompts in above func clause
             check_mailbox(Box, Call, MaxLoginAttempts + 1)
     end;
+check_mailbox(#mailbox{is_setup='false'}=Box, 'true', Call, _) ->
+    %% If this is the owner of the mailbox calling in and it is not setup then jump
+    %% right to the setup wizard
+    lager:info("caller is the owner of this mailbox, and it has not been setup yet"),
+    main_menu(Box, Call);
 check_mailbox(#mailbox{require_pin='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
     lager:info("caller is the owner of this mailbox, and requires no pin"),
     main_menu(Box, Call);
-check_mailbox(#mailbox{pin = <<>>}=Box, 'true', Call, _) ->
-    %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
-    %% right to the main menu
-    lager:info("caller is the owner of this mailbox, and it has no pin"),
-    main_menu(Box, Call);
-check_mailbox(#mailbox{pin = <<>>, require_pin='true'}, 'false', Call, _) ->
-    %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
-    %% then terminate this call.
+check_mailbox(#mailbox{pin = <<>>}, _, Call, _) ->
+    %% If the caller is not the owner or the owner with require pin set but the voicemail box
+    %% has no pin set then terminate this call.
     lager:info("attempted to sign into a mailbox with no pin"),
     _ = kapps_call_command:b_prompt(<<"vm-no_access">>, Call),
     'ok';
@@ -375,16 +375,17 @@ find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, Call
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec compose_voicemail(mailbox(), kapps_call:call()) ->
-                               'ok' | {'branch', _} |
-                               {'error', 'channel_hungup'}.
--spec compose_voicemail(mailbox(), boolean(), kapps_call:call()) ->
                                'ok' | {'branch', _} |
                                {'error', 'channel_hungup'}.
 compose_voicemail(#mailbox{owner_id=OwnerId}=Box, Call) ->
     IsOwner = is_owner(Call, OwnerId),
     compose_voicemail(Box, IsOwner, Call).
 
+-spec compose_voicemail(mailbox(), boolean(), kapps_call:call()) ->
+                               'ok' | {'branch', _} |
+                               {'error', 'channel_hungup'}.
 compose_voicemail(#mailbox{check_if_owner='true'}=Box, 'true', Call) ->
     lager:info("caller is the owner of this mailbox"),
     lager:info("overriding action as check (instead of compose)"),
@@ -589,9 +590,8 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec main_menu(mailbox(), kapps_call:call()) ->
-                       'ok' | {'error', 'channel_hungup'}.
--spec main_menu(mailbox(), kapps_call:call(), non_neg_integer()) ->
                        'ok' | {'error', 'channel_hungup'}.
 main_menu(#mailbox{is_setup='false'}=Box, Call) ->
     try setup_mailbox(Box, Call) of
@@ -605,6 +605,8 @@ main_menu(#mailbox{is_setup='false'}=Box, Call) ->
     end;
 main_menu(Box, Call) -> main_menu(Box, Call, 1).
 
+-spec main_menu(mailbox(), kapps_call:call(), non_neg_integer()) ->
+                       'ok' | {'error', 'channel_hungup'}.
 main_menu(Box, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
     %% is likely a abandonded channel, terminate
@@ -1005,11 +1007,12 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
 -spec message_menu(mailbox(), kapps_call:call()) ->
                           {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
                           message_menu_returns().
+message_menu(Box, Call) ->
+    message_menu([{'prompt', <<"vm-message_menu">>}], Box, Call).
+
 -spec message_menu(kapps_call_command:audio_macro_prompts(), mailbox(), kapps_call:call()) ->
                           {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
                           message_menu_returns().
-message_menu(Box, Call) ->
-    message_menu([{'prompt', <<"vm-message_menu">>}], Box, Call).
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                         ,keep=Keep
                                         ,forward=Forward
@@ -1047,15 +1050,16 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec config_menu(mailbox(), kapps_call:call()) ->
-                         'ok' | mailbox() |
-                         {'error', 'channel_hungup'}.
--spec config_menu(mailbox(), kapps_call:call(), pos_integer()) ->
                          'ok' | mailbox() |
                          {'error', 'channel_hungup'}.
 config_menu(Box, Call) ->
     config_menu(Box, Call, 1).
 
+-spec config_menu(mailbox(), kapps_call:call(), pos_integer()) ->
+                         'ok' | mailbox() |
+                         {'error', 'channel_hungup'}.
 config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
            ,Call
            ,Loop
@@ -1311,9 +1315,8 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec record_name(kz_term:ne_binary(), mailbox(), kapps_call:call()) ->
-                         'ok' | mailbox().
--spec record_name(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_term:ne_binary()) ->
                          'ok' | mailbox().
 record_name(AttachmentName, #mailbox{owner_id='undefined'
                                     ,name_media_id='undefined'
@@ -1338,6 +1341,8 @@ record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
     lager:info("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
     record_name(AttachmentName, Box, Call, OwnerId).
 
+-spec record_name(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_term:ne_binary()) ->
+                         'ok' | mailbox().
 record_name(AttachmentName, #mailbox{name_media_id=MediaId
                                     ,media_extension=Ext
                                     }=Box, Call, DocId) ->
@@ -1627,11 +1632,11 @@ max_message_count(Call) ->
 
 -spec owner_info(kz_term:ne_binary(), kz_json:object()) ->
                         {kz_term:api_binary(), kz_term:api_binary()}.
--spec owner_info(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) ->
-                        {kz_term:api_binary(), kz_term:api_binary()}.
 owner_info(AccountDb, MailboxJObj) ->
     owner_info(AccountDb, MailboxJObj, kz_json:get_ne_value(<<"owner_id">>, MailboxJObj)).
 
+-spec owner_info(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) ->
+                        {kz_term:api_binary(), kz_term:api_binary()}.
 owner_info(_AccountDb, MailboxJObj, 'undefined') ->
     {kz_json:get_ne_value(?RECORDED_NAME_KEY, MailboxJObj)
     ,'undefined'
@@ -1710,12 +1715,12 @@ get_mailbox_doc(Db, Id, Data, Call) ->
 -spec get_user_mailbox_doc(kz_json:object(), kapps_call:call()) ->
                                   {'ok', kz_json:object()} |
                                   {'error', any()}.
--spec get_user_mailbox_doc(kz_json:object(), kapps_call:call(), kz_term:api_binary()) ->
-                                  {'ok', kz_json:object()} |
-                                  {'error', any()}.
 get_user_mailbox_doc(Data, Call) ->
     get_user_mailbox_doc(Data, Call, kapps_call:owner_id(Call)).
 
+-spec get_user_mailbox_doc(kz_json:object(), kapps_call:call(), kz_term:api_binary()) ->
+                                  {'ok', kz_json:object()} |
+                                  {'error', any()}.
 get_user_mailbox_doc(Data, Call, 'undefined') ->
     DeviceId = kapps_call:authorizing_id(Call),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of
@@ -1782,16 +1787,16 @@ try_match_callerid([Box|Boxes], CallerId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec review_recording(kz_term:ne_binary(), boolean(), mailbox(), kapps_call:call()) ->
                               {'ok', 'record' | 'save' | 'no_selection'} |
                               {'branch', kz_json:object()}.
--spec review_recording(kz_term:ne_binary(), boolean(), mailbox(), kapps_call:call(), integer()) ->
-                              {'ok', 'record' | 'save' | 'no_selection'} |
-                              {'branch', kz_json:object()}.
-
 review_recording(AttachmentName, AllowOperator, Box, Call) ->
     review_recording(AttachmentName, AllowOperator, Box, Call, 1).
 
+-spec review_recording(kz_term:ne_binary(), boolean(), mailbox(), kapps_call:call(), integer()) ->
+                              {'ok', 'record' | 'save' | 'no_selection'} |
+                              {'branch', kz_json:object()}.
 review_recording(_, _, _, _, Loop) when Loop > 4 ->
     {'ok', 'no_selection'};
 review_recording(AttachmentName, AllowOperator

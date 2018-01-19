@@ -39,8 +39,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), pns()) -> kz_services:services().
 reconcile(Services) ->
     AccountDb = kz_util:format_account_db(kz_services:account_id(Services)),
     case kz_datamgr:get_results(AccountDb, <<"numbers/reconcile_services">>) of
@@ -53,6 +53,7 @@ reconcile(Services) ->
             maps:fold(F, reset(Services), ?MAP_CATEGORIES)
     end.
 
+-spec reconcile(kz_services:services(), pns()) -> kz_services:services().
 reconcile(Services, PNs) ->
     update_numbers(Services, PNs).
 

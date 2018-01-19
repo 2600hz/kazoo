@@ -180,12 +180,12 @@ get_interface_list(Node) ->
         _Else -> []
     end.
 
--spec get_interface_properties(atom()) -> kz_term:proplist().
--spec get_interface_properties(atom(), kz_term:ne_binary()) -> kz_term:proplist().
 
+-spec get_interface_properties(atom()) -> kz_term:proplist().
 get_interface_properties(Node) ->
     [{Interface, get_interface_properties(Node, Interface)} || Interface <- get_interface_list(Node)].
 
+-spec get_interface_properties(atom(), kz_term:ne_binary()) -> kz_term:proplist().
 get_interface_properties(Node, Interface) ->
     case freeswitch:api(Node, 'sofia', kz_term:to_list(list_to_binary(["status profile ", Interface]))) of
         {'ok', Response} ->
@@ -225,11 +225,12 @@ get_sip_to(Props, _) ->
     end.
 
 %% retrieves the sip address for the 'from' field
+
 -spec get_sip_from(kz_term:proplist()) -> kz_term:ne_binary().
--spec get_sip_from(kz_term:proplist(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_sip_from(Props) ->
     get_sip_from(Props, kzd_freeswitch:original_call_direction(Props)).
 
+-spec get_sip_from(kz_term:proplist(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_sip_from(Props, <<"outbound">>) ->
     Num = props:get_first_defined([<<"Other-Leg-RDNIS">>
                                   ,<<"Other-Leg-Caller-ID-Number">>
@@ -338,12 +339,12 @@ channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
 channel_var_map({Key, Other}) -> {Key, Other}.
 
 %% Extract custom channel variables to include in the event
+
 -spec custom_channel_vars(kzd_freeswitch:data()) -> kz_term:proplist().
--spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
--spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_channel_vars(Props) ->
     lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
 
+-spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 custom_channel_vars(Props, Initial) ->
     CCVs = lists:foldl(fun custom_channel_vars_fold/2, Initial, Props),
     maybe_update_referred_ccv(Props, channel_vars_sort(CCVs)).
@@ -355,6 +356,7 @@ channel_vars_sort(ChannelVars) ->
 -spec channel_var_sort(tuple(), tuple()) -> boolean().
 channel_var_sort({A, _}, {B, _}) -> A =< B.
 
+-spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_channel_vars_fold({?GET_CCV(Key), V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
@@ -367,11 +369,10 @@ custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
 custom_channel_vars_fold(_, Acc) -> Acc.
 
 -spec custom_application_vars(kzd_freeswitch:data()) -> kz_term:proplist().
--spec custom_application_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
--spec custom_application_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_application_vars(Props) ->
     lists:map(fun application_var_map/1, custom_application_vars(Props, [])).
 
+-spec custom_application_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 custom_application_vars(Props, Initial) ->
     CCVs = lists:foldl(fun custom_application_vars_fold/2, Initial, Props),
     maybe_update_referred_ccv(Props, application_vars_sort(CCVs)).
@@ -383,6 +384,7 @@ application_vars_sort(ApplicationVars) ->
 -spec application_var_sort(tuple(), tuple()) -> boolean().
 application_var_sort({A, _}, {B, _}) -> A =< B.
 
+-spec custom_application_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_application_vars_fold({?GET_CAV(Key), V}, Acc) ->
     [{Key, V} | Acc];
 custom_application_vars_fold({?CAV(Key), V}, Acc) ->
@@ -464,10 +466,11 @@ varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(kz_term:to_list(VarStr), ",")].
 
 -spec get_setting(kz_json:path()) -> {'ok', any()}.
--spec get_setting(kz_json:path(), Default) -> {'ok', Default | any()}.
 get_setting(<<"default_ringback">>) ->
     {'ok', ecallmgr_config:get(<<"default_ringback">>, <<"%(2000,4000,440,480)">>)};
 get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
+
+-spec get_setting(kz_json:path(), Default) -> {'ok', Default | any()}.
 get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 
 -spec is_node_up(atom()) -> boolean().
@@ -562,10 +565,10 @@ format_fs_kv(Key, Value, UUID, _) ->
     end.
 
 -spec get_fs_kv(kz_term:ne_binary(), kz_term:ne_binary()) -> binary().
--spec get_fs_kv(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> binary().
 get_fs_kv(Key, Value) ->
     get_fs_kv(Key, Value, 'undefined').
 
+-spec get_fs_kv(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> binary().
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
                    ,kz_term:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
@@ -659,10 +662,10 @@ maybe_sanitize_fs_value(_, Val) -> Val.
 -type bridge_endpoints() :: [bridge_endpoint()].
 
 -spec build_bridge_string(kz_json:objects()) -> kz_term:ne_binary().
--spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints) ->
     build_bridge_string(Endpoints, ?SEPARATOR_SINGLE).
 
+-spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints, Seperator) ->
     %% De-dup the bridge strings by matching those with the same
     %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
@@ -670,12 +673,12 @@ build_bridge_string(Endpoints, Seperator) ->
     %% NOTE: dont use binary_join here as it will crash on an empty list...
     kz_binary:join(lists:reverse(BridgeStrings), Seperator).
 
--spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
--spec endpoint_jobjs_to_records(kz_json:objects(), boolean()) -> bridge_endpoints().
 
+-spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
 endpoint_jobjs_to_records(Endpoints) ->
     endpoint_jobjs_to_records(Endpoints, 'true').
 
+-spec endpoint_jobjs_to_records(kz_json:objects(), boolean()) -> bridge_endpoints().
 endpoint_jobjs_to_records(Endpoints, IncludeVars) ->
     [BridgeEndpoints
      || {_, BridgeEndpoints} <-
@@ -1069,11 +1072,12 @@ append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
--spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
 create_masquerade_event(Application, EventName) ->
     create_masquerade_event(Application, EventName, 'true').
 
+-spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
 create_masquerade_event(Application, EventName, Boolean) ->
     Prefix = case Boolean of
                  'true' -> <<"event ">>;

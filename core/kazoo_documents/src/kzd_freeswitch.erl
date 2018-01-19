@@ -63,9 +63,10 @@
 -define(CCV_HEADER(Key), <<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 
 -spec caller_id_name(data()) -> kz_term:api_binary().
--spec caller_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_name(Props) ->
     caller_id_name(Props, 'undefined').
+
+-spec caller_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_name(Props, Default) ->
     props:get_first_defined([<<"variable_origination_caller_id_name">>
                             ,<<"variable_effective_caller_id_name">>
@@ -76,9 +77,10 @@ caller_id_name(Props, Default) ->
                            ).
 
 -spec caller_id_number(data()) -> kz_term:api_binary().
--spec caller_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_number(Props) ->
     caller_id_number(Props, 'undefined').
+
+-spec caller_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_number(Props, Default) ->
     props:get_first_defined([<<"variable_origination_caller_id_number">>
                             ,<<"variable_effective_caller_id_number">>
@@ -89,9 +91,10 @@ caller_id_number(Props, Default) ->
                            ).
 
 -spec callee_id_name(data()) -> kz_term:api_binary().
--spec callee_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_name(Props) ->
     callee_id_name(Props, 'undefined').
+
+-spec callee_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_name(Props, Default) ->
     props:get_first_defined([<<"variable_origination_callee_id_name">>
                             ,<<"variable_effective_callee_id_name">>
@@ -102,9 +105,10 @@ callee_id_name(Props, Default) ->
                            ).
 
 -spec callee_id_number(data()) -> kz_term:api_binary().
--spec callee_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_number(Props) ->
     callee_id_number(Props, 'undefined').
+
+-spec callee_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_number(Props, Default) ->
     props:get_first_defined([<<"variable_origination_callee_id_number">>
                             ,<<"variable_effective_callee_id_number">>
@@ -151,10 +155,10 @@ call_direction(Props) ->
                            ).
 
 -spec resource_type(data()) -> kz_term:api_binary().
--spec resource_type(data(), Default) -> kz_term:ne_binary() | Default.
 resource_type(Props) ->
     resource_type(Props, 'undefined').
 
+-spec resource_type(data(), Default) -> kz_term:ne_binary() | Default.
 resource_type(Props, Default) ->
     props:get_value(<<"Resource-Type">>, Props, Default).
 
@@ -171,18 +175,18 @@ hunt_destination_number(Props) ->
     props:get_value(<<"Hunt-Destination-Number">>, Props).
 
 -spec is_channel_recovering(data()) -> boolean().
--spec is_channel_recovering(data(), boolean()) -> boolean().
 is_channel_recovering(Props) ->
     is_channel_recovering(Props, 'false').
 
+-spec is_channel_recovering(data(), boolean()) -> boolean().
 is_channel_recovering(Props, Default) ->
     props:is_true(<<"variable_recovered">>, Props, Default).
 
 -spec is_consuming_global_resource(data()) -> kz_term:api_boolean().
--spec is_consuming_global_resource(data(), kz_term:api_boolean()) -> kz_term:api_boolean().
 is_consuming_global_resource(Props) ->
     is_consuming_global_resource(Props, 'undefined').
 
+-spec is_consuming_global_resource(data(), kz_term:api_boolean()) -> kz_term:api_boolean().
 is_consuming_global_resource(Props, Default) ->
     kz_term:is_true(ccv(Props, <<"Global-Resource">>, Default)).
 
@@ -349,12 +353,12 @@ channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
 channel_var_map({Key, Other}) -> {Key, Other}.
 
 %% Extract custom channel variables to include in the event
+
 -spec ccvs(kz_term:proplist()) -> kz_term:proplist().
--spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
--spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 ccvs(Props) ->
     lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
 
+-spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 custom_channel_vars(Props, Initial) ->
     CCVs = lists:foldl(fun custom_channel_vars_fold/2, Initial, Props),
     maybe_update_referred_ccv(Props, channel_vars_sort(CCVs)).
@@ -366,6 +370,7 @@ channel_vars_sort(ChannelVars) ->
 -spec channel_var_sort(tuple(), tuple()) -> boolean().
 channel_var_sort({A, _}, {B, _}) -> A =< B.
 
+-spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
 custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
@@ -431,9 +436,10 @@ conference_uuid(Props) ->
     props:get_ne_binary_value(<<"Conference-Unique-ID">>, Props).
 
 -spec join_time(data()) -> kz_time:gregorian_seconds().
--spec join_time(data(), Default) -> kz_time:gregorian_seconds() | Default.
 join_time(Props) ->
     join_time(Props, kz_time:now_s()).
+
+-spec join_time(data(), Default) -> kz_time:gregorian_seconds() | Default.
 join_time(Props, Default) ->
     props:get_integer_value(<<"Join-Time">>, Props, Default).
 
@@ -484,8 +490,9 @@ switch_nodename(Props) ->
     props:get_atom_value(<<"Switch-Nodename">>, Props).
 
 -spec hostname(data()) -> kz_term:api_ne_binary().
--spec hostname(data(), Default) -> kz_term:ne_binary() | Default.
 hostname(Props) ->
     hostname(Props, 'undefined').
+
+-spec hostname(data(), Default) -> kz_term:ne_binary() | Default.
 hostname(Props, Default) ->
     props:get_ne_binary_value(<<"FreeSWITCH-Hostname">>, Props, Default).

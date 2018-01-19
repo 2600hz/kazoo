@@ -344,14 +344,12 @@ format_account_id(Account, Year, Month) when is_integer(Year),
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_mod_id(kz_term:api_binary()) -> kz_term:api_binary().
--spec format_account_mod_id(kz_term:api_binary(), kz_time:gregorian_seconds() | kz_time:now()) -> kz_term:api_binary().
--spec format_account_mod_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
-                                   kz_term:api_binary().
 
+-spec format_account_mod_id(kz_term:api_binary()) -> kz_term:api_binary().
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 
+-spec format_account_mod_id(kz_term:api_binary(), kz_time:gregorian_seconds() | kz_time:now()) -> kz_term:api_binary().
 format_account_mod_id(AccountId, {_,_,_}=Timestamp) ->
     {{Year, Month, _}, _} = calendar:now_to_universal_time(Timestamp),
     format_account_id(AccountId, Year, Month);
@@ -359,6 +357,8 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(AccountId, Year, Month).
 
+-spec format_account_mod_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
+                                   kz_term:api_binary().
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
@@ -380,10 +380,12 @@ format_account_db(AccountId) ->
 %% Note: crashes if given anything but an MODb (in any format).
 %% @end
 %%--------------------------------------------------------------------
+
 -spec format_account_modb(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec format_account_modb(kz_term:ne_binary(), account_format()) -> kz_term:ne_binary().
 format_account_modb(AccountId) ->
     format_account_modb(AccountId, 'raw').
+
+-spec format_account_modb(kz_term:ne_binary(), account_format()) -> kz_term:ne_binary().
 format_account_modb(AccountId, 'raw') ->
     raw_account_modb(AccountId);
 format_account_modb(AccountId, 'unencoded') ->
@@ -429,12 +431,12 @@ is_alphanumeric(_) ->
 %% its own hierarchy.
 %% @end
 %%--------------------------------------------------------------------
--spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
--spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
 
+-spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
 is_in_account_hierarchy(CheckFor, InAccount) ->
     is_in_account_hierarchy(CheckFor, InAccount, 'false').
 
+-spec is_in_account_hierarchy(kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
@@ -574,10 +576,10 @@ set_allow_number_additions(Account, IsAllowed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec account_update(kz_account:doc()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
--spec account_update(kz_term:ne_binary(), function()) -> 'ok' | {'error', any()}.
 account_update(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
     case kz_datamgr:ensure_saved(AccountDb, AccountJObj) of
@@ -586,6 +588,7 @@ account_update(AccountJObj) ->
             kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, SavedJObj)
     end.
 
+-spec account_update(kz_term:ne_binary(), function()) -> 'ok' | {'error', any()}.
 account_update(Account, UpdateFun) ->
     case kz_account:fetch(Account) of
         {'error', _R}=E -> E;
@@ -681,7 +684,6 @@ runs_in(MaxTime, Fun, Arguments)
   when is_number(MaxTime), MaxTime > 0 ->
     runs_in(kz_term:to_integer(MaxTime), Fun, Arguments).
 
--spec spawn(fun(() -> any())) -> pid().
 -spec spawn(fun(), list()) -> pid().
 spawn(Fun, Arguments) ->
     CallId = get_callid(),
@@ -689,6 +691,8 @@ spawn(Fun, Arguments) ->
                          _ = put_callid(CallId),
                          erlang:apply(Fun, Arguments)
                  end).
+
+-spec spawn(fun(() -> any())) -> pid().
 spawn(Fun) ->
     CallId = get_callid(),
     erlang:spawn(fun() ->
@@ -696,7 +700,6 @@ spawn(Fun) ->
                          Fun()
                  end).
 
--spec spawn_link(fun(() -> any())) -> pid().
 -spec spawn_link(fun(), list()) -> pid().
 spawn_link(Fun, Arguments) ->
     CallId = get_callid(),
@@ -704,6 +707,8 @@ spawn_link(Fun, Arguments) ->
                               _ = put_callid(CallId),
                               erlang:apply(Fun, Arguments)
                       end).
+
+-spec spawn_link(fun(() -> any())) -> pid().
 spawn_link(Fun) ->
     CallId = get_callid(),
     erlang:spawn_link(fun() ->
@@ -811,10 +816,10 @@ write_pid(FileName) ->
 
 
 -spec pretty_print_bytes(non_neg_integer()) -> kz_term:ne_binary().
--spec pretty_print_bytes(non_neg_integer(), 'full' | 'truncated') -> kz_term:ne_binary().
 pretty_print_bytes(Bytes) ->
     pretty_print_bytes(Bytes, 'full').
 
+-spec pretty_print_bytes(non_neg_integer(), 'full' | 'truncated') -> kz_term:ne_binary().
 pretty_print_bytes(0, _) -> <<"0B">>;
 pretty_print_bytes(Bytes, Type) ->
     iolist_to_binary(unitfy_bytes(Bytes, Type)).
@@ -853,10 +858,11 @@ mem_usage() ->
     Memory.
 
 -spec node_name() -> binary().
--spec node_hostname() -> binary().
 node_name() ->
     [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
     Name.
+
+-spec node_hostname() -> binary().
 node_hostname() ->
     [_Name, Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
     Host.

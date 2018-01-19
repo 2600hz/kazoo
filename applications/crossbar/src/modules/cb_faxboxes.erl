@@ -88,12 +88,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_FaxboxId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -106,15 +106,17 @@ allowed_methods(_FaxboxId) ->
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 
+-spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_BoxId) -> 'true'.
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context) -> Context.
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context, FaxboxId) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), FaxboxId) of
         {'ok', JObj} -> cb_context:store(Context, <<"faxbox">>, JObj);
@@ -131,9 +133,8 @@ validate_resource(Context, FaxboxId) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_faxboxes(Context, cb_context:req_verb(Context)).
 
@@ -142,6 +143,7 @@ validate_faxboxes(Context, ?HTTP_PUT) ->
 validate_faxboxes(Context, ?HTTP_GET) ->
     faxbox_listing(Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_faxbox(Context, Id, cb_context:req_verb(Context)).
 
@@ -388,7 +390,6 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
     end.
 
 -spec maybe_reregister_cloud_printer(cb_context:context()) -> cb_context:context().
--spec maybe_reregister_cloud_printer(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_reregister_cloud_printer(Context) ->
     CurrentState = kz_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Context)),
     Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
@@ -402,6 +403,7 @@ maybe_reregister_cloud_printer(Context) ->
         _ -> Ctx1
     end.
 
+-spec maybe_reregister_cloud_printer(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_reregister_cloud_printer('undefined', Context) ->
     maybe_register_cloud_printer(Context);
 maybe_reregister_cloud_printer(<<"expired">>, Context) ->

@@ -76,20 +76,21 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() ->
-                             http_methods().
--spec allowed_methods(path_token()) ->
-                             http_methods().
--spec allowed_methods(path_token(), path_token()) ->
                              http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+-spec allowed_methods(path_token()) ->
+                             http_methods().
 allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_DeviceId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(), path_token()) ->
+                             http_methods().
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
@@ -101,12 +102,14 @@ allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 
+-spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_DeviceId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -203,9 +206,8 @@ error_no_entity(Context, DeviceId) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_devices(Context, cb_context:req_verb(Context)).
 
@@ -214,6 +216,7 @@ validate_devices(Context, ?HTTP_GET) ->
 validate_devices(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, PathToken) ->
     validate_device(Context, PathToken, cb_context:req_verb(Context)).
 
@@ -233,6 +236,7 @@ validate_device(Context, DeviceId, ?HTTP_DELETE) ->
 validate_patch(Context, DeviceId) ->
     crossbar_doc:patch_and_validate(DeviceId, Context, fun validate_request/2).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     load_device(DeviceId, Context).
 
@@ -292,7 +296,6 @@ patch(Context, Id) ->
     post(Context, Id).
 
 -spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     Callback =
         fun() ->
@@ -303,6 +306,7 @@ put(Context) ->
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
 
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, DeviceId) ->
     put_action(Context, DeviceId, cb_context:req_value(Context, <<"action">>)).
 
@@ -330,13 +334,14 @@ delete(Context, DeviceId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec load_device_summary(cb_context:context()) ->
-                                 cb_context:context().
--spec load_device_summary(cb_context:context(), req_nouns()) ->
                                  cb_context:context().
 load_device_summary(Context) ->
     load_device_summary(Context, cb_context:req_nouns(Context)).
 
+-spec load_device_summary(cb_context:context(), req_nouns()) ->
+                                 cb_context:context().
 load_device_summary(Context, [{<<"devices">>, []}
                              ,{<<"users">>, [UserId]}
                               |_]
@@ -779,10 +784,12 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_aggregate_device(kz_term:api_binary(), cb_context:context()) -> boolean().
--spec maybe_aggregate_device(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
+
+-spec maybe_aggregate_device(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_device(DeviceId, Context, 'success') ->
     case kz_term:is_true(cb_context:fetch(Context, 'aggregate_device'))
         andalso ?DEVICES_ALLOW_AGGREGATES
@@ -802,11 +809,12 @@ maybe_aggregate_device(_, _, _) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context()) -> boolean().
--spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate(DeviceId, Context) ->
     maybe_remove_aggregate(DeviceId, Context, cb_context:resp_status(Context)).
 
+-spec maybe_remove_aggregate(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
 maybe_remove_aggregate(DeviceId, _Context, 'success') ->
     case kz_datamgr:open_doc(?KZ_SIP_DB, DeviceId) of

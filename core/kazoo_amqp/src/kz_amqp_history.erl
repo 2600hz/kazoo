@@ -58,10 +58,10 @@ start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec add_command(kz_amqp_assignment(), kz_amqp_command()) -> 'ok'.
--spec add_command(kz_amqp_assignment(), kz_amqp_command(), 'sync' | 'async') -> 'ok'.
 add_command(Assignment, Command) ->
     add_command(Assignment, Command, 'async').
 
+-spec add_command(kz_amqp_assignment(), kz_amqp_command(), 'sync' | 'async') -> 'ok'.
 add_command(#kz_amqp_assignment{consumer=Consumer}, Command, Method) ->
     MatchSpec = [{#kz_amqp_history{consumer=Consumer
                                   ,command=Command

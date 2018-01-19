@@ -45,15 +45,16 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec render(atom(), kz_term:proplist()) -> template_result().
--spec render(template(), atom(), kz_term:proplist()) -> template_result().
--spec render(template(), atom(), kz_term:proplist(), kz_term:proplist()) -> template_result().
 render(Module, TemplateData) ->
     render_template(Module, TemplateData).
 
+-spec render(template(), atom(), kz_term:proplist()) -> template_result().
 render(Template, Module, TemplateData) ->
     render(Template, Module, TemplateData, []).
 
+-spec render(template(), atom(), kz_term:proplist(), kz_term:proplist()) -> template_result().
 render(Template, Module, TemplateData, CompileOpts) ->
     case compile(Template, Module, CompileOpts) of
         {'ok', Module} -> render_template(Module, TemplateData);
@@ -62,10 +63,10 @@ render(Template, Module, TemplateData, CompileOpts) ->
 
 
 -spec compile(template(), atom()) -> template_result().
--spec compile(template(), atom(), kz_term:proplist()) -> template_result().
 compile(Template, Module) ->
     compile(Template, Module, []).
 
+-spec compile(template(), atom(), kz_term:proplist()) -> template_result().
 compile(Template, Module, CompileOpts) when is_binary(Template) ->
     try erlydtl:compile_template(Template, Module, ?COMPILE_OPTS(CompileOpts)) of
         Result ->

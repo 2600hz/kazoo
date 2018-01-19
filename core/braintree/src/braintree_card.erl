@@ -35,16 +35,16 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url() -> string().
--spec url(kz_term:ne_binary()) -> string().
--spec url(kz_term:ne_binary(), _) -> string().
 
+-spec url() -> string().
 url() ->
     "/payment_methods/".
 
+-spec url(kz_term:ne_binary()) -> string().
 url(Token) ->
     "/payment_methods/" ++ kz_term:to_list(Token).
 
+-spec url(kz_term:ne_binary(), _) -> string().
 url(Token, _) ->
     "/payment_methods/credit_card/" ++ kz_term:to_list(Token).
 
@@ -99,15 +99,15 @@ find(Token) ->
 %% Creates a new credit card using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create(bt_card()) -> bt_card().
--spec create(string() | kz_term:ne_binary(), bt_card()) -> bt_card().
 
+-spec create(bt_card()) -> bt_card().
 create(#bt_card{}=Card) ->
     Url = url(),
     Request = record_to_xml(Card, 'true'),
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
+-spec create(string() | kz_term:ne_binary(), bt_card()) -> bt_card().
 create(CustomerId, Card) ->
     create(Card#bt_card{customer_id=CustomerId}).
 
@@ -177,11 +177,11 @@ expiring(Start, End) ->
 %% Accessors for field 'make_default'.
 %% @end
 %%--------------------------------------------------------------------
--spec make_default(bt_card()) -> kz_term:api_boolean().
--spec make_default(bt_card(), boolean()) -> bt_card().
 
+-spec make_default(bt_card()) -> kz_term:api_boolean().
 make_default(#bt_card{make_default = Value}) -> Value.
 
+-spec make_default(bt_card(), boolean()) -> bt_card().
 make_default(#bt_card{}=Card, Value) ->
     Card#bt_card{make_default = Value}.
 
@@ -191,12 +191,12 @@ make_default(#bt_card{}=Card, Value) ->
 %% Convert the given XML to a record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> bt_card().
--spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_card().
 
+-spec xml_to_record(bt_xml()) -> bt_card().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/credit-card").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_card().
 xml_to_record(Xml, Base) ->
     #bt_card{token = kz_xml:get_value([Base, "/token/text()"], Xml)
             ,bin = kz_xml:get_value([Base, "/bin/text()"], Xml)
@@ -222,12 +222,12 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_card()) -> kz_term:proplist() | bt_xml().
--spec record_to_xml(bt_card(), boolean()) -> kz_term:proplist() | bt_xml().
 
+-spec record_to_xml(bt_card()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Card) ->
     record_to_xml(Card, 'false').
 
+-spec record_to_xml(bt_card(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(#bt_card{}=Card, ToString) ->
     Props = [{'token', Card#bt_card.token}
             ,{'cardholder-name', Card#bt_card.cardholder_name}

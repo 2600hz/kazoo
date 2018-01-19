@@ -60,13 +60,7 @@ api_version_constraint('forward', NotVersion) ->
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
-
-    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
-         || {Config, Error} <- kapps_maintenance:validate_system_configs()
-        ],
-
     Dispatch = cowboy_router:compile(crossbar_routes()),
-
     maybe_start_plaintext(Dispatch),
     maybe_start_ssl(Dispatch),
     'ignore'.

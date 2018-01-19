@@ -846,10 +846,10 @@ delete_by_node(Node) ->
     lager:info("deleted ~p proxies for expired node ~p", [length(_Res), Node]).
 
 -spec delete_global(kz_global:global(), term()) -> 'ok' | 'true'.
--spec delete_global(kz_global:global(), term(), atom()) -> 'ok' | 'true'.
 delete_global(Global, Reason) ->
     delete_global(Global, Reason, kz_global:node(Global)).
 
+-spec delete_global(kz_global:global(), term(), atom()) -> 'ok' | 'true'.
 delete_global(Global, Reason, Node) when Node =:= node() ->
     do_amqp_unregister(Global, Reason);
 delete_global(Global, _Reason, _Node) ->
@@ -857,26 +857,26 @@ delete_global(Global, _Reason, _Node) ->
     ets:delete(?TAB_NAME, kz_global:name(Global)).
 
 -spec remonitor_globals() -> 'ok'.
--spec remonitor_globals('$end_of_table' | {[kz_global:global()], ets:continuation()}) ->
-                               'ok'.
 remonitor_globals() ->
     remonitor_globals(
       ets:select(table_id(), [{'_', [], ['$_']}], 1)
      ).
 
+-spec remonitor_globals('$end_of_table' | {[kz_global:global()], ets:continuation()}) ->
+                               'ok'.
 remonitor_globals('$end_of_table') -> 'ok';
 remonitor_globals({[Global], Continuation}) ->
     remonitor_global(Global),
     remonitor_globals(ets:select(Continuation)).
 
 -spec remonitor_global(kz_global:global()) -> 'true'.
--spec remonitor_global(kz_global:global(), boolean(), boolean()) -> 'true'.
 remonitor_global(Global) ->
     remonitor_global(Global
                     ,erlang:is_process_alive(kz_global:pid(Global))
                     ,kz_global:is_local(Global)
                     ).
 
+-spec remonitor_global(kz_global:global(), boolean(), boolean()) -> 'true'.
 remonitor_global(Global, 'false', _IsLocal) ->
     lager:info("global ~p(~p) down, cleaning up"
               ,[kz_global:pid(Global), kz_global:name(Global)]

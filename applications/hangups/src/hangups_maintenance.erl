@@ -25,10 +25,8 @@
 
 -include("hangups.hrl").
 
--spec hangups_summary() -> 'ok'.
--spec hangup_summary(kz_term:ne_binary()) -> 'ok'.
--spec hangup_summary(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 
+-spec hangups_summary() -> 'ok'.
 hangups_summary() ->
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
                || Name <- folsom_metrics:get_metrics(),
@@ -36,6 +34,7 @@ hangups_summary() ->
               ],
     print_stats(Hangups).
 
+-spec hangup_summary(kz_term:ne_binary()) -> 'ok'.
 hangup_summary(HangupCause) ->
     HC = kz_term:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s~n", [HC]),
@@ -45,6 +44,7 @@ hangup_summary(HangupCause) ->
               ],
     print_stats(Hangups).
 
+-spec hangup_summary(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 hangup_summary(HangupCause, AccountId) ->
     HC = kz_term:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s.~s~n", [HC, AccountId]),
@@ -227,8 +227,8 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
                ).
 
 %% @public
+
 -spec set_monitor_threshold(kz_term:ne_binary(), kz_term:ne_binary(), float()) -> boolean().
--spec set_monitor_threshold(kz_term:ne_binary(), kz_term:ne_binary(), float(), boolean()) -> boolean().
 set_monitor_threshold(HangupCause, ThresholdName, T) ->
     Threshold = kz_term:to_float(T),
     set_monitor_threshold(kz_term:to_upper_binary(HangupCause)
@@ -237,6 +237,7 @@ set_monitor_threshold(HangupCause, ThresholdName, T) ->
                          ,is_valid_threshold_name(ThresholdName)
                          ).
 
+-spec set_monitor_threshold(kz_term:ne_binary(), kz_term:ne_binary(), float(), boolean()) -> boolean().
 set_monitor_threshold(_HangupCause, ThresholdName, _Threshold, 'false') ->
     io:format("Invalid threshold name (~s), not setting~n", [ThresholdName]),
     'false';

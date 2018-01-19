@@ -50,9 +50,10 @@ get_source(<<"database:", Selector/binary>>) -> {'database', Selector};
 get_source(Type) -> throw({invalid_filter_type, Type}).
 
 -spec get_value(source(), any(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> any().
--spec get_value(source(), any(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), any()) -> any().
 get_value(Type, Resources, Number, OffnetJObj, DB) ->
     get_value(Type, Resources, Number, OffnetJObj, DB, 'undefined').
+
+-spec get_value(source(), any(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), any()) -> any().
 get_value('number', _Resources, Number, _OffnetJObj, _DB, _Default) ->
     Number;
 get_value('cid_number', _Resources, _Number, OffnetJObj, _DB, _Default) ->

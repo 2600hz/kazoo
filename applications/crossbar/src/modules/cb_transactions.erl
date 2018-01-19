@@ -73,11 +73,12 @@ flatten(Else, _) -> Else.
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?CURRENT_BALANCE) ->
     [?HTTP_GET];
 allowed_methods(?CREDIT) ->
@@ -98,9 +99,11 @@ allowed_methods(?SUBSCRIPTIONS) ->
 %%    /transactions/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -303,8 +306,8 @@ create_debit_tansaction(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_transactions(cb_context:context(), http_method()) -> cb_context:context().
--spec validate_transaction(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_transactions(Context, ?HTTP_GET) ->
     case crossbar_view:time_range(Context) of
         {CreatedFrom, CreatedTo} ->
@@ -313,6 +316,7 @@ validate_transactions(Context, ?HTTP_GET) ->
         Context1 -> Context1
     end.
 
+-spec validate_transaction(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_transaction(Context, ?CURRENT_BALANCE, ?HTTP_GET) ->
     CurrentBalance = case wht_util:current_balance(cb_context:account_id(Context)) of
                          {'ok', Bal} -> Bal;
@@ -346,8 +350,8 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_credit(cb_context:context()) -> cb_context:context().
--spec validate_credit(cb_context:context(), kz_term:api_float()) -> cb_context:context().
 validate_credit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
@@ -364,6 +368,7 @@ validate_credit(Context) ->
             end
     end.
 
+-spec validate_credit(cb_context:context(), kz_term:api_float()) -> cb_context:context().
 validate_credit(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"Amount is required">>}]),
     cb_context:add_validation_error(<<"amount">>, <<"required">>, Message, Context);
@@ -374,7 +379,6 @@ validate_credit(Context, _) ->
     cb_context:set_resp_status(Context, 'success').
 
 -spec validate_debit(cb_context:context()) -> cb_context:context().
--spec validate_debit(cb_context:context(), kz_term:api_float()) -> cb_context:context().
 validate_debit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
 
@@ -387,6 +391,7 @@ validate_debit(Context) ->
             end
     end.
 
+-spec validate_debit(cb_context:context(), kz_term:api_float()) -> cb_context:context().
 validate_debit(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"Amount is required">>}]),
     cb_context:add_validation_error(<<"amount">>, <<"required">>, Message, Context);

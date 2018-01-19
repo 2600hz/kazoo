@@ -78,13 +78,14 @@ activate_number(API, AccountId, Number) ->
                            ).
 
 -spec number_url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
--spec number_url(kz_term:ne_binary(), kz_term:ne_binary(), string()) -> string().
 number_url(AccountId, Number) ->
     string:join([pqc_cb_accounts:account_url(AccountId)
                 ,"phone_numbers", kz_term:to_list(kz_http_util:urlencode(Number))
                 ]
                ,"/"
                ).
+
+-spec number_url(kz_term:ne_binary(), kz_term:ne_binary(), string()) -> string().
 number_url(AccountId, Number, PathToken) ->
     string:join([pqc_cb_accounts:account_url(AccountId)
                 ,"phone_numbers", kz_term:to_list(kz_http_util:urlencode(Number))
@@ -135,10 +136,10 @@ initial_state() ->
     pqc_kazoo_model:new(API).
 
 -spec command(any()) -> proper_types:type().
--spec command(any(), boolean()) -> proper_types:type().
 command(Model) ->
     command(Model, pqc_kazoo_model:has_accounts(Model)).
 
+-spec command(any(), boolean()) -> proper_types:type().
 command(Model, 'false') ->
     pqc_cb_accounts:command(Model, name());
 command(Model, 'true') ->

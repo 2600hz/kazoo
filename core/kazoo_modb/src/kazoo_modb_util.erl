@@ -17,12 +17,12 @@
         ]).
 
 -spec prev_year_month(kz_term:ne_binary()) -> {kz_time:year(), kz_time:month()}.
--spec prev_year_month(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) ->
-                             {kz_time:year(), kz_time:month()}.
 prev_year_month(AccountMod) ->
     {_AccountId, Year, Month} = split_account_mod(AccountMod),
     prev_year_month(Year, Month).
 
+-spec prev_year_month(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) ->
+                             {kz_time:year(), kz_time:month()}.
 prev_year_month(<<_/binary>> = Year, Month) ->
     prev_year_month(kz_term:to_integer(Year), Month);
 prev_year_month(Year, <<_/binary>> = Month) ->
@@ -95,5 +95,5 @@ modb_id(Year, Month, Id) ->
     <<(kz_term:to_binary(Year))/binary
       ,(kz_date:pad_month(Month))/binary
       ,"-"
-      ,(Id)/binary
+      ,(kz_term:to_binary(Id))/binary
     >>.

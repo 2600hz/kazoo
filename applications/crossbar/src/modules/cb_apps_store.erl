@@ -57,18 +57,22 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?BLACKLIST) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_AppId) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_AppId, ?ICON) ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_AppId, ?SCREENSHOT, _AppScreenshotIndex) ->
     [?HTTP_GET].
 
@@ -78,13 +82,17 @@ allowed_methods(_AppId, ?SCREENSHOT, _AppScreenshotIndex) ->
 %% Does the path point to a valid resource
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, _) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_, _, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -92,9 +100,8 @@ resource_exists(_, _, _) -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, Id, ?ICON) ->
     Context1 = load_app_from_master_account(Context, Id),
@@ -113,6 +120,8 @@ content_types_provided(Context, Id, ?ICON) ->
     end;
 content_types_provided(Context, _, _) -> Context.
 
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
     Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -134,11 +143,12 @@ content_types_provided(Context, _, _, _) -> Context.
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authenticate(cb_context:context()) -> boolean().
--spec authenticate(http_method(), req_nouns()) -> boolean().
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec authenticate(http_method(), req_nouns()) -> boolean().
 authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
     lager:debug("authenticating request"),
     'true';
@@ -149,10 +159,10 @@ authenticate(_Verb, _Nouns) ->
     'false'.
 
 -spec authorize(cb_context:context()) -> boolean().
--spec authorize(http_method(), req_nouns()) -> boolean().
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec authorize(http_method(), req_nouns()) -> boolean().
 authorize(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
     lager:debug("authorizing request"),
     'true';
@@ -167,19 +177,19 @@ authorize(_Verb, _Nouns) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     load_apps(Context).
 
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?BLACKLIST) ->
     validate_req(Context, cb_context:req_verb(Context));
 validate(Context, Id) ->
     validate_app(Context, Id, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, AppId, ?ICON) ->
     Context1 = load_app_from_master_account(Context, AppId),
     case cb_context:resp_status(Context1) of
@@ -187,6 +197,7 @@ validate(Context, AppId, ?ICON) ->
         _ -> Context1
     end.
 
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, AppId, ?SCREENSHOT, Number) ->
     Context1 = load_app_from_master_account(Context, AppId),
     case cb_context:resp_status(Context1) of
@@ -389,11 +400,12 @@ load_apps(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec normalize_apps_result(kz_json:objects()) -> kz_json:objects().
--spec normalize_apps_result(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 normalize_apps_result(Apps) ->
     normalize_apps_result(Apps, []).
 
+-spec normalize_apps_result(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 normalize_apps_result([], Acc) -> Acc;
 normalize_apps_result([App|Apps], Acc) ->
     case kzd_app:is_published(App) of
@@ -615,9 +627,8 @@ load_apps_store(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_attachment(cb_context:context(), kz_term:ne_binary()) ->
-                            cb_context:context().
--spec get_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
                             cb_context:context().
 get_attachment(Context, Id) ->
     JObj = cb_context:doc(Context),
@@ -629,6 +640,8 @@ get_attachment(Context, Id) ->
             get_attachment(Context, Id, JObj, Attachment)
     end.
 
+-spec get_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
+                            cb_context:context().
 get_attachment(Context, Id, JObj, Attachment) ->
     Db = kz_doc:account_db(JObj),
     AppId = kz_doc:id(JObj),

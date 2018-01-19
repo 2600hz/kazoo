@@ -45,11 +45,10 @@
                     ]).
 
 -spec delete_modbs(kz_term:ne_binary()) -> 'ok' | 'no_return'.
--spec delete_modbs(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok' | 'no_return'.
--spec delete_modbs(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month(), boolean()) -> 'ok' | 'no_return'.
 delete_modbs(Period) ->
     delete_modbs(Period, 'true').
 
+-spec delete_modbs(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok' | 'no_return'.
 delete_modbs(Period, ShouldArchive) ->
     Regex = <<"(2[0-9]{3})(0[1-9]|1[0-2])">>,
     case re:run(Period, Regex, [{'capture', 'all', 'binary'}]) of
@@ -59,6 +58,7 @@ delete_modbs(Period, ShouldArchive) ->
             io:format("period '~s' does not match YYYYMM format~n", [Period])
     end.
 
+-spec delete_modbs(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month(), boolean()) -> 'ok' | 'no_return'.
 delete_modbs(<<_/binary>> = Year, Month, ShouldArchive) ->
     delete_modbs(kz_term:to_integer(Year), Month, ShouldArchive);
 delete_modbs(Year, <<_/binary>> = Month, ShouldArchive) ->
@@ -103,9 +103,10 @@ delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb, ShouldArchive) ->
     timer:sleep(5 * ?MILLISECONDS_IN_SECOND).
 
 -spec archive_modbs() -> 'no_return'.
--spec archive_modbs(kz_term:text()) -> 'no_return'.
 archive_modbs() ->
     do_archive_modbs(kapps_util:get_all_account_mods(), 'undefined').
+
+-spec archive_modbs(kz_term:text()) -> 'no_return'.
 archive_modbs(AccountId) ->
     do_archive_modbs(kapps_util:get_account_mods(AccountId), kz_term:to_binary(AccountId)).
 

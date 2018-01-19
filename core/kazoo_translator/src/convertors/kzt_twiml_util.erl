@@ -65,8 +65,9 @@ get_engine(Props) ->
 loop_count(Props) -> props:get_integer_value('loop', Props, 1).
 
 -spec finish_dtmf(kz_term:proplist()) -> kz_term:ne_binary().
--spec finish_dtmf(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 finish_dtmf(Props) -> finish_dtmf(Props, <<"#">>).
+
+-spec finish_dtmf(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 finish_dtmf(Props, Default) when is_list(Props) ->
     case props:get_binary_value('finishOnKey', Props) of
         'undefined' -> Default;
@@ -103,8 +104,9 @@ action_url(Props) -> props:get_binary_value('action', Props).
 reject_prompt(Props) -> props:get_binary_value('prompt', Props).
 
 -spec timeout_s(kz_term:proplist()) -> pos_integer().
--spec timeout_s(kz_term:proplist(), pos_integer()) -> pos_integer().
 timeout_s(Props) -> timeout_s(Props, 30).
+
+-spec timeout_s(kz_term:proplist(), pos_integer()) -> pos_integer().
 timeout_s(Props, Default) ->
     case props:get_integer_value('timeout', Props, Default) of
         N when is_integer(N), N > 3600 -> 3600;

@@ -200,33 +200,37 @@ declare_exchanges() ->
     amqp_util:new_exchange(?DISCOVERY_EXCHANGE, ?DISCOVERY_EXCHANGE_TYPE).
 
 -spec publish_flush(kz_term:api_terms()) -> 'ok'.
--spec publish_flush(kz_term:api_terms(), binary()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flush(kz_term:api_terms(), binary()) -> 'ok'.
 publish_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DISCOVERY_FLUSH_VALUES, fun flush/1),
     amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_FLUSH_RK, Payload, ContentType).
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DISCOVERY_REQ_VALUES, fun req/1),
     amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_REQ_RK, Payload, ContentType).
 
 -spec publish_number_req(kz_term:api_terms()) -> 'ok'.
--spec publish_number_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_number_req(JObj) ->
     publish_number_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_number_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_number_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NUMBER_REQ_VALUES, fun number_req/1),
     amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?NUMBER_REQ_RK, Payload, ContentType).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
     publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?DISCOVERY_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

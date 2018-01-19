@@ -79,11 +79,12 @@ resource_exists() -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authorize(cb_context:context()) -> boolean().
--spec authorize(cb_context:context(), req_nouns()) -> boolean().
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
+-spec authorize(cb_context:context(), req_nouns()) -> boolean().
 authorize(_, [{<<"shared_auth">>, _}]) ->'true';
 authorize(_, _) -> 'false'.
 
@@ -92,11 +93,12 @@ authorize(_, _) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authenticate(cb_context:context()) -> boolean().
--spec authenticate(http_method(), req_nouns()) -> boolean().
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec authenticate(http_method(), req_nouns()) -> boolean().
 authenticate(?HTTP_PUT, [{<<"shared_auth">>, []}]) -> 'true';
 authenticate(_, _) -> 'false'.
 
@@ -125,11 +127,12 @@ authenticate(_, _) -> 'false'.
 %% Failure here returns 400 or 401
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate_request(cb_context:context(), http_method(), kz_term:api_object()) -> cb_context:context().
 validate(Context) ->
     validate_request(Context, cb_context:req_verb(Context), cb_context:auth_doc(Context)).
 
+-spec validate_request(cb_context:context(), http_method(), kz_term:api_object()) -> cb_context:context().
 validate_request(Context, ?HTTP_PUT, _) ->
     _ = cb_context:put_reqid(Context),
     SharedToken = kz_json:get_value(<<"shared_token">>, cb_context:req_data(Context)),

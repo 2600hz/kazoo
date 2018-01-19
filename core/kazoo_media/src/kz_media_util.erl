@@ -8,7 +8,9 @@
 -module(kz_media_util).
 
 -export([recording_url/2]).
--export([base_url/2, base_url/3]).
+-export([base_url/2, base_url/3
+        ,proxy_host/0
+        ]).
 -export([convert_stream_type/1
         ,normalize_media/3, normalize_media/4
         ,normalize_media_file/3, normalize_media_file/4
@@ -70,13 +72,13 @@
 
 -spec normalize_media(kz_term:ne_binary(), kz_term:ne_binary(), binary()) ->
                              normalized_media().
--spec normalize_media(kz_term:ne_binary(), kz_term:ne_binary(), binary(), normalization_options()) ->
-                             normalized_media().
 normalize_media(FromFormat, FromFormat, FileContents) ->
     {'ok', FileContents};
 normalize_media(FromFormat, ToFormat, FileContents) ->
     normalize_media(FromFormat, ToFormat, FileContents, default_normalization_options(ToFormat)).
 
+-spec normalize_media(kz_term:ne_binary(), kz_term:ne_binary(), binary(), normalization_options()) ->
+                             normalized_media().
 normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     FileName = tmp_file(FromFormat),
     case file:write_file(FileName, FileContents) of
@@ -380,29 +382,15 @@ max_recording_time_limit() ->
 %%     base_url(Host, Port).
 
 -spec base_url(kz_term:text(), kz_term:text()) -> kz_term:ne_binary().
--spec base_url(kz_term:text(), kz_term:text(), atom()) -> kz_term:ne_binary().
 base_url(Host, Port) ->
     base_url(Host, Port, 'proxy_playback').
 
-%% base_url(Host, Port, 'direct_playback') ->
-%%     case ?AUTH_PLAYBACK of
-%%         'false' -> build_url(Host, Port, [], []);
-%%         'true' ->
-%%             {Username, Password} = kz_couch_connections:get_creds(),
-%%             build_url(Host, Port, Username, Password)
-%%     end;
+-spec base_url(kz_term:text(), kz_term:text(), atom()) -> kz_term:ne_binary().
 base_url(Host, Port, 'proxy_playback') ->
     case ?AUTH_PLAYBACK of
         'false' -> build_url(Host, Port, [], []);
         'true' -> build_url(Host, Port, ?AUTH_USERNAME, ?AUTH_PASSWORD)
     end;
-%% base_url(Host, Port, 'direct_store') ->
-%%     case ?USE_AUTH_STORE of
-%%         'false' -> build_url(Host, Port, [], []);
-%%         'true' ->
-%%             {Username, Password} = kz_couch_connections:get_creds(),
-%%             build_url(Host, Port, Username, Password)
-%%     end;
 base_url(Host, Port, 'proxy_store') ->
     case ?USE_AUTH_STORE of
         'false' -> build_url(Host, Port, [], []);
@@ -414,14 +402,14 @@ build_url(H, P, [], []) ->
                  'true' -> <<"https">>;
                  'false' -> <<"http">>
              end,
-    list_to_binary([Scheme, "://", kz_term:to_binary(H), ":", kz_term:to_binary(P), "/"]);
+    list_to_binary([Scheme, "://", kz_term:to_binary(H), ":", kz_term:to_binary(P)]);
 build_url(H, P, User, Pwd) ->
     Scheme = case ?USE_HTTPS of
                  'true' -> <<"https">>;
                  'false' -> <<"http">>
              end,
     list_to_binary([Scheme, "://", User, ":", Pwd
-                   ,"@", kz_term:to_binary(H), ":", kz_term:to_binary(P), "/"
+                   ,"@", kz_term:to_binary(H), ":", kz_term:to_binary(P)
                    ]).
 
 -spec convert_stream_type(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -430,9 +418,9 @@ convert_stream_type(<<"store">>) -> <<"store">>;
 convert_stream_type(_) -> <<"single">>.
 
 -spec media_path(kz_term:api_binary()) -> kz_term:api_binary().
--spec media_path(kz_term:api_binary(), kz_term:api_ne_binary()) -> kz_term:api_binary().
 media_path(Path) -> media_path(Path, 'undefined').
 
+-spec media_path(kz_term:api_binary(), kz_term:api_ne_binary()) -> kz_term:api_binary().
 media_path('undefined', _AccountId) -> 'undefined';
 media_path(<<>>, _AccountId) -> 'undefined';
 media_path(<<"/system_media", _/binary>> = Path, _AccountId) -> Path;
@@ -452,11 +440,12 @@ media_path(Path, AccountId) when is_binary(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec prompt_path(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec prompt_path(kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 prompt_path(PromptId) ->
     prompt_path(?KZ_MEDIA_DB, PromptId).
 
+-spec prompt_path(kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 prompt_path('undefined', PromptId) ->
     prompt_path(?KZ_MEDIA_DB, PromptId);
 prompt_path(Db, <<"/system_media/", PromptId/binary>>) ->
@@ -465,9 +454,9 @@ prompt_path(Db, PromptId) ->
     kz_binary:join([<<>>, Db, PromptId], <<"/">>).
 
 -spec prompt_id(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec prompt_id(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 prompt_id(PromptId) -> prompt_id(PromptId, 'undefined').
 
+-spec prompt_id(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
     prompt_id(PromptId, Lang);
 prompt_id(PromptId, 'undefined') -> PromptId;
@@ -475,23 +464,21 @@ prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
     filename:join([Lang, PromptId]).
 
+
 -spec get_prompt(kz_term:ne_binary()) ->
                         kz_term:api_ne_binary().
--spec get_prompt(kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                        kz_term:api_ne_binary().
--spec get_prompt(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
-                        kz_term:api_ne_binary().
--spec get_prompt(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), boolean()) ->
-                        kz_term:api_ne_binary().
-
 get_prompt(Name) ->
     get_prompt(Name, 'undefined').
 
+-spec get_prompt(kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+                        kz_term:api_ne_binary().
 get_prompt(Name, 'undefined') ->
     get_prompt(Name, default_prompt_language(), 'undefined');
 get_prompt(Name, <<_/binary>> = Lang) ->
     get_prompt(Name, Lang, 'undefined').
 
+-spec get_prompt(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+                        kz_term:api_ne_binary().
 get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId) ->
     lager:debug("prompt is already encoded: ~s", [PromptId]),
     PromptId;
@@ -502,6 +489,8 @@ get_prompt(PromptId, Lang, 'undefined') ->
 get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
     get_prompt(PromptId, Lang, AccountId, ?USE_ACCOUNT_OVERRIDES).
 
+-spec get_prompt(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), boolean()) ->
+                        kz_term:api_ne_binary().
 get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId, _UseOverride) ->
     lager:debug("prompt is already encoded: ~s", [PromptId]),
     PromptId;
@@ -512,11 +501,10 @@ get_prompt(PromptId, Lang, _AccountId, 'false') ->
     lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
     kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>).
 
+%% tries account default, then system
+
 -spec get_account_prompt(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) ->
                                 kz_term:api_ne_binary().
--spec get_account_prompt(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                kz_term:api_ne_binary().
-%% tries account default, then system
 get_account_prompt(Name, 'undefined', AccountId) ->
     PromptId = prompt_id(Name),
     lager:debug("getting account prompt for '~s'", [PromptId]),
@@ -558,6 +546,8 @@ get_account_prompt(Name, Lang, AccountId) ->
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end.
 
+-spec get_account_prompt(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                kz_term:api_ne_binary().
 get_account_prompt(Name, 'undefined', AccountId, OriginalLang) ->
     PromptId = prompt_id(Name),
     lager:debug("getting account prompt for '~s'", [PromptId]),
@@ -652,9 +642,10 @@ get_system_prompt(Name, Lang) ->
     end.
 
 -spec default_prompt_language() -> kz_term:ne_binary().
--spec default_prompt_language(kz_term:api_binary()) -> kz_term:ne_binary().
 default_prompt_language() ->
     default_prompt_language(<<"en-us">>).
+
+-spec default_prompt_language(kz_term:api_binary()) -> kz_term:ne_binary().
 default_prompt_language(Default) ->
     kz_term:to_lower_binary(
       kapps_config:get_ne_binary(?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
@@ -703,3 +694,10 @@ store_path_from_doc(JObj, AName) ->
                      ,att = AName
                      ,opt = props:filter_undefined(Opts)
                      }.
+
+-spec proxy_host() -> kz_term:ne_binary().
+proxy_host() ->
+    case kapps_config:get_ne_binary(?CONFIG_CAT, <<"proxy_hostname">>) of
+        'undefined' -> kz_network_utils:get_hostname();
+        ProxyHostname -> ProxyHostname
+    end.

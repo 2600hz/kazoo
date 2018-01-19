@@ -53,9 +53,10 @@
 -export_type([doc/0]).
 
 -spec call_direction(doc()) -> kz_term:api_binary().
--spec call_direction(doc(), Default) -> kz_term:ne_binary() | Default.
 call_direction(JObj) ->
     call_direction(JObj, 'undefined').
+
+-spec call_direction(doc(), Default) -> kz_term:ne_binary() | Default.
 call_direction(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Call-Direction">>, JObj, Default).
 
@@ -68,9 +69,10 @@ other_leg_call_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, JObj).
 
 -spec other_leg_destination_number(doc()) -> kz_term:api_binary().
--spec other_leg_destination_number(doc(), Default) -> kz_term:ne_binary() | Default.
 other_leg_destination_number(JObj) ->
     other_leg_destination_number(JObj, 'undefined').
+
+-spec other_leg_destination_number(doc(), Default) -> kz_term:ne_binary() | Default.
 other_leg_destination_number(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Other-Leg-Destination-Number">>, JObj, Default).
 
@@ -83,38 +85,38 @@ channel_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Channel-Name">>, JObj).
 
 -spec custom_channel_vars(doc()) -> kz_term:api_object().
--spec custom_channel_vars(doc(), Default) -> kz_json:object() | Default.
 custom_channel_vars(JObj) ->
     custom_channel_vars(JObj, 'undefined').
 
+-spec custom_channel_vars(doc(), Default) -> kz_json:object() | Default.
 custom_channel_vars(JObj, Default) ->
     kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, Default).
 
 -spec custom_channel_var(doc(), kz_json:path()) ->
                                 kz_term:api_binary().
--spec custom_channel_var(doc(), kz_json:path(), Default) ->
-                                kz_term:ne_binary() | Default.
 custom_channel_var(JObj, Key) ->
     custom_channel_var(JObj, Key, 'undefined').
 
+-spec custom_channel_var(doc(), kz_json:path(), Default) ->
+                                kz_term:ne_binary() | Default.
 custom_channel_var(JObj, Key, Default) ->
     kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
 
 -spec custom_application_vars(doc()) -> kz_term:api_object().
--spec custom_application_vars(doc(), Default) -> kz_json:object() | Default.
 custom_application_vars(JObj) ->
     custom_application_vars(JObj, 'undefined').
 
+-spec custom_application_vars(doc(), Default) -> kz_json:object() | Default.
 custom_application_vars(JObj, Default) ->
     kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, Default).
 
 -spec custom_application_var(doc(), kz_json:path()) ->
                                     kz_term:api_binary().
--spec custom_application_var(doc(), kz_json:path(), Default) ->
-                                    kz_term:ne_binary() | Default.
 custom_application_var(JObj, Key) ->
     custom_application_var(JObj, Key, 'undefined').
 
+-spec custom_application_var(doc(), kz_json:path(), Default) ->
+                                    kz_term:ne_binary() | Default.
 custom_application_var(JObj, Key, Default) ->
     kz_json:get_ne_binary_value([<<"Custom-Application-Vars">>, Key], JObj, Default).
 
@@ -145,9 +147,10 @@ event_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Event-Name">>, JObj).
 
 -spec hangup_cause(doc()) -> kz_term:api_binary().
--spec hangup_cause(doc(), Default) -> kz_term:ne_binary() | Default.
 hangup_cause(JObj) ->
     hangup_cause(JObj, 'undefined').
+
+-spec hangup_cause(doc(), Default) -> kz_term:ne_binary() | Default.
 hangup_cause(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Hangup-Cause">>, JObj, Default).
 
@@ -184,9 +187,10 @@ response_code(JObj) ->
     kz_json:get_ne_binary_value(<<"Response-Code">>, JObj).
 
 -spec account_id(doc()) -> kz_term:api_binary().
--spec account_id(doc(), Default) -> kz_term:ne_binary() | Default.
 account_id(JObj) ->
     account_id(JObj, 'undefined').
+
+-spec account_id(doc(), Default) -> kz_term:ne_binary() | Default.
 account_id(JObj, Default) ->
     custom_channel_var(JObj, <<"Account-ID">>, Default).
 
@@ -211,9 +215,10 @@ duration_seconds(JObj) ->
     kz_json:get_integer_value(<<"Duration-Seconds">>, JObj).
 
 -spec is_call_forwarded(doc()) -> kz_term:api_boolean().
--spec is_call_forwarded(doc(), Default) -> boolean() | Default.
 is_call_forwarded(JObj) ->
     is_call_forwarded(JObj, 'undefined').
+
+-spec is_call_forwarded(doc(), Default) -> boolean() | Default.
 is_call_forwarded(JObj, Default) ->
     case custom_channel_var(JObj, <<"Call-Forward">>, Default) of
         'undefined' -> Default;

@@ -1,0 +1,152 @@
+[
+    {
+        "id": "vmbox01",
+        "key": null,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "timestamp": null
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": null,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "folder": "saved",
+                "media_id": "vmbox01-msg05-private-media-timestamp",
+                "timestamp": null
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": null,
+        "value": {
+            "mailbox": "1001",
+            "metadata": {
+                "folder": "saved",
+                "media_id": "vmbox01-msg06-now_s",
+                "timestamp": null
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": null,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "from": "15554443344@10.0.1.1",
+                "timestamp": null
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": null,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "media_id": "vmbox01-msg07-private-media-timestamp",
+                "timestamp": null
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": null,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "media_id": "vmbox01-msg08-no_private_media-box_timestamp",
+                "timestamp": null
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": 63675605708,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "call_id": "af671260365e0d9c5c6ef80dfa00cd47",
+                "caller_id_name": "NO ONE",
+                "caller_id_number": "15554443344",
+                "folder": "new",
+                "from": "15554443344@10.0.1.1",
+                "length": 20520,
+                "media_id": "vmbox01-msg01-should-migrate",
+                "timestamp": 63675605708,
+                "to": "1001@4a6863.sip.2600hz.local"
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": 63675606808,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "folder": "new",
+                "media_id": "vmbox01-msg02-migrate-retries1",
+                "timestamp": 63675606808
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": 63675806808,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "folder": "new",
+                "media_id": "vmbox01-msg03-migrate-retries2",
+                "timestamp": 63675806808
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    },
+    {
+        "id": "vmbox01",
+        "key": 63675806818,
+        "value": {
+            "box_timestamp": 63673774878,
+            "mailbox": "1001",
+            "metadata": {
+                "folder": "new",
+                "media_id": "vmbox01-msg04-migrate-retries3",
+                "timestamp": 63675806818
+            },
+            "owner_id": "user0000000000000000000000000001",
+            "source_id": "vmbox01"
+        }
+    }
+]

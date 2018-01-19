@@ -129,11 +129,11 @@ create_call_from_context(Context) ->
     kapps_call:exec(Routines, kapps_call:new()).
 
 -spec request_specific_extraction_funs(cb_context:context()) -> kapps_call:exec_funs().
--spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) ->
-                                                         kapps_call:exec_funs().
 request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
+-spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) ->
+                                                         kapps_call:exec_funs().
 request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
     NumberURI = build_number_uri(Context, Number),
     [{fun kapps_call:set_authorizing_id/2, DeviceId}
@@ -178,10 +178,10 @@ build_number_uri(Context, Number) ->
     <<UseNumber/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(kapps_call:call(), cb_context:context()) -> kz_json:objects().
--spec get_endpoints(kapps_call:call(), cb_context:context(), req_nouns()) -> kz_json:objects().
 get_endpoints(Call, Context) ->
     get_endpoints(Call, Context, cb_context:req_nouns(Context)).
 
+-spec get_endpoints(kapps_call:call(), cb_context:context(), req_nouns()) -> kz_json:objects().
 get_endpoints(Call, _Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
     Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                    ,{<<"suppress_clid">>, 'true'}
@@ -357,10 +357,10 @@ set_quickcall_outbound_call_id(Endpoint) ->
     kz_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
 
 -spec get_application_data(cb_context:context()) -> kz_json:object().
--spec get_application_data_from_nouns(req_nouns()) -> kz_json:object().
 get_application_data(Context) ->
     get_application_data_from_nouns(cb_context:req_nouns(Context)).
 
+-spec get_application_data_from_nouns(req_nouns()) -> kz_json:object().
 get_application_data_from_nouns(?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
     kz_json:from_list([{<<"Route">>, Number}]);
 get_application_data_from_nouns(?USERS_QCALL_NOUNS(_UserId, Number)) ->
@@ -439,10 +439,10 @@ parse_media_type(MediaType) ->
     end.
 
 -spec bucket_name(cb_context:context()) -> kz_term:ne_binary().
--spec bucket_name(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 bucket_name(Context) ->
     bucket_name(cb_context:client_ip(Context), cb_context:account_id(Context)).
 
+-spec bucket_name(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 bucket_name('undefined', 'undefined') ->
     <<"no_ip/no_account">>;
 bucket_name(IP, 'undefined') ->
@@ -452,13 +452,12 @@ bucket_name('undefined', AccountId) ->
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
 
--spec token_cost(cb_context:context()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer() | kz_json:path()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer(), kz_json:path()) -> non_neg_integer().
 
+-spec token_cost(cb_context:context()) -> non_neg_integer().
 token_cost(Context) ->
     token_cost(Context, 1).
 
+-spec token_cost(cb_context:context(), non_neg_integer() | kz_json:path()) -> non_neg_integer().
 token_cost(Context, <<_/binary>> = Suffix) ->
     token_cost(Context, 1, [Suffix]);
 token_cost(Context, [_|_]=Suffix) ->
@@ -466,6 +465,7 @@ token_cost(Context, [_|_]=Suffix) ->
 token_cost(Context, Default) ->
     token_cost(Context, Default, []).
 
+-spec token_cost(cb_context:context(), non_neg_integer(), kz_json:path()) -> non_neg_integer().
 token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
     Costs = kapps_config:get_integer(?CONFIG_CAT, <<"token_costs">>, 1),
     find_token_cost(Costs

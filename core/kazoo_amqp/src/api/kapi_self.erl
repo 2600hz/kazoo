@@ -32,9 +32,10 @@ declare_exchanges() ->
     amqp_util:targeted_exchange().
 
 -spec publish_message(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
--spec publish_message(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_message(ServerId, JObj) ->
     publish_message(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_message(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_message(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [], fun build/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).

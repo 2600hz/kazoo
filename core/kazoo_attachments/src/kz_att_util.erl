@@ -103,7 +103,7 @@ format_url_field(_JObj, Args, {'arg', Arg}, Fields) ->
 format_url_field(JObj, Args, #{<<"field">> := Field}, Fields) ->
     format_url_field(JObj, Args, {'field', Field}, Fields);
 format_url_field(JObj, _Args, {'field', Field}, Fields) ->
-    case kz_json:get_value(Field, JObj) of
+    case kz_json:get_ne_binary_value(Field, JObj) of
         'undefined' -> Fields;
         V -> [kz_util:uri_encode(V) | Fields]
     end;

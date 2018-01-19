@@ -105,16 +105,17 @@ authorize(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authenticate(cb_context:context()) ->
-                          boolean() |
-                          {'true' | 'stop', cb_context:context()}.
--spec authenticate(cb_context:context(), kz_term:api_ne_binary(), atom()) ->
                           boolean() |
                           {'true' | 'stop', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     authenticate(Context, cb_context:auth_account_id(Context), cb_context:auth_token_type(Context)).
 
+-spec authenticate(cb_context:context(), kz_term:api_ne_binary(), atom()) ->
+                          boolean() |
+                          {'true' | 'stop', cb_context:context()}.
 authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
 authenticate(Context, 'undefined', 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
@@ -138,13 +139,13 @@ authenticate(_Context, _AccountId, _TokenType) -> 'false'.
 -spec early_authenticate(cb_context:context()) ->
                                 boolean() |
                                 {'true', cb_context:context()}.
--spec early_authenticate(cb_context:context(), atom() | kz_term:api_binary()) ->
-                                boolean() |
-                                {'true', cb_context:context()}.
 early_authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     early_authenticate(Context, cb_context:auth_token_type(Context)).
 
+-spec early_authenticate(cb_context:context(), atom() | kz_term:api_binary()) ->
+                                boolean() |
+                                {'true', cb_context:context()}.
 early_authenticate(Context, 'x-auth-token') ->
     early_authenticate_token(Context, cb_context:auth_token(Context));
 early_authenticate(_Context, _TokenType) -> 'false'.

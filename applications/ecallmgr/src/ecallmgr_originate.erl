@@ -625,18 +625,18 @@ update_uuid(OldUUID, NewUUID) ->
     bind_to_call_events(NewUUID),
     'ok'.
 
--spec create_uuid(atom()) -> created_uuid().
--spec create_uuid(kz_json:object(), atom()) -> created_uuid().
--spec create_uuid(kz_json:object(), kz_json:object(), atom()) -> created_uuid().
 
+-spec create_uuid(atom()) -> created_uuid().
 create_uuid(_Node) -> {'fs', kz_binary:rand_hex(18)}.
 
+-spec create_uuid(kz_json:object(), atom()) -> created_uuid().
 create_uuid(JObj, Node) ->
     case kz_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' -> create_uuid(Node);
         CallId -> {'api', CallId}
     end.
 
+-spec create_uuid(kz_json:object(), kz_json:object(), atom()) -> created_uuid().
 create_uuid(Endpoint, _JObj, Node) ->
     case kz_json:get_binary_value(<<"Outbound-Call-ID">>, Endpoint) of
         'undefined' -> create_uuid(Node);

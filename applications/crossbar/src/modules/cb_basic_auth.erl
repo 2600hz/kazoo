@@ -41,15 +41,16 @@ init() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authenticate(cb_context:context()) ->
-                          'false' |
-                          {'true' | 'stop', cb_context:context()}.
--spec authenticate(cb_context:context(), atom()) ->
                           'false' |
                           {'true' | 'stop', cb_context:context()}.
 authenticate(Context) ->
     authenticate(Context, cb_context:auth_token_type(Context)).
 
+-spec authenticate(cb_context:context(), atom()) ->
+                          'false' |
+                          {'true' | 'stop', cb_context:context()}.
 authenticate(Context, 'basic') ->
     _ = cb_context:put_reqid(Context),
     case kz_buckets:consume_tokens(?APP_NAME

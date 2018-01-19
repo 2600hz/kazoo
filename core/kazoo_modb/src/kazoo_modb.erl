@@ -47,13 +47,13 @@
 -spec get_results(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
                          {'ok', kz_json:objects()} |
                          {'error', atom()}.
--spec get_results(kz_term:ne_binary(), kz_term:ne_binary(), view_options(), atom(), non_neg_integer()) ->
-                         {'ok', kz_json:objects()} |
-                         {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
     MaxRetries = props:get_integer_value('max_retries', ViewOptions, ?MAX_RETRIES),
     get_results(Account, View, ViewOptions, 'first_try', MaxRetries).
 
+-spec get_results(kz_term:ne_binary(), kz_term:ne_binary(), view_options(), atom(), non_neg_integer()) ->
+                         {'ok', kz_json:objects()} |
+                         {'error', atom()}.
 get_results(_Account, _View, _ViewOptions, Reason, Retry) when Retry =< 0 ->
     lager:debug("max retries to get view ~s/~s results: ~p", [_Account, _View, Reason]),
     {'error', Reason};
@@ -109,13 +109,8 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec open_doc(kz_term:ne_binary(), kazoo_data:docid()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', atom()}.
--spec open_doc(kz_term:ne_binary(), kazoo_data:docid(), integer() | view_options()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', atom()}.
--spec open_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
 open_doc(Account, {_, ?MATCH_MODB_PREFIX(Year,Month,_)} = DocId) ->
@@ -128,6 +123,9 @@ open_doc(Account, DocId) ->
     AccountMODb = get_modb(Account),
     couch_open(AccountMODb, DocId).
 
+-spec open_doc(kz_term:ne_binary(), kazoo_data:docid(), integer() | view_options()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
 open_doc(Account, DocId, Options)
   when is_list(Options) ->
     AccountMODb = get_modb(Account, Options),
@@ -137,6 +135,9 @@ open_doc(Account, DocId, Timestamp)
     AccountMODb = get_modb(Account, Timestamp),
     couch_open(AccountMODb, DocId).
 
+-spec open_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
 open_doc(Account, DocId, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_open(AccountMODb, DocId).
@@ -163,18 +164,16 @@ couch_open(AccountMODb, DocId, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save_doc(kz_term:ne_binary(), kz_json:object()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', atom()}.
--spec save_doc(kz_term:ne_binary(), kz_json:object(), kz_time:now() | kz_time:gregorian_seconds() | kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', atom()}.
--spec save_doc(kz_term:ne_binary(), kz_json:object(), kz_time:year() | kz_term:ne_binary() | kz_time:now(), kz_time:month() | kz_term:ne_binary() | kz_term:proplist()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
 save_doc(Account, Doc) ->
     save_doc(Account, Doc, []).
 
+-spec save_doc(kz_term:ne_binary(), kz_json:object(), kz_time:now() | kz_time:gregorian_seconds() | kz_term:proplist()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
 save_doc(Account, Doc, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account),
     MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
@@ -182,6 +181,9 @@ save_doc(Account, Doc, Options) when is_list(Options) ->
 save_doc(Account, Doc, Timestamp) ->
     save_doc(Account, Doc, Timestamp, []).
 
+-spec save_doc(kz_term:ne_binary(), kz_json:object(), kz_time:year() | kz_term:ne_binary() | kz_time:now(), kz_time:month() | kz_term:ne_binary() | kz_term:proplist()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
 save_doc(Account, Doc, Timestamp, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account, Timestamp),
     MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
@@ -357,11 +359,8 @@ maybe_create_destination_db(FromDb, FromId, ToDb, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_modb(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec get_modb(kz_term:ne_binary(), view_options() | kz_time:gregorian_seconds() | kz_time:now()) ->
-                      kz_term:ne_binary().
--spec get_modb(kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
-                      kz_term:ne_binary().
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb) ->
     AccountMODb;
 get_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountMODb) ->
@@ -373,6 +372,8 @@ get_modb(Account) ->
     {Year, Month, _} = erlang:date(),
     get_modb(AccountDb, Year, Month).
 
+-spec get_modb(kz_term:ne_binary(), view_options() | kz_time:gregorian_seconds() | kz_time:now()) ->
+                      kz_term:ne_binary().
 get_modb(Account, ViewOptions) when is_list(ViewOptions) ->
     AccountDb = kz_util:format_account_db(Account),
     case {props:get_value('month', ViewOptions)
@@ -390,6 +391,8 @@ get_modb(Account, ViewOptions) when is_list(ViewOptions) ->
 get_modb(Account, Timestamp) ->
     kz_util:format_account_mod_id(Account, Timestamp).
 
+-spec get_modb(kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
+                      kz_term:ne_binary().
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb, _Year, _Month) ->
     AccountMODb;
 get_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountMODb, _Year, _Month) ->
@@ -570,13 +573,14 @@ delete_if_orphaned(AccountMODb, 'true') ->
 
 
 %% @public
+
 -spec get_range(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
-                       kz_term:ne_binaries().
--spec get_range(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                        kz_term:ne_binaries().
 get_range(AccountId, From, To) ->
     get_range(<<"any">>, AccountId, From, To).
 
+-spec get_range(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
+                       kz_term:ne_binaries().
 get_range(Type, AccountId, From, To) ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear,   ToMonth,   _}, _} = calendar:gregorian_seconds_to_datetime(To),

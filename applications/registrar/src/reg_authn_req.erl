@@ -485,12 +485,12 @@ encryption_method_map(Props, JObj) ->
     Methods = kz_json:get_value(Key, JObj, []),
     encryption_method_map(Props, Methods).
 
--spec generate_security_ccvs(auth_user()) -> kz_term:proplist().
--spec generate_security_ccvs(auth_user(), kz_term:proplist()) -> kz_term:proplist().
 
+-spec generate_security_ccvs(auth_user()) -> kz_term:proplist().
 generate_security_ccvs(#auth_user{}=User) ->
     generate_security_ccvs(User, []).
 
+-spec generate_security_ccvs(auth_user(), kz_term:proplist()) -> kz_term:proplist().
 generate_security_ccvs(#auth_user{}=User, Acc0) ->
     CCVFuns = [fun maybe_enforce_security/1
               ,fun maybe_set_encryption_flags/1

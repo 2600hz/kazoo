@@ -154,11 +154,11 @@ start_timer() ->
     erlang:send_after(?MILLISECONDS_IN_MINUTE, self(), ?STAT_CHECK_MSG).
 
 -spec check_stats() -> 'ok'.
--spec check_stats(kz_term:ne_binary()) -> 'ok'.
 check_stats() ->
     kz_util:put_callid(?MODULE),
     lists:foreach(fun check_stats/1, hangups_config:monitored_hangup_causes()).
 
+-spec check_stats(kz_term:ne_binary()) -> 'ok'.
 check_stats(HC) ->
     MeterName = hangups_util:meter_name(HC),
     try folsom_metrics_meter:get_values(MeterName) of

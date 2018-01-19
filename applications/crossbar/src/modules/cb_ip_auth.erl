@@ -176,8 +176,8 @@ on_successful_load(Context, _Status, _Doc) ->
 %% Attempt to create a token
 %% @end
 %%--------------------------------------------------------------------
+
 -spec create_fake_token(cb_context:context()) -> cb_context:context().
--spec create_fake_token(cb_context:context(), kz_json:object()) -> cb_context:context().
 create_fake_token(Context) ->
     JObj = cb_context:doc(Context),
     case kz_json:is_empty(JObj) of
@@ -187,6 +187,7 @@ create_fake_token(Context) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
+-spec create_fake_token(cb_context:context(), kz_json:object()) -> cb_context:context().
 create_fake_token(Context, JObj) ->
     AccountId = kz_json:get_value([<<"value">>, <<"account_id">>], JObj),
     AuthToken = kz_binary:rand_hex(12),

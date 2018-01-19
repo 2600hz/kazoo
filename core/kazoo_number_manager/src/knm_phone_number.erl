@@ -187,10 +187,9 @@ from_number_with_options(DID, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec fetch(kz_term:ne_binary()) -> knm_phone_number_return();
            (knm_numbers:collection()) -> knm_numbers:collection().
--spec fetch(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
-
 fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
@@ -347,6 +346,8 @@ split_by_prevassignedto(PNs) ->
     lists:foldl(F, #{}, PNs).
 
 -ifdef(TEST).
+
+-spec fetch(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
 fetch(Num, Options) ->
     case test_fetch(Num) of
         {error, _}=E -> E;
@@ -412,6 +413,8 @@ test_fetch(?TEST_PORT_IN3_NUM) -> {ok, ?PORT_IN3_NUMBER};
 test_fetch(_DID=?NE_BINARY) ->
     {error, not_found}.
 -else.
+
+-spec fetch(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
 fetch(Num=?NE_BINARY, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
@@ -1788,10 +1791,6 @@ database_error(NumOrNums, E, T) ->
     Reason = knm_errors:to_json(A, B, C),
     knm_numbers:ko(NumOrNums, Reason, T).
 
--spec save_docs(kz_term:ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
-                                                   {error, kz_data:data_errors()}.
--spec delete_docs(kz_term:ne_binary(), kz_term:ne_binaries()) -> {ok, kz_json:objects()} |
-                                                 {error, kz_data:data_errors()}.
 -ifdef(TEST).
 mock_docs_return(?NE_BINARY=Id) ->
     kz_json:from_list(
@@ -1801,16 +1800,25 @@ mock_docs_return(?NE_BINARY=Id) ->
 mock_docs_return(Doc) ->
     mock_docs_return(kz_doc:id(Doc)).
 
+-spec save_docs(kz_term:ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
+                                                   {error, kz_data:data_errors()}.
 save_docs(?NE_BINARY, Docs) ->
     {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
 
+-spec delete_docs(kz_term:ne_binary(), kz_term:ne_binaries()) -> {ok, kz_json:objects()} |
+                                                 {error, kz_data:data_errors()}.
 delete_docs(?NE_BINARY, Ids) ->
     {ok, [mock_docs_return(Id) || Id <- Ids]}.
 -else.
+
+-spec delete_docs(kz_term:ne_binary(), kz_term:ne_binaries()) -> {ok, kz_json:objects()} |
+                                                 {error, kz_data:data_errors()}.
 delete_docs(Db, Ids) ->
     %% Note: deleting unexisting docs returns ok.
     kz_datamgr:del_docs(Db, Ids).
 
+-spec save_docs(kz_term:ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
+                                                   {error, kz_data:data_errors()}.
 save_docs(Db, Docs) ->
     kz_datamgr:save_docs(Db, Docs).
 -endif.

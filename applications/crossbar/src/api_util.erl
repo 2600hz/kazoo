@@ -97,12 +97,13 @@ is_cors_preflight(Req) ->
 %% request
 %% @end
 %%--------------------------------------------------------------------
+
 -spec is_cors_request(cowboy_req:req()) -> boolean().
--spec is_cors_request(cowboy_req:req(), kz_term:ne_binaries()) -> boolean().
 is_cors_request(Req) ->
     ReqHdrs = [<<"origin">>, <<"access-control-request-method">>, <<"access-control-request-headers">>],
     is_cors_request(Req, ReqHdrs).
 
+-spec is_cors_request(cowboy_req:req(), kz_term:ne_binaries()) -> boolean().
 is_cors_request(_Req, []) -> 'false';
 is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
     'undefined' =/= cowboy_req:header(ReqHdr, Req)
@@ -150,21 +151,18 @@ get_cors_headers(Allow) ->
 -spec get_req_data(cb_context:context(), cowboy_req:req()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
--spec get_req_data(cb_context:context(), cowboy_req:req(), content_type(), kz_json:object()) ->
-                          {cb_context:context(), cowboy_req:req()} |
-                          stop_return().
 get_req_data(Context, Req0) ->
     {QS, Req1} = get_query_string_data(Req0),
     get_req_data(Context, Req1, get_content_type(Req1), QS).
 
 -spec get_query_string_data(cowboy_req:req()) ->
                                    {kz_json:object(), cowboy_req:req()}.
--spec get_query_string_data(kz_term:proplist(), cowboy_req:req()) ->
-                                   {kz_json:object(), cowboy_req:req()}.
 get_query_string_data(Req) ->
     QS = cowboy_req:parse_qs(Req),
     get_query_string_data(QS, Req).
 
+-spec get_query_string_data(kz_term:proplist(), cowboy_req:req()) ->
+                                   {kz_json:object(), cowboy_req:req()}.
 get_query_string_data([], Req) ->
     {kz_json:new(), Req};
 get_query_string_data(QS0, Req) ->
@@ -180,6 +178,9 @@ get_content_type(Req) ->
             <<Main/binary, "/", Sub/binary>>
     end.
 
+-spec get_req_data(cb_context:context(), cowboy_req:req(), content_type(), kz_json:object()) ->
+                          {cb_context:context(), cowboy_req:req()} |
+                          stop_return().
 get_req_data(Context, Req0, 'undefined', QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
     {Body, Req1} = get_request_body(Req0),
@@ -301,8 +302,6 @@ try_json(ReqBody, QS, Context, Req) ->
             stop_on_invalid_envelope(Req, Context)
     end.
 
--spec stop_on_invalid_envelope(cowboy_req:req(), cb_context:context()) ->
-                                      stop_return().
 -spec stop_on_invalid_envelope(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
                                       stop_return().
 stop_on_invalid_envelope(Msg, Req, Context) ->
@@ -318,6 +317,8 @@ stop_on_invalid_envelope(Msg, Req, Context) ->
                                                 )
                 ).
 
+-spec stop_on_invalid_envelope(cowboy_req:req(), cb_context:context()) ->
+                                      stop_return().
 stop_on_invalid_envelope(Req, Context) ->
     stop_on_invalid_envelope(?DEFAULT_JSON_ERROR_MSG, Req, Context).
 
@@ -473,10 +474,11 @@ decode_base64(Context, CT, Req0, Body) ->
 
 -spec get_request_body(cowboy_req:req()) ->
                               {binary(), cowboy_req:req()}.
--spec get_request_body(cowboy_req:req(), iolist()) ->
-                              {binary(), cowboy_req:req()}.
 get_request_body(Req) ->
     get_request_body(Req, []).
+
+-spec get_request_body(cowboy_req:req(), iolist()) ->
+                              {binary(), cowboy_req:req()}.
 get_request_body(Req0, Body) ->
     try get_request_body(Req0, Body, cowboy_req:read_part_body(Req0))
     catch
@@ -835,13 +837,13 @@ get_authorization_token(Req, Context) ->
 
 -spec set_auth_context(cb_context:context(), kz_term:ne_binary() | {kz_term:ne_binary(), atom()}) ->
                               cb_context:context().
--spec set_auth_context(cb_context:context(), kz_term:ne_binary(), atom()) ->
-                              cb_context:context().
 set_auth_context(Context, {Token, TokenType}) ->
     set_auth_context(Context, Token, TokenType);
 set_auth_context(Context, Authorization) ->
     set_auth_context(Context, get_authorization_token_type(Authorization)).
 
+-spec set_auth_context(cb_context:context(), kz_term:ne_binary(), atom()) ->
+                              cb_context:context().
 set_auth_context(Context, Token, TokenType) ->
     cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
                                 ,{fun cb_context:set_auth_token_type/2, TokenType}
@@ -1024,11 +1026,12 @@ ensure_content_type(CT) -> CT.
 %% (the final module in the chain) accepts this verb parameter pair.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec does_resource_exist(cb_context:context()) -> boolean().
--spec does_resource_exist(cb_context:context(), list()) -> boolean().
 does_resource_exist(Context) ->
     does_resource_exist(Context, cb_context:req_nouns(Context)).
 
+-spec does_resource_exist(cb_context:context(), list()) -> boolean().
 does_resource_exist(Context, [{Mod, Params}|_]) ->
     Event = create_event_name(Context, <<"resource_exists.", Mod/binary>>),
     Responses = crossbar_bindings:map(Event, Params),
@@ -1047,11 +1050,12 @@ does_resource_exist(_Context, _ReqNouns) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), list()) -> cb_context:context().
 validate(Context) ->
     validate(Context, cb_context:req_nouns(Context)).
 
+-spec validate(cb_context:context(), list()) -> cb_context:context().
 validate(Context, ReqNouns) ->
     Context1 = validate_resources(Context, ReqNouns),
     case succeeded(Context1) of
@@ -1121,8 +1125,6 @@ succeeded(Context) -> cb_context:resp_status(Context) =:= 'success'.
 
 -spec execute_request(cowboy_req:req(), cb_context:context()) ->
                              {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
--spec execute_request(cowboy_req:req(), cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries(), http_method()) ->
-                             {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
 execute_request(Req, Context) ->
     case cb_context:req_nouns(Context) of
         [{Mod, Params}|_] ->
@@ -1131,6 +1133,8 @@ execute_request(Req, Context) ->
             {'false', Req, Context}
     end.
 
+-spec execute_request(cowboy_req:req(), cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries(), http_method()) ->
+                             {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
 execute_request(Req, Context, Mod, Params, Verb) ->
     Event = create_event_name(Context, [<<"execute">>
                                        ,kz_term:to_lower_binary(Verb)
@@ -1157,14 +1161,14 @@ execute_request_failure(Req, Context, _E) ->
 
 -spec execute_request_results(cowboy_req:req(), cb_context:context()) ->
                                      {'true' | 'stop', cowboy_req:req(), cb_context:context()}.
--spec execute_request_results(cowboy_req:req(), cb_context:context(), crossbar_status()) ->
-                                     {'true' | 'stop', cowboy_req:req(), cb_context:context()}.
 execute_request_results(Req, Context) ->
     case succeeded(Context) of
         'false' -> ?MODULE:stop(Req, Context);
         'true' -> {'true', Req, Context}
     end.
 
+-spec execute_request_results(cowboy_req:req(), cb_context:context(), crossbar_status()) ->
+                                     {'true' | 'stop', cowboy_req:req(), cb_context:context()}.
 execute_request_results(Req, Context, 'success') ->
     execute_request_results(Req, Context);
 execute_request_results(Req, Context, _RespStatus) ->
@@ -1398,11 +1402,12 @@ maybe_set_pull_response_stream(Other) ->
 %% This function extracts the response fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
+
 -spec create_resp_envelope(cb_context:context()) -> kz_json:object().
--spec do_create_resp_envelope(cb_context:context()) -> kz_json:object().
 create_resp_envelope(Context) ->
     do_create_resp_envelope(cb_context:import_errors(Context)).
 
+-spec do_create_resp_envelope(cb_context:context()) -> kz_json:object().
 do_create_resp_envelope(Context) ->
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->

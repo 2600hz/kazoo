@@ -166,11 +166,12 @@ on_successful_validation(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_aggregate_resource(cb_context:context()) -> boolean().
--spec maybe_aggregate_resource(cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_resource(Context) ->
     maybe_aggregate_resource(Context, cb_context:resp_status(Context)).
 
+-spec maybe_aggregate_resource(cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_resource(Context, 'success') ->
     case kz_term:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
@@ -185,12 +186,12 @@ maybe_aggregate_resource(Context, 'success') ->
     end;
 maybe_aggregate_resource(_Context, _Status) -> 'false'.
 
--spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context()) -> boolean().
--spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
 
+-spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggregate(ResourceId, Context) ->
     maybe_remove_aggregate(ResourceId, Context, cb_context:resp_status(Context)).
 
+-spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate(ResourceId, _Context, 'success') ->
     case kz_datamgr:open_doc(?KZ_SIP_DB, ResourceId) of
         {'ok', JObj} ->

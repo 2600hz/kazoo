@@ -78,10 +78,10 @@ do_render(Renderer, TemplateId, Template, TemplateData) ->
     end.
 
 -spec next_renderer() -> pid().
--spec next_renderer(pos_integer()) -> pid().
 next_renderer() ->
     next_renderer(?MILLISECONDS_IN_SECOND).
 
+-spec next_renderer(pos_integer()) -> pid().
 next_renderer(BackoffMs) ->
     Farm = teletype_farms_sup:render_farm_name(),
     try poolboy:checkout(Farm, false, 2 * ?MILLISECONDS_IN_SECOND) of

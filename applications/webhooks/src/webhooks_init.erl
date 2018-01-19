@@ -22,11 +22,11 @@ start_link() ->
     'ignore'.
 
 -spec do_init() -> 'ok'.
--spec do_init(kz_term:ne_binary()) -> 'ok'.
 do_init() ->
     init_dbs(),
     init_modules().
 
+-spec do_init(kz_term:ne_binary()) -> 'ok'.
 do_init(MasterAccountDb) ->
     init_master_account_db(MasterAccountDb),
     init_modules().
@@ -43,7 +43,6 @@ maybe_init_account(JObj, _Props) ->
         andalso do_init(Database).
 
 -spec init_master_account_db() -> 'ok'.
--spec init_master_account_db(kz_term:ne_binary()) -> 'ok'.
 init_master_account_db() ->
     case kapps_util:get_master_account_db() of
         {'ok', MasterAccountDb} ->
@@ -54,6 +53,7 @@ init_master_account_db() ->
             webhooks_shared_listener:add_account_bindings()
     end.
 
+-spec init_master_account_db(kz_term:ne_binary()) -> 'ok'.
 init_master_account_db(MasterAccountDb) ->
     _ = kz_datamgr:revise_doc_from_file(MasterAccountDb, 'webhooks', <<"webhooks.json">>),
     lager:debug("loaded view into master db ~s", [MasterAccountDb]).

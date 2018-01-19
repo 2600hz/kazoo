@@ -49,9 +49,10 @@ agent_presence_update(AcctId, AgentId) ->
     end.
 
 -spec presence_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec presence_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 presence_update(AcctId, PresenceId, State) ->
     presence_update(AcctId, PresenceId, State, kz_term:to_hex_binary(crypto:hash('md5', PresenceId))).
+
+-spec presence_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 presence_update(AcctId, PresenceId, State, CallId) ->
     {'ok', AcctDoc} = kz_account:fetch(AcctId),
     To = <<PresenceId/binary, "@", (kz_json:get_value(<<"realm">>, AcctDoc))/binary>>,
@@ -128,8 +129,10 @@ unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid
 unbind_from_call_events(Call, Pid) -> unbind_from_call_events(kapps_call:call_id(Call), Pid).
 
 -spec proc_id() -> kz_term:ne_binary().
--spec proc_id(pid()) -> kz_term:ne_binary().
--spec proc_id(pid(), atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
 proc_id() -> proc_id(self()).
+
+-spec proc_id(pid()) -> kz_term:ne_binary().
 proc_id(Pid) -> proc_id(Pid, node()).
+
+-spec proc_id(pid(), atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
 proc_id(Pid, Node) -> list_to_binary([kz_term:to_binary(Node), "-", pid_to_list(Pid)]).

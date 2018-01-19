@@ -98,11 +98,11 @@
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get(kapps_call:call()) -> api_std_return().
--spec get(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) -> api_std_return().
 
+-spec get(kapps_call:call()) -> api_std_return().
 get(Call) -> get(kapps_call:authorizing_id(Call), Call).
 
+-spec get(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) -> api_std_return().
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
@@ -226,7 +226,6 @@ maybe_format_endpoint(Endpoint, 'false') ->
     Formatted.
 
 -spec merge_attributes(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
--spec merge_attributes(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 merge_attributes(Endpoint, Type) ->
     merge_attributes(Endpoint, Type, attributes_keys()).
 
@@ -252,6 +251,7 @@ attributes_keys() ->
     ,?ATTR_LOWER_KEY
     ].
 
+-spec merge_attributes(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 merge_attributes(Owner, <<"user">>, Keys) ->
     case kz_account:fetch(kz_doc:account_id(Owner)) of
         {'ok', Account} -> merge_attributes(Keys, Account, kz_json:new(), Owner);
@@ -609,8 +609,8 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %% Flush the callflow cache
 %% @end
 %%--------------------------------------------------------------------
+
 -spec flush_account(kz_term:ne_binary()) -> 'ok'.
--spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush_account(AccountDb) ->
     ToRemove =
         kz_cache:filter_local(?CACHE_NAME, fun({?MODULE, Db, _Id}, _Value) ->
@@ -620,6 +620,7 @@ flush_account(AccountDb) ->
     _ = [flush(Db, Id)|| {{?MODULE, Db, Id}, _} <- ToRemove],
     'ok'.
 
+-spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(Db, Id) ->
     kz_cache:erase_local(?CACHE_NAME, {?MODULE, Db, Id}),
     {'ok', Rev} = kz_datamgr:lookup_doc_rev(Db, Id),
@@ -655,16 +656,16 @@ flush(Db, Id) ->
                       | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
                       | 'do_not_disturb' | 'no_resource_type'.
 
+
 -spec build(kz_term:api_ne_binary() | kz_json:object(), kapps_call:call()) ->
                    {'ok', kz_json:objects()} |
                    {'error', build_errors()}.
--spec build(kz_term:api_ne_binary() | kz_json:object(), kz_term:api_object(), kapps_call:call()) ->
-                   {'ok', kz_json:objects()} |
-                   {'error', build_errors()}.
-
 build(EndpointId, Call) ->
     build(EndpointId, kz_json:new(), Call).
 
+-spec build(kz_term:api_ne_binary() | kz_json:object(), kz_term:api_object(), kapps_call:call()) ->
+                   {'ok', kz_json:objects()} |
+                   {'error', build_errors()}.
 build('undefined', _Properties, _Call) ->
     {'error', 'endpoint_id_undefined'};
 build(EndpointId, 'undefined', Call) when is_binary(EndpointId) ->
@@ -726,12 +727,12 @@ should_create_endpoint_fold(_Routine, Error) -> Error.
 -spec maybe_missing_resource_type(kz_json:object(), kz_json:object(),  kapps_call:call()) ->
                                          'ok' |
                                          {'error', 'no_resource_type'}.
--spec maybe_missing_resource_type(kz_term:api_binary()) ->
-                                         'ok' |
-                                         {'error', 'no_resource_type'}.
 maybe_missing_resource_type(_Endpoint, _Properties, Call) ->
     maybe_missing_resource_type(kapps_call:resource_type(Call)).
 
+-spec maybe_missing_resource_type(kz_term:api_binary()) ->
+                                         'ok' |
+                                         {'error', 'no_resource_type'}.
 maybe_missing_resource_type('undefined') ->
     lager:error("kapps_call resource type is undefined"),
     kz_util:log_stacktrace(),
@@ -877,10 +878,10 @@ create_endpoints(Endpoint, Properties, Call) ->
     end.
 
 -spec maybe_start_metaflows(kapps_call:call(), kz_json:objects()) -> 'ok'.
--spec maybe_start_metaflows(kapps_call:call(), kz_json:objects(), kz_term:api_binary()) -> 'ok'.
 maybe_start_metaflows(Call, Endpoints) ->
     maybe_start_metaflows(Call, Endpoints, kapps_call:call_id_direct(Call)).
 
+-spec maybe_start_metaflows(kapps_call:call(), kz_json:objects(), kz_term:api_binary()) -> 'ok'.
 maybe_start_metaflows(_Call, _Endpoints, 'undefined') -> 'ok';
 maybe_start_metaflows(Call, Endpoints, _CallId) ->
     case not is_sms(Call)
@@ -1521,12 +1522,12 @@ maybe_add_invite_format(JObj, _Endpoint, _Call, Format) ->
     kz_json:set_value(<<"X-KAZOO-INVITE-FORMAT">>, Format, JObj).
 
 -spec maybe_add_aor(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
--spec maybe_add_aor(kz_json:object(), kz_json:object(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
 maybe_add_aor(JObj, Endpoint, Call) ->
     Realm = kz_device:sip_realm(Endpoint, kapps_call:account_realm(Call)),
     Username = kz_device:sip_username(Endpoint),
     maybe_add_aor(JObj, Endpoint, Username, Realm).
 
+-spec maybe_add_aor(kz_json:object(), kz_json:object(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
 maybe_add_aor(JObj, _, 'undefined', _Realm) -> JObj;
 maybe_add_aor(JObj, _, Username, Realm) ->
     kz_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , JObj).
@@ -1539,12 +1540,12 @@ maybe_add_aor(JObj, _, Username, Realm) ->
 %% call.
 %% @end
 %%--------------------------------------------------------------------
--spec generate_ccvs(kz_json:object(), kapps_call:call()) -> kz_json:object().
--spec generate_ccvs(kz_json:object(), kapps_call:call(), kz_term:api_object()) -> kz_json:object().
 
+-spec generate_ccvs(kz_json:object(), kapps_call:call()) -> kz_json:object().
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, 'undefined').
 
+-spec generate_ccvs(kz_json:object(), kapps_call:call(), kz_term:api_object()) -> kz_json:object().
 generate_ccvs(Endpoint, Call, CallFwd) ->
     CCVFuns = [fun maybe_retain_caller_id/1
               ,fun maybe_set_endpoint_id/1
@@ -1933,12 +1934,12 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
 %% call.
 %% @end
 %%--------------------------------------------------------------------
--spec endpoint_actions(kz_json:object(), kapps_call:call()) -> kz_json:object().
--spec endpoint_actions(kz_json:object(), kapps_call:call(), kz_term:api_object()) -> kz_json:object().
 
+-spec endpoint_actions(kz_json:object(), kapps_call:call()) -> kz_json:object().
 endpoint_actions(Endpoint, Call) ->
     endpoint_actions(Endpoint, Call, 'undefined').
 
+-spec endpoint_actions(kz_json:object(), kapps_call:call(), kz_term:api_object()) -> kz_json:object().
 endpoint_actions(Endpoint, Call, CallFwd) ->
     Funs = [fun maybe_record_endpoint/1
            ],
@@ -1975,10 +1976,6 @@ maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
                                           kz_datamgr:data_error().
--spec unsolicited_owner_mwi_update(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
-                                          'ok' |
-                                          {'error', mwi_update_return()} |
-                                          kz_datamgr:data_error().
 unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
@@ -1986,6 +1983,10 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
 
+-spec unsolicited_owner_mwi_update(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
+                                          'ok' |
+                                          {'error', mwi_update_return()} |
+                                          kz_datamgr:data_error().
 unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
     lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
@@ -2021,11 +2022,9 @@ maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
         'false' -> 'ok'
     end.
 
+
 -spec unsolicited_endpoint_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
                                              'ok' | {'error', any()}.
--spec unsolicited_endpoint_mwi_update(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
-                                             'ok' | {'error', any()}.
-
 unsolicited_endpoint_mwi_update('undefined', _) ->
     {'error', 'missing_account_db'};
 unsolicited_endpoint_mwi_update(_, 'undefined') ->
@@ -2035,6 +2034,8 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
 
+-spec unsolicited_endpoint_mwi_update(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
+                                             'ok' | {'error', any()}.
 unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
     lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
@@ -2043,14 +2044,14 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
         {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
     end.
 
+
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object()) ->
                                             'ok' | {'error', 'not_appropriate'}.
--spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object(), boolean()) ->
-                                            'ok' | {'error', 'not_appropriate'}.
-
 maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
     maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
 
+-spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object(), boolean()) ->
+                                            'ok' | {'error', 'not_appropriate'}.
 maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
     lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->

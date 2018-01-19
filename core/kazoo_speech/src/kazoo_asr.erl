@@ -21,20 +21,24 @@ default_locale() ->
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
 %%------------------------------------------------------------------------------
+
 -spec freeform(binary()) -> asr_resp().
--spec freeform(binary(), kz_term:ne_binary()) -> asr_resp().
--spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> asr_resp().
--spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
--spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content) ->
     freeform(Content, default_mime_type()).
+
+-spec freeform(binary(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content, ContentType) ->
     freeform(Content, ContentType, default_locale()).
+
+-spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content, ContentType, Locale) ->
     freeform(Content, ContentType, Locale, []).
+
+-spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options) ->
     freeform(Content, ContentType, Locale, Options, default_provider()).
 
+-spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options, ASRProvider) ->
     try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):freeform(Content, ContentType, Locale, Options)
     catch
@@ -46,20 +50,24 @@ freeform(Content, ContentType, Locale, Options, ASRProvider) ->
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
 %%------------------------------------------------------------------------------
+
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries()) -> asr_resp().
--spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> asr_resp().
--spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) -> asr_resp().
--spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
--spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 commands(Bin, Commands) ->
     commands(Bin, Commands, default_mime_type()).
+
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> asr_resp().
 commands(Bin, Commands, ContentType) ->
     commands(Bin, Commands, ContentType, default_locale()).
+
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) -> asr_resp().
 commands(Bin, Commands, ContentType, Locale) ->
     commands(Bin, Commands, ContentType, Locale, []).
+
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 commands(Bin, Commands, ContentType, Locale, Options) ->
     commands(Bin, Commands, ContentType, Locale, Options, default_provider()).
 
+-spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 commands(Bin, Commands, ContentType, Locale, Options, ASRProvider) ->
     try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):commands(Bin, Commands, ContentType, Locale, Options)
     catch

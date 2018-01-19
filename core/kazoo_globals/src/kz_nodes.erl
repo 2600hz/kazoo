@@ -906,23 +906,23 @@ from_json(JObj, State) ->
             ,roles=kz_json:to_proplist(kz_json:get_json_value(<<"Roles">>, JObj, kz_json:new()))
             }.
 
--spec kapps_from_json(kz_term:api_terms()) -> kz_types:kapps_info().
--spec whapp_from_json(binary(), kz_json:object()) -> {binary(), kz_types:whapp_info()}.
--spec whapp_info_from_json(kz_term:ne_binary(), kz_json:object()) -> kz_types:whapp_info().
--spec whapp_info_from_json(kz_term:ne_binary(), kz_types:whapp_info(), {kz_json:json_terms(), kz_json:keys()}) -> kz_types:whapp_info().
 
+-spec kapps_from_json(kz_term:api_terms()) -> kz_types:kapps_info().
 kapps_from_json(Whapps) when is_list(Whapps) ->
     [{Whapp, #whapp_info{}} || Whapp <- Whapps];
 kapps_from_json(JObj) ->
     Keys = kz_json:get_keys(JObj),
     [whapp_from_json(Key, JObj) || Key <- Keys].
 
+-spec whapp_from_json(binary(), kz_json:object()) -> {binary(), kz_types:whapp_info()}.
 whapp_from_json(Key, JObj) ->
     {Key, whapp_info_from_json(Key, kz_json:get_value(Key, JObj))}.
 
+-spec whapp_info_from_json(kz_term:ne_binary(), kz_json:object()) -> kz_types:whapp_info().
 whapp_info_from_json(Key, JObj) ->
     whapp_info_from_json(Key, #whapp_info{}, kz_json:get_values(JObj)).
 
+-spec whapp_info_from_json(kz_term:ne_binary(), kz_types:whapp_info(), {kz_json:json_terms(), kz_json:keys()}) -> kz_types:whapp_info().
 whapp_info_from_json(_Key, Info, {[], []}) -> Info;
 whapp_info_from_json(Key, Info, {[V | V1], [<<"Roles">> | K1]}) ->
     whapp_info_from_json(Key, Info#whapp_info{roles=V}, {V1, K1});
@@ -933,17 +933,17 @@ whapp_info_from_json(Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
 whapp_info_from_json(Key, Info, {[_V | V1], [_K | K1]}) ->
     whapp_info_from_json(Key, Info, {V1, K1}).
 
--spec kapps_to_json(kz_types:kapps_info()) -> kz_json:object().
--spec whapp_to_json({kz_term:ne_binary(), kz_types:whapp_info()}) -> {kz_term:ne_binary(), kz_json:object()}.
--spec whapp_info_to_json(kz_types:whapp_info()) -> kz_json:object().
 
+-spec kapps_to_json(kz_types:kapps_info()) -> kz_json:object().
 kapps_to_json(Whapps) ->
     List = [whapp_to_json(Whapp) || Whapp <- Whapps],
     kz_json:from_list(List).
 
+-spec whapp_to_json({kz_term:ne_binary(), kz_types:whapp_info()}) -> {kz_term:ne_binary(), kz_json:object()}.
 whapp_to_json({K, Info}) ->
     {K, whapp_info_to_json(Info)}.
 
+-spec whapp_info_to_json(kz_types:whapp_info()) -> kz_json:object().
 whapp_info_to_json(#whapp_info{startup=Start, roles=Roles}) ->
     kz_json:from_list(
       [{<<"Startup">>, Start}
@@ -1091,11 +1091,11 @@ pool_states() ->
     lists:keysort(1, [pool_state(Pool) || {Pool, _Pid} <- kz_amqp_sup:pools()]).
 
 -spec pool_state(atom()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
--spec pool_state(atom(), atom(), integer(), integer(), integer()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 pool_state(Name) ->
     {PoolState, Workers, OverFlow, Monitors} = poolboy:status(Name),
     pool_state(Name, PoolState, Workers, OverFlow, Monitors).
 
+-spec pool_state(atom(), atom(), integer(), integer(), integer()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 pool_state(Name, State, Workers, Overflow, Monitors) ->
     {kz_term:to_binary(Name)
     ,iolist_to_binary(

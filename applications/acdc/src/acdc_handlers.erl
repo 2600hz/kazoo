@@ -80,12 +80,13 @@ update_agent(Call) ->
     end.
 
 -spec update_acdc_actor(kapps_call:call()) -> any().
--spec update_acdc_actor(kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) -> any().
 update_acdc_actor(Call) ->
     update_acdc_actor(Call
                      ,kapps_call:custom_channel_var(<<"ACDc-ID">>, Call)
                      ,kapps_call:custom_channel_var(<<"ACDc-Type">>, Call)
                      ).
+
+-spec update_acdc_actor(kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) -> any().
 update_acdc_actor(_Call, 'undefined', _) -> 'ok';
 update_acdc_actor(_Call, _, 'undefined') -> 'ok';
 update_acdc_actor(Call, QueueId, <<"queue">>) ->

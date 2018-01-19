@@ -262,10 +262,10 @@ reply(From, Msg) -> gen_server:reply(From, Msg).
 -type server_name() :: {'global' | 'local', atom()} | pid().
 
 -spec enter_loop(atom(), list(), any()) -> no_return().
--spec enter_loop(atom(), list(), any(), timeout() | server_name()) -> no_return().
--spec enter_loop(atom(), list(), any(), server_name(), timeout()) -> no_return().
 enter_loop(Module, Options, ModuleState) ->
     enter_loop(Module, Options, ModuleState, self(), 'infinity').
+
+-spec enter_loop(atom(), list(), any(), timeout() | server_name()) -> no_return().
 enter_loop(Module, Options, ModuleState, {Scope, _Name}=ServerName)
   when Scope =:= 'local'
        orelse Scope =:= 'global' ->
@@ -273,6 +273,7 @@ enter_loop(Module, Options, ModuleState, {Scope, _Name}=ServerName)
 enter_loop(Module, Option, ModuleState, Timeout) ->
     enter_loop(Module, Option, ModuleState, self(), Timeout).
 
+-spec enter_loop(atom(), list(), any(), server_name(), timeout()) -> no_return().
 enter_loop(Module, Options, ModuleState, ServerName, Timeout) ->
     {'ok', MyState} = init_state([Module, Options, ModuleState]),
     gen_server:enter_loop(?MODULE, [], MyState, ServerName, Timeout).
@@ -1265,12 +1266,12 @@ maybe_channel_flow(_) -> 'ok'.
 
 -spec maybe_declare_exchanges(declare_exchanges()) ->
                                      command_ret().
--spec maybe_declare_exchanges(kz_amqp_assignment(), declare_exchanges()) ->
-                                     command_ret().
 maybe_declare_exchanges([]) -> 'ok';
 maybe_declare_exchanges(Exchanges) ->
     maybe_declare_exchanges(kz_amqp_assignments:get_channel(), Exchanges).
 
+-spec maybe_declare_exchanges(kz_amqp_assignment(), declare_exchanges()) ->
+                                     command_ret().
 maybe_declare_exchanges(_Channel, []) -> 'ok';
 maybe_declare_exchanges(Channel, [{Ex, Type, Opts} | Exchanges]) ->
     declare_exchange(Channel, amqp_util:declare_exchange(Ex, Type, Opts), Exchanges);
@@ -1310,11 +1311,11 @@ channel_requisition(Params) ->
     end.
 
 -spec maybe_add_broker_connection(binary()) -> boolean().
--spec maybe_add_broker_connection(binary(), non_neg_integer()) -> boolean().
 maybe_add_broker_connection(Broker) ->
     Count = kz_amqp_connections:broker_available_connections(Broker),
     maybe_add_broker_connection(Broker, Count).
 
+-spec maybe_add_broker_connection(binary(), non_neg_integer()) -> boolean().
 maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
     _Connection = kz_amqp_connections:add(Broker, kz_binary:rand_hex(6), [<<"hidden">>]),
     kz_amqp_channel:requisition(self(), Broker);

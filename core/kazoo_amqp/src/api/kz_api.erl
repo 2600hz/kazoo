@@ -150,14 +150,12 @@ reply_to(JObj) ->
 %%--------------------------------------------------------------------
 -spec default_headers_v(kz_term:api_terms()) -> boolean().
 
--spec default_headers(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
--spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
--spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
--spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 
+-spec default_headers(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(AppName, AppVsn) ->
     default_headers('undefined', AppName, AppVsn).
 
+-spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(ServerID, AppName, AppVsn) ->
     [{?KEY_SERVER_ID, ServerID}
     ,{?KEY_APP_NAME, AppName}
@@ -165,9 +163,11 @@ default_headers(ServerID, AppName, AppVsn) ->
     ,{?KEY_NODE, kz_term:to_binary(node())}
     ].
 
+-spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(EvtCat, EvtName, AppName, AppVsn) ->
     default_headers(<<>>, EvtCat, EvtName, AppName, AppVsn).
 
+-spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     [{?KEY_SERVER_ID, ServerID}
     ,{?KEY_EVENT_CATEGORY, EvtCat}
@@ -204,13 +204,13 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
                              {'remove_recursive', boolean()}.
 -type prepare_options() :: [prepare_option_el()].
 
--spec prepare_api_payload(kz_term:api_terms(), kz_term:proplist()) -> api_formatter_return() | kz_term:proplist().
--spec prepare_api_payload(kz_term:api_terms(), kz_term:proplist(), api_formatter_fun() | prepare_options()) ->
-                                 api_formatter_return() | kz_term:proplist().
 
+-spec prepare_api_payload(kz_term:api_terms(), kz_term:proplist()) -> api_formatter_return() | kz_term:proplist().
 prepare_api_payload(Prop, HeaderValues) ->
     prepare_api_payload(Prop, HeaderValues, []).
 
+-spec prepare_api_payload(kz_term:api_terms(), kz_term:proplist(), api_formatter_fun() | prepare_options()) ->
+                                 api_formatter_return() | kz_term:proplist().
 prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
     prepare_api_payload(Prop, HeaderValues, [{'formatter', FormatterFun}]);
 prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
@@ -331,9 +331,10 @@ error_resp_v(JObj) ->
     error_resp_v(kz_json:to_proplist(JObj)).
 
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(TargetQ, JObj) ->
     publish_error(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(TargetQ, Error, ContentType) ->
     {'ok', Payload} = prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun error_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).

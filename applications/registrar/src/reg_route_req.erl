@@ -30,10 +30,10 @@ handle_route_req(JObj, _Props) ->
     end.
 
 -spec maybe_replay_route_req(kz_json:object(), kz_json:object()) -> 'ok'.
--spec maybe_replay_route_req(kz_json:object(), kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_replay_route_req(JObj, CCVs) ->
     maybe_replay_route_req(JObj, CCVs, kz_json:get_value(<<"From-Network-Addr">>, JObj)).
 
+-spec maybe_replay_route_req(kz_json:object(), kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_replay_route_req(_JObj, _CCVs, 'undefined') ->
     lager:debug("failing to reply route req with no IP to use");
 maybe_replay_route_req(JObj, CCVs, IP) ->

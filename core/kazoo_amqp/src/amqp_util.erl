@@ -180,78 +180,94 @@
 %% Publish AMQP messages
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec targeted_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec targeted_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec targeted_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 targeted_publish(Queue, Payload) ->
     targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec targeted_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 targeted_publish(?NE_BINARY = Queue, Payload, ContentType) ->
     targeted_publish(Queue, Payload, ContentType, []).
+
+-spec targeted_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 targeted_publish(?NE_BINARY = Queue, Payload, ContentType, Options) ->
     basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType, Options).
 
 -spec nodes_publish(amqp_payload()) -> 'ok'.
--spec nodes_publish(amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 nodes_publish(Payload) ->
     nodes_publish(Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec nodes_publish(amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 nodes_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_NODES, <<>>, Payload, ContentType, ['maybe_publish']).
 
 -spec kapps_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec kapps_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec kapps_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 kapps_publish(Routing, Payload) ->
     kapps_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec kapps_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 kapps_publish(Routing, Payload, ContentType) ->
     kapps_publish(Routing, Payload, ContentType, []).
+
+-spec kapps_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 kapps_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_KAPPS, Routing, Payload, ContentType, Opts).
 
 -spec presence_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec presence_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec presence_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 presence_publish(Routing, Payload) ->
     presence_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec presence_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 presence_publish(Routing, Payload, ContentType) ->
     presence_publish(Routing, Payload, ContentType, []).
+
+-spec presence_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 presence_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_PRESENCE, Routing, Payload, ContentType, Opts).
 
 -spec notifications_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec notifications_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec notifications_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 notifications_publish(Routing, Payload) ->
     notifications_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec notifications_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 notifications_publish(Routing, Payload, ContentType) ->
     notifications_publish(Routing, Payload, ContentType, []).
+
+-spec notifications_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 notifications_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_NOTIFICATIONS, Routing, Payload, ContentType, Opts).
 
 -spec sysconf_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec sysconf_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec sysconf_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 sysconf_publish(Routing, Payload) ->
     sysconf_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec sysconf_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 sysconf_publish(Routing, Payload, ContentType) ->
     sysconf_publish(Routing, Payload, ContentType, []).
+
+-spec sysconf_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 sysconf_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
 
--spec callmgr_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec callmgr_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 %% TODO: The routing key on this function should be the first argument for consistency
+
+-spec callmgr_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
+
+-spec callmgr_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 callmgr_publish(Payload, ContentType, RoutingKey, Opts) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType, Opts).
 
 -spec configuration_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec configuration_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec configuration_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 configuration_publish(RoutingKey, Payload) ->
     configuration_publish(RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec configuration_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 configuration_publish(RoutingKey, Payload, ContentType) ->
     configuration_publish(RoutingKey, Payload, ContentType, []).
+
+-spec configuration_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 configuration_publish(RoutingKey, Payload, ContentType, Props) ->
     basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType, Props).
 
@@ -261,27 +277,31 @@ configuration_publish(RoutingKey, Payload, ContentType, Props) ->
       Type :: kz_term:ne_binary(),
       Id :: kz_term:ne_binary(),
       Payload :: amqp_payload().
--spec document_change_publish(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 document_change_publish(Action, Db, Type, Id, JSON) ->
     document_change_publish(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
+
+-spec document_change_publish(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
     RoutingKey = document_routing_key(Action, Db, Type, Id),
     configuration_publish(RoutingKey, Payload, ContentType).
 
 -spec document_routing_key() -> kz_term:ne_binary().
--spec document_routing_key(atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
--spec document_routing_key(atom() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
--spec document_routing_key(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
--spec document_routing_key(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 document_routing_key() ->
     document_routing_key(<<"*">>).
+
+-spec document_routing_key(atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
 document_routing_key(Action) ->
     document_routing_key(Action, <<"*">>).
+
+-spec document_routing_key(atom() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 document_routing_key(Action, Db) ->
     document_routing_key(Action, Db, <<"*">>).
+
+-spec document_routing_key(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 document_routing_key(Action, Db, Type) ->
     document_routing_key(Action, Db, Type, <<"*">>).
 
+-spec document_routing_key(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 document_routing_key(<<"*">>, Db, Type, Id) ->
     list_to_binary([<<"*.">>, kz_term:to_binary(Db)
                    ,".", kz_term:to_binary(Type)
@@ -313,36 +333,42 @@ document_routing_key(Action, Db, Type, Id) ->
                    ]).
 
 -spec callctl_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec callctl_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec callctl_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 callctl_publish(CtrlQ, Payload) ->
     callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec callctl_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 callctl_publish(CtrlQ, Payload, ContentType) ->
     callctl_publish(CtrlQ, Payload, ContentType, []).
+
+-spec callctl_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 callctl_publish(CtrlQ, Payload, ContentType, Props) ->
     basic_publish(?EXCHANGE_CALLCTL, CtrlQ, Payload, ContentType, Props).
 
 -spec callevt_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec callevt_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec callevt_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 callevt_publish(RoutingKey, Payload) ->
     callevt_publish(RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec callevt_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 callevt_publish(RoutingKey, Payload, ContentType) ->
     callevt_publish(RoutingKey, Payload, ContentType, []).
+
+-spec callevt_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 callevt_publish(RoutingKey, Payload, ContentType, Prop) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ContentType, Prop).
 
 -spec originate_resource_publish(amqp_payload()) -> 'ok'.
--spec originate_resource_publish(amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 originate_resource_publish(Payload) ->
     originate_resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec originate_resource_publish(amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 originate_resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, ?KEY_ORGN_RESOURCE_REQ, Payload, ContentType).
 
 -spec offnet_resource_publish(amqp_payload()) -> 'ok'.
--spec offnet_resource_publish(amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 offnet_resource_publish(Payload) ->
     offnet_resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec offnet_resource_publish(amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 offnet_resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, ?KEY_OFFNET_RESOURCE_REQ, Payload, ContentType).
 
@@ -352,11 +378,8 @@ monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
 -type conf_routing_type() :: 'discovery' | 'event' | 'command' | 'config'.
--spec conference_publish(amqp_payload(), conf_routing_type()) -> 'ok'.
--spec conference_publish(amqp_payload(), conf_routing_type(), kz_term:api_binary()) -> 'ok'.
--spec conference_publish(amqp_payload(), conf_routing_type(), kz_term:api_binary(), kz_term:proplist()) -> 'ok'.
--spec conference_publish(amqp_payload(), conf_routing_type(), kz_term:api_binary(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 
+-spec conference_publish(amqp_payload(), conf_routing_type()) -> 'ok'.
 conference_publish(Payload, 'discovery') ->
     conference_publish(Payload, 'discovery', <<"*">>);
 conference_publish(Payload, 'event') ->
@@ -366,6 +389,7 @@ conference_publish(Payload, 'config') ->
 conference_publish(Payload, 'command') ->
     conference_publish(Payload, 'command', <<"*">>).
 
+-spec conference_publish(amqp_payload(), conf_routing_type(), kz_term:api_binary()) -> 'ok'.
 conference_publish(Payload, 'discovery', ConfId) ->
     conference_publish(Payload, 'discovery', ConfId, []);
 conference_publish(Payload, 'config', ConfId) ->
@@ -375,6 +399,7 @@ conference_publish(Payload, 'event', ConfId) ->
 conference_publish(Payload, 'command', ConfId) ->
     conference_publish(Payload, 'command', ConfId, []).
 
+-spec conference_publish(amqp_payload(), conf_routing_type(), kz_term:api_binary(), kz_term:proplist()) -> 'ok'.
 conference_publish(Payload, 'discovery', ConfId, Options) ->
     conference_publish(Payload, 'discovery', ConfId, Options, ?DEFAULT_CONTENT_TYPE);
 conference_publish(Payload, 'config', ConfId, Options) ->
@@ -384,6 +409,7 @@ conference_publish(Payload, 'event', ConfId, Options) ->
 conference_publish(Payload, 'command', ConfId, Options) ->
     conference_publish(Payload, 'command', ConfId, Options, ?DEFAULT_CONTENT_TYPE).
 
+-spec conference_publish(amqp_payload(), conf_routing_type(), kz_term:api_binary(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 conference_publish(Payload, 'discovery', _, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONFERENCE_DISCOVERY, Payload, ContentType, Options);
 conference_publish(Payload, 'config', ConfProfile, Options, ContentType) ->
@@ -399,47 +425,54 @@ conference_publish(Payload, 'event', ConfId, CallId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, RoutingKey, Payload, ContentType, Options).
 
 -spec registrar_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec registrar_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec registrar_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 registrar_publish(Routing, Payload) ->
     registrar_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec registrar_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 registrar_publish(Routing, Payload, ContentType) ->
     registrar_publish(Routing, Payload, ContentType, []).
+
+-spec registrar_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 registrar_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_REGISTRAR, Routing, Payload, ContentType, Opts).
 
 -spec leader_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec leader_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec leader_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 leader_publish(Routing, Payload) ->
     leader_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec leader_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 leader_publish(Routing, Payload, ContentType) ->
     leader_publish(Routing, Payload, ContentType, []).
+
+-spec leader_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 leader_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_LEADER, Routing, Payload, ContentType, Opts).
 
 -spec tasks_publish(kz_term:ne_binary(), amqp_payload()) -> 'ok'.
--spec tasks_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec tasks_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 tasks_publish(Routing, Payload) ->
     tasks_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+
+-spec tasks_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 tasks_publish(Routing, Payload, ContentType) ->
     tasks_publish(Routing, Payload, ContentType, []).
+
+-spec tasks_publish(kz_term:ne_binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 tasks_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_TASKS, Routing, Payload, ContentType, Opts).
 
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
+
 -spec basic_publish(kz_term:ne_binary(), binary(), amqp_payload()) -> 'ok'.
--spec basic_publish(kz_term:ne_binary(), binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
--spec basic_publish(kz_term:ne_binary(), binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 basic_publish(Exchange, RoutingKey, Payload) ->
     basic_publish(Exchange, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
+-spec basic_publish(kz_term:ne_binary(), binary(), amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
     basic_publish(Exchange, RoutingKey, Payload, ContentType, []).
 
+-spec basic_publish(kz_term:ne_binary(), binary(), amqp_payload(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop)
   when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
@@ -557,10 +590,12 @@ tasks_exchange() ->
 
 
 %% A generic Exchange maker
+
 -spec new_exchange(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec new_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 new_exchange(Exchange, Type) ->
     new_exchange(Exchange, Type, []).
+
+-spec new_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 new_exchange(Exchange, Type, Options) ->
     ED = #'exchange.declare'{exchange = Exchange
                             ,type = Type
@@ -574,9 +609,10 @@ new_exchange(Exchange, Type, Options) ->
     kz_amqp_channel:command(ED).
 
 -spec declare_exchange(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_amqp_exchange().
--spec declare_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_amqp_exchange().
 declare_exchange(Exchange, Type) ->
     declare_exchange(Exchange, Type, []).
+
+-spec declare_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_amqp_exchange().
 declare_exchange(Exchange, Type, Options) ->
     #'exchange.declare'{exchange = Exchange
                        ,type = Type
@@ -594,39 +630,47 @@ declare_exchange(Exchange, Type, Options) ->
 %% Create AMQP queues
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec new_targeted_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_targeted_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_targeted_queue() -> new_targeted_queue(<<>>).
+
+-spec new_targeted_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_targeted_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_nodes_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_nodes_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_nodes_queue() -> new_nodes_queue(<<>>).
+
+-spec new_nodes_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_nodes_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_kapps_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_kapps_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_kapps_queue() -> new_kapps_queue(<<>>).
+
+-spec new_kapps_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_kapps_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_presence_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_presence_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_presence_queue() -> new_presence_queue(<<>>).
+
+-spec new_presence_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_presence_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_registrar_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_registrar_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_registrar_queue() -> new_registrar_queue(<<>>).
+
+-spec new_registrar_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_registrar_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_notifications_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_notifications_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_notifications_queue() -> new_notifications_queue(<<>>).
+
+-spec new_notifications_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_notifications_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_sysconf_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_sysconf_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_sysconf_queue() -> new_sysconf_queue(<<>>).
+
+-spec new_sysconf_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_sysconf_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_callevt_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
@@ -656,8 +700,9 @@ new_callctl_queue(CallID) ->
               ]).
 
 -spec new_resource_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_resource_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_resource_queue() -> new_resource_queue(?RESOURCE_QUEUE_NAME).
+
+-spec new_resource_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_resource_queue(Queue) ->
     new_queue(Queue, [{'exclusive', 'false'}
                      ,{'auto_delete', 'true'}
@@ -665,26 +710,30 @@ new_resource_queue(Queue) ->
                      ]).
 
 -spec new_callmgr_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
--spec new_callmgr_queue(binary(), kz_term:proplist()) -> kz_term:ne_binary() | {'error', any()}.
 new_callmgr_queue(Queue) -> new_callmgr_queue(Queue, []).
+
+-spec new_callmgr_queue(binary(), kz_term:proplist()) -> kz_term:ne_binary() | {'error', any()}.
 new_callmgr_queue(Queue, Opts) -> new_queue(Queue, Opts).
 
 -spec new_configuration_queue(kz_term:ne_binary()) -> kz_term:ne_binary() | {'error', any()}.
--spec new_configuration_queue(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary() | {'error', any()}.
 new_configuration_queue(Queue) -> new_configuration_queue(Queue, []).
+
+-spec new_configuration_queue(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary() | {'error', any()}.
 new_configuration_queue(Queue, Options) -> new_queue(Queue, Options).
 
 -spec new_monitor_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_monitor_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_monitor_queue() -> new_monitor_queue(<<>>).
+
+-spec new_monitor_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_monitor_queue(Queue) ->
     new_queue(Queue, [{'exclusive', 'false'}
                      ,{'auto_delete', 'true'}
                      ]).
 
 -spec new_conference_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_conference_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_conference_queue() -> new_conference_queue(<<>>).
+
+-spec new_conference_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_conference_queue(Queue) ->
     new_queue(Queue, [{'exclusive', 'false'}
                      ,{'auto_delete', 'true'}
@@ -692,8 +741,9 @@ new_conference_queue(Queue) ->
                      ]).
 
 -spec new_tasks_queue() -> kz_term:ne_binary() | {'error', any()}.
--spec new_tasks_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_tasks_queue() -> new_tasks_queue(<<>>).
+
+-spec new_tasks_queue(binary()) -> kz_term:ne_binary() | {'error', any()}.
 new_tasks_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 
@@ -701,12 +751,14 @@ new_tasks_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 -type new_queue_ret() :: kz_term:api_binary() | integer() |
                          {kz_term:ne_binary(), integer(), integer()} |
                          {'error', any()}.
+
 -spec new_queue() -> new_queue_ret().
--spec new_queue(binary()) -> new_queue_ret().
--spec new_queue(binary(), kz_term:proplist()) -> new_queue_ret().
 new_queue() -> new_queue(new_queue_name()). % lets the client lib create a random queue name
+
+-spec new_queue(binary()) -> new_queue_ret().
 new_queue(Queue) -> new_queue(Queue, []).
 
+-spec new_queue(binary(), kz_term:proplist()) -> new_queue_ret().
 new_queue(<<"amq.", _/binary>>, Options) ->
     new_queue(new_queue_name(), Options);
 new_queue(<<>>, Options) ->
@@ -792,31 +844,44 @@ message_ttl(Args, Acc) ->
 %% Delete AMQP queue
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec delete_targeted_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_nodes_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_kapps_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_presence_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_notifications_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_sysconf_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_callmgr_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_resource_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_configuration_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_conference_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_monitor_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_registrar_queue(kz_term:ne_binary()) -> command_ret().
--spec delete_tasks_queue(kz_term:ne_binary()) -> command_ret().
 delete_targeted_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_nodes_queue(kz_term:ne_binary()) -> command_ret().
 delete_nodes_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_kapps_queue(kz_term:ne_binary()) -> command_ret().
 delete_kapps_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_presence_queue(kz_term:ne_binary()) -> command_ret().
 delete_presence_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_notifications_queue(kz_term:ne_binary()) -> command_ret().
 delete_notifications_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_sysconf_queue(kz_term:ne_binary()) -> command_ret().
 delete_sysconf_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_callmgr_queue(kz_term:ne_binary()) -> command_ret().
 delete_callmgr_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_resource_queue(kz_term:ne_binary()) -> command_ret().
 delete_resource_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_configuration_queue(kz_term:ne_binary()) -> command_ret().
 delete_configuration_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_conference_queue(kz_term:ne_binary()) -> command_ret().
 delete_conference_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_monitor_queue(kz_term:ne_binary()) -> command_ret().
 delete_monitor_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_registrar_queue(kz_term:ne_binary()) -> command_ret().
 delete_registrar_queue(Queue) -> queue_delete(Queue).
+
+-spec delete_tasks_queue(kz_term:ne_binary()) -> command_ret().
 delete_tasks_queue(Queue) -> queue_delete(Queue).
 
 -spec delete_callevt_queue(kz_term:ne_binary()) -> command_ret().
@@ -830,8 +895,9 @@ delete_callctl_queue(CallID, Prop) ->
     queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)]), Prop).
 
 -spec queue_delete(kz_term:ne_binary()) -> command_ret().
--spec queue_delete(kz_term:ne_binary(), kz_term:proplist()) -> command_ret().
 queue_delete(Queue) -> queue_delete(Queue, []).
+
+-spec queue_delete(kz_term:ne_binary(), kz_term:proplist()) -> command_ret().
 queue_delete(Queue, _Prop) when not is_binary(Queue) ->
     {'error', 'invalid_queue_name'};
 queue_delete(Queue, Prop) ->
@@ -848,72 +914,83 @@ queue_delete(Queue, Prop) ->
 %% Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec bind_q_to_targeted(kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_targeted(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
+
+-spec bind_q_to_targeted(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
 -spec bind_q_to_nodes(kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_nodes(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_nodes(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_NODES).
+
+-spec bind_q_to_nodes(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_nodes(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_NODES).
 
 -spec bind_q_to_kapps(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_kapps(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_kapps(Queue, Routing) ->
     bind_q_to_kapps(Queue, Routing, []).
+
+-spec bind_q_to_kapps(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_kapps(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_KAPPS, Options).
 
 -spec bind_q_to_presence(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_presence(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_presence(Queue, Routing) ->
     bind_q_to_presence(Queue, Routing, []).
+
+-spec bind_q_to_presence(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_presence(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_PRESENCE, Options).
 
 -spec bind_q_to_registrar(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_registrar(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_registrar(Queue, Routing) ->
     bind_q_to_registrar(Queue, Routing, []).
+
+-spec bind_q_to_registrar(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_registrar(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_REGISTRAR, Options).
 
 -spec bind_q_to_notifications(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_notifications(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_notifications(Queue, Routing) ->
     bind_q_to_notifications(Queue, Routing, []).
+
+-spec bind_q_to_notifications(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_notifications(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_NOTIFICATIONS, Options).
 
 -spec bind_q_to_sysconf(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_sysconf(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_sysconf(Queue, Routing) ->
     bind_q_to_sysconf(Queue, Routing, []).
+
+-spec bind_q_to_sysconf(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_sysconf(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_SYSCONF, Options).
 
 -spec bind_q_to_callctl(kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_callctl(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_callctl(Queue) ->
     bind_q_to_callctl(Queue, Queue).
+
+-spec bind_q_to_callctl(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
 -spec bind_q_to_callevt(kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_callevt(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_callevt(Queue) ->
     bind_q_to_callevt(Queue, Queue).
+
+-spec bind_q_to_callevt(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_callevt(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
 -spec bind_q_to_resource(kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_resource(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_resource(Queue) -> bind_q_to_resource(Queue, <<"#">>).
+
+-spec bind_q_to_resource(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_resource(Queue, Routing) -> bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
 -spec bind_q_to_callmgr(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -932,9 +1009,8 @@ bind_q_to_monitor(Queue, Routing) ->
 unbind_q_from_monitor(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
--spec bind_q_to_conference(kz_term:ne_binary(), conf_routing_type()) -> 'ok'.
--spec bind_q_to_conference(kz_term:ne_binary(), conf_routing_type(), kz_term:api_binary()) -> 'ok'.
 
+-spec bind_q_to_conference(kz_term:ne_binary(), conf_routing_type()) -> 'ok'.
 bind_q_to_conference(Queue, 'discovery') ->
     bind_q_to_conference(Queue, 'discovery', 'undefined');
 bind_q_to_conference(Queue, 'command') ->
@@ -944,6 +1020,7 @@ bind_q_to_conference(Queue, 'event') ->
 bind_q_to_conference(Queue, 'config') ->
     bind_q_to_conference(Queue, 'config', <<"*">>).
 
+-spec bind_q_to_conference(kz_term:ne_binary(), conf_routing_type(), kz_term:api_binary()) -> 'ok'.
 bind_q_to_conference(Queue, 'discovery', _) ->
     bind_q_to_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
 bind_q_to_conference(Queue, 'event', EventKey) ->
@@ -966,18 +1043,20 @@ unbind_q_from_leader(Queue, Bind) ->
     unbind_q_from_exchange(Queue, Bind, ?EXCHANGE_LEADER).
 
 -spec bind_q_to_tasks(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_tasks(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_tasks(Queue, Routing) ->
     bind_q_to_tasks(Queue, Routing, []).
+
+-spec bind_q_to_tasks(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_tasks(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TASKS, Options).
 
 -spec bind_q_to_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec bind_q_to_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
     {'error', 'invalid_queue_name'};
 bind_q_to_exchange(Queue, Routing, Exchange) ->
     bind_q_to_exchange(Queue, Routing, Exchange, []).
+
+-spec bind_q_to_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     QB = #'queue.bind'{queue = Queue %% what queue does the binding attach to?
                       ,exchange = Exchange %% what exchange does the binding attach to?
@@ -993,9 +1072,8 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
 %% Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec unbind_q_from_conference(kz_term:ne_binary(), conf_routing_type()) ->
-                                      'ok' | {'error', any()}.
--spec unbind_q_from_conference(kz_term:ne_binary(), conf_routing_type(), kz_term:api_binary()) ->
                                       'ok' | {'error', any()}.
 unbind_q_from_conference(Queue, 'discovery') ->
     unbind_q_from_conference(Queue, 'discovery', 'undefined');
@@ -1006,6 +1084,8 @@ unbind_q_from_conference(Queue, 'config') ->
 unbind_q_from_conference(Queue, 'event') ->
     unbind_q_from_conference(Queue, 'event', <<"*">>).
 
+-spec unbind_q_from_conference(kz_term:ne_binary(), conf_routing_type(), kz_term:api_binary()) ->
+                                      'ok' | {'error', any()}.
 unbind_q_from_conference(Queue, 'discovery', _) ->
     unbind_q_from_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
 unbind_q_from_conference(Queue, 'event', ConfId) ->
@@ -1103,9 +1183,11 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 %% @end
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
+
 -spec basic_consume(kz_term:ne_binary()) -> 'ok' | {'error', any()}.
--spec basic_consume(kz_term:ne_binary(), kz_term:proplist()) -> 'ok' | {'error', any()}.
 basic_consume(Queue) -> basic_consume(Queue, []).
+
+-spec basic_consume(kz_term:ne_binary(), kz_term:proplist()) -> 'ok' | {'error', any()}.
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{queue = Queue
                          ,consumer_tag = <<>>
@@ -1123,9 +1205,11 @@ basic_consume(Queue, Options) ->
 %% but it does mean the server will not send any more messages for that consumer.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec basic_cancel() -> 'ok'.
--spec basic_cancel(kz_term:ne_binary()) -> 'ok'.
 basic_cancel() -> kz_amqp_channel:command(#'basic.cancel'{}).
+
+-spec basic_cancel(kz_term:ne_binary()) -> 'ok'.
 basic_cancel(ConsumerTag) -> kz_amqp_channel:command(#'basic.cancel'{consumer_tag=ConsumerTag}).
 
 %%------------------------------------------------------------------------------
@@ -1143,9 +1227,11 @@ confirm_select() -> kz_amqp_channel:command(#'confirm.select'{}).
 %% This method sets flow control
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec flow_control() -> 'ok'.
--spec flow_control(boolean()) -> 'ok'.
 flow_control() -> flow_control('true').
+
+-spec flow_control(boolean()) -> 'ok'.
 flow_control(Active) ->
     kz_amqp_channel:command(#'channel.flow'{active=Active}).
 

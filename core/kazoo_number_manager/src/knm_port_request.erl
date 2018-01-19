@@ -191,19 +191,16 @@ new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec transition_to_submitted(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_pending(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_scheduled(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_complete(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_rejected(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_canceled(kz_json:object(), transition_metadata()) -> transition_response().
 
+-spec transition_to_submitted(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_submitted(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_REJECTED], ?PORT_SUBMITTED).
 
+-spec transition_to_pending(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_pending(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_SUBMITTED], ?PORT_PENDING).
 
+-spec transition_to_scheduled(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_scheduled(JObj, Metadata) ->
     ToScheduled = states_to_scheduled(?SHOULD_ALLOW_FROM_SUBMITTED),
     transition(JObj, Metadata, ToScheduled, ?PORT_SCHEDULED).
@@ -213,15 +210,18 @@ states_to_scheduled(_AllowFromSubmitted='false') ->
 states_to_scheduled(_AllowFromSubmitted='true') ->
     [?PORT_SUBMITTED | states_to_scheduled('false')].
 
+-spec transition_to_complete(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_complete(JObj, Metadata) ->
     case transition(JObj, Metadata, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
         {'error', _}=E -> E;
         {'ok', Transitioned} -> completed_port(Transitioned)
     end.
 
+-spec transition_to_rejected(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_rejected(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECTED).
 
+-spec transition_to_canceled(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_canceled(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
@@ -246,11 +246,11 @@ maybe_transition(PortReq, Metadata, ?PORT_CANCELED) ->
 
 -spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
                         transition_response().
--spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        transition_response().
 transition(JObj, Metadata, FromStates, ToState) ->
     transition(JObj, Metadata, FromStates, ToState, current_state(JObj)).
 
+-spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                        transition_response().
 transition(_JObj, _Metadata, [], _ToState, _CurrentState) ->
     lager:debug("cant go from ~s to ~s", [_CurrentState, _ToState]),
     lager:debug("metadata: ~p", [_Metadata]),
@@ -350,10 +350,12 @@ get_user_name(AuthAccountId, UserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec charge_for_port(kz_json:object()) -> 'ok' | 'error'.
--spec charge_for_port(kz_json:object(), kz_term:ne_binary()) -> 'ok' | 'error'.
 charge_for_port(JObj) ->
     charge_for_port(JObj, kz_doc:account_id(JObj)).
+
+-spec charge_for_port(kz_json:object(), kz_term:ne_binary()) -> 'ok' | 'error'.
 charge_for_port(_JObj, AccountId) ->
     Services = kz_services:fetch(AccountId),
     Cost = kz_services:activation_charges(<<"number_services">>, ?FEATURE_PORT, Services),
@@ -507,8 +509,8 @@ clear_numbers_from_port(PortReq) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_send_request(kz_json:object()) -> 'ok'.
--spec maybe_send_request(kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_send_request(JObj) ->
     kz_util:put_callid(kz_doc:id(JObj)),
     AccountId = kz_doc:account_id(JObj),
@@ -520,6 +522,7 @@ maybe_send_request(JObj) ->
             lager:error("failed to open account ~s:~p", [AccountId, _R])
     end.
 
+-spec maybe_send_request(kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_send_request(JObj, 'undefined')->
     lager:debug("'submitted_port_requests_url' is not set for account ~s", [kz_doc:account_id(JObj)]);
 maybe_send_request(JObj, Url)->
@@ -676,10 +679,10 @@ migrate_doc(PortRequest) ->
     end.
 
 -spec update_doc(kz_json:object()) -> kz_term:api_object().
--spec update_doc(kz_json:object(), kz_term:api_binary()) -> kz_term:api_object().
 update_doc(PortRequest) ->
     update_doc(PortRequest, kz_doc:account_id(PortRequest)).
 
+-spec update_doc(kz_json:object(), kz_term:api_binary()) -> kz_term:api_object().
 update_doc(_Doc, 'undefined') ->
     lager:debug("no account id in doc ~s", [kz_doc:id(_Doc)]),
     'undefined';

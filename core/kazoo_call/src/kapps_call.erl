@@ -366,22 +366,22 @@ merge(OldJObj, JObj) ->
     kz_json:merge(OldJObj, JObj).
 
 -spec from_originate_uuid(kz_json:object()) -> call().
--spec from_originate_uuid(kz_json:object(), call()) -> call().
 from_originate_uuid(JObj) ->
     from_originate_uuid(JObj, new()).
 
+-spec from_originate_uuid(kz_json:object(), call()) -> call().
 from_originate_uuid(JObj, #kapps_call{}=Call) ->
     'true' = kapi_resource:originate_uuid_v(JObj),
     Call#kapps_call{control_q=kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
                    ,call_id=kz_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
                    }.
 
--spec from_originate_ready(kz_json:object()) -> call().
--spec from_originate_ready(kz_json:object(), call()) -> call().
 
+-spec from_originate_ready(kz_json:object()) -> call().
 from_originate_ready(JObj) ->
     from_originate_ready(JObj, new()).
 
+-spec from_originate_ready(kz_json:object(), call()) -> call().
 from_originate_ready(JObj, #kapps_call{}=Call) ->
     'true' = kapi_resource:originate_ready_v(JObj),
     Call#kapps_call{control_q=kz_json:get_value(<<"Control-Queue">>, JObj, control_queue(Call))
@@ -389,10 +389,10 @@ from_originate_ready(JObj, #kapps_call{}=Call) ->
                    }.
 
 -spec from_channel_create(kz_json:object()) -> call().
--spec from_channel_create(kz_json:object(), call()) -> call().
 from_channel_create(JObj) ->
     from_channel_create(JObj, new()).
 
+-spec from_channel_create(kz_json:object(), call()) -> call().
 from_channel_create(JObj, Call) ->
     from_json(JObj, Call).
 
@@ -404,11 +404,12 @@ from_channel_create(JObj, Call) ->
 %% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
+
 -spec from_json(kz_json:object()) -> call().
--spec from_json(kz_json:object(), call()) -> call().
 from_json(JObj) ->
     from_json(JObj, new()).
 
+-spec from_json(kz_json:object(), call()) -> call().
 from_json(JObj, #kapps_call{ccvs=OldCCVs
                            ,cavs=OldCAVs
                            ,kvs=Kvs
@@ -576,12 +577,12 @@ set_other_leg_call_id(CallId, #kapps_call{}=Call) ->
     Call#kapps_call{other_leg_call_id=CallId}.
 
 -spec call_id(call()) -> kz_term:api_binary().
--spec call_id_direct(call()) -> kz_term:api_binary().
 call_id(#kapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
 call_id(#kapps_call{call_id=CallId}=Call) ->
     default_helper_function(CallId, Call).
 
+-spec call_id_direct(call()) -> kz_term:api_binary().
 call_id_direct(#kapps_call{call_id=CallId}) ->
     CallId.
 
@@ -602,12 +603,12 @@ set_control_queue(ControlQ, #kapps_call{}=Call) when is_binary(ControlQ) ->
     Call#kapps_call{control_q=ControlQ}.
 
 -spec control_queue(call()) -> kz_term:api_binary().
--spec control_queue_direct(call()) -> kz_term:api_binary().
 control_queue(#kapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
 control_queue(#kapps_call{control_q=ControlQ}=Call) ->
     default_helper_function(ControlQ, Call).
 
+-spec control_queue_direct(call()) -> kz_term:api_binary().
 control_queue_direct(#kapps_call{control_q=ControlQ}) ->
     ControlQ.
 
@@ -1074,10 +1075,10 @@ language(#kapps_call{language=Language}) -> Language.
 -endif.
 
 -spec get_prompt(call(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
--spec get_prompt(call(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 get_prompt(#kapps_call{}=Call, Media) ->
     get_prompt(Call, Media, language(Call)).
 
+-spec get_prompt(call(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 get_prompt(Call, Media, 'undefined') ->
     kz_media_util:get_prompt(Media, language(Call), account_id(Call));
 get_prompt(Call, Media, Language) ->
@@ -1217,9 +1218,10 @@ set_custom_sip_header(Key, Value, #kapps_call{sip_headers=SHs}=Call) ->
     Call#kapps_call{sip_headers=kz_json:set_value(Key, Value, SHs)}.
 
 -spec custom_sip_header(kz_json:path(), call()) -> kz_json:api_json_term().
--spec custom_sip_header(kz_json:path(), Default, call()) -> kz_json:json_term() | Default.
 custom_sip_header(Key, #kapps_call{}=Call) ->
     custom_sip_header(Key, 'undefined', Call).
+
+-spec custom_sip_header(kz_json:path(), Default, call()) -> kz_json:json_term() | Default.
 custom_sip_header(Key, Default, #kapps_call{sip_headers=SHs}) ->
     kz_json:get_value(Key, SHs, Default).
 
@@ -1268,8 +1270,9 @@ kvs_erase(Key, #kapps_call{kvs=Dict}=Call) ->
 kvs_flush(#kapps_call{}=Call) -> Call#kapps_call{kvs=orddict:new()}.
 
 -spec kvs_fetch(any(), call()) -> any().
--spec kvs_fetch(any(), Default, call()) -> any() | Default.
 kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
+
+-spec kvs_fetch(any(), Default, call()) -> any() | Default.
 kvs_fetch(Key, Default, #kapps_call{kvs=Dict}) ->
     try orddict:fetch(kz_term:to_binary(Key), Dict)
     catch
@@ -1330,9 +1333,10 @@ kvs_update_counter(Key, Number, #kapps_call{kvs=Dict}=Call) ->
     Call#kapps_call{kvs=orddict:update_counter(kz_term:to_binary(Key), Number, Dict)}.
 
 -spec set_dtmf_collection(kz_term:api_binary(), call()) -> call().
--spec set_dtmf_collection(kz_term:api_binary(), kz_term:ne_binary(), call()) -> call().
 set_dtmf_collection(DTMF, Call) ->
     set_dtmf_collection(DTMF, <<"default">>, Call).
+
+-spec set_dtmf_collection(kz_term:api_binary(), kz_term:ne_binary(), call()) -> call().
 set_dtmf_collection('undefined', Collection, Call) ->
     Collections = kvs_fetch(<<"dtmf_collections">>, kz_json:new(), Call),
     kvs_store(<<"dtmf_collections">>
@@ -1347,16 +1351,18 @@ set_dtmf_collection(DTMF, Collection, Call) ->
              ).
 
 -spec get_dtmf_collection(call()) -> kz_term:api_binary().
--spec get_dtmf_collection(kz_term:ne_binary(), call()) -> kz_term:api_binary().
 get_dtmf_collection(Call) ->
     get_dtmf_collection(<<"default">>, Call).
+
+-spec get_dtmf_collection(kz_term:ne_binary(), call()) -> kz_term:api_binary().
 get_dtmf_collection(Collection, Call) ->
     kz_json:get_value(Collection, kvs_fetch(<<"dtmf_collections">>, kz_json:new(), Call)).
 
 -spec add_to_dtmf_collection(kz_term:ne_binary(), call()) -> call().
--spec add_to_dtmf_collection(kz_term:ne_binary(), kz_term:ne_binary(), call()) -> call().
 add_to_dtmf_collection(DTMF, Call) ->
     add_to_dtmf_collection(DTMF, <<"default">>, Call).
+
+-spec add_to_dtmf_collection(kz_term:ne_binary(), kz_term:ne_binary(), call()) -> call().
 add_to_dtmf_collection(DTMF, Collection, Call) ->
     case get_dtmf_collection(Collection, Call) of
         'undefined' -> set_dtmf_collection(DTMF, Collection, Call);
@@ -1367,30 +1373,30 @@ add_to_dtmf_collection(DTMF, Collection, Call) ->
 flush() ->
     kz_cache:flush_local(?KAPPS_CALL_CACHE).
 
--spec cache(call()) -> 'ok'.
--spec cache(call(), kz_term:api_binary()) -> 'ok'.
--spec cache(call(), kz_term:api_binary(), pos_integer()) -> 'ok'.
 
+-spec cache(call()) -> 'ok'.
 cache(Call) ->
     cache(Call, 'undefined', 5 * ?SECONDS_IN_MINUTE).
 
+-spec cache(call(), kz_term:api_binary()) -> 'ok'.
 cache(Call, AppName) ->
     cache(Call, AppName, 5 * ?SECONDS_IN_MINUTE).
 
+-spec cache(call(), kz_term:api_binary(), pos_integer()) -> 'ok'.
 cache(#kapps_call{call_id=CallId}=Call, AppName, Expires) ->
     CacheProps = [{'expires', Expires}],
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}, Call, CacheProps).
 
+
 -spec retrieve(kz_term:ne_binary()) ->
                       {'ok', call()} |
                       {'error', 'not_found'}.
--spec retrieve(kz_term:ne_binary(), kz_term:api_binary()) ->
-                      {'ok', call()} |
-                      {'error', 'not_found'}.
-
 retrieve(CallId) ->
     retrieve(CallId, 'undefined').
 
+-spec retrieve(kz_term:ne_binary(), kz_term:api_binary()) ->
+                      {'ok', call()} |
+                      {'error', 'not_found'}.
 retrieve(CallId, AppName) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}).
 

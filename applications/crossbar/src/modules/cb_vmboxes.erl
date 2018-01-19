@@ -77,23 +77,28 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?MESSAGES_RESOURCE) ->
     [?HTTP_GET];
 allowed_methods(_VMBoxId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
     [?HTTP_POST];
 allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_PUT].
 
@@ -105,15 +110,20 @@ allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId, ?BIN_DATA) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, ?MESSAGES_RESOURCE) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_, ?MESSAGES_RESOURCE, _) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -190,11 +200,8 @@ maybe_add_types_provided(Context, _, _) -> Context.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_vmboxes(Context, cb_context:req_verb(Context)).
 
@@ -203,6 +210,7 @@ validate_vmboxes(Context, ?HTTP_GET) ->
 validate_vmboxes(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?MESSAGES_RESOURCE) ->
     load_message_summary('undefined', Context);
 validate(Context, DocId) ->
@@ -217,6 +225,7 @@ validate_vmbox(Context, DocId, ?HTTP_PATCH) ->
 validate_vmbox(Context, DocId, ?HTTP_DELETE) ->
     load_vmbox(DocId, Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, DocId, ?MESSAGES_RESOURCE) ->
     validate_messages(Context, DocId, cb_context:req_verb(Context)).
 
@@ -251,6 +260,7 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
 
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success'), ToDelete).
 
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
     load_messages_binaries(DocId, Context);
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
@@ -284,6 +294,7 @@ validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_DELETE) ->
     load_message(MessageId, BoxId, Context).
 
+-spec validate(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
     load_or_upload(DocId, MediaId, Context, cb_context:req_verb(Context)).
 
@@ -303,9 +314,8 @@ load_or_upload(DocId, MediaId, Context, ?HTTP_GET) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     VMBoxMsgs = kz_json:get_list_value(?VM_KEY_MESSAGES, DbDoc),
@@ -314,6 +324,7 @@ post(Context, _DocId) ->
     %% remove messages array to not let it exposed
     crossbar_util:response(kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1)), C1).
 
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
     AccountId = cb_context:account_id(Context),
     MsgIds = kz_json:get_list_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []),
@@ -334,6 +345,7 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
             update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
     Context;
 post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
@@ -384,9 +396,8 @@ put(Context, _DocId, ?MESSAGES_RESOURCE, MsgID, ?BIN_DATA) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, DocId) ->
     AccountId = cb_context:account_id(Context),
     Msgs = kvm_messages:get(AccountId, DocId),
@@ -395,6 +406,7 @@ delete(Context, DocId) ->
     C = crossbar_doc:delete(Context),
     update_mwi(C, DocId).
 
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     AccountId = cb_context:account_id(Context),
     MsgIds = cb_context:resp_data(Context),
@@ -402,6 +414,7 @@ delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     C = crossbar_util:response(Result, Context),
     update_mwi(C, DocId).
 
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
     case kvm_message:change_folder({?VM_FOLDER_DELETED, 'true'}, MediaId, AccountId, DocId, add_pvt_auth_funs(Context)) of
@@ -513,7 +526,6 @@ get_folder_filter(Context, Default) ->
 -type filter_options() :: kvm_message:vm_folder() | kz_term:ne_binaries().
 
 -spec filter_messages(kz_json:objects(), filter_options(), cb_context:context()) -> kz_term:ne_binaries().
--spec filter_messages(kz_json:objects(), filter_options(), cb_context:context(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 filter_messages(Messages, {?VM_FOLDER_DELETED, _}, Context) ->
     %% move to delete folder and soft-delete
     filter_messages(Messages, ?VM_FOLDER_DELETED, Context, []);
@@ -521,6 +533,8 @@ filter_messages(Messages, Filters, Context) ->
     filter_messages(Messages, Filters, Context, []).
 
 %% Filter by folder
+
+-spec filter_messages(kz_json:objects(), filter_options(), cb_context:context(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 filter_messages([], _Filters, _Context, Selected) -> Selected;
 filter_messages([Mess|Messages], <<"all">> = Filter, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
@@ -620,11 +634,12 @@ validate_request(VMBoxId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
--spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context, cb_context:account_db(Context)).
 
+-spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context, 'undefined') ->
     check_vmbox_schema(VMBoxId, Context);
 validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
@@ -740,13 +755,13 @@ merge_summary_fold(BoxSummary, CountMap) ->
 -type source_id() :: kz_term:api_binary() | kz_term:api_binaries().
 
 -spec maybe_load_vmboxes(source_id(), cb_context:context()) -> cb_context:context().
--spec maybe_load_vmboxes_fold(source_id(), cb_context:context()) -> cb_context:context().
 maybe_load_vmboxes('undefined', Context) -> cb_context:set_resp_status(Context, 'success');
 maybe_load_vmboxes(?NE_BINARY = Id, Context) -> load_vmbox(Id, Context);
 maybe_load_vmboxes(<<>>, Context) -> empty_source_id(Context);
 maybe_load_vmboxes([], Context) -> empty_source_id(Context);
 maybe_load_vmboxes(Ids, Context) -> maybe_load_vmboxes_fold(Ids, Context).
 
+-spec maybe_load_vmboxes_fold(source_id(), cb_context:context()) -> cb_context:context().
 maybe_load_vmboxes_fold('undefined', Context) -> Context;
 maybe_load_vmboxes_fold(?NE_BINARY = Id, Context) -> load_vmbox(Id, Context);
 maybe_load_vmboxes_fold(<<>>, Context) -> empty_source_id(Context);
@@ -1105,8 +1120,8 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec check_uniqueness(kz_term:api_binary(), cb_context:context()) -> boolean().
--spec check_uniqueness(kz_term:api_binary(), cb_context:context(), pos_integer()) -> boolean().
 check_uniqueness(VMBoxId, Context) ->
     try kz_json:get_integer_value(<<"mailbox">>, cb_context:req_data(Context)) of
         Mailbox ->
@@ -1117,6 +1132,7 @@ check_uniqueness(VMBoxId, Context) ->
             'false'
     end.
 
+-spec check_uniqueness(kz_term:api_binary(), cb_context:context(), pos_integer()) -> boolean().
 check_uniqueness(VMBoxId, Context, Mailbox) ->
     ViewOptions = [{'key', Mailbox}],
     case kz_datamgr:get_results(cb_context:account_db(Context)
@@ -1141,8 +1157,8 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update_mwi(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries()) -> cb_context:context().
--spec update_mwi(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries(), atom()) -> cb_context:context().
 update_mwi(Context, BoxId) when is_binary(BoxId) ->
     update_mwi(Context, [BoxId]);
 update_mwi(Context, []) -> Context;
@@ -1150,6 +1166,7 @@ update_mwi(Context, [BoxId | BoxIds]) ->
     _ = update_mwi(Context, BoxId, cb_context:resp_status(Context)),
     update_mwi(Context, BoxIds).
 
+-spec update_mwi(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries(), atom()) -> cb_context:context().
 update_mwi(Context, BoxId, 'success') ->
     AccountId = cb_context:account_id(Context),
     _ = cb_modules_util:update_mwi(BoxId, AccountId),

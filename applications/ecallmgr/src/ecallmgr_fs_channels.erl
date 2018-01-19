@@ -598,10 +598,10 @@ has_channels_for_owner(OwnerId) ->
     Count > 0.
 
 -spec find_by_authorizing_id(kz_term:ne_binaries()) -> [] | kz_term:proplist().
--spec find_by_authorizing_id(kz_term:ne_binaries(), kz_term:proplist()) -> [] | kz_term:proplist().
 find_by_authorizing_id(AuthIds) ->
     find_by_authorizing_id(AuthIds, []).
 
+-spec find_by_authorizing_id(kz_term:ne_binaries(), kz_term:proplist()) -> [] | kz_term:proplist().
 find_by_authorizing_id([], Acc) -> Acc;
 find_by_authorizing_id([AuthId|AuthIds], Acc) ->
     Pattern = #channel{authorizing_id=AuthId
@@ -857,10 +857,10 @@ max_channel_uptime() ->
     ecallmgr_config:get_integer(?MAX_CHANNEL_UPTIME_KEY, 0).
 
 -spec set_max_channel_uptime(non_neg_integer()) -> 'ok'.
--spec set_max_channel_uptime(non_neg_integer(), boolean()) -> 'ok'.
 set_max_channel_uptime(MaxAge) ->
     set_max_channel_uptime(MaxAge, 'true').
 
+-spec set_max_channel_uptime(non_neg_integer(), boolean()) -> 'ok'.
 set_max_channel_uptime(MaxAge, 'true') ->
     ecallmgr_config:set_default(?MAX_CHANNEL_UPTIME_KEY, kz_term:to_integer(MaxAge));
 set_max_channel_uptime(MaxAge, 'false') ->
@@ -876,9 +876,10 @@ maybe_cleanup_old_channels() ->
     end.
 
 -spec cleanup_old_channels() -> non_neg_integer().
--spec cleanup_old_channels(non_neg_integer()) -> non_neg_integer().
 cleanup_old_channels() ->
     cleanup_old_channels(max_channel_uptime()).
+
+-spec cleanup_old_channels(non_neg_integer()) -> non_neg_integer().
 cleanup_old_channels(MaxAge) ->
     NoOlderThan = kz_time:now_s() - MaxAge,
 

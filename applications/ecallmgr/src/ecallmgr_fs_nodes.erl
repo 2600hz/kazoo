@@ -105,17 +105,17 @@ start_link() ->
                              ], []).
 
 %% returns 'ok' or {'error', some_error_atom_explaining_more}
--spec add(atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add(atom(), kz_term:proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add(atom(), atom(), kz_term:proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 
+-spec add(atom()) -> 'ok' | {'error', 'no_connection'}.
 add(Node) -> add(Node, []).
 
+-spec add(atom(), kz_term:proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 add(Node, Opts) when is_list(Opts) ->
     add(Node, erlang:get_cookie(), Opts);
 add(Node, Cookie) when is_atom(Cookie) ->
     add(Node, Cookie, [{'cookie', Cookie}]).
 
+-spec add(atom(), atom(), kz_term:proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 add(Node, Cookie, Opts) when is_atom(Node) ->
     gen_server:call(?SERVER
                    ,{'add_fs_node'
@@ -147,9 +147,9 @@ connected(Verbose) ->
     gen_server:call(?SERVER, {'connected_nodes', Verbose}).
 
 -spec flush() -> 'ok'.
--spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush() -> do_flush(<<>>).
 
+-spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(User, Realm) ->
     Args = <<"id "
              ,User/binary, " "
@@ -203,12 +203,12 @@ all_nodes_connected() ->
 summary() ->
     print_summary(gen_server:call(?SERVER, 'nodes')).
 
--spec details() -> 'ok'.
--spec details(kz_term:text() | atom()) -> 'ok'.
 
+-spec details() -> 'ok'.
 details() ->
     print_details(gen_server:call(?SERVER, 'nodes')).
 
+-spec details(kz_term:text() | atom()) -> 'ok'.
 details(NodeName) when not is_atom(NodeName) ->
     details(kz_term:to_atom(NodeName, 'true'));
 details(NodeName) when is_atom(NodeName) ->
@@ -263,10 +263,11 @@ remove_capability(Node, Name) ->
 
 -spec get_capability(atom(), kz_term:ne_binary()) ->
                             capability() | kz_term:api_object().
--spec get_capability(atom(), kz_term:ne_binary(), 'json' | 'record') ->
-                            capability() | kz_term:api_object().
 get_capability(Node, Capability) ->
     get_capability(Node, Capability, 'json').
+
+-spec get_capability(atom(), kz_term:ne_binary(), 'json' | 'record') ->
+                            capability() | kz_term:api_object().
 get_capability(Node, Capability, Format) ->
     MatchSpec = [{#capability{node='$1'
                              ,name='$2'
@@ -281,11 +282,11 @@ get_capability(Node, Capability, Format) ->
 
 -spec get_capabilities(atom()) ->
                               kz_json:objects() | capabilities().
--spec get_capabilities(atom(), 'json' | 'record') ->
-                              kz_json:objects() | capabilities().
 get_capabilities(Node) ->
     get_capabilities(Node, 'json').
 
+-spec get_capabilities(atom(), 'json' | 'record') ->
+                              kz_json:objects() | capabilities().
 get_capabilities(Node, Format) ->
     MatchSpec = [{#capability{node='$1'
                              ,_='_'

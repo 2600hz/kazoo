@@ -64,9 +64,11 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?RECOVERY) -> [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(_AuthToken) -> [?HTTP_GET].
 
@@ -78,9 +80,11 @@ allowed_methods(_AuthToken) -> [?HTTP_GET].
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_tokens()) -> boolean().
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_tokens()) -> boolean().
 resource_exists(?RECOVERY) -> 'true';
 resource_exists(_AuthToken) -> 'true'.
 
@@ -146,8 +150,8 @@ authenticate_nouns(_Nouns) -> 'false'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     Context1 = consume_tokens(Context),
     case cb_context:resp_status(Context1) of
@@ -185,6 +189,7 @@ validate_action(Context, _Action) ->
     lager:debug("unknown action ~s", [_Action]),
     cb_context:add_system_error(<<"action required">>, Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?RECOVERY) ->
     case cb_context:req_verb(Context) of
         ?HTTP_PUT ->
@@ -200,11 +205,11 @@ validate(Context, AuthToken) ->
     maybe_get_auth_token(Context1, AuthToken).
 
 -spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     _ = cb_context:put_reqid(Context),
     crossbar_auth:create_auth_token(Context, ?MODULE).
 
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?RECOVERY) ->
     _ = cb_context:put_reqid(Context),
     save_reset_id_then_send_email(Context).
@@ -268,9 +273,8 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
--spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     cb_context:context().
 maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
     Credentials = kz_json:get_value(<<"credentials">>, JObj),
@@ -287,6 +291,8 @@ maybe_authenticate_user(Context) ->
             maybe_auth_accounts(Context, Credentials, Method, Accounts)
     end.
 
+-spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                     cb_context:context().
 maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
     AccountDb = kz_util:format_account_db(Account),
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST

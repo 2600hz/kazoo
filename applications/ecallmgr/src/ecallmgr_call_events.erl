@@ -1123,12 +1123,12 @@ get_billing_seconds(Props) ->
         Billmsec -> kz_term:to_binary(kz_term:ceiling(Billmsec / 1000))
     end.
 
--spec swap_call_legs(kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
--spec swap_call_legs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 
+-spec swap_call_legs(kz_term:proplist() | kz_json:object()) -> kz_term:proplist().
 swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);
 swap_call_legs(JObj) -> swap_call_legs(kz_json:to_proplist(JObj)).
 
+-spec swap_call_legs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 swap_call_legs([], Swap) -> Swap;
 swap_call_legs([{<<"Unique-ID">>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Other-Leg-Call-ID">>, Value}|Swap]);
@@ -1172,10 +1172,10 @@ callee_call_event_props(Props) ->
     end.
 
 -spec debug_channel_props(kz_term:proplist()) -> kz_term:proplist().
--spec debug_channel_props(kz_term:proplist(), boolean()) -> kz_term:proplist().
 debug_channel_props(Props) ->
     debug_channel_props(Props, ?DEBUG_CHANNEL).
 
+-spec debug_channel_props(kz_term:proplist(), boolean()) -> kz_term:proplist().
 debug_channel_props(_Props, 'false') -> [];
 debug_channel_props(Props, 'true') ->
     [{<<"Channel-Debug">>

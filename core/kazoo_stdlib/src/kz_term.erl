@@ -88,6 +88,7 @@
 -type deeplist() :: iolist(). %[any() | deeplist()].
 
 -type std_return() :: {'ok', any()} | {'error', any()}.
+-type sup_no_return() :: 'no_return' | {'no_return', non_neg_integer()}.
 
 -type jobj_return() :: {'ok', kz_json:object()} | {'error', any()}.
 -type jobjs_return() :: {'ok', kz_json:objects()} | {'error', any()}.
@@ -136,6 +137,7 @@
              ,api_float/0
              ,deeplist/0
              ,std_return/0
+             ,sup_no_return/0
              ,jobj_return/0
              ,jobjs_return/0
              ,ne_binary/0
@@ -158,12 +160,12 @@ shuffle_list(List) when is_list(List) ->
     randomize_list(round(math:log(length(List)) + 0.5), List).
 
 -spec randomize_list(list()) -> list().
--spec randomize_list(pos_integer(), list()) -> list().
 randomize_list(List) ->
     D = lists:keysort(1, [{rand:uniform(), A} || A <- List]),
     {_, D1} = lists:unzip(D),
     D1.
 
+-spec randomize_list(pos_integer(), list()) -> list().
 randomize_list(1, List) -> randomize_list(List);
 randomize_list(T, List) ->
     lists:foldl(fun(_E, Acc) ->
@@ -185,9 +187,9 @@ to_hex_binary(S) ->
 
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
--spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
 to_integer(X) -> to_integer(X, 'notstrict').
 
+-spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
 to_integer(X, _) when is_integer(X) -> X;
 to_integer(X, 'strict') when is_float(X) -> erlang:error('badarg');
 to_integer(X, 'notstrict') when is_float(X) -> round(X);
@@ -204,9 +206,9 @@ to_integer(X, S) when is_list(X) ->
     end.
 
 -spec to_float(string() | binary() | integer() | float()) -> float().
--spec to_float(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
 to_float(X) -> to_float(X, 'notstrict').
 
+-spec to_float(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
 to_float(X, _) when is_float(X) -> X;
 to_float(X, strict) when is_binary(X) -> binary_to_float(X);
 to_float(X, notstrict) when is_binary(X) ->

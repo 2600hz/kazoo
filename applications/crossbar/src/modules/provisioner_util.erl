@@ -69,10 +69,12 @@ cleanse_mac_address(MACAddress) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_provision(cb_context:context()) -> boolean().
--spec maybe_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_provision(Context) ->
     maybe_provision(Context, cb_context:resp_status(Context)).
+
+-spec maybe_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined'
@@ -124,10 +126,12 @@ maybe_provision_v5(Context, ?HTTP_POST) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_delete_provision(cb_context:context()) -> boolean().
--spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_delete_provision(Context) ->
     maybe_delete_provision(Context, cb_context:resp_status(Context)).
+
+-spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_delete_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined'
@@ -191,9 +195,10 @@ maybe_delete_account(Context) ->
     end.
 
 -spec maybe_send_contact_list(cb_context:context()) -> 'ok'.
--spec maybe_send_contact_list(cb_context:context(), crossbar_status()) -> 'ok'.
 maybe_send_contact_list(Context) ->
     maybe_send_contact_list(Context, cb_context:resp_status(Context)).
+
+-spec maybe_send_contact_list(cb_context:context(), crossbar_status()) -> 'ok'.
 maybe_send_contact_list(Context, 'success') ->
     case cb_context:is_context(Context)
         andalso get_provisioning_type()
@@ -382,7 +387,6 @@ do_full_provision(MACAddress, Context) ->
     maybe_send_to_full_provisioner(PartialURL, JObj).
 
 -spec maybe_send_to_full_provisioner(kz_term:ne_binary()) -> boolean().
--spec maybe_send_to_full_provisioner(kz_term:ne_binary(), kz_json:object()) -> boolean().
 maybe_send_to_full_provisioner(PartialURL) ->
     case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
@@ -391,6 +395,7 @@ maybe_send_to_full_provisioner(PartialURL) ->
             send_to_full_provisioner(FullUrl)
     end.
 
+-spec maybe_send_to_full_provisioner(kz_term:ne_binary(), kz_json:object()) -> boolean().
 maybe_send_to_full_provisioner(PartialURL, JObj) ->
     case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
@@ -741,11 +746,13 @@ get_provisioning_type() ->
     end.
 
 %% @public
+
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
--spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean() | 'force') -> 'ok'.
 maybe_sync_sip_data(Context, Type) ->
     ShouldSync = cb_context:fetch(Context, 'sync'),
     maybe_sync_sip_data(Context, Type, ShouldSync).
+
+-spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean() | 'force') -> 'ok'.
 maybe_sync_sip_data(_Context, _Type, 'false') ->
     lager:debug("sync not configured in context for ~s", [_Type]);
 maybe_sync_sip_data(Context, 'device', 'true') ->
@@ -813,12 +820,12 @@ send_check_sync(Username, Realm, MsgId) ->
                                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                               ]).
 
--spec publish_check_sync(kz_term:proplist()) -> 'ok'.
 -spec publish_check_sync(kz_term:api_binary(), kz_term:proplist()) -> 'ok'.
 publish_check_sync('undefined', Req) ->
     publish_check_sync(Req);
 publish_check_sync(MsgId, Req) ->
     publish_check_sync([{<<"Msg-ID">>, MsgId} | Req]).
 
+-spec publish_check_sync(kz_term:proplist()) -> 'ok'.
 publish_check_sync(Req) ->
     kz_amqp_worker:cast(Req, fun kapi_switch:publish_notify/1).

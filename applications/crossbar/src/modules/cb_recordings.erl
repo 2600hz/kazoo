@@ -61,10 +61,11 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 
+-spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_RecordingId) -> [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -74,10 +75,11 @@ allowed_methods(_RecordingId) -> [?HTTP_GET, ?HTTP_DELETE].
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 
+-spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_RecordingId) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -214,11 +216,11 @@ get_disposition(MediaName, Context) ->
     end.
 
 -spec action_lookup(cb_context:context()) -> atom().
--spec action_lookup(kz_term:proplist(), media_values()) -> atom().
 action_lookup(Context) ->
     Acceptable = acceptable_content_types(Context),
     action_lookup(Acceptable, accept_values(Context)).
 
+-spec action_lookup(kz_term:proplist(), media_values()) -> atom().
 action_lookup(_, [?MEDIA_VALUE(<<"application">>, <<"json">>, _, _, _)|_]) ->
     'read';
 action_lookup(_, [?MEDIA_VALUE(<<"application">>, <<"x-json">>, _, _, _)|_]) ->

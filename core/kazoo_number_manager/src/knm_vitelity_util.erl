@@ -72,9 +72,10 @@ get_query_value(<<"type">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
 get_query_value(<<"withrates">>=Key, Options) -> ?QUERY_VALUE(Key, Options).
 
 -spec default_options() -> qs_options().
--spec default_options(kz_term:proplist()) -> qs_options().
 default_options() ->
     default_options([]).
+
+-spec default_options(kz_term:proplist()) -> qs_options().
 default_options(Options) ->
     [{'login', get_query_value(<<"login">>, Options)}
     ,{'pass', get_query_value(<<"pass">>, Options)}

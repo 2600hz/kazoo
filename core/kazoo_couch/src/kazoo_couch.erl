@@ -75,22 +75,22 @@ get_db(Server, DbName) ->
     kz_couch_util:get_db(Server, DbName).
 
 -spec get_admin_dbs() -> kz_term:ne_binary().
--spec get_admin_dbs(couch_version() | kz_data:connection()) -> kz_term:ne_binary().
 get_admin_dbs() ->
     #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
     get_admin_dbs(Conn).
 
+-spec get_admin_dbs(couch_version() | kz_data:connection()) -> kz_term:ne_binary().
 get_admin_dbs(#server{}=Server) ->
     get_admin_dbs(server_version(Server));
 get_admin_dbs('bigcouch') -> <<"dbs">>;
 get_admin_dbs(_Driver) -> <<"_dbs">>.
 
 -spec get_admin_nodes() -> kz_term:ne_binary().
--spec get_admin_nodes(couch_version() | kz_data:connection()) -> kz_term:ne_binary().
 get_admin_nodes() ->
     #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
     get_admin_nodes(Conn).
 
+-spec get_admin_nodes(couch_version() | kz_data:connection()) -> kz_term:ne_binary().
 get_admin_nodes(#server{}=Server) ->
     get_admin_nodes(server_version(Server));
 get_admin_nodes('bigcouch') -> <<"nodes">>;

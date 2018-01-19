@@ -123,12 +123,12 @@ add_missing_modules(Modules, MissingModules) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec refresh() -> 'ok'.
--spec refresh(input_term()) -> 'ok'.
 
+-spec refresh() -> 'ok'.
 refresh() ->
     io:format("please use kapps_maintenance:refresh().").
 
+-spec refresh(input_term()) -> 'ok'.
 refresh(Value) ->
     io:format("please use kapps_maintenance:refresh(~p).", [Value]).
 
@@ -489,10 +489,10 @@ db_system_schemas_exists() ->
     db_exists(?KZ_SCHEMA_DB).
 
 -spec db_exists(kz_term:ne_binary()) -> 'true'.
--spec db_exists(kz_term:ne_binary(), boolean()) -> 'true'.
 db_exists(Database) ->
     db_exists(Database, 'true').
 
+-spec db_exists(kz_term:ne_binary(), boolean()) -> 'true'.
 db_exists(Database, ShouldRetry) ->
     case kz_datamgr:db_exists(Database) of
         'true' -> 'true';
@@ -652,10 +652,11 @@ create_user(Context) ->
     end.
 
 -spec print_account_info(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
--spec print_account_info(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 print_account_info(AccountDb) ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     print_account_info(AccountDb, AccountId).
+
+-spec print_account_info(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 print_account_info(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
@@ -699,11 +700,12 @@ maybe_move_account(AccountId, ToAccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec descendants_count() -> 'ok'.
--spec descendants_count(kz_term:ne_binary()) -> 'ok'.
 descendants_count() ->
     crossbar_util:descendants_count().
 
+-spec descendants_count(kz_term:ne_binary()) -> 'ok'.
 descendants_count(AccountId) ->
     crossbar_util:descendants_count(AccountId).
 
@@ -945,11 +947,11 @@ maybe_set_api_url(AppUrl, MetaData) ->
     kz_json:set_value(<<"api_url">>, AppUrl, MetaData).
 
 -spec maybe_create_app(file:filename_all(), kz_json:object()) -> 'ok'.
--spec maybe_create_app(file:filename_all(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 maybe_create_app(AppPath, MetaData) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     maybe_create_app(AppPath, MetaData, MasterAccountDb).
 
+-spec maybe_create_app(file:filename_all(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
     AppName = kzd_app:name(MetaData),
     case find_app(MasterAccountDb, AppName) of
@@ -1154,15 +1156,18 @@ set_app_field(AppId, Field, Value) ->
     update_app(AppId, [Field], Value).
 
 -spec set_app_label(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
--spec set_app_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
--spec set_app_extended_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
--spec set_app_features(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_label(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"label">>], Value).
+
+-spec set_app_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_description(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"description">>], Value).
+
+-spec set_app_extended_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_extended_description(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"extended_description">>], Value).
+
+-spec set_app_features(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_features(AppId, Value) ->
     Values = [V || V <- binary:split(Value, <<$@>>, [global]),
                    V =/= <<>>
@@ -1190,7 +1195,11 @@ update_schemas() ->
     kz_datamgr:suppress_change_notice(),
     lager:notice("starting system schemas update"),
     kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
-    lager:notice("finished system schemas update").
+    lager:notice("finished system schemas update"),
+    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
+         || {Config, Error} <- kapps_maintenance:validate_system_configs()
+        ],
+    'ok'.
 
 -spec db_init() -> 'ok'.
 db_init() ->

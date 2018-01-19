@@ -74,8 +74,8 @@ customer_has_card(Customer, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
--spec sync(kz_service_item:items(), kz_term:ne_binary(), updates()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     ItemList = kz_service_items:to_list(Items),
     case fetch_bt_customer(AccountId, ItemList =/= []) of
@@ -84,6 +84,7 @@ sync(Items, AccountId) ->
             sync(ItemList, AccountId, #kz_service_updates{bt_customer=Customer})
     end.
 
+-spec sync(kz_service_item:items(), kz_term:ne_binary(), updates()) -> bookkeeper_sync_result().
 sync([], _AccountId, #kz_service_updates{bt_subscriptions=Subscriptions}) ->
     _ = [braintree_subscription:update(Subscription)
          || #kz_service_update{bt_subscription=Subscription} <- Subscriptions
@@ -150,12 +151,13 @@ subscriptions(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec commit_transactions(kz_term:ne_binary(),kz_transactions:kz_transactions()) -> 'ok' | 'error'.
--spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions(), integer()) -> 'ok' | 'error'.
 commit_transactions(BillingId, Transactions) ->
     _ = kz_transactions:save(Transactions),
     commit_transactions(BillingId, Transactions, 3).
 
+-spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions(), integer()) -> 'ok' | 'error'.
 commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
     case kz_services:fetch_services_doc(BillingId, true) of
         {'error', _E} ->
@@ -185,11 +187,12 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
--spec charge_transactions(kz_term:ne_binary(), kz_json:objects(), dict:dict()) -> kz_json:objects().
 charge_transactions(BillingId, Transactions) ->
     charge_transactions(BillingId, Transactions, dict:new()).
 
+-spec charge_transactions(kz_term:ne_binary(), kz_json:objects(), dict:dict()) -> kz_json:objects().
 charge_transactions(BillingId, [], Dict) ->
     dict:fold(
       fun(Code, JObjs, Acc) when Code =:= ?CODE_TOPUP ->
@@ -322,12 +325,12 @@ convert_transaction(BTTransaction) ->
 
 -spec set_reason_and_code(kz_json:object(), kz_transaction:transaction()) ->
                                  kz_transaction:transaction().
--spec set_reason_and_code(kz_json:object(), kz_transaction:transaction(), kz_term:api_pos_integer()) ->
-                                 kz_transaction:transaction().
 set_reason_and_code(BTTransaction, Transaction) ->
     Code = kz_json:get_integer_value(<<"purchase_order">>, BTTransaction),
     set_reason_and_code(BTTransaction, Transaction, Code).
 
+-spec set_reason_and_code(kz_json:object(), kz_transaction:transaction(), kz_term:api_pos_integer()) ->
+                                 kz_transaction:transaction().
 set_reason_and_code(BTTransaction, Transaction, 'undefined') ->
     IsApi = kz_json:is_true(<<"is_api">>, BTTransaction),
     IsRecurring = kz_json:is_true(<<"is_recurring">>, BTTransaction),

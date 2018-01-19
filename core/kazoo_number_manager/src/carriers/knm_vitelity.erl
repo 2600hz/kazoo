@@ -317,10 +317,8 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_el()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', any()}.
--spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_els(), kz_term:proplist()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
@@ -330,6 +328,9 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
                                                  }) ->
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
+-spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_els(), kz_term:proplist()) ->
+                                 {'ok', kz_json:object()} |
+                                 {'error', any()}.
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
     {'ok', kz_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'

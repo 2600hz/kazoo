@@ -119,12 +119,12 @@ start_link() ->
                            ).
 
 -spec bindings() -> [{kz_term:ne_binary(), kz_term:atoms() | kz_term:ne_binaries()}].
--spec bindings(kz_term:ne_binary()) -> [{kz_term:ne_binary(), kz_term:atoms() | kz_term:ne_binaries()}].
 bindings() ->
     [{props:get_value('callid', Props), props:get_value('restrict_to', Props)}
      || {'call', Props} <- gen_listener:bindings(?SERVER)
     ].
 
+-spec bindings(kz_term:ne_binary()) -> [{kz_term:ne_binary(), kz_term:atoms() | kz_term:ne_binaries()}].
 bindings(CallId) ->
     [{CallId, props:get_value('restrict_to', Props)}
      || {'call', Props} <- gen_listener:bindings(?SERVER),
@@ -142,7 +142,6 @@ rm_konami_binding(<<_/binary>> = CallId) ->
     gen_listener:rm_binding(?SERVER, ?KONAMI_BINDINGS(CallId)).
 
 -spec add_call_binding(kz_term:api_ne_binary() | kapps_call:call()) -> 'ok'.
--spec add_call_binding(kz_term:api_ne_binary() | kapps_call:call(), kz_term:ne_binaries() | kz_term:atoms()) -> 'ok'.
 add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add fsm binding for call ~s: ~p", [CallId, ?TRACKED_CALL_EVENTS]),
@@ -154,6 +153,7 @@ add_call_binding(Call) ->
     catch gproc:reg(?KONAMI_REG({'fsm', kapps_call:account_id(Call)})),
     add_call_binding(kapps_call:call_id_direct(Call)).
 
+-spec add_call_binding(kz_term:api_ne_binary() | kapps_call:call(), kz_term:ne_binaries() | kz_term:atoms()) -> 'ok'.
 add_call_binding('undefined', _) -> 'ok';
 add_call_binding(CallId, Events) when is_binary(CallId) ->
     lager:debug("add pid binding for call ~s: ~p", [CallId, Events]),
@@ -195,10 +195,10 @@ call_has_listeners(CallId) ->
     end.
 
 -spec really_remove_call_bindings(kz_term:ne_binary()) -> 'ok'.
--spec really_remove_call_bindings(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 really_remove_call_bindings(CallId) ->
     really_remove_call_bindings(CallId, ?TRACKED_CALL_EVENTS).
 
+-spec really_remove_call_bindings(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 really_remove_call_bindings(CallId, Events) ->
     gen_listener:rm_binding(?SERVER, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:rm_binding(?SERVER, ?META_BINDINGS(CallId)).
@@ -432,12 +432,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec cleanup_bindings(kz_types:server_ref()) -> 'ok'.
--spec cleanup_bindings(kz_types:server_ref(), gen_listener:bindings()) -> 'ok'.
 cleanup_bindings(Srv) ->
     kz_util:put_callid(?MODULE),
     cleanup_bindings(Srv, gen_listener:bindings(Srv)).
 
+-spec cleanup_bindings(kz_types:server_ref(), gen_listener:bindings()) -> 'ok'.
 cleanup_bindings(_Srv, []) -> 'ok';
 cleanup_bindings(Srv, [{Binding, Props}|Bindings]) ->
     maybe_remove_binding(Srv, Binding, Props, props:get_value('callid', Props)),

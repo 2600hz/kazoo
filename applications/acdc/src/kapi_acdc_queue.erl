@@ -93,7 +93,6 @@ member_call_v(JObj) ->
     member_call_v(kz_json:to_proplist(JObj)).
 
 -spec member_call_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
--spec member_call_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_call_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -103,6 +102,7 @@ member_call_routing_key(JObj) ->
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     member_call_routing_key(AcctId, Id).
 
+-spec member_call_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_call_routing_key(AcctId, QueueId) ->
     <<"acdc.member.call.", AcctId/binary, ".", QueueId/binary>>.
 
@@ -190,7 +190,6 @@ member_call_cancel_v(JObj) ->
     member_call_cancel_v(kz_json:to_proplist(JObj)).
 
 -spec member_call_result_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
--spec member_call_result_routing_key(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_call_result_routing_key(Props) when is_list(Props) ->
     AcctId = props:get_value(<<"Account-ID">>, Props),
     QueueId = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
@@ -202,6 +201,7 @@ member_call_result_routing_key(JObj) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj, <<"#">>),
     member_call_result_routing_key(AcctId, QueueId, CallId).
 
+-spec member_call_result_routing_key(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_call_result_routing_key(AcctId, QueueId, CallId) ->
     <<"acdc.member.call_result.", AcctId/binary, ".", QueueId/binary, ".", CallId/binary>>.
 
@@ -233,7 +233,6 @@ member_connect_req_v(JObj) ->
     member_connect_req_v(kz_json:to_proplist(JObj)).
 
 -spec member_connect_req_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
--spec member_connect_req_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_connect_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -242,6 +241,8 @@ member_connect_req_routing_key(JObj) ->
     Id = kz_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     member_connect_req_routing_key(AcctId, Id).
+
+-spec member_connect_req_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_connect_req_routing_key(AcctId, QID) ->
     <<"acdc.member.connect_req.", AcctId/binary, ".", QID/binary>>.
 
@@ -420,8 +421,8 @@ member_hungup_v(JObj) ->
 %% Sync Req/Resp
 %%   Depending on the queue strategy, get the other queue's strategy state
 %%------------------------------------------------------------------------------
+
 -spec sync_req_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
--spec sync_req_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 sync_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -431,6 +432,7 @@ sync_req_routing_key(JObj) ->
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     sync_req_routing_key(AcctId, Id).
 
+-spec sync_req_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 sync_req_routing_key(AcctId, QID) ->
     <<"acdc.queue.sync_req.", AcctId/binary, ".", QID/binary>>.
 
@@ -512,12 +514,15 @@ agent_change_routing_key(AcctId, QueueId) ->
                        ]).
 
 -spec agent_change_available() -> kz_term:ne_binary().
--spec agent_change_ringing() -> kz_term:ne_binary().
--spec agent_change_busy() -> kz_term:ne_binary().
--spec agent_change_unavailable() -> kz_term:ne_binary().
 agent_change_available() -> ?AGENT_CHANGE_AVAILABLE.
+
+-spec agent_change_ringing() -> kz_term:ne_binary().
 agent_change_ringing() -> ?AGENT_CHANGE_RINGING.
+
+-spec agent_change_busy() -> kz_term:ne_binary().
 agent_change_busy() -> ?AGENT_CHANGE_BUSY.
+
+-spec agent_change_unavailable() -> kz_term:ne_binary().
 agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE.
 
 -define(AGENT_CHANGE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>, <<"Change">>]).
@@ -548,8 +553,8 @@ agent_change_v(JObj) -> agent_change_v(kz_json:to_proplist(JObj)).
 %%------------------------------------------------------------------------------
 %% Queue Position tracking
 %%------------------------------------------------------------------------------
+
 -spec queue_member_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
--spec queue_member_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 queue_member_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -559,6 +564,7 @@ queue_member_routing_key(JObj) ->
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     queue_member_routing_key(AcctId, Id).
 
+-spec queue_member_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 queue_member_routing_key(AcctId, QID) ->
     <<"acdc.queue.position.", AcctId/binary, ".", QID/binary>>.
 
@@ -721,10 +727,12 @@ declare_exchanges() ->
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------
+
 -spec publish_member_call(kz_term:api_terms()) -> 'ok'.
--spec publish_member_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call(JObj) ->
     publish_member_call(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call(Props, ContentType) when is_list(Props) ->
     publish_member_call(kz_json:from_list(Props), ContentType);
 publish_member_call(API, ContentType) ->
@@ -734,23 +742,26 @@ publish_member_call(API, ContentType) ->
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API), Props).
 
 -spec publish_member_call_cancel(kz_term:api_terms()) -> 'ok'.
--spec publish_member_call_cancel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_cancel(JObj) ->
     publish_member_call_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call_cancel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_cancel(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_shared_member_call(kz_json:object()) -> 'ok'.
--spec publish_shared_member_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_shared_member_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_shared_member_call(JObj) ->
     publish_shared_member_call(kz_json:get_value(<<"Account-ID">>, JObj)
                               ,kz_json:get_value(<<"Queue-ID">>, JObj)
                               ,JObj
                               ).
+
+-spec publish_shared_member_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_shared_member_call(AcctId, QueueId, JObj) ->
     publish_shared_member_call(AcctId, QueueId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_shared_member_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_shared_member_call(AcctId, QueueId, Props, ContentType) when is_list(Props) ->
     publish_shared_member_call(AcctId, QueueId, kz_json:from_list(Props), ContentType);
 publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
@@ -762,115 +773,129 @@ publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
     amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, Props).
 
 -spec publish_member_call_failure(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_member_call_failure(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_failure(Q, JObj) ->
     publish_member_call_failure(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call_failure(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_failure(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_FAIL_VALUES, fun member_call_failure/1),
     amqp_util:targeted_publish(Q, Payload, ContentType),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_member_call_success(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_member_call_success(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_success(Q, JObj) ->
     publish_member_call_success(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call_success(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_success(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_SUCCESS_VALUES, fun member_call_success/1),
     amqp_util:targeted_publish(Q, Payload, ContentType),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_member_connect_req(kz_term:api_terms()) -> 'ok'.
--spec publish_member_connect_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_req(JObj) ->
     publish_member_connect_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_REQ_VALUES, fun member_connect_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_connect_req_routing_key(API)).
 
 -spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_resp(Q, JObj) ->
     publish_member_connect_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_RESP_VALUES, fun member_connect_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_win(Q, JObj) ->
     publish_member_connect_win(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_win(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_WIN_VALUES, fun member_connect_win/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_timeout(Q, JObj) ->
     publish_agent_timeout(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_timeout(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_TIMEOUT_VALUES, fun agent_timeout/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_accepted(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_member_connect_accepted(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_accepted(Q, JObj) ->
     publish_member_connect_accepted(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_accepted(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_accepted(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_ACCEPTED_VALUES, fun member_connect_accepted/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_retry(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_member_connect_retry(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_retry(Q, JObj) ->
     publish_member_connect_retry(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_retry(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_retry(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_RETRY_VALUES, fun member_connect_retry/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_hungup(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_member_hungup(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_hungup(Q, JObj) ->
     publish_member_hungup(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_hungup(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_hungup(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_HUNGUP_VALUES, fun member_hungup/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_sync_req(kz_term:api_terms()) -> 'ok'.
--spec publish_sync_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_req(JObj) ->
     publish_sync_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_sync_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_REQ_VALUES, fun sync_req/1),
     amqp_util:kapps_publish(sync_req_routing_key(API), Payload, ContentType).
 
 -spec publish_sync_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_sync_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_resp(Q, JObj) ->
     publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_sync_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_agent_change(kz_term:api_terms()) -> 'ok'.
--spec publish_agent_change(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_change(JObj) ->
     publish_agent_change(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_agent_change(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_change(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_CHANGE_VALUES, fun agent_change/1),
     amqp_util:kapps_publish(agent_change_publish_key(API), Payload, ContentType).
 
 -spec publish_queue_member_add(kz_term:api_terms()) -> 'ok'.
--spec publish_queue_member_add(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_add(JObj) ->
     publish_queue_member_add(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_queue_member_add(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_add(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_ADD_VALUES, fun queue_member_add/1),
     amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).
 
 -spec publish_queue_member_remove(kz_term:api_terms()) -> 'ok'.
--spec publish_queue_member_remove(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_remove(JObj) ->
     publish_queue_member_remove(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_queue_member_remove(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_remove(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_REMOVE_VALUES, fun queue_member_remove/1),
     amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).

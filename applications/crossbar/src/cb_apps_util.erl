@@ -242,11 +242,12 @@ is_blacklisted(App, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec is_filtered(kz_term:ne_binary(), kz_json:object()) -> boolean().
--spec is_filtered(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_filtered(AccountId, App) ->
     is_filtered(AccountId, App, kzd_app:name(App)).
 
+-spec is_filtered(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_filtered(AccountId, _App, <<"port">>=_AppName) ->
     lager:debug("filtering '~s' application", [_AppName]),
     ResellerId = kz_services:find_reseller_id(AccountId),

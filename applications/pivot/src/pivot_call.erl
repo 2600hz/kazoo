@@ -86,9 +86,10 @@ start_link(Call, JObj) ->
 stop_call(Srv, Call) -> gen_listener:cast(Srv, {'stop', Call}).
 
 -spec new_request(pid(), kz_term:ne_binary(), http_method()) -> 'ok'.
--spec new_request(pid(), kz_term:ne_binary(), http_method(), kz_json:object()) -> 'ok'.
 new_request(Srv, Uri, Method) ->
     gen_listener:cast(Srv, {'request', Uri, Method}).
+
+-spec new_request(pid(), kz_term:ne_binary(), http_method(), kz_json:object()) -> 'ok'.
 new_request(Srv, Uri, Method, Params) ->
     gen_listener:cast(Srv, {'request', Uri, Method, Params}).
 

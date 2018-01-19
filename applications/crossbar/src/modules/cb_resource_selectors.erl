@@ -52,11 +52,11 @@ init() ->
 
 -spec authorize(cb_context:context()) ->
                        boolean() | {'stop', cb_context:context()}.
--spec authorize(cb_context:context(), req_nouns()) ->
-                       boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
+-spec authorize(cb_context:context(), req_nouns()) ->
+                       boolean() | {'stop', cb_context:context()}.
 authorize(Context, [{<<"resource_selectors">>, _} | _]) ->
     case cb_context:account_id(Context) of
         'undefined' -> maybe_authorize_admin(Context);
@@ -85,13 +85,12 @@ maybe_authorize_admin(Context) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?RULES) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?NAME) ->
@@ -101,11 +100,13 @@ allowed_methods(?RESOURCE) ->
 allowed_methods(_UUID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?NAME, _SelectorName) ->
     [?HTTP_GET];
 allowed_methods(?RESOURCE, _ResourceId) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(?RESOURCE, _ResourceId, ?NAME, _SelectorName) ->
     [?HTTP_GET];
 allowed_methods(?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
@@ -119,20 +120,21 @@ allowed_methods(?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?RULES) -> 'true';
 resource_exists(?NAME) -> 'true';
 resource_exists(?RESOURCE) -> 'true';
 resource_exists(_UUID) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?NAME, _SelectorName) -> 'true';
 resource_exists(?RESOURCE, _ResourceId) -> 'true'.
 
+-spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(?RESOURCE, _ResourceId, ?NAME, _SelectorName) -> 'true';
 resource_exists(?NAME, _SelectorName, ?RESOURCE, _ResourceId) -> 'true'.
 
@@ -145,13 +147,12 @@ resource_exists(?NAME, _SelectorName, ?RESOURCE, _ResourceId) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(),  path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     summary(set_selectors_db(Context), [], <<"resource_selectors/id_listing">>, 'false').
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?RULES) ->
     validate_rules(set_account_db(Context), cb_context:req_verb(Context));
 validate(Context, ?NAME) ->
@@ -161,11 +162,13 @@ validate(Context, ?RESOURCE) ->
 validate(Context, UUID) ->
     validate_doc(set_selectors_db(Context), UUID, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?NAME, SelectorName) ->
     summary(set_selectors_db(Context), [SelectorName], <<"resource_selectors/name_resource_listing">>, 'true');
 validate(Context, ?RESOURCE, ResourceId) ->
     summary(set_selectors_db(Context), [ResourceId], <<"resource_selectors/resource_name_listing">>, 'true').
 
+-spec validate(cb_context:context(), path_token(), path_token(),  path_token(), path_token()) -> cb_context:context().
 validate(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
     summary(set_selectors_db(Context), [ResourceId, SelectorName], <<"resource_selectors/resource_name_id_listing">>, 'false');
 validate(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
@@ -341,11 +344,11 @@ is_global_request(Context) ->
 
 -spec maybe_handle_load_failure(cb_context:context()) ->
                                        cb_context:context().
--spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
-                                       cb_context:context().
 maybe_handle_load_failure(Context) ->
     maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
 
+-spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
+                                       cb_context:context().
 maybe_handle_load_failure(Context, 404) ->
     JObj = kz_doc:set_type(kz_doc:set_id(cb_context:req_data(Context),?RULES_PVT_TYPE), ?RULES_PVT_TYPE),
     cb_context:setters(Context

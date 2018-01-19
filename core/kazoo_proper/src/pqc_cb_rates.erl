@@ -56,11 +56,11 @@ upload_rate(API, RateDoc) ->
 
 -spec upload_csv(pqc_cb_api:state(), iodata()) ->
                         {'ok', kz_term:api_ne_binary()}.
--spec upload_csv(pqc_cb_api:state(), iodata(), kz_term:api_ne_binary()) ->
-                        {'ok', kz_term:api_ne_binary()}.
 upload_csv(API, CSV) ->
     upload_csv(API, CSV, 'undefined').
 
+-spec upload_csv(pqc_cb_api:state(), iodata(), kz_term:api_ne_binary()) ->
+                        {'ok', kz_term:api_ne_binary()}.
 upload_csv(API, CSV, _RatedeckId) ->
     CreateResp = pqc_cb_tasks:create(API, "category=rates&action=import", CSV),
     TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>]
@@ -173,9 +173,10 @@ get_rate(API, RateDoc) ->
                            ).
 
 -spec get_rates(pqc_cb_api:state()) -> pqc_cb_api:response().
--spec get_rates(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 get_rates(API) ->
     get_rates(API, ?KZ_RATES_DB).
+
+-spec get_rates(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 get_rates(API, RatedeckId) ->
     ?INFO("getting rates for ratedeck ~s", [RatedeckId]),
     pqc_cb_api:make_request([200]
@@ -275,13 +276,13 @@ init() ->
     ?INFO("INIT FINISHED").
 
 -spec cleanup() -> any().
--spec cleanup(pqc_cb_api:state()) -> any().
 cleanup() ->
     ?INFO("CLEANUP ALL THE THINGS"),
     kz_data_tracing:clear_all_traces(),
     pqc_cb_service_plans:cleanup(),
     cleanup(pqc_cb_api:authenticate()).
 
+-spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
     _ = [?MODULE:delete_rate(API, RatedeckId) || RatedeckId <- ?RATEDECK_NAMES],

@@ -93,12 +93,12 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> kz_types:startlink_ret().
--spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 
+-spec start_link(atom()) -> kz_types:startlink_ret().
 start_link(Name) when is_atom(Name) ->
     start_link(Name, ?EXPIRE_PERIOD, []).
 
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Name, Props) when is_list(Props) ->
     start_link(Name, ?EXPIRE_PERIOD, Props).
 
@@ -134,11 +134,11 @@ maybe_add_db_binding([[]]) -> [[]];
 maybe_add_db_binding(BindingProps) ->
     [?DATABASE_BINDING | BindingProps].
 
--spec store(any(), any()) -> 'ok'.
--spec store(any(), any(), kz_term:proplist()) -> 'ok'.
 
+-spec store(any(), any()) -> 'ok'.
 store(K, V) -> store(K, V, []).
 
+-spec store(any(), any(), kz_term:proplist()) -> 'ok'.
 store(K, V, Props) -> store_local(?SERVER, K, V, Props).
 
 -spec peek(any()) -> {'ok', any()} |
@@ -167,21 +167,21 @@ dump() -> dump('false').
 -spec dump(kz_term:text()) -> 'ok'.
 dump(ShowValue) -> dump_local(?SERVER, ShowValue).
 
+
 -spec wait_for_key(any()) -> {'ok', any()} |
                              {'error', 'timeout'}.
--spec wait_for_key(any(), timeout()) -> {'ok', any()} |
-                                        {'error', 'timeout'}.
-
 wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 
+-spec wait_for_key(any(), timeout()) -> {'ok', any()} |
+                                        {'error', 'timeout'}.
 wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
--spec store_local(kz_types:server_ref(), any(), any()) -> 'ok'.
--spec store_local(kz_types:server_ref(), any(), any(), kz_term:proplist()) -> 'ok'.
 
+-spec store_local(kz_types:server_ref(), any(), any()) -> 'ok'.
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
+-spec store_local(kz_types:server_ref(), any(), any(), kz_term:proplist()) -> 'ok'.
 store_local(Srv, K, V, Props) when is_atom(Srv) ->
     case whereis(Srv) of
         'undefined' ->
@@ -319,12 +319,12 @@ display_cache_obj(#cache_obj{key=Key
 
 -spec wait_for_key_local(atom(), any()) -> {'ok', any()} |
                                            {'error', 'timeout'}.
--spec wait_for_key_local(atom(), any(), pos_integer()) ->
-                                {'ok', any()} |
-                                {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
 
+-spec wait_for_key_local(atom(), any(), pos_integer()) ->
+                                {'ok', any()} |
+                                {'error', 'timeout'}.
 wait_for_key_local(Srv, Key, Timeout) when is_integer(Timeout) ->
     WaitFor = Timeout + 100,
     {'ok', Ref} = gen_server:call(Srv, {'wait_for_key', Key, Timeout}, WaitFor),
@@ -675,7 +675,6 @@ get_props_callback(Props) ->
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec expire_objects(ets:tab(), [ets:tab()]) -> non_neg_integer().
--spec expire_objects(ets:tab(), [ets:tab()], list()) -> non_neg_integer().
 expire_objects(Tab, AuxTables) ->
     Now = kz_time:now_s(),
     FindSpec = [{#cache_obj{key = '$1'
@@ -692,6 +691,7 @@ expire_objects(Tab, AuxTables) ->
                 }],
     expire_objects(Tab, AuxTables, ets:select(Tab, FindSpec)).
 
+-spec expire_objects(ets:tab(), [ets:tab()], list()) -> non_neg_integer().
 expire_objects(_Tab, _AuxTables, []) -> 0;
 expire_objects(Tab, AuxTables, Objects) ->
     _ = maybe_exec_expired_callbacks(Objects),

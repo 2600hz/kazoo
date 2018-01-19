@@ -126,12 +126,12 @@ get_client_ip(Req) ->
     end.
 
 -spec maybe_trace(cowboy_req:req()) -> 'ok'.
--spec maybe_trace(cowboy_req:req(), boolean()) -> 'ok'.
 maybe_trace(Req) ->
     maybe_trace(Req
                ,kapps_config:get_is_true(?CONFIG_CAT, <<"allow_tracing">>, 'false')
                ).
 
+-spec maybe_trace(cowboy_req:req(), boolean()) -> 'ok'.
 maybe_trace(_Req, 'false') -> 'ok';
 maybe_trace(Req, 'true') ->
     case cowboy_req:header(<<"x-trace-request">>, Req) of
@@ -172,7 +172,6 @@ maybe_decode_start_key(Context) ->
 metrics() ->
     {kz_util:bin_usage(), kz_util:mem_usage()}.
 
--spec find_version(kz_term:ne_binary()) -> kz_term:ne_binary().
 -spec find_version(kz_term:ne_binary(), cowboy_req:req()) ->
                           kz_term:ne_binary().
 find_version(Path, Req) ->
@@ -181,6 +180,7 @@ find_version(Path, Req) ->
         Version -> Version
     end.
 
+-spec find_version(kz_term:ne_binary()) -> kz_term:ne_binary().
 find_version(Path) ->
     lager:info("find version in ~s", [Path]),
     case binary:split(Path, <<"/">>, ['global']) of
@@ -219,11 +219,11 @@ maybe_allow_proxy_req(Peer, ForwardIP, 'true') ->
     end.
 
 -spec is_proxied(kz_term:ne_binary()) -> boolean().
--spec is_proxied(kz_term:ne_binary(), kz_term:ne_binaries()) -> boolean().
 is_proxied(Peer) ->
     Proxies = kapps_config:get_ne_binaries(?APP_NAME, <<"reverse_proxies">>, [<<"127.0.0.1">>]),
     is_proxied(Peer, Proxies).
 
+-spec is_proxied(kz_term:ne_binary(), kz_term:ne_binaries()) -> boolean().
 is_proxied(_Peer, []) -> 'false';
 is_proxied(Peer, [Proxy|Rest]) ->
     kz_network_utils:verify_cidr(Peer, kz_network_utils:to_cidr(Proxy))
@@ -263,10 +263,10 @@ rest_terminate(Req, Context, Verb) ->
     'ok'.
 
 -spec pretty_metric(integer()) -> kz_term:ne_binary().
--spec pretty_metric(integer(), boolean()) -> kz_term:ne_binary().
 pretty_metric(N) ->
     pretty_metric(N, kapps_config:get_is_true(?CONFIG_CAT, <<"pretty_metrics">>, 'true')).
 
+-spec pretty_metric(integer(), boolean()) -> kz_term:ne_binary().
 pretty_metric(N, 'false') ->
     kz_term:to_binary(N);
 pretty_metric(N, 'true') when N < 0 ->
@@ -388,11 +388,11 @@ maybe_allow_method(Req, Context, Methods, Verb) ->
 
 -spec malformed_request(cowboy_req:req(), cb_context:context()) ->
                                {boolean(), cowboy_req:req(), cb_context:context()}.
--spec malformed_request(cowboy_req:req(), cb_context:context(), http_method()) ->
-                               {boolean(), cowboy_req:req(), cb_context:context()}.
 malformed_request(Req, Context) ->
     malformed_request(Req, Context, cb_context:req_verb(Context)).
 
+-spec malformed_request(cowboy_req:req(), cb_context:context(), http_method()) ->
+                               {boolean(), cowboy_req:req(), cb_context:context()}.
 malformed_request(Req, Context, ?HTTP_OPTIONS) ->
     {'false', Req, Context};
 malformed_request(Req, Context, _ReqVerb) ->
@@ -429,11 +429,11 @@ valid_content_headers(Req, Context) ->
 
 -spec known_content_type(cowboy_req:req(), cb_context:context()) ->
                                 {boolean(), cowboy_req:req(), cb_context:context()}.
--spec known_content_type(cowboy_req:req(), cb_context:context(), http_method()) ->
-                                {boolean(), cowboy_req:req(), cb_context:context()}.
 known_content_type(Req, Context) ->
     known_content_type(Req, Context, cb_context:req_verb(Context)).
 
+-spec known_content_type(cowboy_req:req(), cb_context:context(), http_method()) ->
+                                {boolean(), cowboy_req:req(), cb_context:context()}.
 known_content_type(Req, Context, ?HTTP_OPTIONS) ->
     {'true', Req, Context};
 known_content_type(Req, Context, ?HTTP_GET) ->
@@ -565,11 +565,11 @@ set_content_type_header(#{headers := Headers}=Req, {Type, SubType, _}) ->
 
 -spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context()) ->
                                     {content_types_funs(), cowboy_req:req(), cb_context:context()}.
--spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
-                                    {content_types_funs(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(CT, Req, Context) ->
     content_types_accepted(CT, Req, Context, cb_context:content_types_accepted(Context)).
 
+-spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
+                                    {content_types_funs(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(CT, Req, Context, []) ->
     lager:debug("no content-types accepted, using defaults"),
     content_types_accepted(CT, Req, cb_context:set_content_types_accepted(Context, ?CONTENT_ACCEPTED));
@@ -757,11 +757,11 @@ from_form(Req0, Context0) ->
 
 -spec create_from_response(cowboy_req:req(), cb_context:context()) ->
                                   {boolean(), cowboy_req:req(), cb_context:context()}.
--spec create_from_response(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
-                                  {boolean(), cowboy_req:req(), cb_context:context()}.
 create_from_response(Req, Context) ->
     create_from_response(Req, Context, cb_context:req_header(Context, <<"accept">>)).
 
+-spec create_from_response(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
+                                  {boolean(), cowboy_req:req(), cb_context:context()}.
 create_from_response(Req, Context, 'undefined') ->
     create_from_response(Req, Context, <<"*/*">>);
 create_from_response(Req, Context, Accept) ->
@@ -808,11 +808,11 @@ to_json(Req, Context, Accept) ->
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
--spec to_binary(cowboy_req:req(), cb_context:context(), kz_term:api_ne_binary()) ->
-                       {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
     to_binary(Req, Context, accept_override(Context)).
 
+-spec to_binary(cowboy_req:req(), cb_context:context(), kz_term:api_ne_binary()) ->
+                       {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context, 'undefined') ->
     lager:debug("run: to_binary"),
     RespData = cb_context:resp_data(Context),
@@ -878,13 +878,13 @@ send_file(Req, Context) ->
     api_util:create_pull_response(Req, Context, fun api_util:create_resp_file/2).
 
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), atom()) -> atom().
--spec to_fun(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Accept, Default) ->
     case binary:split(Accept, <<"/">>) of
         [Major, Minor] -> to_fun(Context, Major, Minor, Default);
         _ -> Default
     end.
 
+-spec to_fun(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Major, Minor, Default) ->
     case [F || {F, CTPs} <- cb_context:content_types_provided(Context),
                accept_matches_provided(Major, Minor, CTPs)
@@ -918,14 +918,14 @@ to_csv(Req0, Context0) ->
 
 -spec to_pdf(cowboy_req:req(), cb_context:context()) ->
                     {binary(), cowboy_req:req(), cb_context:context()}.
--spec to_pdf(cowboy_req:req(), cb_context:context(), binary()) ->
-                    {binary(), cowboy_req:req(), cb_context:context()}.
 to_pdf(Req, Context) ->
     lager:debug("run: to_pdf"),
     Event = to_fun_event_name(<<"to_pdf">>, Context),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
     to_pdf(Req1, Context1, cb_context:resp_data(Context1)).
 
+-spec to_pdf(cowboy_req:req(), cb_context:context(), binary()) ->
+                    {binary(), cowboy_req:req(), cb_context:context()}.
 to_pdf(Req, Context, <<>>) ->
     to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, RespData) ->

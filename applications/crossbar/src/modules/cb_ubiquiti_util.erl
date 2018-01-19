@@ -28,10 +28,10 @@
 -define(SALT_LENGTH, kapps_config:get_integer(?U_CONFIG_CAT, <<"salt_length">>, 20)).
 
 -spec create_api_token(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec create_api_token(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 create_api_token(ProviderId) ->
     create_api_token(ProviderId, ?SECRET).
 
+-spec create_api_token(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 create_api_token(ProviderId, <<_/binary>> = Secret) ->
     Salt = kz_binary:rand_hex(?SALT_LENGTH),
     ExpireTime = kz_time:current_unix_tstamp() + ?EXPIRES,

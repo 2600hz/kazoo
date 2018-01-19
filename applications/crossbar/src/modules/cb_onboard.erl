@@ -449,9 +449,8 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 %% the objects.  Starts with the account :)
 %% @end
 %%--------------------------------------------------------------------
--spec populate_new_account(kz_term:proplist(), cb_context:context()) -> cb_context:context().
--spec populate_new_account(kz_term:proplist(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 
+-spec populate_new_account(kz_term:proplist(), cb_context:context()) -> cb_context:context().
 populate_new_account(Props, _) ->
     Context = props:get_value(?KZ_ACCOUNTS_DB, Props),
     Context1 = crossbar_bindings:fold(<<"*.execute.put.accounts">>, [cb_context:set_resp_status(Context, 'error')]),
@@ -481,6 +480,7 @@ populate_new_account(Props, _) ->
             end
     end.
 
+-spec populate_new_account(kz_term:proplist(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 populate_new_account([], _, Results) ->
     Results;
 

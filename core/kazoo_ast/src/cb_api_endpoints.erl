@@ -36,10 +36,10 @@
 -define(X_AUTH_TOKEN_NOT_REQUIRED, "auth_token_header_or_none").
 
 -spec to_ref_doc() -> 'ok'.
--spec to_ref_doc(atom()) -> 'ok'.
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
+-spec to_ref_doc(atom()) -> 'ok'.
 to_ref_doc('crossbar_filter'=Module) ->
     Filters = filters_from_module(Module),
     filters_to_ref_doc(Filters);
@@ -266,6 +266,7 @@ process_schema(Filename, Definitions) ->
 -spec is_kazoo_prefixed(kz_term:ne_binaries()) -> boolean().
 is_kazoo_prefixed([]) -> 'false';
 is_kazoo_prefixed([<<"kazoo-", _/binary>>|_]) -> 'true';
+is_kazoo_prefixed([<<"support_level">>|_]) -> 'true';
 is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
 
 -spec maybe_fix_ref(kz_term:ne_binary()) -> kz_term:ne_binary().

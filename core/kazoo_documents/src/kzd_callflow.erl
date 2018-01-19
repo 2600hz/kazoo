@@ -96,10 +96,12 @@ is_feature_code(Doc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec flow(doc()) -> kz_term:api_object().
--spec flow(doc(), Default) -> kz_json:object() | Default.
 flow(Doc) ->
     flow(Doc, 'undefined').
+
+-spec flow(doc(), Default) -> kz_json:object() | Default.
 flow(Doc, Default) ->
     kz_json:get_json_value(?FLOW, Doc, Default).
 

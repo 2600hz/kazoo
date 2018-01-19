@@ -74,15 +74,16 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?STATUS_PATH_TOKEN) -> [?HTTP_GET];
 allowed_methods(?STATS_PATH_TOKEN) -> [?HTTP_GET];
 allowed_methods(_UserId) -> [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?STATUS_PATH_TOKEN, _UserId) -> [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_UserId, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_UserId, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
@@ -96,11 +97,14 @@ allowed_methods(_UserId, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 %%    /agents/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, ?STATUS_PATH_TOKEN) -> 'true';
 resource_exists(?STATUS_PATH_TOKEN, _) -> 'true';
 resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true'.
@@ -112,10 +116,11 @@ resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(Context) -> Context.
+
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(Context, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
@@ -129,6 +134,8 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
                                                  ,[{'to_json', ?JSON_CONTENT_TYPES}]
                                                  )
     end.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(Context, ?STATUS_PATH_TOKEN, _) -> Context;
 content_types_provided(Context, _, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
@@ -143,15 +150,14 @@ content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) ->
                       cb_context:context().
 validate(Context) ->
     summary(Context).
 
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
 validate(Context, PathToken) ->
     validate_agent(Context, PathToken, cb_context:req_verb(Context)).
 
@@ -162,6 +168,8 @@ validate_agent(Context, ?STATS_PATH_TOKEN, ?HTTP_GET) ->
 validate_agent(Context, Id, ?HTTP_GET) ->
     read(Id, Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) ->
+                      cb_context:context().
 validate(Context, AgentId, PathToken) ->
     validate_agent_action(Context, AgentId, PathToken, cb_context:req_verb(Context)).
 
@@ -464,10 +472,11 @@ format_stats_fold(Stat, Acc) ->
 
 -spec maybe_add_answered(kz_json:object(), kz_json:object()) ->
                                 [{kz_json:path(), non_neg_integer()}].
--spec maybe_add_answered(kz_json:object(), kz_json:object(), kz_term:api_binary()) ->
-                                [{kz_json:path(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc) ->
     maybe_add_answered(Stat, Acc, kz_json:get_value(<<"status">>, Stat)).
+
+-spec maybe_add_answered(kz_json:object(), kz_json:object(), kz_term:api_binary()) ->
+                                [{kz_json:path(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc, <<"handled">>) ->
     add_answered(Stat, Acc);
 maybe_add_answered(Stat, Acc, <<"processed">>) ->

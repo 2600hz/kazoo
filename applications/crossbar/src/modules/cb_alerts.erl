@@ -48,10 +48,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_AlertId) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
@@ -64,9 +66,11 @@ allowed_methods(_AlertId) ->
 %%    /alerts/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -79,10 +83,12 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_alerts(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_alert(Context, Id, cb_context:req_verb(Context)).
 

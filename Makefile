@@ -163,7 +163,9 @@ dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
 dialyze-it: $(PLT)
-	@if [ -n "$(TO_DIALYZE)" ]; then $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); fi;
+	@if [ -n "$(TO_DIALYZE)" ]; then \
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); \
+	fi;
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -302,8 +304,7 @@ circle-unstaged:
 	echo 'Maybe try `make apis` and see if that fixes anything ;)'
 	exit 1
 
-circle-dialyze:
-	@$(MAKE) build-plt
+circle-dialyze: build-plt
 	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze
 
 circle-release:

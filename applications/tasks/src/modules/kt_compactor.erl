@@ -249,10 +249,10 @@ do_compact_node_db(Compactor) ->
     ] ++ AfterCols.
 
 -spec do_compact_db(kz_term:ne_binary()) -> rows().
--spec do_compact_db(kz_term:ne_binary(), heuristic()) -> rows().
 do_compact_db(Database) ->
     do_compact_db(Database, ?HEUR_RATIO).
 
+-spec do_compact_db(kz_term:ne_binary(), heuristic()) -> rows().
 do_compact_db(Database, Heuristic) ->
     do_compact_db_by_nodes(Database, Heuristic).
 

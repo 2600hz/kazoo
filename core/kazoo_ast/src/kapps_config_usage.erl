@@ -27,15 +27,14 @@
                 }.
 
 -spec to_schema_docs() -> 'ok'.
--spec to_schema_docs(atom()) -> 'ok'.
 to_schema_docs() ->
     kz_json:foreach(fun update_schema/1, process_project()).
 
+-spec to_schema_docs(atom()) -> 'ok'.
 to_schema_docs(App) ->
     kz_json:foreach(fun update_schema/1, process_app(App)).
 
 -spec update_schema({file:filename_all(), kz_json:json_term()}) -> 'ok'.
--spec update_schema(kz_json:key(), kz_json:json_object(), file:filename_all()) -> 'ok'.
 update_schema({PrivDir, Schemas}) ->
     ?DEBUG("adding schemas to priv dir ~s~n~p~n", [PrivDir, Schemas]),
 
@@ -44,6 +43,8 @@ update_schema({PrivDir, Schemas}) ->
                     end
                    ,Schemas
                    ).
+
+-spec update_schema(kz_json:key(), kz_json:json_object(), file:filename_all()) -> 'ok'.
 update_schema(Name, AutoGenSchema, PrivDir) ->
     ?DEBUG("~s detected ~p~n", [Name, AutoGenSchema]),
     AccountSchema = account_properties(AutoGenSchema),

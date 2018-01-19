@@ -26,12 +26,12 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url(kz_term:ne_binary()) -> string().
--spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 
+-spec url(kz_term:ne_binary()) -> string().
 url(CustomerId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses"]).
 
+-spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 url(CustomerId, AddressId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses/", kz_term:to_list(AddressId)]).
 
@@ -53,15 +53,15 @@ find(CustomerId, AddressId) ->
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create(bt_address()) -> bt_address().
--spec create(nonempty_string() | kz_term:ne_binary(), bt_address()) -> bt_address().
 
+-spec create(bt_address()) -> bt_address().
 create(#bt_address{customer_id=CustomerId}=Address) ->
     Url = url(CustomerId),
     Request = record_to_xml(Address, 'true'),
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
+-spec create(nonempty_string() | kz_term:ne_binary(), bt_address()) -> bt_address().
 create(CustomerId, Address) ->
     create(Address#bt_address{customer_id=CustomerId}).
 
@@ -86,14 +86,14 @@ update(#bt_address{id=AddressId
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete(bt_address()) -> bt_address().
--spec delete(kz_term:ne_binary() | nonempty_string(), kz_term:ne_binary() | nonempty_string()) ->  bt_address().
 
+-spec delete(bt_address()) -> bt_address().
 delete(#bt_address{customer_id=CustomerId
                   ,id=AddressId
                   }) ->
     delete(CustomerId, AddressId).
 
+-spec delete(kz_term:ne_binary() | nonempty_string(), kz_term:ne_binary() | nonempty_string()) ->  bt_address().
 delete(CustomerId, AddressId) ->
     Url = url(CustomerId, AddressId),
     _ = braintree_request:delete(Url),
@@ -105,12 +105,12 @@ delete(CustomerId, AddressId) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> bt_address().
--spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_address().
 
+-spec xml_to_record(bt_xml()) -> bt_address().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_address().
 xml_to_record(Xml, Base) ->
     #bt_address{id = kz_xml:get_value([Base, "/id/text()"], Xml)
                ,customer_id = kz_xml:get_value([Base, "/customer-id/text()"], Xml)
@@ -136,12 +136,12 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_address()) -> kz_term:proplist() | bt_xml() | 'undefined'.
--spec record_to_xml(bt_address(), boolean()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 
+-spec record_to_xml(bt_address()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml(Address) ->
     record_to_xml(Address, 'false').
 
+-spec record_to_xml(bt_address(), boolean()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml('undefined', _ToString) -> 'undefined';
 record_to_xml(Address, ToString) ->
     Props = [{'first-name', Address#bt_address.first_name}

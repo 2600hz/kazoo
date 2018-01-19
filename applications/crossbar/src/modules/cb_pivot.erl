@@ -47,10 +47,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?DEBUG_PATH_TOKEN) ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
     [?HTTP_GET].
 
@@ -63,9 +65,11 @@ allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
 %%    /pivot/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------

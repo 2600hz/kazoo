@@ -90,14 +90,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_PUT].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?SMTP_LOG) ->
     [?HTTP_GET];
 allowed_methods(?INBOX) ->
@@ -109,6 +107,7 @@ allowed_methods(?OUTBOX) ->
 allowed_methods(?OUTGOING) ->
     [?HTTP_GET, ?HTTP_PUT].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?SMTP_LOG, _AttemptId) ->
     [?HTTP_GET];
 allowed_methods(?INCOMING, _FaxId) ->
@@ -120,6 +119,7 @@ allowed_methods(?OUTBOX, _FaxId) ->
 allowed_methods(?OUTGOING, _FaxJobId) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(?INBOX, _FaxId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTBOX, _FaxId, ?ATTACHMENT) ->
@@ -134,25 +134,25 @@ allowed_methods(?OUTBOX, _FaxId, ?ATTACHMENT) ->
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
+-spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?SMTP_LOG) -> 'true';
 resource_exists(?INCOMING) -> 'true';
 resource_exists(?INBOX) -> 'true';
 resource_exists(?OUTBOX) -> 'true';
 resource_exists(?OUTGOING) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?INCOMING, _Id) -> 'true';
 resource_exists(?INBOX, _Id) -> 'true';
 resource_exists(?OUTBOX, _Id) -> 'true';
 resource_exists(?OUTGOING, _Id) -> 'true'.
 
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(?INBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true'.
 
@@ -161,10 +161,10 @@ acceptable_content_types() ->
     ?ACCEPTED_MIME_TYPES.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
--spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context) ->
     maybe_add_types_accepted(Context, cb_context:req_verb(Context)).
 
+-spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context, ?OUTGOING) ->
     maybe_add_types_accepted(Context, cb_context:req_verb(Context));
 content_types_accepted(Context, _) -> Context.
@@ -232,14 +232,12 @@ content_types_provided_for_fax(Context) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     create(cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?OUTGOING) ->
     validate_outgoing_fax(Context, cb_context:req_verb(Context));
 validate(Context, ?INCOMING) ->
@@ -251,6 +249,7 @@ validate(Context, ?OUTBOX) ->
 validate(Context, ?SMTP_LOG) ->
     load_smtp_log(Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?SMTP_LOG, Id) ->
     load_smtp_log_doc(Id, Context);
 validate(Context, ?INCOMING, Id) ->
@@ -262,6 +261,7 @@ validate(Context, ?OUTBOX, Id) ->
 validate(Context, ?OUTGOING, Id) ->
     validate_outgoing_fax(Context, Id, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?INBOX, Id, ?ATTACHMENT) ->
     validate_modb_fax_attachment(Context, Id, ?INBOX, cb_context:req_verb(Context));
 validate(Context, ?OUTBOX, Id, ?ATTACHMENT) ->
@@ -321,13 +321,16 @@ validate_inbox_fax_action(Action, Id, Context) ->
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
+
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?OUTGOING) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
+
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?OUTBOX, Id) ->
     Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
     do_put_action(Context, ?OUTBOX, Action, Id);

@@ -91,12 +91,12 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), kz_term:ne_binary()) -> http_methods().
 allowed_methods() ->
     [?HTTP_PUT].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(AccountId) ->
     allowed_methods_on_account(AccountId, kapps_util:get_master_account_id()).
 
@@ -112,6 +112,7 @@ allowed_methods_on_account(_AccountId, {'error', _E}) ->
     lager:info("disallowing DELETE while we can't determine the master account id"),
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH].
 
+-spec allowed_methods(path_token(), kz_term:ne_binary()) -> http_methods().
 allowed_methods(_AccountId, ?MOVE) ->
     [?HTTP_POST];
 allowed_methods(_AccountId, ?RESELLER) ->
@@ -131,11 +132,14 @@ allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET].
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), kz_term:ne_binary()) -> boolean().
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), kz_term:ne_binary()) -> boolean().
 resource_exists(_, Path) ->
     Paths =  [?CHILDREN
              ,?DESCENDANTS
@@ -157,13 +161,16 @@ resource_exists(_, Path) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_resource(cb_context:context()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_resource(Context) ->
     Context.
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context, AccountId) ->
     load_account_db(Context, AccountId).
+
+-spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_resource(Context, AccountId, _Path) ->
     load_account_db(Context, AccountId).
 
@@ -176,13 +183,9 @@ validate_resource(Context, AccountId, _Path) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) ->
                       cb_context:context().
--spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token(), kz_term:ne_binary()) ->
-                      cb_context:context().
-
 validate(Context) ->
     validate_accounts(Context, cb_context:req_verb(Context)).
 
@@ -190,6 +193,8 @@ validate(Context) ->
 validate_accounts(Context, ?HTTP_PUT) ->
     validate_request('undefined', prepare_context('undefined', Context)).
 
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
 validate(Context, AccountId) ->
     validate_account(Context, AccountId, cb_context:req_verb(Context)).
 
@@ -205,6 +210,8 @@ validate_account(Context, AccountId, ?HTTP_PATCH) ->
 validate_account(Context, AccountId, ?HTTP_DELETE) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context)).
 
+-spec validate(cb_context:context(), path_token(), kz_term:ne_binary()) ->
+                      cb_context:context().
 validate(Context, AccountId, PathToken) ->
     validate_account_path(Context, AccountId, PathToken, cb_context:req_verb(Context)).
 
@@ -283,8 +290,8 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     {'ok', Existing} = kz_account:fetch(AccountId),
     Context1 = crossbar_doc:save(Context),
@@ -303,6 +310,7 @@ post(Context, AccountId) ->
         _Status -> Context1
     end.
 
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AccountId, ?MOVE) ->
     case cb_context:resp_status(Context) of
         'success' -> move_account(Context, AccountId);
@@ -319,13 +327,12 @@ patch(Context, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     put(Context, 'undefined').
 
+-spec put(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 put(Context, PathAccountId) ->
     JObj = cb_context:doc(Context),
     NewAccountId = kz_doc:id(JObj, kz_datamgr:get_uuid()),
@@ -353,6 +360,7 @@ put(Context, PathAccountId) ->
             cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
     end.
 
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, _AccountId, ?API_KEY) ->
     C1 = crossbar_doc:save(Context),
     case cb_context:resp_status(C1) of
@@ -376,9 +384,8 @@ put(Context, AccountId, ?RESELLER) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -391,6 +398,7 @@ delete(Context, Account) ->
             Context1
     end.
 
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, AccountId, ?RESELLER) ->
     case whs_account_conversion:demote(AccountId) of
         {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
@@ -470,8 +478,8 @@ move_account(Context, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec prepare_context(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
--spec prepare_context(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 prepare_context('undefined', Context) ->
     cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB);
 prepare_context(Account, Context) ->
@@ -479,6 +487,7 @@ prepare_context(Account, Context) ->
     AccountDb = kz_util:format_account_db(Account),
     prepare_context(Context, AccountId, AccountDb).
 
+-spec prepare_context(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 prepare_context(Context, AccountId, AccountDb) ->
     cb_context:setters(Context, [{fun cb_context:set_account_db/2, AccountDb}
                                 ,{fun cb_context:set_account_id/2, AccountId}
@@ -610,10 +619,6 @@ on_successful_validation(AccountId, Context) ->
 
 -spec maybe_import_enabled(cb_context:context()) ->
                                   cb_context:context().
--spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
-                                  cb_context:context().
--spec maybe_import_enabled(cb_context:context(), kz_json:object(), kz_term:api_binary()) ->
-                                  cb_context:context().
 maybe_import_enabled(Context) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
         'true' ->
@@ -624,6 +629,8 @@ maybe_import_enabled(Context) ->
             maybe_import_enabled(Context, cb_context:resp_status(Context))
     end.
 
+-spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
+                                  cb_context:context().
 maybe_import_enabled(Context, 'success') ->
     AuthAccountId = cb_context:auth_account_id(Context),
     Doc = cb_context:doc(Context),
@@ -635,6 +642,8 @@ maybe_import_enabled(Context, 'success') ->
         'true' -> maybe_import_enabled(Context, NewDoc, Enabled)
     end.
 
+-spec maybe_import_enabled(cb_context:context(), kz_json:object(), kz_term:api_binary()) ->
+                                  cb_context:context().
 maybe_import_enabled(Context, _, 'undefined') -> Context;
 maybe_import_enabled(Context, Doc, IsEnabled) ->
     NewDoc = case kz_term:is_true(IsEnabled) of
@@ -713,11 +722,12 @@ load_account(AccountId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec leak_pvt_fields(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
--spec leak_pvt_fields(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> cb_context:context().
 leak_pvt_fields(AccountId, Context) ->
     leak_pvt_fields(AccountId, Context, cb_context:resp_status(Context)).
 
+-spec leak_pvt_fields(kz_term:api_binary(), cb_context:context(), crossbar_status()) -> cb_context:context().
 leak_pvt_fields(AccountId, Context, 'success') ->
     Routines = [fun leak_pvt_allow_additions/1
                ,fun leak_pvt_superduper_admin/1
@@ -841,10 +851,10 @@ find_reseller_id(Context, PathAccountId) ->
     end.
 
 -spec leak_notification_preference(cb_context:context()) -> cb_context:context().
--spec leak_notification_preference(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 leak_notification_preference(Context) ->
     leak_notification_preference(Context, kz_account:notification_preference(cb_context:doc(Context))).
 
+-spec leak_notification_preference(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 leak_notification_preference(Context, 'undefined') ->
     Context;
 leak_notification_preference(Context, Pref) ->
@@ -853,12 +863,12 @@ leak_notification_preference(Context, Pref) ->
 
 -spec leak_trial_time_left(cb_context:context()) ->
                                   cb_context:context().
--spec leak_trial_time_left(cb_context:context(), kz_json:object(), kz_term:api_integer()) ->
-                                  cb_context:context().
 leak_trial_time_left(Context) ->
     JObj = cb_context:doc(Context),
     leak_trial_time_left(Context, JObj, kz_account:trial_expiration(JObj)).
 
+-spec leak_trial_time_left(cb_context:context(), kz_json:object(), kz_term:api_integer()) ->
+                                  cb_context:context().
 leak_trial_time_left(Context, _JObj, 'undefined') ->
     RespData = kz_json:delete_key(<<"trial_time_left">>
                                  ,cb_context:resp_data(Context)
@@ -1116,12 +1126,13 @@ extract_tree(AccountId, JObjs) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec find_accounts_from_tree(kz_term:ne_binaries(), kz_json:objects(), cb_context:context()) -> kz_json:objects().
--spec find_accounts_from_tree(kz_term:ne_binaries(), kz_json:objects(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 find_accounts_from_tree(Tree, JObjs, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     find_accounts_from_tree(lists:reverse(Tree), JObjs, AuthAccountId, []).
 
+-spec find_accounts_from_tree(kz_term:ne_binaries(), kz_json:objects(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 find_accounts_from_tree([], _, _, Acc) -> Acc;
 find_accounts_from_tree([AuthAccountId|_], JObjs, AuthAccountId, Acc) ->
     JObj = kz_json:find_value(<<"id">>, AuthAccountId, JObjs),
@@ -1586,12 +1597,12 @@ delete_remove_db(Context) ->
     end.
 
 -spec delete_mod_dbs(cb_context:context()) -> 'true'.
--spec delete_mod_dbs(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'true'.
 delete_mod_dbs(Context) ->
     AccountId = cb_context:account_id(Context),
     {Year, Month, _} = erlang:date(),
     delete_mod_dbs(AccountId, Year, Month).
 
+-spec delete_mod_dbs(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'true'.
 delete_mod_dbs(AccountId, Year, Month) ->
     Db = kz_util:format_account_mod_id(AccountId, Year, Month),
     case kz_datamgr:db_delete(Db) of

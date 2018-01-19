@@ -470,7 +470,7 @@ call_control_ready(#state{call_id=CallId
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_channel_destroyed(state()) -> state().
+
 -spec handle_channel_destroyed(kz_json:object(), state()) -> state().
 handle_channel_destroyed(JObj, State) ->
     case kz_json:is_true(<<"Channel-Is-Loopback">>, JObj, 'false') of
@@ -492,6 +492,7 @@ handle_loopback_destroyed(JObj, State) ->
             handle_channel_destroyed(State)
     end.
 
+-spec handle_channel_destroyed(state()) -> state().
 handle_channel_destroyed(#state{sanity_check_tref=SCTRef
                                ,current_app=CurrentApp
                                ,current_cmd=CurrentCmd
@@ -1113,11 +1114,11 @@ which_call_leg(CmdLeg, OtherLegs, CallId) ->
     end.
 
 -spec maybe_send_error_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
--spec maybe_send_error_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_error_resp(CallId, Cmd) ->
     AppName = kz_json:get_value(<<"Application-Name">>, Cmd),
     maybe_send_error_resp(AppName, CallId, Cmd).
 
+-spec maybe_send_error_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_error_resp(<<"hangup">>, _CallId, _Cmd) -> 'ok';
 maybe_send_error_resp(_, CallId, Cmd) -> send_error_resp(CallId, Cmd).
 
@@ -1131,13 +1132,13 @@ send_error_resp(CallId, Cmd) ->
                    ).
 
 -spec send_error_resp(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
--spec send_error_resp(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg) ->
     case ecallmgr_fs_channel:fetch(CallId) of
         {'ok', Channel} -> send_error_resp(CallId, Cmd, Msg, Channel);
         {'error', 'not_found'} -> send_error_resp(CallId, Cmd, Msg, 'undefined')
     end.
 
+-spec send_error_resp(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg, Channel) ->
     CCVs = error_ccvs(Channel),
 

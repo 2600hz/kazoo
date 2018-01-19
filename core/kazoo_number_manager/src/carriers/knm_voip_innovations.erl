@@ -348,7 +348,7 @@ body("assignDID", Numbers=[_|_]) ->
     ["<tns:didParams>",
      [ ["<tns:DIDParam>"
         "<tns:tn>", Number, "</tns:tn>"
-        "<tns:epg>", ?VI_ENDPOINT_GROUP, "</tns:epg>"
+        "<tns:endpointId>", ?VI_ENDPOINT_GROUP, "</tns:endpointId>"
         "</tns:DIDParam>"]
        || Number <- Numbers
      ],

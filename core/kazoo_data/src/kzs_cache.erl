@@ -81,13 +81,22 @@ open_cache_doc(Server, DbName, DocId, Options) ->
                              data_error().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
-    lager:debug("misses: ~p", [MissedDocIds]),
-    case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
+    case MissedDocIds =/= []
+        andalso kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options))
+    of
         {error, _}=E -> E;
-        {ok, Opened} ->
-            FromBulk = disassemble_jobjs(DbName, Options, Opened),
-            {ok, assemble_jobjs(DocIds, Cached, FromBulk)}
+        Other ->
+            prepare_jobjs(DbName, DocIds, Options, Cached, Other)
     end.
+
+-spec prepare_jobjs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist(), docs_returned(), {ok, kz_json:objects()} | 'false') ->
+                           {'ok', kz_json:objects()} |
+                           data_error().
+prepare_jobjs(DbName, DocIds, Options, Cached, false) ->
+    prepare_jobjs(DbName, DocIds, Options, Cached, {ok, []});
+prepare_jobjs(DbName, DocIds, Options, Cached, {ok, Opened}) ->
+    FromBulk = disassemble_jobjs(DbName, Options, Opened),
+    {ok, assemble_jobjs(DocIds, Cached, FromBulk)}.
 
 fetch_locals(DbName, DocIds) ->
     F = fun (DocId, {Cached, Missed}) ->
@@ -143,7 +152,6 @@ remove_cache_options(Options) ->
     props:delete_keys(['cache_failures'], Options).
 
 -spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error()) -> 'ok'.
--spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error(), kz_term:atoms()) -> 'ok'.
 maybe_cache_failure(DbName, DocId, Options, {'error', _}=Error) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
@@ -153,6 +161,7 @@ maybe_cache_failure(DbName, DocId, Options, {'error', _}=Error) ->
         _ -> 'ok'
     end.
 
+-spec maybe_cache_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error(), kz_term:atoms()) -> 'ok'.
 maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
     _ = lists:member(ErrorCode, ErrorCodes)
         andalso add_to_doc_cache(DbName, DocId, Error),

@@ -102,9 +102,10 @@ get_pivot_req_routing(Api) ->
     get_pivot_req_routing(get_from_realm(Api)).
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PIVOT_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_pivot_req_routing(Req)).

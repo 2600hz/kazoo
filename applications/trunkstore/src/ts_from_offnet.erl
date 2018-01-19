@@ -307,7 +307,6 @@ get_endpoint_sip_headers(Endpoint, AuthUser, AuthRealm) ->
     [{<<"Custom-SIP-Headers">>, kz_json:from_list(Props)} | Endpoint].
 
 -spec routing_data(kz_term:ne_binary(), kz_term:ne_binary()) -> [{<<_:48,_:_*8>>, any()}].
--spec routing_data(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> [{<<_:48,_:_*8>>, any()}].
 routing_data(ToDID, AccountId) ->
     case ts_util:lookup_did(ToDID, AccountId) of
         {'ok', Settings} ->
@@ -318,6 +317,7 @@ routing_data(ToDID, AccountId) ->
             throw('no_did_found')
     end.
 
+-spec routing_data(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> [{<<_:48,_:_*8>>, any()}].
 routing_data(ToDID, AccountId, Settings) ->
     AuthOpts = kz_json:get_value(<<"auth">>, Settings, kz_json:new()),
     Acct = kz_json:get_value(<<"account">>, Settings, kz_json:new()),

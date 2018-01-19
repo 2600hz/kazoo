@@ -367,27 +367,29 @@ quantity(Options) ->
     min(Quantity, ?MAX_SEARCH).
 
 -spec prefix(options()) -> kz_term:ne_binary().
--spec prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 prefix(Options) ->
     props:get_ne_binary_value('prefix', Options).
+
+-spec prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 prefix(Options, Default) ->
     props:get_ne_binary_value('prefix', Options, Default).
 
 -spec query_options(options()) -> kz_term:api_object().
--spec query_options(options(), kz_term:api_object()) -> kz_term:api_object().
 query_options(Options) ->
     props:get_value('query_options', Options).
+
+-spec query_options(options(), kz_term:api_object()) -> kz_term:api_object().
 query_options(Options, Default) ->
     props:get_value('query_options', Options, Default).
 
 -spec normalized_prefix(options()) -> kz_term:ne_binary().
--spec normalized_prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 normalized_prefix(Options) ->
     JObj = query_options(Options, kz_json:new()),
     Dialcode = dialcode(Options),
     Prefix = kz_json:get_ne_binary_value(<<"Prefix">>, JObj, prefix(Options)),
     normalized_prefix(Options, <<Dialcode/binary, Prefix/binary>>).
 
+-spec normalized_prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 normalized_prefix(Options, Default) ->
     props:get_ne_binary_value('normalized_prefix', Options, Default).
 

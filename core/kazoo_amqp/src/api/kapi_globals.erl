@@ -333,17 +333,19 @@ declare_exchanges() ->
     amqp_util:new_exchange(?GLOBALS_EXCHANGE, ?GLOBALS_EXCHANGE_TYPE).
 
 -spec publish_targeted_call(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_targeted_call(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_call(ServerId, JObj) ->
     publish_targeted_call(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_targeted_call(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_call(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?CALL_REQ_VALUES, fun call/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_call(kz_term:api_terms()) -> 'ok'.
--spec publish_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_call(JObj) ->
     publish_call(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_call(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?CALL_REQ_VALUES, fun call/1),
     Name = name(Req),
@@ -351,17 +353,19 @@ publish_call(Req, ContentType) ->
     publish(RoutingKey, Payload, ContentType).
 
 -spec publish_targeted_send(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_targeted_send(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_send(ServerId, JObj) ->
     publish_targeted_send(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_targeted_send(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_send(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?SEND_REQ_VALUES, fun send/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_send(kz_term:api_terms()) -> 'ok'.
--spec publish_send(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_send(JObj) ->
     publish_send(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_send(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_send(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?SEND_REQ_VALUES, fun send/1),
     Name = name(Req),
@@ -369,51 +373,57 @@ publish_send(Req, ContentType) ->
     publish(RoutingKey, Payload, ContentType).
 
 -spec publish_reply(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_reply(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_reply(ServerId, JObj) ->
     publish_reply(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_reply(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_reply(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REPLY_REQ_VALUES, fun reply_msg/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_register(kz_term:api_terms()) -> 'ok'.
--spec publish_register(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register(Req) ->
     publish_register(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_register(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REGISTER_REQ_VALUES, fun register/1),
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"register">>, name(Req)),
     publish(RoutingKey, Payload, ContentType).
 
 -spec publish_register_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_register_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register_resp(ServerId, JObj) ->
     publish_register_resp(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_register_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register_resp(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REGISTER_RESP_VALUES, fun register_resp/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_unregister(kz_term:api_terms()) -> 'ok'.
--spec publish_unregister(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_unregister(Req) ->
     publish_unregister(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_unregister(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_unregister(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?UNREGISTER_REQ_VALUES, fun unregister/1),
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"unregister">>, name(Req)),
     publish(RoutingKey, Payload, ContentType).
 
 -spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(ServerId, JObj) ->
     publish_query_resp(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?QUERY_RESP_VALUES, fun query_resp/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_query(kz_term:api_terms()) -> 'ok'.
--spec publish_query(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query(JObj) ->
     publish_query(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?QUERY_REQ_VALUES, fun query/1),
     Name = name(Req),

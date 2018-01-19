@@ -19,10 +19,10 @@
                         [ecallmgr_util:send_cmd_ret(),...].
 
 -spec exec_cmd(atom(), kz_term:ne_binary(), kz_json:object()) -> api_response().
--spec exec_cmd(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> api_response().
 exec_cmd(Node, ConferenceId, JObj) ->
     exec_cmd(Node, ConferenceId, JObj, kz_json:get_value(<<"Conference-ID">>, JObj)).
 
+-spec exec_cmd(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> api_response().
 exec_cmd(Node, ConferenceId, JObj, ConferenceId) ->
     App = kz_json:get_value(<<"Application-Name">>, JObj),
     case get_conf_command(App, Node, ConferenceId, JObj) of

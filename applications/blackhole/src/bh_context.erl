@@ -58,11 +58,12 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec new() -> context().
--spec new(pid(), kz_term:ne_binary()) -> context().
 new()->
     #bh_context{}.
 
+-spec new(pid(), kz_term:ne_binary()) -> context().
 new(SessionPid, SessionId) ->
     Setters = [{fun set_websocket_session_id/2, SessionId}
               ,{fun set_websocket_pid/2, SessionPid}
@@ -74,11 +75,12 @@ new(SessionPid, SessionId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec from_json(kz_json:object()) -> context().
--spec from_json(context(), kz_json:object()) -> context().
 from_json(JObj) ->
     from_json(new(), JObj).
 
+-spec from_json(context(), kz_json:object()) -> context().
 from_json(Context, JObj) ->
     Rand = kz_binary:rand_hex(16),
     Setters = [{fun set_auth_token/2, kz_json:get_value(<<"auth_token">>, JObj)}

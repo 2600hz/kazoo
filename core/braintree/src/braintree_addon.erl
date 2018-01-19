@@ -32,12 +32,12 @@ get_quantity(#bt_addon{quantity=Quantity}) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> bt_addon().
--spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_addon().
 
+-spec xml_to_record(bt_xml()) -> bt_addon().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/add-on").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_addon().
 xml_to_record(Xml, Base) ->
     #bt_addon{id = kz_xml:get_value([Base, "/id/text()"], Xml)
              ,amount = kz_xml:get_value([Base, "/amount/text()"], Xml)
@@ -53,12 +53,12 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_addon()) -> kz_term:proplist() | bt_xml().
--spec record_to_xml(bt_addon(), boolean()) -> kz_term:proplist() | bt_xml().
 
+-spec record_to_xml(bt_addon()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Addon) ->
     record_to_xml(Addon, false).
 
+-spec record_to_xml(bt_addon(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Addon, ToString) ->
     Props = [{'id', Addon#bt_addon.id}
             ,{'amount', Addon#bt_addon.amount}

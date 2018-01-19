@@ -37,16 +37,16 @@ flush_data_plans() ->
     io:format("flushed all data plans~n").
 
 -spec flush_docs() -> 'ok'.
--spec flush_docs(kz_term:ne_binary()) -> 'ok'.
--spec flush_docs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush_docs() ->
     _ = kz_datamgr:flush_cache_docs(),
     io:format("flushed all cached docs~n").
 
+-spec flush_docs(kz_term:ne_binary()) -> 'ok'.
 flush_docs(Account) ->
     _ = kz_datamgr:flush_cache_docs(kz_util:format_account_db(Account)),
     io:format("flushed all docs cached for account ~s~n", [Account]).
 
+-spec flush_docs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush_docs(Account, DocId) ->
     _ = kz_datamgr:flush_cache_doc(kz_util:format_account_db(Account), DocId),
     io:format("flushed cached doc ~s for account ~s~n", [DocId, Account]).
@@ -56,10 +56,10 @@ trace_module(Module) ->
     start_trace([{'module', kz_term:to_atom(Module)}]).
 
 -spec trace_function(kz_term:ne_binary()) -> 'ok'.
--spec trace_function(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 trace_function(Function) ->
     start_trace([{'function', kz_term:to_atom(Function)}]).
 
+-spec trace_function(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 trace_function(Module, Function) ->
     start_trace([{'module', kz_term:to_atom(Module)}
                 ,{'function', kz_term:to_atom(Function)}

@@ -23,12 +23,12 @@
 -type callback() :: fun(() -> cb_context:context()).
 
 -spec maybe_dry_run(cb_context:context(), callback()) -> cb_context:context().
--spec maybe_dry_run(cb_context:context(), callback(), kz_term:ne_binary() | kz_term:proplist()) ->
-                           cb_context:context().
 maybe_dry_run(Context, Callback) ->
     Type = kz_doc:type(cb_context:doc(Context)),
     maybe_dry_run(Context, Callback, Type).
 
+-spec maybe_dry_run(cb_context:context(), callback(), kz_term:ne_binary() | kz_term:proplist()) ->
+                           cb_context:context().
 maybe_dry_run(Context, Callback, Type) when is_binary(Type) ->
     maybe_dry_run(Context, Callback, Type, [], cb_context:accepting_charges(Context));
 maybe_dry_run(Context, Callback, Props) ->
@@ -114,17 +114,18 @@ extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec create_transactions(cb_context:context()
                          ,kz_json:object()
                          ,kz_transaction:transactions()) -> kz_transaction:transactions().
--spec create_transactions(cb_context:context()
-                         ,kz_json:object()
-                         ,kz_transaction:transactions()
-                         ,integer()) -> kz_transaction:transactions().
 create_transactions(Context, Item, Acc) ->
     Quantity = kz_json:get_integer_value(<<"activate_quantity">>, Item, 0),
     create_transactions(Context, Item, Acc, Quantity).
 
+-spec create_transactions(cb_context:context()
+                         ,kz_json:object()
+                         ,kz_transaction:transactions()
+                         ,integer()) -> kz_transaction:transactions().
 create_transactions(_Context, _Item, Acc, 0) -> Acc;
 create_transactions(Context, Item, Acc, Quantity) ->
     AccountId = cb_context:account_id(Context),
@@ -166,9 +167,8 @@ dry_run(Services) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec calc_service_updates(cb_context:context(), kz_term:ne_binary()) ->
-                                  kz_services:services() | 'undefined'.
--spec calc_service_updates(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) ->
                                   kz_services:services() | 'undefined'.
 calc_service_updates(Context, <<"device">>) ->
     DeviceType = kz_device:device_type(cb_context:doc(Context)),
@@ -218,6 +218,8 @@ calc_service_updates(_Context, _Type) ->
     lager:warning("unknown type ~p, cannot calculate service updates", [_Type]),
     'undefined'.
 
+-spec calc_service_updates(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) ->
+                                  kz_services:services() | 'undefined'.
 calc_service_updates(Context, <<"ips">>, Props) ->
     Services = fetch_service(Context),
     kz_service_ips:reconcile(Services, Props);

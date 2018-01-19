@@ -451,9 +451,6 @@ check_number(#state{faxbox=FaxBoxDoc, number=Number, errors=Errors}=State) ->
 -spec check_permissions(state()) ->
                                {'ok', state()} |
                                {'error', string(), state()}.
--spec check_permissions(state(), kz_term:ne_binaries()) ->
-                               {'ok', state()} |
-                               {'error', string(), state()}.
 check_permissions(#state{from=_From
                         ,owner_email=OwnerEmail
                         ,faxbox=FaxBoxDoc
@@ -468,6 +465,9 @@ check_permissions(#state{from=_From
             check_permissions(State, Permissions)
     end.
 
+-spec check_permissions(state(), kz_term:ne_binaries()) ->
+                               {'ok', state()} |
+                               {'error', string(), state()}.
 check_permissions(#state{from=From
                         ,owner_email=OwnerEmail
                         ,faxbox=FaxBoxDoc
@@ -894,12 +894,12 @@ maybe_process_image(CT, Body, Size, State) ->
 -spec write_tmp_file(kz_term:ne_binary(), binary() | mimemail:mimetuple()) ->
                             {'ok', kz_term:api_binary()} |
                             {'error', any()}.
--spec write_tmp_file(kz_term:api_binary() , kz_term:ne_binary(), binary() | mimemail:mimetuple()) ->
-                            {'ok', kz_term:api_binary()} |
-                            {'error', any()}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 
+-spec write_tmp_file(kz_term:api_binary() , kz_term:ne_binary(), binary() | mimemail:mimetuple()) ->
+                            {'ok', kz_term:api_binary()} |
+                            {'error', any()}.
 write_tmp_file('undefined', Extension, ?NE_BINARY = Body) ->
     Basename = kz_term:to_hex_binary(erlang:md5(Body)),
     Filename = <<"/tmp/email_attachment_", Basename/binary>>,

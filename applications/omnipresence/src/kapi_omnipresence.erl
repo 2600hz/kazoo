@@ -78,9 +78,10 @@ subscribe_v(Prop) when is_list(Prop) ->
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
 
 -spec publish_subscribe(kz_term:api_terms()) -> 'ok'.
--spec publish_subscribe(kz_term:api_terms(), binary()) -> 'ok'.
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_subscribe(kz_term:api_terms(), binary()) -> 'ok'.
 publish_subscribe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun subscribe/1),
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
@@ -104,8 +105,9 @@ notify_v(Prop) when is_list(Prop) ->
 notify_v(JObj) -> notify_v(kz_json:to_proplist(JObj)).
 
 -spec publish_notify(kz_term:api_terms()) -> 'ok'.
--spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
 publish_notify(JObj) -> publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
 publish_notify(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
@@ -145,10 +147,10 @@ bind_q(Queue, [_|Restrict], Props) ->
 bind_q(_, [], _) -> 'ok'.
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
--spec unbind_q(kz_term:ne_binary(), kz_term:atoms() | 'undefined', kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q(Queue, props:get_value('restrict_to', Props), Props).
 
+-spec unbind_q(kz_term:ne_binary(), kz_term:atoms() | 'undefined', kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', Props) ->
     amqp_util:unbind_q_from_exchange(Queue
                                     ,?SUBSCRIBE_RK(Props)

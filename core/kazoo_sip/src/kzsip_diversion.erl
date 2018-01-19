@@ -45,29 +45,36 @@
 -spec new() -> diversion().
 new() -> kz_json:new().
 
--spec reason(diversion()) -> kz_term:api_binary().
--spec counter(diversion()) -> non_neg_integer().
--spec limit(diversion()) -> kz_term:api_integer().
--spec privacy(diversion()) -> kz_term:api_binary().
--spec screen(diversion()) -> kz_term:api_binary().
--spec extensions(diversion()) -> kz_term:api_list().
--spec address(diversion()) -> kz_term:api_binary().
--spec user(diversion()) -> kz_term:api_binary().
 
+-spec user(diversion()) -> kz_term:api_binary().
 user(JObj) ->
     kzsip_uri:user(kzsip_uri:parse(address(JObj))).
+
+-spec address(diversion()) -> kz_term:api_binary().
 address(JObj) ->
     kz_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
+
+-spec reason(diversion()) -> kz_term:api_binary().
 reason(JObj) ->
     kz_json:get_ne_binary_value(?PARAM_REASON, JObj).
+
+-spec counter(diversion()) -> non_neg_integer().
 counter(JObj) ->
     kz_json:get_integer_value(?PARAM_COUNTER, JObj, 0).
+
+-spec limit(diversion()) -> kz_term:api_integer().
 limit(JObj) ->
     kz_json:get_integer_value(?PARAM_LIMIT, JObj).
+
+-spec privacy(diversion()) -> kz_term:api_binary().
 privacy(JObj) ->
     kz_json:get_ne_binary_value(?PARAM_PRIVACY, JObj).
+
+-spec screen(diversion()) -> kz_term:api_binary().
 screen(JObj) ->
     kz_json:get_ne_binary_value(?PARAM_SCREEN, JObj).
+
+-spec extensions(diversion()) -> kz_term:api_list().
 extensions(JObj) ->
     case kz_json:get_ne_value(?PARAM_EXTENSION, JObj) of
         'undefined' -> 'undefined';
@@ -82,19 +89,22 @@ extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
 extensions_fold({_K, _V}=Extention, Acc) ->
     [Extention | Acc].
 
--spec set_user(diversion(), kz_term:ne_binary()) -> diversion().
--spec set_address(diversion(), kz_term:ne_binary()) -> diversion().
--spec set_reason(diversion(), kz_term:ne_binary()) -> diversion().
--spec set_counter(diversion(), non_neg_integer()) -> diversion().
 
+-spec set_user(diversion(), kz_term:ne_binary()) -> diversion().
 set_user(JObj, User) ->
     Address = kzsip_uri:parse(address(JObj)),
     Address1 = kzsip_uri:set_user(Address, User),
     set_address(JObj, list_to_binary([<<"<">>, kzsip_uri:encode(Address1), <<">">>])).
+
+-spec set_address(diversion(), kz_term:ne_binary()) -> diversion().
 set_address(JObj, Address) ->
     kz_json:set_value(?PARAM_ADDRESS, Address, JObj).
+
+-spec set_reason(diversion(), kz_term:ne_binary()) -> diversion().
 set_reason(JObj, Reason) ->
     kz_json:set_value(?PARAM_REASON, Reason, JObj).
+
+-spec set_counter(diversion(), non_neg_integer()) -> diversion().
 set_counter(JObj, Counter) ->
     kz_json:set_value(?PARAM_COUNTER, Counter, JObj).
 
@@ -163,7 +173,6 @@ parse_params(Params, JObj) ->
     end.
 
 -spec parse_param(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
--spec parse_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 parse_param(Param, JObj) ->
     case binary:split(Param, <<"=">>, ['trim']) of
         [Name, Value] ->
@@ -172,6 +181,7 @@ parse_param(Param, JObj) ->
             add_extension(kz_binary:strip(Extension), JObj)
     end.
 
+-spec parse_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 parse_param(?PARAM_REASON, Value, JObj) ->
     kz_json:set_value(?PARAM_REASON, parse_reason_param(Value), JObj);
 parse_param(?PARAM_COUNTER, Value, JObj) ->

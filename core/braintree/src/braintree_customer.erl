@@ -40,12 +40,12 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url() -> string().
--spec url(kz_term:ne_binary()) -> string().
 
+-spec url() -> string().
 url() ->
     "/customers/".
 
+-spec url(kz_term:ne_binary()) -> string().
 url(CustomerId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId)]).
 
@@ -250,12 +250,12 @@ update_subsciption(NewPaymentToken, UpdatedCustomer) ->
     find(UpdatedCustomer).
 
 -spec update_subsciption_with_token(bt_subscription(), kz_term:ne_binary()) -> 'ok'.
--spec update_subsciption_with_token(bt_subscription(), kz_term:ne_binary(), boolean()) -> 'ok'.
 update_subsciption_with_token(Sub, NewPaymentToken) ->
     ShouldUpdate = not braintree_subscription:is_cancelled(Sub)
         andalso not braintree_subscription:is_expired(Sub),
     update_subsciption_with_token(Sub, NewPaymentToken, ShouldUpdate).
 
+-spec update_subsciption_with_token(bt_subscription(), kz_term:ne_binary(), boolean()) -> 'ok'.
 update_subsciption_with_token(Sub, NewPaymentToken, 'true') ->
     SubWithToken = braintree_subscription:update_payment_token(Sub, NewPaymentToken),
     _ = braintree_subscription:update(SubWithToken),
@@ -304,12 +304,12 @@ delete(CustomerId) ->
 %% Convert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> customer().
--spec xml_to_record(bt_xml(), kz_term:deeplist()) -> customer().
 
+-spec xml_to_record(bt_xml()) -> customer().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> customer().
 xml_to_record(Xml, Base) ->
     CreditCardPath = lists:flatten([Base, "/credit-cards/credit-card"]),
     AddressPath = lists:flatten([Base, "/addresses/address"]),
@@ -341,12 +341,12 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(customer()) -> kz_term:proplist() | bt_xml().
--spec record_to_xml(customer(), boolean()) -> kz_term:proplist() | bt_xml().
 
+-spec record_to_xml(customer()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Customer) ->
     record_to_xml(Customer, 'false').
 
+-spec record_to_xml(customer(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Customer, ToString) ->
     Props = [{'id', Customer#bt_customer.id}
             ,{'first-name', Customer#bt_customer.first_name}

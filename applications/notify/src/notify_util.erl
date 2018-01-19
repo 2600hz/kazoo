@@ -72,9 +72,10 @@ send_email(From, To, Email) ->
     end.
 
 -spec send_update(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec send_update(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 send_update(RespQ, MsgId, Status) ->
     send_update(RespQ, MsgId, Status, 'undefined').
+
+-spec send_update(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 send_update('undefined', _, _, _) -> lager:debug("no response queue to send update");
 send_update(RespQ, MsgId, Status, Msg) ->
     Prop = props:filter_undefined(
@@ -143,20 +144,20 @@ normalize_value(Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec compile_default_text_template(atom(), kz_term:ne_binary()) -> {'ok', atom()}.
--spec compile_default_html_template(atom(), kz_term:ne_binary()) -> {'ok', atom()}.
--spec compile_default_subject_template(atom(), kz_term:ne_binary()) -> {'ok', atom()}.
--spec compile_default_template(atom(), kz_term:ne_binary(), atom()) -> {'ok', atom()}.
 
+-spec compile_default_text_template(atom(), kz_term:ne_binary()) -> {'ok', atom()}.
 compile_default_text_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, 'default_text_template').
 
+-spec compile_default_html_template(atom(), kz_term:ne_binary()) -> {'ok', atom()}.
 compile_default_html_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, 'default_html_template').
 
+-spec compile_default_subject_template(atom(), kz_term:ne_binary()) -> {'ok', atom()}.
 compile_default_subject_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, 'default_subject_template').
 
+-spec compile_default_template(atom(), kz_term:ne_binary(), atom()) -> {'ok', atom()}.
 compile_default_template(TemplateModule, Category, Key) ->
     Template = case kapps_config:get_ne_binary(Category, Key) of
                    'undefined' -> get_default_template(Category, Key);
@@ -231,12 +232,12 @@ do_render_template(Template, DefaultTemplate, Props) ->
 %% in the event, parent account notification object, and then default.
 %% @end
 %%--------------------------------------------------------------------
--spec get_service_props(kz_json:object(), kz_term:ne_binary()) -> kz_term:proplist().
--spec get_service_props(kz_json:object(), kz_json:object(), kz_term:ne_binary()) -> kz_term:proplist().
 
+-spec get_service_props(kz_json:object(), kz_term:ne_binary()) -> kz_term:proplist().
 get_service_props(Account, ConfigCat) ->
     get_service_props(kz_json:new(), Account, ConfigCat).
 
+-spec get_service_props(kz_json:object(), kz_json:object(), kz_term:ne_binary()) -> kz_term:proplist().
 get_service_props(Request, Account, ConfigCat) ->
     DefaultUrl = kz_json:get_ne_value(<<"service_url">>, Request
                                      ,kapps_config:get_ne_binary(ConfigCat, <<"default_service_url">>, <<"http://apps.2600hz.com">>)),

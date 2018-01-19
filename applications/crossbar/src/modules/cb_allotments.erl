@@ -44,10 +44,12 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?CONSUMED) ->
     [?HTTP_GET].
 
@@ -59,9 +61,11 @@ allowed_methods(?CONSUMED) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?CONSUMED) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -245,11 +249,12 @@ is_allowed(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_create_limits_doc(cb_context:context()) -> cb_context:context().
--spec maybe_create_limits_doc(cb_context:context(), pos_integer()) -> cb_context:context().
 maybe_create_limits_doc(Context) ->
     maybe_create_limits_doc(Context, cb_context:resp_error_code(Context)).
 
+-spec maybe_create_limits_doc(cb_context:context(), pos_integer()) -> cb_context:context().
 maybe_create_limits_doc(Context, 404) ->
     Data = cb_context:req_data(Context),
     NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}, {<<"_id">>, ?PVT_TYPE}]),

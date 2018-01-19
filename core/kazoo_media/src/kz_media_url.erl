@@ -18,14 +18,14 @@
 -type build_media_url() :: kz_term:api_binary() | kz_term:binaries() | kz_json:object().
 -type build_media_url_ret() :: kz_term:ne_binary() | {'error', atom()}.
 
--spec playback(build_media_url()) -> build_media_url_ret().
--spec playback(build_media_url(), kz_json:object()) -> build_media_url_ret().
 
+-spec playback(build_media_url()) -> build_media_url_ret().
 playback('undefined') ->
     {'error', 'invalid_media_name'};
 playback(Arg) ->
     playback(Arg, kz_json:new()).
 
+-spec playback(build_media_url(), kz_json:object()) -> build_media_url_ret().
 playback('undefined', _) ->
     {'error', 'invalid_media_name'};
 playback(<<"tts://", Id/binary>>, Options) ->
@@ -56,17 +56,17 @@ playback(Doc, JObj) ->
 
 -spec store(kz_json:object(), kz_term:ne_binary()) ->
                    build_media_url_ret().
--spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary()) ->
-                   build_media_url_ret().
--spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                   build_media_url_ret().
 store(JObj, AName) ->
     Media = kz_media_util:store_path_from_doc(JObj, AName),
     kz_media_file:get_uri(Media, ?STREAM_TYPE_STORE).
 
+-spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary()) ->
+                   build_media_url_ret().
 store(Db, Id, Attachment) ->
     store(Db, Id, Attachment, []).
 
+-spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kz_term:proplist()) ->
+                   build_media_url_ret().
 store(Db, {Type, Id}, Attachment, Options) ->
     store(Db, Id, Attachment, [{'doc_type', Type} | Options]);
 store(Db, ?NE_BINARY = Id, Attachment, Options) ->

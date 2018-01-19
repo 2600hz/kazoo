@@ -19,10 +19,10 @@
 -include("ts.hrl").
 
 -spec flush() -> 'ok'.
--spec flush(kz_term:ne_binary()) -> 'ok'.
 flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
+-spec flush(kz_term:ne_binary()) -> 'ok'.
 flush(Account) ->
     AccountId = kz_util:format_account_id(Account),
     Flush = kz_cache:filter_local(?CACHE_NAME

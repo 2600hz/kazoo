@@ -129,19 +129,20 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
+
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
--spec map(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 map(Routing, Payload) ->
     map_processor(Routing, Payload, rt_options()).
 
+-spec map(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 map(Routing, Payload, Options) ->
     map_processor(Routing, Payload, rt_options(Options)).
 
 -spec pmap(kz_term:ne_binary(), payload()) -> map_results().
--spec pmap(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 pmap(Routing, Payload) ->
     pmap_processor(Routing, Payload, rt_options()).
 
+-spec pmap(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
 pmap(Routing, Payload, Options) ->
     pmap_processor(Routing, Payload, rt_options(Options)).
 
@@ -299,15 +300,16 @@ stop() -> gen_server:cast(?SERVER, 'stop').
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
+
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
-                  bind_result() | bind_results().
--spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
     [bind(Binding, Module, Fun) || Binding <- Bindings];
 bind(Binding, Module, Fun) when is_binary(Binding) ->
     bind(Binding, Module, Fun, 'undefined').
 
+-spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
+                  bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) ->
@@ -320,13 +322,13 @@ bind(Binding, Module, Fun, Payload) ->
 
 -spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
                     unbind_result() | unbind_results().
--spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
-                    unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun) ->
     [unbind(Binding, Module, Fun) || Binding <- Bindings];
 unbind(Binding, Module, Fun) when is_binary(Binding) ->
     unbind(Binding, Module, Fun, 'undefined').
 
+-spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
+                    unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun, Payload) ->
     [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 unbind(Binding, Module, Fun, Payload) ->
@@ -548,11 +550,12 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
     end.
 
 -type filter_updates() :: [{kz_term:ne_binary(), {pos_integer(), queue:queue()}}] | [].
+
 -spec filter_bindings(filter_fun()) -> 'ok'.
--spec filter_bindings(filter_fun(), kz_term:ne_binary() | '$end_of_table', filter_updates(), kz_term:ne_binaries()) -> 'ok'.
 filter_bindings(Predicate) ->
     filter_bindings(Predicate, ets:first(table_id()), [], []).
 
+-spec filter_bindings(filter_fun(), kz_term:ne_binary() | '$end_of_table', filter_updates(), kz_term:ne_binaries()) -> 'ok'.
 filter_bindings(_Predicate, '$end_of_table', Updates, Deletes) ->
     _ = [ets:delete(table_id(), DeleteKey) || DeleteKey <- Deletes],
     _ = [ets:update_element(table_id(), Key, Update) || {Key, Update} <- Updates],

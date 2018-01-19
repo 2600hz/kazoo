@@ -22,17 +22,16 @@
 -include("webhooks.hrl").
 
 -spec hooks_configured() -> 'ok'.
--spec hooks_configured(kz_term:ne_binary()) -> 'ok'.
 hooks_configured() ->
     webhooks_shared_listener:hooks_configured(),
     'ok'.
 
+-spec hooks_configured(kz_term:ne_binary()) -> 'ok'.
 hooks_configured(AccountId) ->
     webhooks_shared_listener:hooks_configured(AccountId),
     'ok'.
 
 -spec set_failure_expiry(kz_term:ne_binary()) -> 'ok'.
--spec set_failure_expiry(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_failure_expiry(Expires) ->
     try kz_term:to_integer(Expires) of
         I ->
@@ -43,6 +42,7 @@ set_failure_expiry(Expires) ->
             io:format("error in expiry time, must be an integer (milliseconds)~n")
     end.
 
+-spec set_failure_expiry(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_failure_expiry(Account, Expires) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     try kz_term:to_integer(Expires) of
@@ -55,7 +55,6 @@ set_failure_expiry(Account, Expires) ->
     end.
 
 -spec set_disable_threshold(kz_term:ne_binary()) -> 'ok'.
--spec set_disable_threshold(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_disable_threshold(Count) ->
     try kz_term:to_integer(Count) of
         I ->
@@ -66,6 +65,7 @@ set_disable_threshold(Count) ->
             io:format("error in count, must be an integer~n")
     end.
 
+-spec set_disable_threshold(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_disable_threshold(Account, Count) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     try kz_term:to_integer(Count) of
@@ -78,7 +78,6 @@ set_disable_threshold(Account, Count) ->
     end.
 
 -spec failure_status() -> 'ok'.
--spec failure_status(kz_term:ne_binary()) -> 'ok'.
 failure_status() ->
     Failed = webhooks_disabler:find_failures(),
     Sorted = lists:keysort(1, Failed),
@@ -86,6 +85,7 @@ failure_status() ->
     _ = [print_failure_count(AccountId, HookId, Count) || {{AccountId, HookId}, Count} <- Sorted],
     print_failure_footer().
 
+-spec failure_status(kz_term:ne_binary()) -> 'ok'.
 failure_status(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Failed = webhooks_disabler:find_failures(),

@@ -69,9 +69,10 @@ reply_error(Error, EventData, JObj) ->
     kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_reply(Queue, P) end).
 
 -spec reply_success(kz_json:object()) -> 'ok'.
--spec reply_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 reply_success(JObj) ->
     reply_success(JObj, []).
+
+-spec reply_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 reply_success(JObj, Response) ->
     Values = [{<<"Result">>, <<"success">>}
              ,{<<"Response">>, kz_json:from_list(Response)}

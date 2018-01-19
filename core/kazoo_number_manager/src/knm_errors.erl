@@ -119,18 +119,19 @@ by_carrier(Carrier, E, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec to_json(reason()) ->
-                     error().
--spec to_json(reason(), kz_term:api_ne_binary()) ->
-                     error().
--spec to_json(reason(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
                      error().
 to_json(Reason)->
     to_json(Reason, 'undefined').
 
+-spec to_json(reason(), kz_term:api_ne_binary()) ->
+                     error().
 to_json(Reason, Num)->
     to_json(Reason, Num, 'undefined').
 
+-spec to_json(reason(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+                     error().
 to_json('number_is_porting', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " is porting">>,
     build_error(400, 'number_is_porting', Message, Num);

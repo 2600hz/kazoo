@@ -338,11 +338,12 @@ play_no_users_found(Call) ->
 -spec play_and_collect(kapps_call:call(), kapps_call_command:audio_macro_prompts()) ->
                               {'ok', binary()} |
                               {'error', atom()}.
+play_and_collect(Call, AudioMacro) ->
+    play_and_collect(Call, AudioMacro, 1).
+
 -spec play_and_collect(kapps_call:call(), kapps_call_command:audio_macro_prompts(), non_neg_integer()) ->
                               {'ok', binary()} |
                               {'error', atom()}.
-play_and_collect(Call, AudioMacro) ->
-    play_and_collect(Call, AudioMacro, 1).
 play_and_collect(Call, AudioMacro, NumDigits) ->
     NoopID = kapps_call_command:audio_macro(AudioMacro, Call),
     lager:info("play and collect noopID: ~s", [NoopID]),

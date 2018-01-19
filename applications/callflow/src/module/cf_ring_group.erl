@@ -340,9 +340,10 @@ repeats(Data) ->
     max(1, kz_json:get_integer_value(<<"repeats">>, Data, 1)).
 
 -spec group_weight(kz_json:object()) -> group_weight() | 'undefined'.
--spec group_weight(kz_json:object(), Default) -> group_weight() | Default.
 group_weight(Endpoint) ->
     group_weight(Endpoint, 'undefined').
+
+-spec group_weight(kz_json:object(), Default) -> group_weight() | Default.
 group_weight(Endpoint, Default) ->
     case kz_json:get_integer_value(<<"weight">>, Endpoint) of
         'undefined' -> Default;

@@ -170,15 +170,15 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+
 -spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
--spec start_link(pid(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
--spec start_link(pid(), kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Supervisor, AgentJObj) ->
     AgentId = kz_doc:id(AgentJObj),
     AcctId = account_id(AgentJObj),
     Queues = kz_json:get_value(<<"queues">>, AgentJObj, []),
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
 
+-spec start_link(pid(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
     lager:debug("start bindings for ~s(~s) in ready", [AcctId, AgentId]),
     gen_listener:start_link(?SERVER
@@ -188,6 +188,7 @@ start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
                            ,[Supervisor, AgentJObj, Queues]
                            ).
 
+-spec start_link(pid(), kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Supervisor, ThiefCall, QueueId) ->
     AgentId = kapps_call:owner_id(ThiefCall),
     AcctId = kapps_call:account_id(ThiefCall),
@@ -215,9 +216,10 @@ member_connect_retry(Srv, WinOrCallId) ->
 agent_timeout(Srv) -> gen_listener:cast(Srv, 'agent_timeout').
 
 -spec member_connect_accepted(pid()) -> 'ok'.
--spec member_connect_accepted(pid(), kz_term:ne_binary()) -> 'ok'.
 member_connect_accepted(Srv) ->
     gen_listener:cast(Srv, {'member_connect_accepted'}).
+
+-spec member_connect_accepted(pid(), kz_term:ne_binary()) -> 'ok'.
 member_connect_accepted(Srv, ACallId) ->
     gen_listener:cast(Srv, {'member_connect_accepted', ACallId}).
 
@@ -271,8 +273,9 @@ send_agent_busy(Srv) ->
 send_sync_req(Srv) -> gen_listener:cast(Srv, {'send_sync_req'}).
 
 -spec send_sync_resp(pid(), kz_term:text(), kz_json:object()) -> 'ok'.
--spec send_sync_resp(pid(), kz_term:text(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 send_sync_resp(Srv, Status, ReqJObj) -> send_sync_resp(Srv, Status, ReqJObj, []).
+
+-spec send_sync_resp(pid(), kz_term:text(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 send_sync_resp(Srv, Status, ReqJObj, Options) ->
     gen_listener:cast(Srv, {'send_sync_resp', Status, ReqJObj, Options}).
 
@@ -300,9 +303,10 @@ rm_acdc_queue(Srv, Q) ->
     gen_listener:cast(Srv, {'rm_acdc_queue', Q}).
 
 -spec call_status_req(pid()) -> 'ok'.
--spec call_status_req(pid(), kz_term:ne_binary()) -> 'ok'.
 call_status_req(Srv) ->
     gen_listener:cast(Srv, 'call_status_req').
+
+-spec call_status_req(pid(), kz_term:ne_binary()) -> 'ok'.
 call_status_req(Srv, CallId) ->
     gen_listener:cast(Srv, {'call_status_req', CallId}).
 
@@ -992,7 +996,6 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     kapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
 -spec send_member_connect_retry(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec send_member_connect_retry(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_member_connect_retry(JObj, MyId, AgentId) ->
     send_member_connect_retry(kz_json:get_value(<<"Server-ID">>, JObj)
                              ,call_id(JObj)
@@ -1000,6 +1003,7 @@ send_member_connect_retry(JObj, MyId, AgentId) ->
                              ,AgentId
                              ).
 
+-spec send_member_connect_retry(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_member_connect_retry('undefined', _, _, _) ->
     lager:debug("no queue to send the retry to, seems bad");
 send_member_connect_retry(Queue, CallId, MyId, AgentId) ->

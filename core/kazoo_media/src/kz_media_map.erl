@@ -302,16 +302,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec init_map() -> 'ok'.
--spec init_map(kz_term:ne_binary()) -> 'ok'.
--spec init_map(kz_term:ne_binary(), kz_term:ne_binary(), binary(), pos_integer(), fun()) -> 'ok'.
--spec init_map(kz_term:ne_binary(), kz_term:ne_binary(), binary(), pos_integer(), fun(), kz_json:objects()) -> 'ok'.
 init_map() ->
     init_map(?KZ_MEDIA_DB).
 
+-spec init_map(kz_term:ne_binary()) -> 'ok'.
 init_map(Db) ->
     init_map(Db, <<"media/crossbar_listing">>, <<>>, 50, fun gen_listener:cast/2).
 
+-spec init_map(kz_term:ne_binary(), kz_term:ne_binary(), binary(), pos_integer(), fun()) -> 'ok'.
 init_map(Db, View, StartKey, Limit, SendFun) ->
     Options = [{'startkey', StartKey}
               ,{'limit', Limit+1}
@@ -323,6 +323,7 @@ init_map(Db, View, StartKey, Limit, SendFun) ->
         {'error', _E} -> lager:debug("error loading ~s in ~s: ~p", [View, Db, _E])
     end.
 
+-spec init_map(kz_term:ne_binary(), kz_term:ne_binary(), binary(), pos_integer(), fun(), kz_json:objects()) -> 'ok'.
 init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
     try lists:split(Limit, ViewResults) of
         {Results, []} ->
@@ -340,10 +341,10 @@ init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
     end.
 
 -spec add_mapping(kz_term:ne_binary(), fun(), kz_json:objects()) -> 'ok'.
--spec add_mapping(kz_term:ne_binary(), fun(), kz_json:objects(), pid()) -> 'ok'.
 add_mapping(Db, SendFun, JObjs) ->
     add_mapping(Db, SendFun, JObjs, whereis(?MODULE)).
 
+-spec add_mapping(kz_term:ne_binary(), fun(), kz_json:objects(), pid()) -> 'ok'.
 add_mapping(Db, _SendFun, JObjs, Srv) when Srv =:= self() ->
     AccountId = kz_util:format_account_id(Db, 'raw'),
     _ = [maybe_add_prompt(AccountId, kz_json:get_value(<<"doc">>, JObj))
@@ -356,7 +357,6 @@ add_mapping(Db, SendFun, JObjs, Srv) ->
     'ok'.
 
 -spec maybe_add_prompt(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
--spec maybe_add_prompt(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_add_prompt(AccountId, JObj) ->
     maybe_add_prompt(AccountId
                     ,JObj
@@ -367,6 +367,7 @@ maybe_add_prompt(AccountId, JObj) ->
                                               )
                     ).
 
+-spec maybe_add_prompt(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_add_prompt(?KZ_MEDIA_DB, JObj, 'undefined') ->
     Id = kz_doc:id(JObj),
     MapId = mapping_id(?KZ_MEDIA_DB, Id),
@@ -403,19 +404,20 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
     insert_map(UpdatedMap).
 
 -spec insert_map(media_map()) -> 'ok' | 'true'.
--spec insert_map(media_map(), pid()) -> 'ok' | 'true'.
 insert_map(Map) ->
     insert_map(Map, whereis(?MODULE)).
+
+-spec insert_map(media_map(), pid()) -> 'ok' | 'true'.
 insert_map(Map, Srv) when Srv =:= self() ->
     ets:insert(table_id(), Map);
 insert_map(Map, Srv) ->
     gen_listener:call(Srv, {'insert_map', Map}).
 
 -spec get_map(kz_term:ne_binary()) -> media_map().
--spec get_map(kz_term:ne_binary(), kz_term:ne_binary()) -> media_map().
 get_map(PromptId) ->
     get_map(?KZ_MEDIA_DB, PromptId).
 
+-spec get_map(kz_term:ne_binary(), kz_term:ne_binary()) -> media_map().
 get_map(?KZ_MEDIA_DB = Db, PromptId) ->
     MapId = mapping_id(Db, PromptId),
     case ets:lookup(table_id(), MapId) of
@@ -448,10 +450,10 @@ init_account_map(AccountId, PromptId) ->
     new_map(AccountMap).
 
 -spec new_map(media_map()) -> 'true'.
--spec new_map(media_map(), pid()) -> 'true'.
 new_map(Map) ->
     new_map(Map, whereis(?MODULE)).
 
+-spec new_map(media_map(), pid()) -> 'true'.
 new_map(Map, Srv) when Srv =:= self() ->
     ets:insert_new(table_id(), Map);
 new_map(Map, Srv) ->
@@ -481,15 +483,15 @@ load_account_map(AccountId, PromptId) ->
     get_map(AccountId, PromptId).
 
 -spec default_language_keys(kz_term:ne_binary()) -> kz_term:ne_binaries().
--spec language_keys(kz_term:ne_binary()) -> kz_term:ne_binaries().
--spec language_keys(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 default_language_keys(Language) ->
     DefaultLanguage = kz_media_util:default_prompt_language(),
     language_keys(Language) ++ [DefaultLanguage].
 
+-spec language_keys(kz_term:ne_binary()) -> kz_term:ne_binaries().
 language_keys(Language) ->
     language_keys(Language, []).
 
+-spec language_keys(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 language_keys(<<Primary:2/binary>>, Acc) ->
     lists:reverse([Primary | Acc]);
 language_keys(<<Primary:2/binary, "-", _Secondary:2/binary>> = Lang, Acc) ->
