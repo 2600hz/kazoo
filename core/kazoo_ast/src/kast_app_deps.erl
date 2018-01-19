@@ -25,13 +25,13 @@
 
 -spec dot_file() -> 'ok' |
                     {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
--spec dot_file(atom()) ->
-                      'ok' |
-                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 dot_file() ->
     Markup = [create_dot_markup(App, remote_apps(App)) || App <- kz_ast_util:project_apps()],
     create_dot_file("kazoo_project", Markup).
 
+-spec dot_file(atom()) ->
+                      'ok' |
+                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 dot_file(App) ->
     AppDeps = remote_apps(App),
     create_dot_file(App, create_dot_markup(App, AppDeps)).
@@ -141,9 +141,10 @@ start_cache() ->
     {'ok', _Cache} = kz_cache:start_link(?MODULE).
 
 -spec stop_cache() -> 'ok'.
--spec stop_cache(kz_types:server_ref()) -> 'ok'.
 stop_cache() ->
     stop_cache(?MODULE).
+
+-spec stop_cache(kz_types:server_ref()) -> 'ok'.
 stop_cache(Cache) ->
     kz_cache:stop_local(Cache).
 

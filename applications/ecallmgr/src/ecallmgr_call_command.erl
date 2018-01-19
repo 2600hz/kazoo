@@ -941,13 +941,14 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
     {<<"eavesdrop">>, Target}.
 
 -type set_headers() :: kz_term:proplist() | [{kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()},...].
+
 -spec build_set_args(set_headers(), kz_json:object()) ->
-                            kz_term:proplist().
--spec build_set_args(set_headers(), kz_json:object(), kz_term:proplist()) ->
                             kz_term:proplist().
 build_set_args(Headers, JObj) ->
     build_set_args(Headers, JObj, []).
 
+-spec build_set_args(set_headers(), kz_json:object(), kz_term:proplist()) ->
+                            kz_term:proplist().
 build_set_args([], _, Args) ->
     lists:reverse(props:filter_undefined(Args));
 build_set_args([{ApiHeader, Default}|Headers], JObj, Args) ->

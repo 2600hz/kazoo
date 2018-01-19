@@ -178,7 +178,6 @@ maybe_integer_to_binary(Item, JObj) ->
 
 
 -spec cleanup_orphaned_services_docs() -> 'ok'.
--spec cleanup_orphaned_services_docs(kz_json:objects()) -> 'ok'.
 cleanup_orphaned_services_docs() ->
     case kz_datamgr:all_docs(?KZ_SERVICES_DB) of
         {'ok', Docs} -> cleanup_orphaned_services_docs(Docs);
@@ -186,6 +185,7 @@ cleanup_orphaned_services_docs() ->
             lager:debug("failed to get all docs from ~s: ~p", [?KZ_SERVICES_DB, _E])
     end.
 
+-spec cleanup_orphaned_services_docs(kz_json:objects()) -> 'ok'.
 cleanup_orphaned_services_docs([]) -> 'ok';
 cleanup_orphaned_services_docs([View|Views]) ->
     cleanup_orphaned_services_doc(View),

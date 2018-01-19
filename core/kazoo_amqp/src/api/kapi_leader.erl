@@ -92,9 +92,10 @@ declare_exchanges() ->
     amqp_util:leader_exchange().
 
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Routing, JObj) ->
     publish_req(Routing, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Routing, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?LEADER_REQ_VALUES, fun req/1),
     amqp_util:leader_publish(Routing, Payload, ContentType).

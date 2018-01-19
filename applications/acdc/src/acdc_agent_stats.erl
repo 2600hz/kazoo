@@ -34,10 +34,12 @@
 -include("acdc_stats.hrl").
 
 -spec status_table_id() -> atom().
--spec status_key_pos() -> pos_integer().
--spec status_table_opts() -> kz_term:proplist().
 status_table_id() -> 'acdc_stats_status'.
+
+-spec status_key_pos() -> pos_integer().
 status_key_pos() -> #status_stat.id.
+
+-spec status_table_opts() -> kz_term:proplist().
 status_table_opts() ->
     ['protected', 'named_table'
     ,{'keypos', status_key_pos()}
@@ -98,10 +100,11 @@ agent_pending_logged_out(AccountId, AgentId) ->
 
 -spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               'ok'.
--spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                              'ok'.
 agent_connecting(AccountId, AgentId, CallId) ->
     agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined').
+
+-spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                              'ok'.
 agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -119,10 +122,11 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
 
 -spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                              'ok'.
--spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                             'ok'.
 agent_connected(AccountId, AgentId, CallId) ->
     agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined').
+
+-spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                             'ok'.
 agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}

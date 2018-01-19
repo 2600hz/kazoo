@@ -29,9 +29,11 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
+
 -spec start_link(atom()) -> kz_types:startlink_ret().
--spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     supervisor:start_link(?MODULE, [Node, Options]).
 

@@ -153,19 +153,22 @@ exit_member_call_empty(Srv) ->
     gen_listener:cast(Srv, {'exit_member_call_empty'}).
 
 -spec finish_member_call(pid()) -> 'ok'.
--spec finish_member_call(pid(), kz_json:object()) -> 'ok'.
 finish_member_call(Srv) ->
     gen_listener:cast(Srv, {'finish_member_call'}).
+
+-spec finish_member_call(pid(), kz_json:object()) -> 'ok'.
 finish_member_call(Srv, AcceptJObj) ->
     gen_listener:cast(Srv, {'finish_member_call', AcceptJObj}).
 
 -spec cancel_member_call(pid()) -> 'ok'.
--spec cancel_member_call(pid(), kz_json:object()) -> 'ok'.
--spec cancel_member_call(pid(), kz_json:object(), gen_listener:basic_deliver()) -> 'ok'.
 cancel_member_call(Srv) ->
     gen_listener:cast(Srv, {'cancel_member_call'}).
+
+-spec cancel_member_call(pid(), kz_json:object()) -> 'ok'.
 cancel_member_call(Srv, RejectJObj) ->
     gen_listener:cast(Srv, {'cancel_member_call', RejectJObj}).
+
+-spec cancel_member_call(pid(), kz_json:object(), gen_listener:basic_deliver()) -> 'ok'.
 cancel_member_call(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {'cancel_member_call', MemberCallJObj, Delivery}).
 
@@ -678,7 +681,6 @@ clear_call_state(#state{account_id=AccountId
                }.
 
 -spec publish(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
--spec publish(kz_term:ne_binary(), kz_term:api_terms(), fun((kz_term:ne_binary(), kz_term:api_terms()) -> 'ok')) -> 'ok'.
 publish(Req, F) ->
     try F(Req)
     catch _E:_R ->
@@ -687,6 +689,8 @@ publish(Req, F) ->
             kz_util:log_stacktrace(ST),
             'ok'
     end.
+
+-spec publish(kz_term:ne_binary(), kz_term:api_terms(), fun((kz_term:ne_binary(), kz_term:api_terms()) -> 'ok')) -> 'ok'.
 publish(Q, Req, F) ->
     try F(Q, Req)
     catch _E:_R ->

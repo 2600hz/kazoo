@@ -48,14 +48,15 @@ init(Account, CurrentBalance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec should_topup(kz_term:ne_binary()) -> boolean().
--spec should_topup(kz_term:ne_binary(), integer()) -> boolean().
 should_topup(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', CurrentBalance} -> should_topup(AccountId, CurrentBalance);
         {'error', _} -> 'false'
     end.
 
+-spec should_topup(kz_term:ne_binary(), integer()) -> boolean().
 should_topup(AccountId, CurrentBalance) ->
     Balance = wht_util:units_to_dollars(CurrentBalance),
     case get_top_up(AccountId) of

@@ -143,13 +143,13 @@ send_originate_execute(JObj, Q) ->
 
 -spec find_caller_id(kz_json:object()) ->
                             {kz_term:ne_binary(), kz_term:api_binary()}.
--spec find_caller_id(kz_json:object(), kz_term:proplist()) ->
-                            {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(JObj) ->
     find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
                          ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
                          ]).
 
+-spec find_caller_id(kz_json:object(), kz_term:proplist()) ->
+                            {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(_JObj, []) -> {<<"SpyVsSpy">>, <<"01010101">>};
 find_caller_id(JObj, [{KName, KNum}|Ks]) ->
     case kz_json:get_value(KName, JObj) of

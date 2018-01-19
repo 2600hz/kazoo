@@ -158,10 +158,10 @@ refresh_routing(RefreshWhat, Classification, Database) ->
                   ).
 
 -spec bind_q(kz_term:ne_binary(), binds()) -> 'ok'.
--spec bind_to_q(kz_term:ne_binary(), 'undefined' | [binding()], kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
+-spec bind_to_q(kz_term:ne_binary(), 'undefined' | [binding()], kz_term:proplist()) -> 'ok'.
 bind_to_q(Queue, 'undefined', Props) ->
     bind_to_q(Queue, [?REFRESH_DB_TYPE(<<"*">>)], Props);
 bind_to_q(Queue, [?REFRESH_DB_DB(Db)|Rest], Props) ->
@@ -182,10 +182,10 @@ bind_to_q(Queue, [?CLEAN_SERVICES_ID(AccountId)|Rest], Props) ->
 bind_to_q(_Queue, [], _Props) -> 'ok'.
 
 -spec unbind_q(kz_term:ne_binary(), binds()) -> 'ok'.
--spec unbind_from_q(kz_term:ne_binary(), 'undefined' | [binding()], kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_from_q(Queue, props:get_value('restrict_to', Props), Props).
 
+-spec unbind_from_q(kz_term:ne_binary(), 'undefined' | [binding()], kz_term:proplist()) -> 'ok'.
 unbind_from_q(Queue, 'undefined', Props) ->
     unbind_from_q(Queue, [?REFRESH_DB_TYPE(<<"*">>)], Props);
 unbind_from_q(Queue, [?REFRESH_DB_DB(Db)|Rest], Props) ->
@@ -210,17 +210,19 @@ declare_exchanges() ->
     amqp_util:sysconf_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REQ_VALUES, fun req/1),
     amqp_util:sysconf_publish(routing_key(Req), Payload, ContentType).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
     publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
@@ -247,10 +249,6 @@ routing_key(Req, Get, ?REFRESH_VIEWS) ->
 
 -spec refresh_database(kz_term:ne_binary()) ->
                               kz_amqp_worker:request_return().
--spec refresh_database(kz_term:ne_binary(), pid() | kz_datamgr:db_classification()) ->
-                              kz_amqp_worker:request_return().
--spec refresh_database(kz_term:ne_binary(), pid(), kz_datamgr:db_classification()) ->
-                              kz_amqp_worker:request_return().
 refresh_database(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     kz_amqp_worker:relay_to(Worker, self()),
@@ -258,6 +256,8 @@ refresh_database(Database) ->
     kz_amqp_worker:checkin_worker(Worker),
     Result.
 
+-spec refresh_database(kz_term:ne_binary(), pid() | kz_datamgr:db_classification()) ->
+                              kz_amqp_worker:request_return().
 refresh_database(Database, Worker) when is_pid(Worker) ->
     refresh_database(Database, Worker, kz_datamgr:db_classification(Database));
 refresh_database(Database, Classification) ->
@@ -265,6 +265,8 @@ refresh_database(Database, Classification) ->
     kz_amqp_worker:relay_to(Worker, self()),
     refresh_database(Database, Worker, Classification).
 
+-spec refresh_database(kz_term:ne_binary(), pid(), kz_datamgr:db_classification()) ->
+                              kz_amqp_worker:request_return().
 refresh_database(Database, Worker, Classification) ->
     OldCallId = kz_util:get_callid(),
     MsgId = msg_id(Database),
@@ -288,10 +290,6 @@ msg_id(Database) ->
 
 -spec refresh_views(kz_term:ne_binary()) ->
                            kz_amqp_worker:request_return().
--spec refresh_views(kz_term:ne_binary(), pid() | kz_datamgr:db_classification()) ->
-                           kz_amqp_worker:request_return().
--spec refresh_views(kz_term:ne_binary(), pid(), kz_datamgr:db_classification()) ->
-                           kz_amqp_worker:request_return().
 refresh_views(Database) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     kz_amqp_worker:relay_to(Worker, self()),
@@ -299,6 +297,8 @@ refresh_views(Database) ->
     kz_amqp_worker:checkin_worker(Worker),
     Result.
 
+-spec refresh_views(kz_term:ne_binary(), pid() | kz_datamgr:db_classification()) ->
+                           kz_amqp_worker:request_return().
 refresh_views(Database, Worker) when is_pid(Worker) ->
     refresh_views(Database, Worker, kz_datamgr:db_classification(Database));
 refresh_views(Database, Classification) ->
@@ -308,6 +308,8 @@ refresh_views(Database, Classification) ->
     kz_amqp_worker:checkin_worker(Worker),
     Result.
 
+-spec refresh_views(kz_term:ne_binary(), pid(), kz_datamgr:db_classification()) ->
+                           kz_amqp_worker:request_return().
 refresh_views(Database, Worker, Classification) ->
     OldCallId = kz_util:get_callid(),
     MsgId = msg_id(Database),
@@ -327,7 +329,6 @@ refresh_views(Database, Worker, Classification) ->
     Resp.
 
 -spec clean_services(kz_term:ne_binary()) -> kz_amqp_worker:request_return().
--spec clean_services(kz_term:ne_binary(), pid()) -> kz_amqp_worker:request_return().
 clean_services(AccountId) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     kz_amqp_worker:relay_to(Worker, self()),
@@ -335,6 +336,7 @@ clean_services(AccountId) ->
     kz_amqp_worker:checkin_worker(Worker),
     Result.
 
+-spec clean_services(kz_term:ne_binary(), pid()) -> kz_amqp_worker:request_return().
 clean_services(AccountId, Worker) ->
     OldCallId = kz_util:get_callid(),
     MsgId = kz_binary:join([<<"clean_services">>, AccountId, kz_binary:rand_hex(8)], $-),
@@ -354,11 +356,11 @@ clean_services(AccountId, Worker) ->
 
 -spec wait_for_response(kz_term:ne_binary(), timeout()) ->
                                kz_amqp_worker:request_return().
--spec wait_for_response(kz_term:ne_binary(), timeout(), kz_json:objects()) ->
-                               kz_amqp_worker:request_return().
 wait_for_response(MsgId, Timeout) ->
     wait_for_response(MsgId, Timeout, []).
 
+-spec wait_for_response(kz_term:ne_binary(), timeout(), kz_json:objects()) ->
+                               kz_amqp_worker:request_return().
 wait_for_response(_MsgId, Timeout, []) when Timeout =< 0 ->
     lager:debug("timed out waiting for responses"),
     {'error', 'timeout'};

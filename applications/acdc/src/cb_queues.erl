@@ -118,12 +118,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 
+-spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?STATS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(?EAVESDROP_PATH_TOKEN) ->
@@ -131,6 +131,7 @@ allowed_methods(?EAVESDROP_PATH_TOKEN) ->
 allowed_methods(_QueueId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_QueueId, ?ROSTER_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(_QueueId, ?EAVESDROP_PATH_TOKEN) ->
@@ -145,13 +146,14 @@ allowed_methods(_QueueId, ?EAVESDROP_PATH_TOKEN) ->
 %%    /queues/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, ?ROSTER_PATH_TOKEN) -> 'true';
 resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
 
@@ -162,11 +164,13 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
+content_types_provided(Context) -> Context.
+
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
-content_types_provided(Context) -> Context.
 content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
@@ -183,11 +187,8 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) ->
                       cb_context:context().
 validate(Context) ->
     validate_queues(Context, cb_context:req_verb(Context)).
@@ -195,6 +196,8 @@ validate(Context) ->
 validate_queues(Context, ?HTTP_GET) -> summary(Context);
 validate_queues(Context, ?HTTP_PUT) -> validate_request('undefined', Context).
 
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
 validate(Context, PathToken) ->
     validate_queue(Context, PathToken, cb_context:req_verb(Context)).
 
@@ -211,6 +214,8 @@ validate_queue(Context, Id, ?HTTP_PATCH) ->
 validate_queue(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) ->
+                      cb_context:context().
 validate(Context, Id, Token) ->
     validate_queue_operation(Context, Id, Token, cb_context:req_verb(Context)).
 
@@ -388,21 +393,23 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec put(cb_context:context()) ->
-                 cb_context:context().
--spec put(cb_context:context(), path_token()) ->
-                 cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) ->
                  cb_context:context().
 put(Context) ->
     activate_account_for_acdc(Context),
     crossbar_doc:save(Context).
 
+-spec put(cb_context:context(), path_token()) ->
+                 cb_context:context().
 put(Context, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Call-ID">>, cb_context:req_value(Context, <<"call_id">>)}
             | default_eavesdrop_req(Context)
            ],
     eavesdrop_req(Context, Prop).
+
+-spec put(cb_context:context(), path_token(), path_token()) ->
+                 cb_context:context().
 put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Group-ID">>, QID}
             | default_eavesdrop_req(Context)
@@ -458,11 +465,13 @@ filter_response_fields(JObj) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _) ->
     activate_account_for_acdc(Context),
     crossbar_doc:save(Context).
+
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id, ?ROSTER_PATH_TOKEN) ->
     activate_account_for_acdc(Context),
     read(Id, crossbar_doc:save(Context)).
@@ -482,11 +491,13 @@ patch(Context, Id) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
+
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     activate_account_for_acdc(Context),
     crossbar_doc:delete(Context).
+
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, Id, ?ROSTER_PATH_TOKEN) ->
     activate_account_for_acdc(Context),
     read(Id, crossbar_doc:save(Context)).
@@ -630,12 +641,12 @@ maybe_rm_agents(Id, Context, AgentIds) ->
 
 -spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context()) ->
                                   cb_context:context().
--spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context(), kz_json:path()) ->
-                                  cb_context:context().
 rm_queue_from_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),
     rm_queue_from_agents(Id, Context, cb_context:doc(Context1)).
 
+-spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context(), kz_json:path()) ->
+                                  cb_context:context().
 rm_queue_from_agents(_Id, Context, []) ->
     cb_context:set_resp_status(Context, 'success');
 rm_queue_from_agents(Id, Context, [_|_]=AgentIds) ->

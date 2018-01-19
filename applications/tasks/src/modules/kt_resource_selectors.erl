@@ -224,8 +224,9 @@ get_selectors_db(#{account_id := AccountId
     kz_util:format_resource_selectors_db(AccountId).
 
 -spec split_keys(kz_term:ne_binaries(), non_neg_integer()) -> [kz_term:ne_binaries()].
--spec split_keys(kz_term:ne_binaries(), [kz_term:ne_binaries()], non_neg_integer()) -> [kz_term:ne_binaries()].
 split_keys(Keys, BlockSize) -> split_keys(Keys, [], BlockSize).
+
+-spec split_keys(kz_term:ne_binaries(), [kz_term:ne_binaries()], non_neg_integer()) -> [kz_term:ne_binaries()].
 split_keys([], Acc, _BlockSize) -> Acc;
 split_keys(Keys, Acc, BlockSize) when length(Keys) =< BlockSize -> [Keys ++ Acc];
 split_keys(Keys, Acc, BlockSize) ->

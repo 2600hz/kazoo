@@ -39,10 +39,12 @@
 %% Get a non-empty configuration key for a given category and cast it as a binary
 %% @end
 %%-----------------------------------------------------------------------------
+
 -spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_term:api_ne_binary().
--spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binary() | Default.
 get_ne_binary(Account, Category, Path) ->
     get_ne_binary(Account, Category, Path, undefined).
+
+-spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binary() | Default.
 get_ne_binary(Account, Category, Path, Default) ->
     Value = get(Account, Category, Path, Default),
     case kz_term:is_empty(Value) of
@@ -57,10 +59,12 @@ get_ne_binary(Account, Category, Path, Default) ->
 %% a list of binary
 %% @end
 %%-----------------------------------------------------------------------------
+
 -spec get_ne_binaries(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_term:ne_binaries().
--spec get_ne_binaries(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binaries() | Default.
 get_ne_binaries(Account, Category, Path) ->
     get_ne_binaries(Account, Category, Path, undefined).
+
+-spec get_ne_binaries(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binaries() | Default.
 get_ne_binaries(Account, Category, Path, Default) ->
     Values = get(Account, Category, Path, Default),
     case kz_term:is_ne_binaries(Values) of
@@ -98,13 +102,14 @@ to_pos_integer(Value, Default) ->
 %% Will search the account db first, then system_config for values.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_global(api_account(), kz_term:ne_binary(), kz_json:path()) ->
-                        kz_json:json_term().
--spec get_global(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                         kz_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, undefined).
 
+-spec get_global(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+                        kz_json:json_term().
 get_global(Account, Category, Key, Default) ->
     case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} ->
@@ -256,16 +261,16 @@ get_global_from_doc(Category, Key, Default, JObj) ->
             Value
     end.
 
--spec get(api_account(), kz_term:ne_binary()) -> kz_json:object().
--spec get(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:api_json_term().
--spec get(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_json:json_term() | Default.
 
+-spec get(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:api_json_term().
 get(Account, Category, Key) ->
     get(Account, Category, Key, undefined).
 
+-spec get(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_json:json_term() | Default.
 get(Account, Category, Key, Default) ->
     kz_json:get_value(Key, get(Account, Category), Default).
 
+-spec get(api_account(), kz_term:ne_binary()) -> kz_json:object().
 get(Account, Category) ->
     case load_config_from_account(account_id(Account), Category) of
         {ok, JObj} -> JObj;

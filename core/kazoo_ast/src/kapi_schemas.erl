@@ -22,9 +22,10 @@
 -type acc() :: #acc{}.
 
 -spec to_schemas() -> 'ok'.
--spec to_schemas(atom()) -> 'ok'.
 to_schemas() ->
     kz_json:foreach(fun update_schema/1, process()).
+
+-spec to_schemas(atom()) -> 'ok'.
 to_schemas(App) ->
     kz_json:foreach(fun update_schema/1, process_app(App)).
 
@@ -69,8 +70,6 @@ existing_schema(Name) ->
     end.
 
 -spec process() -> kz_json:object().
--spec process_app(atom()) -> kz_json:object().
--spec process_module(module()) -> kz_json:object().
 process() ->
     io:format("process kapi modules: "),
     Options = [{'expression', fun expression_to_schema/2}
@@ -84,6 +83,7 @@ process() ->
     io:format(" done~n", []),
     Schemas.
 
+-spec process_app(atom()) -> kz_json:object().
 process_app(App) ->
     io:format("process kapi modules: "),
     Options = [{'expression', fun expression_to_schema/2}
@@ -97,6 +97,7 @@ process_app(App) ->
     io:format(" done~n", []),
     Schemas.
 
+-spec process_module(module()) -> kz_json:object().
 process_module(KapiModule) ->
     io:format("process kapi module ~s: ", [KapiModule]),
     Options = [{'expression', fun expression_to_schema/2}

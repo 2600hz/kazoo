@@ -234,27 +234,30 @@ declare_exchanges() ->
     amqp_util:new_exchange(?METAFLOW_EXCHANGE, ?METAFLOW_EXCHANGE_TYPE).
 
 -spec publish_flow(kz_term:api_terms()) -> 'ok'.
--spec publish_flow(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flow(JObj) ->
     publish_flow(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flow(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flow(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_FLOW_VALUES, fun flow/1),
     RK = ?METAFLOW_FLOW_ROUTING_KEY(rk_call_id(Req)),
     amqp_util:basic_publish(?METAFLOW_EXCHANGE, RK, Payload, ContentType).
 
 -spec publish_action(kz_term:api_terms()) -> 'ok'.
--spec publish_action(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_action(JObj) ->
     publish_action(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_action(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_action(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_ACTION_VALUES, fun action/1),
     RK = ?METAFLOW_ACTION_ROUTING_KEY(rk_call_id(Req), rk_action(Req)),
     amqp_util:basic_publish(?METAFLOW_EXCHANGE, RK, Payload, ContentType).
 
 -spec publish_bind_req(kz_term:api_terms()) -> 'ok'.
--spec publish_bind_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_bind_req(JObj) ->
     publish_bind_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_bind_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_bind_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_BIND_REQ_VALUES, fun bind_req/1),
     RK = ?METAFLOW_BIND_REQ_ROUTING_KEY(rk_account_id(Req), rk_binding_leg(Req)),
@@ -281,9 +284,10 @@ rk_binding_leg(JObj) ->
     kz_json:get_value(<<"Binding-Leg">>, JObj).
 
 -spec publish_binding(kz_term:api_terms()) -> 'ok'.
--spec publish_binding(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_binding(API) ->
     publish_binding(API, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_binding(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_binding(API0, ContentType) ->
     API = ensure_callid(API0),
     CallId = rk_call_id(API),
@@ -293,9 +297,10 @@ publish_binding(API0, ContentType) ->
     amqp_util:basic_publish(?METAFLOW_EXCHANGE, RK, Payload, ContentType).
 
 -spec publish_bind_reply(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_bind_reply(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_bind_reply(Q, API) ->
     publish_bind_reply(Q, API, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_bind_reply(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_bind_reply(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?METAFLOW_BIND_VALUES, fun binding/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).

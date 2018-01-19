@@ -75,52 +75,64 @@ init() ->
     ].
 
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_ListId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_ListId, ?ENTRIES) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_ListId, ?ENTRIES, _ListEntryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_ListId, ?ENTRIES, _ListEntryId, ?VCARD) ->
     [?HTTP_GET];
 allowed_methods(_ListId, ?ENTRIES, _ListEntryId, ?PHOTO) ->
     [?HTTP_POST].
 
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_ListId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_ListId, ?ENTRIES) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_ListId, ?ENTRIES, _EntryId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_ListId, ?ENTRIES, _EntryId, ?VCARD) -> 'true'.
 
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
--spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
 content_types_provided(Context) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _, _) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _, _, _) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _, ?ENTRIES, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context
                                          ,[{'to_binary'
@@ -132,18 +144,22 @@ content_types_provided(Context, _, ?ENTRIES, _, ?VCARD) ->
                                          ).
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_req(cb_context:req_verb(Context), Context, []).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ListId) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId]).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ListId, ?ENTRIES) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId, ?ENTRIES]).
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ListId, ?ENTRIES, EntryId) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId, ?ENTRIES, EntryId]).
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ListId, ?ENTRIES, EntryId, ?VCARD) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId, ?ENTRIES, EntryId, ?VCARD]).
 
@@ -202,34 +218,40 @@ validate_doc(Id, Type, Context) ->
     cb_context:validate_request_data(type_schema_name(Type), Context, OnSuccess).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ListId) ->
     _ = delete(Context, ListId, ?ENTRIES),
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     crossbar_doc:delete(Context1).
+
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, ?ENTRIES) ->
     Docs = [kz_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
     AccountDb = kz_util:format_account_id(cb_context:account_db(Context), 'encoded'),
     %% do we need 'soft' delete as in crossbar_doc?
     kz_datamgr:del_docs(AccountDb, Docs),
     Context.
+
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, ?ENTRIES, _EntryId) ->
     crossbar_doc:delete(Context).
 
 -spec save(cb_context:context()) -> cb_context:context().
--spec save(cb_context:context(), path_token()) -> cb_context:context().
--spec save(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec save(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
--spec save(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context) ->
     crossbar_doc:save(Context).
+
+-spec save(cb_context:context(), path_token()) -> cb_context:context().
 save(Context, _) ->
     save(Context).
+
+-spec save(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 save(Context, _, ?ENTRIES) ->
     save(Context).
+
+-spec save(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context, _, ?ENTRIES, _) ->
     save(Context).
+
+-spec save(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context, _, ?ENTRIES, EntryId, ?PHOTO) ->
     %% May be move code from cb_users_v2 to crossbar_doc?
     cb_users_v2:post(Context, EntryId, ?PHOTO).

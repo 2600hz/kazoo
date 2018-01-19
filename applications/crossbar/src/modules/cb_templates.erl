@@ -76,20 +76,21 @@ resource_exists(_) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate_request(cb_context:context(), http_method(), req_nouns()) -> cb_context:context().
--spec validate_request(cb_context:context(), http_method(), req_nouns(), path_token()) ->
-                              cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_request(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, TemplateName) ->
     validate_request(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context), TemplateName).
 
+-spec validate_request(cb_context:context(), http_method(), req_nouns()) -> cb_context:context().
 validate_request(Context, ?HTTP_GET, [{<<"templates">>, _}]) ->
     summary(Context).
 
+-spec validate_request(cb_context:context(), http_method(), req_nouns(), path_token()) ->
+                              cb_context:context().
 validate_request(Context, ?HTTP_PUT, [{<<"templates">>, _}], TemplateName) ->
     case cb_context:resp_status(load_template_db(TemplateName, Context)) of
         'success' -> cb_context:add_system_error('datastore_conflict', Context);

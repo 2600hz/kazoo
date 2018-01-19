@@ -96,10 +96,10 @@ log_slow_resolution(Min, Max, Mean, Median) ->
 -type resolutions() :: {Min :: pos_integer(), Max :: pos_integer(), Total:: pos_integer(), Timings :: [pos_integer()]}.
 
 -spec time_hostname_resolutions(pos_integer()) -> resolutions().
--spec time_hostname_resolutions(pos_integer(), pos_integer()) -> resolutions().
 time_hostname_resolutions(HowManyTests) ->
     time_hostname_resolutions(HowManyTests, time_hostname_resolution()).
 
+-spec time_hostname_resolutions(pos_integer(), pos_integer()) -> resolutions().
 time_hostname_resolutions(HowManyTests, InitTime) ->
     lists:foldl(fun time_hostname_resolution/2
                ,{InitTime, InitTime, InitTime, []}

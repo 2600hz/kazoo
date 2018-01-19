@@ -231,28 +231,28 @@ declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?FAX_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, fax_routing_key()).
 
 -spec publish_query_status(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_query_status(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_status(Q, JObj) ->
     publish_query_status(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 
+-spec publish_query_status(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_status(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun query_status/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_status(kz_term:api_terms()) -> 'ok'.
--spec publish_status(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_status(API) ->
     publish_status(API, ?DEFAULT_CONTENT_TYPE).
 
+-spec publish_status(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_status(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_STATUS_VALUES, fun status/1),
     FaxId = props:get_first_defined([<<"Fax-ID">>,<<"Job-ID">>], API,<<"*">>),
@@ -260,29 +260,29 @@ publish_status(API, ContentType) ->
     amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(AccountId, FaxId), Payload, ContentType).
 
 -spec publish_targeted_status(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_targeted_status(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_status(Q, JObj) ->
     publish_targeted_status(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 
+-spec publish_targeted_status(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_status(Q, Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?FAX_STATUS_VALUES, fun status/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_start_account(kz_term:api_terms()) -> 'ok'.
--spec publish_start_account(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_start_account(API) ->
     publish_start_account(API, ?DEFAULT_CONTENT_TYPE).
 
+-spec publish_start_account(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_start_account(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_START_ACCOUNT_VALUES, fun start_account/1),
     AccountId = props:get_value(<<"Account-ID">>, API,<<"*">>),
     amqp_util:basic_publish(?FAX_EXCHANGE, fax_start_key(<<"account">>, AccountId), Payload, ContentType).
 
 -spec publish_start_job(kz_term:api_terms()) -> 'ok'.
--spec publish_start_job(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_start_job(API) ->
     publish_start_job(API, ?DEFAULT_CONTENT_TYPE).
 
+-spec publish_start_job(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_start_job(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_START_JOB_VALUES, fun start_job/1),
     JobId = props:get_value(<<"Job-ID">>, API,<<"*">>),

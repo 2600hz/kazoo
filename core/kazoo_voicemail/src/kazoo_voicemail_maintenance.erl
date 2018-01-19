@@ -41,12 +41,12 @@ migrate() ->
     end.
 
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
--spec migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object()) -> 'ok'.
 migrate(?NE_BINARY = AccountId) ->
     print_migration_stats(kvm_migrate_account:manual_account_migrate(AccountId));
 migrate(AccountJObj) ->
     migrate(kz_doc:id(AccountJObj)).
 
+-spec migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object()) -> 'ok'.
 migrate(AccountId, ?NE_BINARY = BoxId) ->
     migrate(AccountId, [BoxId]);
 migrate(AccountId, BoxIds) when is_list(BoxIds) ->

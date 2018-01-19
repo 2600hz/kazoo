@@ -18,8 +18,8 @@ new() ->
     kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 -spec type() -> kz_term:ne_binary().
--spec type(doc()) -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
+-spec type(doc()) -> kz_term:ne_binary().
 type(Doc) ->
     kz_doc:type(Doc, ?PVT_TYPE).

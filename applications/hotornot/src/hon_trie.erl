@@ -63,9 +63,12 @@ trie_proc_name(Ratedeck) ->
     kz_term:to_atom(<<"hon_trie_", RatedeckDb/binary>>, 'true').
 
 -ifdef(TEST).
+
+-spec match_did(kz_term:ne_binary(), kz_term:api_ne_binary()) -> match_return().
 match_did(ToDID, AccountId) ->
     match_did(ToDID, AccountId, ?KZ_RATES_DB).
 
+-spec match_did(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> match_return().
 match_did(ToDID, _AccountId, RatedeckId) ->
     ProcName = trie_proc_name(RatedeckId),
 
@@ -76,10 +79,10 @@ match_did(ToDID, _AccountId, RatedeckId) ->
 -else.
 
 -spec match_did(kz_term:ne_binary(), kz_term:api_ne_binary()) -> match_return().
--spec match_did(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> match_return().
 match_did(ToDID, AccountId) ->
     match_did(ToDID, AccountId, 'undefined').
 
+-spec match_did(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> match_return().
 match_did(ToDID, AccountId, RatedeckId) ->
     Ratedeck = hon_util:account_ratedeck(AccountId, RatedeckId),
     ProcName = trie_proc_name(Ratedeck),

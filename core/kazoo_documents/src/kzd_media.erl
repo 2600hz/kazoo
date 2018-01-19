@@ -33,9 +33,10 @@ new() ->
 type() -> ?PVT_TYPE.
 
 -spec prompt_id(doc()) -> kz_term:api_ne_binary().
--spec prompt_id(doc(), Default) -> kz_term:ne_binary() | Default.
 prompt_id(Doc) ->
     prompt_id(Doc, 'undefined').
+
+-spec prompt_id(doc(), Default) -> kz_term:ne_binary() | Default.
 prompt_id(Doc, Default) ->
     kz_json:get_ne_binary_value(?PROMPT_ID, Doc, Default).
 
@@ -44,15 +45,17 @@ is_prompt(Doc) ->
     prompt_id(Doc) =/= 'undefined'.
 
 -spec language(doc()) -> kz_term:api_ne_binary().
--spec language(doc(), Default) -> kz_term:ne_binary() | Default.
 language(Doc) ->
     language(Doc, 'undefined').
+
+-spec language(doc(), Default) -> kz_term:ne_binary() | Default.
 language(Doc, Default) ->
     kz_json:get_ne_binary_value(?LANGUAGE, Doc, Default).
 
 -spec content_type(doc()) -> kz_term:api_ne_binary().
--spec content_type(doc(), Default) -> kz_term:ne_binary() | Default.
 content_type(Doc) ->
     content_type(Doc, 'undefined').
+
+-spec content_type(doc(), Default) -> kz_term:ne_binary() | Default.
 content_type(Doc, Default) ->
     kz_json:get_ne_binary_value(<<"content_type">>, Doc, Default).

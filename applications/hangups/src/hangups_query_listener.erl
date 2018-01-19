@@ -58,7 +58,6 @@ start_link() ->
                                      ], []).
 
 -spec handle_query(kz_json:object(), kz_term:proplist()) -> any().
--spec handle_query(kz_json:object(), kz_term:ne_binary(), boolean()) -> any().
 handle_query(JObj, _Props) ->
     'true' = kapi_hangups:query_req_v(JObj),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
@@ -67,6 +66,7 @@ handle_query(JObj, _Props) ->
 
     handle_query(JObj, N, kz_json:is_true(<<"Raw-Data">>, JObj)).
 
+-spec handle_query(kz_json:object(), kz_term:ne_binary(), boolean()) -> any().
 handle_query(_JObj, _N, 'true') ->
     lager:error("who is using this ?");
 handle_query(JObj, N, 'false') ->
@@ -74,7 +74,6 @@ handle_query(JObj, N, 'false') ->
     publish_resp(JObj, meter_resp(N)).
 
 -spec meter_resp(kz_term:ne_binary()) -> kz_term:proplist().
--spec meter_resp(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 meter_resp(<<"*">>) ->
     [{<<"meters">>, [kz_json:from_list(meter_resp(Name))
                      || {Name, _Info} <- folsom_metrics:get_metrics_info()
@@ -84,6 +83,7 @@ meter_resp(<<"*">>) ->
 meter_resp(N) ->
     meter_resp(N, folsom_metrics_meter:get_values(N)).
 
+-spec meter_resp(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 meter_resp(_, []) -> [];
 meter_resp(N, [_|_]=Values) ->
     Vs = [{kz_term:to_binary(K), V}

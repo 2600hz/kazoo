@@ -98,9 +98,10 @@ maybe_enter_queue(#member_call{call=Call
                    ).
 
 -spec wait_for_bridge(member_call(), max_wait()) -> 'ok'.
--spec wait_for_bridge(member_call(), max_wait(), kz_time:now()) -> 'ok'.
 wait_for_bridge(MC, Timeout) ->
     wait_for_bridge(MC, Timeout, os:timestamp()).
+
+-spec wait_for_bridge(member_call(), max_wait(), kz_time:now()) -> 'ok'.
 wait_for_bridge(#member_call{call=Call}, Timeout, _Start) when Timeout < 0 ->
     lager:debug("timeout is less than 0: ~p", [Timeout]),
     end_member_call(Call);

@@ -104,10 +104,11 @@ response(JTerm, Context) ->
 
 -spec response_202(kz_term:api_ne_binary(), cb_context:context()) ->
                           cb_context:context().
--spec response_202(kz_term:api_ne_binary(), kz_json:json_term(), cb_context:context()) ->
-                          cb_context:context().
 response_202(Msg, Context) ->
     response_202(Msg, Msg, Context).
+
+-spec response_202(kz_term:api_ne_binary(), kz_json:json_term(), cb_context:context()) ->
+                          cb_context:context().
 response_202(Msg, JTerm, Context) ->
     create_response('success', Msg, 202, JTerm, Context).
 
@@ -220,10 +221,11 @@ response_deprecated(Context) ->
 
 -spec response_deprecated_redirect(cb_context:context(), kz_term:ne_binary()) ->
                                           cb_context:context().
--spec response_deprecated_redirect(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                                          cb_context:context().
 response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, kz_json:new()).
+
+-spec response_deprecated_redirect(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+                                          cb_context:context().
 response_deprecated_redirect(Context, RedirectUrl, JObj) ->
     create_response('error', <<"deprecated">>, 301, JObj
                    ,cb_context:add_resp_header(Context, <<"Location">>, RedirectUrl)
@@ -437,10 +439,8 @@ maybe_flush_registration_on_deleted(Realm, _OldDevice, NewDevice) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec move_account(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', any()}.
--spec move_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 move_account(?MATCH_ACCOUNT_RAW(AccountId), ToAccount=?NE_BINARY) ->
@@ -450,6 +450,9 @@ move_account(?MATCH_ACCOUNT_RAW(AccountId), ToAccount=?NE_BINARY) ->
             move_account(AccountId, JObj, ToAccount, ToTree)
     end.
 
+-spec move_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
+                          {'ok', kz_json:object()} |
+                          {'error', any()}.
 move_account(AccountId, JObj, ToAccount, ToTree) ->
     AccountDb = kz_util:format_account_db(AccountId),
     PreviousTree = kz_account:tree(JObj),
@@ -637,21 +640,22 @@ enable_account(AccountId) ->
 %% Helper to set data for all auth type
 %% @end
 %%--------------------------------------------------------------------
+
 -spec response_auth(kz_json:object()) ->
-                           kz_json:object().
--spec response_auth(kz_json:object(), kz_term:api_binary()) ->
-                           kz_json:object().
--spec response_auth(kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) ->
                            kz_json:object().
 response_auth(JObj) ->
     AccountId = kz_json:get_first_defined([<<"account_id">>, <<"pvt_account_id">>], JObj),
     OwnerId = kz_json:get_first_defined([<<"owner_id">>, <<"user_id">>], JObj),
     response_auth(JObj, AccountId, OwnerId).
 
+-spec response_auth(kz_json:object(), kz_term:api_binary()) ->
+                           kz_json:object().
 response_auth(JObj, AccountId) ->
     OwnerId = kz_json:get_first_defined([<<"owner_id">>, <<"user_id">>], JObj),
     response_auth(JObj, AccountId, OwnerId).
 
+-spec response_auth(kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) ->
+                           kz_json:object().
 response_auth(JObj, AccountId, UserId) ->
     populate_resp(JObj, AccountId, UserId).
 
@@ -738,14 +742,15 @@ change_pvt_enabled(State, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_language(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec get_language(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_language(AccountId) ->
     case get_account_lang(AccountId) of
         {'ok', Lang} -> Lang;
         'error' -> ?DEFAULT_LANGUAGE
     end.
 
+-spec get_language(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_language(AccountId, 'undefined') ->
     case get_account_lang(AccountId) of
         {'ok', Lang} -> Lang;
@@ -942,8 +947,8 @@ get_priv_level_restrictions(Restrictions, PrivLevel) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec descendants_count() -> 'ok'.
--spec descendants_count(kz_term:proplist() | kz_term:ne_binary()) -> 'ok'.
 descendants_count() ->
     Limit = kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000),
     ViewOptions = [{'limit', Limit}
@@ -951,6 +956,7 @@ descendants_count() ->
                   ],
     descendants_count(ViewOptions).
 
+-spec descendants_count(kz_term:proplist() | kz_term:ne_binary()) -> 'ok'.
 descendants_count(<<_/binary>> = Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     descendants_count([{'key', AccountId}]);
@@ -995,9 +1001,8 @@ handle_no_descendants(ViewOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec format_emergency_caller_id_number(cb_context:context()) ->
-                                               cb_context:context().
--spec format_emergency_caller_id_number(cb_context:context(), kz_json:object()) ->
                                                cb_context:context().
 format_emergency_caller_id_number(Context) ->
     case cb_context:req_value(Context, [<<"caller_id">>, ?KEY_EMERGENCY]) of
@@ -1006,6 +1011,8 @@ format_emergency_caller_id_number(Context) ->
             format_emergency_caller_id_number(Context, Emergency)
     end.
 
+-spec format_emergency_caller_id_number(cb_context:context(), kz_json:object()) ->
+                                               cb_context:context().
 format_emergency_caller_id_number(Context, Emergency) ->
     case kz_json:get_ne_binary_value(<<"number">>, Emergency) of
         'undefined' -> Context;
@@ -1191,14 +1198,12 @@ load_descendants_count(ViewOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_descendants_count(kz_term:ne_binary(), integer()) -> 'ok'.
--spec maybe_update_descendants_count(kz_term:ne_binary(), integer(), integer()) -> 'ok'.
--spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer()) -> 'ok'.
--spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer(), integer()) -> 'ok'.
 
+-spec maybe_update_descendants_count(kz_term:ne_binary(), integer()) -> 'ok'.
 maybe_update_descendants_count(AccountId, NewCount) ->
     maybe_update_descendants_count(AccountId, NewCount, 3).
 
+-spec maybe_update_descendants_count(kz_term:ne_binary(), integer(), integer()) -> 'ok'.
 maybe_update_descendants_count(AccountId, _, Try) when Try =< 0 ->
     io:format("too many attempts to update descendants count for ~s~n", [AccountId]);
 maybe_update_descendants_count(AccountId, NewCount, Try) ->
@@ -1209,10 +1214,12 @@ maybe_update_descendants_count(AccountId, NewCount, Try) ->
             maybe_update_descendants_count(AccountId, JObj, NewCount, Try)
     end.
 
+-spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer()) -> 'ok'.
 maybe_update_descendants_count(AccountId, JObj, NewCount, Try) ->
     OldCount = kz_json:get_integer_value(<<"descendants_count">>, JObj),
     maybe_update_descendants_count(AccountId, JObj, NewCount, OldCount, Try).
 
+-spec maybe_update_descendants_count(kz_term:ne_binary(), kz_json:object(), integer(), integer(), integer()) -> 'ok'.
 maybe_update_descendants_count(_, _, Count, Count, _) -> 'ok';
 maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
     case update_descendants_count(AccountId, JObj, NewCount) of
@@ -1245,9 +1252,8 @@ update_descendants_count(AccountId, JObj, NewCount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_validate_quickcall(cb_context:context()) ->
-                                      cb_context:context().
--spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) ->
                                       cb_context:context().
 maybe_validate_quickcall(Context) ->
     case kz_buckets:consume_tokens(?APP_NAME
@@ -1259,6 +1265,8 @@ maybe_validate_quickcall(Context) ->
         'true' -> maybe_validate_quickcall(Context, cb_context:resp_status(Context))
     end.
 
+-spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) ->
+                                      cb_context:context().
 maybe_validate_quickcall(Context, 'success') ->
     AllowAnon = kz_json:is_true(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
 

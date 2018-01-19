@@ -199,12 +199,12 @@ dataplan_match(Classification, Plan, AccountId) ->
              }
     end.
 
--spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
--spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 
+-spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
 dataplan_type_match(Classification, DocType, Plan) ->
     dataplan_type_match(Classification, DocType, Plan, 'undefined').
 
+-spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_type_match(Classification, DocType, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"types">> := Types
                                          ,<<"connection">> := CCon

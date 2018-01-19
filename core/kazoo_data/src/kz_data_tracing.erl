@@ -63,30 +63,30 @@
 -spec trace_file() ->
                         {'ok', trace_ref()} |
                         {'error', trace_error()}.
--spec trace_file(filters()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
--spec trace_file(filters(), file:filename_all()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
--spec trace_file(filters(), file:filename_all(), list()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
--spec trace_file(filters(), file:filename_all(), list(), atom()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
 trace_file() ->
     trace_file([{'function', '*'}]).
 
+-spec trace_file(filters()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters) ->
     trace_file(Filters, <<"/tmp/", (kz_binary:rand_hex(16))/binary, ".log">>).
 
+-spec trace_file(filters(), file:filename_all()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters, Filename) ->
     trace_file(Filters, Filename, ?DEFAULT_TRACE_PROPS(?DEFAULT_TRACE_OUTPUT_FORMAT)).
 
+-spec trace_file(filters(), file:filename_all(), list()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters, Filename, Format) ->
     trace_file(Filters, Filename, Format, 'debug').
 
+-spec trace_file(filters(), file:filename_all(), list(), atom()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters, Filename, Format, LogLevel) ->
     gen_server:call(?MODULE
                    ,{'trace_file'

@@ -1196,9 +1196,10 @@ handle_transferor_dtmf(Evt
     end.
 
 -spec unbridge(kapps_call:call()) -> 'ok'.
--spec unbridge(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 unbridge(Call) ->
     unbridge(Call, kapps_call:call_id(Call)).
+
+-spec unbridge(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 unbridge(Call, CallId) ->
     Command = [{<<"Application-Name">>, <<"unbridge">>}
               ,{<<"Insert-At">>, <<"now">>}
@@ -1322,12 +1323,13 @@ transfer_data(Target, Takeback, MOH) ->
       ]).
 
 -spec find_moh(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
--spec find_moh(kapps_call:call()) -> kz_term:api_binary().
 find_moh(Data, Call) ->
     case kz_json:get_value(<<"moh">>, Data) of
         'undefined' -> find_moh(Call);
         MOH -> MOH
     end.
+
+-spec find_moh(kapps_call:call()) -> kz_term:api_binary().
 find_moh(Call) ->
     {'ok', JObj} = kz_account:fetch(kapps_call:account_id(Call)),
     kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj).
@@ -1397,11 +1399,12 @@ suppress_event(JObj, _EventNode, _OtherNode) ->
                 ]).
 
 -type connect_to() :: 'transferee' | 'transferor'.
+
 -spec handle_real_target(state(), kz_term:ne_binary()) -> state().
--spec handle_real_target(state(), kz_term:ne_binary(), connect_to()) -> state().
 handle_real_target(State, ReplacementId) ->
     handle_real_target(State, ReplacementId, 'transferor').
 
+-spec handle_real_target(state(), kz_term:ne_binary(), connect_to()) -> state().
 handle_real_target(#state{target_a_leg=TargetA
                          ,target_call=TargetCall
                          ,purgatory_ref=Ref

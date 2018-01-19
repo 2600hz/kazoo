@@ -76,10 +76,12 @@ authorize(_) -> 'false'.
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_CommentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -92,9 +94,11 @@ allowed_methods(_CommentId) ->
 %%    /comments/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -107,10 +111,12 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_comments(set_resource(Context), cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_comment(set_resource(Context), Id, cb_context:req_verb(Context)).
 
@@ -149,8 +155,8 @@ post(Context, Id) ->
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
+
 -spec delete(cb_context:context()) -> cb_context:context().
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context) ->
     Context1 = remove(Context),
     case cb_context:resp_status(Context1) of
@@ -158,6 +164,7 @@ delete(Context) ->
         _Status -> Context1
     end.
 
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Id) ->
     Context1 = remove(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -186,11 +193,12 @@ finish_request(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec set_resource(cb_context:context()) -> cb_context:context().
--spec set_resource(cb_context:context(), req_nouns()) -> cb_context:context().
 set_resource(Context) ->
     set_resource(Context, cb_context:req_nouns(Context)).
 
+-spec set_resource(cb_context:context(), req_nouns()) -> cb_context:context().
 set_resource(Context, [{?COMMENTS, _}, Data | _]) ->
     cb_context:store(Context, 'resource', Data).
 
@@ -291,12 +299,13 @@ update(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec remove(cb_context:context()) -> cb_context:context().
--spec remove(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 remove(Context) ->
     Doc = kz_json:set_value(?COMMENTS, [], cb_context:doc(Context)),
     crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
+-spec remove(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 remove(Context, Id) ->
     Doc = cb_context:doc(Context),
     Comments = kz_json:get_value(?COMMENTS, Doc, []),
@@ -350,14 +359,15 @@ check_comment_number(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec load_doc(cb_context:context()) ->
-                      cb_context:context().
--spec load_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                       cb_context:context().
 load_doc(Context) ->
     {Type, Id} = cb_context:fetch(Context, 'resource'),
     load_doc(Context, Type, Id).
 
+-spec load_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
+                      cb_context:context().
 load_doc(Context, <<"port_requests">>, [Id]) ->
     crossbar_doc:load(Id
                      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)

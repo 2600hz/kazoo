@@ -60,7 +60,6 @@ start_link() ->
                            ).
 
 -spec handle_config(kz_json:object(), kz_term:proplist()) -> 'ok'.
--spec handle_config(kz_json:object(), pid(), kz_term:ne_binary()) -> 'ok'.
 handle_config(JObj, Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
     handle_config(JObj
@@ -68,6 +67,7 @@ handle_config(JObj, Props) ->
                  ,kz_api:event_name(JObj)
                  ).
 
+-spec handle_config(kz_json:object(), pid(), kz_term:ne_binary()) -> 'ok'.
 handle_config(JObj, Srv, ?DOC_CREATED) ->
     case kapi_conf:get_doc(JObj) of
         'undefined' -> find_and_add_hook(JObj, Srv);

@@ -437,10 +437,8 @@ do_exec(T0=#{todo := Ns}, Action) ->
         end,
     lists:foldl(F, T0, Ns).
 
--spec exec(knm_number:knm_number(), exec_action()) -> knm_number:knm_number().
--spec exec(knm_number:knm_number(), exec_action(), kz_term:ne_binaries()) ->
-                  knm_number:knm_number().
 
+-spec exec(knm_number:knm_number(), exec_action()) -> knm_number:knm_number().
 exec(Number, Action=delete) ->
     RequestedModules = requested_modules(Number),
     ?LOG_DEBUG("deleting feature providers: ~s", [?PP(RequestedModules)]),
@@ -488,6 +486,8 @@ split_requests(Number) ->
     F = fun (Feature) -> lists:member(Feature, AllowedModules) end,
     lists:partition(F, RequestedModules).
 
+-spec exec(knm_number:knm_number(), exec_action(), kz_term:ne_binaries()) ->
+                  knm_number:knm_number().
 exec(Number, _, []) -> Number;
 exec(Number, Action, [Provider|Providers]) ->
     case apply_action(Number, Action, Provider) of

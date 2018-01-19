@@ -32,30 +32,32 @@ init() ->
     ok.
 
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_MigrationId) ->
     [?HTTP_GET, ?HTTP_POST].
 
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate(Context) ->
     maybe_create_migration_doc(cb_context:account_db(Context)),
     validate(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     load_migration_list(Context);
 
 validate(Context, MigId) ->
     validate(Context, MigId, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate(Context, DocId, ?HTTP_GET) ->
     load_migration_summary(DocId, Context);
 

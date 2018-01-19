@@ -32,9 +32,10 @@ add_trace(Pid, CollectFor) ->
     'ok'.
 
 -spec gen_load(non_neg_integer()) -> 'ok'.
--spec gen_load(non_neg_integer(), non_neg_integer()) -> 'ok'.
 gen_load(N) ->
     gen_load(N, 1000).
+
+-spec gen_load(non_neg_integer(), non_neg_integer()) -> 'ok'.
 gen_load(N, D) ->
     Start = os:timestamp(),
     _ = rand:seed('exsplus', Start),

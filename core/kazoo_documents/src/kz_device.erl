@@ -97,58 +97,58 @@ is_device(Doc) ->
     kz_doc:type(Doc) =:= type().
 
 -spec sip_username(doc()) -> kz_term:api_binary().
--spec sip_username(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_username(DeviceJObj) ->
     sip_username(DeviceJObj, 'undefined').
 
+-spec sip_username(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_username(DeviceJObj, Default) ->
     kz_json:get_value(?USERNAME, DeviceJObj, Default).
 
 -spec sip_password(doc()) -> kz_term:api_binary().
--spec sip_password(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_password(DeviceJObj) ->
     sip_password(DeviceJObj, 'undefined').
 
+-spec sip_password(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_password(DeviceJObj, Default) ->
     kz_json:get_value(?PASSWORD, DeviceJObj, Default).
 
 -spec sip_method(doc()) -> kz_term:api_binary().
--spec sip_method(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_method(DeviceJObj) ->
     sip_method(DeviceJObj, 'undefined').
 
+-spec sip_method(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_method(DeviceJObj, Default) ->
     kz_json:get_value(?METHOD, DeviceJObj, Default).
 
 -spec sip_realm(doc()) -> kz_term:api_binary().
--spec sip_realm(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_realm(DeviceJObj) ->
     sip_realm(DeviceJObj, 'undefined').
 
+-spec sip_realm(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_realm(DeviceJObj, Default) ->
     kz_json:get_value(?REALM, DeviceJObj, Default).
 
 -spec sip_ip(doc()) -> kz_term:api_binary().
--spec sip_ip(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_ip(DeviceJObj) ->
     sip_ip(DeviceJObj, 'undefined').
 
+-spec sip_ip(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_ip(DeviceJObj, Default) ->
     kz_json:get_value(?IP, DeviceJObj, Default).
 
 -spec sip_invite_format(doc()) -> kz_term:api_binary().
--spec sip_invite_format(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_invite_format(DeviceJObj) ->
     sip_invite_format(DeviceJObj, 'undefined').
 
+-spec sip_invite_format(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_invite_format(DeviceJObj, Default) ->
     kz_json:get_value(?INVITE_FORMAT, DeviceJObj, Default).
 
 -spec sip_route(doc()) -> kz_term:api_binary().
--spec sip_route(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_route(DeviceJObj) ->
     sip_route(DeviceJObj, 'undefined').
 
+-spec sip_route(doc(), Default) -> kz_term:ne_binary() | Default.
 sip_route(DeviceJObj, Default) ->
     kz_json:get_value(?ROUTE, DeviceJObj, Default).
 
@@ -161,44 +161,46 @@ set_custom_sip_headers(DeviceJObj, CSH) ->
     kz_json:set_value(?CUSTOM_SIP_HEADERS, CSH, DeviceJObj).
 
 -spec custom_sip_headers_inbound(doc()) -> kz_term:api_object().
--spec custom_sip_headers_inbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_inbound(DeviceJObj) ->
     custom_sip_headers_inbound(DeviceJObj, 'undefined').
 
+-spec custom_sip_headers_inbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_inbound(DeviceJObj, Default) ->
     CSH = custom_sip_headers(DeviceJObj),
     kz_custom_sip_headers:inbound(CSH, Default).
 
 -spec custom_sip_header_inbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
--spec custom_sip_header_inbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 custom_sip_header_inbound(DeviceJObj, Name) ->
     custom_sip_header_inbound(DeviceJObj, Name, 'undefined').
+
+-spec custom_sip_header_inbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 custom_sip_header_inbound(DeviceJObj, Name, Default) ->
     CSH = custom_sip_headers(DeviceJObj),
     kz_custom_sip_headers:inbound_header(CSH, Name, Default).
 
 -spec custom_sip_header_outbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
--spec custom_sip_header_outbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 custom_sip_header_outbound(DeviceJObj, Name) ->
     custom_sip_header_outbound(DeviceJObj, Name, 'undefined').
+
+-spec custom_sip_header_outbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 custom_sip_header_outbound(DeviceJObj, Name, Default) ->
     CSH = custom_sip_headers(DeviceJObj),
     kz_custom_sip_headers:outbound_header(CSH, Name, Default).
 
 -spec custom_sip_headers_outbound(doc()) -> kz_term:api_object().
--spec custom_sip_headers_outbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_outbound(DeviceJObj) ->
     custom_sip_headers_outbound(DeviceJObj, 'undefined').
 
+-spec custom_sip_headers_outbound(doc(), Default) -> kz_json:object() | Default.
 custom_sip_headers_outbound(DeviceJObj, Default) ->
     CSH = custom_sip_headers(DeviceJObj),
     kz_custom_sip_headers:outbound(CSH, Default).
 
 -spec sip_settings(doc()) -> kz_term:api_object().
--spec sip_settings(doc(), Default) -> kz_json:object() | Default.
 sip_settings(DeviceJObj) ->
     sip_settings(DeviceJObj, 'undefined').
 
+-spec sip_settings(doc(), Default) -> kz_json:object() | Default.
 sip_settings(DeviceJObj, Default) ->
     kz_json:get_value(?SIP, DeviceJObj, Default).
 
@@ -247,9 +249,10 @@ set_sip_settings(DeviceJObj, SipJObj) ->
     kz_json:set_value(?SIP, SipJObj, DeviceJObj).
 
 -spec presence_id(doc()) -> kz_term:api_binary().
--spec presence_id(doc(), Default) -> kz_term:ne_binary() | Default.
 presence_id(DeviceJObj) ->
     presence_id(DeviceJObj, sip_username(DeviceJObj)).
+
+-spec presence_id(doc(), Default) -> kz_term:ne_binary() | Default.
 presence_id(DeviceJObj, Default) ->
     kz_json:get_binary_value(?PRESENCE_ID, DeviceJObj, Default).
 
@@ -261,9 +264,10 @@ set_presence_id(DeviceJObj, Id) ->
                      ).
 
 -spec name(doc()) -> kz_term:api_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(DeviceJObj) ->
     name(DeviceJObj, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(DeviceJObj, Default) ->
     kz_json:get_value(?NAME, DeviceJObj, Default).
 
@@ -272,9 +276,10 @@ set_name(DeviceJObj, Name) ->
     kz_json:set_value(?NAME, Name, DeviceJObj).
 
 -spec mac_address(doc()) -> kz_term:api_binary().
--spec mac_address(doc(), Default) -> kz_term:ne_binary() | Default.
 mac_address(DeviceJObj) ->
     mac_address(DeviceJObj, 'undefined').
+
+-spec mac_address(doc(), Default) -> kz_term:ne_binary() | Default.
 mac_address(DeviceJObj, Default) ->
     kz_json:get_value(?MAC_ADDRESS, DeviceJObj, Default).
 
@@ -283,9 +288,10 @@ set_mac_address(DeviceJObj, MacAddress) ->
     kz_json:set_value(?MAC_ADDRESS, MacAddress, DeviceJObj).
 
 -spec language(doc()) -> kz_term:api_binary().
--spec language(doc(), Default) -> kz_term:ne_binary() | Default.
 language(DeviceJObj) ->
     language(DeviceJObj, 'undefined').
+
+-spec language(doc(), Default) -> kz_term:ne_binary() | Default.
 language(DeviceJObj, Default) ->
     kz_json:get_ne_value(?LANGUAGE, DeviceJObj, Default).
 
@@ -294,9 +300,10 @@ set_language(DeviceJObj, Language) ->
     kz_json:set_value(?LANGUAGE, Language, DeviceJObj).
 
 -spec device_type(doc()) -> kz_term:api_binary().
--spec device_type(doc(), Default) -> kz_term:ne_binary() | Default.
 device_type(DeviceJObj) ->
     device_type(DeviceJObj, 'undefined').
+
+-spec device_type(doc(), Default) -> kz_term:ne_binary() | Default.
 device_type(DeviceJObj, Default) ->
     kz_json:get_value(?DEVICE_TYPE, DeviceJObj, Default).
 
@@ -308,9 +315,10 @@ set_device_type(DeviceJObj, MacAddress) ->
 type() -> <<"device">>.
 
 -spec owner_id(doc()) -> kz_term:api_binary().
--spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(DeviceJObj) ->
     owner_id(DeviceJObj, 'undefined').
+
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(DeviceJObj, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, DeviceJObj, Default).
 
@@ -320,9 +328,10 @@ set_owner_id(DeviceJObj, OwnerId) ->
 
 
 -spec enabled(doc()) -> boolean().
--spec enabled(doc(), boolean()) -> boolean().
 enabled(DeviceJObj) ->
     enabled(DeviceJObj, 'true').
+
+-spec enabled(doc(), boolean()) -> boolean().
 enabled(DeviceJObj, Default) ->
     kz_json:get_value(?ENABLED, DeviceJObj, Default).
 

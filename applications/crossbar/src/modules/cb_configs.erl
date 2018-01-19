@@ -40,8 +40,9 @@ allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec resource_exists() -> false.
--spec resource_exists(path_tokens()) -> true.
 resource_exists() -> false.
+
+-spec resource_exists(path_tokens()) -> true.
 resource_exists(_) -> true.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().

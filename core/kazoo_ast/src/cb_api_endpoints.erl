@@ -36,10 +36,10 @@
 -define(X_AUTH_TOKEN_NOT_REQUIRED, "auth_token_header_or_none").
 
 -spec to_ref_doc() -> 'ok'.
--spec to_ref_doc(atom()) -> 'ok'.
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
+-spec to_ref_doc(atom()) -> 'ok'.
 to_ref_doc('crossbar_filter'=Module) ->
     Filters = filters_from_module(Module),
     filters_to_ref_doc(Filters);

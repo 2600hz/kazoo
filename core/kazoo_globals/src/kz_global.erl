@@ -89,10 +89,10 @@ new_global(Name, Pid, Zone, Queue, State, Timestamp) ->
               }.
 
 -spec update_with_pid_ref(global(), kz_term:pid_ref()) -> global().
--spec update_with_pid_ref(global(), pid(), reference()) -> global().
 update_with_pid_ref(Global, {Pid, Ref}) ->
     update_with_pid_ref(Global, Pid, Ref).
 
+-spec update_with_pid_ref(global(), pid(), reference()) -> global().
 update_with_pid_ref(Global, Pid, Ref)
   when is_pid(Pid)
        andalso is_reference(Ref)

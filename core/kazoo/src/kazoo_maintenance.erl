@@ -167,18 +167,21 @@ gc_pids(Ps) ->
     lists:foreach(fun (P) -> erlang:garbage_collect(P), timer:sleep(500) end, Ps).
 
 -spec gc_top_mem_consumers() -> 'ok'.
--spec gc_top_mem_consumers(pos_integer()) -> 'ok'.
 gc_top_mem_consumers() ->
     gc_top_mem_consumers(10).
+
+-spec gc_top_mem_consumers(pos_integer()) -> 'ok'.
 gc_top_mem_consumers(N) ->
     {Top, _} = top_mem_consumers(N),
     gc_pids([P || {P,_} <- Top]).
 
 -type consumers() :: {kz_term:proplist_kv(pid(), integer()), kz_term:proplist_kv(pid(), integer())}.
+
 -spec top_mem_consumers() -> consumers().
--spec top_mem_consumers(pos_integer()) -> consumers().
 top_mem_consumers() ->
     top_mem_consumers(10).
+
+-spec top_mem_consumers(pos_integer()) -> consumers().
 top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
     SortHeapDesc =
         lists:reverse(

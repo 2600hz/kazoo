@@ -254,8 +254,8 @@ remove_system_media_ref(Key, Value, Acc) -> kz_json:set_value(Key, Value, Acc).
 %% default_timezone
 %% @end
 %%--------------------------------------------------------------------
+
 -spec accounts_config_deprecate_timezone_for_default_timezone() -> 'ok'.
--spec accounts_config_deprecate_timezone_for_default_timezone(kz_json:object()) -> 'ok'.
 accounts_config_deprecate_timezone_for_default_timezone() ->
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, <<"accounts">>) of
         {'ok', AccountsConfig} ->
@@ -264,6 +264,7 @@ accounts_config_deprecate_timezone_for_default_timezone() ->
             lager:warning("unable to fetch system_config/accounts: ~p", [E])
     end.
 
+-spec accounts_config_deprecate_timezone_for_default_timezone(kz_json:object()) -> 'ok'.
 accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig) ->
     PublicFields = kz_doc:public_fields(AccountsConfig),
     case kz_json:get_keys(PublicFields) of
@@ -281,13 +282,13 @@ deprecate_timezone_for_default_timezone(Nodes, AccountsConfig) ->
 
 -spec deprecate_timezone_for_node(kz_json:key(), kz_json:object()) ->
                                          kz_json:object().
--spec deprecate_timezone_for_node(kz_json:key(), kz_json:object(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
-                                         kz_json:object().
 deprecate_timezone_for_node(Node, AccountsConfig) ->
     Timezone = kz_json:get_value([Node, <<"timezone">>], AccountsConfig),
     DefaultTimezone = kz_json:get_value([Node, <<"default_timezone">>], AccountsConfig),
     deprecate_timezone_for_node(Node, AccountsConfig, Timezone, DefaultTimezone).
 
+-spec deprecate_timezone_for_node(kz_json:key(), kz_json:object(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+                                         kz_json:object().
 deprecate_timezone_for_node(_Node, AccountsConfig, 'undefined', _Default) ->
     AccountsConfig;
 deprecate_timezone_for_node(Node, AccountsConfig, Timezone, 'undefined') ->

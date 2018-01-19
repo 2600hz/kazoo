@@ -120,10 +120,10 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
                                   )).
 
 -spec rfc1036(calendar:datetime() | gregorian_seconds()) -> kz_term:ne_binary().
--spec rfc1036(calendar:datetime() | gregorian_seconds(), kz_term:ne_binary()) -> kz_term:ne_binary().
 rfc1036(DateTime) ->
     rfc1036(DateTime, <<"GMT">>).
 
+-spec rfc1036(calendar:datetime() | gregorian_seconds(), kz_term:ne_binary()) -> kz_term:ne_binary().
 rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
     Wday = calendar:day_of_the_week(Date),
     <<(weekday(Wday))/binary, ", ",
@@ -204,7 +204,6 @@ unitfy_seconds(Seconds) ->
     [kz_term:to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
 -spec decr_timeout(timeout(), now() | gregorian_seconds()) -> timeout().
--spec decr_timeout(timeout(), now() | gregorian_seconds(), now() | gregorian_seconds()) -> timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, {_Mega, _S, _Micro}=Start) when is_integer(Timeout) ->
     decr_timeout(Timeout, Start, now());
@@ -213,6 +212,7 @@ decr_timeout(Timeout, StartS) when is_integer(Timeout),
                                    ?UNIX_EPOCH_IN_GREGORIAN < StartS ->
     decr_timeout(Timeout, StartS, now_s()).
 
+-spec decr_timeout(timeout(), now() | gregorian_seconds(), now() | gregorian_seconds()) -> timeout().
 decr_timeout('infinity', _Start, _Future) -> 'infinity';
 decr_timeout(Timeout, Start, {_Mega, _S, _Micro}=Now) ->
     decr_timeout_elapsed(Timeout, elapsed_s(Start, Now));
@@ -232,25 +232,24 @@ decr_timeout_elapsed(Timeout, Elapsed) ->
     end.
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
--spec milliseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> kz_term:to_integer(Microseconds) div ?MICROSECONDS_IN_SECOND.
+
+-spec milliseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 milliseconds_to_seconds(Milliseconds) -> kz_term:to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
 
 -spec elapsed_s(now() | pos_integer()) -> pos_integer().
--spec elapsed_ms(now() | pos_integer()) -> pos_integer().
--spec elapsed_us(now() | pos_integer()) -> pos_integer().
 elapsed_s({_,_,_}=Start) -> elapsed_s(Start, now());
 elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, now_s()).
 
+-spec elapsed_ms(now() | pos_integer()) -> pos_integer().
 elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, now());
 elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, now_ms()).
 
+-spec elapsed_us(now() | pos_integer()) -> pos_integer().
 elapsed_us({_,_,_}=Start) -> elapsed_us(Start, now());
 elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, now_us()).
 
 -spec elapsed_s(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
--spec elapsed_ms(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
--spec elapsed_us(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
 elapsed_s({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start) div ?MICROSECONDS_IN_SECOND;
 elapsed_s({_,_,_}=Start, Now) -> elapsed_s(now_s(Start), Now);
@@ -260,6 +259,7 @@ elapsed_s(Start, Now)
        is_integer(Now) ->
     Now - Start.
 
+-spec elapsed_ms(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
 elapsed_ms({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
 elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_ms(Start), Now);
@@ -275,6 +275,7 @@ elapsed_ms(Start, Now)
        is_integer(Now) ->
     (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
+-spec elapsed_us(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
 elapsed_us({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start);
 elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_us(Start), Now);
@@ -293,50 +294,54 @@ elapsed_us(Start, Now)
 -spec now() -> now().
 now() -> os:timestamp().
 
--spec now_s() -> gregorian_seconds().
--spec now_ms() -> pos_integer().
--spec now_us() -> pos_integer().
 
+-spec now_s() -> gregorian_seconds().
 now_s() ->  erlang:system_time('seconds') + ?UNIX_EPOCH_IN_GREGORIAN.
+
+-spec now_ms() -> pos_integer().
 now_ms() -> erlang:system_time('milli_seconds') + (?UNIX_EPOCH_IN_GREGORIAN * ?MILLISECONDS_IN_SECOND).
+
+-spec now_us() -> pos_integer().
 now_us() -> erlang:system_time('micro_seconds') + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
 
--spec now_s(now()) -> gregorian_seconds().
--spec now_ms(now()) -> pos_integer().
 -spec now_us(now()) -> pos_integer().
 now_us({MegaSecs, Secs, MicroSecs}) ->
     unix_us_to_gregorian_us((MegaSecs*?MICROSECONDS_IN_SECOND + Secs)*?MICROSECONDS_IN_SECOND + MicroSecs).
+
+-spec now_ms(now()) -> pos_integer().
 now_ms({_,_,_}=Now) ->
     now_us(Now) div ?MILLISECONDS_IN_SECOND.
+
+-spec now_s(now()) -> gregorian_seconds().
 now_s({_,_,_}=Now) ->
     now_us(Now) div ?MICROSECONDS_IN_SECOND.
 
 unix_us_to_gregorian_us(UnixUS) ->
     UnixUS + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
 
--spec format_date() -> binary().
--spec format_date(gregorian_seconds()) -> binary().
--spec format_time() -> binary().
--spec format_time(gregorian_seconds()) -> binary().
--spec format_datetime() -> binary().
--spec format_datetime(gregorian_seconds()) -> binary().
 
+-spec format_date() -> binary().
 format_date() ->
     format_date(now_s()).
 
+-spec format_date(gregorian_seconds()) -> binary().
 format_date(Timestamp) when is_integer(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(Y), "-", kz_term:to_binary(M), "-", kz_term:to_binary(D)]).
 
+-spec format_time() -> binary().
 format_time() ->
     format_time(now_s()).
 
+-spec format_time(gregorian_seconds()) -> binary().
 format_time(Timestamp) when is_integer(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([kz_term:to_binary(H), ":", kz_term:to_binary(I), ":", kz_term:to_binary(S)]).
 
+-spec format_datetime() -> binary().
 format_datetime() ->
     format_datetime(now_s()).
 
+-spec format_datetime(gregorian_seconds()) -> binary().
 format_datetime(Timestamp) when is_integer(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).

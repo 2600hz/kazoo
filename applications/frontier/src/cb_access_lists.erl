@@ -86,7 +86,6 @@ validate_acls(Context, ?HTTP_DELETE) ->
     validate_delete_acls(thing_doc(Context)).
 
 -spec thing_doc(cb_context:context()) -> cb_context:context().
--spec thing_doc(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 thing_doc(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"access_lists">>, []}, {<<"accounts">>, [AccountId]} | _] ->
@@ -102,6 +101,7 @@ thing_doc(Context) ->
                                        )
     end.
 
+-spec thing_doc(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 thing_doc(Context, ThingId, Type) ->
     Context1 = crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(Type)),
     case cb_context:resp_status(Context1) of
@@ -121,25 +121,25 @@ thing_id_not_found(Context, ThingId) ->
                                ).
 
 -spec validate_get_acls(cb_context:context()) -> cb_context:context().
--spec validate_get_acls(cb_context:context(), kz_json:object()) -> cb_context:context().
 validate_get_acls(Context) ->
     case cb_context:resp_status(Context) of
         'success' -> validate_get_acls(Context, cb_context:doc(Context));
         _Status -> Context
     end.
 
+-spec validate_get_acls(cb_context:context(), kz_json:object()) -> cb_context:context().
 validate_get_acls(Context, Doc) ->
     AccessLists = kz_json:get_value(<<"access_lists">>, Doc, kz_json:new()),
     crossbar_util:response(AccessLists, Context).
 
 -spec validate_delete_acls(cb_context:context()) -> cb_context:context().
--spec validate_delete_acls(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_delete_acls(Context) ->
     case cb_context:resp_status(Context) of
         'success' -> validate_delete_acls(Context, cb_context:doc(Context));
         _Status -> Context
     end.
 
+-spec validate_delete_acls(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_delete_acls(Context, Doc) ->
     Context1 = crossbar_util:response(kz_json:new()
                                      ,cb_context:set_doc(Context
@@ -149,8 +149,6 @@ validate_delete_acls(Context, Doc) ->
     Context1.
 
 -spec validate_set_acls(cb_context:context()) ->
-                               cb_context:context().
--spec validate_set_acls(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
                                cb_context:context().
 validate_set_acls(Context) ->
     lager:debug("access lists data is valid, setting on thing"),
@@ -162,6 +160,8 @@ validate_set_acls(Context, AccessLists) ->
         _Status -> Context
     end.
 
+-spec validate_set_acls(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
+                               cb_context:context().
 validate_set_acls(Context, AccessLists, Doc) ->
     Doc1 = kz_json:set_value(<<"access_lists">>, AccessLists, Doc),
     Context1 = crossbar_util:response(AccessLists
@@ -181,10 +181,10 @@ post(Context) ->
     after_post(crossbar_doc:save(Context)).
 
 -spec after_post(cb_context:context()) -> cb_context:context().
--spec after_post(cb_context:context(), crossbar_status()) -> cb_context:context().
 after_post(Context) ->
     after_post(Context, cb_context:resp_status(Context)).
 
+-spec after_post(cb_context:context(), crossbar_status()) -> cb_context:context().
 after_post(Context, 'success') ->
     crossbar_util:response(kz_json:get_value(<<"access_lists">>, cb_context:doc(Context))
                           ,Context
@@ -203,10 +203,10 @@ delete(Context) ->
     after_delete(crossbar_doc:save(Context)).
 
 -spec after_delete(cb_context:context()) -> cb_context:context().
--spec after_delete(cb_context:context(), crossbar_status()) -> cb_context:context().
 after_delete(Context) ->
     after_delete(Context, cb_context:resp_status(Context)).
 
+-spec after_delete(cb_context:context(), crossbar_status()) -> cb_context:context().
 after_delete(Context, 'success') ->
     crossbar_util:response(kz_json:new(), Context);
 after_delete(Context, _RespStatus) ->

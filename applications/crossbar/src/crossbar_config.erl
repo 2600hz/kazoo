@@ -20,10 +20,10 @@
 flush() -> kapps_config:flush(?CONFIG_CAT).
 
 -spec autoload_modules() -> kz_term:ne_binaries().
--spec autoload_modules(kz_term:ne_binaries() | kz_term:atoms()) -> kz_term:ne_binaries().
 autoload_modules() ->
     autoload_modules(?DEFAULT_MODULES).
 
+-spec autoload_modules(kz_term:ne_binaries() | kz_term:atoms()) -> kz_term:ne_binaries().
 autoload_modules(Default) ->
     Modules = kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, Default),
     remove_versioned_modules(Modules).

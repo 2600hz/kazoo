@@ -20,12 +20,12 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -spec elements(list()) -> kz_types:xml_els().
--spec elements(list(), atom()) -> kz_types:xml_els().
 elements(Els) -> [El || #xmlElement{}=El <- Els].
+
+-spec elements(list(), atom()) -> kz_types:xml_els().
 elements(Els, Name) -> [El || #xmlElement{name=N}=El <- Els, N =:= Name].
 
 -spec texts_to_binary(kz_types:xml_texts()) -> binary().
--spec texts_to_binary(kz_types:xml_texts(), pos_integer()) -> binary().
 texts_to_binary([]) -> <<>>;
 texts_to_binary([_|_]=Vs) ->
     lists:foldl(fun(C, B) ->
@@ -35,6 +35,7 @@ texts_to_binary([_|_]=Vs) ->
                ,[$\n, $\s, $\n, $\s]
                ).
 
+-spec texts_to_binary(kz_types:xml_texts(), pos_integer()) -> binary().
 texts_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
     B = texts_to_binary(Vs),
     case byte_size(B) > Size of

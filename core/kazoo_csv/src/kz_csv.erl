@@ -314,10 +314,12 @@ consume(Bin, {Acc,Sep,AccBin}) ->
     end.
 
 %% @private
+
 -spec find_position(kz_term:ne_binary(), kz_term:ne_binaries()) -> pos_integer().
--spec find_position(kz_term:ne_binary(), kz_term:ne_binaries(), pos_integer()) -> pos_integer().
 find_position(Item, Items) ->
     find_position(Item, Items, 1).
+
+-spec find_position(kz_term:ne_binary(), kz_term:ne_binaries(), pos_integer()) -> pos_integer().
 find_position(Item, [Item|_], Pos) -> Pos;
 find_position(Item, [_|Items], N) ->
     find_position(Item, Items, N+1).

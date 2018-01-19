@@ -78,10 +78,10 @@ build_data({'ok', TargetId, _TargetType}, Call) ->
     build_flow_data(Call, []).
 
 -spec build_flow_data(kapps_call:call(), kz_term:proplist()) -> kz_json:object().
--spec build_flow_data(kapps_call:call(), kz_term:proplist(), kz_term:api_binary()) -> kz_json:object().
 build_flow_data(Call, Data) ->
     build_flow_data(Call, Data, kapps_call:authorizing_type(Call)).
 
+-spec build_flow_data(kapps_call:call(), kz_term:proplist(), kz_term:api_binary()) -> kz_json:object().
 build_flow_data(Call, Data, AuthorizingType)
   when AuthorizingType =:= <<"device">>;
        AuthorizingType =:= <<"mobile">> ->
@@ -123,11 +123,11 @@ find_group_members(GroupId, Call) ->
     end.
 
 -spec lookup_endpoint(kz_term:api_object()) -> target().
--spec lookup_endpoint(kz_json:object(), kz_term:api_binary()) -> target().
 lookup_endpoint('undefined') -> 'error';
 lookup_endpoint(Flow) ->
     lookup_endpoint(Flow, kz_json:get_ne_binary_value(<<"module">>, Flow)).
 
+-spec lookup_endpoint(kz_json:object(), kz_term:api_binary()) -> target().
 lookup_endpoint(Flow, <<"device">> = TargetType) ->
     {'ok', kz_json:get_ne_binary_value([<<"data">>, <<"id">>], Flow), TargetType};
 lookup_endpoint(Flow, <<"user">> = TargetType) ->

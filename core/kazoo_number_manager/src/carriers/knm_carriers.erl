@@ -294,9 +294,10 @@ disconnect(Number) ->
     end.
 
 -spec prefix(options()) -> kz_term:ne_binary().
--spec prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 prefix(Options) ->
     props:get_ne_binary_value('prefix', Options).
+
+-spec prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 prefix(Options, Default) ->
     props:get_ne_binary_value('prefix', Options, Default).
 

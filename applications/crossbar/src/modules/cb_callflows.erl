@@ -59,10 +59,12 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_CallflowId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -74,9 +76,11 @@ allowed_methods(_CallflowId) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_CallflowId) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -88,8 +92,8 @@ resource_exists(_CallflowId) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_callflows(Context, cb_context:req_verb(Context)).
 
@@ -98,6 +102,7 @@ validate_callflows(Context, ?HTTP_GET) ->
 validate_callflows(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, CallflowId) ->
     validate_callflow(Context, CallflowId, cb_context:req_verb(Context)).
 
@@ -439,10 +444,10 @@ ids_in_flow(FlowJObj) ->
     ids_in_data(kz_json:get_values(<<"data">>, FlowJObj)).
 
 -spec ids_in_data({kz_json:json_terms(), kz_json:keys()}) -> kz_term:ne_binaries().
--spec ids_in_data({kz_json:json_terms(), kz_json:keys()}, kz_term:ne_binaries()) -> kz_term:ne_binaries().
 ids_in_data(Values) ->
     ids_in_data(Values, []).
 
+-spec ids_in_data({kz_json:json_terms(), kz_json:keys()}, kz_term:ne_binaries()) -> kz_term:ne_binaries().
 ids_in_data({[], []}, IDs) -> IDs;
 ids_in_data({[V|Vs], [<<"id">>|Ks]}, IDs) ->
     ids_in_data({Vs, Ks}, [V | IDs]);
@@ -455,11 +460,11 @@ ids_in_data({[V|Vs], [K|Ks]}, IDs) ->
     end.
 
 -spec get_metadata(kz_term:api_object(), kz_term:ne_binary()) -> kz_json:object().
--spec get_metadata(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
-                          kz_json:object().
 get_metadata('undefined', _Db) -> kz_json:new();
 get_metadata(Flow, Db) -> get_metadata(Flow, Db, kz_json:new()).
 
+-spec get_metadata(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
+                          kz_json:object().
 get_metadata(Flow, Db, Metadata) ->
     UpdatedMetadata
         = lists:foldl(fun(ID, MetaAcc) -> create_metadata(Db, ID, MetaAcc) end

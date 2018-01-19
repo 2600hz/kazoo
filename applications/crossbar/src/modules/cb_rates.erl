@@ -142,13 +142,16 @@ content_types_provided_by_verb(Context, _Verb) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_rates(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_rate(Context, Id, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?NUMBER, Phonenumber) ->
     validate_number(Phonenumber, Context).
 
@@ -176,11 +179,12 @@ ratedeck_db(Context) ->
     kzd_ratedeck:format_ratedeck_db(RatedeckId).
 
 -spec post(cb_context:context()) -> cb_context:context().
--spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context) ->
     _ = init_db(),
     _ = kz_util:spawn(fun upload_csv/1, [Context]),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
+
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _RateId) ->
     crossbar_doc:save(Context).
 
@@ -282,10 +286,10 @@ doc_updates(Fun, Doc) when is_function(Fun, 1) ->
     Fun(Doc).
 
 -spec ensure_routes_set(kz_json:object()) -> kz_json:object().
--spec ensure_routes_set(kz_json:object(), kz_term:api_binaries()) -> kz_json:object().
 ensure_routes_set(Doc) ->
     ensure_routes_set(Doc, kz_json:get_value(<<"routes">>, Doc)).
 
+-spec ensure_routes_set(kz_json:object(), kz_term:api_binaries()) -> kz_json:object().
 ensure_routes_set(Doc, 'undefined') ->
     add_default_route(Doc, kz_json:get_value(<<"prefix">>, Doc));
 ensure_routes_set(Doc, []) ->

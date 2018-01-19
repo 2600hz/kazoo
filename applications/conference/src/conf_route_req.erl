@@ -82,12 +82,12 @@ join_local(Call, Conference, Participant) ->
     conf_participant:join_local(Participant).
 
 -spec maybe_set_name_pronounced(kapps_call:call(), kz_types:server_ref()) -> 'ok'.
--spec maybe_set_name_pronounced(kz_json:api_json_term(), kz_json:api_json_term(), kz_types:server_ref()) -> 'ok'.
 maybe_set_name_pronounced(Call, Participant) ->
     AccountId = kapps_call:custom_sip_header(<<"X-Conf-Values-Pronounced-Name-Account-ID">>, Call),
     MediaId = kapps_call:custom_sip_header(<<"X-Conf-Values-Pronounced-Name-Media-ID">>, Call),
     maybe_set_name_pronounced(AccountId, MediaId, Participant).
 
+-spec maybe_set_name_pronounced(kz_json:api_json_term(), kz_json:api_json_term(), kz_types:server_ref()) -> 'ok'.
 maybe_set_name_pronounced('undefined', _, _) -> 'ok';
 maybe_set_name_pronounced(_, 'undefined', _) -> 'ok';
 maybe_set_name_pronounced(AccountId, MediaId, Participant) ->

@@ -17,10 +17,10 @@
 -include("kzt.hrl").
 
 -spec exec(kapps_call:call(), binary()) -> exec_return().
--spec exec(kapps_call:call(), binary(), kz_term:api_binary() | list()) -> exec_return().
 exec(Call, Cmds) ->
     exec(Call, Cmds, <<"text/xml">>).
 
+-spec exec(kapps_call:call(), binary(), kz_term:api_binary() | list()) -> exec_return().
 exec(Call, Cmds, 'undefined') ->
     exec(Call, Cmds, <<"text/xml">>);
 exec(Call, Cmds, CT) when not is_binary(CT) ->
@@ -43,11 +43,12 @@ just_the_type(ContentType) ->
     end.
 
 -spec get_user_vars(kapps_call:call()) -> kz_json:object().
--spec set_user_vars(kz_term:proplist(), kapps_call:call()) -> kapps_call:call().
 get_user_vars(Call) ->
     ReqVars = kzt_util:get_request_vars(Call),
     UserVars = kapps_call:kvs_fetch(?KZT_USER_VARS, kz_json:new(), Call),
     kz_json:merge_jobjs(ReqVars, UserVars).
+
+-spec set_user_vars(kz_term:proplist(), kapps_call:call()) -> kapps_call:call().
 set_user_vars(Prop, Call) ->
     UserVars = get_user_vars(Call),
     kapps_call:kvs_store(?KZT_USER_VARS, kz_json:set_values(Prop, UserVars), Call).

@@ -37,12 +37,12 @@ stream_attachment(#server{}=Conn, DbName, DocId, AName, Caller) ->
 -spec put_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
                             couchbeam_error().
--spec put_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            couchbeam_error().
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, []).
 
+-spec put_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+                            {'ok', kz_json:object()} |
+                            couchbeam_error().
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_put_attachment(Db, DocId, AName, Contents, Options).
@@ -50,12 +50,12 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
 -spec delete_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                {'ok', kz_json:object()} |
                                couchbeam_error().
--spec delete_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               couchbeam_error().
 delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
     delete_attachment(#server{}=Conn, DbName, DocId, AName, []).
 
+-spec delete_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+                               {'ok', kz_json:object()} |
+                               couchbeam_error().
 delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_del_attachment(Db, DocId, AName,  kz_couch_util:maybe_add_rev(Db, DocId, Options)).

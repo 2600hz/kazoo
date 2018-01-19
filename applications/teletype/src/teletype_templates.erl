@@ -147,17 +147,17 @@ preview(TemplateId, Macros, DataJObj) ->
                ).
 
 -spec render(kz_term:ne_binary(), macros()) -> kz_term:proplist().
--spec render(kz_term:ne_binary(), macros(), kz_json:object()) -> kz_term:proplist().
--spec render(kz_term:ne_binary(), macros(), kz_json:object(), boolean()) -> kz_term:proplist().
 render(TemplateId, Macros) ->
     render(TemplateId, Macros, kz_json:new()).
 
+-spec render(kz_term:ne_binary(), macros(), kz_json:object()) -> kz_term:proplist().
 render(TemplateId, Macros, DataJObj) ->
     put('template_id', TemplateId),
     JMacros = kz_json:from_list_recursive(Macros),
     put('macros', JMacros),
     render(TemplateId, Macros, DataJObj, teletype_util:is_preview(DataJObj)).
 
+-spec render(kz_term:ne_binary(), macros(), kz_json:object(), boolean()) -> kz_term:proplist().
 render(TemplateId, Macros, DataJObj, 'false') ->
     case templates_source(TemplateId, DataJObj) of
         'undefined' ->
@@ -175,7 +175,6 @@ render(TemplateId, Macros, DataJObj, 'true') ->
     preview(TemplateId, Macros, DataJObj).
 
 -spec templates_source(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_term:api_binary().
--spec templates_source(kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 templates_source(_TemplateId, 'undefined') ->
     lager:warning("no account id for template ~s, no template to process", [_TemplateId]),
     'undefined';
@@ -192,6 +191,7 @@ templates_source(TemplateId, DataJObj) ->
         AccountId -> templates_source(TemplateId, AccountId)
     end.
 
+-spec templates_source(kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 templates_source(_TemplateId, 'undefined', _ResellerId) ->
     lager:warning("failed to find parent account for template ~s", [_TemplateId]),
     'undefined';
@@ -576,9 +576,8 @@ update_text_attachment(Basename, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update_attachment(binary(), update_acc(), kz_term:ne_binary()) ->
-                               update_acc().
--spec update_attachment(binary(), update_acc(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                update_acc().
 update_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, ContentType) ->
     AttachmentName = attachment_name(ContentType),
@@ -589,6 +588,8 @@ update_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, ContentType) ->
             update_attachment(Contents, Acc, ContentType, Id, AttachmentName)
     end.
 
+-spec update_attachment(binary(), update_acc(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                               update_acc().
 update_attachment(Contents, {IsUpdated, TemplateJObj}=Acc, ContentType, Id, AName) ->
     lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
     case save_attachment(Id, AName, ContentType, Contents) of

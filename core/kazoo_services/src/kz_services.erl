@@ -174,11 +174,12 @@ base_service_object(AccountId, AccountJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec from_service_json(kz_json:object()) -> services().
--spec from_service_json(kz_json:object(), boolean()) -> services().
 from_service_json(JObj) ->
     from_service_json(JObj, 'true').
 
+-spec from_service_json(kz_json:object(), boolean()) -> services().
 from_service_json(JObj, CalcUpdates) ->
     AccountId = kz_doc:account_id(JObj),
     BillingId = depreciated_billing_id(JObj, AccountId),
@@ -245,14 +246,15 @@ flush_services() ->
 -spec fetch_services_doc(kz_term:ne_binary()) ->
                                 {'ok', kz_json:object()} |
                                 {'error', any()}.
--spec fetch_services_doc(kz_term:ne_binary(), boolean() | cache_failures) ->
-                                {'ok', kz_json:object()} |
-                                {'error', any()}.
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId)) ->
     %% TODO: if reseller populate cascade via merchant id
     fetch_services_doc(AccountId, 'false').
 
 -ifdef(TEST).
+
+-spec fetch_services_doc(kz_term:ne_binary(), boolean() | cache_failures) ->
+                                {'ok', kz_json:object()} |
+                                {'error', any()}.
 fetch_services_doc(?A_MASTER_ACCOUNT_ID, _NotFromCache)
   when is_boolean(_NotFromCache); _NotFromCache =:= cache_failures ->
     kz_json:fixture(?APP, "a_master_services.json");
@@ -289,6 +291,10 @@ fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), _NotFromCache) ->
             {error, wrong}
     end.
 -else.
+
+-spec fetch_services_doc(kz_term:ne_binary(), boolean() | cache_failures) ->
+                                {'ok', kz_json:object()} |
+                                {'error', any()}.
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), cache_failures=Option) ->
     kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId, [Option]);
 fetch_services_doc(?MATCH_ACCOUNT_RAW(AccountId), 'false') ->
@@ -1172,10 +1178,9 @@ calculate_charges(Services, JObjs) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec calculate_services_charges(services()) ->
                                         {'no_plan' | 'ok', kz_json:object()}.
--spec calculate_services_charges(services(), kz_service_plans:plans()) ->
-                                        {'error' | 'ok', kz_json:object()}.
 calculate_services_charges(#kz_services{jobj = ServiceJObj}=Services) ->
     case kz_service_plans:from_service_json(ServiceJObj) of
         [] -> {'no_plan', kz_json:new()};
@@ -1183,6 +1188,8 @@ calculate_services_charges(#kz_services{jobj = ServiceJObj}=Services) ->
             calculate_services_charges(Services, ServicePlans)
     end.
 
+-spec calculate_services_charges(services(), kz_service_plans:plans()) ->
+                                        {'error' | 'ok', kz_json:object()}.
 calculate_services_charges(#kz_services{jobj = ServiceJObj
                                        ,updates = UpdatesJObj
                                        }=Service
@@ -1239,14 +1246,8 @@ calculate_transactions_charge_fold(JObj, PlanCharges) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec dry_run_activation_charges(services()) -> kz_json:objects().
--spec dry_run_activation_charges(kz_term:ne_binary(), kz_json:object()
-                                ,services(), kz_json:objects()
-                                ) -> kz_json:objects().
--spec dry_run_activation_charges(kz_term:ne_binary(), kz_term:ne_binary()
-                                ,integer(), services()
-                                ,kz_json:objects()
-                                ) -> kz_json:objects().
 dry_run_activation_charges(#kz_services{updates = Updates}=Services) ->
     kz_json:foldl(fun(CategoryId, CategoryJObj, Acc) ->
                           dry_run_activation_charges(CategoryId, CategoryJObj, Services, Acc)
@@ -1255,6 +1256,9 @@ dry_run_activation_charges(#kz_services{updates = Updates}=Services) ->
                  ,Updates
                  ).
 
+-spec dry_run_activation_charges(kz_term:ne_binary(), kz_json:object()
+                                ,services(), kz_json:objects()
+                                ) -> kz_json:objects().
 dry_run_activation_charges(CategoryId, CategoryJObj, Services, JObjs) ->
     kz_json:foldl(fun(ItemId, Quantity, Acc1) ->
                           dry_run_activation_charges(CategoryId, ItemId, Quantity, Services, Acc1)
@@ -1263,6 +1267,10 @@ dry_run_activation_charges(CategoryId, CategoryJObj, Services, JObjs) ->
                  ,CategoryJObj
                  ).
 
+-spec dry_run_activation_charges(kz_term:ne_binary(), kz_term:ne_binary()
+                                ,integer(), services()
+                                ,kz_json:objects()
+                                ) -> kz_json:objects().
 dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj = JObj}=Services, JObjs) ->
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
         Quantity -> JObjs;
@@ -1599,14 +1607,15 @@ maybe_save(#kz_services{jobj = JObj
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec have_quantities_changed(services()) -> boolean().
--spec have_quantities_changed(kz_json:object(), kz_json:object()) -> boolean().
 have_quantities_changed(#kz_services{jobj = JObj
                                     ,updates = UpdatedQuantities
                                     }) ->
     CurrentQuantities = kzd_services:quantities(JObj),
     have_quantities_changed(UpdatedQuantities, CurrentQuantities).
 
+-spec have_quantities_changed(kz_json:object(), kz_json:object()) -> boolean().
 have_quantities_changed(Updated, Current) ->
     KeyNotSameFun = fun(Key) ->
                             kz_json:get_value(Key, Updated) =/= kz_json:get_value(Key, Current)
@@ -1758,11 +1767,11 @@ sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) ->
     Result.
 
 -spec maybe_sync_transactions(kz_term:ne_binary(), kzd_services:doc()) -> 'ok'.
--spec maybe_sync_transactions(kz_term:ne_binary(), kzd_services:doc(), atom()) -> 'ok'.
 maybe_sync_transactions(AccountId, ServicesJObj) ->
     Bookkeeper = ?MODULE:select_bookkeeper(AccountId),
     maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper).
 
+-spec maybe_sync_transactions(kz_term:ne_binary(), kzd_services:doc(), atom()) -> 'ok'.
 maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
     case kzd_services:transactions(ServicesJObj) of
         [] -> 'ok';

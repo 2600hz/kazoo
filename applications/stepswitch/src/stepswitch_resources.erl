@@ -497,12 +497,12 @@ resource_classifier_map(Resource, Map) ->
     Resources = maps:get(Classification, Map, []),
     maps:put(Classification, [Resource|Resources], Map).
 
--spec build_endpoints_from_resources(resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
--spec build_endpoints_from_resources(resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) -> kz_json:objects().
 
+-spec build_endpoints_from_resources(resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 build_endpoints_from_resources(Resources, Number, OffnetJObj) ->
     build_endpoints_from_resources(Resources, Number, OffnetJObj, []).
 
+-spec build_endpoints_from_resources(resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) -> kz_json:objects().
 build_endpoints_from_resources([], _Number, _OffnetJObj, Endpoints) -> Endpoints;
 build_endpoints_from_resources([Resource|Resources], Number, OffnetJObj, Endpoints) ->
     case maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints) of
@@ -969,11 +969,12 @@ build_account_dedicated_proxy(Proxy) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resources_from_jobjs(kz_json:objects()) -> resources().
--spec resources_from_jobjs(kz_json:objects(), resources()) -> resources().
 resources_from_jobjs(JObjs) ->
     resources_from_jobjs(JObjs, []).
 
+-spec resources_from_jobjs(kz_json:objects(), resources()) -> resources().
 resources_from_jobjs([], Resources) -> Resources;
 resources_from_jobjs([JObj|JObjs], Resources) ->
     case kz_json:is_true(<<"enabled">>, JObj, 'true') of
@@ -1290,102 +1291,148 @@ gateway_dialstring(#gateway{route=Route}, _) ->
     lager:debug("using pre-configured gateway route ~s", [Route]),
     Route.
 
--spec get_resrc_id(resource()) -> kz_term:api_binary().
--spec get_resrc_rev(resource()) -> kz_term:api_binary().
--spec get_resrc_name(resource()) -> kz_term:api_binary().
--spec get_resrc_weight(resource()) -> non_neg_integer().
--spec get_resrc_grace_period(resource()) -> non_neg_integer().
--spec get_resrc_flags(resource()) -> list().
--spec get_resrc_rules(resource()) -> list().
--spec get_resrc_raw_rules(resource()) -> list().
--spec get_resrc_cid_rules(resource()) -> list().
--spec get_resrc_cid_raw_rules(resource()) -> list().
--spec get_resrc_gateways(resource()) -> list().
--spec get_resrc_is_emergency(resource()) -> boolean().
--spec get_resrc_require_flags(resource()) -> boolean().
--spec get_resrc_global(resource()) -> boolean().
--spec get_resrc_format_from_uri(resource()) -> boolean().
--spec get_resrc_from_uri_realm(resource()) -> kz_term:api_binary().
--spec get_resrc_from_account_realm(resource()) -> boolean().
--spec get_resrc_fax_option(resource()) -> kz_term:ne_binary() | boolean().
--spec get_resrc_codecs(resource()) -> kz_term:ne_binaries().
--spec get_resrc_bypass_media(resource()) -> boolean().
--spec get_resrc_formatters(resource()) -> kz_term:api_objects().
--spec get_resrc_proxies(resource()) -> kz_term:proplist().
--spec get_resrc_selector_marks(resource()) -> kz_term:proplist().
--spec get_resrc_classifier(resource()) -> kz_term:api_binary().
--spec get_resrc_classifier_enable(resource()) -> boolean().
 
+-spec get_resrc_id(resource()) -> kz_term:api_binary().
 get_resrc_id(#resrc{id=Id}) -> Id.
+
+-spec get_resrc_rev(resource()) -> kz_term:api_binary().
 get_resrc_rev(#resrc{rev=Rev}) -> Rev.
+
+-spec get_resrc_name(resource()) -> kz_term:api_binary().
 get_resrc_name(#resrc{name=Name}) -> Name.
+
+-spec get_resrc_weight(resource()) -> non_neg_integer().
 get_resrc_weight(#resrc{weight=Weight}) -> Weight.
+
+-spec get_resrc_grace_period(resource()) -> non_neg_integer().
 get_resrc_grace_period(#resrc{grace_period=GracePeriod}) -> GracePeriod.
+
+-spec get_resrc_flags(resource()) -> list().
 get_resrc_flags(#resrc{flags=Flags}) -> Flags.
+
+-spec get_resrc_rules(resource()) -> list().
 get_resrc_rules(#resrc{rules=Rules}) -> Rules.
+
+-spec get_resrc_raw_rules(resource()) -> list().
 get_resrc_raw_rules(#resrc{raw_rules=RawRules}) -> RawRules.
+
+-spec get_resrc_cid_rules(resource()) -> list().
 get_resrc_cid_rules(#resrc{cid_rules=CIDRules}) -> CIDRules.
+
+-spec get_resrc_cid_raw_rules(resource()) -> list().
 get_resrc_cid_raw_rules(#resrc{cid_raw_rules=CIDRawRules}) -> CIDRawRules.
+
+-spec get_resrc_gateways(resource()) -> list().
 get_resrc_gateways(#resrc{gateways=Gateways}) -> Gateways.
+
+-spec get_resrc_is_emergency(resource()) -> boolean().
 get_resrc_is_emergency(#resrc{is_emergency=IsEmergency}) -> IsEmergency.
+
+-spec get_resrc_require_flags(resource()) -> boolean().
 get_resrc_require_flags(#resrc{require_flags=RequireFlags}) -> RequireFlags.
+
+-spec get_resrc_global(resource()) -> boolean().
 get_resrc_global(#resrc{global=Global}) -> Global.
+
+-spec get_resrc_format_from_uri(resource()) -> boolean().
 get_resrc_format_from_uri(#resrc{format_from_uri=FormatFromUri}) -> FormatFromUri.
+
+-spec get_resrc_from_uri_realm(resource()) -> kz_term:api_binary().
 get_resrc_from_uri_realm(#resrc{from_uri_realm=FromUriRealm}) -> FromUriRealm.
+
+-spec get_resrc_from_account_realm(resource()) -> boolean().
 get_resrc_from_account_realm(#resrc{from_account_realm=FromAccountRealm}) -> FromAccountRealm.
+
+-spec get_resrc_fax_option(resource()) -> kz_term:ne_binary() | boolean().
 get_resrc_fax_option(#resrc{fax_option=FaxOption}) -> FaxOption.
+
+-spec get_resrc_codecs(resource()) -> kz_term:ne_binaries().
 get_resrc_codecs(#resrc{codecs=Codecs}) -> Codecs.
+
+-spec get_resrc_bypass_media(resource()) -> boolean().
 get_resrc_bypass_media(#resrc{bypass_media=BypassMedia}) -> BypassMedia.
+
+-spec get_resrc_formatters(resource()) -> kz_term:api_objects().
 get_resrc_formatters(#resrc{formatters=Formatters}) -> Formatters.
+
+-spec get_resrc_proxies(resource()) -> kz_term:proplist().
 get_resrc_proxies(#resrc{proxies=Proxies}) -> Proxies.
+
+-spec get_resrc_selector_marks(resource()) -> kz_term:proplist().
 get_resrc_selector_marks(#resrc{selector_marks=Marks}) -> Marks.
+
+-spec get_resrc_classifier(resource()) -> kz_term:api_binary().
 get_resrc_classifier(#resrc{classifier=Classifier}) -> Classifier.
+
+-spec get_resrc_classifier_enable(resource()) -> boolean().
 get_resrc_classifier_enable(#resrc{classifier_enable=Enabled}) -> Enabled.
 
--spec set_resrc_id(resource(), kz_term:api_binary()) -> resource().
--spec set_resrc_rev(resource(), kz_term:api_binary()) -> resource().
--spec set_resrc_name(resource(), kz_term:api_binary()) -> resource().
--spec set_resrc_weight(resource(), non_neg_integer()) -> resource().
--spec set_resrc_grace_period(resource(), non_neg_integer()) -> resource().
--spec set_resrc_flags(resource(), list()) -> resource().
--spec set_resrc_rules(resource(), list()) -> resource().
--spec set_resrc_raw_rules(resource(), list()) -> resource().
--spec set_resrc_cid_rules(resource(), list()) -> resource().
--spec set_resrc_cid_raw_rules(resource(), list()) -> resource().
--spec set_resrc_gateways(resource(), list()) -> resource().
--spec set_resrc_is_emergency(resource(), boolean()) -> resource().
--spec set_resrc_require_flags(resource(), boolean()) -> resource().
--spec set_resrc_global(resource(), boolean()) -> resource().
--spec set_resrc_format_from_uri(resource(), boolean()) -> resource().
--spec set_resrc_from_uri_realm(resource(), kz_term:api_binary()) -> resource().
--spec set_resrc_from_account_realm(resource(), boolean()) -> resource().
--spec set_resrc_fax_option(resource(), kz_term:ne_binary() | boolean()) -> resource().
--spec set_resrc_codecs(resource(), kz_term:ne_binaries()) -> resource().
--spec set_resrc_bypass_media(resource(), boolean()) -> resource().
--spec set_resrc_formatters(resource(), kz_term:api_objects()) -> resource().
--spec set_resrc_proxies(resource(), kz_term:proplist()) -> resource().
--spec set_resrc_selector_marks(resource(), kz_term:proplist()) -> resource().
 
+-spec set_resrc_id(resource(), kz_term:api_binary()) -> resource().
 set_resrc_id(Resource, Id) -> Resource#resrc{id=Id}.
+
+-spec set_resrc_rev(resource(), kz_term:api_binary()) -> resource().
 set_resrc_rev(Resource, Rev) -> Resource#resrc{rev=Rev}.
+
+-spec set_resrc_name(resource(), kz_term:api_binary()) -> resource().
 set_resrc_name(Resource, Name) -> Resource#resrc{name=Name}.
+
+-spec set_resrc_weight(resource(), non_neg_integer()) -> resource().
 set_resrc_weight(Resource, Weight) -> Resource#resrc{weight=Weight}.
+
+-spec set_resrc_grace_period(resource(), non_neg_integer()) -> resource().
 set_resrc_grace_period(Resource, GracePeriod) -> Resource#resrc{grace_period=GracePeriod}.
+
+-spec set_resrc_flags(resource(), list()) -> resource().
 set_resrc_flags(Resource, Flags) -> Resource#resrc{flags=Flags}.
+
+-spec set_resrc_rules(resource(), list()) -> resource().
 set_resrc_rules(Resource, Rules) -> Resource#resrc{rules=Rules}.
+
+-spec set_resrc_raw_rules(resource(), list()) -> resource().
 set_resrc_raw_rules(Resource, RawRules) -> Resource#resrc{raw_rules=RawRules}.
+
+-spec set_resrc_cid_rules(resource(), list()) -> resource().
 set_resrc_cid_rules(Resource, CIDRules) -> Resource#resrc{cid_rules=CIDRules}.
+
+-spec set_resrc_cid_raw_rules(resource(), list()) -> resource().
 set_resrc_cid_raw_rules(Resource, CIDRawRules) -> Resource#resrc{cid_raw_rules=CIDRawRules}.
+
+-spec set_resrc_gateways(resource(), list()) -> resource().
 set_resrc_gateways(Resource, Gateways) -> Resource#resrc{gateways=Gateways}.
+
+-spec set_resrc_is_emergency(resource(), boolean()) -> resource().
 set_resrc_is_emergency(Resource, IsEmergency) -> Resource#resrc{is_emergency=IsEmergency}.
+
+-spec set_resrc_require_flags(resource(), boolean()) -> resource().
 set_resrc_require_flags(Resource, RequireFlags) -> Resource#resrc{require_flags=RequireFlags}.
+
+-spec set_resrc_global(resource(), boolean()) -> resource().
 set_resrc_global(Resource, Global) -> Resource#resrc{global=Global}.
+
+-spec set_resrc_format_from_uri(resource(), boolean()) -> resource().
 set_resrc_format_from_uri(Resource, FormatFromUri) -> Resource#resrc{format_from_uri=FormatFromUri}.
+
+-spec set_resrc_from_uri_realm(resource(), kz_term:api_binary()) -> resource().
 set_resrc_from_uri_realm(Resource, FromUriRealm) -> Resource#resrc{from_uri_realm=FromUriRealm}.
+
+-spec set_resrc_from_account_realm(resource(), boolean()) -> resource().
 set_resrc_from_account_realm(Resource, FromAccountRealm) -> Resource#resrc{from_account_realm=FromAccountRealm}.
+
+-spec set_resrc_fax_option(resource(), kz_term:ne_binary() | boolean()) -> resource().
 set_resrc_fax_option(Resource, FaxOption) -> Resource#resrc{fax_option=FaxOption}.
+
+-spec set_resrc_codecs(resource(), kz_term:ne_binaries()) -> resource().
 set_resrc_codecs(Resource, Codecs) -> Resource#resrc{codecs=Codecs}.
+
+-spec set_resrc_bypass_media(resource(), boolean()) -> resource().
 set_resrc_bypass_media(Resource, BypassMedia) -> Resource#resrc{bypass_media=BypassMedia}.
+
+-spec set_resrc_formatters(resource(), kz_term:api_objects()) -> resource().
 set_resrc_formatters(Resource, Formatters) -> Resource#resrc{formatters=Formatters}.
+
+-spec set_resrc_proxies(resource(), kz_term:proplist()) -> resource().
 set_resrc_proxies(Resource, Proxies) -> Resource#resrc{proxies=Proxies}.
+
+-spec set_resrc_selector_marks(resource(), kz_term:proplist()) -> resource().
 set_resrc_selector_marks(Resource, Marks) -> Resource#resrc{selector_marks=Marks}.

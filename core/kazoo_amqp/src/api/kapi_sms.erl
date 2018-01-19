@@ -372,9 +372,10 @@ declare_exchanges() ->
     amqp_util:new_exchange(?SMS_EXCHANGE, <<"topic">>).
 
 -spec publish_message(kz_term:api_terms()) -> 'ok'.
--spec publish_message(kz_term:api_terms(), binary()) -> 'ok'.
 publish_message(JObj) ->
     publish_message(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_message(kz_term:api_terms(), binary()) -> 'ok'.
 publish_message(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SMS_REQ_VALUES, fun message/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
@@ -383,9 +384,10 @@ publish_message(Req, ContentType) ->
     amqp_util:basic_publish(Exchange, ?SMS_ROUTING_KEY(RouteId, CallId), Payload, ContentType).
 
 -spec publish_inbound(kz_term:api_terms()) -> 'ok'.
--spec publish_inbound(kz_term:api_terms(), binary()) -> 'ok'.
 publish_inbound(JObj) ->
     publish_inbound(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_inbound(kz_term:api_terms(), binary()) -> 'ok'.
 publish_inbound(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?INBOUND_REQ_VALUES, fun inbound/1),
     MessageId = props:get_value(<<"Message-ID">>, Req),
@@ -394,9 +396,10 @@ publish_inbound(Req, ContentType) ->
     amqp_util:basic_publish(Exchange, ?INBOUND_ROUTING_KEY(RouteId, MessageId), Payload, ContentType).
 
 -spec publish_outbound(kz_term:api_terms()) -> 'ok'.
--spec publish_outbound(kz_term:api_terms(), binary()) -> 'ok'.
 publish_outbound(JObj) ->
     publish_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_outbound(kz_term:api_terms(), binary()) -> 'ok'.
 publish_outbound(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OUTBOUND_REQ_VALUES, fun outbound/1),
     MessageId = props:get_value(<<"Message-ID">>, Req),
@@ -407,9 +410,10 @@ publish_outbound(Req, ContentType) ->
     amqp_util:basic_publish(Exchange, RK, Payload, ContentType, Opts).
 
 -spec publish_delivery(kz_term:api_terms()) -> 'ok'.
--spec publish_delivery(kz_term:api_terms(), binary()) -> 'ok'.
 publish_delivery(JObj) ->
     publish_delivery(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_delivery(kz_term:api_terms(), binary()) -> 'ok'.
 publish_delivery(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DELIVERY_REQ_VALUES, fun delivery/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
@@ -417,15 +421,15 @@ publish_delivery(Req, ContentType) ->
     amqp_util:basic_publish(Exchange, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
 
 -spec publish_targeted_delivery(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_targeted_delivery(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_targeted_delivery(RespQ, JObj) ->
     publish_targeted_delivery(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_targeted_delivery(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_targeted_delivery(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?DELIVERY_REQ_VALUES, fun delivery/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_resume(kz_term:api_terms() | kz_term:ne_binary()) -> 'ok'.
--spec publish_resume(kz_term:api_terms(), binary()) -> 'ok'.
 publish_resume(SMS) when is_binary(SMS) ->
     Payload = [{<<"SMS-ID">>, SMS}
                | kz_api:default_headers(<<"API">>, <<"0.9.7">>)
@@ -433,6 +437,8 @@ publish_resume(SMS) when is_binary(SMS) ->
     publish_resume(Payload, ?DEFAULT_CONTENT_TYPE);
 publish_resume(JObj) ->
     publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resume(kz_term:api_terms(), binary()) -> 'ok'.
 publish_resume(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RESUME_REQ_VALUES, fun resume/1),
     CallId = props:get_value(<<"Call-ID">>, Req),

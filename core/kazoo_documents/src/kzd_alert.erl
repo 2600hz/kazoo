@@ -85,15 +85,16 @@ fetch(<<_/binary>> = AlertId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec title() -> kz_term:ne_binary().
--spec title(doc()) -> kz_term:api_binary().
--spec title(doc(), Default) -> kz_term:ne_binary() | Default.
 title() ->
     ?TITLE.
 
+-spec title(doc()) -> kz_term:api_binary().
 title(JObj) ->
     title(JObj, 'undefined').
 
+-spec title(doc(), Default) -> kz_term:ne_binary() | Default.
 title(JObj, Default) ->
     kz_json:get_value(?TITLE, JObj, Default).
 
@@ -106,15 +107,16 @@ set_title(JObj, Title) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec category() -> kz_term:ne_binary().
--spec category(doc()) -> kz_term:api_binary().
--spec category(doc(), Default) -> kz_term:ne_binary() | Default.
 category() ->
     ?CATEGORY.
 
+-spec category(doc()) -> kz_term:api_binary().
 category(JObj) ->
     category(JObj, 'undefined').
 
+-spec category(doc(), Default) -> kz_term:ne_binary() | Default.
 category(JObj, Default) ->
     kz_json:get_value(?CATEGORY, JObj, Default).
 
@@ -127,15 +129,16 @@ set_category(JObj, Category) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec message() -> kz_term:ne_binary().
--spec message(doc()) -> kz_term:api_binary().
--spec message(doc(), Default) -> kz_term:ne_binary() | Default.
 message() ->
     ?MESSAGE.
 
+-spec message(doc()) -> kz_term:api_binary().
 message(JObj) ->
     message(JObj, 'undefined').
 
+-spec message(doc(), Default) -> kz_term:ne_binary() | Default.
 message(JObj, Default) ->
     kz_json:get_value(?MESSAGE, JObj, Default).
 
@@ -148,15 +151,16 @@ set_message(JObj, Message) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec metadata() -> kz_term:ne_binary().
--spec metadata(doc()) -> kz_json:object().
--spec metadata(doc(), Default) ->  kz_json:object() | Default.
 metadata() ->
     ?METADATA.
 
+-spec metadata(doc()) -> kz_json:object().
 metadata(JObj) ->
     metadata(JObj, kz_json:new()).
 
+-spec metadata(doc(), Default) ->  kz_json:object() | Default.
 metadata(JObj, Default) ->
     kz_json:get_value(?METADATA, JObj, Default).
 
@@ -169,15 +173,16 @@ set_metadata(JObj, Metadata) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec level() -> kz_term:ne_binary().
--spec level(doc()) -> kz_term:api_binary().
--spec level(doc(), Default) -> kz_term:ne_binary() | Default.
 level() ->
     ?LEVEL.
 
+-spec level(doc()) -> kz_term:api_binary().
 level(JObj) ->
     level(JObj, <<"info">>).
 
+-spec level(doc(), Default) -> kz_term:ne_binary() | Default.
 level(JObj, Default) ->
     kz_json:get_value(?LEVEL, JObj, Default).
 
@@ -190,15 +195,16 @@ set_level(JObj, Level) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec from() -> kz_term:ne_binary().
--spec from(doc()) -> kz_json:objects().
--spec from(doc(), Default) ->  kz_json:objects() | Default.
 from() ->
     ?FROM.
 
+-spec from(doc()) -> kz_json:objects().
 from(JObj) ->
     from(JObj, kz_json:new()).
 
+-spec from(doc(), Default) ->  kz_json:objects() | Default.
 from(JObj, Default) ->
     kz_json:get_value(?FROM, JObj, Default).
 
@@ -211,15 +217,16 @@ set_from(JObj, From) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec to() -> kz_term:ne_binary().
--spec to(doc()) -> kz_json:objects().
--spec to(doc(), Default) ->  kz_json:objects() | Default.
 to() ->
     ?TO.
 
+-spec to(doc()) -> kz_json:objects().
 to(JObj) ->
     to(JObj, []).
 
+-spec to(doc(), Default) ->  kz_json:objects() | Default.
 to(JObj, Default) ->
     kz_json:get_value(?TO, JObj, Default).
 
@@ -232,15 +239,16 @@ set_to(JObj, To) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec expiration_date() -> kz_term:ne_binary().
--spec expiration_date(doc()) -> kz_json:object().
--spec expiration_date(doc(), Default) ->  kz_json:object() | Default.
 expiration_date() ->
     ?EXPIRATION_DATE.
 
+-spec expiration_date(doc()) -> kz_json:object().
 expiration_date(JObj) ->
     expiration_date(JObj, kz_json:new()).
 
+-spec expiration_date(doc(), Default) ->  kz_json:object() | Default.
 expiration_date(JObj, Default) ->
     kz_json:get_value(?EXPIRATION_DATE, JObj, Default).
 

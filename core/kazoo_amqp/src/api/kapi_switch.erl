@@ -265,17 +265,19 @@ publish_reload_gateways() ->
     amqp_util:basic_publish(?SWITCH_EXCHANGE, ?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_fs_xml_flush(kz_term:api_terms()) -> 'ok'.
--spec publish_fs_xml_flush(kz_term:api_terms(), binary()) -> 'ok'.
 publish_fs_xml_flush(JObj) ->
     publish_fs_xml_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_fs_xml_flush(kz_term:api_terms(), binary()) -> 'ok'.
 publish_fs_xml_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun fs_xml_flush/1),
     amqp_util:basic_publish(?SWITCH_EXCHANGE, ?FS_XML_FLUSH_KEY, Payload, ContentType).
 
 -spec publish_notify(kz_term:api_terms()) -> 'ok'.
--spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
 publish_notify(JObj) ->
     publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
 publish_notify(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
 
@@ -305,9 +307,10 @@ notify_value(API, Key, Get) ->
     Get(Key, API).
 
 -spec publish_command(kz_term:api_terms()) -> 'ok'.
--spec publish_command(kz_term:api_terms(), binary()) -> 'ok'.
 publish_command(JObj) ->
     publish_command(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_command(kz_term:api_terms(), binary()) -> 'ok'.
 publish_command(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_COMMAND_VALUES, fun fs_command/1),
     N = check_fs_node(Req),

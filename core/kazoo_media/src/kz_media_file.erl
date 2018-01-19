@@ -160,9 +160,6 @@ find_attachment([Db, Id, Attachment, Options]) ->
 -spec maybe_find_attachment(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
                                    {'error', 'not_found' | 'no_data'}.
--spec maybe_find_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                   {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
-                                   {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment(?MEDIA_DB = Db, Id) ->
     maybe_find_attachment_in_db(Db, Id);
 maybe_find_attachment(Db, Id) ->
@@ -181,6 +178,9 @@ maybe_find_attachment_in_db(Db, Id) ->
             maybe_find_attachment(Db, Id, JObj)
     end.
 
+-spec maybe_find_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                   {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
+                                   {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment(Db, Id, JObj) ->
     lager:debug("trying to find first attachment on doc ~s in db ~s", [Id, Db]),
     case kz_doc:attachment_names(JObj) of

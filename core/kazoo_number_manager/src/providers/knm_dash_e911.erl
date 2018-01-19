@@ -41,14 +41,15 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
--spec save(knm_number:knm_number(), kz_term:api_binary()) ->
                   knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
+-spec save(knm_number:knm_number(), kz_term:api_binary()) ->
+                  knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -152,12 +153,13 @@ maybe_update_e911(Number, Address) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
--spec update_e911(knm_number:knm_number(), kz_json:object(), boolean()) -> kz_json:object().
 update_e911(Number, Address) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     update_e911(Number, Address, DryRun).
 
+-spec update_e911(knm_number:knm_number(), kz_json:object(), boolean()) -> kz_json:object().
 update_e911(_Number, Address, 'true') -> Address;
 update_e911(Number, Address, 'false') ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
@@ -205,12 +207,13 @@ is_valid_location(Location) ->
     end.
 
 %% @private
+
 -spec parse_response(kz_types:xml_el()) -> location_response().
--spec parse_response(kz_term:ne_binary(), kz_types:xml_el()) -> location_response().
 parse_response(Response) ->
     StatusCode = kz_xml:get_value("//Location/status/code/text()", Response),
     parse_response(StatusCode, Response).
 
+-spec parse_response(kz_term:ne_binary(), kz_types:xml_el()) -> location_response().
 parse_response(<<"GEOCODED">>, Response) ->
     {'geocoded',    location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
 parse_response(<<"PROVISIONED">>, Response) ->

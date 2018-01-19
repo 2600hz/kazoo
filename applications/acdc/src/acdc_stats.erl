@@ -167,9 +167,10 @@ agent_logged_out(AcctId, AgentId) ->
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_logged_out/1).
 
 -spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 agent_connecting(AcctId, AgentId, CallId) ->
     agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
+
+-spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -184,9 +185,10 @@ agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_status_connecting/1).
 
 -spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
--spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 agent_connected(AcctId, AgentId, CallId) ->
     agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
+
+-spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -243,11 +245,14 @@ agent_statuses() ->
     ?STATUS_STATUSES.
 
 %% ETS config
+
 -spec call_table_id() -> atom().
--spec call_key_pos() -> pos_integer().
--spec call_table_opts() -> kz_term:proplist().
 call_table_id() -> 'acdc_stats_call'.
+
+-spec call_key_pos() -> pos_integer().
 call_key_pos() -> #call_stat.id.
+
+-spec call_table_opts() -> kz_term:proplist().
 call_table_opts() ->
     ['protected', 'named_table'
     ,{'keypos', call_key_pos()}
@@ -762,8 +767,9 @@ talk_time(H, P) when is_integer(H), is_integer(P) -> P - H;
 talk_time(_, _) -> 'undefined'.
 
 -spec misses_to_docs(agent_misses()) -> kz_json:objects().
--spec miss_to_doc(agent_miss()) -> kz_json:object().
 misses_to_docs(Misses) -> [miss_to_doc(Miss) || Miss <- Misses].
+
+-spec miss_to_doc(agent_miss()) -> kz_json:object().
 miss_to_doc(#agent_miss{agent_id=AgentId
                        ,miss_reason=Reason
                        ,miss_timestamp=T
@@ -792,11 +798,12 @@ maybe_created_db(DbName, 'true') ->
     kz_datamgr:revise_views_from_folder(DbName, 'acdc').
 
 -spec call_stat_id(kz_json:object()) -> kz_term:ne_binary().
--spec call_stat_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 call_stat_id(JObj) ->
     call_stat_id(kz_json:get_value(<<"Call-ID">>, JObj)
                 ,kz_json:get_value(<<"Queue-ID">>, JObj)
                 ).
+
+-spec call_stat_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 call_stat_id(CallId, QueueId) -> <<CallId/binary, "::", QueueId/binary>>.
 
 -spec handle_waiting_stat(kz_json:object(), kz_term:proplist()) -> 'ok'.

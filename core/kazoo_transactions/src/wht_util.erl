@@ -81,12 +81,12 @@ reasons() ->
      ,unknown() => ?CODE_UNKNOWN
      }.
 
--spec reasons(integer()) -> kz_term:ne_binaries().
--spec reasons(integer(), integer()) -> kz_term:ne_binaries().
 
+-spec reasons(integer()) -> kz_term:ne_binaries().
 reasons(Min) ->
     reasons(Min, 10000).
 
+-spec reasons(integer(), integer()) -> kz_term:ne_binaries().
 reasons(Min, Max)
   when is_integer(Min),
        is_integer(Max),
@@ -175,11 +175,11 @@ get_balance(Account, Options) ->
     end.
 
 -spec get_balance_from_previous(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().
--spec get_balance_from_previous(kz_term:ne_binary(), kazoo_modb:view_options(), integer()) -> balance_ret().
 get_balance_from_previous(Account, ViewOptions) ->
     Retries = props:get_value('retry', ViewOptions, 3),
     get_balance_from_previous(Account, ViewOptions, Retries).
 
+-spec get_balance_from_previous(kz_term:ne_binary(), kazoo_modb:view_options(), integer()) -> balance_ret().
 get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Y = props:get_integer_value('year', ViewOptions, DefaultYear),
@@ -412,42 +412,59 @@ calculate_call(R, RI, RM, Sur, Secs) ->
 -spec default_reason() -> kz_term:ne_binary().
 default_reason() -> unknown().
 
--spec per_minute_call() -> kz_term:ne_binary().
--spec sub_account_per_minute_call() -> kz_term:ne_binary().
--spec feature_activation() -> kz_term:ne_binary().
--spec sub_account_feature_activation() -> kz_term:ne_binary().
--spec number_activation() -> kz_term:ne_binary().
--spec sub_account_number_activation() -> kz_term:ne_binary().
--spec manual_addition() -> kz_term:ne_binary().
--spec sub_account_manual_addition() -> kz_term:ne_binary().
--spec auto_addition() -> kz_term:ne_binary().
--spec sub_account_auto_addition() -> kz_term:ne_binary().
--spec admin_discretion() -> kz_term:ne_binary().
--spec topup() -> kz_term:ne_binary().
--spec database_rollup() -> kz_term:ne_binary().
--spec recurring() -> kz_term:ne_binary().
--spec monthly_recurring() -> kz_term:ne_binary().
--spec recurring_prorate() -> kz_term:ne_binary().
--spec mobile() -> kz_term:ne_binary().
--spec unknown() -> kz_term:ne_binary().
 
+-spec per_minute_call() -> kz_term:ne_binary().
 per_minute_call() -> <<"per_minute_call">>.
+
+-spec sub_account_per_minute_call() -> kz_term:ne_binary().
 sub_account_per_minute_call() -> <<"sub_account_per_minute_call">>.
+
+-spec feature_activation() -> kz_term:ne_binary().
 feature_activation() -> <<"feature_activation">>.
+
+-spec sub_account_feature_activation() -> kz_term:ne_binary().
 sub_account_feature_activation() -> <<"sub_account_feature_activation">>.
+
+-spec number_activation() -> kz_term:ne_binary().
 number_activation() -> <<"number_activation">>.
+
+-spec sub_account_number_activation() -> kz_term:ne_binary().
 sub_account_number_activation() -> <<"sub_account_number_activation">>.
+
+-spec manual_addition() -> kz_term:ne_binary().
 manual_addition() -> <<"manual_addition">>.
+
+-spec sub_account_manual_addition() -> kz_term:ne_binary().
 sub_account_manual_addition() -> <<"sub_account_manual_addition">>.
+
+-spec auto_addition() -> kz_term:ne_binary().
 auto_addition() -> <<"auto_addition">>.
+
+-spec sub_account_auto_addition() -> kz_term:ne_binary().
 sub_account_auto_addition() -> <<"sub_account_auto_addition">>.
+
+-spec admin_discretion() -> kz_term:ne_binary().
 admin_discretion() -> <<"admin_discretion">>.
+
+-spec topup() -> kz_term:ne_binary().
 topup() -> <<"topup">>.
+
+-spec database_rollup() -> kz_term:ne_binary().
 database_rollup() -> <<"database_rollup">>.
+
+-spec recurring() -> kz_term:ne_binary().
 recurring() -> <<"recurring">>.
+
+-spec monthly_recurring() -> kz_term:ne_binary().
 monthly_recurring() -> <<"monthly_recurring">>.
+
+-spec recurring_prorate() -> kz_term:ne_binary().
 recurring_prorate() -> <<"recurring_prorate">>.
+
+-spec mobile() -> kz_term:ne_binary().
 mobile() -> <<"mobile">>.
+
+-spec unknown() -> kz_term:ne_binary().
 unknown() -> <<"unknown">>.
 
 %%--------------------------------------------------------------------
@@ -530,7 +547,6 @@ rollup_current_modb(AccountMODb, Loop) ->
     end.
 
 -spec rollup(kz_transaction:transaction()) -> 'ok'.
--spec rollup(kz_term:ne_binary(), integer()) -> 'ok'.
 rollup(Transaction) ->
     Transaction1 = kz_transaction:set_reason(<<"database_rollup">>, Transaction),
     Transaction2 = kz_transaction:set_description(<<"monthly rollup">>, Transaction1),
@@ -543,6 +559,7 @@ rollup(Transaction) ->
             lager:debug("monthly rollup transaction success")
     end.
 
+-spec rollup(kz_term:ne_binary(), integer()) -> 'ok'.
 rollup(?NE_BINARY = AccountMODb, Balance) when Balance >= 0 ->
     AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
     lager:debug("creating monthly rollup for ~s as a credit for ~p", [AccountMODb, Balance]),
@@ -601,7 +618,6 @@ collapse_call_transactions([JObj|JObjs], Calls, Transactions) ->
     end.
 
 -spec collapse_call_transaction(kz_json:object(), dict:dict()) -> dict:dict().
--spec collapse_call_transaction(binary(), kz_json:object(), dict:dict()) -> dict:dict().
 collapse_call_transaction(JObj, Calls) ->
     case kz_json:get_value(<<"call_id">>, JObj) of
         'undefined' ->
@@ -610,6 +626,7 @@ collapse_call_transaction(JObj, Calls) ->
             collapse_call_transaction(CallId, JObj, Calls)
     end.
 
+-spec collapse_call_transaction(binary(), kz_json:object(), dict:dict()) -> dict:dict().
 collapse_call_transaction(CallId, JObj, Calls) ->
     case dict:find(CallId, Calls) of
         'error' ->
@@ -674,11 +691,11 @@ get_amount(Call) ->
 
 -spec clean_transactions(kz_json:objects()) ->
                                 kz_json:objects().
--spec clean_transactions(kz_json:objects(), kz_json:objects()) ->
-                                kz_json:objects().
 clean_transactions(Transactions) ->
     clean_transactions(Transactions, []).
 
+-spec clean_transactions(kz_json:objects(), kz_json:objects()) ->
+                                kz_json:objects().
 clean_transactions([], Acc) -> Acc;
 clean_transactions([{_, Transaction}|Transactions], Acc) ->
     Amount = kz_json:get_value(<<"amount">>, Transaction),

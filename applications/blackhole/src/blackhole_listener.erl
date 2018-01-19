@@ -81,7 +81,6 @@ handle_amqp_event(EventJObj, Props, BasicDeliver) ->
     handle_amqp_event(EventJObj, Props, gen_listener:routing_key_used(BasicDeliver)).
 
 -spec handle_module_req(kz_json:object()) -> 'ok'.
--spec handle_module_req(kz_json:object(), atom(), kz_term:ne_binary(), boolean()) -> 'ok'.
 handle_module_req(EventJObj) ->
     'true' = kapi_websockets:module_req_v(EventJObj),
     lager:debug("recv module_req: ~p", [EventJObj]),
@@ -91,6 +90,7 @@ handle_module_req(EventJObj) ->
                      ,kz_json:is_true(<<"Persist">>, EventJObj, 'true')
                      ).
 
+-spec handle_module_req(kz_json:object(), atom(), kz_term:ne_binary(), boolean()) -> 'ok'.
 handle_module_req(EventJObj, BHModule, <<"start">>, Persist) ->
     case code:which(BHModule) of
         'non_existing' -> send_error_module_resp(EventJObj, <<"module doesn't exist">>);
@@ -355,11 +355,11 @@ add_bh_binding(ETS, Binding) ->
     end.
 
 -spec remove_bh_binding(ets:tid(), bh_event_binding()) -> 'ok' | 'true'.
--spec remove_bh_binding(ets:tid(), bh_event_binding(), binary(), integer()) -> 'ok' | 'true'.
 remove_bh_binding(ETS, Binding) ->
     Key = binding_key(Binding),
     remove_bh_binding(ETS, Binding, Key, ets:update_counter(ETS, Key, -1, {Key, 0})).
 
+-spec remove_bh_binding(ets:tid(), bh_event_binding(), binary(), integer()) -> 'ok' | 'true'.
 remove_bh_binding(ETS, Binding, Key, 0) ->
     lager:debug("blackhole is deleting binding for ~p", [Binding]),
     remove_bh_binding(Binding),

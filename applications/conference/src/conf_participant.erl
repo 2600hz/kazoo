@@ -200,9 +200,10 @@ init([Call]) ->
     {'ok', #participant{call=Call}}.
 
 -spec start_sanity_check_timer() -> reference().
--spec start_sanity_check_timer(pos_integer()) -> reference().
 start_sanity_check_timer() ->
     start_sanity_check_timer(kapps_config:get_integer(?CONFIG_CAT, <<"participant_sanity_check_ms">>, ?MILLISECONDS_IN_MINUTE)).
+
+-spec start_sanity_check_timer(pos_integer()) -> reference().
 start_sanity_check_timer(Timeout) ->
     erlang:send_after(Timeout, self(), 'sanity_check').
 

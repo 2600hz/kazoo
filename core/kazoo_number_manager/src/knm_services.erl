@@ -30,22 +30,26 @@
 %% @end
 %%--------------------------------------------------------------------
 -type set_feature() :: {kz_term:ne_binary(), kz_json:object()}.
+
 -spec activate_feature(knm_number:knm_number(), set_feature() | kz_term:ne_binary()) ->
                               knm_number:knm_number().
--spec do_activate_feature(knm_number:knm_number(), set_feature()) ->
-                                 knm_number:knm_number().
-
 activate_feature(Number, Feature=?NE_BINARY) ->
     activate_feature(Number, {Feature, kz_json:new()});
 activate_feature(Number, FeatureToSet={?NE_BINARY,_}) ->
     do_activate_feature(Number, FeatureToSet).
 
 -ifdef(TEST).
+
+-spec do_activate_feature(knm_number:knm_number(), set_feature()) ->
+                                 knm_number:knm_number().
 do_activate_feature(Number, {Feature,FeatureData}) ->
     %% Adding feature regardless of service plan
     PN = knm_phone_number:set_feature(knm_number:phone_number(Number), Feature, FeatureData),
     knm_number:set_phone_number(Number, PN).
 -else.
+
+-spec do_activate_feature(knm_number:knm_number(), set_feature()) ->
+                                 knm_number:knm_number().
 do_activate_feature(Number, FeatureToSet) ->
     Services = fetch_services(Number),
     BillingId = kz_services:get_billing_id(Services),

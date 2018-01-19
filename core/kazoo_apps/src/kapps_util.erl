@@ -260,10 +260,11 @@ find_oldest_doc([First|Docs]) ->
 %% in the requested encoding
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_all_accounts() -> kz_term:ne_binaries().
--spec get_all_accounts(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
+-spec get_all_accounts(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_accounts(Encoding) ->
     {'ok', Dbs} = kz_datamgr:db_list([{'startkey', <<"account/">>}
                                      ,{'endkey', <<"account/\ufff0">>}
@@ -273,10 +274,10 @@ get_all_accounts(Encoding) ->
     ].
 
 -spec get_all_accounts_and_mods() -> kz_term:ne_binaries().
--spec get_all_accounts_and_mods(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_accounts_and_mods() ->
     get_all_accounts_and_mods(?REPLICATE_ENCODING).
 
+-spec get_all_accounts_and_mods(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_accounts_and_mods(Encoding) ->
     {'ok', Databases} = kz_datamgr:db_info(),
     [format_db(Db, Encoding)
@@ -299,10 +300,10 @@ format_db(Db, Encoding, [{Predicate, Formatter}|Fs]) ->
     end.
 
 -spec get_all_account_mods() -> kz_term:ne_binaries().
--spec get_all_account_mods(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_account_mods() ->
     get_all_account_mods(?REPLICATE_ENCODING).
 
+-spec get_all_account_mods(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = kz_datamgr:db_info(),
     [kz_util:format_account_modb(Db, Encoding)
@@ -311,10 +312,10 @@ get_all_account_mods(Encoding) ->
     ].
 
 -spec get_account_mods(kz_term:ne_binary()) -> kz_term:ne_binaries().
--spec get_account_mods(kz_term:ne_binary(), kz_util:account_format()) -> kz_term:ne_binaries().
 get_account_mods(Account) ->
     get_account_mods(Account, ?REPLICATE_ENCODING).
 
+-spec get_account_mods(kz_term:ne_binary(), kz_util:account_format()) -> kz_term:ne_binaries().
 get_account_mods(Account, Encoding) ->
     AccountId = kz_util:format_account_id(Account, Encoding),
     [MOD
@@ -607,12 +608,13 @@ amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
 
 -spec amqp_pool_request(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun()) ->
                                kz_amqp_worker:request_return().
--spec amqp_pool_request(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), timeout()) ->
-                               kz_amqp_worker:request_return().
 amqp_pool_request(Api, PubFun, ValidateFun)
   when is_function(PubFun, 1),
        is_function(ValidateFun, 1) ->
     amqp_pool_request(Api, PubFun, ValidateFun, kz_amqp_worker:default_timeout()).
+
+-spec amqp_pool_request(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), timeout()) ->
+                               kz_amqp_worker:request_return().
 amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
   when is_function(PubFun, 1),
        is_function(ValidateFun, 1),
@@ -624,12 +626,13 @@ amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
 
 -spec amqp_pool_request_custom(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), gen_listener:binding()) ->
                                       kz_amqp_worker:request_return().
--spec amqp_pool_request_custom(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), timeout(), gen_listener:binding()) ->
-                                      kz_amqp_worker:request_return().
 amqp_pool_request_custom(Api, PubFun, ValidateFun, Bind)
   when is_function(PubFun, 1),
        is_function(ValidateFun, 1) ->
     amqp_pool_request_custom(Api, PubFun, ValidateFun, kz_amqp_worker:default_timeout(), Bind).
+
+-spec amqp_pool_request_custom(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), timeout(), gen_listener:binding()) ->
+                                      kz_amqp_worker:request_return().
 amqp_pool_request_custom(Api, PubFun, ValidateFun, Timeout, Bind)
   when is_function(PubFun, 1),
        is_function(ValidateFun, 1),

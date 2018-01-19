@@ -131,17 +131,20 @@ to_response(Context, _, _) ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?PATH_INTERACTION) ->
     [?HTTP_GET];
 allowed_methods(?PATH_SUMMARY) ->
     [?HTTP_GET];
 allowed_methods(_CDRId) ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?PATH_LEGS, _InteractionId) ->
     [?HTTP_GET].
 
@@ -153,11 +156,14 @@ allowed_methods(?PATH_LEGS, _InteractionId) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> boolean().
--spec resource_exists(path_token()) -> boolean().
--spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> boolean().
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists(?PATH_LEGS, _) -> 'true';
 resource_exists(_, _) -> 'false'.
 
@@ -196,12 +202,12 @@ provided_types(Context) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_chunk_view(Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_INTERACTION) ->
     validate_chunk_view(Context);
 validate(Context, ?PATH_SUMMARY) ->
@@ -209,6 +215,7 @@ validate(Context, ?PATH_SUMMARY) ->
 validate(Context, CDRId) ->
     load_cdr(CDRId, Context).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_LEGS, InteractionId) ->
     load_legs(InteractionId, Context);
 validate(Context, _, _) ->

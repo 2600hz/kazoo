@@ -228,11 +228,12 @@ count_per_folder(AccountId, Keys, View, Folder, ResultMap) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update(kz_term:ne_binary(), kz_term:ne_binary(), messages()) -> kz_json:object().
--spec update(kz_term:ne_binary(), kz_term:ne_binary(), messages(), update_funs()) -> kz_json:object().
 update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
+-spec update(kz_term:ne_binary(), kz_term:ne_binary(), messages(), update_funs()) -> kz_json:object().
 update(AccountId, BoxId, [?NE_BINARY = _Msg | _] = MsgIds, Funs) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     FetchMap = fetch(AccountId, MsgIds, BoxId, RetenTimestamp),

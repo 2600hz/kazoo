@@ -105,9 +105,10 @@ maybe_add_ext(Schema) ->
     end.
 
 -spec flush() -> 'ok'.
--spec flush(kz_term:ne_binary()) -> 'ok'.
 flush() ->
     kz_datamgr:flush_cache_docs(?KZ_SCHEMA_DB).
+
+-spec flush(kz_term:ne_binary()) -> 'ok'.
 flush(Schema) ->
     kz_datamgr:flush_cache_doc(?KZ_SCHEMA_DB, Schema).
 
@@ -176,9 +177,6 @@ maybe_default(Key, Default, JObj) ->
 -spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
                       jesse_error:error().
--spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object(), jesse_options()) ->
-                      {'ok', kz_json:object()} |
-                      jesse_error:error().
 validate(SchemaJObj, DataJObj) ->
     validate(SchemaJObj, DataJObj, ?DEFAULT_OPTIONS).
 
@@ -188,6 +186,9 @@ validate(SchemaJObj, DataJObj) ->
 -define(DEFAULT_LOADER, fun load/1).
 -endif.
 
+-spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object(), jesse_options()) ->
+                      {'ok', kz_json:object()} |
+                      jesse_error:error().
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
     Fun = props:get_value('schema_loader_fun', Options, ?DEFAULT_LOADER),
     {'ok', SchemaJObj} = Fun(Schema),
@@ -205,21 +206,21 @@ validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->
 
 -spec errors_to_jobj([jesse_error:error_reason()]) ->
                             validation_errors().
--spec errors_to_jobj([jesse_error:error_reason()], options()) ->
-                            validation_errors().
 errors_to_jobj(Errors) ->
     errors_to_jobj(Errors, [{'version', ?CURRENT_VERSION}]).
 
+-spec errors_to_jobj([jesse_error:error_reason()], options()) ->
+                            validation_errors().
 errors_to_jobj(Errors, Options) ->
     [error_to_jobj(Error, Options) || Error <- Errors].
 
 -spec error_to_jobj(jesse_error:error_reason()) ->
                            validation_error().
--spec error_to_jobj(jesse_error:error_reason(), options()) ->
-                           validation_error().
 error_to_jobj(Error) ->
     error_to_jobj(Error, [{'version', ?CURRENT_VERSION}]).
 
+-spec error_to_jobj(jesse_error:error_reason(), options()) ->
+                           validation_error().
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,'external_error'

@@ -75,9 +75,10 @@ search_req_v(JObj) ->
     search_req_v(kz_json:to_proplist(JObj)).
 
 -spec publish_search_req(kz_term:api_terms()) -> 'ok'.
--spec publish_search_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_search_req(JObj) ->
     publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_search_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_search_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun search_req/1),
     amqp_util:presence_publish(search_req_routing_key(Req), Payload, ContentType).
@@ -111,9 +112,10 @@ search_partial_resp_v(JObj) ->
     search_partial_resp_v(kz_json:to_proplist(JObj)).
 
 -spec publish_search_partial_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_search_partial_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_search_partial_resp(Queue, JObj) ->
     publish_search_partial_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_search_partial_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_search_partial_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_PARTIAL_RESP_VALUES, fun search_partial_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
@@ -139,9 +141,10 @@ search_resp_v(JObj) ->
     search_resp_v(kz_json:to_proplist(JObj)).
 
 -spec publish_search_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_search_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_search_resp(Queue, JObj) ->
     publish_search_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_search_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_search_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun search_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
@@ -165,9 +168,10 @@ subscribe_v(Prop) when is_list(Prop) ->
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
 
 -spec publish_subscribe(kz_term:api_terms()) -> 'ok'.
--spec publish_subscribe(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_subscribe(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_subscribe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun subscribe/1),
     amqp_util:presence_publish(subscribe_routing_key(Req), Payload, ContentType).
@@ -203,15 +207,15 @@ update_v(Prop) when is_list(Prop) ->
 update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
 
 -spec publish_update(kz_term:api_terms()) -> 'ok'.
--spec publish_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_update(JObj) ->
     publish_update(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_update(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun update/1),
     amqp_util:presence_publish(update_routing_key(Req), Payload, ContentType).
 
 -spec update_routing_key(kz_term:ne_binary() | kz_term:api_terms()) -> kz_term:ne_binary().
--spec update_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 update_routing_key(Req) when is_list(Req) ->
     update_routing_key(props:get_value(<<"Call-ID">>, Req)
                       ,props:get_value(<<"Presence-ID">>, Req)
@@ -221,6 +225,7 @@ update_routing_key(Req) ->
                       ,kz_json:get_value(<<"Presence-ID">>, Req)
                       ).
 
+-spec update_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 update_routing_key(CallId, PresenceID) ->
     list_to_binary([<<"update.">>
                    ,amqp_util:encode(realm_from_presence_id(PresenceID))
@@ -254,15 +259,15 @@ dialog_v(Prop) when is_list(Prop) ->
 dialog_v(JObj) -> dialog_v(kz_json:to_proplist(JObj)).
 
 -spec publish_dialog(kz_term:api_terms()) -> 'ok'.
--spec publish_dialog(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_dialog(JObj) ->
     publish_dialog(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_dialog(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_dialog(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIALOG_VALUES, fun dialog/1),
     amqp_util:presence_publish(dialog_routing_key(Req), Payload, ContentType).
 
 -spec dialog_routing_key(kz_term:ne_binary() | kz_term:api_terms()) -> kz_term:ne_binary().
--spec dialog_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 dialog_routing_key(Req) when is_list(Req) ->
     dialog_routing_key(props:get_value(<<"Call-ID">>, Req)
                       ,props:get_value(<<"Presence-ID">>, Req)
@@ -272,6 +277,7 @@ dialog_routing_key(Req) ->
                       ,kz_json:get_value(<<"Presence-ID">>, Req)
                       ).
 
+-spec dialog_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 dialog_routing_key(CallId, PresenceID) ->
     list_to_binary([<<"dialog.">>
                    ,amqp_util:encode(realm_from_presence_id(PresenceID))
@@ -298,8 +304,9 @@ probe_v(Prop) when is_list(Prop) ->
 probe_v(JObj) -> probe_v(kz_json:to_proplist(JObj)).
 
 -spec publish_probe(kz_term:api_terms()) -> 'ok'.
--spec publish_probe(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_probe(JObj) -> publish_probe(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_probe(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_probe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PROBE_VALUES, fun probe/1),
     amqp_util:presence_publish(probe_routing_key(Req), Payload, ContentType).
@@ -350,8 +357,9 @@ mwi_update_v(Prop) when is_list(Prop) ->
 mwi_update_v(JObj) -> mwi_update_v(kz_json:to_proplist(JObj)).
 
 -spec publish_mwi_update(kz_term:api_terms()) -> 'ok'.
--spec publish_mwi_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_mwi_update(JObj) -> publish_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_mwi_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_mwi_update(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_REQ_VALUES, fun mwi_update/1),
     amqp_util:presence_publish(mwi_update_routing_key(Req), Payload, ContentType).
@@ -387,8 +395,9 @@ mwi_unsolicited_update_v(Prop) when is_list(Prop) ->
 mwi_unsolicited_update_v(JObj) -> mwi_unsolicited_update_v(kz_json:to_proplist(JObj)).
 
 -spec publish_unsolicited_mwi_update(kz_term:api_terms()) -> 'ok'.
--spec publish_unsolicited_mwi_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_unsolicited_mwi_update(JObj) -> publish_unsolicited_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_unsolicited_mwi_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_unsolicited_mwi_update(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_UNSOLICITED_REQ_VALUES, fun mwi_unsolicited_update/1),
     amqp_util:presence_publish(mwi_unsolicited_update_routing_key(Req), Payload, ContentType).
@@ -424,8 +433,9 @@ mwi_query_v(Prop) when is_list(Prop) ->
 mwi_query_v(JObj) -> mwi_query_v(kz_json:to_proplist(JObj)).
 
 -spec publish_mwi_query(kz_term:api_terms()) -> 'ok'.
--spec publish_mwi_query(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_mwi_query(JObj) -> publish_mwi_query(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_mwi_query(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_mwi_query(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_QUERY_VALUES, fun mwi_query/1),
     amqp_util:presence_publish(mwi_query_routing_key(Req), Payload, ContentType).
@@ -457,8 +467,9 @@ register_overwrite_v(Prop) when is_list(Prop) ->
 register_overwrite_v(JObj) -> register_overwrite_v(kz_json:to_proplist(JObj)).
 
 -spec publish_register_overwrite(kz_term:api_terms()) -> 'ok'.
--spec publish_register_overwrite(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register_overwrite(JObj) -> publish_register_overwrite(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_register_overwrite(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register_overwrite(Req, ContentType) when is_list(Req) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REGISTER_OVERWRITE_VALUES, fun register_overwrite/1),
     amqp_util:presence_publish(register_overwrite_routing_key(Req), Payload, ContentType);
@@ -493,15 +504,15 @@ reset_v(JObj) ->
     reset_v(kz_json:to_proplist(JObj)).
 
 -spec publish_reset(kz_term:api_terms()) -> 'ok'.
--spec publish_reset(kz_term:api_terms(), binary()) -> 'ok'.
 publish_reset(JObj) ->
     publish_reset(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_reset(kz_term:api_terms(), binary()) -> 'ok'.
 publish_reset(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RESET_VALUES, fun reset/1),
     amqp_util:presence_publish(reset_routing_key(Req), Payload, ContentType).
 
 -spec reset_routing_key(kz_term:ne_binary() | kz_term:api_terms()) -> kz_term:ne_binary().
--spec reset_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_routing_key(Req) when is_list(Req) ->
     reset_routing_key(props:get_value(<<"Realm">>, Req)
                      ,props:get_value(<<"Username">>, Req)
@@ -511,6 +522,7 @@ reset_routing_key(Req) ->
                      ,kz_json:get_value(<<"Username">>, Req)
                      ).
 
+-spec reset_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_routing_key(Realm, Username) when is_binary(Realm) ->
     list_to_binary([<<"presence.reset.">>
                    ,amqp_util:encode(Realm)
@@ -537,9 +549,10 @@ flush_v(Prop) when is_list(Prop) ->
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
 -spec publish_flush(kz_term:api_terms()) -> 'ok'.
--spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FLUSH_VALUES, fun flush/1),
     amqp_util:presence_publish(<<"flush">>, Payload, ContentType).
@@ -563,9 +576,10 @@ sync_v(Prop) when is_list(Prop) ->
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
 
 -spec publish_sync(kz_term:api_terms()) -> 'ok'.
--spec publish_sync(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync(JObj) ->
     publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_sync(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SYNC_VALUES, fun sync/1),
     amqp_util:presence_publish(<<"sync">>, Payload, ContentType).

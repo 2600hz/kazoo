@@ -74,11 +74,11 @@ option_to_config({K, V}, Config) ->
     maps:put(K, V, Config).
 
 -spec process_app(atom(), config()) -> config().
--spec process_app_modules(atom(), config()) -> config().
 process_app(App, Config0) ->
     Config2 = process_app_modules(App, callback_application(App, Config0)),
     callback_after_application(App, Config2).
 
+-spec process_app_modules(atom(), config()) -> config().
 process_app_modules(_App, {'skip', Config}) -> Config;
 process_app_modules(App, Config) ->
     try process_modules(kz_ast_util:app_modules(App), Config)

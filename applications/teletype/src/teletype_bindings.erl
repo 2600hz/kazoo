@@ -25,9 +25,10 @@ start_link() ->
     'ignore'.
 
 -spec bind(kz_term:ne_binary(), module(), atom()) -> 'ok'.
--spec bind(kz_term:api_binary(), kz_term:api_binary(), module(), atom()) -> 'ok'.
 bind(EventName, Module, Fun) ->
     bind(<<"notification">>, EventName, Module, Fun).
+
+-spec bind(kz_term:api_binary(), kz_term:api_binary(), module(), atom()) -> 'ok'.
 bind(EventCategory, EventName, Module, Fun) ->
     Binding = ?ROUTING_KEY(EventCategory, EventName),
     case kazoo_bindings:bind(Binding, Module, Fun) of

@@ -264,7 +264,6 @@ get_control_profile(_AccountId, ProfileName) ->
     get_control_profile(ProfileName).
 
 -spec advertise(kz_term:ne_binary()) -> kz_term:api_object().
--spec advertise(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
 advertise(?DEFAULT_PROFILE_NAME = ProfileName) ->
     advertise(ProfileName, ?ADVERTISE(ProfileName, ?DEFAULT_ADVERTISE_CONFIG));
 advertise(?PAGE_PROFILE_NAME = ProfileName) ->
@@ -272,11 +271,11 @@ advertise(?PAGE_PROFILE_NAME = ProfileName) ->
 advertise(ProfileName) ->
     advertise(ProfileName, ?ADVERTISE(ProfileName)).
 
+-spec advertise(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
 advertise(_ProfileName, 'undefined') -> 'undefined';
 advertise(ProfileName, Advertise) -> kz_json:from_list([{ProfileName, Advertise}]).
 
 -spec chat_permissions(kz_term:ne_binary()) -> kz_term:api_object().
--spec chat_permissions(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
 chat_permissions(?DEFAULT_PROFILE_NAME = ProfileName) ->
     chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName, ?DEFAULT_CHAT_CONFIG));
 chat_permissions(?PAGE_PROFILE_NAME= ProfileName) ->
@@ -284,6 +283,7 @@ chat_permissions(?PAGE_PROFILE_NAME= ProfileName) ->
 chat_permissions(ProfileName) ->
     chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName)).
 
+-spec chat_permissions(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
 chat_permissions(_ProfileName, 'undefined') -> 'undefined';
 chat_permissions(ProfileName, Chat) -> kz_json:from_list([{ProfileName, Chat}]).
 

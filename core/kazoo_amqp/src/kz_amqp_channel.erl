@@ -264,7 +264,6 @@ maybe_split_routing_key(RoutingKey) ->
     {'undefined', RoutingKey}.
 
 -spec command(kz_amqp_command()) -> command_ret().
--spec command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
     kz_amqp_history:add_exchange(Exchange);
 command(Command) ->
@@ -272,6 +271,7 @@ command(Command) ->
     %% all commands need to block till completion...
     command(kz_amqp_assignments:get_channel(), Command).
 
+-spec command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
 command(Assignment, Command) ->
     assert_valid_amqp_method(Command),
     exec_command(Assignment, Command).

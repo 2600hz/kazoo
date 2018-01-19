@@ -26,16 +26,16 @@ fax_properties(JObj) ->
 
 -spec collect_channel_props(kz_json:object()) ->
                                    kz_term:proplist().
--spec collect_channel_props(kz_json:object(), kz_term:proplist() | kz_term:ne_binaries()) ->
-                                   kz_term:proplist().
--spec collect_channel_props(kz_json:object(), kz_term:proplist() | kz_term:ne_binaries(), kz_term:proplist()) ->
-                                   kz_term:proplist().
 collect_channel_props(JObj) ->
     collect_channel_props(JObj, ?FAX_CHANNEL_DESTROY_PROPS).
 
+-spec collect_channel_props(kz_json:object(), kz_term:proplist() | kz_term:ne_binaries()) ->
+                                   kz_term:proplist().
 collect_channel_props(JObj, List) ->
     collect_channel_props(JObj, List, []).
 
+-spec collect_channel_props(kz_json:object(), kz_term:proplist() | kz_term:ne_binaries(), kz_term:proplist()) ->
+                                   kz_term:proplist().
 collect_channel_props(JObj, List, Acc) ->
     lists:foldl(fun({Key, Keys}, Acc0) ->
                         collect_channel_props(kz_json:get_value(Key, JObj), Keys, Acc0);
@@ -96,9 +96,6 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
 -spec save_fax_attachment(kz_term:api_object(), binary(), kz_term:ne_binary())->
                                  {'ok', kz_json:object()} |
                                  {'error', kz_term:ne_binary()}.
--spec save_fax_attachment(kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer())->
-                                 {'ok', kz_json:object()} |
-                                 {'error', kz_term:ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
     MaxStorageRetry = kapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
     ContentsMD5 = kz_term:to_hex_binary(erlang:md5(FileContents)),
@@ -106,6 +103,9 @@ save_fax_attachment(JObj, FileContents, CT) ->
 
     save_fax_attachment(JObj, FileContents, CT, Name, MaxStorageRetry).
 
+-spec save_fax_attachment(kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer())->
+                                 {'ok', kz_json:object()} |
+                                 {'error', kz_term:ne_binary()}.
 save_fax_attachment(JObj, _FileContents, _CT, _Name, 0) ->
     lager:error("max retry saving attachment ~s on fax id ~s rev ~s"
                ,[_Name, kz_doc:id(JObj), kz_doc:revision(JObj)]

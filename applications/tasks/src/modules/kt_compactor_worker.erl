@@ -74,7 +74,6 @@ run_compactor_job(Compactor, Shards) ->
     end.
 
 -spec wait_for_shards(kz_term:pid_refs()) -> 'ok'.
--spec wait_for_shards(kz_term:pid_refs(), kz_term:pid_ref()) -> 'ok'.
 wait_for_shards([]) -> 'ok';
 wait_for_shards(PidRefs) ->
     MaxWait = ?MAX_WAIT_FOR_COMPACTION_PIDS,
@@ -86,6 +85,7 @@ wait_for_shards(PidRefs) ->
             lager:debug("shards still processing: ~p", [PidRefs])
     end.
 
+-spec wait_for_shards(kz_term:pid_refs(), kz_term:pid_ref()) -> 'ok'.
 wait_for_shards(PidRefs, {Pid, Ref}) ->
     case props:get_value(Pid, PidRefs) of
         Ref -> wait_for_shards(props:delete(Pid, PidRefs));
@@ -166,12 +166,12 @@ compact_design_docs(Conn, Shard, DDs) ->
 
 -spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                                         'ok'.
--spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), design_info_resp()) ->
-                                        'ok'.
 wait_for_design_compaction(_, _, []) -> 'ok';
 wait_for_design_compaction(AdminConn, Shard, [DD|DDs]) ->
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, kz_couch_view:design_info(AdminConn, Shard, DD)).
 
+-spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), design_info_resp()) ->
+                                        'ok'.
 wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', {'error', 'timeout'}}}) ->
     lager:debug("connecting to BigCouch timed out, waiting then retrying"),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
@@ -192,10 +192,10 @@ wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'ok', DesignInfo}) ->
     end.
 
 -spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary()) -> 'ok'.
--spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary(), db_info_resp()) -> 'ok'.
 wait_for_compaction(AdminConn, Shard) ->
     wait_for_compaction(AdminConn, Shard, kz_couch_db:db_info(AdminConn, Shard)).
 
+-spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary(), db_info_resp()) -> 'ok'.
 wait_for_compaction(_AdminConn, _Shard, {'error', 'db_not_found'}) ->
     lager:debug("shard '~s' wasn't found", [_Shard]);
 wait_for_compaction(AdminConn, Shard, {'error', 'timeout'}) ->
@@ -214,10 +214,10 @@ wait_for_compaction(AdminConn, Shard, {'ok', ShardData}) ->
 
 
 -spec should_compact(compactor()) -> boolean().
--spec should_compact(compactor(), heuristic()) -> boolean().
 should_compact(Compactor) ->
     should_compact(Compactor, compactor_heuristic(Compactor)).
 
+-spec should_compact(compactor(), heuristic()) -> boolean().
 should_compact(_Compactor, ?HEUR_NONE) -> 'true';
 should_compact(Compactor, ?HEUR_RATIO) ->
     case get_db_disk_and_data(compactor_conn(Compactor), compactor_database(Compactor)) of
@@ -291,20 +291,26 @@ min_ratio_met(Disk, Data, MinRatio) ->
             'false'
     end.
 
--spec compactor_node(compactor()) -> kz_term:ne_binary().
--spec compactor_conn(compactor()) -> kz_data:connection().
--spec compactor_admin(compactor()) -> kz_data:connection().
--spec compactor_database(compactor()) -> kz_term:ne_binary().
--spec compactor_shards(compactor()) -> kz_term:ne_binaries().
--spec compactor_design_docs(compactor()) -> kz_term:ne_binaries().
--spec compactor_heuristic(compactor()) -> heuristic().
 
+-spec compactor_node(compactor()) -> kz_term:ne_binary().
 compactor_node(#compactor{node=Node}) -> Node.
+
+-spec compactor_conn(compactor()) -> kz_data:connection().
 compactor_conn(#compactor{conn=Conn}) -> Conn.
+
+-spec compactor_admin(compactor()) -> kz_data:connection().
 compactor_admin(#compactor{admin=Admin}) -> Admin.
+
+-spec compactor_database(compactor()) -> kz_term:ne_binary().
 compactor_database(#compactor{database=Db}) -> Db.
+
+-spec compactor_shards(compactor()) -> kz_term:ne_binaries().
 compactor_shards(#compactor{shards=Shards}) -> Shards.
+
+-spec compactor_design_docs(compactor()) -> kz_term:ne_binaries().
 compactor_design_docs(#compactor{design_docs=DesignDocs}) -> DesignDocs.
+
+-spec compactor_heuristic(compactor()) -> heuristic().
 compactor_heuristic(#compactor{heuristic=Heuristic}) -> Heuristic.
 
 -spec new(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection(), kz_term:ne_binary()) ->
@@ -320,11 +326,11 @@ new(Node, Heuristic, APIConn, AdminConn, Database) ->
               }.
 
 -spec node_shards(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
--spec node_shards(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binaries().
 node_shards(Node, Unencoded) ->
     {'ok', DbInfo} = kz_datamgr:open_doc(kazoo_couch:get_admin_dbs(), Unencoded),
     node_shards(Node, Unencoded, DbInfo).
 
+-spec node_shards(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binaries().
 node_shards(Node, Unencoded, DbInfo) ->
     Suffix = kz_json:get_ne_binary_value(<<"shard_suffix">>, DbInfo),
     Ranges = kz_json:get_list_value([<<"by_node">>, Node], DbInfo, []),

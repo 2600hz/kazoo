@@ -88,13 +88,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?PATH_TOKEN_LAST_SUBMITTED) ->
     [?HTTP_GET];
 allowed_methods(?PORT_SUBMITTED) ->
@@ -114,6 +113,7 @@ allowed_methods(?PORT_UNCONFIRMED) ->
 allowed_methods(_PortRequestId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_PortRequestId, ?PORT_SUBMITTED) ->
     [?HTTP_PATCH];
 allowed_methods(_PortRequestId, ?PORT_PENDING) ->
@@ -133,6 +133,7 @@ allowed_methods(_PortRequestId, ?PATH_TOKEN_LOA) ->
 allowed_methods(_PortRequestId, ?PATH_TOKEN_TIMELINE) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -145,14 +146,14 @@ allowed_methods(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) ->
 %%    /port_requests/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_PortRequestId) -> 'true'.
 
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_PortRequestId, ?PORT_SUBMITTED) -> 'true';
 resource_exists(_PortRequestId, ?PORT_PENDING) -> 'true';
 resource_exists(_PortRequestId, ?PORT_SCHEDULED) -> 'true';
@@ -164,6 +165,7 @@ resource_exists(_PortRequestId, ?PATH_TOKEN_LOA) -> 'true';
 resource_exists(_PortRequestId, ?PATH_TOKEN_TIMELINE) -> 'true';
 resource_exists(_PortRequestId, _) -> 'false'.
 
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -179,13 +181,13 @@ acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
 content_types_provided(Context, _Id, ?PATH_TOKEN_LOA) ->
     cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]);
 content_types_provided(Context, _Id, _Path) ->
     Context.
 
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     case cb_context:req_verb(Context) of
         ?HTTP_GET -> content_types_provided_get(Context, _Id, _AttachmentId);
@@ -205,9 +207,8 @@ content_types_provided_get(Context, Id, AttachmentId) ->
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
+
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_accepted(Context, _Id, ?PORT_ATTACHMENT) ->
     CTA = [{'from_binary', ?ATTACHMENT_MIME_TYPES}],
@@ -215,6 +216,8 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT) ->
 content_types_accepted(Context, _Id, _) ->
     Context.
 
+-spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     case cb_context:req_verb(Context) of
         ?HTTP_POST ->
@@ -234,17 +237,14 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) ->
                       cb_context:context().
 validate(Context) ->
     validate_port_request(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
 validate(Context, ?PATH_TOKEN_LAST_SUBMITTED) ->
     last_submitted(Context);
 validate(Context, ?PORT_UNCONFIRMED = Type) ->
@@ -264,6 +264,8 @@ validate(Context, ?PORT_CANCELED = Type) ->
 validate(Context, Id) ->
     validate_port_request(Context, Id, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), path_token()) ->
+                      cb_context:context().
 validate(Context, Id, ?PORT_UNCONFIRMED) ->
     validate_port_request(Context, Id, ?PORT_UNCONFIRMED, cb_context:req_verb(Context));
 validate(Context, Id, ?PORT_SUBMITTED) ->
@@ -285,6 +287,8 @@ validate(Context, Id, ?PATH_TOKEN_LOA) ->
 validate(Context, Id, ?PATH_TOKEN_TIMELINE) ->
     maybe_prepare_timeline(load_port_request(Context, Id)).
 
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) ->
+                      cb_context:context().
 validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
 
@@ -304,11 +308,12 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
     save(Context).
 
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
@@ -390,8 +395,8 @@ date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     Context1 = save(Context),
     case cb_context:resp_status(Context1) of
@@ -403,6 +408,7 @@ post(Context, Id) ->
             Context1
     end.
 
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
@@ -422,12 +428,14 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
+
 -spec delete(cb_context:context(), path_token()) ->
-                    cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
                     cb_context:context().
 delete(Context, _Id) ->
     crossbar_doc:delete(Context).
+
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
+                    cb_context:context().
 delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
     crossbar_doc:delete_attachment(Id, AttachmentName, Context).
 
@@ -460,17 +468,16 @@ validate_load_summary(Context, <<_/binary>> = Type) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate_port_request(cb_context:context(), http_method()) ->
-                                   cb_context:context().
--spec validate_port_request(cb_context:context(), kz_term:ne_binary(), http_method()) ->
-                                   cb_context:context().
--spec validate_port_request(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
                                    cb_context:context().
 validate_port_request(Context, ?HTTP_GET) ->
     summary(Context);
 validate_port_request(Context, ?HTTP_PUT) ->
     create(Context).
 
+-spec validate_port_request(cb_context:context(), kz_term:ne_binary(), http_method()) ->
+                                   cb_context:context().
 validate_port_request(Context, Id, ?HTTP_GET) ->
     read(Context, Id);
 validate_port_request(Context, Id, ?HTTP_POST) ->
@@ -478,6 +485,8 @@ validate_port_request(Context, Id, ?HTTP_POST) ->
 validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(load_port_request(Context, Id)).
 
+-spec validate_port_request(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
+                                   cb_context:context().
 validate_port_request(Context, Id, ToState=?PORT_SUBMITTED, ?HTTP_PATCH) ->
     patch_then_validate_then_maybe_transition(Context, Id, ToState);
 validate_port_request(Context, Id, ToState=?PORT_PENDING, ?HTTP_PATCH) ->
@@ -533,10 +542,12 @@ validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec is_deletable(cb_context:context()) -> cb_context:context().
--spec is_deletable(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 is_deletable(Context) ->
     is_deletable(Context, knm_port_request:current_state(cb_context:doc(Context))).
+
+-spec is_deletable(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 is_deletable(Context, ?PORT_UNCONFIRMED) -> Context;
 is_deletable(Context, ?PORT_REJECTED) -> Context;
 is_deletable(Context, ?PORT_CANCELED) -> Context;
@@ -858,8 +869,8 @@ summary_attachments(Context, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec on_successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
--spec on_successful_validation(cb_context:context(), kz_term:api_binary(), boolean()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     on_successful_validation(Context, 'undefined', 'true');
 on_successful_validation(Context, Id) ->
@@ -869,6 +880,7 @@ on_successful_validation(Context, Id) ->
                                       ),
     on_successful_validation(Context1, Id, can_update_port_request(Context1)).
 
+-spec on_successful_validation(cb_context:context(), kz_term:api_binary(), boolean()) -> cb_context:context().
 on_successful_validation(Context, Id, 'true') ->
     JObj = cb_context:doc(Context),
     Numbers = kz_json:get_keys(kz_json:get_value(<<"numbers">>, JObj)),
@@ -899,12 +911,13 @@ on_successful_validation(Context, _Id, 'false') ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec can_update_port_request(cb_context:context()) -> boolean().
--spec can_update_port_request(cb_context:context(), kz_term:ne_binary()) -> boolean().
 can_update_port_request(Context) ->
     lager:debug("port request: ~p", [cb_context:doc(Context)]),
     can_update_port_request(Context, knm_port_request:current_state(cb_context:doc(Context))).
 
+-spec can_update_port_request(cb_context:context(), kz_term:ne_binary()) -> boolean().
 can_update_port_request(_Context, ?PORT_UNCONFIRMED) ->
     'true';
 can_update_port_request(_Context, ?PORT_REJECTED) ->
@@ -933,9 +946,8 @@ successful_validation(Context, _Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                                      cb_context:context().
--spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                       cb_context:context().
 check_number_portability(PortId, Number, Context) ->
     E164 = knm_converters:normalize(Number),
@@ -956,6 +968,8 @@ check_number_portability(PortId, Number, Context) ->
             number_validation_error(Context, Number, Message)
     end.
 
+-spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+                                      cb_context:context().
 check_number_portability(PortId, Number, Context, E164, PortReq) ->
     case {kz_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
          ,kz_doc:id(PortReq) =:= PortId
@@ -1076,12 +1090,14 @@ maybe_move_state(Context, PortState) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec generate_loa(cb_context:context()) ->
-                          cb_context:context().
--spec generate_loa(cb_context:context(), crossbar_status()) ->
                           cb_context:context().
 generate_loa(Context) ->
     generate_loa(Context, cb_context:resp_status(Context)).
+
+-spec generate_loa(cb_context:context(), crossbar_status()) ->
+                          cb_context:context().
 generate_loa(Context, 'success') ->
     generate_loa_from_port(Context, cb_context:doc(Context));
 generate_loa(Context, _RespStatus) ->

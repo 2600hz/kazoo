@@ -472,9 +472,8 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update_doc(kz_term:text(), kz_json:json_term(), menu() | kz_term:ne_binary(),  kapps_call:call() | kz_term:ne_binary()) ->
-                        'ok' | {'error', atom()}.
--spec update_doc(kz_term:proplist(), kz_term:ne_binary(), kapps_call:call() | kz_term:ne_binary()) ->
                         'ok' | {'error', atom()}.
 update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
@@ -491,6 +490,8 @@ update_doc(Key, Value, Id, <<_/binary>> = Db) ->
 update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, kapps_call:account_db(Call)).
 
+-spec update_doc(kz_term:proplist(), kz_term:ne_binary(), kapps_call:call() | kz_term:ne_binary()) ->
+                        'ok' | {'error', atom()}.
 update_doc(Updates, Id, <<_/binary>> = Db) ->
     case kz_datamgr:open_doc(Db, Id) of
         {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);

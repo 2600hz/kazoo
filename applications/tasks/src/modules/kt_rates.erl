@@ -390,11 +390,10 @@ maybe_default(0, Default) -> Default;
 maybe_default(Value, _Default) -> Value.
 
 -spec maybe_generate_name(kzd_rate:doc()) -> kz_term:ne_binary().
--spec maybe_generate_name(kzd_rate:doc(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
--spec generate_name(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj) ->
     maybe_generate_name(RateJObj, kzd_rate:name(RateJObj)).
 
+-spec maybe_generate_name(kzd_rate:doc(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj, 'undefined') ->
     generate_name(kzd_rate:prefix(RateJObj)
                  ,kzd_rate:iso_country_code(RateJObj)
@@ -402,6 +401,7 @@ maybe_generate_name(RateJObj, 'undefined') ->
                  );
 maybe_generate_name(_RateJObj, Name) -> Name.
 
+-spec generate_name(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
 generate_name(Prefix, 'undefined', []) when is_binary(Prefix) ->
     Prefix;
 generate_name(Prefix, ISO, []) ->
@@ -414,10 +414,10 @@ generate_name(Prefix, ISO, Directions) ->
     <<Direction/binary, "_", ISO/binary, "_", Prefix/binary>>.
 
 -spec maybe_generate_weight(kzd_rate:doc()) -> integer().
--spec maybe_generate_weight(kzd_rate:doc(), kz_term:api_integer()) -> integer().
 maybe_generate_weight(RateJObj) ->
     maybe_generate_weight(RateJObj, kzd_rate:weight(RateJObj, 'undefined')).
 
+-spec maybe_generate_weight(kzd_rate:doc(), kz_term:api_integer()) -> integer().
 maybe_generate_weight(RateJObj, 'undefined') ->
     generate_weight(kzd_rate:prefix(RateJObj)
                    ,kzd_rate:rate_cost(RateJObj)

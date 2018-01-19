@@ -397,7 +397,6 @@ find_subscriptions(MatchSpec) ->
     end.
 
 -spec search_for_subscriptions(kz_term:ne_binary() | '_', kz_term:ne_binary()) -> subscriptions().
--spec search_for_subscriptions(kz_term:ne_binary() | '_', kz_term:ne_binary(), kz_term:ne_binary() | '_') -> subscriptions().
 search_for_subscriptions(Event, Realm) ->
     MatchSpec =
         #omnip_subscription{realm=kz_term:to_lower_binary(Realm)
@@ -406,6 +405,7 @@ search_for_subscriptions(Event, Realm) ->
                            },
     ets:match_object(table_id(), MatchSpec).
 
+-spec search_for_subscriptions(kz_term:ne_binary() | '_', kz_term:ne_binary(), kz_term:ne_binary() | '_') -> subscriptions().
 search_for_subscriptions(Event, Realm, '_') ->
     search_for_subscriptions(Event, Realm);
 search_for_subscriptions(Event, Realm, Username) ->

@@ -76,10 +76,10 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     load_restrictions(Context);
 validate(Context, ?HTTP_POST) ->

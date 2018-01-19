@@ -182,9 +182,10 @@ fetch_name(Account) ->
     end.
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(JObj) ->
     name(JObj, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(JObj, Default) ->
     kz_json:get_value(?NAME, JObj, Default).
 
@@ -216,10 +217,12 @@ fetch_realm(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec realm(doc()) -> kz_term:api_ne_binary().
--spec realm(doc(), Default) -> kz_term:ne_binary() | Default.
 realm(JObj) ->
     realm(JObj, 'undefined').
+
+-spec realm(doc(), Default) -> kz_term:ne_binary() | Default.
 realm(JObj, Default) ->
     kz_json:get_ne_value(?REALM, JObj, Default).
 
@@ -237,10 +240,12 @@ set_realm(JObj, Realm) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec language(doc()) -> kz_term:api_ne_binary().
--spec language(doc(), Default) -> kz_term:ne_binary() | Default.
 language(JObj) ->
     language(JObj, 'undefined').
+
+-spec language(doc(), Default) -> kz_term:ne_binary() | Default.
 language(JObj, Default) ->
     kz_json:get_ne_binary_value(?LANGUAGE, JObj, Default).
 
@@ -510,10 +515,12 @@ get_parent_account_id(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec tree(doc()) -> kz_term:ne_binaries().
--spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(JObj) ->
     tree(JObj, []).
+
+-spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(JObj, Default) ->
     kz_json:get_list_value(?TREE, JObj, Default).
 
@@ -643,10 +650,10 @@ set_allow_number_additions(JObj, IsAllowed) ->
     kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_term:is_true(IsAllowed), JObj).
 
 -spec trial_expiration(doc()) -> kz_term:api_integer().
--spec trial_expiration(doc(), Default) -> integer() | Default.
 trial_expiration(JObj) ->
     trial_expiration(JObj, 'undefined').
 
+-spec trial_expiration(doc(), Default) -> integer() | Default.
 trial_expiration(JObj, Default) ->
     kz_json:get_integer_value(?KEY_TRIAL_EXPIRATION, JObj, Default).
 
@@ -665,10 +672,12 @@ set_trial_expiration(JObj, Expiration) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec trial_time_left(doc()) -> integer().
--spec trial_time_left(doc(), kz_time:gregorian_seconds()) -> integer().
 trial_time_left(JObj) ->
     trial_time_left(JObj, kz_time:now_s()).
+
+-spec trial_time_left(doc(), kz_time:gregorian_seconds()) -> integer().
 trial_time_left(JObj, Now) ->
     case trial_expiration(JObj) of
         'undefined' -> 0;
@@ -680,10 +689,12 @@ trial_time_left(JObj, Now) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec trial_has_expired(doc()) -> boolean().
--spec trial_has_expired(doc(), kz_time:gregorian_seconds()) -> boolean().
 trial_has_expired(JObj) ->
     trial_has_expired(JObj, kz_time:now_s()).
+
+-spec trial_has_expired(doc(), kz_time:gregorian_seconds()) -> boolean().
 trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined'
         andalso trial_time_left(JObj, Now) =< 0.
@@ -760,10 +771,12 @@ set_reseller_id(JObj, ResellerId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec dial_plan(doc()) -> kz_term:api_object().
--spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(JObj) ->
     dial_plan(JObj, 'undefined').
+
+-spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(JObj, Default) ->
     kz_json:get_json_value(?KEY_DIAL_PLAN, JObj, Default).
 
@@ -782,9 +795,9 @@ fax_settings(JObj) ->
     end.
 
 -spec preflow_id(doc()) -> kz_term:api_ne_binary().
--spec preflow_id(doc(), Default) -> kz_term:ne_binary() | Default.
 preflow_id(Doc) ->
     preflow_id(Doc, 'undefined').
 
+-spec preflow_id(doc(), Default) -> kz_term:ne_binary() | Default.
 preflow_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"preflow">>, <<"always">>], Doc, Default).

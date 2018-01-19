@@ -22,10 +22,11 @@
 -define(METER_PREFIX, <<?METER_PREFIX_LIST>>).
 
 -spec meter_name(kz_term:ne_binary()) -> kz_term:ne_binary().
--spec meter_name(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 meter_name(<<"*">>) -> <<"*">>;
 meter_name(HangupCause) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
+
+-spec meter_name(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 meter_name(HangupCause, 'undefined') ->
     meter_name(HangupCause);
 meter_name(HangupCause, AccountId) ->

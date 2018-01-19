@@ -79,18 +79,15 @@ new(<<_/binary>> = Broker, Zone) ->
 new(Broker, Zone) ->
     new(kz_term:to_binary(Broker), Zone).
 
+
 -spec add(kz_amqp_connection() | kz_term:text()) ->
                  kz_amqp_connection() |
                  {'error', any()}.
+add(Broker) -> add(Broker, 'local').
+
 -spec add(kz_amqp_connection() | kz_term:text(), kz_term:text()) ->
                  kz_amqp_connection() |
                  {'error', any()}.
--spec add(kz_amqp_connection() | kz_term:text(), kz_term:text(), list()) ->
-                 kz_amqp_connection() |
-                 {'error', any()}.
-
-add(Broker) -> add(Broker, 'local').
-
 add(#kz_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
     case kz_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
@@ -109,6 +106,9 @@ add(Broker, Zone) when not is_atom(Zone) ->
 add(Broker, Zone) ->
     add(Broker, Zone, []).
 
+-spec add(kz_amqp_connection() | kz_term:text(), kz_term:text(), list()) ->
+                 kz_amqp_connection() |
+                 {'error', any()}.
 add(Broker, Zone, Tags) ->
     case catch amqp_uri:parse(kz_term:to_list(Broker)) of
         {'EXIT', _R} ->
@@ -428,11 +428,11 @@ wait_for_notification(Timeout) ->
     end.
 
 -spec brokers_with_tag(kz_term:ne_binary()) -> kz_amqp_connections_list().
--spec brokers_with_tag(kz_term:ne_binary(), kz_term:api_boolean()) -> kz_amqp_connections_list().
 brokers_with_tag(Tag) ->
     %% by default we want all the brokers
     brokers_with_tag(Tag, 'undefined').
 
+-spec brokers_with_tag(kz_term:ne_binary(), kz_term:api_boolean()) -> kz_amqp_connections_list().
 brokers_with_tag(Tag, Available) ->
     MatchSpec = [{#kz_amqp_connections{available='$1'
                                       ,_='_'
@@ -457,13 +457,13 @@ broker_with_tag(Tag) ->
         [#kz_amqp_connections{broker=Broker}|_] -> Broker
     end.
 
--spec brokers_for_zone(atom()) -> kz_amqp_connections_list().
--spec brokers_for_zone(atom(), kz_term:api_boolean()) -> kz_amqp_connections_list().
 
+-spec brokers_for_zone(atom()) -> kz_amqp_connections_list().
 brokers_for_zone(Zone) ->
     %% by default we want all the brokers
     brokers_for_zone(Zone, 'undefined').
 
+-spec brokers_for_zone(atom(), kz_term:api_boolean()) -> kz_amqp_connections_list().
 brokers_for_zone(Zone, Available) ->
     MatchSpec = [{#kz_amqp_connections{zone='$1'
                                       ,available='$2'

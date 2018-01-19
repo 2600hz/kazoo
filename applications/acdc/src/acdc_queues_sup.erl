@@ -64,10 +64,10 @@ is_queue_in_acct(Super, AcctId) ->
     end.
 
 -spec find_queue_supervisor(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_pid().
--spec find_queue_supervisor(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:pids()) -> kz_term:api_pid().
 find_queue_supervisor(AcctId, QueueId) ->
     find_queue_supervisor(AcctId, QueueId, workers()).
 
+-spec find_queue_supervisor(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:pids()) -> kz_term:api_pid().
 find_queue_supervisor(_AcctId, _QueueId, []) -> 'undefined';
 find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
     case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of

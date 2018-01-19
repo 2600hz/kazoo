@@ -57,13 +57,14 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
+
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
--spec handle(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 handle(Data, Call) ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     Action = kz_json:get_ne_binary_value(<<"action">>, Data),
     handle(Data, Call, Action, CaptureGroup).
 
+-spec handle(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 handle(Data, Call, <<"list">>, ?NE_BINARY = _CaptureGroup) ->
     lager:info("user is choosing a caller id for this call from couchdb doc"),
     handle_list(Data, Call);

@@ -28,16 +28,16 @@
 
 -spec candidate_rates(kz_term:ne_binary()) ->
                              candidate_rates_return().
--spec candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                             candidate_rates_return().
--spec candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
-                             candidate_rates_return().
 candidate_rates(ToDID) ->
     candidate_rates(ToDID, 'undefined', 'undefined').
 
+-spec candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+                             candidate_rates_return().
 candidate_rates(ToDID, AccountId) ->
     candidate_rates(ToDID, AccountId, 'undefined').
 
+-spec candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+                             candidate_rates_return().
 candidate_rates(ToDID, AccountId, RatedeckId) ->
     E164 = knm_converters:normalize(ToDID),
     find_candidate_rates(E164, AccountId, RatedeckId).
@@ -67,9 +67,10 @@ find_trie_rates(E164, AccountId, RatedeckId) ->
     end.
 
 -spec maybe_update_trie(kz_term:ne_binary(), candidate_rates_return()) -> 'ok'.
--spec maybe_update_trie(kz_term:ne_binary(), candidate_rates_return(), atom()) -> 'ok'.
 maybe_update_trie(RatedeckId, Candidates) ->
     maybe_update_trie(RatedeckId, Candidates, hotornot_config:trie_module()).
+
+-spec maybe_update_trie(kz_term:ne_binary(), candidate_rates_return(), atom()) -> 'ok'.
 maybe_update_trie(RatedeckId, {'ok', [_|_]=Rates}, 'hon_trie_lru') ->
     hon_trie_lru:cache_rates(RatedeckId, Rates);
 maybe_update_trie(_RatedeckId, _Candidates, _Module) ->
@@ -77,11 +78,11 @@ maybe_update_trie(_RatedeckId, _Candidates, _Module) ->
 
 -spec fetch_candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
                                    candidate_rates_return().
--spec fetch_candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries()) ->
-                                   candidate_rates_return().
 fetch_candidate_rates(E164, AccountId, RatedeckId) ->
     fetch_candidate_rates(E164, AccountId, RatedeckId, build_keys(E164)).
 
+-spec fetch_candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries()) ->
+                                   candidate_rates_return().
 fetch_candidate_rates(_E164, _AccountId, _RatedeckId, []) ->
     {'error', 'did_too_short'};
 fetch_candidate_rates(E164, AccountId, RatedeckId, Keys) ->
@@ -110,16 +111,21 @@ fetch_rates_from_ratedeck(RatedeckDb, Keys) ->
                            ]
                           ).
 
--spec account_ratedeck(kz_term:api_ne_binary()) -> kz_term:ne_binary().
--spec account_ratedeck(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 
 -ifdef(TEST).
+
+-spec account_ratedeck(kz_term:api_ne_binary()) -> kz_term:ne_binary().
 account_ratedeck(_AccountId) -> ?KZ_RATES_DB.
+
+-spec account_ratedeck(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 account_ratedeck(_AccountId, _RatedeckId) -> ?KZ_RATES_DB.
 -else.
+
+-spec account_ratedeck(kz_term:api_ne_binary()) -> kz_term:ne_binary().
 account_ratedeck(AccountId) ->
     account_ratedeck(AccountId, 'undefined').
 
+-spec account_ratedeck(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 account_ratedeck('undefined', 'undefined') ->
     lager:info("no account supplied, using default ratedeck"),
     hotornot_config:default_ratedeck();

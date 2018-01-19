@@ -107,13 +107,13 @@ do_publish_db(DbName, Action) ->
 -endif.
 
 -spec publish_fields(kz_json:object()) -> kz_term:proplist().
--spec publish_fields(kz_json:object(), kz_json:object()) -> kz_json:object().
 publish_fields(Doc) ->
     [{Key, V} ||
         Key <- ?PUBLISH_FIELDS,
         kz_term:is_not_empty(V = kz_json:get_value(Key, Doc))
     ].
 
+-spec publish_fields(kz_json:object(), kz_json:object()) -> kz_json:object().
 publish_fields(Doc, JObj) ->
     kz_json:set_values(publish_fields(Doc), JObj).
 

@@ -50,10 +50,10 @@ cache_time_ms() ->
     kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_cache">>, ?MILLISECONDS_IN_HOUR).
 
 -spec default_provider() -> kz_term:ne_binary().
--spec default_provider(kapps_call:call()) -> kz_term:ne_binary().
 default_provider() ->
     kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>).
 
+-spec default_provider(kapps_call:call()) -> kz_term:ne_binary().
 default_provider(Call) ->
     Default = default_provider(),
     kapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, Default).

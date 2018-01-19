@@ -22,12 +22,13 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
+-spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     handle_outbound_cnam(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -190,12 +191,13 @@ check_outbound_response_tag(Number, NewCNAM, Children) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec handle_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
--spec handle_inbound_cnam(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 handle_inbound_cnam(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     handle_inbound_cnam(Number, IsDryRun).
 
+-spec handle_inbound_cnam(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 handle_inbound_cnam(Number, 'true') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of

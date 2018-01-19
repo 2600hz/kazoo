@@ -103,13 +103,16 @@ authorize(Context) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_TaskId) ->
     [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_TaskId, ?PATH_STOP) ->
     [?HTTP_PATCH];
 allowed_methods(_TaskId, ?PATH_INPUT) ->
@@ -125,11 +128,14 @@ allowed_methods(_TaskId, ?PATH_OUTPUT) ->
 %%    /tasks/task_id => [<<"task_id">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_TaskId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_TaskId, ?PATH_STOP) -> 'true';
 resource_exists(_TaskId, ?PATH_INPUT) -> 'true';
 resource_exists(_TaskId, ?PATH_OUTPUT) -> 'true'.
@@ -142,11 +148,12 @@ resource_exists(_TaskId, ?PATH_OUTPUT) -> 'true'.
 %% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
+
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
--spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context) ->
     cta(Context, cb_context:req_verb(Context)).
 
+-spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context, _TaskId) ->
     cta(Context, cb_context:req_verb(Context)).
 
@@ -165,16 +172,19 @@ cta(Context, _) ->
 %% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
+
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context) ->
     ctp(Context).
+
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _TaskId) ->
     ctp(Context).
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _TaskId, _CSV) ->
     cb_context:add_content_types_provided(Context, [{'to_csv', ?CSV_CONTENT_TYPES}]).
 
@@ -232,15 +242,16 @@ download_filename(_Context, Name) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_tasks(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, PathToken) ->
     validate_tasks(Context, PathToken, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, TaskId, ?PATH_STOP) ->
     validate_tasks(Context, TaskId, cb_context:req_verb(Context));
 validate(Context, TaskId, CSV) ->
@@ -357,9 +368,8 @@ task_account_id(Context) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec patch(cb_context:context(), path_token()) -> cb_context:context().
--spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, TaskId) ->
     Req = [{<<"Task-ID">>, TaskId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -379,6 +389,7 @@ patch(Context, TaskId) ->
             crossbar_util:response(Task, Context)
     end.
 
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, TaskId, ?PATH_STOP) ->
     Req = [{<<"Task-ID">>, TaskId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -439,13 +450,13 @@ set_db(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
+
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
--spec read(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
--spec read(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:api_binary()) -> cb_context:context().
 read(TaskId, Context) ->
     AccountId = cb_context:account_id(Context),
     read(TaskId, set_db(Context), AccountId).
 
+-spec read(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 read(TaskId, Context, 'undefined') ->
     AuthAccountId = cb_context:auth_account_id(Context),
     read(TaskId, Context, AuthAccountId);
@@ -465,6 +476,7 @@ accept_value(Header, 'undefined') -> Header;
 accept_value(_Header, <<"csv">>) -> <<"text/csv">>;
 accept_value(_Header, Tunneled) -> Tunneled.
 
+-spec read(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:api_binary()) -> cb_context:context().
 read(TaskId, Context, AccountId, Accept) ->
     lager:debug("accept value: ~p", [Accept]),
     read_doc_or_attachment(TaskId, Context, AccountId, cb_modules_util:parse_media_type(Accept)).

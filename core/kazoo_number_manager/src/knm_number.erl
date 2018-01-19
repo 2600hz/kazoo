@@ -121,11 +121,12 @@ is_number(_) -> 'false'.
 %% Note: get/1,2 should not throw, instead returns: {ok,_} | {error,_} | ...
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get(kz_term:ne_binary()) -> knm_number_return().
--spec get(kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
 get(Num) ->
     get(Num, knm_number_options:default()).
 
+-spec get(kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
 get(Num, Options) ->
     case knm_numbers:get([Num], Options) of
         #{ok := [Number]} -> {ok, Number};
@@ -293,11 +294,12 @@ ensure_number_is_not_porting(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec move(kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
--spec move(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
 move(Num, MoveTo) ->
     move(Num, MoveTo, knm_number_options:default()).
 
+-spec move(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
 move(Num, MoveTo, Options) ->
     ?TRY3(move, Num, MoveTo, Options).
 
@@ -308,12 +310,13 @@ move(Num, MoveTo, Options) ->
 %% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update(kz_term:ne_binary(), knm_phone_number:set_functions()) -> knm_number_return().
--spec update(kz_term:ne_binary(), knm_phone_number:set_functions(), knm_number_options:options()) ->
-                    knm_number_return().
 update(Num, Routines) ->
     update(Num, Routines, knm_number_options:default()).
 
+-spec update(kz_term:ne_binary(), knm_phone_number:set_functions(), knm_number_options:options()) ->
+                    knm_number_return().
 update(Num, Routines, Options) ->
     ?TRY3(update, Num, Routines, Options).
 
@@ -332,11 +335,12 @@ reconcile(DID, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec release(kz_term:ne_binary()) -> knm_number_return().
--spec release(kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
 release(Num) ->
     release(Num, knm_number_options:default()).
 
+-spec release(kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
 release(Num, Options) ->
     ?TRY2(release, Num, Options).
 
@@ -356,11 +360,12 @@ delete(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary()) -> knm_number_return().
--spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), knm_number_options:options()) -> knm_number_return().
 assign_to_app(Num, App) ->
     assign_to_app(Num, App, knm_number_options:default()).
 
+-spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), knm_number_options:options()) -> knm_number_return().
 assign_to_app(Num, App, Options) ->
     ?TRY3(assign_to_app, Num, App, Options).
 
@@ -563,9 +568,10 @@ force_local_outbound() ->
     knm_config:should_force_local_outbound().
 
 -spec phone_number(knm_number()) -> knm_phone_number:knm_phone_number().
+phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
+
 -spec set_phone_number(knm_number(), knm_phone_number:knm_phone_number()) ->
                               knm_number().
-phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
 set_phone_number(Number, PhoneNumber) ->
     Number#knm_number{knm_phone_number=PhoneNumber}.
 
@@ -584,10 +590,10 @@ add_transaction(#knm_number{transactions=Transactions}=Number, Transaction) ->
     Number#knm_number{transactions=[Transaction|Transactions]}.
 
 -spec charges(knm_number(), kz_term:ne_binary()) -> non_neg_integer().
--spec set_charges(knm_number(), kz_term:ne_binary(), non_neg_integer()) -> knm_number().
 charges(#knm_number{charges=Charges}, Key) ->
     props:get_value(Key, Charges, 0).
 
+-spec set_charges(knm_number(), kz_term:ne_binary(), non_neg_integer()) -> knm_number().
 set_charges(#knm_number{charges=Charges}=Number, Key, Amount) ->
     Number#knm_number{charges=props:set_value(Key, Amount, Charges)}.
 

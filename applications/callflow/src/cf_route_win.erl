@@ -284,10 +284,10 @@ update_ccvs(Call) ->
     kapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_start_metaflow(kapps_call:call()) -> kapps_call:call().
--spec maybe_start_metaflow(kapps_call:call(), kz_term:api_binary()) -> kapps_call:call().
 maybe_start_metaflow(Call) ->
     maybe_start_metaflow(Call, kapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
 
+-spec maybe_start_metaflow(kapps_call:call(), kz_term:api_binary()) -> kapps_call:call().
 maybe_start_metaflow(Call, 'undefined') ->
     maybe_start_endpoint_metaflow(Call, kapps_call:authorizing_id(Call)),
     Call;

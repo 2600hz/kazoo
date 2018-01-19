@@ -127,7 +127,6 @@ handle_doc_type_update(JObj, _Props) ->
                        ).
 
 -spec hooks_configured() -> 'ok'.
--spec hooks_configured(kz_term:ne_binary()) -> 'ok'.
 hooks_configured() ->
     MatchSpec = [{#webhook{_ = '_'}
                  ,[]
@@ -135,6 +134,7 @@ hooks_configured() ->
                  }],
     print_summary(ets:select(webhooks_util:table_id(), MatchSpec, 1)).
 
+-spec hooks_configured(kz_term:ne_binary()) -> 'ok'.
 hooks_configured(AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
                           ,_ = '_'
@@ -147,7 +147,6 @@ hooks_configured(AccountId) ->
 -define(FORMAT_STRING_SUMMARY, "| ~-45s | ~-5s | ~-20s | ~-10s | ~-32s |~n").
 
 -spec print_summary('$end_of_table' | {webhooks(), any()}) -> 'ok'.
--spec print_summary('$end_of_table' | {webhooks(), any()}, non_neg_integer()) -> 'ok'.
 print_summary('$end_of_table') ->
     io:format("no webhooks configured~n", []);
 print_summary(Match) ->
@@ -156,6 +155,7 @@ print_summary(Match) ->
              ),
     print_summary(Match, 0).
 
+-spec print_summary('$end_of_table' | {webhooks(), any()}, non_neg_integer()) -> 'ok'.
 print_summary('$end_of_table', Count) ->
     io:format("found ~p webhooks~n", [Count]);
 print_summary({[#webhook{uri=URI

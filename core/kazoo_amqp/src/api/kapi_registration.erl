@@ -290,10 +290,12 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_success(kz_term:api_terms()) -> 'ok'.
--spec publish_success(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_success(JObj) ->
     publish_success(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_success(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_success(Success, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun success/1),
     amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
@@ -302,45 +304,52 @@ publish_success(Success, ContentType) ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_flush(kz_term:api_terms()) -> 'ok'.
--spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_FLUSH_VALUES, fun flush/1),
     amqp_util:registrar_publish(get_flush_routing(API), Payload, ContentType).
 
 -spec publish_query_req(kz_term:api_terms()) -> 'ok'.
--spec publish_query_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun query_req/1),
     amqp_util:registrar_publish(get_query_routing(Req), Payload, ContentType).
 
 -spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(Queue, JObj) ->
     publish_query_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_RESP_VALUES, fun query_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_query_err(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
--spec publish_query_err(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_err(Queue, JObj) ->
     publish_query_err(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query_err(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_err(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_ERR_VALUES, fun query_err/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_sync() -> 'ok'.
--spec publish_sync(kz_term:api_terms()) -> 'ok'.
--spec publish_sync(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync() ->
     kz_amqp_worker:cast(kz_api:default_headers(<<"KAPI">>, <<"1.0">>), fun publish_sync/1).
+
+-spec publish_sync(kz_term:api_terms()) -> 'ok'.
 publish_sync(JObj) ->
     publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_sync(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_SYNC_VALUES, fun sync/1),
     amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).

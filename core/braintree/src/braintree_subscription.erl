@@ -51,16 +51,16 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url() -> string().
--spec url(kz_term:ne_binary()) -> string().
--spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 
+-spec url() -> string().
 url() ->
     "/subscriptions/".
 
+-spec url(kz_term:ne_binary()) -> string().
 url(SubscriptionId) ->
     lists:append(["/subscriptions/", kz_term:to_list(SubscriptionId)]).
 
+-spec url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 url(SubscriptionId, Options) ->
     lists:append(["/subscriptions/"
                  ,kz_term:to_list(SubscriptionId)
@@ -74,12 +74,12 @@ url(SubscriptionId, Options) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
--spec new(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 
+-spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 new(PlanId, PaymentToken) ->
     new(new_subscription_id(), PlanId, PaymentToken).
 
+-spec new(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> subscription().
 new(SubscriptionId, PlanId, PaymentToken) ->
     #bt_subscription{id=SubscriptionId
                     ,payment_token=PaymentToken
@@ -458,12 +458,12 @@ is_expired(#bt_subscription{}) -> 'false'.
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> subscription().
--spec xml_to_record(bt_xml(), kz_term:deeplist()) -> subscription().
 
+-spec xml_to_record(bt_xml()) -> subscription().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> subscription().
 xml_to_record(Xml, Base) ->
     AddOnsPath = lists:flatten([Base, "/add-ons/add-on"]),
     DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
@@ -506,12 +506,12 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(subscription()) -> kz_term:proplist() | bt_xml().
--spec record_to_xml(subscription(), boolean()) -> kz_term:proplist() | bt_xml().
 
+-spec record_to_xml(subscription()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Subscription) ->
     record_to_xml(Subscription, 'false').
 
+-spec record_to_xml(subscription(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
             ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}

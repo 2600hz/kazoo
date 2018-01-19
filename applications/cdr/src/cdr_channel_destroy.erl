@@ -157,10 +157,10 @@ is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Is-Conference">>, {fun kz_json:is_true/3, 'false'}).
 
 -spec maybe_leak_ccv(kz_json:object(), kz_json:path()) -> kz_json:object().
--spec maybe_leak_ccv(kz_json:object(), kz_json:path(), {fun(), any()}) -> kz_json:object().
 maybe_leak_ccv(JObj, Key) ->
     maybe_leak_ccv(JObj, Key, {fun kz_json:get_value/3, 'undefined'}).
 
+-spec maybe_leak_ccv(kz_json:object(), kz_json:path(), {fun(), any()}) -> kz_json:object().
 maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
     case GetFun(?CCV(Key), JObj, Default) of
         'undefined' -> JObj;

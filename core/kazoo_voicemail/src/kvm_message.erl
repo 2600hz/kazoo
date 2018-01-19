@@ -158,11 +158,12 @@ do_fetch(AccountId, MessageId, BoxId, RetenTimestamp) ->
 %% @doc fetch message metadata
 %% @end
 %%--------------------------------------------------------------------
+
 -spec message(kz_term:ne_binary(), kz_term:ne_binary()) -> db_ret().
--spec message(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> db_ret().
 message(AccountId, MessageId) ->
     message(AccountId, MessageId, 'undefined').
 
+-spec message(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> db_ret().
 message(AccountId, MessageId, BoxId) ->
     case fetch(AccountId, MessageId, BoxId) of
         {'ok', JObj} ->
@@ -227,11 +228,12 @@ change_folder(Folder, Message, AccountId, BoxId, Funs0) ->
 %% @doc Update a single message doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update(kz_term:ne_binary(), kz_term:api_ne_binary(), message()) -> db_ret().
--spec update(kz_term:ne_binary(), kz_term:api_ne_binary(), message(), update_funs()) -> db_ret().
 update(AccountId, BoxId, Message) ->
     update(AccountId, BoxId, Message, []).
 
+-spec update(kz_term:ne_binary(), kz_term:api_ne_binary(), message(), update_funs()) -> db_ret().
 update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     case do_fetch(AccountId, MsgId, BoxId, RetenTimestamp) of

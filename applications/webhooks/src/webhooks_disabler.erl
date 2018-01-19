@@ -81,7 +81,6 @@ check_failed_attempts() ->
 -type failures() :: [failure()].
 
 -spec find_failures() -> failures().
--spec find_failures([tuple()]) -> failures().
 find_failures() ->
     Keys = kz_cache:fetch_keys_local(?CACHE_NAME),
     find_failures(Keys).
@@ -98,9 +97,10 @@ flush_hooks(HookJObjs) ->
      ).
 
 -spec flush_failures(kz_term:ne_binary()) -> non_neg_integer().
--spec flush_failures(kz_term:ne_binary(), kz_term:api_binary()) -> non_neg_integer().
 flush_failures(AccountId) ->
     flush_failures(AccountId, 'undefined').
+
+-spec flush_failures(kz_term:ne_binary(), kz_term:api_binary()) -> non_neg_integer().
 flush_failures(AccountId, HookId) ->
     FilterFun = fun(K, _V) ->
                         maybe_remove_failure(K, AccountId, HookId)
@@ -123,6 +123,7 @@ maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, _HookId, _Timestamp)
 maybe_remove_failure(_K, _AccountId, _HookId) ->
     'false'.
 
+-spec find_failures([tuple()]) -> failures().
 find_failures(Keys) ->
     dict:to_list(lists:foldl(fun process_failed_key/2, dict:new(), Keys)).
 

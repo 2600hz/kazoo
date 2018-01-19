@@ -78,7 +78,6 @@ handle_reg_success(JObj, _Props) ->
     maybe_process_reg_success(UserAgentProperties, JObj).
 
 -spec maybe_process_reg_success(kz_term:api_object(), kz_json:object()) -> 'ok'.
--spec maybe_process_reg_success(kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->
     Contact = kz_json:get_value(<<"Contact">>, JObj),
@@ -90,6 +89,7 @@ maybe_process_reg_success(UA, JObj) ->
     Token = props:get_value(TokenKey, Params),
     maybe_process_reg_success(Token, kz_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA) , JObj, Params).
 
+-spec maybe_process_reg_success(kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_process_reg_success('undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_process_reg_success(Token, UA, JObj, Params) ->
     case kz_cache:fetch_local(?CACHE_NAME, Token) of
@@ -98,7 +98,6 @@ maybe_process_reg_success(Token, UA, JObj, Params) ->
     end.
 
 -spec maybe_update_push_token(kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
--spec maybe_update_push_token(kz_term:api_binary(), kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_update_push_token(UA, JObj, Params) ->
     AccountId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                                           ,<<"Account-ID">>
@@ -109,6 +108,7 @@ maybe_update_push_token(UA, JObj, Params) ->
 
     maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params).
 
+-spec maybe_update_push_token(kz_term:api_binary(), kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(_AccountId, 'undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->

@@ -475,14 +475,14 @@ arm_bleg(#state{digit_timeout=Timeout}=State) ->
                ,b_leg_armed='true'
                }.
 
--spec maybe_fast_rearm(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> binary().
--spec maybe_fast_rearm(kz_term:ne_binary(), kz_term:ne_binary(), binary(), boolean()) -> binary().
 
+-spec maybe_fast_rearm(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> binary().
 maybe_fast_rearm(DTMF, BindingDigit, Collected) ->
     maybe_fast_rearm(DTMF, BindingDigit, Collected
                     ,kapps_config:get_is_true(?CONFIG_CAT, <<"use_fast_rearm">>, 'false')
                     ).
 
+-spec maybe_fast_rearm(kz_term:ne_binary(), kz_term:ne_binary(), binary(), boolean()) -> binary().
 maybe_fast_rearm(DTMF, _BindingDigit, Collected, 'false') -> <<Collected/binary, DTMF/binary>>;
 maybe_fast_rearm(DoubleBindingDigit, DoubleBindingDigit, <<>>, 'true') -> DoubleBindingDigit;
 maybe_fast_rearm(DTMFisBindingDigit, DTMFisBindingDigit, _Collected, 'true') -> <<>>;
@@ -513,11 +513,11 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                }.
 
 -spec maybe_add_call_event_bindings(kz_term:api_ne_binary() | kapps_call:call()) -> 'ok'.
--spec maybe_add_call_event_bindings(kapps_call:call(), listen_on()) -> 'ok'.
 maybe_add_call_event_bindings('undefined') -> 'ok';
 maybe_add_call_event_bindings(<<_/binary>> = Leg) -> konami_event_listener:add_call_binding(Leg);
 maybe_add_call_event_bindings(Call) -> konami_event_listener:add_call_binding(Call).
 
+-spec maybe_add_call_event_bindings(kapps_call:call(), listen_on()) -> 'ok'.
 maybe_add_call_event_bindings(Call, 'a') ->
     konami_event_listener:add_konami_binding(kapps_call:call_id(Call)),
     maybe_add_call_event_bindings(Call);

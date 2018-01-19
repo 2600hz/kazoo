@@ -67,9 +67,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+
 -spec start_link(atom()) -> kz_types:startlink_ret().
--spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -81,11 +83,12 @@ start_link(Node, Options) ->
 -spec fetch(kz_term:ne_binary()) ->
                    {'ok', fetch_resp()} |
                    {'error', 'not_found'}.
+fetch(UUID) ->
+    fetch(UUID, 'json').
+
 -spec fetch(kz_term:ne_binary(), channel_format()) ->
                    {'ok', fetch_resp()} |
                    {'error', 'not_found'}.
-fetch(UUID) ->
-    fetch(UUID, 'json').
 fetch(UUID, Format) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
         [Channel] -> {'ok', format(Format, Channel)};
@@ -95,11 +98,12 @@ fetch(UUID, Format) ->
 -spec fetch_other_leg(kz_term:ne_binary()) ->
                              {'ok', fetch_resp()} |
                              {'error', 'not_found'}.
+fetch_other_leg(UUID) ->
+    fetch_other_leg(UUID, 'json').
+
 -spec fetch_other_leg(kz_term:ne_binary(), channel_format()) ->
                              {'ok', fetch_resp()} |
                              {'error', 'not_found'}.
-fetch_other_leg(UUID) ->
-    fetch_other_leg(UUID, 'json').
 fetch_other_leg(UUID, Format) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
         [#channel{other_leg=OtherLeg}] -> fetch(OtherLeg, Format);

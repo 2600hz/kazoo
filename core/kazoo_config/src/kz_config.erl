@@ -143,8 +143,8 @@ get_node_section_name() ->
 %% Set or unset enviroment variables
 %% @end
 %%--------------------------------------------------------------------
+
 -spec set(section(), atom(), term()) -> 'ok'.
--spec set({section(), kz_term:proplist()}, kz_term:proplist()) -> 'ok'.
 set(Section, Key, Value) ->
     Props = load(),
     case props:get_value(Section, Props) of
@@ -156,6 +156,7 @@ set(Section, Key, Value) ->
             set({Section, NewSection}, props:delete(Section, Props))
     end.
 
+-spec set({section(), kz_term:proplist()}, kz_term:proplist()) -> 'ok'.
 set(NewSection, Props) ->
     NewProps = props:insert_value(NewSection, Props),
     application:set_env(?APP, ?MODULE, NewProps).

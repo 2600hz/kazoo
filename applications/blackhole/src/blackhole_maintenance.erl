@@ -21,10 +21,12 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec start_module(kz_term:text()) -> 'ok'.
--spec start_module(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 start_module(ModuleBin) ->
     start_module(ModuleBin, 'true').
+
+-spec start_module(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 start_module(ModuleBin, Persist) ->
     Req = [{<<"Module">>, ModuleBin}
           ,{<<"Action">>, <<"start">>}
@@ -52,10 +54,12 @@ start_module(ModuleBin, Persist) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec stop_module(kz_term:text()) -> 'ok'.
--spec stop_module(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 stop_module(ModuleBin) ->
     stop_module(ModuleBin, 'true').
+
+-spec stop_module(kz_term:text(), kz_term:text() | boolean()) -> 'ok'.
 stop_module(ModuleBin, Persist) ->
     Req = [{<<"Module">>, ModuleBin}
           ,{<<"Action">>, <<"stop">>}

@@ -52,13 +52,13 @@ status() ->
     'ok'.
 
 -spec new(kz_json:object()) -> kz_types:sup_startchild_ret().
--spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret().
 new(JObj) ->
     case find_agent_supervisor(kz_doc:account_id(JObj), kz_doc:id(JObj)) of
         'undefined' -> supervisor:start_child(?SERVER, [JObj]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
+-spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret().
 new(AcctId, AgentId) ->
     case find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
@@ -106,9 +106,9 @@ agents_running() ->
     [{W, catch acdc_agent_listener:config(acdc_agent_sup:listener(W))} || W <- workers()].
 
 -spec find_agent_supervisor(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_pid().
--spec find_agent_supervisor(kz_term:api_binary(), kz_term:api_binary(), kz_term:pids()) -> kz_term:api_pid().
 find_agent_supervisor(AcctId, AgentId) -> find_agent_supervisor(AcctId, AgentId, workers()).
 
+-spec find_agent_supervisor(kz_term:api_binary(), kz_term:api_binary(), kz_term:pids()) -> kz_term:api_pid().
 find_agent_supervisor(_AcctId, _AgentId, []) ->
     lager:debug("ran out of supers"),
     'undefined';

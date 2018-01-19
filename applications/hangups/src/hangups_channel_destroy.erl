@@ -159,10 +159,12 @@ find_direction(JObj) ->
     kz_call_event:call_direction(JObj, <<"unknown">>).
 
 %% @public
+
 -spec start_meters(kz_term:ne_binary()) -> 'ok'.
--spec start_meters(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 start_meters(HangupCause) ->
     folsom_metrics:new_meter(hangups_util:meter_name(HangupCause)).
+
+-spec start_meters(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 start_meters(AccountId, HangupCause) ->
     folsom_metrics:new_meter(hangups_util:meter_name(HangupCause, AccountId)).
 
@@ -189,10 +191,11 @@ add_to_meters(AccountId, HangupCause) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec notify_meters(kz_term:ne_binary()) -> any().
--spec notify_meters(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 notify_meters(HangupCause) ->
     folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause)).
 
+-spec notify_meters(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 notify_meters(AccountId, HangupCause) ->
     folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause, AccountId)).

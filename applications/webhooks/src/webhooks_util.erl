@@ -250,10 +250,10 @@ retry_hook(#webhook{retries = Retries} = Hook, EventId, JObj) ->
     do_fire(Hook#webhook{retries = Retries - 1}, EventId, JObj).
 
 -spec successful_hook(webhook(), kz_term:proplist(), kz_http:ret()) -> 'ok'.
--spec successful_hook(webhook(), kz_term:proplist(), kz_http:ret(), boolean()) -> 'ok'.
 successful_hook(Hook, Debug, Resp) ->
     successful_hook(Hook, Debug, Resp, ?SHOULD_LOG_SUCCESS).
 
+-spec successful_hook(webhook(), kz_term:proplist(), kz_http:ret(), boolean()) -> 'ok'.
 successful_hook(_Hook, _Debug, _Resp, 'false') -> 'ok';
 successful_hook(#webhook{account_id = AccountId}, Debug, Resp, 'true') ->
     DebugJObj = debug_resp(Resp, Debug, 'undefined'),
@@ -372,7 +372,6 @@ fix_error_value(E) ->
     kz_term:to_binary(E).
 
 -spec hook_id(kz_json:object()) -> kz_term:ne_binary().
--spec hook_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 hook_id(JObj) ->
     hook_id(kz_json:get_first_defined([<<"pvt_account_id">>
                                       ,<<"Account-ID">>
@@ -382,6 +381,7 @@ hook_id(JObj) ->
            ,kz_json:get_first_defined([<<"_id">>, <<"ID">>], JObj)
            ).
 
+-spec hook_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 hook_id(AccountId, Id) ->
     <<AccountId/binary, ".", Id/binary>>.
 
@@ -576,8 +576,6 @@ jobj_to_rec(Hook) ->
             }.
 
 -spec init_webhooks() -> 'ok'.
--spec init_webhooks(kz_json:objects()) -> 'ok'.
--spec init_webhooks(kz_json:objects(), kz_time:year(), kz_time:month()) -> 'ok'.
 init_webhooks() ->
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
@@ -589,10 +587,12 @@ init_webhooks() ->
         {'error', _E} -> lager:debug("failed to load accounts_listing: ~p", [_E])
     end.
 
+-spec init_webhooks(kz_json:objects()) -> 'ok'.
 init_webhooks(WebHooks) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:now_s()),
     init_webhooks(WebHooks, Year, Month).
 
+-spec init_webhooks(kz_json:objects(), kz_time:year(), kz_time:month()) -> 'ok'.
 init_webhooks(WebHooks, Year, Month) ->
     _ = [init_webhook(WebHook, Year, Month) || WebHook <- WebHooks],
     'ok'.
