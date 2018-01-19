@@ -125,7 +125,7 @@ skip_greeting(Box, Default) ->
 pin(Box) ->
     pin(Box, 'undefined').
 pin(Box, Default) ->
-    kz_json:get_binary_value(?KEY_PIN, Box, Default).
+    kz_json:get_ne_binary_value(?KEY_PIN, Box, Default).
 
 -spec mailbox_number(doc()) -> api_binary().
 -spec mailbox_number(doc(), Default) -> ne_binary() | Default.
