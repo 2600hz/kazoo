@@ -21,6 +21,7 @@ dependencies:
   pre:
       - bash ./scripts/circleci-build-erlang.sh:
           timeout: 1800
+      - which ag >/dev/null 2>&1 || sudo apt-get update; sudo apt-get install silversearcher-ag
       - pip install --upgrade pip
       - pip install PyYAML mkdocs pyembed-markdown jsonschema
 
