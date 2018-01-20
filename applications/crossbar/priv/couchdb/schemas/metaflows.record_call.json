@@ -56,7 +56,6 @@
             "type": "boolean"
         },
         "record_sample_rate": {
-            "default": 8000,
             "description": "Sampling rate for the recording",
             "type": "integer"
         },
