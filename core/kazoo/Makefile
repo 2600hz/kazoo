@@ -7,7 +7,7 @@ GEN_FILE = mime.types
 GEN_ERL_SRC = src/kz_mime.erl.src
 GEN_ERL = src/kz_mime.erl
 
-SOURCES = src/*.erl $(GEN_ERL)
+SOURCES = $(wildcard src/*.erl) $(GEN_ERL)
 
 all: compile
 
