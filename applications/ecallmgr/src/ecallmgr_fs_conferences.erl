@@ -524,6 +524,7 @@ participant_to_props(#participant{uuid=UUID
                                  ,conference_channel_vars=ConfVars
                                  ,custom_application_vars=CAVs
                                  }) ->
+    [_Name, Hostname] = binary:split(kz_term:to_binary(Node), <<"@">>),
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
       ,{<<"Caller-ID-Name">>, CallerIDName}
@@ -535,7 +536,7 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Join-Time">>, JoinTime}
       ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
-      ,{<<"Switch-Hostname">>, Node}
+      ,{<<"Switch-Hostname">>, Hostname}
       ]).
 
 -spec conference_to_props(conference()) -> kz_term:proplist().
