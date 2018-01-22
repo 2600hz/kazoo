@@ -250,12 +250,18 @@ handle_info({'http', {ReqID, {'error', Error}}}, #state{kz_http_req_id=ReqID
                                                        ,timer_ref=TRef
                                                        }=State) ->
     _ = stop_timer(TRef),
-    lager:info("recv error ~p : collected: ~p", [Error, Contents]),
+    log_error(Error, Contents),
     {'stop', 'normal', State};
 
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, 'hibernate'}.
+
+-spec log_error(any(), binary()) -> 'ok'.
+log_error({'failed_connect',[{'to_address',{_Server, _Port}},{'inet',['inet'],'econnrefused'}]}, _) ->
+    lager:error("server ~s:~p refusing connections", [_Server, _Port]);
+log_error(_Error, _Contents) ->
+    lager:info("recv error ~p : collected: ~p", [_Error, _Contents]).
 
 %%--------------------------------------------------------------------
 %% @private
