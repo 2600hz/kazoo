@@ -4,10 +4,10 @@ PROJECT = sup
 ESCRIPT = sup
 CLEAN_MOAR = clean-escript
 
-all: $(ESCRIPT)
+all: compile $(ESCRIPT)
 
 $(ESCRIPT):
-	@$(REBAR) compile escriptize
+	@$(REBAR) escriptize
 
 clean-escript:
 	@rm -f $(ESCRIPT)

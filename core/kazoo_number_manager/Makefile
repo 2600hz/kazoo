@@ -22,7 +22,7 @@ ITU_URL = https://raw.githubusercontent.com/mledoze/countries/c212082894e48e8be1
 # https://countrycode.org/
 # https://en.wikipedia.org/wiki/List_of_country_calling_codes
 
-SOURCES = src/*.erl src/*/*.erl $(ITU)
+SOURCES = $(wildcard src/*.erl) $(wildcard src/*/*.erl) $(ITU)
 
 CLEAN_MOAR = clean-generated
 
