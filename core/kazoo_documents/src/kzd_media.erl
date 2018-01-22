@@ -104,7 +104,6 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec prompt_id(doc()) -> kz_term:api_binary().
--spec prompt_id(doc(), Default) -> binary() | Default.
 prompt_id(Doc) ->
     prompt_id(Doc, 'undefined').
 
