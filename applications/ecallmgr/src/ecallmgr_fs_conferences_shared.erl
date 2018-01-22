@@ -411,7 +411,6 @@ handle_bowout(LoopbackALeg, LoopbackBLeg, Timeout, ChannelProps, Start, Props) -
             {'ok', AcquiringUUID, <<"dial resulted in call id ", AcquiringUUID/binary>>, props:insert_values(Props, ChannelProps)};
         {_UUID, _AcquiringUUID} ->
             lager:debug("failed to update after bowout, r: ~s a: ~s", [_UUID, _AcquiringUUID]),
-            lager:debug("~p", [Props]),
             wait_for_bowout(LoopbackALeg, LoopbackBLeg, kz_time:decr_timeout(Timeout, Start), ChannelProps)
     end.
 
