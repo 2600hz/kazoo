@@ -32,7 +32,7 @@ test:
     - ./scripts/code_checks.bash $($CHANGED)
     - make fmt
     - if [[ "$CIRCLE_BRANCH" = 'master' ]]; then make bump-copyright; fi
-    - . ~/.kerl/$OTP_VERSION/activate && JOBS="2" make
+    - . ~/.kerl/$OTP_VERSION/activate && JOBS="1" make
     - . ~/.kerl/$OTP_VERSION/activate && make code_checks
     - . ~/.kerl/$OTP_VERSION/activate && make app_applications
     - ./scripts/validate-js.sh $($CHANGED)
