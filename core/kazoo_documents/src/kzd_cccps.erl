@@ -20,9 +20,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec active(doc()) -> boolean().
--spec active(doc(), Default) -> boolean() | Default.
 active(Doc) ->
     active(Doc, false).
+
+-spec active(doc(), Default) -> boolean() | Default.
 active(Doc, Default) ->
     kz_json:get_boolean_value([<<"active">>], Doc, Default).
 
@@ -31,9 +32,10 @@ set_active(Doc, Active) ->
     kz_json:set_value([<<"active">>], Active, Doc).
 
 -spec cid(doc()) -> kz_term:api_binary().
--spec cid(doc(), Default) -> binary() | Default.
 cid(Doc) ->
     cid(Doc, 'undefined').
+
+-spec cid(doc(), Default) -> binary() | Default.
 cid(Doc, Default) ->
     kz_json:get_binary_value([<<"cid">>], Doc, Default).
 
@@ -42,9 +44,10 @@ set_cid(Doc, Cid) ->
     kz_json:set_value([<<"cid">>], Cid, Doc).
 
 -spec comment(doc()) -> kz_term:api_binary().
--spec comment(doc(), Default) -> binary() | Default.
 comment(Doc) ->
     comment(Doc, 'undefined').
+
+-spec comment(doc(), Default) -> binary() | Default.
 comment(Doc, Default) ->
     kz_json:get_binary_value([<<"comment">>], Doc, Default).
 
@@ -53,9 +56,10 @@ set_comment(Doc, Comment) ->
     kz_json:set_value([<<"comment">>], Comment, Doc).
 
 -spec max_concurent_calls_per_user(doc()) -> kz_term:api_integer().
--spec max_concurent_calls_per_user(doc(), Default) -> integer() | Default.
 max_concurent_calls_per_user(Doc) ->
     max_concurent_calls_per_user(Doc, 'undefined').
+
+-spec max_concurent_calls_per_user(doc(), Default) -> integer() | Default.
 max_concurent_calls_per_user(Doc, Default) ->
     kz_json:get_integer_value([<<"max_concurent_calls_per_user">>], Doc, Default).
 
@@ -64,9 +68,10 @@ set_max_concurent_calls_per_user(Doc, MaxConcurentCallsPerUser) ->
     kz_json:set_value([<<"max_concurent_calls_per_user">>], MaxConcurentCallsPerUser, Doc).
 
 -spec pin(doc()) -> kz_term:api_binary().
--spec pin(doc(), Default) -> binary() | Default.
 pin(Doc) ->
     pin(Doc, 'undefined').
+
+-spec pin(doc(), Default) -> binary() | Default.
 pin(Doc, Default) ->
     kz_json:get_binary_value([<<"pin">>], Doc, Default).
 
@@ -75,9 +80,10 @@ set_pin(Doc, Pin) ->
     kz_json:set_value([<<"pin">>], Pin, Doc).
 
 -spec retain_cid(doc()) -> kz_term:api_boolean().
--spec retain_cid(doc(), Default) -> boolean() | Default.
 retain_cid(Doc) ->
     retain_cid(Doc, 'undefined').
+
+-spec retain_cid(doc(), Default) -> boolean() | Default.
 retain_cid(Doc, Default) ->
     kz_json:get_boolean_value([<<"retain_cid">>], Doc, Default).
 
@@ -86,9 +92,10 @@ set_retain_cid(Doc, RetainCid) ->
     kz_json:set_value([<<"retain_cid">>], RetainCid, Doc).
 
 -spec user_id(doc()) -> kz_term:api_ne_binary().
--spec user_id(doc(), Default) -> kz_term:ne_binary() | Default.
 user_id(Doc) ->
     user_id(Doc, 'undefined').
+
+-spec user_id(doc(), Default) -> kz_term:ne_binary() | Default.
 user_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"user_id">>], Doc, Default).
 

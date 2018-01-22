@@ -19,9 +19,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec name(doc()) -> kz_term:api_binary().
--spec name(doc(), Default) -> binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> binary() | Default.
 name(Doc, Default) ->
     kz_json:get_binary_value([<<"name">>], Doc, Default).
 
@@ -30,9 +31,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec resource(doc()) -> kz_term:api_binary().
--spec resource(doc(), Default) -> binary() | Default.
 resource(Doc) ->
     resource(Doc, 'undefined').
+
+-spec resource(doc(), Default) -> binary() | Default.
 resource(Doc, Default) ->
     kz_json:get_binary_value([<<"resource">>], Doc, Default).
 
@@ -41,9 +43,10 @@ set_resource(Doc, Resource) ->
     kz_json:set_value([<<"resource">>], Resource, Doc).
 
 -spec selector(doc()) -> kz_term:api_binary().
--spec selector(doc(), Default) -> binary() | Default.
 selector(Doc) ->
     selector(Doc, 'undefined').
+
+-spec selector(doc(), Default) -> binary() | Default.
 selector(Doc, Default) ->
     kz_json:get_binary_value([<<"selector">>], Doc, Default).
 
@@ -52,9 +55,10 @@ set_selector(Doc, Selector) ->
     kz_json:set_value([<<"selector">>], Selector, Doc).
 
 -spec start_time(doc()) -> kz_term:api_integer().
--spec start_time(doc(), Default) -> integer() | Default.
 start_time(Doc) ->
     start_time(Doc, 'undefined').
+
+-spec start_time(doc(), Default) -> integer() | Default.
 start_time(Doc, Default) ->
     kz_json:get_integer_value([<<"start_time">>], Doc, Default).
 
@@ -63,9 +67,10 @@ set_start_time(Doc, StartTime) ->
     kz_json:set_value([<<"start_time">>], StartTime, Doc).
 
 -spec stop_time(doc()) -> kz_term:api_integer().
--spec stop_time(doc(), Default) -> integer() | Default.
 stop_time(Doc) ->
     stop_time(Doc, 'undefined').
+
+-spec stop_time(doc(), Default) -> integer() | Default.
 stop_time(Doc, Default) ->
     kz_json:get_integer_value([<<"stop_time">>], Doc, Default).
 
@@ -74,9 +79,10 @@ set_stop_time(Doc, StopTime) ->
     kz_json:set_value([<<"stop_time">>], StopTime, Doc).
 
 -spec value(doc()) -> kz_term:api_binary().
--spec value(doc(), Default) -> binary() | Default.
 value(Doc) ->
     value(Doc, 'undefined').
+
+-spec value(doc(), Default) -> binary() | Default.
 value(Doc, Default) ->
     kz_json:get_binary_value([<<"value">>], Doc, Default).
 

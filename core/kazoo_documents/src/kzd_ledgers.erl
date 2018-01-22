@@ -29,9 +29,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec account(doc()) -> kz_term:api_object().
--spec account(doc(), Default) -> kz_json:object() | Default.
 account(Doc) ->
     account(Doc, 'undefined').
+
+-spec account(doc(), Default) -> kz_json:object() | Default.
 account(Doc, Default) ->
     kz_json:get_json_value([<<"account">>], Doc, Default).
 
@@ -40,9 +41,10 @@ set_account(Doc, Account) ->
     kz_json:set_value([<<"account">>], Account, Doc).
 
 -spec account_id(doc()) -> kz_term:api_binary().
--spec account_id(doc(), Default) -> binary() | Default.
 account_id(Doc) ->
     account_id(Doc, 'undefined').
+
+-spec account_id(doc(), Default) -> binary() | Default.
 account_id(Doc, Default) ->
     kz_json:get_binary_value([<<"account">>, <<"id">>], Doc, Default).
 
@@ -51,9 +53,10 @@ set_account_id(Doc, AccountId) ->
     kz_json:set_value([<<"account">>, <<"id">>], AccountId, Doc).
 
 -spec account_name(doc()) -> kz_term:api_binary().
--spec account_name(doc(), Default) -> binary() | Default.
 account_name(Doc) ->
     account_name(Doc, 'undefined').
+
+-spec account_name(doc(), Default) -> binary() | Default.
 account_name(Doc, Default) ->
     kz_json:get_binary_value([<<"account">>, <<"name">>], Doc, Default).
 
@@ -62,9 +65,10 @@ set_account_name(Doc, AccountName) ->
     kz_json:set_value([<<"account">>, <<"name">>], AccountName, Doc).
 
 -spec amount(doc()) -> kz_term:api_integer().
--spec amount(doc(), Default) -> integer() | Default.
 amount(Doc) ->
     amount(Doc, 'undefined').
+
+-spec amount(doc(), Default) -> integer() | Default.
 amount(Doc, Default) ->
     kz_json:get_integer_value([<<"amount">>], Doc, Default).
 
@@ -73,9 +77,10 @@ set_amount(Doc, Amount) ->
     kz_json:set_value([<<"amount">>], Amount, Doc).
 
 -spec description(doc()) -> kz_term:api_binary().
--spec description(doc(), Default) -> binary() | Default.
 description(Doc) ->
     description(Doc, 'undefined').
+
+-spec description(doc(), Default) -> binary() | Default.
 description(Doc, Default) ->
     kz_json:get_binary_value([<<"description">>], Doc, Default).
 
@@ -84,9 +89,10 @@ set_description(Doc, Description) ->
     kz_json:set_value([<<"description">>], Description, Doc).
 
 -spec metadata(doc()) -> kz_term:api_object().
--spec metadata(doc(), Default) -> kz_json:object() | Default.
 metadata(Doc) ->
     metadata(Doc, 'undefined').
+
+-spec metadata(doc(), Default) -> kz_json:object() | Default.
 metadata(Doc, Default) ->
     kz_json:get_json_value([<<"metadata">>], Doc, Default).
 
@@ -95,9 +101,10 @@ set_metadata(Doc, Metadata) ->
     kz_json:set_value([<<"metadata">>], Metadata, Doc).
 
 -spec period(doc()) -> kz_term:api_object().
--spec period(doc(), Default) -> kz_json:object() | Default.
 period(Doc) ->
     period(Doc, 'undefined').
+
+-spec period(doc(), Default) -> kz_json:object() | Default.
 period(Doc, Default) ->
     kz_json:get_json_value([<<"period">>], Doc, Default).
 
@@ -106,9 +113,10 @@ set_period(Doc, Period) ->
     kz_json:set_value([<<"period">>], Period, Doc).
 
 -spec period_end(doc()) -> kz_term:api_integer().
--spec period_end(doc(), Default) -> integer() | Default.
 period_end(Doc) ->
     period_end(Doc, 'undefined').
+
+-spec period_end(doc(), Default) -> integer() | Default.
 period_end(Doc, Default) ->
     kz_json:get_integer_value([<<"period">>, <<"end">>], Doc, Default).
 
@@ -117,9 +125,10 @@ set_period_end(Doc, PeriodEnd) ->
     kz_json:set_value([<<"period">>, <<"end">>], PeriodEnd, Doc).
 
 -spec period_start(doc()) -> kz_term:api_integer().
--spec period_start(doc(), Default) -> integer() | Default.
 period_start(Doc) ->
     period_start(Doc, 'undefined').
+
+-spec period_start(doc(), Default) -> integer() | Default.
 period_start(Doc, Default) ->
     kz_json:get_integer_value([<<"period">>, <<"start">>], Doc, Default).
 
@@ -128,9 +137,10 @@ set_period_start(Doc, PeriodStart) ->
     kz_json:set_value([<<"period">>, <<"start">>], PeriodStart, Doc).
 
 -spec source(doc()) -> kz_term:api_object().
--spec source(doc(), Default) -> kz_json:object() | Default.
 source(Doc) ->
     source(Doc, 'undefined').
+
+-spec source(doc(), Default) -> kz_json:object() | Default.
 source(Doc, Default) ->
     kz_json:get_json_value([<<"source">>], Doc, Default).
 
@@ -139,9 +149,10 @@ set_source(Doc, Source) ->
     kz_json:set_value([<<"source">>], Source, Doc).
 
 -spec source_id(doc()) -> kz_term:api_binary().
--spec source_id(doc(), Default) -> binary() | Default.
 source_id(Doc) ->
     source_id(Doc, 'undefined').
+
+-spec source_id(doc(), Default) -> binary() | Default.
 source_id(Doc, Default) ->
     kz_json:get_binary_value([<<"source">>, <<"id">>], Doc, Default).
 
@@ -150,9 +161,10 @@ set_source_id(Doc, SourceId) ->
     kz_json:set_value([<<"source">>, <<"id">>], SourceId, Doc).
 
 -spec source_service(doc()) -> kz_term:api_binary().
--spec source_service(doc(), Default) -> binary() | Default.
 source_service(Doc) ->
     source_service(Doc, 'undefined').
+
+-spec source_service(doc(), Default) -> binary() | Default.
 source_service(Doc, Default) ->
     kz_json:get_binary_value([<<"source">>, <<"service">>], Doc, Default).
 
@@ -161,9 +173,10 @@ set_source_service(Doc, SourceService) ->
     kz_json:set_value([<<"source">>, <<"service">>], SourceService, Doc).
 
 -spec usage(doc()) -> kz_term:api_object().
--spec usage(doc(), Default) -> kz_json:object() | Default.
 usage(Doc) ->
     usage(Doc, 'undefined').
+
+-spec usage(doc(), Default) -> kz_json:object() | Default.
 usage(Doc, Default) ->
     kz_json:get_json_value([<<"usage">>], Doc, Default).
 
@@ -172,9 +185,10 @@ set_usage(Doc, Usage) ->
     kz_json:set_value([<<"usage">>], Usage, Doc).
 
 -spec usage_quantity(doc()) -> kz_term:api_integer().
--spec usage_quantity(doc(), Default) -> integer() | Default.
 usage_quantity(Doc) ->
     usage_quantity(Doc, 'undefined').
+
+-spec usage_quantity(doc(), Default) -> integer() | Default.
 usage_quantity(Doc, Default) ->
     kz_json:get_integer_value([<<"usage">>, <<"quantity">>], Doc, Default).
 
@@ -183,9 +197,10 @@ set_usage_quantity(Doc, UsageQuantity) ->
     kz_json:set_value([<<"usage">>, <<"quantity">>], UsageQuantity, Doc).
 
 -spec usage_type(doc()) -> kz_term:api_binary().
--spec usage_type(doc(), Default) -> binary() | Default.
 usage_type(Doc) ->
     usage_type(Doc, 'undefined').
+
+-spec usage_type(doc(), Default) -> binary() | Default.
 usage_type(Doc, Default) ->
     kz_json:get_binary_value([<<"usage">>, <<"type">>], Doc, Default).
 
@@ -194,9 +209,10 @@ set_usage_type(Doc, UsageType) ->
     kz_json:set_value([<<"usage">>, <<"type">>], UsageType, Doc).
 
 -spec usage_unit(doc()) -> kz_term:api_binary().
--spec usage_unit(doc(), Default) -> binary() | Default.
 usage_unit(Doc) ->
     usage_unit(Doc, 'undefined').
+
+-spec usage_unit(doc(), Default) -> binary() | Default.
 usage_unit(Doc, Default) ->
     kz_json:get_binary_value([<<"usage">>, <<"unit">>], Doc, Default).
 

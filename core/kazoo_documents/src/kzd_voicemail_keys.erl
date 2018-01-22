@@ -33,9 +33,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec configure(doc()) -> kz_term:ne_binary().
--spec configure(doc(), Default) -> kz_term:ne_binary() | Default.
 configure(Doc) ->
     configure(Doc, <<"5">>).
+
+-spec configure(doc(), Default) -> kz_term:ne_binary() | Default.
 configure(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"configure">>], Doc, Default).
 
@@ -44,9 +45,10 @@ set_configure(Doc, Configure) ->
     kz_json:set_value([<<"configure">>], Configure, Doc).
 
 -spec continue(doc()) -> kz_term:api_ne_binary().
--spec continue(doc(), Default) -> kz_term:ne_binary() | Default.
 continue(Doc) ->
     continue(Doc, 'undefined').
+
+-spec continue(doc(), Default) -> kz_term:ne_binary() | Default.
 continue(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"continue">>], Doc, Default).
 
@@ -55,9 +57,10 @@ set_continue(Doc, Continue) ->
     kz_json:set_value([<<"continue">>], Continue, Doc).
 
 -spec delete(doc()) -> kz_term:ne_binary().
--spec delete(doc(), Default) -> kz_term:ne_binary() | Default.
 delete(Doc) ->
     delete(Doc, <<"7">>).
+
+-spec delete(doc(), Default) -> kz_term:ne_binary() | Default.
 delete(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"delete">>], Doc, Default).
 
@@ -66,9 +69,10 @@ set_delete(Doc, Delete) ->
     kz_json:set_value([<<"delete">>], Delete, Doc).
 
 -spec exit(doc()) -> kz_term:ne_binary().
--spec exit(doc(), Default) -> kz_term:ne_binary() | Default.
 exit(Doc) ->
     exit(Doc, <<"#">>).
+
+-spec exit(doc(), Default) -> kz_term:ne_binary() | Default.
 exit(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"exit">>], Doc, Default).
 
@@ -77,9 +81,10 @@ set_exit(Doc, Exit) ->
     kz_json:set_value([<<"exit">>], Exit, Doc).
 
 -spec hear_new(doc()) -> kz_term:ne_binary().
--spec hear_new(doc(), Default) -> kz_term:ne_binary() | Default.
 hear_new(Doc) ->
     hear_new(Doc, <<"1">>).
+
+-spec hear_new(doc(), Default) -> kz_term:ne_binary() | Default.
 hear_new(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"hear_new">>], Doc, Default).
 
@@ -88,9 +93,10 @@ set_hear_new(Doc, HearNew) ->
     kz_json:set_value([<<"hear_new">>], HearNew, Doc).
 
 -spec hear_saved(doc()) -> kz_term:ne_binary().
--spec hear_saved(doc(), Default) -> kz_term:ne_binary() | Default.
 hear_saved(Doc) ->
     hear_saved(Doc, <<"2">>).
+
+-spec hear_saved(doc(), Default) -> kz_term:ne_binary() | Default.
 hear_saved(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"hear_saved">>], Doc, Default).
 
@@ -99,9 +105,10 @@ set_hear_saved(Doc, HearSaved) ->
     kz_json:set_value([<<"hear_saved">>], HearSaved, Doc).
 
 -spec keep(doc()) -> kz_term:ne_binary().
--spec keep(doc(), Default) -> kz_term:ne_binary() | Default.
 keep(Doc) ->
     keep(Doc, <<"1">>).
+
+-spec keep(doc(), Default) -> kz_term:ne_binary() | Default.
 keep(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"keep">>], Doc, Default).
 
@@ -110,9 +117,10 @@ set_keep(Doc, Keep) ->
     kz_json:set_value([<<"keep">>], Keep, Doc).
 
 -spec listen(doc()) -> kz_term:ne_binary().
--spec listen(doc(), Default) -> kz_term:ne_binary() | Default.
 listen(Doc) ->
     listen(Doc, <<"2">>).
+
+-spec listen(doc(), Default) -> kz_term:ne_binary() | Default.
 listen(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"listen">>], Doc, Default).
 
@@ -121,9 +129,10 @@ set_listen(Doc, Listen) ->
     kz_json:set_value([<<"listen">>], Listen, Doc).
 
 -spec login(doc()) -> kz_term:ne_binary().
--spec login(doc(), Default) -> kz_term:ne_binary() | Default.
 login(Doc) ->
     login(Doc, <<"*">>).
+
+-spec login(doc(), Default) -> kz_term:ne_binary() | Default.
 login(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"login">>], Doc, Default).
 
@@ -132,9 +141,10 @@ set_login(Doc, Login) ->
     kz_json:set_value([<<"login">>], Login, Doc).
 
 -spec next(doc()) -> kz_term:ne_binary().
--spec next(doc(), Default) -> kz_term:ne_binary() | Default.
 next(Doc) ->
     next(Doc, <<"6">>).
+
+-spec next(doc(), Default) -> kz_term:ne_binary() | Default.
 next(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"next">>], Doc, Default).
 
@@ -143,9 +153,10 @@ set_next(Doc, Next) ->
     kz_json:set_value([<<"next">>], Next, Doc).
 
 -spec operator(doc()) -> kz_term:ne_binary().
--spec operator(doc(), Default) -> kz_term:ne_binary() | Default.
 operator(Doc) ->
     operator(Doc, <<"0">>).
+
+-spec operator(doc(), Default) -> kz_term:ne_binary() | Default.
 operator(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"operator">>], Doc, Default).
 
@@ -154,9 +165,10 @@ set_operator(Doc, Operator) ->
     kz_json:set_value([<<"operator">>], Operator, Doc).
 
 -spec prev(doc()) -> kz_term:ne_binary().
--spec prev(doc(), Default) -> kz_term:ne_binary() | Default.
 prev(Doc) ->
     prev(Doc, <<"4">>).
+
+-spec prev(doc(), Default) -> kz_term:ne_binary() | Default.
 prev(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"prev">>], Doc, Default).
 
@@ -165,9 +177,10 @@ set_prev(Doc, Prev) ->
     kz_json:set_value([<<"prev">>], Prev, Doc).
 
 -spec rec_name(doc()) -> kz_term:ne_binary().
--spec rec_name(doc(), Default) -> kz_term:ne_binary() | Default.
 rec_name(Doc) ->
     rec_name(Doc, <<"2">>).
+
+-spec rec_name(doc(), Default) -> kz_term:ne_binary() | Default.
 rec_name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"rec_name">>], Doc, Default).
 
@@ -176,9 +189,10 @@ set_rec_name(Doc, RecName) ->
     kz_json:set_value([<<"rec_name">>], RecName, Doc).
 
 -spec rec_unavailable(doc()) -> kz_term:ne_binary().
--spec rec_unavailable(doc(), Default) -> kz_term:ne_binary() | Default.
 rec_unavailable(Doc) ->
     rec_unavailable(Doc, <<"1">>).
+
+-spec rec_unavailable(doc(), Default) -> kz_term:ne_binary() | Default.
 rec_unavailable(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"rec_unavailable">>], Doc, Default).
 
@@ -187,9 +201,10 @@ set_rec_unavailable(Doc, RecUnavailable) ->
     kz_json:set_value([<<"rec_unavailable">>], RecUnavailable, Doc).
 
 -spec record(doc()) -> kz_term:ne_binary().
--spec record(doc(), Default) -> kz_term:ne_binary() | Default.
 record(Doc) ->
     record(Doc, <<"3">>).
+
+-spec record(doc(), Default) -> kz_term:ne_binary() | Default.
 record(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"record">>], Doc, Default).
 
@@ -198,9 +213,10 @@ set_record(Doc, Record) ->
     kz_json:set_value([<<"record">>], Record, Doc).
 
 -spec replay(doc()) -> kz_term:ne_binary().
--spec replay(doc(), Default) -> kz_term:ne_binary() | Default.
 replay(Doc) ->
     replay(Doc, <<"2">>).
+
+-spec replay(doc(), Default) -> kz_term:ne_binary() | Default.
 replay(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"replay">>], Doc, Default).
 
@@ -209,9 +225,10 @@ set_replay(Doc, Replay) ->
     kz_json:set_value([<<"replay">>], Replay, Doc).
 
 -spec return_main(doc()) -> kz_term:ne_binary().
--spec return_main(doc(), Default) -> kz_term:ne_binary() | Default.
 return_main(Doc) ->
     return_main(Doc, <<"0">>).
+
+-spec return_main(doc(), Default) -> kz_term:ne_binary() | Default.
 return_main(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"return_main">>], Doc, Default).
 
@@ -220,9 +237,10 @@ set_return_main(Doc, ReturnMain) ->
     kz_json:set_value([<<"return_main">>], ReturnMain, Doc).
 
 -spec save(doc()) -> kz_term:ne_binary().
--spec save(doc(), Default) -> kz_term:ne_binary() | Default.
 save(Doc) ->
     save(Doc, <<"1">>).
+
+-spec save(doc(), Default) -> kz_term:ne_binary() | Default.
 save(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"save">>], Doc, Default).
 
@@ -231,9 +249,10 @@ set_save(Doc, Save) ->
     kz_json:set_value([<<"save">>], Save, Doc).
 
 -spec set_pin(doc()) -> kz_term:ne_binary().
--spec set_pin(doc(), Default) -> kz_term:ne_binary() | Default.
 set_pin(Doc) ->
     set_pin(Doc, <<"3">>).
+
+-spec set_pin(doc(), Default) -> kz_term:ne_binary() | Default.
 set_pin(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"set_pin">>], Doc, Default).
 

@@ -16,9 +16,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec any(doc()) -> kz_term:api_object().
--spec any(doc(), Default) -> kz_json:object() | Default.
 any(Doc) ->
     any(Doc, 'undefined').
+
+-spec any(doc(), Default) -> kz_json:object() | Default.
 any(Doc, Default) ->
     kz_json:get_json_value([<<"any">>], Doc, Default).
 
@@ -27,9 +28,10 @@ set_any(Doc, Any) ->
     kz_json:set_value([<<"any">>], Any, Doc).
 
 -spec inbound(doc()) -> kz_term:api_object().
--spec inbound(doc(), Default) -> kz_json:object() | Default.
 inbound(Doc) ->
     inbound(Doc, 'undefined').
+
+-spec inbound(doc(), Default) -> kz_json:object() | Default.
 inbound(Doc, Default) ->
     kz_json:get_json_value([<<"inbound">>], Doc, Default).
 
@@ -38,9 +40,10 @@ set_inbound(Doc, Inbound) ->
     kz_json:set_value([<<"inbound">>], Inbound, Doc).
 
 -spec outbound(doc()) -> kz_term:api_object().
--spec outbound(doc(), Default) -> kz_json:object() | Default.
 outbound(Doc) ->
     outbound(Doc, 'undefined').
+
+-spec outbound(doc(), Default) -> kz_json:object() | Default.
 outbound(Doc, Default) ->
     kz_json:get_json_value([<<"outbound">>], Doc, Default).
 

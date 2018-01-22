@@ -14,9 +14,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec reset_id(doc()) -> kz_term:api_binary().
--spec reset_id(doc(), Default) -> binary() | Default.
 reset_id(Doc) ->
     reset_id(Doc, 'undefined').
+
+-spec reset_id(doc(), Default) -> binary() | Default.
 reset_id(Doc, Default) ->
     kz_json:get_binary_value([<<"reset_id">>], Doc, Default).
 

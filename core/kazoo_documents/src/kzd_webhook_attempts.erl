@@ -20,9 +20,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec client_error(doc()) -> kz_term:api_binary().
--spec client_error(doc(), Default) -> binary() | Default.
 client_error(Doc) ->
     client_error(Doc, 'undefined').
+
+-spec client_error(doc(), Default) -> binary() | Default.
 client_error(Doc, Default) ->
     kz_json:get_binary_value([<<"client_error">>], Doc, Default).
 
@@ -31,9 +32,10 @@ set_client_error(Doc, ClientError) ->
     kz_json:set_value([<<"client_error">>], ClientError, Doc).
 
 -spec hook_id(doc()) -> kz_term:api_binary().
--spec hook_id(doc(), Default) -> binary() | Default.
 hook_id(Doc) ->
     hook_id(Doc, 'undefined').
+
+-spec hook_id(doc(), Default) -> binary() | Default.
 hook_id(Doc, Default) ->
     kz_json:get_binary_value([<<"hook_id">>], Doc, Default).
 
@@ -42,9 +44,10 @@ set_hook_id(Doc, HookId) ->
     kz_json:set_value([<<"hook_id">>], HookId, Doc).
 
 -spec reason(doc()) -> kz_term:api_binary().
--spec reason(doc(), Default) -> binary() | Default.
 reason(Doc) ->
     reason(Doc, 'undefined').
+
+-spec reason(doc(), Default) -> binary() | Default.
 reason(Doc, Default) ->
     kz_json:get_binary_value([<<"reason">>], Doc, Default).
 
@@ -53,9 +56,10 @@ set_reason(Doc, Reason) ->
     kz_json:set_value([<<"reason">>], Reason, Doc).
 
 -spec response_body(doc()) -> kz_term:api_binary().
--spec response_body(doc(), Default) -> binary() | Default.
 response_body(Doc) ->
     response_body(Doc, 'undefined').
+
+-spec response_body(doc(), Default) -> binary() | Default.
 response_body(Doc, Default) ->
     kz_json:get_binary_value([<<"response_body">>], Doc, Default).
 
@@ -64,9 +68,10 @@ set_response_body(Doc, ResponseBody) ->
     kz_json:set_value([<<"response_body">>], ResponseBody, Doc).
 
 -spec response_code(doc()) -> kz_term:api_binary().
--spec response_code(doc(), Default) -> binary() | Default.
 response_code(Doc) ->
     response_code(Doc, 'undefined').
+
+-spec response_code(doc(), Default) -> binary() | Default.
 response_code(Doc, Default) ->
     kz_json:get_binary_value([<<"response_code">>], Doc, Default).
 
@@ -75,9 +80,10 @@ set_response_code(Doc, ResponseCode) ->
     kz_json:set_value([<<"response_code">>], ResponseCode, Doc).
 
 -spec result(doc()) -> kz_term:api_binary().
--spec result(doc(), Default) -> binary() | Default.
 result(Doc) ->
     result(Doc, 'undefined').
+
+-spec result(doc(), Default) -> binary() | Default.
 result(Doc, Default) ->
     kz_json:get_binary_value([<<"result">>], Doc, Default).
 
@@ -86,9 +92,10 @@ set_result(Doc, Result) ->
     kz_json:set_value([<<"result">>], Result, Doc).
 
 -spec retries_left(doc()) -> kz_term:api_integer().
--spec retries_left(doc(), Default) -> integer() | Default.
 retries_left(Doc) ->
     retries_left(Doc, 'undefined').
+
+-spec retries_left(doc(), Default) -> integer() | Default.
 retries_left(Doc, Default) ->
     kz_json:get_integer_value([<<"retries_left">>], Doc, Default).
 

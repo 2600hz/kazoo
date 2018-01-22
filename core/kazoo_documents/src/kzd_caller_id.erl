@@ -22,9 +22,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec emergency(doc()) -> kz_term:api_object().
--spec emergency(doc(), Default) -> kz_json:object() | Default.
 emergency(Doc) ->
     emergency(Doc, 'undefined').
+
+-spec emergency(doc(), Default) -> kz_json:object() | Default.
 emergency(Doc, Default) ->
     kz_json:get_json_value([<<"emergency">>], Doc, Default).
 
@@ -33,9 +34,10 @@ set_emergency(Doc, Emergency) ->
     kz_json:set_value([<<"emergency">>], Emergency, Doc).
 
 -spec emergency_name(doc()) -> kz_term:api_binary().
--spec emergency_name(doc(), Default) -> binary() | Default.
 emergency_name(Doc) ->
     emergency_name(Doc, 'undefined').
+
+-spec emergency_name(doc(), Default) -> binary() | Default.
 emergency_name(Doc, Default) ->
     kz_json:get_binary_value([<<"emergency">>, <<"name">>], Doc, Default).
 
@@ -44,9 +46,10 @@ set_emergency_name(Doc, EmergencyName) ->
     kz_json:set_value([<<"emergency">>, <<"name">>], EmergencyName, Doc).
 
 -spec emergency_number(doc()) -> kz_term:api_binary().
--spec emergency_number(doc(), Default) -> binary() | Default.
 emergency_number(Doc) ->
     emergency_number(Doc, 'undefined').
+
+-spec emergency_number(doc(), Default) -> binary() | Default.
 emergency_number(Doc, Default) ->
     kz_json:get_binary_value([<<"emergency">>, <<"number">>], Doc, Default).
 
@@ -55,9 +58,10 @@ set_emergency_number(Doc, EmergencyNumber) ->
     kz_json:set_value([<<"emergency">>, <<"number">>], EmergencyNumber, Doc).
 
 -spec external(doc()) -> kz_term:api_object().
--spec external(doc(), Default) -> kz_json:object() | Default.
 external(Doc) ->
     external(Doc, 'undefined').
+
+-spec external(doc(), Default) -> kz_json:object() | Default.
 external(Doc, Default) ->
     kz_json:get_json_value([<<"external">>], Doc, Default).
 
@@ -66,9 +70,10 @@ set_external(Doc, External) ->
     kz_json:set_value([<<"external">>], External, Doc).
 
 -spec external_name(doc()) -> kz_term:api_binary().
--spec external_name(doc(), Default) -> binary() | Default.
 external_name(Doc) ->
     external_name(Doc, 'undefined').
+
+-spec external_name(doc(), Default) -> binary() | Default.
 external_name(Doc, Default) ->
     kz_json:get_binary_value([<<"external">>, <<"name">>], Doc, Default).
 
@@ -77,9 +82,10 @@ set_external_name(Doc, ExternalName) ->
     kz_json:set_value([<<"external">>, <<"name">>], ExternalName, Doc).
 
 -spec external_number(doc()) -> kz_term:api_binary().
--spec external_number(doc(), Default) -> binary() | Default.
 external_number(Doc) ->
     external_number(Doc, 'undefined').
+
+-spec external_number(doc(), Default) -> binary() | Default.
 external_number(Doc, Default) ->
     kz_json:get_binary_value([<<"external">>, <<"number">>], Doc, Default).
 
@@ -88,9 +94,10 @@ set_external_number(Doc, ExternalNumber) ->
     kz_json:set_value([<<"external">>, <<"number">>], ExternalNumber, Doc).
 
 -spec internal(doc()) -> kz_term:api_object().
--spec internal(doc(), Default) -> kz_json:object() | Default.
 internal(Doc) ->
     internal(Doc, 'undefined').
+
+-spec internal(doc(), Default) -> kz_json:object() | Default.
 internal(Doc, Default) ->
     kz_json:get_json_value([<<"internal">>], Doc, Default).
 
@@ -99,9 +106,10 @@ set_internal(Doc, Internal) ->
     kz_json:set_value([<<"internal">>], Internal, Doc).
 
 -spec internal_name(doc()) -> kz_term:api_binary().
--spec internal_name(doc(), Default) -> binary() | Default.
 internal_name(Doc) ->
     internal_name(Doc, 'undefined').
+
+-spec internal_name(doc(), Default) -> binary() | Default.
 internal_name(Doc, Default) ->
     kz_json:get_binary_value([<<"internal">>, <<"name">>], Doc, Default).
 
@@ -110,9 +118,10 @@ set_internal_name(Doc, InternalName) ->
     kz_json:set_value([<<"internal">>, <<"name">>], InternalName, Doc).
 
 -spec internal_number(doc()) -> kz_term:api_binary().
--spec internal_number(doc(), Default) -> binary() | Default.
 internal_number(Doc) ->
     internal_number(Doc, 'undefined').
+
+-spec internal_number(doc(), Default) -> binary() | Default.
 internal_number(Doc, Default) ->
     kz_json:get_binary_value([<<"internal">>, <<"number">>], Doc, Default).
 

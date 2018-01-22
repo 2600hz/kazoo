@@ -18,9 +18,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec data(doc()) -> kz_term:api_object().
--spec data(doc(), Default) -> kz_json:object() | Default.
 data(Doc) ->
     data(Doc, 'undefined').
+
+-spec data(doc(), Default) -> kz_json:object() | Default.
 data(Doc, Default) ->
     kz_json:get_json_value([<<"data">>], Doc, Default).
 
@@ -29,9 +30,10 @@ set_data(Doc, Data) ->
     kz_json:set_value([<<"data">>], Data, Doc).
 
 -spec data_body(doc()) -> kz_term:api_object().
--spec data_body(doc(), Default) -> kz_json:object() | Default.
 data_body(Doc) ->
     data_body(Doc, 'undefined').
+
+-spec data_body(doc(), Default) -> kz_json:object() | Default.
 data_body(Doc, Default) ->
     kz_json:get_json_value([<<"data">>, <<"body">>], Doc, Default).
 
@@ -40,9 +42,10 @@ set_data_body(Doc, DataBody) ->
     kz_json:set_value([<<"data">>, <<"body">>], DataBody, Doc).
 
 -spec data_body_content_type(doc()) -> kz_term:api_binary().
--spec data_body_content_type(doc(), Default) -> binary() | Default.
 data_body_content_type(Doc) ->
     data_body_content_type(Doc, 'undefined').
+
+-spec data_body_content_type(doc(), Default) -> binary() | Default.
 data_body_content_type(Doc, Default) ->
     kz_json:get_binary_value([<<"data">>, <<"body">>, <<"content_type">>], Doc, Default).
 
@@ -51,9 +54,10 @@ set_data_body_content_type(Doc, DataBodyContentType) ->
     kz_json:set_value([<<"data">>, <<"body">>, <<"content_type">>], DataBodyContentType, Doc).
 
 -spec data_body_data(doc()) -> kz_term:api_binary().
--spec data_body_data(doc(), Default) -> binary() | Default.
 data_body_data(Doc) ->
     data_body_data(Doc, 'undefined').
+
+-spec data_body_data(doc(), Default) -> binary() | Default.
 data_body_data(Doc, Default) ->
     kz_json:get_binary_value([<<"data">>, <<"body">>, <<"data">>], Doc, Default).
 
@@ -62,9 +66,10 @@ set_data_body_data(Doc, DataBodyData) ->
     kz_json:set_value([<<"data">>, <<"body">>, <<"data">>], DataBodyData, Doc).
 
 -spec data_event(doc()) -> kz_term:api_binary().
--spec data_event(doc(), Default) -> binary() | Default.
 data_event(Doc) ->
     data_event(Doc, 'undefined').
+
+-spec data_event(doc(), Default) -> binary() | Default.
 data_event(Doc, Default) ->
     kz_json:get_binary_value([<<"data">>, <<"event">>], Doc, Default).
 

@@ -14,9 +14,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec shared_auth(doc()) -> kz_term:api_ne_binary().
--spec shared_auth(doc(), Default) -> kz_term:ne_binary() | Default.
 shared_auth(Doc) ->
     shared_auth(Doc, 'undefined').
+
+-spec shared_auth(doc(), Default) -> kz_term:ne_binary() | Default.
 shared_auth(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"shared_auth">>], Doc, Default).
 

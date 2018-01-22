@@ -30,9 +30,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec bcc(doc()) -> kz_term:api_object().
--spec bcc(doc(), Default) -> kz_json:object() | Default.
 bcc(Doc) ->
     bcc(Doc, 'undefined').
+
+-spec bcc(doc(), Default) -> kz_json:object() | Default.
 bcc(Doc, Default) ->
     kz_json:get_json_value([<<"bcc">>], Doc, Default).
 
@@ -41,9 +42,10 @@ set_bcc(Doc, Bcc) ->
     kz_json:set_value([<<"bcc">>], Bcc, Doc).
 
 -spec bcc_email_addresses(doc()) -> kz_term:api_ne_binaries().
--spec bcc_email_addresses(doc(), Default) -> kz_term:ne_binaries() | Default.
 bcc_email_addresses(Doc) ->
     bcc_email_addresses(Doc, 'undefined').
+
+-spec bcc_email_addresses(doc(), Default) -> kz_term:ne_binaries() | Default.
 bcc_email_addresses(Doc, Default) ->
     kz_json:get_list_value([<<"bcc">>, <<"email_addresses">>], Doc, Default).
 
@@ -52,9 +54,10 @@ set_bcc_email_addresses(Doc, BccEmailAddresses) ->
     kz_json:set_value([<<"bcc">>, <<"email_addresses">>], BccEmailAddresses, Doc).
 
 -spec bcc_type(doc()) -> kz_term:api_ne_binary().
--spec bcc_type(doc(), Default) -> kz_term:ne_binary() | Default.
 bcc_type(Doc) ->
     bcc_type(Doc, 'undefined').
+
+-spec bcc_type(doc(), Default) -> kz_term:ne_binary() | Default.
 bcc_type(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"bcc">>, <<"type">>], Doc, Default).
 
@@ -63,9 +66,10 @@ set_bcc_type(Doc, BccType) ->
     kz_json:set_value([<<"bcc">>, <<"type">>], BccType, Doc).
 
 -spec category(doc()) -> kz_term:api_ne_binary().
--spec category(doc(), Default) -> kz_term:ne_binary() | Default.
 category(Doc) ->
     category(Doc, 'undefined').
+
+-spec category(doc(), Default) -> kz_term:ne_binary() | Default.
 category(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"category">>], Doc, Default).
 
@@ -74,9 +78,10 @@ set_category(Doc, Category) ->
     kz_json:set_value([<<"category">>], Category, Doc).
 
 -spec cc(doc()) -> kz_term:api_object().
--spec cc(doc(), Default) -> kz_json:object() | Default.
 cc(Doc) ->
     cc(Doc, 'undefined').
+
+-spec cc(doc(), Default) -> kz_json:object() | Default.
 cc(Doc, Default) ->
     kz_json:get_json_value([<<"cc">>], Doc, Default).
 
@@ -85,9 +90,10 @@ set_cc(Doc, Cc) ->
     kz_json:set_value([<<"cc">>], Cc, Doc).
 
 -spec cc_email_addresses(doc()) -> kz_term:api_ne_binaries().
--spec cc_email_addresses(doc(), Default) -> kz_term:ne_binaries() | Default.
 cc_email_addresses(Doc) ->
     cc_email_addresses(Doc, 'undefined').
+
+-spec cc_email_addresses(doc(), Default) -> kz_term:ne_binaries() | Default.
 cc_email_addresses(Doc, Default) ->
     kz_json:get_list_value([<<"cc">>, <<"email_addresses">>], Doc, Default).
 
@@ -96,9 +102,10 @@ set_cc_email_addresses(Doc, CcEmailAddresses) ->
     kz_json:set_value([<<"cc">>, <<"email_addresses">>], CcEmailAddresses, Doc).
 
 -spec cc_type(doc()) -> kz_term:api_binary().
--spec cc_type(doc(), Default) -> binary() | Default.
 cc_type(Doc) ->
     cc_type(Doc, 'undefined').
+
+-spec cc_type(doc(), Default) -> binary() | Default.
 cc_type(Doc, Default) ->
     kz_json:get_binary_value([<<"cc">>, <<"type">>], Doc, Default).
 
@@ -107,9 +114,10 @@ set_cc_type(Doc, CcType) ->
     kz_json:set_value([<<"cc">>, <<"type">>], CcType, Doc).
 
 -spec enabled(doc()) -> boolean().
--spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc) ->
     enabled(Doc, true).
+
+-spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc, Default) ->
     kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
 
@@ -118,9 +126,10 @@ set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
 -spec friendly_name(doc()) -> kz_term:api_ne_binary().
--spec friendly_name(doc(), Default) -> kz_term:ne_binary() | Default.
 friendly_name(Doc) ->
     friendly_name(Doc, 'undefined').
+
+-spec friendly_name(doc(), Default) -> kz_term:ne_binary() | Default.
 friendly_name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"friendly_name">>], Doc, Default).
 
@@ -129,9 +138,10 @@ set_friendly_name(Doc, FriendlyName) ->
     kz_json:set_value([<<"friendly_name">>], FriendlyName, Doc).
 
 -spec from(doc()) -> kz_term:api_binary().
--spec from(doc(), Default) -> binary() | Default.
 from(Doc) ->
     from(Doc, 'undefined').
+
+-spec from(doc(), Default) -> binary() | Default.
 from(Doc, Default) ->
     kz_json:get_binary_value([<<"from">>], Doc, Default).
 
@@ -140,9 +150,10 @@ set_from(Doc, From) ->
     kz_json:set_value([<<"from">>], From, Doc).
 
 -spec macros(doc()) -> kz_json:object().
--spec macros(doc(), Default) -> kz_json:object() | Default.
 macros(Doc) ->
     macros(Doc, kz_json:new()).
+
+-spec macros(doc(), Default) -> kz_json:object() | Default.
 macros(Doc, Default) ->
     kz_json:get_json_value([<<"macros">>], Doc, Default).
 
@@ -151,9 +162,10 @@ set_macros(Doc, Macros) ->
     kz_json:set_value([<<"macros">>], Macros, Doc).
 
 -spec reply_to(doc()) -> kz_term:api_binary().
--spec reply_to(doc(), Default) -> binary() | Default.
 reply_to(Doc) ->
     reply_to(Doc, 'undefined').
+
+-spec reply_to(doc(), Default) -> binary() | Default.
 reply_to(Doc, Default) ->
     kz_json:get_binary_value([<<"reply_to">>], Doc, Default).
 
@@ -162,9 +174,10 @@ set_reply_to(Doc, ReplyTo) ->
     kz_json:set_value([<<"reply_to">>], ReplyTo, Doc).
 
 -spec subject(doc()) -> kz_term:api_ne_binary().
--spec subject(doc(), Default) -> kz_term:ne_binary() | Default.
 subject(Doc) ->
     subject(Doc, 'undefined').
+
+-spec subject(doc(), Default) -> kz_term:ne_binary() | Default.
 subject(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"subject">>], Doc, Default).
 
@@ -173,9 +186,10 @@ set_subject(Doc, Subject) ->
     kz_json:set_value([<<"subject">>], Subject, Doc).
 
 -spec template_charset(doc()) -> kz_term:ne_binary().
--spec template_charset(doc(), Default) -> kz_term:ne_binary() | Default.
 template_charset(Doc) ->
     template_charset(Doc, <<"utf-8">>).
+
+-spec template_charset(doc(), Default) -> kz_term:ne_binary() | Default.
 template_charset(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"template_charset">>], Doc, Default).
 
@@ -184,9 +198,10 @@ set_template_charset(Doc, TemplateCharset) ->
     kz_json:set_value([<<"template_charset">>], TemplateCharset, Doc).
 
 -spec to(doc()) -> kz_term:api_object().
--spec to(doc(), Default) -> kz_json:object() | Default.
 to(Doc) ->
     to(Doc, 'undefined').
+
+-spec to(doc(), Default) -> kz_json:object() | Default.
 to(Doc, Default) ->
     kz_json:get_json_value([<<"to">>], Doc, Default).
 
@@ -195,9 +210,10 @@ set_to(Doc, To) ->
     kz_json:set_value([<<"to">>], To, Doc).
 
 -spec to_email_addresses(doc()) -> kz_term:api_ne_binaries().
--spec to_email_addresses(doc(), Default) -> kz_term:ne_binaries() | Default.
 to_email_addresses(Doc) ->
     to_email_addresses(Doc, 'undefined').
+
+-spec to_email_addresses(doc(), Default) -> kz_term:ne_binaries() | Default.
 to_email_addresses(Doc, Default) ->
     kz_json:get_list_value([<<"to">>, <<"email_addresses">>], Doc, Default).
 
@@ -206,9 +222,10 @@ set_to_email_addresses(Doc, ToEmailAddresses) ->
     kz_json:set_value([<<"to">>, <<"email_addresses">>], ToEmailAddresses, Doc).
 
 -spec to_type(doc()) -> kz_term:api_ne_binary().
--spec to_type(doc(), Default) -> kz_term:ne_binary() | Default.
 to_type(Doc) ->
     to_type(Doc, 'undefined').
+
+-spec to_type(doc(), Default) -> kz_term:ne_binary() | Default.
 to_type(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"to">>, <<"type">>], Doc, Default).
 

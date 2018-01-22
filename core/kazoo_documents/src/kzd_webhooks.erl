@@ -22,9 +22,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec custom_data(doc()) -> kz_term:api_object().
--spec custom_data(doc(), Default) -> kz_json:object() | Default.
 custom_data(Doc) ->
     custom_data(Doc, 'undefined').
+
+-spec custom_data(doc(), Default) -> kz_json:object() | Default.
 custom_data(Doc, Default) ->
     kz_json:get_json_value([<<"custom_data">>], Doc, Default).
 
@@ -33,9 +34,10 @@ set_custom_data(Doc, CustomData) ->
     kz_json:set_value([<<"custom_data">>], CustomData, Doc).
 
 -spec enabled(doc()) -> boolean().
--spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc) ->
     enabled(Doc, true).
+
+-spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc, Default) ->
     kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
 
@@ -44,9 +46,10 @@ set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
 -spec hook(doc()) -> kz_term:api_binary().
--spec hook(doc(), Default) -> binary() | Default.
 hook(Doc) ->
     hook(Doc, 'undefined').
+
+-spec hook(doc(), Default) -> binary() | Default.
 hook(Doc, Default) ->
     kz_json:get_binary_value([<<"hook">>], Doc, Default).
 
@@ -55,9 +58,10 @@ set_hook(Doc, Hook) ->
     kz_json:set_value([<<"hook">>], Hook, Doc).
 
 -spec http_verb(doc()) -> binary().
--spec http_verb(doc(), Default) -> binary() | Default.
 http_verb(Doc) ->
     http_verb(Doc, <<"post">>).
+
+-spec http_verb(doc(), Default) -> binary() | Default.
 http_verb(Doc, Default) ->
     kz_json:get_binary_value([<<"http_verb">>], Doc, Default).
 
@@ -66,9 +70,10 @@ set_http_verb(Doc, HttpVerb) ->
     kz_json:set_value([<<"http_verb">>], HttpVerb, Doc).
 
 -spec include_internal_legs(doc()) -> boolean().
--spec include_internal_legs(doc(), Default) -> boolean() | Default.
 include_internal_legs(Doc) ->
     include_internal_legs(Doc, true).
+
+-spec include_internal_legs(doc(), Default) -> boolean() | Default.
 include_internal_legs(Doc, Default) ->
     kz_json:get_boolean_value([<<"include_internal_legs">>], Doc, Default).
 
@@ -77,9 +82,10 @@ set_include_internal_legs(Doc, IncludeInternalLegs) ->
     kz_json:set_value([<<"include_internal_legs">>], IncludeInternalLegs, Doc).
 
 -spec include_subaccounts(doc()) -> kz_term:api_boolean().
--spec include_subaccounts(doc(), Default) -> boolean() | Default.
 include_subaccounts(Doc) ->
     include_subaccounts(Doc, 'undefined').
+
+-spec include_subaccounts(doc(), Default) -> boolean() | Default.
 include_subaccounts(Doc, Default) ->
     kz_json:get_boolean_value([<<"include_subaccounts">>], Doc, Default).
 
@@ -88,9 +94,10 @@ set_include_subaccounts(Doc, IncludeSubaccounts) ->
     kz_json:set_value([<<"include_subaccounts">>], IncludeSubaccounts, Doc).
 
 -spec name(doc()) -> kz_term:api_binary().
--spec name(doc(), Default) -> binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> binary() | Default.
 name(Doc, Default) ->
     kz_json:get_binary_value([<<"name">>], Doc, Default).
 
@@ -99,9 +106,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec retries(doc()) -> integer().
--spec retries(doc(), Default) -> integer() | Default.
 retries(Doc) ->
     retries(Doc, 2).
+
+-spec retries(doc(), Default) -> integer() | Default.
 retries(Doc, Default) ->
     kz_json:get_integer_value([<<"retries">>], Doc, Default).
 
@@ -110,9 +118,10 @@ set_retries(Doc, Retries) ->
     kz_json:set_value([<<"retries">>], Retries, Doc).
 
 -spec uri(doc()) -> kz_term:api_binary().
--spec uri(doc(), Default) -> binary() | Default.
 uri(Doc) ->
     uri(Doc, 'undefined').
+
+-spec uri(doc(), Default) -> binary() | Default.
 uri(Doc, Default) ->
     kz_json:get_binary_value([<<"uri">>], Doc, Default).
 

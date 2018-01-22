@@ -37,9 +37,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec agent_ring_timeout(doc()) -> integer().
--spec agent_ring_timeout(doc(), Default) -> integer() | Default.
 agent_ring_timeout(Doc) ->
     agent_ring_timeout(Doc, 15).
+
+-spec agent_ring_timeout(doc(), Default) -> integer() | Default.
 agent_ring_timeout(Doc, Default) ->
     kz_json:get_integer_value([<<"agent_ring_timeout">>], Doc, Default).
 
@@ -48,9 +49,10 @@ set_agent_ring_timeout(Doc, AgentRingTimeout) ->
     kz_json:set_value([<<"agent_ring_timeout">>], AgentRingTimeout, Doc).
 
 -spec agent_wrapup_time(doc()) -> integer().
--spec agent_wrapup_time(doc(), Default) -> integer() | Default.
 agent_wrapup_time(Doc) ->
     agent_wrapup_time(Doc, 0).
+
+-spec agent_wrapup_time(doc(), Default) -> integer() | Default.
 agent_wrapup_time(Doc, Default) ->
     kz_json:get_integer_value([<<"agent_wrapup_time">>], Doc, Default).
 
@@ -59,9 +61,10 @@ set_agent_wrapup_time(Doc, AgentWrapupTime) ->
     kz_json:set_value([<<"agent_wrapup_time">>], AgentWrapupTime, Doc).
 
 -spec announce(doc()) -> kz_term:api_binary().
--spec announce(doc(), Default) -> binary() | Default.
 announce(Doc) ->
     announce(Doc, 'undefined').
+
+-spec announce(doc(), Default) -> binary() | Default.
 announce(Doc, Default) ->
     kz_json:get_binary_value([<<"announce">>], Doc, Default).
 
@@ -70,9 +73,10 @@ set_announce(Doc, Announce) ->
     kz_json:set_value([<<"announce">>], Announce, Doc).
 
 -spec announcements(doc()) -> kz_term:api_object().
--spec announcements(doc(), Default) -> kz_json:object() | Default.
 announcements(Doc) ->
     announcements(Doc, 'undefined').
+
+-spec announcements(doc(), Default) -> kz_json:object() | Default.
 announcements(Doc, Default) ->
     kz_json:get_json_value([<<"announcements">>], Doc, Default).
 
@@ -81,9 +85,10 @@ set_announcements(Doc, Announcements) ->
     kz_json:set_value([<<"announcements">>], Announcements, Doc).
 
 -spec announcements_interval(doc()) -> integer().
--spec announcements_interval(doc(), Default) -> integer() | Default.
 announcements_interval(Doc) ->
     announcements_interval(Doc, 30).
+
+-spec announcements_interval(doc(), Default) -> integer() | Default.
 announcements_interval(Doc, Default) ->
     kz_json:get_integer_value([<<"announcements">>, <<"interval">>], Doc, Default).
 
@@ -92,9 +97,10 @@ set_announcements_interval(Doc, AnnouncementsInterval) ->
     kz_json:set_value([<<"announcements">>, <<"interval">>], AnnouncementsInterval, Doc).
 
 -spec announcements_media(doc()) -> kz_term:api_object().
--spec announcements_media(doc(), Default) -> kz_json:object() | Default.
 announcements_media(Doc) ->
     announcements_media(Doc, 'undefined').
+
+-spec announcements_media(doc(), Default) -> kz_json:object() | Default.
 announcements_media(Doc, Default) ->
     kz_json:get_json_value([<<"announcements">>, <<"media">>], Doc, Default).
 
@@ -103,9 +109,10 @@ set_announcements_media(Doc, AnnouncementsMedia) ->
     kz_json:set_value([<<"announcements">>, <<"media">>], AnnouncementsMedia, Doc).
 
 -spec announcements_media_in_the_queue(doc()) -> kz_term:api_binary().
--spec announcements_media_in_the_queue(doc(), Default) -> binary() | Default.
 announcements_media_in_the_queue(Doc) ->
     announcements_media_in_the_queue(Doc, 'undefined').
+
+-spec announcements_media_in_the_queue(doc(), Default) -> binary() | Default.
 announcements_media_in_the_queue(Doc, Default) ->
     kz_json:get_binary_value([<<"announcements">>, <<"media">>, <<"in_the_queue">>], Doc, Default).
 
@@ -114,9 +121,10 @@ set_announcements_media_in_the_queue(Doc, AnnouncementsMediaInTheQueue) ->
     kz_json:set_value([<<"announcements">>, <<"media">>, <<"in_the_queue">>], AnnouncementsMediaInTheQueue, Doc).
 
 -spec announcements_media_increase_in_call_volume(doc()) -> kz_term:api_binary().
--spec announcements_media_increase_in_call_volume(doc(), Default) -> binary() | Default.
 announcements_media_increase_in_call_volume(Doc) ->
     announcements_media_increase_in_call_volume(Doc, 'undefined').
+
+-spec announcements_media_increase_in_call_volume(doc(), Default) -> binary() | Default.
 announcements_media_increase_in_call_volume(Doc, Default) ->
     kz_json:get_binary_value([<<"announcements">>, <<"media">>, <<"increase_in_call_volume">>], Doc, Default).
 
@@ -125,9 +133,10 @@ set_announcements_media_increase_in_call_volume(Doc, AnnouncementsMediaIncreaseI
     kz_json:set_value([<<"announcements">>, <<"media">>, <<"increase_in_call_volume">>], AnnouncementsMediaIncreaseInCallVolume, Doc).
 
 -spec announcements_media_the_estimated_wait_time_is(doc()) -> kz_term:api_binary().
--spec announcements_media_the_estimated_wait_time_is(doc(), Default) -> binary() | Default.
 announcements_media_the_estimated_wait_time_is(Doc) ->
     announcements_media_the_estimated_wait_time_is(Doc, 'undefined').
+
+-spec announcements_media_the_estimated_wait_time_is(doc(), Default) -> binary() | Default.
 announcements_media_the_estimated_wait_time_is(Doc, Default) ->
     kz_json:get_binary_value([<<"announcements">>, <<"media">>, <<"the_estimated_wait_time_is">>], Doc, Default).
 
@@ -136,9 +145,10 @@ set_announcements_media_the_estimated_wait_time_is(Doc, AnnouncementsMediaTheEst
     kz_json:set_value([<<"announcements">>, <<"media">>, <<"the_estimated_wait_time_is">>], AnnouncementsMediaTheEstimatedWaitTimeIs, Doc).
 
 -spec announcements_media_you_are_at_position(doc()) -> kz_term:api_binary().
--spec announcements_media_you_are_at_position(doc(), Default) -> binary() | Default.
 announcements_media_you_are_at_position(Doc) ->
     announcements_media_you_are_at_position(Doc, 'undefined').
+
+-spec announcements_media_you_are_at_position(doc(), Default) -> binary() | Default.
 announcements_media_you_are_at_position(Doc, Default) ->
     kz_json:get_binary_value([<<"announcements">>, <<"media">>, <<"you_are_at_position">>], Doc, Default).
 
@@ -147,9 +157,10 @@ set_announcements_media_you_are_at_position(Doc, AnnouncementsMediaYouAreAtPosit
     kz_json:set_value([<<"announcements">>, <<"media">>, <<"you_are_at_position">>], AnnouncementsMediaYouAreAtPosition, Doc).
 
 -spec announcements_position_announcements_enabled(doc()) -> kz_term:api_boolean().
--spec announcements_position_announcements_enabled(doc(), Default) -> boolean() | Default.
 announcements_position_announcements_enabled(Doc) ->
     announcements_position_announcements_enabled(Doc, 'undefined').
+
+-spec announcements_position_announcements_enabled(doc(), Default) -> boolean() | Default.
 announcements_position_announcements_enabled(Doc, Default) ->
     kz_json:get_boolean_value([<<"announcements">>, <<"position_announcements_enabled">>], Doc, Default).
 
@@ -158,9 +169,10 @@ set_announcements_position_announcements_enabled(Doc, AnnouncementsPositionAnnou
     kz_json:set_value([<<"announcements">>, <<"position_announcements_enabled">>], AnnouncementsPositionAnnouncementsEnabled, Doc).
 
 -spec announcements_wait_time_announcements_enabled(doc()) -> kz_term:api_boolean().
--spec announcements_wait_time_announcements_enabled(doc(), Default) -> boolean() | Default.
 announcements_wait_time_announcements_enabled(Doc) ->
     announcements_wait_time_announcements_enabled(Doc, 'undefined').
+
+-spec announcements_wait_time_announcements_enabled(doc(), Default) -> boolean() | Default.
 announcements_wait_time_announcements_enabled(Doc, Default) ->
     kz_json:get_boolean_value([<<"announcements">>, <<"wait_time_announcements_enabled">>], Doc, Default).
 
@@ -169,9 +181,10 @@ set_announcements_wait_time_announcements_enabled(Doc, AnnouncementsWaitTimeAnno
     kz_json:set_value([<<"announcements">>, <<"wait_time_announcements_enabled">>], AnnouncementsWaitTimeAnnouncementsEnabled, Doc).
 
 -spec caller_exit_key(doc()) -> binary().
--spec caller_exit_key(doc(), Default) -> binary() | Default.
 caller_exit_key(Doc) ->
     caller_exit_key(Doc, <<"#">>).
+
+-spec caller_exit_key(doc(), Default) -> binary() | Default.
 caller_exit_key(Doc, Default) ->
     kz_json:get_binary_value([<<"caller_exit_key">>], Doc, Default).
 
@@ -180,9 +193,10 @@ set_caller_exit_key(Doc, CallerExitKey) ->
     kz_json:set_value([<<"caller_exit_key">>], CallerExitKey, Doc).
 
 -spec cdr_url(doc()) -> kz_term:api_binary().
--spec cdr_url(doc(), Default) -> binary() | Default.
 cdr_url(Doc) ->
     cdr_url(Doc, 'undefined').
+
+-spec cdr_url(doc(), Default) -> binary() | Default.
 cdr_url(Doc, Default) ->
     kz_json:get_binary_value([<<"cdr_url">>], Doc, Default).
 
@@ -191,9 +205,10 @@ set_cdr_url(Doc, CdrUrl) ->
     kz_json:set_value([<<"cdr_url">>], CdrUrl, Doc).
 
 -spec connection_timeout(doc()) -> integer().
--spec connection_timeout(doc(), Default) -> integer() | Default.
 connection_timeout(Doc) ->
     connection_timeout(Doc, 3600).
+
+-spec connection_timeout(doc(), Default) -> integer() | Default.
 connection_timeout(Doc, Default) ->
     kz_json:get_integer_value([<<"connection_timeout">>], Doc, Default).
 
@@ -202,9 +217,10 @@ set_connection_timeout(Doc, ConnectionTimeout) ->
     kz_json:set_value([<<"connection_timeout">>], ConnectionTimeout, Doc).
 
 -spec enter_when_empty(doc()) -> boolean().
--spec enter_when_empty(doc(), Default) -> boolean() | Default.
 enter_when_empty(Doc) ->
     enter_when_empty(Doc, true).
+
+-spec enter_when_empty(doc(), Default) -> boolean() | Default.
 enter_when_empty(Doc, Default) ->
     kz_json:get_boolean_value([<<"enter_when_empty">>], Doc, Default).
 
@@ -213,9 +229,10 @@ set_enter_when_empty(Doc, EnterWhenEmpty) ->
     kz_json:set_value([<<"enter_when_empty">>], EnterWhenEmpty, Doc).
 
 -spec max_priority(doc()) -> kz_term:api_integer().
--spec max_priority(doc(), Default) -> integer() | Default.
 max_priority(Doc) ->
     max_priority(Doc, 'undefined').
+
+-spec max_priority(doc(), Default) -> integer() | Default.
 max_priority(Doc, Default) ->
     kz_json:get_integer_value([<<"max_priority">>], Doc, Default).
 
@@ -224,9 +241,10 @@ set_max_priority(Doc, MaxPriority) ->
     kz_json:set_value([<<"max_priority">>], MaxPriority, Doc).
 
 -spec max_queue_size(doc()) -> integer().
--spec max_queue_size(doc(), Default) -> integer() | Default.
 max_queue_size(Doc) ->
     max_queue_size(Doc, 0).
+
+-spec max_queue_size(doc(), Default) -> integer() | Default.
 max_queue_size(Doc, Default) ->
     kz_json:get_integer_value([<<"max_queue_size">>], Doc, Default).
 
@@ -235,9 +253,10 @@ set_max_queue_size(Doc, MaxQueueSize) ->
     kz_json:set_value([<<"max_queue_size">>], MaxQueueSize, Doc).
 
 -spec moh(doc()) -> kz_term:api_binary().
--spec moh(doc(), Default) -> binary() | Default.
 moh(Doc) ->
     moh(Doc, 'undefined').
+
+-spec moh(doc(), Default) -> binary() | Default.
 moh(Doc, Default) ->
     kz_json:get_binary_value([<<"moh">>], Doc, Default).
 
@@ -246,9 +265,10 @@ set_moh(Doc, Moh) ->
     kz_json:set_value([<<"moh">>], Moh, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -257,9 +277,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec record_caller(doc()) -> boolean().
--spec record_caller(doc(), Default) -> boolean() | Default.
 record_caller(Doc) ->
     record_caller(Doc, false).
+
+-spec record_caller(doc(), Default) -> boolean() | Default.
 record_caller(Doc, Default) ->
     kz_json:get_boolean_value([<<"record_caller">>], Doc, Default).
 
@@ -268,9 +289,10 @@ set_record_caller(Doc, RecordCaller) ->
     kz_json:set_value([<<"record_caller">>], RecordCaller, Doc).
 
 -spec recording_url(doc()) -> kz_term:api_binary().
--spec recording_url(doc(), Default) -> binary() | Default.
 recording_url(Doc) ->
     recording_url(Doc, 'undefined').
+
+-spec recording_url(doc(), Default) -> binary() | Default.
 recording_url(Doc, Default) ->
     kz_json:get_binary_value([<<"recording_url">>], Doc, Default).
 
@@ -279,9 +301,10 @@ set_recording_url(Doc, RecordingUrl) ->
     kz_json:set_value([<<"recording_url">>], RecordingUrl, Doc).
 
 -spec ring_simultaneously(doc()) -> integer().
--spec ring_simultaneously(doc(), Default) -> integer() | Default.
 ring_simultaneously(Doc) ->
     ring_simultaneously(Doc, 1).
+
+-spec ring_simultaneously(doc(), Default) -> integer() | Default.
 ring_simultaneously(Doc, Default) ->
     kz_json:get_integer_value([<<"ring_simultaneously">>], Doc, Default).
 
@@ -290,9 +313,10 @@ set_ring_simultaneously(Doc, RingSimultaneously) ->
     kz_json:set_value([<<"ring_simultaneously">>], RingSimultaneously, Doc).
 
 -spec strategy(doc()) -> binary().
--spec strategy(doc(), Default) -> binary() | Default.
 strategy(Doc) ->
     strategy(Doc, <<"round_robin">>).
+
+-spec strategy(doc(), Default) -> binary() | Default.
 strategy(Doc, Default) ->
     kz_json:get_binary_value([<<"strategy">>], Doc, Default).
 

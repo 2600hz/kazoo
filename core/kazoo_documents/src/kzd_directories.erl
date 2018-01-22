@@ -19,9 +19,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec confirm_match(doc()) -> boolean().
--spec confirm_match(doc(), Default) -> boolean() | Default.
 confirm_match(Doc) ->
     confirm_match(Doc, true).
+
+-spec confirm_match(doc(), Default) -> boolean() | Default.
 confirm_match(Doc, Default) ->
     kz_json:get_boolean_value([<<"confirm_match">>], Doc, Default).
 
@@ -30,9 +31,10 @@ set_confirm_match(Doc, ConfirmMatch) ->
     kz_json:set_value([<<"confirm_match">>], ConfirmMatch, Doc).
 
 -spec max_dtmf(doc()) -> integer().
--spec max_dtmf(doc(), Default) -> integer() | Default.
 max_dtmf(Doc) ->
     max_dtmf(Doc, 0).
+
+-spec max_dtmf(doc(), Default) -> integer() | Default.
 max_dtmf(Doc, Default) ->
     kz_json:get_integer_value([<<"max_dtmf">>], Doc, Default).
 
@@ -41,9 +43,10 @@ set_max_dtmf(Doc, MaxDtmf) ->
     kz_json:set_value([<<"max_dtmf">>], MaxDtmf, Doc).
 
 -spec min_dtmf(doc()) -> integer().
--spec min_dtmf(doc(), Default) -> integer() | Default.
 min_dtmf(Doc) ->
     min_dtmf(Doc, 3).
+
+-spec min_dtmf(doc(), Default) -> integer() | Default.
 min_dtmf(Doc, Default) ->
     kz_json:get_integer_value([<<"min_dtmf">>], Doc, Default).
 
@@ -52,9 +55,10 @@ set_min_dtmf(Doc, MinDtmf) ->
     kz_json:set_value([<<"min_dtmf">>], MinDtmf, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -63,9 +67,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec sort_by(doc()) -> binary().
--spec sort_by(doc(), Default) -> binary() | Default.
 sort_by(Doc) ->
     sort_by(Doc, <<"last_name">>).
+
+-spec sort_by(doc(), Default) -> binary() | Default.
 sort_by(Doc, Default) ->
     kz_json:get_binary_value([<<"sort_by">>], Doc, Default).
 
@@ -74,9 +79,10 @@ set_sort_by(Doc, SortBy) ->
     kz_json:set_value([<<"sort_by">>], SortBy, Doc).
 
 -spec users(doc()) -> kz_term:ne_binaries().
--spec users(doc(), Default) -> kz_term:ne_binaries() | Default.
 users(Doc) ->
     users(Doc, []).
+
+-spec users(doc(), Default) -> kz_term:ne_binaries() | Default.
 users(Doc, Default) ->
     kz_json:get_list_value([<<"users">>], Doc, Default).
 

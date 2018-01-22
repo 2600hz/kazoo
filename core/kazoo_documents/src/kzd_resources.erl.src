@@ -28,9 +28,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec emergency(doc()) -> boolean().
--spec emergency(doc(), Default) -> boolean() | Default.
 emergency(Doc) ->
     emergency(Doc, false).
+
+-spec emergency(doc(), Default) -> boolean() | Default.
 emergency(Doc, Default) ->
     kz_json:get_boolean_value([<<"emergency">>], Doc, Default).
 
@@ -39,9 +40,10 @@ set_emergency(Doc, Emergency) ->
     kz_json:set_value([<<"emergency">>], Emergency, Doc).
 
 -spec enabled(doc()) -> boolean().
--spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc) ->
     enabled(Doc, true).
+
+-spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc, Default) ->
     kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
 
@@ -50,9 +52,10 @@ set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
 -spec flags(doc()) -> kz_term:ne_binaries().
--spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
 flags(Doc) ->
     flags(Doc, []).
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
 flags(Doc, Default) ->
     kz_json:get_list_value([<<"flags">>], Doc, Default).
 
@@ -61,9 +64,10 @@ set_flags(Doc, Flags) ->
     kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec flat_rate_blacklist(doc()) -> kz_term:api_binary().
--spec flat_rate_blacklist(doc(), Default) -> binary() | Default.
 flat_rate_blacklist(Doc) ->
     flat_rate_blacklist(Doc, 'undefined').
+
+-spec flat_rate_blacklist(doc(), Default) -> binary() | Default.
 flat_rate_blacklist(Doc, Default) ->
     kz_json:get_binary_value([<<"flat_rate_blacklist">>], Doc, Default).
 
@@ -72,9 +76,10 @@ set_flat_rate_blacklist(Doc, FlatRateBlacklist) ->
     kz_json:set_value([<<"flat_rate_blacklist">>], FlatRateBlacklist, Doc).
 
 -spec flat_rate_whitelist(doc()) -> kz_term:api_binary().
--spec flat_rate_whitelist(doc(), Default) -> binary() | Default.
 flat_rate_whitelist(Doc) ->
     flat_rate_whitelist(Doc, 'undefined').
+
+-spec flat_rate_whitelist(doc(), Default) -> binary() | Default.
 flat_rate_whitelist(Doc, Default) ->
     kz_json:get_binary_value([<<"flat_rate_whitelist">>], Doc, Default).
 
@@ -83,9 +88,10 @@ set_flat_rate_whitelist(Doc, FlatRateWhitelist) ->
     kz_json:set_value([<<"flat_rate_whitelist">>], FlatRateWhitelist, Doc).
 
 -spec format_from_uri(doc()) -> kz_term:api_boolean().
--spec format_from_uri(doc(), Default) -> boolean() | Default.
 format_from_uri(Doc) ->
     format_from_uri(Doc, 'undefined').
+
+-spec format_from_uri(doc(), Default) -> boolean() | Default.
 format_from_uri(Doc, Default) ->
     kz_json:get_boolean_value([<<"format_from_uri">>], Doc, Default).
 
@@ -94,9 +100,10 @@ set_format_from_uri(Doc, FormatFromUri) ->
     kz_json:set_value([<<"format_from_uri">>], FormatFromUri, Doc).
 
 -spec formatters(doc()) -> kz_term:api_object().
--spec formatters(doc(), Default) -> kz_json:object() | Default.
 formatters(Doc) ->
     formatters(Doc, 'undefined').
+
+-spec formatters(doc(), Default) -> kz_json:object() | Default.
 formatters(Doc, Default) ->
     kz_json:get_json_value([<<"formatters">>], Doc, Default).
 
@@ -105,9 +112,10 @@ set_formatters(Doc, Formatters) ->
     kz_json:set_value([<<"formatters">>], Formatters, Doc).
 
 -spec from_uri_realm(doc()) -> kz_term:api_binary().
--spec from_uri_realm(doc(), Default) -> binary() | Default.
 from_uri_realm(Doc) ->
     from_uri_realm(Doc, 'undefined').
+
+-spec from_uri_realm(doc(), Default) -> binary() | Default.
 from_uri_realm(Doc, Default) ->
     kz_json:get_binary_value([<<"from_uri_realm">>], Doc, Default).
 
@@ -116,9 +124,10 @@ set_from_uri_realm(Doc, FromUriRealm) ->
     kz_json:set_value([<<"from_uri_realm">>], FromUriRealm, Doc).
 
 -spec gateways(doc()) -> kz_term:api_objects().
--spec gateways(doc(), Default) -> kz_json:objects() | Default.
 gateways(Doc) ->
     gateways(Doc, 'undefined').
+
+-spec gateways(doc(), Default) -> kz_json:objects() | Default.
 gateways(Doc, Default) ->
     kz_json:get_list_value([<<"gateways">>], Doc, Default).
 
@@ -127,9 +136,10 @@ set_gateways(Doc, Gateways) ->
     kz_json:set_value([<<"gateways">>], Gateways, Doc).
 
 -spec grace_period(doc()) -> integer().
--spec grace_period(doc(), Default) -> integer() | Default.
 grace_period(Doc) ->
     grace_period(Doc, 5).
+
+-spec grace_period(doc(), Default) -> integer() | Default.
 grace_period(Doc, Default) ->
     kz_json:get_integer_value([<<"grace_period">>], Doc, Default).
 
@@ -138,9 +148,10 @@ set_grace_period(Doc, GracePeriod) ->
     kz_json:set_value([<<"grace_period">>], GracePeriod, Doc).
 
 -spec media(doc()) -> kz_term:api_object().
--spec media(doc(), Default) -> kz_json:object() | Default.
 media(Doc) ->
     media(Doc, 'undefined').
+
+-spec media(doc(), Default) -> kz_json:object() | Default.
 media(Doc, Default) ->
     kz_json:get_json_value([<<"media">>], Doc, Default).
 
@@ -149,9 +160,10 @@ set_media(Doc, Media) ->
     kz_json:set_value([<<"media">>], Media, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -160,9 +172,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec require_flags(doc()) -> kz_term:api_boolean().
--spec require_flags(doc(), Default) -> boolean() | Default.
 require_flags(Doc) ->
     require_flags(Doc, 'undefined').
+
+-spec require_flags(doc(), Default) -> boolean() | Default.
 require_flags(Doc, Default) ->
     kz_json:get_boolean_value([<<"require_flags">>], Doc, Default).
 
@@ -171,9 +184,10 @@ set_require_flags(Doc, RequireFlags) ->
     kz_json:set_value([<<"require_flags">>], RequireFlags, Doc).
 
 -spec rules(doc()) -> kz_term:ne_binaries().
--spec rules(doc(), Default) -> kz_term:ne_binaries() | Default.
 rules(Doc) ->
     rules(Doc, []).
+
+-spec rules(doc(), Default) -> kz_term:ne_binaries() | Default.
 rules(Doc, Default) ->
     kz_json:get_list_value([<<"rules">>], Doc, Default).
 
@@ -182,9 +196,10 @@ set_rules(Doc, Rules) ->
     kz_json:set_value([<<"rules">>], Rules, Doc).
 
 -spec weight_cost(doc()) -> integer().
--spec weight_cost(doc(), Default) -> integer() | Default.
 weight_cost(Doc) ->
     weight_cost(Doc, 50).
+
+-spec weight_cost(doc(), Default) -> integer() | Default.
 weight_cost(Doc, Default) ->
     kz_json:get_integer_value([<<"weight_cost">>], Doc, Default).
 

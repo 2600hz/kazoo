@@ -17,9 +17,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec body(doc()) -> kz_term:api_ne_binary().
--spec body(doc(), Default) -> kz_term:ne_binary() | Default.
 body(Doc) ->
     body(Doc, 'undefined').
+
+-spec body(doc(), Default) -> kz_term:ne_binary() | Default.
 body(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"body">>], Doc, Default).
 
@@ -28,9 +29,10 @@ set_body(Doc, Body) ->
     kz_json:set_value([<<"body">>], Body, Doc).
 
 -spec from(doc()) -> kz_term:api_binary().
--spec from(doc(), Default) -> binary() | Default.
 from(Doc) ->
     from(Doc, 'undefined').
+
+-spec from(doc(), Default) -> binary() | Default.
 from(Doc, Default) ->
     kz_json:get_binary_value([<<"from">>], Doc, Default).
 
@@ -39,9 +41,10 @@ set_from(Doc, From) ->
     kz_json:set_value([<<"from">>], From, Doc).
 
 -spec scheduled(doc()) -> kz_term:api_integer().
--spec scheduled(doc(), Default) -> integer() | Default.
 scheduled(Doc) ->
     scheduled(Doc, 'undefined').
+
+-spec scheduled(doc(), Default) -> integer() | Default.
 scheduled(Doc, Default) ->
     kz_json:get_integer_value([<<"scheduled">>], Doc, Default).
 
@@ -50,9 +53,10 @@ set_scheduled(Doc, Scheduled) ->
     kz_json:set_value([<<"scheduled">>], Scheduled, Doc).
 
 -spec to(doc()) -> kz_term:api_binary().
--spec to(doc(), Default) -> binary() | Default.
 to(Doc) ->
     to(Doc, 'undefined').
+
+-spec to(doc(), Default) -> binary() | Default.
 to(Doc, Default) ->
     kz_json:get_binary_value([<<"to">>], Doc, Default).
 

@@ -29,9 +29,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec bill(doc()) -> kz_term:api_object().
--spec bill(doc(), Default) -> kz_json:object() | Default.
 bill(Doc) ->
     bill(Doc, 'undefined').
+
+-spec bill(doc(), Default) -> kz_json:object() | Default.
 bill(Doc, Default) ->
     kz_json:get_json_value([<<"bill">>], Doc, Default).
 
@@ -40,9 +41,10 @@ set_bill(Doc, Bill) ->
     kz_json:set_value([<<"bill">>], Bill, Doc).
 
 -spec bill_carrier(doc()) -> kz_term:api_binary().
--spec bill_carrier(doc(), Default) -> binary() | Default.
 bill_carrier(Doc) ->
     bill_carrier(Doc, 'undefined').
+
+-spec bill_carrier(doc(), Default) -> binary() | Default.
 bill_carrier(Doc, Default) ->
     kz_json:get_binary_value([<<"bill">>, <<"carrier">>], Doc, Default).
 
@@ -51,9 +53,10 @@ set_bill_carrier(Doc, BillCarrier) ->
     kz_json:set_value([<<"bill">>, <<"carrier">>], BillCarrier, Doc).
 
 -spec bill_extended_address(doc()) -> kz_term:api_binary().
--spec bill_extended_address(doc(), Default) -> binary() | Default.
 bill_extended_address(Doc) ->
     bill_extended_address(Doc, 'undefined').
+
+-spec bill_extended_address(doc(), Default) -> binary() | Default.
 bill_extended_address(Doc, Default) ->
     kz_json:get_binary_value([<<"bill">>, <<"extended_address">>], Doc, Default).
 
@@ -62,9 +65,10 @@ set_bill_extended_address(Doc, BillExtendedAddress) ->
     kz_json:set_value([<<"bill">>, <<"extended_address">>], BillExtendedAddress, Doc).
 
 -spec bill_locality(doc()) -> kz_term:api_binary().
--spec bill_locality(doc(), Default) -> binary() | Default.
 bill_locality(Doc) ->
     bill_locality(Doc, 'undefined').
+
+-spec bill_locality(doc(), Default) -> binary() | Default.
 bill_locality(Doc, Default) ->
     kz_json:get_binary_value([<<"bill">>, <<"locality">>], Doc, Default).
 
@@ -73,9 +77,10 @@ set_bill_locality(Doc, BillLocality) ->
     kz_json:set_value([<<"bill">>, <<"locality">>], BillLocality, Doc).
 
 -spec bill_name(doc()) -> kz_term:api_binary().
--spec bill_name(doc(), Default) -> binary() | Default.
 bill_name(Doc) ->
     bill_name(Doc, 'undefined').
+
+-spec bill_name(doc(), Default) -> binary() | Default.
 bill_name(Doc, Default) ->
     kz_json:get_binary_value([<<"bill">>, <<"name">>], Doc, Default).
 
@@ -84,9 +89,10 @@ set_bill_name(Doc, BillName) ->
     kz_json:set_value([<<"bill">>, <<"name">>], BillName, Doc).
 
 -spec bill_postal_code(doc()) -> kz_term:api_binary().
--spec bill_postal_code(doc(), Default) -> binary() | Default.
 bill_postal_code(Doc) ->
     bill_postal_code(Doc, 'undefined').
+
+-spec bill_postal_code(doc(), Default) -> binary() | Default.
 bill_postal_code(Doc, Default) ->
     kz_json:get_binary_value([<<"bill">>, <<"postal_code">>], Doc, Default).
 
@@ -95,9 +101,10 @@ set_bill_postal_code(Doc, BillPostalCode) ->
     kz_json:set_value([<<"bill">>, <<"postal_code">>], BillPostalCode, Doc).
 
 -spec bill_region(doc()) -> kz_term:api_binary().
--spec bill_region(doc(), Default) -> binary() | Default.
 bill_region(Doc) ->
     bill_region(Doc, 'undefined').
+
+-spec bill_region(doc(), Default) -> binary() | Default.
 bill_region(Doc, Default) ->
     kz_json:get_binary_value([<<"bill">>, <<"region">>], Doc, Default).
 
@@ -106,9 +113,10 @@ set_bill_region(Doc, BillRegion) ->
     kz_json:set_value([<<"bill">>, <<"region">>], BillRegion, Doc).
 
 -spec bill_street_address(doc()) -> kz_term:api_binary().
--spec bill_street_address(doc(), Default) -> binary() | Default.
 bill_street_address(Doc) ->
     bill_street_address(Doc, 'undefined').
+
+-spec bill_street_address(doc(), Default) -> binary() | Default.
 bill_street_address(Doc, Default) ->
     kz_json:get_binary_value([<<"bill">>, <<"street_address">>], Doc, Default).
 
@@ -117,9 +125,10 @@ set_bill_street_address(Doc, BillStreetAddress) ->
     kz_json:set_value([<<"bill">>, <<"street_address">>], BillStreetAddress, Doc).
 
 -spec comments(doc()) -> kz_term:api_objects().
--spec comments(doc(), Default) -> kz_json:objects() | Default.
 comments(Doc) ->
     comments(Doc, 'undefined').
+
+-spec comments(doc(), Default) -> kz_json:objects() | Default.
 comments(Doc, Default) ->
     kz_json:get_list_value([<<"comments">>], Doc, Default).
 
@@ -128,9 +137,10 @@ set_comments(Doc, Comments) ->
     kz_json:set_value([<<"comments">>], Comments, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -139,9 +149,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec notifications(doc()) -> kz_term:api_object().
--spec notifications(doc(), Default) -> kz_json:object() | Default.
 notifications(Doc) ->
     notifications(Doc, 'undefined').
+
+-spec notifications(doc(), Default) -> kz_json:object() | Default.
 notifications(Doc, Default) ->
     kz_json:get_json_value([<<"notifications">>], Doc, Default).
 
@@ -150,9 +161,10 @@ set_notifications(Doc, Notifications) ->
     kz_json:set_value([<<"notifications">>], Notifications, Doc).
 
 -spec notifications_email(doc()) -> kz_term:api_object().
--spec notifications_email(doc(), Default) -> kz_json:object() | Default.
 notifications_email(Doc) ->
     notifications_email(Doc, 'undefined').
+
+-spec notifications_email(doc(), Default) -> kz_json:object() | Default.
 notifications_email(Doc, Default) ->
     kz_json:get_json_value([<<"notifications">>, <<"email">>], Doc, Default).
 
@@ -161,9 +173,10 @@ set_notifications_email(Doc, NotificationsEmail) ->
     kz_json:set_value([<<"notifications">>, <<"email">>], NotificationsEmail, Doc).
 
 -spec notifications_email_send_to(doc()) -> any().
--spec notifications_email_send_to(doc(), Default) -> any() | Default.
 notifications_email_send_to(Doc) ->
     notifications_email_send_to(Doc, 'undefined').
+
+-spec notifications_email_send_to(doc(), Default) -> any() | Default.
 notifications_email_send_to(Doc, Default) ->
     kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], Doc, Default).
 
@@ -172,9 +185,10 @@ set_notifications_email_send_to(Doc, NotificationsEmailSendTo) ->
     kz_json:set_value([<<"notifications">>, <<"email">>, <<"send_to">>], NotificationsEmailSendTo, Doc).
 
 -spec numbers(doc()) -> kz_term:api_object().
--spec numbers(doc(), Default) -> kz_json:object() | Default.
 numbers(Doc) ->
     numbers(Doc, 'undefined').
+
+-spec numbers(doc(), Default) -> kz_json:object() | Default.
 numbers(Doc, Default) ->
     kz_json:get_json_value([<<"numbers">>], Doc, Default).
 
@@ -183,9 +197,10 @@ set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
 -spec port_state(doc()) -> binary().
--spec port_state(doc(), Default) -> binary() | Default.
 port_state(Doc) ->
     port_state(Doc, <<"unconfirmed">>).
+
+-spec port_state(doc(), Default) -> binary() | Default.
 port_state(Doc, Default) ->
     kz_json:get_binary_value([<<"port_state">>], Doc, Default).
 
@@ -194,9 +209,10 @@ set_port_state(Doc, PortState) ->
     kz_json:set_value([<<"port_state">>], PortState, Doc).
 
 -spec transfer_date(doc()) -> kz_term:api_integer().
--spec transfer_date(doc(), Default) -> integer() | Default.
 transfer_date(Doc) ->
     transfer_date(Doc, 'undefined').
+
+-spec transfer_date(doc(), Default) -> integer() | Default.
 transfer_date(Doc, Default) ->
     kz_json:get_integer_value([<<"transfer_date">>], Doc, Default).
 

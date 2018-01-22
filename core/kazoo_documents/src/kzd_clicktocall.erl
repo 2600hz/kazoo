@@ -22,9 +22,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec auth_required(doc()) -> boolean().
--spec auth_required(doc(), Default) -> boolean() | Default.
 auth_required(Doc) ->
     auth_required(Doc, true).
+
+-spec auth_required(doc(), Default) -> boolean() | Default.
 auth_required(Doc, Default) ->
     kz_json:get_boolean_value([<<"auth_required">>], Doc, Default).
 
@@ -33,9 +34,10 @@ set_auth_required(Doc, AuthRequired) ->
     kz_json:set_value([<<"auth_required">>], AuthRequired, Doc).
 
 -spec caller_id_number(doc()) -> kz_term:api_binary().
--spec caller_id_number(doc(), Default) -> binary() | Default.
 caller_id_number(Doc) ->
     caller_id_number(Doc, 'undefined').
+
+-spec caller_id_number(doc(), Default) -> binary() | Default.
 caller_id_number(Doc, Default) ->
     kz_json:get_binary_value([<<"caller_id_number">>], Doc, Default).
 
@@ -44,9 +46,10 @@ set_caller_id_number(Doc, CallerIdNumber) ->
     kz_json:set_value([<<"caller_id_number">>], CallerIdNumber, Doc).
 
 -spec dial_first(doc()) -> kz_term:api_binary().
--spec dial_first(doc(), Default) -> binary() | Default.
 dial_first(Doc) ->
     dial_first(Doc, 'undefined').
+
+-spec dial_first(doc(), Default) -> binary() | Default.
 dial_first(Doc, Default) ->
     kz_json:get_binary_value([<<"dial_first">>], Doc, Default).
 
@@ -55,9 +58,10 @@ set_dial_first(Doc, DialFirst) ->
     kz_json:set_value([<<"dial_first">>], DialFirst, Doc).
 
 -spec extension(doc()) -> kz_term:api_binary().
--spec extension(doc(), Default) -> binary() | Default.
 extension(Doc) ->
     extension(Doc, 'undefined').
+
+-spec extension(doc(), Default) -> binary() | Default.
 extension(Doc, Default) ->
     kz_json:get_binary_value([<<"extension">>], Doc, Default).
 
@@ -66,9 +70,10 @@ set_extension(Doc, Extension) ->
     kz_json:set_value([<<"extension">>], Extension, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -77,9 +82,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec outbound_callee_id_name(doc()) -> kz_term:api_binary().
--spec outbound_callee_id_name(doc(), Default) -> binary() | Default.
 outbound_callee_id_name(Doc) ->
     outbound_callee_id_name(Doc, 'undefined').
+
+-spec outbound_callee_id_name(doc(), Default) -> binary() | Default.
 outbound_callee_id_name(Doc, Default) ->
     kz_json:get_binary_value([<<"outbound_callee_id_name">>], Doc, Default).
 
@@ -88,9 +94,10 @@ set_outbound_callee_id_name(Doc, OutboundCalleeIdName) ->
     kz_json:set_value([<<"outbound_callee_id_name">>], OutboundCalleeIdName, Doc).
 
 -spec outbound_callee_id_number(doc()) -> kz_term:api_binary().
--spec outbound_callee_id_number(doc(), Default) -> binary() | Default.
 outbound_callee_id_number(Doc) ->
     outbound_callee_id_number(Doc, 'undefined').
+
+-spec outbound_callee_id_number(doc(), Default) -> binary() | Default.
 outbound_callee_id_number(Doc, Default) ->
     kz_json:get_binary_value([<<"outbound_callee_id_number">>], Doc, Default).
 
@@ -99,9 +106,10 @@ set_outbound_callee_id_number(Doc, OutboundCalleeIdNumber) ->
     kz_json:set_value([<<"outbound_callee_id_number">>], OutboundCalleeIdNumber, Doc).
 
 -spec throttle(doc()) -> kz_term:api_integer().
--spec throttle(doc(), Default) -> integer() | Default.
 throttle(Doc) ->
     throttle(Doc, 'undefined').
+
+-spec throttle(doc(), Default) -> integer() | Default.
 throttle(Doc, Default) ->
     kz_json:get_integer_value([<<"throttle">>], Doc, Default).
 
@@ -110,9 +118,10 @@ set_throttle(Doc, Throttle) ->
     kz_json:set_value([<<"throttle">>], Throttle, Doc).
 
 -spec whitelist(doc()) -> kz_term:api_ne_binaries().
--spec whitelist(doc(), Default) -> kz_term:ne_binaries() | Default.
 whitelist(Doc) ->
     whitelist(Doc, 'undefined').
+
+-spec whitelist(doc(), Default) -> kz_term:ne_binaries() | Default.
 whitelist(Doc, Default) ->
     kz_json:get_list_value([<<"whitelist">>], Doc, Default).
 

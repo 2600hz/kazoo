@@ -14,9 +14,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec api_key(doc()) -> kz_term:api_ne_binary().
--spec api_key(doc(), Default) -> kz_term:ne_binary() | Default.
 api_key(Doc) ->
     api_key(Doc, 'undefined').
+
+-spec api_key(doc(), Default) -> kz_term:ne_binary() | Default.
 api_key(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"api_key">>], Doc, Default).
 

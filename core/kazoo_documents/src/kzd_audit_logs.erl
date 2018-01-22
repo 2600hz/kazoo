@@ -21,9 +21,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec audit(doc()) -> kz_term:api_object().
--spec audit(doc(), Default) -> kz_json:object() | Default.
 audit(Doc) ->
     audit(Doc, 'undefined').
+
+-spec audit(doc(), Default) -> kz_json:object() | Default.
 audit(Doc, Default) ->
     kz_json:get_json_value([<<"audit">>], Doc, Default).
 
@@ -32,9 +33,10 @@ set_audit(Doc, Audit) ->
     kz_json:set_value([<<"audit">>], Audit, Doc).
 
 -spec authenticating_user(doc()) -> kz_term:api_object().
--spec authenticating_user(doc(), Default) -> kz_json:object() | Default.
 authenticating_user(Doc) ->
     authenticating_user(Doc, 'undefined').
+
+-spec authenticating_user(doc(), Default) -> kz_json:object() | Default.
 authenticating_user(Doc, Default) ->
     kz_json:get_json_value([<<"authenticating_user">>], Doc, Default).
 
@@ -43,9 +45,10 @@ set_authenticating_user(Doc, AuthenticatingUser) ->
     kz_json:set_value([<<"authenticating_user">>], AuthenticatingUser, Doc).
 
 -spec authenticating_user_account_id(doc()) -> kz_term:api_binary().
--spec authenticating_user_account_id(doc(), Default) -> binary() | Default.
 authenticating_user_account_id(Doc) ->
     authenticating_user_account_id(Doc, 'undefined').
+
+-spec authenticating_user_account_id(doc(), Default) -> binary() | Default.
 authenticating_user_account_id(Doc, Default) ->
     kz_json:get_binary_value([<<"authenticating_user">>, <<"account_id">>], Doc, Default).
 
@@ -54,9 +57,10 @@ set_authenticating_user_account_id(Doc, AuthenticatingUserAccountId) ->
     kz_json:set_value([<<"authenticating_user">>, <<"account_id">>], AuthenticatingUserAccountId, Doc).
 
 -spec authenticating_user_account_name(doc()) -> kz_term:api_binary().
--spec authenticating_user_account_name(doc(), Default) -> binary() | Default.
 authenticating_user_account_name(Doc) ->
     authenticating_user_account_name(Doc, 'undefined').
+
+-spec authenticating_user_account_name(doc(), Default) -> binary() | Default.
 authenticating_user_account_name(Doc, Default) ->
     kz_json:get_binary_value([<<"authenticating_user">>, <<"account_name">>], Doc, Default).
 
@@ -65,9 +69,10 @@ set_authenticating_user_account_name(Doc, AuthenticatingUserAccountName) ->
     kz_json:set_value([<<"authenticating_user">>, <<"account_name">>], AuthenticatingUserAccountName, Doc).
 
 -spec authenticating_user_first_name(doc()) -> kz_term:api_binary().
--spec authenticating_user_first_name(doc(), Default) -> binary() | Default.
 authenticating_user_first_name(Doc) ->
     authenticating_user_first_name(Doc, 'undefined').
+
+-spec authenticating_user_first_name(doc(), Default) -> binary() | Default.
 authenticating_user_first_name(Doc, Default) ->
     kz_json:get_binary_value([<<"authenticating_user">>, <<"first_name">>], Doc, Default).
 
@@ -76,9 +81,10 @@ set_authenticating_user_first_name(Doc, AuthenticatingUserFirstName) ->
     kz_json:set_value([<<"authenticating_user">>, <<"first_name">>], AuthenticatingUserFirstName, Doc).
 
 -spec authenticating_user_last_name(doc()) -> kz_term:api_binary().
--spec authenticating_user_last_name(doc(), Default) -> binary() | Default.
 authenticating_user_last_name(Doc) ->
     authenticating_user_last_name(Doc, 'undefined').
+
+-spec authenticating_user_last_name(doc(), Default) -> binary() | Default.
 authenticating_user_last_name(Doc, Default) ->
     kz_json:get_binary_value([<<"authenticating_user">>, <<"last_name">>], Doc, Default).
 
@@ -87,9 +93,10 @@ set_authenticating_user_last_name(Doc, AuthenticatingUserLastName) ->
     kz_json:set_value([<<"authenticating_user">>, <<"last_name">>], AuthenticatingUserLastName, Doc).
 
 -spec authenticating_user_user_id(doc()) -> kz_term:api_binary().
--spec authenticating_user_user_id(doc(), Default) -> binary() | Default.
 authenticating_user_user_id(Doc) ->
     authenticating_user_user_id(Doc, 'undefined').
+
+-spec authenticating_user_user_id(doc(), Default) -> binary() | Default.
 authenticating_user_user_id(Doc, Default) ->
     kz_json:get_binary_value([<<"authenticating_user">>, <<"user_id">>], Doc, Default).
 
@@ -98,9 +105,10 @@ set_authenticating_user_user_id(Doc, AuthenticatingUserUserId) ->
     kz_json:set_value([<<"authenticating_user">>, <<"user_id">>], AuthenticatingUserUserId, Doc).
 
 -spec tree(doc()) -> kz_term:api_ne_binaries().
--spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(Doc) ->
     tree(Doc, 'undefined').
+
+-spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(Doc, Default) ->
     kz_json:get_list_value([<<"tree">>], Doc, Default).
 

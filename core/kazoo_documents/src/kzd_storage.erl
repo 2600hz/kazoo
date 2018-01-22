@@ -18,9 +18,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec attachments(doc()) -> kz_term:api_object().
--spec attachments(doc(), Default) -> kz_json:object() | Default.
 attachments(Doc) ->
     attachments(Doc, 'undefined').
+
+-spec attachments(doc(), Default) -> kz_json:object() | Default.
 attachments(Doc, Default) ->
     kz_json:get_json_value([<<"attachments">>], Doc, Default).
 
@@ -29,9 +30,10 @@ set_attachments(Doc, Attachments) ->
     kz_json:set_value([<<"attachments">>], Attachments, Doc).
 
 -spec connections(doc()) -> kz_term:api_object().
--spec connections(doc(), Default) -> kz_json:object() | Default.
 connections(Doc) ->
     connections(Doc, 'undefined').
+
+-spec connections(doc(), Default) -> kz_json:object() | Default.
 connections(Doc, Default) ->
     kz_json:get_json_value([<<"connections">>], Doc, Default).
 
@@ -40,9 +42,10 @@ set_connections(Doc, Connections) ->
     kz_json:set_value([<<"connections">>], Connections, Doc).
 
 -spec id(doc()) -> kz_term:api_binary().
--spec id(doc(), Default) -> binary() | Default.
 id(Doc) ->
     id(Doc, 'undefined').
+
+-spec id(doc(), Default) -> binary() | Default.
 id(Doc, Default) ->
     kz_json:get_binary_value([<<"id">>], Doc, Default).
 
@@ -51,9 +54,10 @@ set_id(Doc, Id) ->
     kz_json:set_value([<<"id">>], Id, Doc).
 
 -spec plan(doc()) -> kz_term:api_object().
--spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Doc) ->
     plan(Doc, 'undefined').
+
+-spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Doc, Default) ->
     kz_json:get_json_value([<<"plan">>], Doc, Default).
 
@@ -62,9 +66,10 @@ set_plan(Doc, Plan) ->
     kz_json:set_value([<<"plan">>], Plan, Doc).
 
 -spec ui_metadata(doc()) -> kz_term:api_object().
--spec ui_metadata(doc(), Default) -> kz_json:object() | Default.
 ui_metadata(Doc) ->
     ui_metadata(Doc, 'undefined').
+
+-spec ui_metadata(doc(), Default) -> kz_json:object() | Default.
 ui_metadata(Doc, Default) ->
     kz_json:get_json_value([<<"ui_metadata">>], Doc, Default).
 

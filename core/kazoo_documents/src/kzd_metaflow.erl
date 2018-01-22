@@ -16,9 +16,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec children(doc()) -> kz_term:api_object().
--spec children(doc(), Default) -> kz_json:object() | Default.
 children(Doc) ->
     children(Doc, 'undefined').
+
+-spec children(doc(), Default) -> kz_json:object() | Default.
 children(Doc, Default) ->
     kz_json:get_json_value([<<"children">>], Doc, Default).
 
@@ -27,9 +28,10 @@ set_children(Doc, Children) ->
     kz_json:set_value([<<"children">>], Children, Doc).
 
 -spec data(doc()) -> kz_json:object().
--spec data(doc(), Default) -> kz_json:object() | Default.
 data(Doc) ->
     data(Doc, kz_json:new()).
+
+-spec data(doc(), Default) -> kz_json:object() | Default.
 data(Doc, Default) ->
     kz_json:get_json_value([<<"data">>], Doc, Default).
 
@@ -38,9 +40,10 @@ set_data(Doc, Data) ->
     kz_json:set_value([<<"data">>], Data, Doc).
 
 -spec module(doc()) -> kz_term:api_ne_binary().
--spec module(doc(), Default) -> kz_term:ne_binary() | Default.
 module(Doc) ->
     module(Doc, 'undefined').
+
+-spec module(doc(), Default) -> kz_term:ne_binary() | Default.
 module(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"module">>], Doc, Default).
 

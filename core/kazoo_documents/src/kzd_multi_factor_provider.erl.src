@@ -17,9 +17,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec enabled(doc()) -> kz_term:api_boolean().
--spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc) ->
     enabled(Doc, 'undefined').
+
+-spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc, Default) ->
     kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
 
@@ -28,9 +29,10 @@ set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
 
 -spec name(doc()) -> kz_term:api_binary().
--spec name(doc(), Default) -> binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> binary() | Default.
 name(Doc, Default) ->
     kz_json:get_binary_value([<<"name">>], Doc, Default).
 
@@ -39,9 +41,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec provider_name(doc()) -> kz_term:api_binary().
--spec provider_name(doc(), Default) -> binary() | Default.
 provider_name(Doc) ->
     provider_name(Doc, 'undefined').
+
+-spec provider_name(doc(), Default) -> binary() | Default.
 provider_name(Doc, Default) ->
     kz_json:get_binary_value([<<"provider_name">>], Doc, Default).
 
@@ -50,9 +53,10 @@ set_provider_name(Doc, ProviderName) ->
     kz_json:set_value([<<"provider_name">>], ProviderName, Doc).
 
 -spec settings(doc()) -> kz_term:api_object().
--spec settings(doc(), Default) -> kz_json:object() | Default.
 settings(Doc) ->
     settings(Doc, 'undefined').
+
+-spec settings(doc(), Default) -> kz_json:object() | Default.
 settings(Doc, Default) ->
     kz_json:get_json_value([<<"settings">>], Doc, Default).
 

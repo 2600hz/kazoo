@@ -17,9 +17,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec cidr(doc()) -> kz_term:api_binary().
--spec cidr(doc(), Default) -> binary() | Default.
 cidr(Doc) ->
     cidr(Doc, 'undefined').
+
+-spec cidr(doc(), Default) -> binary() | Default.
 cidr(Doc, Default) ->
     kz_json:get_binary_value([<<"cidr">>], Doc, Default).
 
@@ -28,9 +29,10 @@ set_cidr(Doc, Cidr) ->
     kz_json:set_value([<<"cidr">>], Cidr, Doc).
 
 -spec description(doc()) -> kz_term:api_binary().
--spec description(doc(), Default) -> binary() | Default.
 description(Doc) ->
     description(Doc, 'undefined').
+
+-spec description(doc(), Default) -> binary() | Default.
 description(Doc, Default) ->
     kz_json:get_binary_value([<<"description">>], Doc, Default).
 
@@ -39,9 +41,10 @@ set_description(Doc, Description) ->
     kz_json:set_value([<<"description">>], Description, Doc).
 
 -spec network_list_name(doc()) -> kz_term:api_binary().
--spec network_list_name(doc(), Default) -> binary() | Default.
 network_list_name(Doc) ->
     network_list_name(Doc, 'undefined').
+
+-spec network_list_name(doc(), Default) -> binary() | Default.
 network_list_name(Doc, Default) ->
     kz_json:get_binary_value([<<"network_list_name">>], Doc, Default).
 
@@ -50,9 +53,10 @@ set_network_list_name(Doc, NetworkListName) ->
     kz_json:set_value([<<"network_list_name">>], NetworkListName, Doc).
 
 -spec type(doc()) -> binary().
--spec type(doc(), Default) -> binary() | Default.
 type(Doc) ->
     type(Doc, <<"allow">>).
+
+-spec type(doc(), Default) -> binary() | Default.
 type(Doc, Default) ->
     kz_json:get_binary_value([<<"type">>], Doc, Default).
 

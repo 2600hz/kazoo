@@ -15,9 +15,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec braintree(doc()) -> kz_term:api_object().
--spec braintree(doc(), Default) -> kz_json:object() | Default.
 braintree(Doc) ->
     braintree(Doc, 'undefined').
+
+-spec braintree(doc(), Default) -> kz_json:object() | Default.
 braintree(Doc, Default) ->
     kz_json:get_json_value([<<"braintree">>], Doc, Default).
 
@@ -26,9 +27,10 @@ set_braintree(Doc, Braintree) ->
     kz_json:set_value([<<"braintree">>], Braintree, Doc).
 
 -spec local(doc()) -> kz_term:api_object().
--spec local(doc(), Default) -> kz_json:object() | Default.
 local(Doc) ->
     local(Doc, 'undefined').
+
+-spec local(doc(), Default) -> kz_json:object() | Default.
 local(Doc, Default) ->
     kz_json:get_json_value([<<"local">>], Doc, Default).
 

@@ -21,9 +21,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec displayname(doc()) -> kz_term:api_ne_binary().
--spec displayname(doc(), Default) -> kz_term:ne_binary() | Default.
 displayname(Doc) ->
     displayname(Doc, 'undefined').
+
+-spec displayname(doc(), Default) -> kz_term:ne_binary() | Default.
 displayname(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"displayname">>], Doc, Default).
 
@@ -32,9 +33,10 @@ set_displayname(Doc, Displayname) ->
     kz_json:set_value([<<"displayname">>], Displayname, Doc).
 
 -spec firstname(doc()) -> kz_term:api_ne_binary().
--spec firstname(doc(), Default) -> kz_term:ne_binary() | Default.
 firstname(Doc) ->
     firstname(Doc, 'undefined').
+
+-spec firstname(doc(), Default) -> kz_term:ne_binary() | Default.
 firstname(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"firstname">>], Doc, Default).
 
@@ -43,9 +45,10 @@ set_firstname(Doc, Firstname) ->
     kz_json:set_value([<<"firstname">>], Firstname, Doc).
 
 -spec lastname(doc()) -> kz_term:api_ne_binary().
--spec lastname(doc(), Default) -> kz_term:ne_binary() | Default.
 lastname(Doc) ->
     lastname(Doc, 'undefined').
+
+-spec lastname(doc(), Default) -> kz_term:ne_binary() | Default.
 lastname(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"lastname">>], Doc, Default).
 
@@ -54,9 +57,10 @@ set_lastname(Doc, Lastname) ->
     kz_json:set_value([<<"lastname">>], Lastname, Doc).
 
 -spec list_id(doc()) -> kz_term:api_binary().
--spec list_id(doc(), Default) -> binary() | Default.
 list_id(Doc) ->
     list_id(Doc, 'undefined').
+
+-spec list_id(doc(), Default) -> binary() | Default.
 list_id(Doc, Default) ->
     kz_json:get_binary_value([<<"list_id">>], Doc, Default).
 
@@ -65,9 +69,10 @@ set_list_id(Doc, ListId) ->
     kz_json:set_value([<<"list_id">>], ListId, Doc).
 
 -spec number(doc()) -> kz_term:api_binary().
--spec number(doc(), Default) -> binary() | Default.
 number(Doc) ->
     number(Doc, 'undefined').
+
+-spec number(doc(), Default) -> binary() | Default.
 number(Doc, Default) ->
     kz_json:get_binary_value([<<"number">>], Doc, Default).
 
@@ -76,9 +81,10 @@ set_number(Doc, Number) ->
     kz_json:set_value([<<"number">>], Number, Doc).
 
 -spec pattern(doc()) -> kz_term:api_binary().
--spec pattern(doc(), Default) -> binary() | Default.
 pattern(Doc) ->
     pattern(Doc, 'undefined').
+
+-spec pattern(doc(), Default) -> binary() | Default.
 pattern(Doc, Default) ->
     kz_json:get_binary_value([<<"pattern">>], Doc, Default).
 
@@ -87,9 +93,10 @@ set_pattern(Doc, Pattern) ->
     kz_json:set_value([<<"pattern">>], Pattern, Doc).
 
 -spec profile(doc()) -> kz_json:object().
--spec profile(doc(), Default) -> kz_json:object() | Default.
 profile(Doc) ->
     profile(Doc, kz_json:new()).
+
+-spec profile(doc(), Default) -> kz_json:object() | Default.
 profile(Doc, Default) ->
     kz_json:get_json_value([<<"profile">>], Doc, Default).
 
@@ -98,9 +105,10 @@ set_profile(Doc, Profile) ->
     kz_json:set_value([<<"profile">>], Profile, Doc).
 
 -spec type(doc()) -> kz_term:api_ne_binary().
--spec type(doc(), Default) -> kz_term:ne_binary() | Default.
 type(Doc) ->
     type(Doc, 'undefined').
+
+-spec type(doc(), Default) -> kz_term:ne_binary() | Default.
 type(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"type">>], Doc, Default).
 

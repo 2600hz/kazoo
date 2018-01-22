@@ -14,9 +14,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec restrictions(doc()) -> kz_term:api_object().
--spec restrictions(doc(), Default) -> kz_json:object() | Default.
 restrictions(Doc) ->
     restrictions(Doc, 'undefined').
+
+-spec restrictions(doc(), Default) -> kz_json:object() | Default.
 restrictions(Doc, Default) ->
     kz_json:get_json_value([<<"restrictions">>], Doc, Default).
 

@@ -14,9 +14,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec ips(doc()) -> kz_term:api_ne_binaries().
--spec ips(doc(), Default) -> kz_term:ne_binaries() | Default.
 ips(Doc) ->
     ips(Doc, 'undefined').
+
+-spec ips(doc(), Default) -> kz_term:ne_binaries() | Default.
 ips(Doc, Default) ->
     kz_json:get_list_value([<<"ips">>], Doc, Default).
 

@@ -15,9 +15,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec file_name(doc()) -> kz_term:api_binary().
--spec file_name(doc(), Default) -> binary() | Default.
 file_name(Doc) ->
     file_name(Doc, 'undefined').
+
+-spec file_name(doc(), Default) -> binary() | Default.
 file_name(Doc, Default) ->
     kz_json:get_binary_value([<<"file_name">>], Doc, Default).
 
@@ -26,9 +27,10 @@ set_file_name(Doc, FileName) ->
     kz_json:set_value([<<"file_name">>], FileName, Doc).
 
 -spec records(doc()) -> kz_term:api_objects().
--spec records(doc(), Default) -> kz_json:objects() | Default.
 records(Doc) ->
     records(Doc, 'undefined').
+
+-spec records(doc(), Default) -> kz_json:objects() | Default.
 records(Doc, Default) ->
     kz_json:get_list_value([<<"records">>], Doc, Default).
 

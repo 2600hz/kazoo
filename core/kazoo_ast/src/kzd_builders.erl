@@ -124,13 +124,16 @@ add_accessors(Property, Schema, Accessors) ->
     JSONPath = json_path(Property),
 
     [["\n"
-      "-spec ", Getter, "(doc()) -> ", default_return_type(ReturnType, Default), ".\n"
-      "-spec ", Getter, "(doc(), Default) -> ", ReturnType, " | Default.\n"
+     ,"-spec ", Getter, "(doc()) -> ", default_return_type(ReturnType, Default), ".\n"
      ,Getter, "(Doc) ->\n"
-      "    ", Getter, "(Doc, ", Default, ").\n"
+     ,"    ", Getter, "(Doc, ", Default, ").\n"
+     ,"\n"
+     ,"-spec ", Getter, "(doc(), Default) -> ", ReturnType, " | Default.\n"
      ,Getter, "(Doc, Default) ->\n"
-      "    kz_json:", JSONGetterFun, "(", JSONPath, ", Doc, Default).\n\n"
+     ,"    kz_json:", JSONGetterFun, "(", JSONPath, ", Doc, Default).\n"
+     ,"\n"
      ,"-spec set_", Getter, "(doc(), ", ReturnType, ") -> doc().\n"
+     ,"\n"
      ,"set_", Getter, "(Doc, ", SetVar, ") ->\n"
      ,"    kz_json:set_value(", JSONPath, ", ", SetVar, ", Doc).\n"
      ]

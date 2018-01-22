@@ -16,9 +16,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec description(doc()) -> kz_term:api_ne_binary().
--spec description(doc(), Default) -> kz_term:ne_binary() | Default.
 description(Doc) ->
     description(Doc, 'undefined').
+
+-spec description(doc(), Default) -> kz_term:ne_binary() | Default.
 description(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"description">>], Doc, Default).
 
@@ -27,9 +28,10 @@ set_description(Doc, Description) ->
     kz_json:set_value([<<"description">>], Description, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -38,9 +40,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec org(doc()) -> kz_term:api_binary().
--spec org(doc(), Default) -> binary() | Default.
 org(Doc) ->
     org(Doc, 'undefined').
+
+-spec org(doc(), Default) -> binary() | Default.
 org(Doc, Default) ->
     kz_json:get_binary_value([<<"org">>], Doc, Default).
 

@@ -110,10 +110,12 @@ ast_list_el_to_el(?TUPLE(Fields)) ->
     list_to_tuple(Fields).
 
 %% user_auth -> User Auth
+
 -spec smash_snake(kz_term:ne_binary()) -> iolist().
--spec smash_snake(kz_term:ne_binary(), binary()) -> iolist().
 smash_snake(BaseName) ->
     smash_snake(BaseName, <<" ">>).
+
+-spec smash_snake(kz_term:ne_binary(), binary()) -> iolist().
 smash_snake(BaseName, Glue) ->
     case binary:split(BaseName, <<"_">>, ['global']) of
         [Part] -> format_name_part(Part);

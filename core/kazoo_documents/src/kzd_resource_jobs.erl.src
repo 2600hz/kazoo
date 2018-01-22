@@ -16,9 +16,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -27,9 +28,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec numbers(doc()) -> kz_term:api_ne_binaries().
--spec numbers(doc(), Default) -> kz_term:ne_binaries() | Default.
 numbers(Doc) ->
     numbers(Doc, 'undefined').
+
+-spec numbers(doc(), Default) -> kz_term:ne_binaries() | Default.
 numbers(Doc, Default) ->
     kz_json:get_list_value([<<"numbers">>], Doc, Default).
 
@@ -38,9 +40,10 @@ set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
 -spec resource_id(doc()) -> kz_term:api_binary().
--spec resource_id(doc(), Default) -> binary() | Default.
 resource_id(Doc) ->
     resource_id(Doc, 'undefined').
+
+-spec resource_id(doc(), Default) -> binary() | Default.
 resource_id(Doc, Default) ->
     kz_json:get_binary_value([<<"resource_id">>], Doc, Default).
 

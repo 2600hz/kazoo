@@ -15,9 +15,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec password(doc()) -> kz_term:api_ne_binary().
--spec password(doc(), Default) -> kz_term:ne_binary() | Default.
 password(Doc) ->
     password(Doc, 'undefined').
+
+-spec password(doc(), Default) -> kz_term:ne_binary() | Default.
 password(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"password">>], Doc, Default).
 
@@ -26,9 +27,10 @@ set_password(Doc, Password) ->
     kz_json:set_value([<<"password">>], Password, Doc).
 
 -spec username(doc()) -> kz_term:api_ne_binary().
--spec username(doc(), Default) -> kz_term:ne_binary() | Default.
 username(Doc) ->
     username(Doc, 'undefined').
+
+-spec username(doc(), Default) -> kz_term:ne_binary() | Default.
 username(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"username">>], Doc, Default).
 

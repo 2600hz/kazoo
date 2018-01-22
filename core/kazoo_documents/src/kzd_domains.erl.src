@@ -19,9 +19,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec a(doc()) -> kz_term:api_object().
--spec a(doc(), Default) -> kz_json:object() | Default.
 a(Doc) ->
     a(Doc, 'undefined').
+
+-spec a(doc(), Default) -> kz_json:object() | Default.
 a(Doc, Default) ->
     kz_json:get_json_value([<<"A">>], Doc, Default).
 
@@ -30,9 +31,10 @@ set_a(Doc, A) ->
     kz_json:set_value([<<"A">>], A, Doc).
 
 -spec cname(doc()) -> kz_term:api_object().
--spec cname(doc(), Default) -> kz_json:object() | Default.
 cname(Doc) ->
     cname(Doc, 'undefined').
+
+-spec cname(doc(), Default) -> kz_json:object() | Default.
 cname(Doc, Default) ->
     kz_json:get_json_value([<<"CNAME">>], Doc, Default).
 
@@ -41,9 +43,10 @@ set_cname(Doc, Cname) ->
     kz_json:set_value([<<"CNAME">>], Cname, Doc).
 
 -spec mx(doc()) -> kz_term:api_object().
--spec mx(doc(), Default) -> kz_json:object() | Default.
 mx(Doc) ->
     mx(Doc, 'undefined').
+
+-spec mx(doc(), Default) -> kz_json:object() | Default.
 mx(Doc, Default) ->
     kz_json:get_json_value([<<"MX">>], Doc, Default).
 
@@ -52,9 +55,10 @@ set_mx(Doc, Mx) ->
     kz_json:set_value([<<"MX">>], Mx, Doc).
 
 -spec naptr(doc()) -> kz_term:api_object().
--spec naptr(doc(), Default) -> kz_json:object() | Default.
 naptr(Doc) ->
     naptr(Doc, 'undefined').
+
+-spec naptr(doc(), Default) -> kz_json:object() | Default.
 naptr(Doc, Default) ->
     kz_json:get_json_value([<<"NAPTR">>], Doc, Default).
 
@@ -63,9 +67,10 @@ set_naptr(Doc, Naptr) ->
     kz_json:set_value([<<"NAPTR">>], Naptr, Doc).
 
 -spec srv(doc()) -> kz_term:api_object().
--spec srv(doc(), Default) -> kz_json:object() | Default.
 srv(Doc) ->
     srv(Doc, 'undefined').
+
+-spec srv(doc(), Default) -> kz_json:object() | Default.
 srv(Doc, Default) ->
     kz_json:get_json_value([<<"SRV">>], Doc, Default).
 
@@ -74,9 +79,10 @@ set_srv(Doc, Srv) ->
     kz_json:set_value([<<"SRV">>], Srv, Doc).
 
 -spec txt(doc()) -> kz_term:api_object().
--spec txt(doc(), Default) -> kz_json:object() | Default.
 txt(Doc) ->
     txt(Doc, 'undefined').
+
+-spec txt(doc(), Default) -> kz_json:object() | Default.
 txt(Doc, Default) ->
     kz_json:get_json_value([<<"TXT">>], Doc, Default).
 

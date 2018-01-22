@@ -18,9 +18,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec binding_digit(doc()) -> kz_term:ne_binary().
--spec binding_digit(doc(), Default) -> kz_term:ne_binary() | Default.
 binding_digit(Doc) ->
     binding_digit(Doc, <<"*">>).
+
+-spec binding_digit(doc(), Default) -> kz_term:ne_binary() | Default.
 binding_digit(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"binding_digit">>], Doc, Default).
 
@@ -29,9 +30,10 @@ set_binding_digit(Doc, BindingDigit) ->
     kz_json:set_value([<<"binding_digit">>], BindingDigit, Doc).
 
 -spec digit_timeout(doc()) -> kz_term:api_integer().
--spec digit_timeout(doc(), Default) -> integer() | Default.
 digit_timeout(Doc) ->
     digit_timeout(Doc, 'undefined').
+
+-spec digit_timeout(doc(), Default) -> integer() | Default.
 digit_timeout(Doc, Default) ->
     kz_json:get_integer_value([<<"digit_timeout">>], Doc, Default).
 
@@ -40,9 +42,10 @@ set_digit_timeout(Doc, DigitTimeout) ->
     kz_json:set_value([<<"digit_timeout">>], DigitTimeout, Doc).
 
 -spec listen_on(doc()) -> kz_term:api_binary().
--spec listen_on(doc(), Default) -> binary() | Default.
 listen_on(Doc) ->
     listen_on(Doc, 'undefined').
+
+-spec listen_on(doc(), Default) -> binary() | Default.
 listen_on(Doc, Default) ->
     kz_json:get_binary_value([<<"listen_on">>], Doc, Default).
 
@@ -51,9 +54,10 @@ set_listen_on(Doc, ListenOn) ->
     kz_json:set_value([<<"listen_on">>], ListenOn, Doc).
 
 -spec numbers(doc()) -> kz_term:api_object().
--spec numbers(doc(), Default) -> kz_json:object() | Default.
 numbers(Doc) ->
     numbers(Doc, 'undefined').
+
+-spec numbers(doc(), Default) -> kz_json:object() | Default.
 numbers(Doc, Default) ->
     kz_json:get_json_value([<<"numbers">>], Doc, Default).
 
@@ -62,9 +66,10 @@ set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
 -spec patterns(doc()) -> kz_term:api_object().
--spec patterns(doc(), Default) -> kz_json:object() | Default.
 patterns(Doc) ->
     patterns(Doc, 'undefined').
+
+-spec patterns(doc(), Default) -> kz_json:object() | Default.
 patterns(Doc, Default) ->
     kz_json:get_json_value([<<"patterns">>], Doc, Default).
 

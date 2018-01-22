@@ -21,9 +21,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec per_minute(doc()) -> kz_term:api_object().
--spec per_minute(doc(), Default) -> kz_json:object() | Default.
 per_minute(Doc) ->
     per_minute(Doc, 'undefined').
+
+-spec per_minute(doc(), Default) -> kz_json:object() | Default.
 per_minute(Doc, Default) ->
     kz_json:get_json_value([<<"per_minute">>], Doc, Default).
 
@@ -32,9 +33,10 @@ set_per_minute(Doc, PerMinute) ->
     kz_json:set_value([<<"per_minute">>], PerMinute, Doc).
 
 -spec per_minute_invites(doc()) -> kz_term:api_integer().
--spec per_minute_invites(doc(), Default) -> integer() | Default.
 per_minute_invites(Doc) ->
     per_minute_invites(Doc, 'undefined').
+
+-spec per_minute_invites(doc(), Default) -> integer() | Default.
 per_minute_invites(Doc, Default) ->
     kz_json:get_integer_value([<<"per_minute">>, <<"invites">>], Doc, Default).
 
@@ -43,9 +45,10 @@ set_per_minute_invites(Doc, PerMinuteInvites) ->
     kz_json:set_value([<<"per_minute">>, <<"invites">>], PerMinuteInvites, Doc).
 
 -spec per_minute_registrations(doc()) -> kz_term:api_integer().
--spec per_minute_registrations(doc(), Default) -> integer() | Default.
 per_minute_registrations(Doc) ->
     per_minute_registrations(Doc, 'undefined').
+
+-spec per_minute_registrations(doc(), Default) -> integer() | Default.
 per_minute_registrations(Doc, Default) ->
     kz_json:get_integer_value([<<"per_minute">>, <<"registrations">>], Doc, Default).
 
@@ -54,9 +57,10 @@ set_per_minute_registrations(Doc, PerMinuteRegistrations) ->
     kz_json:set_value([<<"per_minute">>, <<"registrations">>], PerMinuteRegistrations, Doc).
 
 -spec per_minute_total_packets(doc()) -> kz_term:api_integer().
--spec per_minute_total_packets(doc(), Default) -> integer() | Default.
 per_minute_total_packets(Doc) ->
     per_minute_total_packets(Doc, 'undefined').
+
+-spec per_minute_total_packets(doc(), Default) -> integer() | Default.
 per_minute_total_packets(Doc, Default) ->
     kz_json:get_integer_value([<<"per_minute">>, <<"total_packets">>], Doc, Default).
 
@@ -65,9 +69,10 @@ set_per_minute_total_packets(Doc, PerMinuteTotalPackets) ->
     kz_json:set_value([<<"per_minute">>, <<"total_packets">>], PerMinuteTotalPackets, Doc).
 
 -spec per_second(doc()) -> kz_term:api_object().
--spec per_second(doc(), Default) -> kz_json:object() | Default.
 per_second(Doc) ->
     per_second(Doc, 'undefined').
+
+-spec per_second(doc(), Default) -> kz_json:object() | Default.
 per_second(Doc, Default) ->
     kz_json:get_json_value([<<"per_second">>], Doc, Default).
 
@@ -76,9 +81,10 @@ set_per_second(Doc, PerSecond) ->
     kz_json:set_value([<<"per_second">>], PerSecond, Doc).
 
 -spec per_second_invites(doc()) -> kz_term:api_integer().
--spec per_second_invites(doc(), Default) -> integer() | Default.
 per_second_invites(Doc) ->
     per_second_invites(Doc, 'undefined').
+
+-spec per_second_invites(doc(), Default) -> integer() | Default.
 per_second_invites(Doc, Default) ->
     kz_json:get_integer_value([<<"per_second">>, <<"invites">>], Doc, Default).
 
@@ -87,9 +93,10 @@ set_per_second_invites(Doc, PerSecondInvites) ->
     kz_json:set_value([<<"per_second">>, <<"invites">>], PerSecondInvites, Doc).
 
 -spec per_second_registrations(doc()) -> kz_term:api_integer().
--spec per_second_registrations(doc(), Default) -> integer() | Default.
 per_second_registrations(Doc) ->
     per_second_registrations(Doc, 'undefined').
+
+-spec per_second_registrations(doc(), Default) -> integer() | Default.
 per_second_registrations(Doc, Default) ->
     kz_json:get_integer_value([<<"per_second">>, <<"registrations">>], Doc, Default).
 
@@ -98,9 +105,10 @@ set_per_second_registrations(Doc, PerSecondRegistrations) ->
     kz_json:set_value([<<"per_second">>, <<"registrations">>], PerSecondRegistrations, Doc).
 
 -spec per_second_total_packets(doc()) -> kz_term:api_integer().
--spec per_second_total_packets(doc(), Default) -> integer() | Default.
 per_second_total_packets(Doc) ->
     per_second_total_packets(Doc, 'undefined').
+
+-spec per_second_total_packets(doc(), Default) -> integer() | Default.
 per_second_total_packets(Doc, Default) ->
     kz_json:get_integer_value([<<"per_second">>, <<"total_packets">>], Doc, Default).
 

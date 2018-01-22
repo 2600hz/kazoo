@@ -16,9 +16,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec cidrs(doc()) -> kz_term:api_ne_binaries().
--spec cidrs(doc(), Default) -> kz_term:ne_binaries() | Default.
 cidrs(Doc) ->
     cidrs(Doc, 'undefined').
+
+-spec cidrs(doc(), Default) -> kz_term:ne_binaries() | Default.
 cidrs(Doc, Default) ->
     kz_json:get_list_value([<<"cidrs">>], Doc, Default).
 
@@ -27,9 +28,10 @@ set_cidrs(Doc, Cidrs) ->
     kz_json:set_value([<<"cidrs">>], Cidrs, Doc).
 
 -spec order(doc()) -> kz_term:api_binary().
--spec order(doc(), Default) -> binary() | Default.
 order(Doc) ->
     order(Doc, 'undefined').
+
+-spec order(doc(), Default) -> binary() | Default.
 order(Doc, Default) ->
     kz_json:get_binary_value([<<"order">>], Doc, Default).
 
@@ -38,9 +40,10 @@ set_order(Doc, Order) ->
     kz_json:set_value([<<"order">>], Order, Doc).
 
 -spec user_agent(doc()) -> kz_term:api_binary().
--spec user_agent(doc(), Default) -> binary() | Default.
 user_agent(Doc) ->
     user_agent(Doc, 'undefined').
+
+-spec user_agent(doc(), Default) -> binary() | Default.
 user_agent(Doc, Default) ->
     kz_json:get_binary_value([<<"user_agent">>], Doc, Default).
 

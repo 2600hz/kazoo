@@ -19,9 +19,10 @@ new() ->
     kz_json_schema:default_object(?MODULE_STRING).
 
 -spec bookkeepers(doc()) -> kz_term:api_object().
--spec bookkeepers(doc(), Default) -> kz_json:object() | Default.
 bookkeepers(Doc) ->
     bookkeepers(Doc, 'undefined').
+
+-spec bookkeepers(doc(), Default) -> kz_json:object() | Default.
 bookkeepers(Doc, Default) ->
     kz_json:get_json_value([<<"bookkeepers">>], Doc, Default).
 
@@ -30,9 +31,10 @@ set_bookkeepers(Doc, Bookkeepers) ->
     kz_json:set_value([<<"bookkeepers">>], Bookkeepers, Doc).
 
 -spec category(doc()) -> kz_term:api_binary().
--spec category(doc(), Default) -> binary() | Default.
 category(Doc) ->
     category(Doc, 'undefined').
+
+-spec category(doc(), Default) -> binary() | Default.
 category(Doc, Default) ->
     kz_json:get_binary_value([<<"category">>], Doc, Default).
 
@@ -41,9 +43,10 @@ set_category(Doc, Category) ->
     kz_json:set_value([<<"category">>], Category, Doc).
 
 -spec description(doc()) -> kz_term:api_binary().
--spec description(doc(), Default) -> binary() | Default.
 description(Doc) ->
     description(Doc, 'undefined').
+
+-spec description(doc(), Default) -> binary() | Default.
 description(Doc, Default) ->
     kz_json:get_binary_value([<<"description">>], Doc, Default).
 
@@ -52,9 +55,10 @@ set_description(Doc, Description) ->
     kz_json:set_value([<<"description">>], Description, Doc).
 
 -spec manual_recurring(doc()) -> kz_term:api_objects().
--spec manual_recurring(doc(), Default) -> kz_json:objects() | Default.
 manual_recurring(Doc) ->
     manual_recurring(Doc, 'undefined').
+
+-spec manual_recurring(doc(), Default) -> kz_json:objects() | Default.
 manual_recurring(Doc, Default) ->
     kz_json:get_list_value([<<"manual_recurring">>], Doc, Default).
 
@@ -63,9 +67,10 @@ set_manual_recurring(Doc, ManualRecurring) ->
     kz_json:set_value([<<"manual_recurring">>], ManualRecurring, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
--spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc) ->
     name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"name">>], Doc, Default).
 
@@ -74,9 +79,10 @@ set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
 -spec plan(doc()) -> kz_term:api_object().
--spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Doc) ->
     plan(Doc, 'undefined').
+
+-spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Doc, Default) ->
     kz_json:get_json_value([<<"plan">>], Doc, Default).
 
