@@ -144,29 +144,58 @@
                                           ,<<"Authorizing-Type">>
                                           ,<<"Bridge-ID">>
                                           ,<<"Call-Direction">>
+                                          ,<<"Call-ID">>
                                           ,<<"Callee-ID-Name">>
                                           ,<<"Callee-ID-Number">>
+                                          ,<<"Caller-ID-Name">>
+                                          ,<<"Caller-ID-Number">>
                                           ,<<"Channel-Authorized">>
+                                          ,<<"Channel-Call-State">>
+                                          ,<<"Channel-Created-Time">>
+                                          ,<<"Channel-Is-Loopback">>
+                                          ,<<"Channel-Loopback-Bowout">>
+                                          ,<<"Channel-Loopback-Bowout-Execute">>
+                                          ,<<"Channel-Loopback-Leg">>
+                                          ,<<"Channel-Loopback-Other-Leg-ID">>
+                                          ,<<"Channel-Moving">>
+                                          ,<<"Channel-Name">>
+                                          ,<<"Channel-State">>
                                           ,<<"Custom-Application-Vars">>
                                           ,<<"Custom-Channel-Vars">>
                                           ,<<"Custom-SIP-Headers">>
                                           ,<<"Destination">>
+                                          ,<<"Disposition">>
                                           ,<<"Ecallmgr-Node">>
                                           ,<<"From">>
+                                          ,<<"From-Tag">>
+                                          ,<<"Hangup-Cause">>
+                                          ,<<"Hangup-Code">>
                                           ,<<"Is-Loopback">>
                                           ,<<"Is-On-Hold">>
                                           ,<<"Media-Node">>
                                           ,<<"Media-Server">>
+                                          ,<<"Msg-ID">>
                                           ,<<"Node">>
+                                          ,<<"Origination-Call-ID">>
                                           ,<<"Other-Leg-Call-ID">>
+                                          ,<<"Other-Leg-Caller-ID-Name">>
+                                          ,<<"Other-Leg-Caller-ID-Number">>
+                                          ,<<"Other-Leg-Destination-Number">>
+                                          ,<<"Other-Leg-Direction">>
                                           ,<<"Presence-ID">>
+                                          ,<<"Raw-Application-Data">>
+                                          ,<<"Raw-Application-Name">>
                                           ,<<"Realm">>
+                                          ,<<"Replaced-By">>
                                           ,<<"Request">>
+                                          ,<<"Switch-Hostname">>
                                           ,<<"Switch-Nodename">>
                                           ,<<"Switch-URI">>
                                           ,<<"Switch-URL">>
                                           ,<<"Timestamp">>
                                           ,<<"To">>
+                                          ,<<"To-Tag">>
+                                          ,<<"Transfer-History">>
                                           ,<<"Username">>
                                           ]).
 
