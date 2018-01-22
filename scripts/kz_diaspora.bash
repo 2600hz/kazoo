@@ -434,7 +434,7 @@ kz_type_modules() {
     change_to_module_type "kz_term" kz_term[@]
     echo "  * ensuring time types migration"
     change_to_module_type "kz_time" kz_time[@]
-    echo "  * ensuring time kz_node/kz_nodes migration"
+    echo "  * ensuring kz_node/kz_nodes migration"
     change_to_module_type "kz_types" kz_node[@]
     echo "  * using built in kz_timeout type"
     change_kz_timeout
