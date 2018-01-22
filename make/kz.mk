@@ -65,7 +65,10 @@ ifeq ($(wildcard ebin/*.app),)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
 
 else
+
+ifneq ($(wildcard $(DEPS_RULES)),)
 include $(DEPS_RULES)
+endif
 
 compile: $(BEAMS)
 
