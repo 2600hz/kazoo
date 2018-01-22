@@ -612,8 +612,8 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
     end.
 
 -spec delete_slot(kz_term:ne_binary(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', any()}.
+                         {'ok', kz_json:object()} |
+                         {'error', any()}.
 delete_slot(AccountDb, JObj) ->
     case kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"slot">>, JObj)) of
         {'ok', _}=Ok ->
