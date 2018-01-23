@@ -973,8 +973,18 @@ publish_event(Call, SlotNumber, Event) ->
 get_slot(SlotNumber, AccountDb) ->
     DocId = ?SLOT_DOC_ID(SlotNumber),
     case kz_datamgr:open_doc(AccountDb, {?PARKED_CALL_DOC_TYPE, DocId}) of
-        {'ok', JObj} ->
-            Slot = kz_json:get_json_value(<<"slot">>, JObj),
-            {'ok', kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(JObj), Slot)};
+        {'ok', JObj} -> maybe_empty_slot(JObj);
         {'error', _} = E -> E
+    end.
+
+-spec maybe_empty_slot(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
+maybe_empty_slot(JObj) ->
+    case kz_json:get_json_value(<<"slot">>, JObj) of
+        'undefined' -> {'error', 'not_occupied'};
+        Slot ->
+            {'ok', kz_json:set_value(<<"pvt_fields">>
+                                    ,kz_doc:private_fields(JObj)
+                                    ,Slot
+                                    )
+            }
     end.
