@@ -70,7 +70,7 @@ ifneq ($(wildcard $(DEPS_RULES)),)
 include $(DEPS_RULES)
 endif
 
-compile: $(BEAMS)
+compile: $(COMPILE_MOAR) $(BEAMS) json
 
 ebin/%.beam: src/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
