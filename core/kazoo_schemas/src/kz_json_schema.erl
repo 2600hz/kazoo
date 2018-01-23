@@ -865,7 +865,9 @@ flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
     end;
 flatten_prop(Path, V) -> [{Path, V}].
 
--spec default_object(kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+-spec default_object(string() | kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+default_object([_|_]=SchemaId) ->
+    default_object(list_to_binary(SchemaId));
 default_object(?NE_BINARY=SchemaId) ->
     {'ok', Schema} = load(SchemaId),
     default_object(Schema);

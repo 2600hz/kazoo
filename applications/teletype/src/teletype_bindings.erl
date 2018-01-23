@@ -46,7 +46,7 @@ start_modules() ->
 
 -spec start_modules([module()]) -> 'ok'.
 start_modules([Module | Remaining]) ->
-    teletype_maintenance:start_module(Module),
+    _ = teletype_maintenance:start_module(Module),
     start_modules(Remaining);
 start_modules([]) ->
     lager:info("started all teletype modules").
