@@ -60,29 +60,23 @@ SUB_BEAMS = $(notdir $(SUB_SRCS))
 BEAMS = $(SRCS:src/%.erl=ebin/%.beam) $(SUB_BEAMS:%.erl=ebin/%.beam)
 TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 
-## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-ifeq ($(wildcard ebin/*.app),)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
-
-else
-
 ifneq ($(wildcard $(DEPS_RULES)),)
 include $(DEPS_RULES)
 endif
 
-compile: $(COMPILE_MOAR) $(BEAMS) json
+## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app $(BEAMS) json depend
+
+ebin/$(PROJECT).app: $(SOURCES)
+	@mkdir -p ebin/
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
+	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 ebin/%.beam: src/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
 
 ebin/%.beam: src/*/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
-endif
-
-ebin/$(PROJECT).app: $(SOURCES)
-	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 depend: $(DEPS_RULES)
 
