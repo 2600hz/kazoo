@@ -61,31 +61,35 @@
 -define(CCVs, <<"Custom-Channel-Vars">>).
 
 -spec caller_id_name(data()) -> kz_term:api_binary().
--spec caller_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_name(JObj) ->
     caller_id_name(JObj, 'undefined').
+
+-spec caller_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_name(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, Default).
 
 
 -spec caller_id_number(data()) -> kz_term:api_binary().
--spec caller_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_number(JObj) ->
     caller_id_number(JObj, 'undefined').
+
+-spec caller_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_number(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj, Default).
 
 -spec callee_id_name(data()) -> kz_term:api_binary().
--spec callee_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_name(JObj) ->
     callee_id_name(JObj, 'undefined').
+
+-spec callee_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_name(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Callee-ID-Name">>, JObj, Default).
 
 -spec callee_id_number(data()) -> kz_term:api_binary().
--spec callee_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_number(JObj) ->
     callee_id_number(JObj, 'undefined').
+
+-spec callee_id_number(data(), Default) -> kz_term:ne_binary() | Default.
 callee_id_number(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Callee-ID-Number">>, JObj, Default).
 
@@ -110,10 +114,10 @@ call_direction(JObj) ->
     kz_json:get_ne_binary_value(<<"Call-Direction">>, JObj).
 
 -spec resource_type(data()) -> kz_term:api_binary().
--spec resource_type(data(), Default) -> kz_term:ne_binary() | Default.
 resource_type(JObj) ->
     resource_type(JObj, 'undefined').
 
+-spec resource_type(data(), Default) -> kz_term:ne_binary() | Default.
 resource_type(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Resource-Type">>, JObj, Default).
 
@@ -130,18 +134,18 @@ hunt_destination_number(JObj) ->
     kz_json:get_ne_binary_value(<<"Destination-Number">>, JObj).
 
 -spec is_channel_recovering(data()) -> boolean().
--spec is_channel_recovering(data(), boolean()) -> boolean().
 is_channel_recovering(JObj) ->
     is_channel_recovering(JObj, 'false').
 
+-spec is_channel_recovering(data(), boolean()) -> boolean().
 is_channel_recovering(JObj, Default) ->
     kz_json:is_true(<<"Channel-Recovered">>, JObj, Default).
 
 -spec is_consuming_global_resource(data()) -> kz_term:api_boolean().
--spec is_consuming_global_resource(data(), kz_term:api_boolean()) -> kz_term:api_boolean().
 is_consuming_global_resource(JObj) ->
     is_consuming_global_resource(JObj, 'undefined').
 
+-spec is_consuming_global_resource(data(), kz_term:api_boolean()) -> kz_term:api_boolean().
 is_consuming_global_resource(JObj, Default) ->
     kz_term:is_true(ccv(JObj, <<"Global-Resource">>, Default)).
 
@@ -330,10 +334,10 @@ switch_uri(JObj) ->
     kz_json:get_ne_binary_value(<<"Switch-URI">>, JObj).
 
 -spec hostname(data()) -> kz_term:api_ne_binary().
--spec hostname(data(), Default) -> kz_term:ne_binary() | Default.
 hostname(JObj) ->
     hostname(JObj, 'undefined').
 
+-spec hostname(data(), Default) -> kz_term:ne_binary() | Default.
 hostname(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"FreeSWITCH-Hostname">>, JObj, Default).
 

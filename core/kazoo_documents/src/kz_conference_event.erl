@@ -73,9 +73,10 @@ instance_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Instance-ID">>, JObj).
 
 -spec join_time(data()) -> kz_time:gregorian_seconds().
--spec join_time(data(), Default) -> kz_time:gregorian_seconds() | Default.
 join_time(JObj) ->
     join_time(JObj, kz_time:current_tstamp()).
+
+-spec join_time(data(), Default) -> kz_time:gregorian_seconds() | Default.
 join_time(JObj, Default) ->
     kz_json:get_integer_value(<<"Join-Time">>, JObj, Default).
 
