@@ -5,6 +5,9 @@
 -export([category/1, category/2, set_category/2]).
 -export([description/1, description/2, set_description/2]).
 -export([manual_recurring/1, manual_recurring/2, set_manual_recurring/2]).
+-export([merge/1, merge/2, set_merge/2]).
+-export([merge_priority/1, merge_priority/2, set_merge_priority/2]).
+-export([merge_strategy/1, merge_strategy/2, set_merge_strategy/2]).
 -export([name/1, name/2, set_name/2]).
 -export([plan/1, plan/2, set_plan/2]).
 
@@ -65,6 +68,42 @@ manual_recurring(Doc, Default) ->
 -spec set_manual_recurring(doc(), kz_json:objects()) -> doc().
 set_manual_recurring(Doc, ManualRecurring) ->
     kz_json:set_value([<<"manual_recurring">>], ManualRecurring, Doc).
+
+-spec merge(doc()) -> kz_term:api_object().
+merge(Doc) ->
+    merge(Doc, 'undefined').
+
+-spec merge(doc(), Default) -> kz_json:object() | Default.
+merge(Doc, Default) ->
+    kz_json:get_json_value([<<"merge">>], Doc, Default).
+
+-spec set_merge(doc(), kz_json:object()) -> doc().
+set_merge(Doc, Merge) ->
+    kz_json:set_value([<<"merge">>], Merge, Doc).
+
+-spec merge_priority(doc()) -> kz_term:api_integer().
+merge_priority(Doc) ->
+    merge_priority(Doc, 'undefined').
+
+-spec merge_priority(doc(), Default) -> integer() | Default.
+merge_priority(Doc, Default) ->
+    kz_json:get_integer_value([<<"merge">>, <<"priority">>], Doc, Default).
+
+-spec set_merge_priority(doc(), integer()) -> doc().
+set_merge_priority(Doc, MergePriority) ->
+    kz_json:set_value([<<"merge">>, <<"priority">>], MergePriority, Doc).
+
+-spec merge_strategy(doc()) -> kz_term:api_binary().
+merge_strategy(Doc) ->
+    merge_strategy(Doc, 'undefined').
+
+-spec merge_strategy(doc(), Default) -> binary() | Default.
+merge_strategy(Doc, Default) ->
+    kz_json:get_binary_value([<<"merge">>, <<"strategy">>], Doc, Default).
+
+-spec set_merge_strategy(doc(), binary()) -> doc().
+set_merge_strategy(Doc, MergeStrategy) ->
+    kz_json:set_value([<<"merge">>, <<"strategy">>], MergeStrategy, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->

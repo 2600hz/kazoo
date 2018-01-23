@@ -4,8 +4,8 @@
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
--define(APP, kazoo_documents).
--define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP, 'kazoo_documents').
+-define(APP_NAME, (atom_to_binary(?APP, 'utf8'))).
 -define(APP_VERSION, <<"4.0.0">>).
 
 -define(FAX_SETTINGS_KEY, <<"fax_settings">>).
