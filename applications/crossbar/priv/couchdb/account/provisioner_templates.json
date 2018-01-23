@@ -1,8 +1,5 @@
 {
     "_id": "_design/provisioner_templates",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'provisioner_template' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

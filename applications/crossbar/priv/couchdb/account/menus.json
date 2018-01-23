@@ -1,8 +1,5 @@
 {
     "_id": "_design/menus",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'menu' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

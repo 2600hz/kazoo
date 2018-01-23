@@ -1,8 +1,5 @@
 {
     "_id": "_design/servers",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'server' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

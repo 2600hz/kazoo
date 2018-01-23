@@ -1,8 +1,5 @@
 {
     "_id": "_design/account",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'account' ); }"
-    },
     "language": "javascript",
     "views": {
         "listing_by_id": {
