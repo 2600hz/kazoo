@@ -133,7 +133,6 @@ add_accessors(Property, Schema, Accessors) ->
      ,"    kz_json:", JSONGetterFun, "(", JSONPath, ", Doc, Default).\n"
      ,"\n"
      ,"-spec set_", Getter, "(doc(), ", ReturnType, ") -> doc().\n"
-     ,"\n"
      ,"set_", Getter, "(Doc, ", SetVar, ") ->\n"
      ,"    kz_json:set_value(", JSONPath, ", ", SetVar, ", Doc).\n"
      ]
