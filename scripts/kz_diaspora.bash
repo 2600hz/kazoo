@@ -300,13 +300,6 @@ change_to_module_type() {
     replace_types "$MODULE" "$GREP_PATTERN" "$SED_PATTERN" "$REPLACE_TO"
 }
 
-change_kz_node_to_module_type() {
-    local GREP_PATTERN="(:{0}(:{2})|([ ,([{>]))(kz_node kz_nodes) *\\("
-    local SED_PATTERN="(:{0}(:{2})|([ ,([{>]))(kz_node kz_nodes)\s*(\(\))"
-
-    replace_types "kz_types" "$GREP_PATTERN" "$SED_PATTERN" "\1kz_types:\4\5"
-}
-
 change_kz_timeout() {
     local GREP_PATTERN="kz_timeout"
     local SED_PATTERN="kz_timeout"
@@ -432,14 +425,17 @@ kz_type_modules() {
                    unix_seconds
                    api_seconds
                    )
+    local kz_node=(kz_node
+                   kz_nodes
+                  )
     echo "  * ensuring core types migration"
     change_to_module_type "kz_types" kz_types[@]
     echo "  * ensuring term types migration"
     change_to_module_type "kz_term" kz_term[@]
     echo "  * ensuring time types migration"
     change_to_module_type "kz_time" kz_time[@]
-    echo "  * manually checking kz_node types"
-    change_kz_node_to_module_type
+    echo "  * ensuring kz_node/kz_nodes migration"
+    change_to_module_type "kz_types" kz_node[@]
     echo "  * using built in kz_timeout type"
     change_kz_timeout
     echo "  * removing kz_ prefix from kz_types"
