@@ -472,10 +472,10 @@ callee_call_event_props(Props) ->
     end.
 
 -spec debug_channel_props(kz_term:proplist()) -> kz_term:proplist().
--spec debug_channel_props(kz_term:proplist(), boolean()) -> kz_term:proplist().
 debug_channel_props(Props) ->
     debug_channel_props(Props, ?DEBUG_CHANNEL).
 
+-spec debug_channel_props(kz_term:proplist(), boolean()) -> kz_term:proplist().
 debug_channel_props(_Props, 'false') -> [];
 debug_channel_props(Props, 'true') ->
     [{<<"Channel-Debug">>
