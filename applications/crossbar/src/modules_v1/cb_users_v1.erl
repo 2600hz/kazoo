@@ -311,7 +311,7 @@ get_channels(Context) ->
     Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     Usernames = [Username
                  || JObj <- cb_context:doc(Context),
-                    Username <- [kz_device:sip_username(kz_json:get_value(<<"doc">>, JObj))],
+                    Username <- [kzd_devices:sip_username(kz_json:get_value(<<"doc">>, JObj))],
                     Username =/= undefined
                 ],
     Req = [{<<"Realm">>, Realm}

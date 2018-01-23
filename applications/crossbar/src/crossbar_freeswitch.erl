@@ -392,8 +392,8 @@ process_callflow(_, _, _, _) -> 'ok'.
 -spec process_device(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 process_device(Number, AccountId, JObj) ->
     AccountRealm = kz_account:fetch_realm(AccountId),
-    Realm = kz_device:sip_realm(JObj, AccountRealm),
-    Username = kz_device:sip_username(JObj),
+    Realm = kzd_devices:sip_realm(JObj, AccountRealm),
+    Username = kzd_devices:sip_username(JObj),
     case query_registrar(Realm, Username) of
         {'ok', Auth} ->
             Props = props_for_rendering(Number, Username, Realm, Auth),

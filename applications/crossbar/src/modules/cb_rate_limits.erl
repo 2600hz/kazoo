@@ -221,7 +221,7 @@ set_pvt_fields(Context) ->
 query_name(<<"account">>, JObj) ->
     kz_account:realm(JObj);
 query_name(<<"device">>, JObj) ->
-    kz_device:sip_username(JObj).
+    kzd_devices:sip_username(JObj).
 
 %%--------------------------------------------------------------------
 %% @public

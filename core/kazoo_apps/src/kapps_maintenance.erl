@@ -621,8 +621,8 @@ refresh_account_devices(AccountDb, AccountRealm, Devices) ->
 
 -spec should_aggregate_device(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_aggregate_device(AccountRealm, Device) ->
-    kz_device:sip_realm(Device, AccountRealm) =/= AccountRealm
-        orelse kz_device:sip_ip(Device) =/= 'undefined'.
+    kzd_devices:sip_realm(Device, AccountRealm) =/= AccountRealm
+        orelse kzd_devices:sip_ip(Device) =/= 'undefined'.
 
 -spec remove_aggregate_devices(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
@@ -634,8 +634,8 @@ remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
 
 -spec should_remove_aggregate(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_remove_aggregate(AccountRealm, Device) ->
-    kz_device:sip_realm(Device, AccountRealm) =:= AccountRealm
-        andalso kz_device:sip_ip(Device) =:= 'undefined'.
+    kzd_devices:sip_realm(Device, AccountRealm) =:= AccountRealm
+        andalso kzd_devices:sip_ip(Device) =:= 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -624,7 +624,7 @@ sip_user_from_device_id(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
-            kz_device:sip_username(Endpoint)
+            kzd_devices:sip_username(Endpoint)
     end.
 
 -spec wait_for_noop(kapps_call:call(), kz_term:ne_binary()) ->

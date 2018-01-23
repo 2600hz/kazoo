@@ -1686,7 +1686,7 @@ missed_reason(Reason) -> Reason.
 
 -spec find_username(kz_json:object()) -> kz_term:api_binary().
 find_username(EP) ->
-    find_sip_username(EP, kz_device:sip_username(EP)).
+    find_sip_username(EP, kzd_devices:sip_username(EP)).
 
 -spec find_sip_username(kz_json:object(), kz_term:api_binary()) -> kz_term:api_binary().
 find_sip_username(EP, 'undefined') -> kz_json:get_value(<<"To-User">>, EP);

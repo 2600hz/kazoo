@@ -382,18 +382,18 @@ flush_registration(Context) ->
 
 -spec maybe_flush_registration_on_password(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_password(Realm, OldDevice, NewDevice) ->
-    case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
+    case kzd_devices:sip_password(OldDevice) =:= kzd_devices:sip_password(NewDevice) of
         'true' -> 'next';
         'false' ->
             lager:debug("the SIP password has changed, sending a registration flush"),
-            flush_registration(kz_device:sip_username(OldDevice), Realm)
+            flush_registration(kzd_devices:sip_username(OldDevice), Realm)
     end.
 
 -spec maybe_flush_registration_on_username(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
-    OldUsername = kz_device:sip_username(OldDevice),
+    OldUsername = kzd_devices:sip_username(OldDevice),
 
-    case kz_device:sip_username(NewDevice) of
+    case kzd_devices:sip_username(NewDevice) of
         OldUsername -> 'next';
         NewUsername ->
             lager:debug("the SIP username has changed, sending a registration flush for both"),
@@ -403,24 +403,24 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
 
 -spec maybe_flush_registration_on_ownerid(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
-    OldOwnerId = kz_device:owner_id(OldDevice),
+    OldOwnerId = kzd_devices:owner_id(OldDevice),
 
-    case kz_device:owner_id(NewDevice) of
+    case kzd_devices:owner_id(NewDevice) of
         OldOwnerId -> 'next';
         _NewOwnerId ->
             lager:debug("the device owner_id has changed, sending a registration flush"),
-            flush_registration(kz_device:sip_username(OldDevice), Realm)
+            flush_registration(kzd_devices:sip_username(OldDevice), Realm)
     end.
 
 -spec maybe_flush_registration_on_enabled(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
 maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
-    OldEnabled = kz_device:enabled(OldDevice),
+    OldEnabled = kzd_devices:enabled(OldDevice),
 
-    case kz_device:enabled(NewDevice) of
+    case kzd_devices:enabled(NewDevice) of
         OldEnabled -> 'next';
         _NewEnabled ->
             lager:debug("the device enabled has changed, sending a registration flush"),
-            flush_registration(kz_device:sip_username(OldDevice), Realm)
+            flush_registration(kzd_devices:sip_username(OldDevice), Realm)
     end.
 
 -spec maybe_flush_registration_on_deleted(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> 'ok' | 'next'.
@@ -431,7 +431,7 @@ maybe_flush_registration_on_deleted(Realm, _OldDevice, NewDevice) ->
         'false' -> 'next';
         'true' ->
             lager:debug("the device has been deleted, sending a registration flush"),
-            flush_registration(kz_device:sip_username(NewDevice), Realm)
+            flush_registration(kzd_devices:sip_username(NewDevice), Realm)
     end.
 
 %%--------------------------------------------------------------------
@@ -1035,7 +1035,7 @@ maybe_refresh_fs_xml(Kind, Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Doc = cb_context:doc(Context),
     Precondition =
-        (kz_device:presence_id(DbDoc) =/= kz_device:presence_id(Doc))
+        (kzd_devices:presence_id(DbDoc) =/= kzd_devices:presence_id(Doc))
         or (kz_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], DbDoc) =/=
                 kz_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], Doc)
            ),
@@ -1054,8 +1054,8 @@ maybe_refresh_fs_xml('device', Context, Precondition) ->
     Doc   = cb_context:doc(Context),
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     ( Precondition
-      or (kz_device:sip_username(DbDoc) =/= kz_device:sip_username(Doc))
-      or (kz_device:sip_password(DbDoc) =/= kz_device:sip_password(Doc))
+      or (kzd_devices:sip_username(DbDoc) =/= kzd_devices:sip_username(Doc))
+      or (kzd_devices:sip_password(DbDoc) =/= kzd_devices:sip_password(Doc))
       or (kz_json:get_value(<<"owner_id">>, DbDoc) =/=
               kz_json:get_value(<<"owner_id">>, Doc))
       or (kz_json:is_true(<<"enabled">>, DbDoc)
@@ -1135,7 +1135,7 @@ refresh_fs_xml(Context) ->
 
 -spec refresh_fs_xml(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 refresh_fs_xml(Realm, Doc) ->
-    case kz_device:sip_username(Doc, kz_json:get_value(<<"username">>, Doc)) of
+    case kzd_devices:sip_username(Doc, kz_json:get_value(<<"username">>, Doc)) of
         'undefined' -> 'ok';
         Username ->
             lager:debug("flushing fs xml for user '~s' at '~s'", [Username,Realm]),

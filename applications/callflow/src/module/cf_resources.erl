@@ -236,7 +236,7 @@ get_sip_headers(Data, Call) ->
                ],
     AuthEndCSH = case kz_endpoint:get(Call) of
                      {'ok', AuthorizingEndpoint} ->
-                         kz_device:custom_sip_headers_outbound(AuthorizingEndpoint, kz_json:new());
+                         kzd_devices:custom_sip_headers_outbound(AuthorizingEndpoint, kz_json:new());
                      _ -> kz_json:new()
                  end,
     CSH = kz_json:get_json_value(<<"custom_sip_headers">>, Data),

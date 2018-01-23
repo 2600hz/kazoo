@@ -171,7 +171,7 @@ dry_run(Services) ->
 -spec calc_service_updates(cb_context:context(), kz_term:ne_binary()) ->
                                   kz_services:services() | 'undefined'.
 calc_service_updates(Context, <<"device">>) ->
-    DeviceType = kz_device:device_type(cb_context:doc(Context)),
+    DeviceType = kzd_devices:device_type(cb_context:doc(Context)),
     Services = fetch_service(Context),
     kz_service_devices:reconcile(Services, DeviceType);
 calc_service_updates(Context, <<"user">>) ->

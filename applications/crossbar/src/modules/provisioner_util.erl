@@ -339,9 +339,9 @@ do_simple_provision(MACAddress, Context) ->
                 kz_json:from_list(
                   [{<<"device[mac]">>, MACAddress}
                   ,{<<"device[label]">>, kz_json:get_ne_binary_value(<<"name">>, JObj)}
-                  ,{<<"sip[realm]">>, kz_device:sip_realm(JObj, AccountRealm)}
-                  ,{<<"sip[username]">>, kz_device:sip_username(JObj)}
-                  ,{<<"sip[password]">>, kz_device:sip_password(JObj)}
+                  ,{<<"sip[realm]">>, kzd_devices:sip_realm(JObj, AccountRealm)}
+                  ,{<<"sip[username]">>, kzd_devices:sip_username(JObj)}
+                  ,{<<"sip[password]">>, kzd_devices:sip_password(JObj)}
                   ,{<<"submit">>, <<"true">>}
                   ]),
             Encoded = kz_http_util:json_to_querystring(Body),
@@ -592,31 +592,31 @@ set_account_line_defaults(Context) ->
 set_device_line_defaults(Context) ->
     Device = cb_context:doc(Context),
     [fun(J) ->
-             case kz_device:sip_username(Device) of
+             case kzd_devices:sip_username(Device) of
                  'undefined' -> J;
                  Value -> kz_json:set_value([<<"authname">>, <<"value">>], Value, J)
              end
      end
     ,fun(J) ->
-             case kz_device:sip_username(Device) of
+             case kzd_devices:sip_username(Device) of
                  'undefined' -> J;
                  Value -> kz_json:set_value([<<"username">>, <<"value">>], Value, J)
              end
      end
     ,fun(J) ->
-             case kz_device:sip_password(Device) of
+             case kzd_devices:sip_password(Device) of
                  'undefined' -> J;
                  Value -> kz_json:set_value([<<"secret">>, <<"value">>], Value, J)
              end
      end
     ,fun(J) ->
-             case kz_device:sip_realm(Device) of
+             case kzd_devices:sip_realm(Device) of
                  'undefined' -> J;
                  Value -> kz_json:set_value([<<"server_host">>, <<"value">>], Value, J)
              end
      end
     ,fun(J) ->
-             case kz_device:name(Device) of
+             case kzd_devices:name(Device) of
                  'undefined' -> J;
                  Value -> kz_json:set_value([<<"displayname">>, <<"value">>], Value, J)
              end
@@ -758,9 +758,9 @@ maybe_sync_sip_data(_Context, _Type, 'false') ->
 maybe_sync_sip_data(Context, 'device', 'true') ->
     NewDevice = cb_context:doc(Context),
     OldDevice = cb_context:fetch(Context, 'db_doc'),
-    OldUsername = kz_device:sip_username(OldDevice),
-    case kz_device:sip_username(NewDevice) =/= OldUsername
-        orelse kz_device:sip_password(NewDevice) =/= kz_device:sip_password(OldDevice)
+    OldUsername = kzd_devices:sip_username(OldDevice),
+    case kzd_devices:sip_username(NewDevice) =/= OldUsername
+        orelse kzd_devices:sip_password(NewDevice) =/= kzd_devices:sip_password(OldDevice)
     of
         'false' ->
             lager:debug("nothing has changed on device; no check-sync needed");
@@ -769,7 +769,7 @@ maybe_sync_sip_data(Context, 'device', 'true') ->
             send_check_sync(OldUsername, Realm, cb_context:req_id(Context))
     end;
 maybe_sync_sip_data(Context, 'device', 'force') ->
-    Username = kz_device:sip_username(cb_context:doc(Context)),
+    Username = kzd_devices:sip_username(cb_context:doc(Context)),
     Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
     send_check_sync(Username, Realm, cb_context:req_id(Context));
 maybe_sync_sip_data(Context, 'user', 'true') ->
@@ -800,7 +800,7 @@ maybe_sync_sip_data(Context, 'user', 'force') ->
             lager:debug("no user devices to sync");
         {'ok', DeviceDocs} ->
             Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
-            _ = [send_check_sync(kz_device:presence_id(DeviceDoc), Realm, cb_context:req_id(Context))
+            _ = [send_check_sync(kzd_devices:presence_id(DeviceDoc), Realm, cb_context:req_id(Context))
                  || DeviceDoc <- DeviceDocs
                 ],
             'ok'

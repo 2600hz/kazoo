@@ -148,7 +148,7 @@ get_device_presence_id(AccountDb, DeviceId) ->
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            case kz_device:presence_id(JObj) of
+            case kzd_devices:presence_id(JObj) of
                 'undefined' -> 'undefined';
                 PresenceId -> PresenceId
             end

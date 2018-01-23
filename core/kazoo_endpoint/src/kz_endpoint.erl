@@ -120,7 +120,7 @@ get(EndpointId, Call) ->
                                   {'ok', kz_json:object()} |
                                   {'error', any()}.
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
-    case kz_device:fetch(AccountDb, EndpointId) of
+    case kzd_devices:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
             check_endpoint_type(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
@@ -172,7 +172,7 @@ is_endpoint_enabled(JObj, <<"account">>) ->
 is_endpoint_enabled(JObj, <<"user">>) ->
     kzd_user:is_enabled(JObj);
 is_endpoint_enabled(JObj, <<"device">>) ->
-    kz_device:enabled(JObj);
+    kzd_devices:enabled(JObj);
 is_endpoint_enabled(JObj, _) ->
     kz_json:is_true(<<"enabled">>, JObj, 'true').
 
@@ -357,15 +357,15 @@ merge_attribute(<<"call_recording">> = Key, Account, Endpoint, Owner) ->
     Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
     kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(<<"outbound_flags">>, Account, Endpoint, Owner) ->
-    Static = lists:flatten([kz_device:outbound_static_flags(Account)
-                           ,kz_device:outbound_static_flags(Owner)
-                           ,kz_device:outbound_static_flags(Endpoint)
+    Static = lists:flatten([kzd_devices:outbound_static_flags(Account)
+                           ,kzd_devices:outbound_static_flags(Owner)
+                           ,kzd_devices:outbound_static_flags(Endpoint)
                            ]),
-    Dynamic = lists:flatten([kz_device:outbound_dynamic_flags(Account)
-                            ,kz_device:outbound_dynamic_flags(Owner)
-                            ,kz_device:outbound_dynamic_flags(Endpoint)
+    Dynamic = lists:flatten([kzd_devices:outbound_dynamic_flags(Account)
+                            ,kzd_devices:outbound_dynamic_flags(Owner)
+                            ,kzd_devices:outbound_dynamic_flags(Endpoint)
                             ]),
-    kz_device:set_outbound_flags(Endpoint, Static, Dynamic);
+    kzd_devices:set_outbound_flags(Endpoint, Static, Dynamic);
 merge_attribute(Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
@@ -628,7 +628,7 @@ flush(Db, Id) ->
         [{<<"ID">>, Id}
         ,{<<"Database">>, Db}
         ,{<<"Rev">>, Rev}
-        ,{<<"Type">>, kz_device:type()}
+        ,{<<"Type">>, kzd_devices:type()}
          | kz_api:default_headers(<<"configuration">>
                                  ,?DOC_EDITED
                                  ,?APP_NAME
@@ -636,7 +636,7 @@ flush(Db, Id) ->
                                  )
         ],
     Fun = fun(P) ->
-                  kapi_conf:publish_doc_update('edited', Db, kz_device:type(), Id, P)
+                  kapi_conf:publish_doc_update('edited', Db, kzd_devices:type(), Id, P)
           end,
 
     'ok' = kz_amqp_worker:cast(Props, Fun).
@@ -1474,10 +1474,10 @@ maybe_add_sip_headers(JObj, Endpoint, Call) ->
 get_sip_headers(Endpoint, Call) ->
     case ?MODULE:get(Call) of
         {'error', _} ->
-            [kz_device:custom_sip_headers_inbound(Endpoint)];
+            [kzd_devices:custom_sip_headers_inbound(Endpoint)];
         {'ok', AuthorizingEndpoint} ->
-            [kz_device:custom_sip_headers_inbound(Endpoint)
-            ,kz_device:custom_sip_headers_outbound(AuthorizingEndpoint)
+            [kzd_devices:custom_sip_headers_inbound(Endpoint)
+            ,kzd_devices:custom_sip_headers_outbound(AuthorizingEndpoint)
             ]
     end.
 
@@ -1512,7 +1512,7 @@ maybe_add_alert_info_from_endpoint(JObj, Endpoint, _Inception) ->
 
 -spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
 maybe_add_invite_format(JObj, Endpoint, Call) ->
-    maybe_add_invite_format(JObj, Endpoint, Call, kz_device:sip_invite_format(Endpoint)).
+    maybe_add_invite_format(JObj, Endpoint, Call, kzd_devices:sip_invite_format(Endpoint)).
 
 -spec maybe_add_invite_format(kz_json:object(), kz_json:object(), kapps_call:call(), binary()) -> kz_json:object().
 maybe_add_invite_format(JObj, _Endpoint, _Call, 'undefined') ->
@@ -1523,8 +1523,8 @@ maybe_add_invite_format(JObj, _Endpoint, _Call, Format) ->
 
 -spec maybe_add_aor(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
 maybe_add_aor(JObj, Endpoint, Call) ->
-    Realm = kz_device:sip_realm(Endpoint, kapps_call:account_realm(Call)),
-    Username = kz_device:sip_username(Endpoint),
+    Realm = kzd_devices:sip_realm(Endpoint, kapps_call:account_realm(Call)),
+    Username = kzd_devices:sip_username(Endpoint),
     maybe_add_aor(JObj, Endpoint, Username, Realm).
 
 -spec maybe_add_aor(kz_json:object(), kz_json:object(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
@@ -1917,7 +1917,7 @@ get_sip_realm(SIPJObj, AccountId) ->
 
 -spec get_sip_realm(kz_json:object(), kz_term:ne_binary(), Default) -> Default | kz_term:ne_binary().
 get_sip_realm(SIPJObj, AccountId, Default) ->
-    case kz_device:sip_realm(SIPJObj) of
+    case kzd_devices:sip_realm(SIPJObj) of
         'undefined' ->
             case kz_account:fetch_realm(AccountId) of
                 undefined -> Default;
@@ -2009,14 +2009,14 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
 -spec maybe_send_mwi_update(kz_json:object(), kz_term:ne_binary(), integer(), integer()) -> 'ok'.
 maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
     J = kz_json:get_value(<<"doc">>, JObj),
-    Username = kz_device:sip_username(J),
+    Username = kzd_devices:sip_username(J),
     Realm = get_sip_realm(J, AccountId),
     OwnerId = get_endpoint_owner(J),
-    case kz_device:sip_method(J) =:= <<"password">>
+    case kzd_devices:sip_method(J) =:= <<"password">>
         andalso Username =/= 'undefined'
         andalso Realm =/= 'undefined'
         andalso OwnerId =/= 'undefined'
-        andalso kz_device:unsolicitated_mwi_updates(J)
+        andalso kzd_devices:unsolicitated_mwi_updates(J)
     of
         'true' -> send_mwi_update(New, Saved, Username, Realm);
         'false' -> 'ok'
@@ -2048,7 +2048,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object()) ->
                                             'ok' | {'error', 'not_appropriate'}.
 maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
-    maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
+    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:unsolicitated_mwi_updates(JObj)).
 
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object(), boolean()) ->
                                             'ok' | {'error', 'not_appropriate'}.
@@ -2056,10 +2056,10 @@ maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
     lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    Username = kz_device:sip_username(JObj),
+    Username = kzd_devices:sip_username(JObj),
     Realm = get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
-    case kz_device:sip_method(JObj) =:= <<"password">>
+    case kzd_devices:sip_method(JObj) =:= <<"password">>
         andalso Username =/= 'undefined'
         andalso Realm =/= 'undefined'
     of

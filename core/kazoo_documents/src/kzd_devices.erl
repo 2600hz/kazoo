@@ -59,6 +59,10 @@
 -export([suppress_unregister_notifications/1, suppress_unregister_notifications/2, set_suppress_unregister_notifications/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
 
+-export([fetch/2
+        ,type/0
+        ,is_device/1
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -67,7 +71,7 @@
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?MODULE_STRING).
+    kz_json:set_value(<<"pvt_type">>, type(), kz_json_schema:default_object(?MODULE_STRING)).
 
 -spec call_forward(doc()) -> kz_term:api_object().
 call_forward(Doc) ->
@@ -752,3 +756,18 @@ timezone(Doc, Default) ->
 -spec set_timezone(doc(), binary()) -> doc().
 set_timezone(Doc, Timezone) ->
     kz_json:set_value([<<"timezone">>], Timezone, Doc).
+
+-spec fetch(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> {'ok', doc()} |
+                                                                 {'error', any()}.
+fetch(Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
+    AccountDb = kz_util:format_account_db(Account),
+    kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{'cache_failures', 'false'}]);
+fetch(_, _) ->
+    {'error', 'invalid_parameters'}.
+
+-spec type() -> kz_term:ne_binary().
+type() -> <<"device">>.
+
+-spec is_device(doc()) -> boolean().
+is_device(Doc) ->
+    kz_doc:type(Doc) =:= type().

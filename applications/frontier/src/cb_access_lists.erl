@@ -93,7 +93,7 @@ thing_doc(Context) ->
             thing_doc(Context, AccountId, kz_account:type());
         [{<<"access_lists">>, []}, {<<"devices">>, [DeviceId]} | _] ->
             lager:debug("loading access lists from device: '~s'", [DeviceId]),
-            thing_doc(Context, DeviceId, kz_device:type());
+            thing_doc(Context, DeviceId, kzd_devices:type());
         _Nouns ->
             cb_context:add_system_error('faulty_request'
                                        ,<<"access lists not supported on this URI path">>

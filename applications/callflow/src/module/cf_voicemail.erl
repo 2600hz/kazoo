@@ -1725,7 +1725,7 @@ get_user_mailbox_doc(Data, Call, 'undefined') ->
     DeviceId = kapps_call:authorizing_id(Call),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of
         {'ok', DeviceJObj} ->
-            case kz_device:owner_id(DeviceJObj) of
+            case kzd_devices:owner_id(DeviceJObj) of
                 'undefined' ->
                     lager:debug("device used to check voicemail has no owner assigned", []),
                     {'error', "request voicemail box number"};

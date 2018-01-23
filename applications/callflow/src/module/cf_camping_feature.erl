@@ -173,7 +173,7 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
 -spec get_device_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_device_sip_username(AccountDb, DeviceId) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, DeviceId),
-    kz_device:sip_username(JObj).
+    kzd_devices:sip_username(JObj).
 
 -spec no_channels(state(), kapps_call:call()) -> maybe_m('accepted') |
                                                  maybe_m('connected').

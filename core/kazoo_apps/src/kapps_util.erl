@@ -445,7 +445,7 @@ is_enabled(_AccountId, {_Type, 'undefined'}) -> 'true';
 is_enabled(AccountId, {<<"device">>, DeviceId}) ->
     Default = kapps_config:get_is_true(<<"registrar">>, <<"device_enabled_default">>, 'true'),
     {'ok', DeviceJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DeviceId),
-    kz_device:enabled(DeviceJObj, Default)
+    kzd_devices:enabled(DeviceJObj, Default)
         orelse throw({'error', {'device_disabled', DeviceId}});
 is_enabled(AccountId, {<<"owner">>, OwnerId}) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of

@@ -267,7 +267,7 @@ disable(JObj) ->
 -spec type() -> kz_term:ne_binary().
 type() -> <<"user">>.
 
--spec devices(doc()) -> kz_device:docs().
+-spec devices(doc()) -> kzd_devices:docs().
 devices(UserJObj) ->
     AccountDb = kz_doc:account_db(UserJObj),
     UserId = kz_doc:id(UserJObj),
