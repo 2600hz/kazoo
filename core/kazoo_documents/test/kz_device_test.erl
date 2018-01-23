@@ -94,7 +94,7 @@ test_no_legacy_sip_headers() ->
                             ,{<<"out">>, OutCSH}
                             ]
                            ),
-    TestDevice = kzd_devices:set_custom_sip_headers(Device, CSH),
+    TestDevice = kzd_devices:set_sip_custom_sip_headers(Device, CSH),
     [?_assertEqual(<<"foo">>, kzd_devices:custom_sip_header_inbound(TestDevice, <<"x-device-header">>))
     ,?_assertEqual(<<"bar">>, kzd_devices:custom_sip_header_outbound(TestDevice, <<"x-outbound-header">>))
     ,?_assertEqual('undefined', kzd_devices:custom_sip_header_inbound(TestDevice, <<"x-legacy-header">>))
@@ -109,7 +109,7 @@ test_no_inbound_sip_headers() ->
                                   ]),
     OutCSH = kz_json:from_list([{<<"x-outbound-header">>, <<"bar">>}]),
     CSH = kz_json:set_value(<<"out">>, OutCSH, LegacyCSH),
-    TestDevice = kzd_devices:set_custom_sip_headers(Device, CSH),
+    TestDevice = kzd_devices:set_sip_custom_sip_headers(Device, CSH),
     [?_assertEqual(<<"baz">>, kzd_devices:custom_sip_header_inbound(TestDevice, <<"x-device-header">>))
     ,?_assertEqual(<<"bar">>, kzd_devices:custom_sip_header_outbound(TestDevice, <<"x-outbound-header">>))
     ,?_assertEqual(<<"Hz">>, kzd_devices:custom_sip_header_inbound(TestDevice, <<"x-legacy-header">>))
@@ -128,7 +128,7 @@ test_no_outbound_custom_sip_headers() ->
                              ]
                             ,LegacyCSH
                             ),
-    TestDevice = kzd_devices:set_custom_sip_headers(Device, CSH),
+    TestDevice = kzd_devices:set_sip_custom_sip_headers(Device, CSH),
     [?_assertEqual(<<"foo">>, kzd_devices:custom_sip_header_inbound(TestDevice, <<"x-device-header">>))
     ,?_assertEqual('undefined', kzd_devices:custom_sip_header_outbound(TestDevice, <<"x-outbound-header">>))
     ,?_assertEqual(<<"Hz">>, kzd_devices:custom_sip_header_inbound(TestDevice, <<"x-legacy-header">>))
@@ -148,7 +148,7 @@ test_custom_sip_headers_schema() ->
                              ]
                             ,LegacyCSH
                             ),
-    TestDevice = kzd_devices:set_custom_sip_headers(Device, CSH),
+    TestDevice = kzd_devices:set_sip_custom_sip_headers(Device, CSH),
     {'ok', Schema} = kz_json_schema:fload(<<"devices">>),
 
     [{"valid schema check", ?_assertMatch({'ok', _}, validate(Schema, TestDevice))}
@@ -260,7 +260,7 @@ test_device_param_setting() ->
             ,{<<"fax_machine">>, fun kzd_devices:set_device_type/2, fun kzd_devices:device_type/1}
             ,{<<"user0000000000000000000000000002">>, fun kzd_devices:set_owner_id/2, fun kzd_devices:owner_id/1}
             ,{'false', fun kzd_devices:set_enabled/2, fun kzd_devices:enabled/1}
-            ,{'false', fun kzd_devices:set_unsolicitated_mwi_updates/2, fun kzd_devices:unsolicitated_mwi_updates/1}
+            ,{'false', fun kzd_devices:set_mwi_unsolicitated_updates/2, fun kzd_devices:mwi_unsolicitated_updates/1}
             ],
 
     [?_assertEqual(Value, Get(Set(Device, Value))) || {Value, Set, Get} <- Setup].

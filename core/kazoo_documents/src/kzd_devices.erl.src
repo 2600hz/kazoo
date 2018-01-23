@@ -24,6 +24,7 @@
 -export([exclude_from_queues/1, exclude_from_queues/2, set_exclude_from_queues/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([language/1, language/2, set_language/2]).
+-export([mac_address/1, mac_address/2, set_mac_address/2]).
 -export([media/1, media/2, set_media/2]).
 -export([metaflows/1, metaflows/2, set_metaflows/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
@@ -345,6 +346,18 @@ language(Doc, Default) ->
 set_language(Doc, Language) ->
     kz_json:set_value([<<"language">>], Language, Doc).
 
+-spec mac_address(doc()) -> kz_term:api_binary().
+mac_address(Doc) ->
+    mac_address(Doc, 'undefined').
+
+-spec mac_address(doc(), Default) -> binary() | Default.
+mac_address(Doc, Default) ->
+    kz_json:get_binary_value([<<"mac_address">>], Doc, Default).
+
+-spec set_mac_address(doc(), binary()) -> doc().
+set_mac_address(Doc, MacAddress) ->
+    kz_json:set_value([<<"mac_address">>], MacAddress, Doc).
+
 -spec media(doc()) -> kz_term:api_object().
 media(Doc) ->
     media(Doc, 'undefined').
@@ -417,15 +430,15 @@ name(Doc, Default) ->
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec outbound_flags(doc()) -> kz_term:api_ne_binaries().
+-spec outbound_flags(doc()) -> any().
 outbound_flags(Doc) ->
     outbound_flags(Doc, 'undefined').
 
--spec outbound_flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+-spec outbound_flags(doc(), Default) -> any() | Default.
 outbound_flags(Doc, Default) ->
-    kz_json:get_list_value([<<"outbound_flags">>], Doc, Default).
+    kz_json:get_value([<<"outbound_flags">>], Doc, Default).
 
--spec set_outbound_flags(doc(), kz_term:ne_binaries()) -> doc().
+-spec set_outbound_flags(doc(), any()) -> doc().
 set_outbound_flags(Doc, OutboundFlags) ->
     kz_json:set_value([<<"outbound_flags">>], OutboundFlags, Doc).
 

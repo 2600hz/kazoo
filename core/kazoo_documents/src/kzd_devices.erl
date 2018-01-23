@@ -24,6 +24,7 @@
 -export([exclude_from_queues/1, exclude_from_queues/2, set_exclude_from_queues/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([language/1, language/2, set_language/2]).
+-export([mac_address/1, mac_address/2, set_mac_address/2]).
 -export([media/1, media/2, set_media/2]).
 -export([metaflows/1, metaflows/2, set_metaflows/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
@@ -62,12 +63,24 @@
 -export([fetch/2
         ,type/0
         ,is_device/1
+
+        ,custom_sip_headers_inbound/1, custom_sip_headers_inbound/2, set_custom_sip_headers_inbound/2
+        ,custom_sip_headers_outbound/1, custom_sip_headers_outbound/2, set_custom_sip_headers_outbound/2
+        ,custom_sip_header_inbound/2, custom_sip_header_inbound/3
+        ,custom_sip_header_outbound/2, custom_sip_header_outbound/3
+
+        ,set_outbound_flags/3
+        ,outbound_static_flags/1, set_outbound_static_flags/2
+        ,outbound_dynamic_flags/1, set_outbound_dynamic_flags/2
         ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
+
+-define(STATIC_FLAGS, <<"static">>).
+-define(DYNAMIC_FLAGS, <<"dynamic">>).
 
 -spec new() -> doc().
 new() ->
@@ -349,6 +362,18 @@ language(Doc, Default) ->
 set_language(Doc, Language) ->
     kz_json:set_value([<<"language">>], Language, Doc).
 
+-spec mac_address(doc()) -> kz_term:api_binary().
+mac_address(Doc) ->
+    mac_address(Doc, 'undefined').
+
+-spec mac_address(doc(), Default) -> binary() | Default.
+mac_address(Doc, Default) ->
+    kz_json:get_binary_value([<<"mac_address">>], Doc, Default).
+
+-spec set_mac_address(doc(), binary()) -> doc().
+set_mac_address(Doc, MacAddress) ->
+    kz_json:set_value([<<"mac_address">>], MacAddress, Doc).
+
 -spec media(doc()) -> kz_term:api_object().
 media(Doc) ->
     media(Doc, 'undefined').
@@ -399,7 +424,7 @@ set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
 
 -spec mwi_unsolicitated_updates(doc()) -> boolean().
 mwi_unsolicitated_updates(Doc) ->
-    mwi_unsolicitated_updates(Doc, true).
+    mwi_unsolicitated_updates(Doc, 'true').
 
 -spec mwi_unsolicitated_updates(doc(), Default) -> boolean() | Default.
 mwi_unsolicitated_updates(Doc, Default) ->
@@ -421,17 +446,26 @@ name(Doc, Default) ->
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec outbound_flags(doc()) -> kz_term:api_ne_binaries().
+-spec outbound_flags(doc()) -> kz_json:object().
 outbound_flags(Doc) ->
-    outbound_flags(Doc, 'undefined').
+    outbound_flags(Doc, kz_json:new()).
 
--spec outbound_flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+-spec outbound_flags(doc(), Default) -> kz_json:object() | Default.
 outbound_flags(Doc, Default) ->
-    kz_json:get_list_value([<<"outbound_flags">>], Doc, Default).
+    OutboundFlags = kz_json:get_ne_value([<<"outbound_flags">>], Doc, Default),
+    %% Backward compatibilty with an array of static flags
+    case kz_json:is_json_object(OutboundFlags) of
+        'false' -> kz_json:from_list([{?STATIC_FLAGS, OutboundFlags}]);
+        'true' -> OutboundFlags
+    end.
 
--spec set_outbound_flags(doc(), kz_term:ne_binaries()) -> doc().
-set_outbound_flags(Doc, OutboundFlags) ->
-    kz_json:set_value([<<"outbound_flags">>], OutboundFlags, Doc).
+-spec set_outbound_flags(doc(), kz_json:object() | kz_term:ne_binaries()) -> doc().
+set_outbound_flags(JObj, Flags) when is_list(Flags) ->
+    OutboundFlags = outbound_flags(JObj),
+    UpdatedFlags = kz_json:set_value(?STATIC_FLAGS, Flags, OutboundFlags),
+    kz_json:set_value([<<"outbound_flags">>], UpdatedFlags, JObj);
+set_outbound_flags(JObj, Flags) ->
+    kz_json:set_value([<<"outbound_flags">>], Flags, JObj).
 
 -spec owner_id(doc()) -> kz_term:api_ne_binary().
 owner_id(Doc) ->
@@ -771,3 +805,83 @@ type() -> <<"device">>.
 -spec is_device(doc()) -> boolean().
 is_device(Doc) ->
     kz_doc:type(Doc) =:= type().
+
+-spec custom_sip_headers_inbound(doc()) -> kz_term:api_object().
+custom_sip_headers_inbound(DeviceJObj) ->
+    custom_sip_headers_inbound(DeviceJObj, 'undefined').
+
+-spec custom_sip_headers_inbound(doc(), Default) -> kz_json:object() | Default.
+custom_sip_headers_inbound(DeviceJObj, Default) ->
+    CSH = sip_custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:inbound(CSH, Default).
+
+-spec custom_sip_header_inbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+custom_sip_header_inbound(DeviceJObj, Name) ->
+    custom_sip_header_inbound(DeviceJObj, Name, 'undefined').
+
+-spec custom_sip_header_inbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
+custom_sip_header_inbound(DeviceJObj, Name, Default) ->
+    CSH = sip_custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:inbound_header(CSH, Name, Default).
+
+-spec custom_sip_header_outbound(doc(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+custom_sip_header_outbound(DeviceJObj, Name) ->
+    custom_sip_header_outbound(DeviceJObj, Name, 'undefined').
+
+-spec custom_sip_header_outbound(doc(), kz_json:key(), Default) -> kz_json:json_term() | Default.
+custom_sip_header_outbound(DeviceJObj, Name, Default) ->
+    CSH = sip_custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:outbound_header(CSH, Name, Default).
+
+-spec custom_sip_headers_outbound(doc()) -> kz_term:api_object().
+custom_sip_headers_outbound(DeviceJObj) ->
+    custom_sip_headers_outbound(DeviceJObj, 'undefined').
+
+-spec custom_sip_headers_outbound(doc(), Default) -> kz_json:object() | Default.
+custom_sip_headers_outbound(DeviceJObj, Default) ->
+    CSH = sip_custom_sip_headers(DeviceJObj),
+    kz_custom_sip_headers:outbound(CSH, Default).
+
+-spec set_custom_sip_headers_inbound(doc(), kz_json:object()) -> doc().
+set_custom_sip_headers_inbound(Device, Headers) ->
+    CSH = sip_custom_sip_headers(Device),
+    InboundCSH = kz_custom_sip_headers:set_inbound(CSH, Headers),
+    set_sip_custom_sip_headers(Device, InboundCSH).
+
+-spec set_custom_sip_headers_outbound(doc(), kz_json:object()) -> doc().
+set_custom_sip_headers_outbound(Device, Headers) ->
+    CSH = sip_custom_sip_headers(Device),
+    OutboundCSH = kz_custom_sip_headers:set_outbound(CSH, Headers),
+    set_sip_custom_sip_headers(Device, OutboundCSH).
+
+-spec set_outbound_flags(kz_json:object(), kz_term:api_ne_binaries(), kz_term:api_ne_binaries()) ->
+                                kz_json:object().
+set_outbound_flags(JObj, 'undefined', DynamicFlags) ->
+    set_outbound_flags(JObj, [], DynamicFlags);
+set_outbound_flags(JObj, StaticFlags, 'undefined') ->
+    set_outbound_flags(JObj, StaticFlags, []);
+set_outbound_flags(JObj, StaticFlags, DynamicFlags) when is_list(StaticFlags),
+                                                         is_list(DynamicFlags) ->
+    Flags = kz_json:from_list([{?DYNAMIC_FLAGS, DynamicFlags}
+                              ,{?STATIC_FLAGS, StaticFlags}
+                              ]),
+    set_outbound_flags(JObj, Flags).
+
+-spec outbound_static_flags(kz_json:object()) -> kz_term:ne_binaries().
+outbound_static_flags(JObj) ->
+    OutboundFlags = outbound_flags(JObj),
+    kz_json:get_list_value(?STATIC_FLAGS, OutboundFlags, []).
+
+-spec set_outbound_static_flags(kz_json:object(), kz_term:ne_binaries()) -> kz_json:object().
+set_outbound_static_flags(JObj, Flags) when is_list(Flags) ->
+    set_outbound_flags(JObj, Flags).
+
+-spec outbound_dynamic_flags(kz_json:object()) -> kz_term:ne_binaries().
+outbound_dynamic_flags(JObj) ->
+    OutboundFlags = outbound_flags(JObj),
+    kz_json:get_list_value(?DYNAMIC_FLAGS, OutboundFlags, []).
+
+-spec set_outbound_dynamic_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_outbound_dynamic_flags(JObj, Flags) when is_list(Flags) ->
+    OutboundFlags = outbound_flags(JObj),
+    set_outbound_flags(JObj, kz_json:set_value(?DYNAMIC_FLAGS, Flags, OutboundFlags)).

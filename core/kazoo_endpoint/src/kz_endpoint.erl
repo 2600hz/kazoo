@@ -2012,11 +2012,11 @@ maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
     Username = kzd_devices:sip_username(J),
     Realm = get_sip_realm(J, AccountId),
     OwnerId = get_endpoint_owner(J),
-    case kzd_devices:sip_method(J) =:= <<"password">>
-        andalso Username =/= 'undefined'
-        andalso Realm =/= 'undefined'
-        andalso OwnerId =/= 'undefined'
-        andalso kzd_devices:unsolicitated_mwi_updates(J)
+    case <<"password">> =:= kzd_devices:sip_method(J)
+        andalso 'undefined' =/= Username
+        andalso 'undefined' =/= Realm
+        andalso 'undefined' =/= OwnerId
+        andalso kzd_devices:mwi_unsolicitated_updates(J)
     of
         'true' -> send_mwi_update(New, Saved, Username, Realm);
         'false' -> 'ok'
@@ -2048,7 +2048,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object()) ->
                                             'ok' | {'error', 'not_appropriate'}.
 maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
-    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:unsolicitated_mwi_updates(JObj)).
+    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:mwi_unsolicitated_updates(JObj)).
 
 -spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object(), boolean()) ->
                                             'ok' | {'error', 'not_appropriate'}.
@@ -2059,9 +2059,9 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     Username = kzd_devices:sip_username(JObj),
     Realm = get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
-    case kzd_devices:sip_method(JObj) =:= <<"password">>
-        andalso Username =/= 'undefined'
-        andalso Realm =/= 'undefined'
+    case <<"password">> =:= kzd_devices:sip_method(JObj)
+        andalso 'undefined' =/= Username
+        andalso 'undefined' =/= Realm
     of
         'false' -> {'error', 'not_appropriate'};
         'true' ->
