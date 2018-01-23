@@ -72,7 +72,7 @@ caller_id_name(Props) ->
     caller_id_name(Props, 'undefined').
 
 -spec caller_id_name(data(), Default) -> kz_term:ne_binary() | Default.
-caller_id_name(Props, Default)
+caller_id_name(Props, Default) ->
     props:get_first_defined([<<"variable_origination_caller_id_name">>
                             ,<<"variable_effective_caller_id_name">>
                             ,<<"Caller-Caller-ID-Name">>
@@ -86,7 +86,7 @@ caller_id_number(Props) ->
     caller_id_number(Props, 'undefined').
 
 -spec caller_id_number(data(), Default) -> kz_term:ne_binary() | Default.
-caller_id_number(Props, Default)
+caller_id_number(Props, Default) ->
     props:get_first_defined([<<"variable_origination_caller_id_number">>
                             ,<<"variable_effective_caller_id_number">>
                             ,<<"Caller-Caller-ID-Number">>
@@ -100,7 +100,7 @@ callee_id_name(Props) ->
     callee_id_name(Props, 'undefined').
 
 -spec callee_id_name(data(), Default) -> kz_term:ne_binary() | Default.
-callee_id_name(Props, Default)
+callee_id_name(Props, Default) ->
     props:get_first_defined([<<"variable_origination_callee_id_name">>
                             ,<<"variable_effective_callee_id_name">>
                             ,<<"Caller-Callee-ID-Name">>
@@ -115,7 +115,7 @@ callee_id_number(Props) ->
     callee_id_number(Props, 'undefined').
 
 -spec callee_id_number(data(), Default) -> kz_term:ne_binary() | Default.
-callee_id_number(Props, Default)
+callee_id_number(Props, Default) ->
     props:get_first_defined([<<"variable_origination_callee_id_number">>
                             ,<<"variable_effective_callee_id_number">>
                             ,<<"Caller-Callee-ID-Number">>
@@ -166,7 +166,7 @@ resource_type(Props) ->
     resource_type(Props, 'undefined').
 
 -spec resource_type(data(), Default) -> kz_term:ne_binary() | Default.
-resource_type(Props, Default)
+resource_type(Props, Default) ->
     props:get_value(<<"Resource-Type">>, Props, Default).
 
 -spec channel_authorized(data()) -> kz_term:api_binary().
@@ -186,7 +186,7 @@ is_channel_recovering(Props) ->
     is_channel_recovering(Props, 'false').
 
 -spec is_channel_recovering(data(), boolean()) -> boolean().
-is_channel_recovering(Props, Default)
+is_channel_recovering(Props, Default) ->
     props:is_true(<<"variable_recovered">>, Props, Default).
 
 -spec is_consuming_global_resource(data()) -> kz_term:api_boolean().
@@ -394,7 +394,7 @@ channel_var_map({Key, Other}) -> {Key, Other}.
 %% Extract custom channel variables to include in the event
 
 -spec ccvs(kz_term:proplist()) -> kz_term:proplist().
-ccvs(Props)
+ccvs(Props) ->
     lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
 
 -spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
