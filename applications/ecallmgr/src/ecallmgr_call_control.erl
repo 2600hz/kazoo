@@ -947,14 +947,15 @@ insert_queue_command_into_queue(InsertFun, CommandQueue, JObj) ->
                ).
 
 -type insert_fun() :: fun((kz_json:object(), queue:queue()) -> queue:queue()).
+
 -spec queue_insert_fun('tail' | 'head') -> insert_fun().
 queue_insert_fun('tail') ->
     queue_insert_fun('tail', fun queue:in/2);
 
--spec queue_insert_fun('tail' | 'head', insert_fun()) -> insert_fun().
 queue_insert_fun('head') ->
     queue_insert_fun('head', fun queue:in_r/2).
 
+-spec queue_insert_fun('tail' | 'head', insert_fun()) -> insert_fun().
 queue_insert_fun(Position, QueueFun) when is_function(QueueFun, 2) ->
     fun(JObj, Queue) ->
             'true' = kapi_dialplan:v(JObj),
