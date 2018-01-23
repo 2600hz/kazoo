@@ -162,8 +162,9 @@ filter(_Xref, Results) ->
 print('undefined_function_calls'=Xref, Results) ->
     io:format("Xref: listing ~p\n", [Xref]),
     F = fun ({{M1,F1,A1}, {M2,F2,A2}}) ->
-                io:format("~30.. s:~-30..,s/~p ~30.. s ~30.. s:~s/~p\n"
-                         ,[M1,F1,A1, "calls undefined", M2,F2,A2])
+                io:format("~30.. s:~s/~p calls undefined ~s:~s/~p\n"
+                         ,[M1,F1,A1, M2,F2,A2]
+                         )
         end,
     lists:foreach(F, Results);
 print('undefined_functions'=Xref, Results) ->
