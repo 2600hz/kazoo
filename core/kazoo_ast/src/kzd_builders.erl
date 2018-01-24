@@ -56,6 +56,7 @@ accessors_from_patterns(PatternProperties) ->
                                   ),
     Accessors.
 
+accessor_from_pattern(<<"^", _/binary>>, _Properties, Acc) -> Acc;
 accessor_from_pattern(_Pattern, Properties, {Acc, Path}) ->
     Acc1 = accessor_from_pattern(Path, key_from_path(Path), Properties, Acc),
     {Acc1, Path}.
@@ -67,8 +68,19 @@ accessor_from_pattern(Path, Key, Properties, {Exports, Accessors}) ->
 
 key_from_path([]) ->
     <<"index">>;
-key_from_path(Path) ->
-    Parent = lists:last(Path),
+key_from_path([_|_]=Path) ->
+    key_from_parent(lists:last(Path)).
+
+key_from_parent(<<"children">>) ->
+    <<"child">>;
+key_from_parent(<<"i18n">>) ->
+    <<"language">>;
+key_from_parent(<<"audit">>) ->
+    <<"account_id">>;
+key_from_parent(<<"plan">>) ->
+    <<"plan_name">>;
+key_from_parent(Parent) ->
+    ?LOG_INFO("parent: ~p", [Parent]),
     case kz_binary:strip_right(Parent, <<"s">>) of
         Parent -> kz_binary:join([Parent, <<"index">>], <<"_">>);
         Singular -> Singular

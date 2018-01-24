@@ -2,7 +2,7 @@
 
 -export([new/0]).
 -export([restrictions/1, restrictions/2, set_restrictions/2]).
-
+-export([restriction/2, restriction/3, set_restriction/3]).
 
 -include("kz_documents.hrl").
 
@@ -24,3 +24,15 @@ restrictions(Doc, Default) ->
 -spec set_restrictions(doc(), kz_json:object()) -> doc().
 set_restrictions(Doc, Restrictions) ->
     kz_json:set_value([<<"restrictions">>], Restrictions, Doc).
+
+-spec restriction(doc(), kz_json:key()) -> kz_term:api_object().
+restriction(Doc, Restriction) ->
+    restriction(Doc, Restriction, 'undefined').
+
+-spec restriction(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+restriction(Doc, Restriction, Default) ->
+    kz_json:get_json_value([<<"restrictions">>, Restriction], Doc, Default).
+
+-spec set_restriction(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_restriction(Doc, Restriction, Value) ->
+    kz_json:set_value([<<"restrictions">>, Restriction], Value, Doc).

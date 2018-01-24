@@ -10,6 +10,7 @@
 -export([merge_strategy/1, merge_strategy/2, set_merge_strategy/2]).
 -export([name/1, name/2, set_name/2]).
 -export([plan/1, plan/2, set_plan/2]).
+-export([plan_name/2, plan_name/3, set_plan_name/3]).
 
 
 -include("kz_documents.hrl").
@@ -128,3 +129,15 @@ plan(Doc, Default) ->
 -spec set_plan(doc(), kz_json:object()) -> doc().
 set_plan(Doc, Plan) ->
     kz_json:set_value([<<"plan">>], Plan, Doc).
+
+-spec plan_name(doc(), kz_json:key()) -> kz_term:api_object().
+plan_name(Doc, PlanName) ->
+    plan_name(Doc, PlanName, 'undefined').
+
+-spec plan_name(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+plan_name(Doc, PlanName, Default) ->
+    kz_json:get_json_value([<<"plan">>, PlanName], Doc, Default).
+
+-spec set_plan_name(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_plan_name(Doc, PlanName, Value) ->
+    kz_json:set_value([<<"plan">>, PlanName], Value, Doc).

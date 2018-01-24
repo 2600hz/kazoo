@@ -5,7 +5,9 @@
 -export([digit_timeout/1, digit_timeout/2, set_digit_timeout/2]).
 -export([listen_on/1, listen_on/2, set_listen_on/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
+-export([number/2, number/3, set_number/3]).
 -export([patterns/1, patterns/2, set_patterns/2]).
+-export([pattern/2, pattern/3, set_pattern/3]).
 
 
 -include("kz_documents.hrl").
@@ -65,6 +67,18 @@ numbers(Doc, Default) ->
 set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
 
+-spec number(doc(), kz_json:key()) -> kz_term:api_object().
+number(Doc, Number) ->
+    number(Doc, Number, 'undefined').
+
+-spec number(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+number(Doc, Number, Default) ->
+    kz_json:get_json_value([<<"numbers">>, Number], Doc, Default).
+
+-spec set_number(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_number(Doc, Number, Value) ->
+    kz_json:set_value([<<"numbers">>, Number], Value, Doc).
+
 -spec patterns(doc()) -> kz_term:api_object().
 patterns(Doc) ->
     patterns(Doc, 'undefined').
@@ -76,3 +90,15 @@ patterns(Doc, Default) ->
 -spec set_patterns(doc(), kz_json:object()) -> doc().
 set_patterns(Doc, Patterns) ->
     kz_json:set_value([<<"patterns">>], Patterns, Doc).
+
+-spec pattern(doc(), kz_json:key()) -> kz_term:api_object().
+pattern(Doc, Pattern) ->
+    pattern(Doc, Pattern, 'undefined').
+
+-spec pattern(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+pattern(Doc, Pattern, Default) ->
+    kz_json:get_json_value([<<"patterns">>, Pattern], Doc, Default).
+
+-spec set_pattern(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_pattern(Doc, Pattern, Value) ->
+    kz_json:set_value([<<"patterns">>, Pattern], Value, Doc).

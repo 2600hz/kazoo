@@ -5,6 +5,7 @@
 -export([api_url/1, api_url/2, set_api_url/2]).
 -export([author/1, author/2, set_author/2]).
 -export([i18n/1, i18n/2, set_i18n/2]).
+-export([language/2, language/3, set_language/3]).
 -export([icon/1, icon/2, set_icon/2]).
 -export([license/1, license/2, set_license/2]).
 -export([masqueradable/1, masqueradable/2, set_masqueradable/2]).
@@ -76,6 +77,18 @@ i18n(Doc, Default) ->
 -spec set_i18n(doc(), kz_json:object()) -> doc().
 set_i18n(Doc, I18n) ->
     kz_json:set_value([<<"i18n">>], I18n, Doc).
+
+-spec language(doc(), kz_json:key()) -> kz_term:api_object().
+language(Doc, Language) ->
+    language(Doc, Language, 'undefined').
+
+-spec language(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+language(Doc, Language, Default) ->
+    kz_json:get_json_value([<<"i18n">>, Language], Doc, Default).
+
+-spec set_language(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_language(Doc, Language, Value) ->
+    kz_json:set_value([<<"i18n">>, Language], Value, Doc).
 
 -spec icon(doc()) -> kz_term:api_binary().
 icon(Doc) ->
