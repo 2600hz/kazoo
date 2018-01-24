@@ -180,9 +180,9 @@ price(Doc, Default) ->
 set_price(Doc, Price) ->
     kz_json:set_value([<<"price">>], Price, Doc).
 
--spec is_published(doc()) -> kz_term:api_boolean().
+-spec is_published(doc()) -> kz_term:boolean().
 is_published(Doc) ->
-    is_published(Doc, 'undefined').
+    is_published(Doc, 'true').
 
 -spec is_published(doc(), Default) -> boolean() | Default.
 is_published(Doc, Default) ->
@@ -200,10 +200,9 @@ publish(Doc) ->
 unpublish(Doc) ->
     set_is_published(Doc, 'false').
 
-
--spec screenshots(doc()) -> kz_term:api_ne_binaries().
+-spec screenshots(doc()) -> kz_term:ne_binaries().
 screenshots(Doc) ->
-    screenshots(Doc, 'undefined').
+    screenshots(Doc, []).
 
 -spec screenshots(doc(), Default) -> kz_term:ne_binaries() | Default.
 screenshots(Doc, Default) ->
@@ -227,7 +226,7 @@ set_source_url(Doc, SourceUrl) ->
 
 -spec tags(doc()) -> kz_term:api_ne_binaries().
 tags(Doc) ->
-    tags(Doc, 'undefined').
+    tags(Doc, []).
 
 -spec tags(doc(), Default) -> kz_term:ne_binaries() | Default.
 tags(Doc, Default) ->
@@ -249,9 +248,9 @@ urls(Doc, Default) ->
 set_urls(Doc, Urls) ->
     kz_json:set_value([<<"urls">>], Urls, Doc).
 
--spec users(doc()) -> kz_term:api_ne_binaries().
+-spec users(doc()) -> kz_term:ne_binaries().
 users(Doc) ->
-    users(Doc, 'undefined').
+    users(Doc, []).
 
 -spec users(doc(), Default) -> kz_term:ne_binaries() | Default.
 users(Doc, Default) ->
