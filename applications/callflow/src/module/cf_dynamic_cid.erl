@@ -364,6 +364,7 @@ get_caller_id_from_entries(_, 'undefined', _) ->
 get_caller_id_from_entries(Call, ListId, KeyDest) ->
     case kz_datamgr:get_results(kapps_call:account_db(Call), <<"lists/entries">>, [{'key', ListId}]) of
         {'ok', Entries} ->
+            lager:debug("trying to find new caller id from ~b list entries", [length(Entries)]),
             get_new_caller_id(Call, Entries, ListId, KeyDest);
         {'error', _Reason}=Error ->
             lager:info("failed to load entry documents ~s: ~p", [ListId, _Reason]),
@@ -387,7 +388,7 @@ get_new_caller_id(Call, [], ListId, 'undefined') ->
         {'error', 'not_found'}
     end;
 get_new_caller_id(Call, [JObj | Entries], ListId, KeyDest) ->
-    Entry = kz_json:ge_value(<<"value">>, JObj),
+    Entry = kz_json:get_value(<<"value">>, JObj),
 
     case get_key_and_dest(Call, Entry, KeyDest) of
         {'error', _}=Error ->
@@ -415,7 +416,6 @@ get_key_and_dest(_, _, {CIDKey, Dest}=KeyDest) ->
     end;
 get_key_and_dest(Call, Entry, 'undefined') ->
     LengthDigits = kz_json:get_integer_value(<<"capture_group_length">>, Entry, 2),
-    lager:debug("digit length to limit lookup key in number: ~p", [LengthDigits]),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
 
     try <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
