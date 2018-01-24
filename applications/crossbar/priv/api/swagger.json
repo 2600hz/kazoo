@@ -617,7 +617,7 @@
                     "type": "string"
                 },
                 "i18n": {
-                    "description": "Application source url",
+                    "description": "Application translation",
                     "type": "object"
                 },
                 "icon": {
