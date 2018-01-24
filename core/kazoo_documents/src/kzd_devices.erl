@@ -649,9 +649,9 @@ sip(Doc, Default) ->
 set_sip(Doc, Sip) ->
     kz_json:set_value([<<"sip">>], Sip, Doc).
 
--spec sip_custom_sip_headers(doc()) -> kz_term:api_object().
+-spec sip_custom_sip_headers(doc()) -> kz_json:object().
 sip_custom_sip_headers(Doc) ->
-    sip_custom_sip_headers(Doc, 'undefined').
+    sip_custom_sip_headers(Doc, kz_json:new()).
 
 -spec sip_custom_sip_headers(doc(), Default) -> kz_json:object() | Default.
 sip_custom_sip_headers(Doc, Default) ->
