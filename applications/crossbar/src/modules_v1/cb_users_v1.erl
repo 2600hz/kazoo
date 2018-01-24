@@ -308,7 +308,7 @@ patch(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context()) -> cb_context:context().
 get_channels(Context) ->
-    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     Usernames = [Username
                  || JObj <- cb_context:doc(Context),
                     Username <- [kzd_devices:sip_username(kz_json:get_value(<<"doc">>, JObj))],

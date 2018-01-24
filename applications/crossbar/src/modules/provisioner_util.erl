@@ -222,7 +222,7 @@ do_full_provisioner_provider(Context) ->
 
 -spec do_full_provision_contact_list(kz_term:ne_binary() | cb_context:context()) -> boolean().
 do_full_provision_contact_list(AccountId) when is_binary(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             Routines = [fun kz_doc:public_fields/1
                        ,fun(J) ->
@@ -334,7 +334,7 @@ do_simple_provision(MACAddress, Context) ->
     case kapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
         'undefined' -> 'false';
         Url ->
-            AccountRealm = kz_account:fetch_realm(cb_context:account_id(Context)),
+            AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
             Body =
                 kz_json:from_list(
                   [{<<"device[mac]">>, MACAddress}
@@ -562,7 +562,7 @@ set_account_id(Context) ->
 -spec set_account_line_defaults(cb_context:context()) ->
                                        [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_line_defaults(Context) ->
-    Account = case kz_account:fetch(cb_context:account_id(Context)) of
+    Account = case kzd_accounts:fetch(cb_context:account_id(Context)) of
                   {'ok', JObj} -> JObj;
                   {'error', _} -> kz_json:new()
               end,
@@ -653,7 +653,7 @@ set_global_overrides(_) ->
 -spec set_account_overrides(cb_context:context()) ->
                                    [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_overrides(Context) ->
-    Account = case kz_account:fetch(cb_context:account_id(Context)) of
+    Account = case kzd_accounts:fetch(cb_context:account_id(Context)) of
                   {'ok', JObj} -> JObj;
                   {'error', _} -> kz_json:new()
               end,
@@ -765,15 +765,15 @@ maybe_sync_sip_data(Context, 'device', 'true') ->
         'false' ->
             lager:debug("nothing has changed on device; no check-sync needed");
         'true' ->
-            Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+            Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
             send_check_sync(OldUsername, Realm, cb_context:req_id(Context))
     end;
 maybe_sync_sip_data(Context, 'device', 'force') ->
     Username = kzd_devices:sip_username(cb_context:doc(Context)),
-    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     send_check_sync(Username, Realm, cb_context:req_id(Context));
 maybe_sync_sip_data(Context, 'user', 'true') ->
-    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     Req = [{<<"Realm">>, Realm}
           ,{<<"Fields">>, [<<"Username">>]}
           ],
@@ -799,7 +799,7 @@ maybe_sync_sip_data(Context, 'user', 'force') ->
         {'ok', []} ->
             lager:debug("no user devices to sync");
         {'ok', DeviceDocs} ->
-            Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+            Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
             _ = [send_check_sync(kzd_devices:presence_id(DeviceDoc), Realm, cb_context:req_id(Context))
                  || DeviceDoc <- DeviceDocs
                 ],

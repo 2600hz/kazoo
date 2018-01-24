@@ -45,7 +45,7 @@ force_promote(Account) ->
 
 -spec do_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_promote(AccountId) ->
-    _ = kz_util:account_update(AccountId, fun kz_account:promote/1),
+    _ = kz_util:account_update(AccountId, fun kzd_accounts:promote/1),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'true'),
     io:format("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
     cascade_reseller_id(AccountId, AccountId).
@@ -76,7 +76,7 @@ force_demote(Account) ->
 
 -spec do_demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_demote(AccountId) ->
-    _ = kz_util:account_update(AccountId, fun kz_account:demote/1),
+    _ = kz_util:account_update(AccountId, fun kzd_accounts:demote/1),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'false'),
     ResellerId = kz_services:find_reseller_id(AccountId),
     io:format("demoting reseller status for account ~s, and now belongs to reseller ~s~n", [AccountId, ResellerId]),
@@ -119,7 +119,7 @@ set_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ResellerId = kz_util:format_account_id(Reseller, 'raw'),
     io:format("setting account ~s reseller id to ~s~n", [AccountId, ResellerId]),
-    _ = kz_util:account_update(AccountId, fun(JObj) -> kz_account:set_reseller_id(JObj, ResellerId) end),
+    _ = kz_util:account_update(AccountId, fun(JObj) -> kzd_accounts:set_reseller_id(JObj, ResellerId) end),
     maybe_update_services(AccountId, ?SERVICES_PVT_RESELLER_ID, ResellerId).
 
 %%--------------------------------------------------------------------
@@ -155,4 +155,4 @@ has_reseller_descendants(AccountId) ->
 
 -spec is_reseller(kz_json:object()) -> boolean().
 is_reseller(JObj) ->
-    kz_services:is_reseller(kz_account:id(JObj)).
+    kz_services:is_reseller(kz_doc:id(JObj)).

@@ -81,7 +81,7 @@ maybe_service_unavailable(JObj, Call) ->
 -spec maybe_account_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = kapps_call:account_id(Call),
-    {'ok', Doc} = kz_account:fetch(AccountId),
+    {'ok', Doc} = kzd_accounts:fetch(AccountId),
     Services = kz_json:merge(
                  kz_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
                  kz_json:get_value(<<"pvt_services">>, Doc, kz_json:new())),

@@ -120,7 +120,7 @@ get_current_balance(DataJObj) ->
 -spec get_balance_threshold(kz_json:object()) -> kz_term:ne_binary().
 get_balance_threshold(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    wht_util:pretty_print_dollars(kz_account:low_balance_threshold(AccountId)).
+    wht_util:pretty_print_dollars(kzd_accounts:low_balance_threshold(AccountId)).
 
 -spec build_macro_data(kz_json:object()) -> kz_term:proplist().
 build_macro_data(DataJObj) ->

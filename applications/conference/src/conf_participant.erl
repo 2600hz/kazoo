@@ -539,7 +539,7 @@ unbridge_from_conference(Call) ->
 
 -spec get_account_realm(kapps_call:call()) -> kz_term:ne_binary().
 get_account_realm(Call) ->
-    case kz_account:fetch_realm(kapps_call:account_id(Call)) of
+    case kzd_accounts:fetch_realm(kapps_call:account_id(Call)) of
         'undefined' -> <<"unknown">>;
         Realm -> Realm
     end.

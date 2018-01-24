@@ -259,7 +259,7 @@ get_account_external_cid(Call) ->
 
 -spec maybe_get_account_cid(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> cid().
 maybe_get_account_cid(Number, Name, Call) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
+    case kzd_accounts:fetch(kapps_call:account_id(Call)) of
         {'error', _} -> maybe_get_assigned_number(Number, Name, Call);
         {'ok', JObj} -> maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
@@ -604,7 +604,7 @@ get_endpoint_static_flags(Flags, Endpoint) ->
                                       kz_term:ne_binaries().
 get_account_static_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountJObj} -> kzd_devices:outbound_static_flags(AccountJObj) ++ Flags;
         {'error', _E} ->
             lager:error("not applying account outbound flags for ~s: ~p", [AccountId, _E]),
@@ -641,7 +641,7 @@ get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
                                        kz_term:ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountJObj} ->
             process_dynamic_flags(kzd_devices:outbound_dynamic_flags(AccountJObj), Flags, Call);
         {'error', _E} ->

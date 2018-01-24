@@ -602,9 +602,9 @@ create_response(Context) ->
 %%--------------------------------------------------------------------
 -spec notfy_new_account(kz_json:object()) -> 'ok'.
 notfy_new_account(JObj) ->
-    Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
-             ,{<<"Account-Realm">>, kz_account:realm(JObj)}
-             ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
+    Notify = [{<<"Account-Name">>, kzd_accounts:name(JObj)}
+             ,{<<"Account-Realm">>, kzd_accounts:realm(JObj)}
+             ,{<<"Account-API-Key">>, kzd_accounts:api_key(JObj)}
              ,{<<"Account-ID">>, kz_doc:account_id(JObj)}
              ,{<<"Account-DB">>, kz_doc:account_db(JObj)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)

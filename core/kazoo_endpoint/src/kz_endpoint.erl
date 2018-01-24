@@ -168,7 +168,7 @@ check_endpoint_enabled(JObj, EndpointId, AccountDb, EndpointType) ->
 
 -spec is_endpoint_enabled(kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_endpoint_enabled(JObj, <<"account">>) ->
-    kz_account:is_enabled(JObj);
+    kzd_accounts:is_enabled(JObj);
 is_endpoint_enabled(JObj, <<"user">>) ->
     kzd_user:is_enabled(JObj);
 is_endpoint_enabled(JObj, <<"device">>) ->
@@ -253,14 +253,14 @@ attributes_keys() ->
 
 -spec merge_attributes(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 merge_attributes(Owner, <<"user">>, Keys) ->
-    case kz_account:fetch(kz_doc:account_id(Owner)) of
+    case kzd_accounts:fetch(kz_doc:account_id(Owner)) of
         {'ok', Account} -> merge_attributes(Keys, Account, kz_json:new(), Owner);
         {'error', _} -> merge_attributes(Keys, kz_json:new(), kz_json:new(), Owner)
     end;
 merge_attributes(Device, <<"device">>, Keys) ->
     Owner = get_user(kz_doc:account_db(Device), Device),
     Endpoint = kz_json:set_value(<<"owner_id">>, kz_doc:id(Owner), Device),
-    case kz_account:fetch(kz_doc:account_id(Device)) of
+    case kzd_accounts:fetch(kz_doc:account_id(Device)) of
         {'ok', Account} -> merge_attributes(Keys, Account, Endpoint, Owner);
         {'error', _} -> merge_attributes(Keys, kz_json:new(), Endpoint, Owner)
     end;
@@ -1917,7 +1917,7 @@ get_sip_realm(SIPJObj, AccountId) ->
 get_sip_realm(SIPJObj, AccountId, Default) ->
     case kzd_devices:sip_realm(SIPJObj) of
         'undefined' ->
-            case kz_account:fetch_realm(AccountId) of
+            case kzd_accounts:fetch_realm(AccountId) of
                 undefined -> Default;
                 Realm -> Realm
             end;

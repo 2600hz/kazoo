@@ -132,7 +132,7 @@ maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 -spec create_template_props(kz_json:object()) -> kz_term:proplist().
 create_template_props(JObj) ->
     AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
-    {'ok', AccountJObj} = kz_account:fetch(AccountDb),
+    {'ok', AccountJObj} = kzd_accounts:fetch(AccountDb),
 
     [{<<"service">>, notify_util:get_service_props(JObj, AccountJObj, ?MOD_CONFIG_CAT)}
     ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}

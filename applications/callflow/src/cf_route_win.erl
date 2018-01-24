@@ -81,7 +81,7 @@ get_services(JObj) ->
 -spec maybe_account_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = kapps_call:account_id(Call),
-    {'ok', Doc} = kz_account:fetch(AccountId),
+    {'ok', Doc} = kzd_accounts:fetch(AccountId),
     Services = get_services(Doc),
 
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of

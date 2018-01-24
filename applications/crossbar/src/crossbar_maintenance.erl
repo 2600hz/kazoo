@@ -661,10 +661,10 @@ print_account_info(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
-            io:format("  Name: ~s~n", [kz_account:name(JObj)]),
-            io:format("  Realm: ~s~n", [kz_account:realm(JObj)]),
-            io:format("  Enabled: ~s~n", [kz_account:is_enabled(JObj)]),
-            io:format("  System Admin: ~s~n", [kz_account:is_superduper_admin(JObj)]);
+            io:format("  Name: ~s~n", [kzd_accounts:name(JObj)]),
+            io:format("  Realm: ~s~n", [kzd_accounts:realm(JObj)]),
+            io:format("  Enabled: ~s~n", [kzd_accounts:is_enabled(JObj)]),
+            io:format("  System Admin: ~s~n", [kzd_accounts:is_superduper_admin(JObj)]);
         {'error', 'not_found'} ->
             io:format("Account ID: ~s (~s) does not exist~n", [AccountId, AccountDb]);
         {'error', _} ->

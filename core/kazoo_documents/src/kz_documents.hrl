@@ -17,7 +17,7 @@
                                                               ,{<<"override_callee_number">>, 'false'}
                                                               ]))).
 
--define(SYSTEM_FAX_SETTINGS, kz_json:set_value(?FAX_TIMEZONE_KEY, kz_account:default_timezone(), ?DEFAULT_FAX_SETTINGS)).
+-define(SYSTEM_FAX_SETTINGS, kz_json:set_value(?FAX_TIMEZONE_KEY, kzd_accounts:default_timezone(), ?DEFAULT_FAX_SETTINGS)).
 
 -ifdef(TEST).
 -define(PROPERTIES_JOBJ, kz_json:from_list_recursive(

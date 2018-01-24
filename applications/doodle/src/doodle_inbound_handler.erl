@@ -101,7 +101,7 @@ send_route_win(FetchId, CallId, JObj) ->
                             kz_json:object().
 set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = knm_number_options:account_id(NumberProps),
-    AccountRealm = kz_account:fetch_realm(AccountId),
+    AccountRealm = kzd_accounts:fetch_realm(AccountId),
     kz_json:set_values(
       props:filter_undefined(
         [{?CCV(<<"Account-ID">>), AccountId}

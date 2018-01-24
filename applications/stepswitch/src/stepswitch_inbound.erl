@@ -318,7 +318,7 @@ is_number_blacklisted(Blacklist, JObj) ->
                             {'ok', kz_term:ne_binaries()} |
                             {'error', any()}.
 get_blacklists(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'error', _R}=E ->
             lager:error("could not open account doc ~s : ~p", [AccountId, _R]),
             E;

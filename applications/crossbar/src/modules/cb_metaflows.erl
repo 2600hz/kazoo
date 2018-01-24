@@ -110,7 +110,7 @@ thing_doc(Context, ThingId) ->
 
 -spec validate_get_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_get_metaflows(Context, 'undefined') ->
-    {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
+    {'ok', AccountDoc} = kzd_accounts:fetch(cb_context:account_id(Context)),
     validate_get_metaflows(Context, AccountDoc);
 validate_get_metaflows(Context, Doc) ->
     Metaflows = kz_json:get_value(<<"metaflows">>, Doc, kz_json:new()),
@@ -118,7 +118,7 @@ validate_get_metaflows(Context, Doc) ->
 
 -spec validate_delete_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_delete_metaflows(Context, 'undefined') ->
-    {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
+    {'ok', AccountDoc} = kzd_accounts:fetch(cb_context:account_id(Context)),
     validate_delete_metaflows(Context, AccountDoc);
 validate_delete_metaflows(Context, Doc) ->
     crossbar_util:response(kz_json:new()
@@ -136,7 +136,7 @@ validate_set_metaflows(Context) ->
                                     cb_context:context().
 validate_set_metaflows(Context, Metaflows, 'undefined') ->
     lager:debug("no doc found, using account doc"),
-    {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
+    {'ok', AccountDoc} = kzd_accounts:fetch(cb_context:account_id(Context)),
     validate_set_metaflows(Context, Metaflows, AccountDoc);
 validate_set_metaflows(Context, Metaflows, Doc) ->
     Doc1 = kz_json:set_value(<<"metaflows">>, Metaflows, Doc),

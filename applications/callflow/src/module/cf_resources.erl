@@ -149,7 +149,7 @@ get_from_uri_realm(Data, Call) ->
 maybe_get_call_from_realm(Call) ->
     case kapps_call:from_realm(Call) of
         <<"norealm">> ->
-            kz_account:fetch_realm(kapps_call:account_id(Call));
+            kzd_accounts:fetch_realm(kapps_call:account_id(Call));
         Realm -> Realm
     end.
 

@@ -217,7 +217,7 @@ set_description(Desc=?NE_BINARY, T) ->
 
 -spec set_sub_account_info(kz_term:ne_binary(), transaction()) -> transaction().
 set_sub_account_info(?MATCH_ACCOUNT_RAW(AccountId), T) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'error', _R} ->
             lager:error("failed to open account ~s : ~p", [AccountId, _R]),
             T#kz_transaction{sub_account_id = AccountId
@@ -379,7 +379,7 @@ maybe_add_sub_account_name(JObj) ->
 
 -spec add_sub_account_name(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 add_sub_account_name(AccountId, JObj) ->
-    case kz_account:fetch_name(AccountId) of
+    case kzd_accounts:fetch_name(AccountId) of
         undefined -> JObj;
         AccountName ->
             kz_json:set_value(<<"sub_account_name">>, AccountName, JObj)

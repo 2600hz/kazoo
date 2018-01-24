@@ -605,7 +605,7 @@ ensure_aggregate_device(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
         {'ok', Devices} ->
-            AccountRealm = kz_account:fetch_realm(Account),
+            AccountRealm = kzd_accounts:fetch_realm(Account),
             _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
             refresh_account_devices(AccountDb, AccountRealm, Devices);
         {'error', _} -> 'ok'

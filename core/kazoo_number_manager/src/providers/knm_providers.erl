@@ -122,7 +122,7 @@ e911_caller_name(_Number, 'undefined') -> ?E911_NAME_DEFAULT.
 e911_caller_name(_Number, ?NE_BINARY=Name) -> Name;
 e911_caller_name(Number, 'undefined') ->
     AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
-    case kz_account:fetch_name(AccountId) of
+    case kzd_accounts:fetch_name(AccountId) of
         undefined -> ?E911_NAME_DEFAULT;
         Name -> Name
     end.
