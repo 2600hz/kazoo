@@ -57,8 +57,7 @@ accessors_from_patterns(PatternProperties) ->
     Accessors.
 
 accessor_from_pattern(_Pattern, Properties, {Acc, Path}) ->
-    Key = key_from_path(Path),
-    Acc1 = accessor_from_pattern(Path, Key, Properties, Acc),
+    Acc1 = accessor_from_pattern(Path, key_from_path(Path), Properties, Acc),
     {Acc1, Path}.
 
 accessor_from_pattern(Path, Key, Properties, {Exports, Accessors}) ->
@@ -109,8 +108,8 @@ add_sub_property(SubProperty, SubSchema, Acc, ParentProperty) ->
 
 getter_name([_Parent], Key) ->
     kz_term:to_lower_binary(Key);
-getter_name(Path, Key) ->
-    getter_name(lists:droplast(Path)) ++ [clean_name(Key)].
+getter_name([_|_]=Path, Key) ->
+    kz_binary:join([getter_name(lists:droplast(Path)), clean_name(Key)], <<>>).
 
 getter_name([_|_]=Properties) ->
     kz_binary:join([getter_name(P) || P <- Properties], <<"_">>);
@@ -178,8 +177,9 @@ add_pattern_accessors(ParentProperty, Key, Schema, Accessors) ->
      | Accessors
     ].
 
+-spec set_var(kz_term:ne_binary()) -> kz_term:ne_binary().
 set_var(GetterKey) ->
-    case kz_ast_util:smash_snake(GetterKey, <<>>) of
+    case iolist_to_binary(kz_ast_util:smash_snake(GetterKey, <<>>)) of
         GetterKey -> <<"Value">>;
         SetVar -> SetVar
     end.
