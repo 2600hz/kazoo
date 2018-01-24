@@ -11,28 +11,45 @@ pages:
     - 'applications/crossbar/doc/multipart.md'
     - 'applications/crossbar/doc/schemas.md'
     - 'applications/crossbar/doc/402.md' ##
+  - 'Common Tasks':
+    - 'Account Management' : 'applications/crossbar/doc/accounts.md'
+#    - 'Billing Users, Devices and DIDs' : 'tutorial/count_devices.md'
+#    - 'Processing CDRs' : 'tutorial/count_devices.md'
+#    - 'Generating Stats' : 'tutorial/call_stats.md'
+#    - 'Bulk Provisioning' : 'tutorial/bulk_provision.md'
+#    - 'Event Notification' : 'tutorial/webhooks.md'
+#    - 'Streaming Live Activity' : 'tutorial/stream_events.md'
+#    - 'Controlling Calls' : 'tutorial/call_control.md'
+
   - 'Authentication':
-    - 'applications/crossbar/doc/auth.md'
+#    - 'applications/crossbar/doc/auth.md'
     - 'applications/crossbar/doc/basic_auth.md'
-    - 'applications/crossbar/doc/ip_auth.md' ##
-    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
-    - 'applications/crossbar/doc/security.md'
-    - 'applications/crossbar/doc/shared_auth.md' ##
-    - 'applications/crossbar/doc/token_auth.md'
-    - 'applications/crossbar/doc/ubiquiti_auth.md'
-    - 'applications/crossbar/doc/user_authentication.md'
-  - 'Account Management':
-    - 'applications/crossbar/doc/accounts.md'
+#    - 'applications/crossbar/doc/ip_auth.md' ##
+#    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
+#    - 'applications/crossbar/doc/security.md'
+#    - 'applications/crossbar/doc/shared_auth.md' ##
+#    - 'applications/crossbar/doc/token_auth.md'
+#    - 'applications/crossbar/doc/ubiquiti_auth.md'
+#    - 'applications/crossbar/doc/user_authentication.md'
+
+- 'Branding':
+    - 'applications/crossbar/doc/whitelabeling.md'
+# Email notifications? Macros? Templates?
+
+- 'Limits and Rating':
     - 'applications/crossbar/doc/allotments.md'
     - 'applications/crossbar/doc/limits.md'
-    - 'applications/crossbar/doc/port_requests.md'
-    - 'applications/crossbar/doc/search.md'
-    - 'applications/crossbar/doc/service_plans.md'
-    - 'applications/crossbar/doc/services.md'
-    - 'applications/crossbar/doc/transactions.md'
-    - 'applications/crossbar/doc/whitelabeling.md'
 
-- 'Voice APIs':
+- 'Number Management':
+    - 'applications/crossbar/doc/port_requests.md'
+
+- 'WTF ARE THESE':
+    - 'applications/crossbar/doc/search.md'
+#    - 'applications/crossbar/doc/service_plans.md'
+#    - 'applications/crossbar/doc/services.md'
+#    - 'applications/crossbar/doc/transactions.md'
+
+- 'Configuration APIs':
   - 'Connectivity':
     - 'applications/crossbar/doc/access_lists.md'
     - 'applications/crossbar/doc/connectivity.md'
