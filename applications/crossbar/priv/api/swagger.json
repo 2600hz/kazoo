@@ -5079,6 +5079,54 @@
                 }
             }
         },
+        "kapi.acdc_agent.end_wrapup": {
+            "description": "AMQP API for acdc_agent.end_wrapup",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "end_wrapup"
+                    ],
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presence-State": {
+                    "enum": [
+                        "trying",
+                        "online",
+                        "offline",
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Agent-ID"
+            ],
+            "type": "object"
+        },
         "kapi.acdc_agent.login": {
             "description": "AMQP API for acdc_agent.login",
             "properties": {
