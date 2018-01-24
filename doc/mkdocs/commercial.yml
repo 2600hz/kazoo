@@ -90,8 +90,8 @@ pages:
   - 'Call Queues':
     - 'applications/crossbar/doc/agents.md'
     - 'applications/crossbar/doc/queues.md'
-  - 'Calling Cards':
-    - 'applications/crossbar/doc/cccps.md'
+#  - 'Calling Cards':
+#    - 'applications/crossbar/doc/cccps.md'
   - 'Status':
     - 'applications/crossbar/doc/about.md'
     - 'applications/crossbar/doc/acls.md'
@@ -128,35 +128,32 @@ pages:
     - 'applications/crossbar/doc/templates.md'
 
 - 'Integrations':
-  - 'Pivot':
-    - 'Intro': 'applications/pivot/doc/README.md'
-    - 'API': 'applications/crossbar/doc/pivot.md'
-    - 'The Request': 'applications/pivot/doc/requests.md'
-    - 'The Response':
-        - 'Kazoo JSON': 'applications/pivot/doc/kazoo/README.md'
-        - 'applications/pivot/doc/kazoo/bridging.md'
-        - 'applications/pivot/doc/kazoo/collect.md'
-        - 'applications/pivot/doc/kazoo/conferencing.md'
-        - 'applications/pivot/doc/kazoo/dtmf.md'
-        - 'applications/pivot/doc/kazoo/hangups.md'
-        - 'applications/pivot/doc/kazoo/play.md'
-        - 'applications/pivot/doc/kazoo/presence.md'
-        - 'applications/pivot/doc/kazoo/recording.md'
-        - 'applications/pivot/doc/kazoo/say.md'
-        - 'applications/pivot/doc/twiml/README.md'
-    - 'Presentations':
-      - 'doc/kazoocon/pivot2014.md'
-      - 'doc/kazoocon/pivot2016.md'
-    - 'Known_Issues':
-      - 'applications/pivot/doc/issues.md'
-  - 'Websockets':
-    - 'applications/blackhole/doc/README.md'
-    - 'Bindings': 'applications/blackhole/doc/bindings.md'
-    - 'API': 'applications/crossbar/doc/websockets.md'
-    - 'HAProxy configuration': 'applications/blackhole/doc/haproxy.md' ###
-    - 'Troubleshooting': 'applications/blackhole/doc/troubleshooting.md' ###
-    - 'Presentations':
-      - 'doc/kazoocon/realtime_events2016.md'
+#  - 'Pivot':
+#    - 'Intro': 'applications/pivot/doc/README.md'
+#    - 'API': 'applications/crossbar/doc/pivot.md'
+#    - 'The Request': 'applications/pivot/doc/requests.md'
+#    - 'The Response':
+#        - 'Kazoo JSON': 'applications/pivot/doc/kazoo/README.md'
+#        - 'applications/pivot/doc/kazoo/bridging.md'
+#        - 'applications/pivot/doc/kazoo/collect.md'
+#        - 'applications/pivot/doc/kazoo/conferencing.md'
+#        - 'applications/pivot/doc/kazoo/dtmf.md'
+#        - 'applications/pivot/doc/kazoo/hangups.md'
+#        - 'applications/pivot/doc/kazoo/play.md'
+#        - 'applications/pivot/doc/kazoo/presence.md'
+#        - 'applications/pivot/doc/kazoo/recording.md'
+#        - 'applications/pivot/doc/kazoo/say.md'
+#        - 'applications/pivot/doc/twiml/README.md'
+#    - 'Known_Issues':
+#      - 'applications/pivot/doc/issues.md'
+#  - 'Websockets':
+#    - 'applications/blackhole/doc/README.md'
+#    - 'Bindings': 'applications/blackhole/doc/bindings.md'
+#    - 'API': 'applications/crossbar/doc/websockets.md'
+#    - 'HAProxy configuration': 'applications/blackhole/doc/haproxy.md' ###
+#    - 'Troubleshooting': 'applications/blackhole/doc/troubleshooting.md' ###
+#    - 'Presentations':
+#      - 'doc/kazoocon/realtime_events2016.md'
   - 'Webhooks':
     - 'applications/webhooks/doc/README.md' ###
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
