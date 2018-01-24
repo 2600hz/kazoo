@@ -40,7 +40,7 @@ handle(Data, Call) ->
     ChildName = find_child_in_scope(Scope, Variable, Call),
     maybe_branch_to_named_child(ChildName, Call).
 
--spec maybe_branch_to_named_child(variable_key(), kapps_call:call()) -> kapps_call:call().
+-spec maybe_branch_to_named_child(variable_key(), kapps_call:call()) -> 'ok'.
 maybe_branch_to_named_child('undefined', Call) ->
     lager:info("trying '_'"),
     cf_exe:continue(Call);
