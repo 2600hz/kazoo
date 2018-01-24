@@ -106,6 +106,8 @@ maybe_add_sub_properties(_Property, _Schema, Acc, _Type) -> Acc.
 add_sub_property(SubProperty, SubSchema, Acc, ParentProperty) ->
     accessor_from_properties(ParentProperty ++ [SubProperty], SubSchema, Acc).
 
+getter_name([], Key) ->
+    kz_term:to_lower_binary(Key);
 getter_name([_Parent], Key) ->
     kz_term:to_lower_binary(Key);
 getter_name([_|_]=Path, Key) ->
@@ -177,6 +179,8 @@ add_pattern_accessors(ParentProperty, Key, Schema, Accessors) ->
      | Accessors
     ].
 
+json_path([], Var) ->
+    ["[", Var, "]"];
 json_path([Parent | Properties], Var) ->
     ["[", json_path(Parent)
     ,[[", ", json_path(Property)] || Property <- Properties]
@@ -274,6 +278,7 @@ default_return_type(Type, _Default) -> Type.
 base_module(SchemaName) ->
     ["-", "module(kzd_", clean_name(SchemaName), ").\n"].
 
+clean_name([]) -> [];
 clean_name([_|_]=Names) ->
     [clean_name(Name) || Name <- Names];
 clean_name(Name) ->
