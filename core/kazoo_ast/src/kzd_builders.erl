@@ -109,7 +109,7 @@ add_sub_property(SubProperty, SubSchema, Acc, ParentProperty) ->
 getter_name([_Parent], Key) ->
     kz_term:to_lower_binary(Key);
 getter_name([_|_]=Path, Key) ->
-    kz_binary:join([getter_name(lists:droplast(Path)), clean_name(Key)], <<>>).
+    kz_binary:join([getter_name(lists:droplast(Path)), clean_name(Key)], <<"_">>).
 
 getter_name([_|_]=Properties) ->
     kz_binary:join([getter_name(P) || P <- Properties], <<"_">>);
