@@ -138,7 +138,7 @@ match_regexp([Entry | Entries], Number) ->
     Regex = kz_json:get_ne_binary_value(<<"value">>, Entry),
     Doc = kz_json:get_value(<<"doc">>, Entry),
     case Regex =/= 'undefined'
-      andalso re:run(Number, Regex)
+        andalso re:run(Number, Regex)
     of
         'false' -> match_regexp(Entries, Number);
         'nomatch' -> match_regexp(Entries, Number);

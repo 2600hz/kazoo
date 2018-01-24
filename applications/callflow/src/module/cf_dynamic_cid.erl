@@ -384,11 +384,11 @@ get_new_caller_id(Call, [], ListId, 'undefined') ->
     LengthDigits = get_cid_length_from_list_document(Call, ListId),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     try <<_:LengthDigits/binary, Destination/binary>> = CaptureGroup,
-        {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
-        {CidName, CidNumber, Destination}
+         {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
+         {CidName, CidNumber, Destination}
     catch _E:_T ->
-        lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
-        {'error', 'not_found'}
+            lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
+            {'error', 'not_found'}
     end;
 get_new_caller_id(Call, [JObj | Entries], ListId, KeyDest) ->
     Entry = kz_json:get_value(<<"value">>, JObj),
@@ -420,10 +420,10 @@ get_key_and_dest(Call, Entry, 'undefined') ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
 
     try <<CIDKey:LengthDigits/binary, Destination/binary>> = CaptureGroup,
-        {CIDKey, Destination}
+         {CIDKey, Destination}
     catch _E:_T ->
-        lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
-        {'error', <<"entry_failed">>}
+            lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
+            {'error', <<"entry_failed">>}
     end.
 
 -spec get_cid_length_from_list_document(kapps_call:call(), kz_term:ne_binary()) -> non_neg_integer().
