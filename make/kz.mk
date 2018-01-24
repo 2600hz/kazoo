@@ -65,7 +65,7 @@ include $(DEPS_RULES)
 endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app $(BEAMS) json depend
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
 
 ebin/$(PROJECT).app: $(SOURCES)
 	@mkdir -p ebin/
