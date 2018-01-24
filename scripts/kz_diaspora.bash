@@ -250,6 +250,29 @@ kz_media_recording_to_kzc_recording() {
     done
 }
 
+kzd_accessors() {
+    echo "  * kz_device->kzd_devices"
+    kz_device_to_kzd_devices
+    echo "  * kz_account->kzd_accounts"
+    kz_account_to_kzd_accounts
+}
+
+kz_device_to_kzd_devices() {
+    FROM=kz_device
+    TO=kzd_devices
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+        replace_call $FROM $TO '' '' "$FILE"
+    done
+}
+
+kz_account_to_kzd_accounts() {
+    FROM=kz_account
+    TO=kzd_accounts
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+        replace_call $FROM $TO '' '' "$FILE"
+    done
+}
+
 kz_includes() {
     INCLUDES=(kz_databases.hrl
               kz_log.hrl
@@ -470,5 +493,7 @@ echo 'ensuring utility calls are not duplicated all over the place'
 dedupe
 echo "ensuring kz_types migration to module is performed"
 kz_type_modules
+echo "updating kazoo document accessors"
+kzd_accessors
 
 popd >/dev/null
