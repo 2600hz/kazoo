@@ -87,6 +87,16 @@
             "minLength": 1,
             "type": "string"
         },
+        "notifications": {
+            "description": "account-specific notification templates",
+            "patternProperties": {
+                "[a-z_]+": {
+                    "$ref": "notifications",
+                    "description": "notification template with account overrides"
+                }
+            },
+            "type": "object"
+        },
         "org": {
             "description": "Full legal name of the organization",
             "type": "string"
@@ -133,6 +143,16 @@
             "minLength": 5,
             "type": "string"
         },
+        "topup": {
+            "description": "Topup settings for the account",
+            "properties": {
+                "threshold": {
+                    "description": "The account balance when topup occurs",
+                    "type": "number"
+                }
+            },
+            "type": "object"
+        },
         "voicemail": {
             "properties": {
                 "notify": {
@@ -142,6 +162,16 @@
                         }
                     },
                     "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "zones": {
+            "description": "The zone(s) of an account",
+            "properties": {
+                "home": {
+                    "description": "Which zone is considered the account's home zone",
+                    "type": "string"
                 }
             },
             "type": "object"
