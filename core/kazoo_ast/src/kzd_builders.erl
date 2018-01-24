@@ -157,8 +157,8 @@ add_pattern_accessors(ParentProperty, Key, Schema, Accessors) ->
     Default = default_value(Schema, JSONGetterFun),
 
     Getter = getter_name(ParentProperty, Key),
-    GetterKey = kz_binary:ucfirst(Key),
-    SetVar = set_var(GetterKey),
+    GetterKey = kz_ast_util:smash_snake(Key, <<>>),
+    SetVar = <<"Value">>,
     JSONPath = json_path(ParentProperty, GetterKey),
 
     [["\n"
@@ -176,13 +176,6 @@ add_pattern_accessors(ParentProperty, Key, Schema, Accessors) ->
      ]
      | Accessors
     ].
-
--spec set_var(kz_term:ne_binary()) -> kz_term:ne_binary().
-set_var(GetterKey) ->
-    case iolist_to_binary(kz_ast_util:smash_snake(GetterKey, <<>>)) of
-        GetterKey -> <<"Value">>;
-        SetVar -> SetVar
-    end.
 
 json_path([Parent | Properties], Var) ->
     ["[", json_path(Parent)
