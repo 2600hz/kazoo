@@ -111,7 +111,7 @@ handle_static(Data, Call, CaptureGroup) ->
 %% @doc Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
--type list_cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
+-type list_cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), binary()} |
                           {'error', kz_datamgr:data_error()}.
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -124,18 +124,17 @@ handle_lists(Data, Call) ->
     maybe_proceed_with_call(get_caller_id_from_entries(Call, ListId, 'undefined'), Data, Call).
 
 -spec maybe_proceed_with_call(list_cid_entry(), kz_json:object(), kapps_call:call()) -> 'ok'.
-maybe_proceed_with_call({NewCallerIdName, NewCallerIdNumber, Dest}, Data, Call) ->
-    proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call);
+maybe_proceed_with_call({CIDName, CIDNumber, Destination}, Data, Call) ->
+    proceed_with_call(CIDName, CIDNumber, Destination, Data, Call);
 maybe_proceed_with_call(_, _, Call) ->
     _ = kapps_call_command:answer(Call),
     _ = kapps_call_command:prompt(<<"fault-can_not_be_completed_at_this_time">>, Call),
     kapps_call_command:queued_hangup(Call).
 
 -spec proceed_with_call(kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
-proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
-    update_call(Call, NewCallerIdNumber, NewCallerIdName, Dest),
-    Number = knm_converters:normalize(Dest),
-    maybe_route_to_callflow(Data, Call, Number).
+proceed_with_call(CIDName, CIDNumber, Destination, Data, Call) ->
+    update_call(Call, CIDNumber, CIDName, Destination),
+    maybe_route_to_callflow(Data, Call, Destination).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,8 +143,8 @@ proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
 %% request, to and callee_number
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
-update_call(Call, CIDNumber, CaptureGroup) ->
+-spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
+update_call(Call, CIDNumber, Destination) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
               ],
@@ -153,15 +152,15 @@ update_call(Call, CIDNumber, CaptureGroup) ->
     lager:info("setting the caller id number to ~s (from ~s)"
               ,[CIDNumber, kapps_call:caller_id_number(Call)]
               ),
-    maybe_strip_features_code(kapps_call:exec(Updates, C1), CaptureGroup).
+    maybe_strip_features_code(kapps_call:exec(Updates, C1), Destination).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Same as update_call/3, but also sets caller id name
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
-update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
+-spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
+update_call(Call, CIDNumber, CIDName, Destination) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', {CIDNumber, CIDName}}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
               ,{fun kapps_call:set_caller_id_name/2, CIDName}
@@ -174,18 +173,20 @@ update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
                ,kapps_call:caller_id_number(Call)
                ]
               ),
-    maybe_strip_features_code(kapps_call:exec(Updates, C1), CaptureGroup).
+    maybe_strip_features_code(kapps_call:exec(Updates, C1), Destination).
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc If CaptureGroup exists correct request, to and callee_id_number
+%% @doc If Destination exists correct "request", "to" and "callee_id_number"
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_strip_features_code(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
+-spec maybe_strip_features_code(kapps_call:call(), kz_term:api_binary()) -> 'ok'.
 maybe_strip_features_code(Call, 'undefined') ->
     cf_exe:set_call(Call);
-maybe_strip_features_code(Call, CaptureGroup) ->
-    Norm = knm_converters:normalize(CaptureGroup),
+maybe_strip_features_code(Call, <<>>) ->
+    cf_exe:set_call(Call);
+maybe_strip_features_code(Call, Destination) ->
+    Norm = knm_converters:normalize(Destination),
     Request = list_to_binary([Norm, "@", kapps_call:request_realm(Call)]),
     To = list_to_binary([Norm, "@", kapps_call:to_realm(Call)]),
 
@@ -199,10 +200,12 @@ maybe_strip_features_code(Call, CaptureGroup) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Lookup callflow and continue with the call
+%% @doc Lookup callflow and continue with the call if we have a destination number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
+-spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), binary()) -> 'ok'.
+maybe_route_to_callflow(_, Call, <<>>) ->
+    cf_exe:continue(Call);
 maybe_route_to_callflow(Data, Call, Number) ->
     case cf_flow:lookup(Number, kapps_call:account_id(Call)) of
         {'ok', Flow, 'true'} ->
@@ -339,7 +342,7 @@ get_static_cid_entry(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 
--type key_dest() :: 'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
+-type key_dest() :: 'undefined' | {kz_term:ne_binary(), binary()}.
 
 -spec get_list_entry(kz_json:object(), kapps_call:call()) -> list_cid_entry().
 get_list_entry(Data, Call) ->
@@ -353,8 +356,8 @@ maybe_key_and_dest_using_data(Data, Call) ->
         Idx ->
             Groups = kapps_call:kvs_fetch('cf_capture_groups', Call),
             CIDKey = kz_json:get_ne_binary_value(Idx, Groups),
-            Dest = kapps_call:kvs_fetch('cf_capture_group', Call),
-            {CIDKey, Dest}
+            Destination = kapps_call:kvs_fetch('cf_capture_group', Call),
+            {CIDKey, Destination}
     end.
 
 -spec get_caller_id_from_entries(kapps_call:call(), kz_term:api_ne_binary(), key_dest()) -> list_cid_entry().
@@ -372,17 +375,17 @@ get_caller_id_from_entries(Call, ListId, KeyDest) ->
     end.
 
 -spec get_new_caller_id(kapps_call:call(), kz_json:objects(), kz_term:ne_binary(), key_dest()) -> list_cid_entry().
-get_new_caller_id(Call, [], _ListId, {_, Dest}) ->
+get_new_caller_id(Call, [], _ListId, {_, Destination}) ->
     lager:warning("no entries were found in list ~p", [_ListId]),
     {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
-    {CidName, CidNumber, Dest};
+    {CidName, CidNumber, Destination};
 get_new_caller_id(Call, [], ListId, 'undefined') ->
     lager:warning("no entries were found, maybe finding destination number using specified index"),
     LengthDigits = get_cid_length_from_list_document(Call, ListId),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
-    try <<_:LengthDigits/binary, Dest/binary>> = CaptureGroup,
+    try <<_:LengthDigits/binary, Destination/binary>> = CaptureGroup,
         {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
-        {CidName, CidNumber, Dest}
+        {CidName, CidNumber, Destination}
     catch _E:_T ->
         lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
         {'error', 'not_found'}
@@ -393,23 +396,21 @@ get_new_caller_id(Call, [JObj | Entries], ListId, KeyDest) ->
     case get_key_and_dest(Call, Entry, KeyDest) of
         {'error', _}=Error ->
             Error;
-        {CIDKey, Dest} ->
+        {CIDKey, Destination} ->
             case kz_json:get_ne_binary_value(<<"capture_group_key">>, Entry) of
                 CIDKey ->
                     Name = kz_json:get_ne_binary_value(<<"name">>, Entry),
                     Number = kz_json:get_ne_binary_value(<<"number">>, Entry),
                     {CidName, CidNumber} = maybe_set_default_cid(Name, Number, Call),
-                    {CidName, CidNumber, Dest};
+                    {CidName, CidNumber, Destination};
                 _ ->
                     get_new_caller_id(Call, Entries, ListId, KeyDest)
             end
     end.
 
 -spec get_key_and_dest(kapps_call:call(), kz_json:objects(), key_dest()) -> key_dest() | {'error', any()}.
-get_key_and_dest(_, _, {CIDKey, Dest}=KeyDest) ->
-    case not kz_term:is_ne_binary(CIDKey)
-        andalso kz_term:is_ne_binary(Dest)
-    of
+get_key_and_dest(_, _, {CIDKey, _}=KeyDest) ->
+    case not kz_term:is_ne_binary(CIDKey) of
         'true' -> KeyDest;
         'false' ->
             {'error', <<"key_dest_failed">>}
@@ -418,8 +419,8 @@ get_key_and_dest(Call, Entry, 'undefined') ->
     LengthDigits = kz_json:get_integer_value(<<"capture_group_length">>, Entry, 2),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
 
-    try <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
-        {CIDKey, Dest}
+    try <<CIDKey:LengthDigits/binary, Destination/binary>> = CaptureGroup,
+        {CIDKey, Destination}
     catch _E:_T ->
         lager:warning("failed to get cid_key (with length ~b) and destination number: ~p:~p", [LengthDigits, _E, _T]),
         {'error', <<"entry_failed">>}
