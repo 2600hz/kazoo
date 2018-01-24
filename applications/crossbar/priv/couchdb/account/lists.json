@@ -40,7 +40,7 @@
                 "      if (!doc.entries.hasOwnProperty(key))",
                 "        continue;",
                 "      emit(doc._id, {",
-                "        capture_group_key: doc.cid_key,",
+                "        capture_group_key: key,",
                 "        capture_group_length: doc.length,",
                 "        name: doc.entries[key].cid_name || doc.entries[key].name,",
                 "        number: doc.entries[key].cid_number || doc.entries[key].number,",
