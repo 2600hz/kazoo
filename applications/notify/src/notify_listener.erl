@@ -218,9 +218,9 @@ should_handle(JObj) ->
     Account = kz_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj),
 
     Config = kzd_accounts:get_inherited_value(Account
-                                           ,fun kzd_accounts:notification_preference/1
-                                           ,kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<"notification_app">>, <<"teletype">>)
-                                           ),
+                                             ,fun kzd_accounts:notification_preference/1
+                                             ,kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<"notification_app">>, <<"teletype">>)
+                                             ),
 
     lager:debug("notification configuration is: ~p", [Config]),
     Config =:= ?APP_NAME.
