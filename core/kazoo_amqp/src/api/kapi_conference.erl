@@ -478,7 +478,8 @@
           ,AccountId/binary, "."
           ,ConferenceId/binary, "."
           ,(amqp_util:encode(CallId))/binary
-        >>).
+        >>
+       ).
 -define(CONFERENCE_EVENT_HEADERS, [<<"Event">>
                                   ,<<"Conference-ID">>
                                   ,<<"Instance-ID">>
@@ -1642,10 +1643,12 @@ event_key(API)
   when is_list(API) ->
     event_key(kz_json:from_list(API));
 event_key(API) ->
-    Event = kz_json:get_value(<<"Event">>, API),
+    Event = kz_json:get_ne_binary_value(<<"Event">>, API),
     AccountId = kz_json:get_first_defined([<<"Account-ID">>
-                                          ,[<<"Custom-Channel-Vars">>]
-                                          ], API),
+                                          ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                                          ]
+                                         ,API
+                                         ),
     ConferenceId = kz_json:get_value(<<"Conference-ID">>, API),
     CallId = kz_json:get_value(<<"Call-ID">>, API, ConferenceId),
     ?CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId).

@@ -273,12 +273,15 @@ publish_event(Action, #conference{handling_locally=IsLocal} = Conference, Props,
 
 -spec publish_event(kz_term:proplist()) -> 'ok'.
 publish_event(Event) ->
+    lager:debug("publishing: ~p", [Event]),
     kz_amqp_worker:cast(Event, fun kapi_conference:publish_event/1).
 
 conference_event(Action, Conference, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     CAVs = ecallmgr_util:custom_application_vars(Props),
     ConfVars = ecallmgr_util:conference_channel_vars(Props),
+
+    lager:debug("publising conference event action ~s", [Action]),
 
     props:filter_undefined(
       [{<<"Account-ID">>, Conference#conference.account_id}
