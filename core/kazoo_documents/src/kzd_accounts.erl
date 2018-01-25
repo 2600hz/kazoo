@@ -829,22 +829,22 @@ reset_low_balance_sent(Doc) ->
 -spec low_balance_enabled(doc()) -> boolean().
 low_balance_enabled(Doc) ->
     LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    kzd_notifications:enabled(LowBalance).
+    kz_json:is_true(<<"enabled">>, LowBalance).
 
 -spec set_low_balance_enabled(doc()) -> doc().
 set_low_balance_enabled(Doc) ->
     LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kzd_notifications:set_enabled(LowBalance, 'true')).
+    set_notification(Doc, <<"low_balance">>, kz_json:set_value(<<"enabled">>, 'true', LowBalance)).
 
 -spec reset_low_balance_enabled(doc()) -> doc().
 reset_low_balance_enabled(Doc) ->
     LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kzd_notifications:set_enabled(LowBalance, 'true')).
+    set_notification(Doc, <<"low_balance">>, kz_json:set_value(<<"enabled">>, 'true', LowBalance)).
 
 -spec low_balance_enabled_exists(doc()) -> boolean().
 low_balance_enabled_exists(Doc) ->
     LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    'undefined' =/= kzd_notifications:enabled(LowBalance, 'undefined').
+    'undefined' =/= kz_json:get_value(<<"enabled">>, LowBalance).
 
 %%--------------------------------------------------------------------
 %% @public
