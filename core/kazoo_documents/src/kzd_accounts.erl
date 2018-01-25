@@ -87,9 +87,11 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
+-define(SCHEMA, <<"accounts">>).
+
 -spec new() -> doc().
 new() ->
-    kz_doc:set_type(kz_json_schema:default_object(?MODULE_STRING), type()).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 -spec call_recording(doc()) -> kz_term:api_object().
 call_recording(Doc) ->

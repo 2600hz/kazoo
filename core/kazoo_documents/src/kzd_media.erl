@@ -28,16 +28,15 @@
 
 -include("kz_documents.hrl").
 
--define(PVT_TYPE, <<"media">>).
-
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"media">>).
+-define(PVT_TYPE, <<"media">>).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 -spec content_length(doc()) -> kz_term:api_integer().
 content_length(Doc) ->

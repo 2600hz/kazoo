@@ -34,13 +34,12 @@
 
 -include("kz_documents.hrl").
 
--define(KEY_MAPPINGS, <<"mapping">>).
--define(DOMAIN_PLACEHOLDER, <<"{{domain}}">>).
-
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"domains">>).
+-define(KEY_MAPPINGS, <<"mapping">>).
+-define(DOMAIN_PLACEHOLDER, <<"{{domain}}">>).
 
 -spec new() -> doc().
 new() ->

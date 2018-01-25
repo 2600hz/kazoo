@@ -26,12 +26,11 @@
 
 -include("kz_documents.hrl").
 
--define(ID, <<"whitelabel">>).
-
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"whitelabel">>).
+-define(ID, <<"whitelabel">>).
 
 -spec new() -> doc().
 new() ->
