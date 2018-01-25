@@ -218,8 +218,18 @@ test_reseller() ->
     ,{"validate demote returns the expected value", ?_assertNot(kzd_accounts:is_reseller(Demoted))}
     ].
 
-validate(Schema, Device) ->
-    kz_json_schema:validate(Schema
-                           ,Device
-                           ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
-                           ).
+validate(Schema, AccountDoc) ->
+    case kz_json_schema:validate(Schema
+                                ,AccountDoc
+                                ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
+                                )
+    of
+        {'ok', _}=OK -> OK;
+        {'error', Errors}=ERR ->
+            ?debugFmt("~nvalidation failed for ~p:~n~p~n~n"
+                     ,[AccountDoc
+                      ,[kz_json:encode(Error) || {_Code, _Msg, Error} <- kz_json_schema:errors_to_jobj(Errors)]
+                      ]
+                     ),
+            ERR
+    end.
