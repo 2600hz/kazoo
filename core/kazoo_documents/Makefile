@@ -32,5 +32,6 @@ kz-test:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_fixturedb/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_data/
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_schemas/
 
 include $(ROOT)/make/kz.mk
