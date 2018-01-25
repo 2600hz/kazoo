@@ -36,7 +36,7 @@ build_accessor(SchemaPath, 'ok') ->
             save_module(SchemaId, [BaseModule
                                   ,lists:reverse(Exports ++ PatternExports), "\n"
                                   ,base_includes()
-                                  ,base_types()
+                                  ,base_types(kz_doc:id(SchemaJObj))
                                   ,lists:reverse(Accessors ++ PatternAccessors)
                                   ])
     end.
@@ -306,15 +306,17 @@ base_includes() ->
      "-include(\"kz_documents.hrl\").\n"
     ].
 
-base_types() ->
+base_types(SchemaId) ->
     ["\n"
      "-type doc() :: kz_json:object().\n"
      "-export_type([doc/0]).\n"
+     "\n"
+     "-define(SCHEMA, <<\"", SchemaId, "\">>).\n"
     ].
 
 base_accessors() ->
     ["\n"
      "-spec new() -> doc().\n"
      "new() ->\n"
-     "    kz_json_schema:default_object(?MODULE_STRING).\n"
+     "    kz_json_schema:default_object(?SCHEMA).\n"
     ].
