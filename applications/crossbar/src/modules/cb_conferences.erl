@@ -34,6 +34,7 @@
 -endif.
 
 -include("crossbar.hrl").
+-include_lib("nklib/include/nklib.hrl").
 
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
 -define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
@@ -593,8 +594,16 @@ build_number_endpoint(Number, {Endpoints, Call, Context, Element}) ->
 -spec build_sip_endpoint(kz_term:ne_binary(), build_acc()) ->
                                 build_acc().
 build_sip_endpoint(URI, {Endpoints, Call, Context, Element}) ->
+    [#uri{user=SipUsername
+         ,domain=SipRealm
+         }
+    ] = nklib_parse_uri:uris(URI),
+
+
     SIPSettings = kz_json:from_list([{<<"invite_format">>, <<"route">>}
                                     ,{<<"route">>, URI}
+                                    ,{<<"realm">>, SipRealm}
+                                    ,{<<"username">>, SipUsername}
                                     ]),
     Device = kz_json:from_list([{<<"sip">>, SIPSettings}]),
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
