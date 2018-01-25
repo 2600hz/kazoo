@@ -26,6 +26,9 @@
         ,fix_account_numbers/1
         ,fix_accounts_numbers/1
         ]).
+-export([sync_accounts_to_number_dbs/0, sync_accounts_to_number_dbs/1
+        ,sync_account_to_number_dbs/1
+        ]).
 -export([migrate/0, migrate/1
         ,migrate_unassigned_numbers/0, migrate_unassigned_numbers/1
         ]).
@@ -285,6 +288,64 @@ fix_account_numbers(Account = ?NE_BINARY) ->
 
 log_alien(_AccountDb, _DID) ->
     ?SUP_LOG_DEBUG("########## found alien [~s] doc: ~s ##########", [_AccountDb, _DID]).
+
+-spec sync_accounts_to_number_dbs() -> 'ok'.
+sync_accounts_to_number_dbs() ->
+    AccountDbs = kapps_util:get_all_accounts('encoded'),
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun sync_account_to_number_dbs/1, AccountDbs).
+
+-spec sync_accounts_to_number_dbs(kz_term:ne_binaries()) -> 'ok'.
+sync_accounts_to_number_dbs(Accounts) ->
+    AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun sync_account_to_number_dbs/1, AccountDbs).
+
+-spec sync_account_to_number_dbs(kz_term:ne_binary()) -> 'ok'.
+sync_account_to_number_dbs(?MATCH_ACCOUNT_ENCODED(_, _, _)=AccountDb) ->
+    ?SUP_LOG_DEBUG(":: syncing numbers from [~s] to number dbs", [AccountDb]),
+
+    ViewOptions = [{'limit', 200}
+                   | 'include_docs'
+                  ],
+    sync_account_to_number_dbs(AccountDb, ViewOptions, 2),
+
+    ?SUP_LOG_DEBUG(":: done syncing [~s]", [AccountDb]);
+sync_account_to_number_dbs(Account = ?NE_BINARY) ->
+    sync_account_to_number_dbs(kz_util:format_account_db(Account)).
+
+sync_account_to_number_dbs(_, [], _) ->
+    %% account db doesn't have more results to give
+    'ok';
+sync_account_to_number_dbs(_AccountDb, _, Retries) when Retries < 0 ->
+    ?SUP_LOG_DEBUG("[~s] reached to maximum retries", [_AccountDb]);
+sync_account_to_number_dbs(AccountDb, ViewOptions, Retries) ->
+    case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>, ViewOptions) of
+        {'ok', JObjs} ->
+            try lists:split(props:get_integer_value('limit', ViewOptions), JObjs) of
+                {Results, []} ->
+                    sync_account_to_number_dbs(AccountDb, [], Retries, Results);
+                {Results, [NextJObj]} ->
+                    NewViewOption = props:set_value('startkey', kz_doc:id(NextJObj), ViewOptions),
+                    sync_account_to_number_dbs(AccountDb, NewViewOption, Retries, Results)
+            catch
+                'error':'badarg' ->
+                    sync_account_to_number_dbs(AccountDb, [], Retries, JObjs)
+            end;
+        {'error', _Reason} ->
+            ?SUP_LOG_DEBUG("[~s] failed to get numbers, maybe trying again...", [AccountDb]),
+            sync_account_to_number_dbs(AccountDb, ViewOptions, Retries - 1)
+    end.
+
+sync_account_to_number_dbs(AccountDb, ViewOptions, Retries, Results) ->
+    #{ko := KOs} = knm_numbers:do(fun knm_numbers:save_numbers/1, knm_numbers:from_jobjs(Results)),
+    log_sync_failed(KOs, maps:size(KOs)),
+    sync_account_to_number_dbs(AccountDb, ViewOptions, Retries).
+
+log_sync_failed(_, 0) -> 'ok';
+log_sync_failed(KOs, _) ->
+    PrintFun = fun(Num, Error, Acc) ->
+                       Acc ++ "\n" ++ kz_term:to_list(Num) ++ kz_term:to_list(Error)
+               end,
+    io:put_chars(maps:fold(PrintFun, "", KOs)).
 
 -spec fix_number(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
