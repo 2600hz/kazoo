@@ -122,5 +122,5 @@ build_fax_template_data(DataJObj) ->
       ,{<<"box_id">>, kz_json:get_value(<<"faxbox_id">>, DataJObj, kz_doc:id(FaxBoxJObj))}
       ,{<<"box_name">>, kz_json:get_value(<<"name">>, FaxBoxJObj)}
       ,{<<"timestamp">>, kz_json:get_value(<<"fax_timestamp">>, DataJObj, kz_time:now_s())}
-       | kz_json:to_proplist(kz_json:get_value(<<"tx_result">>, FaxJObj, kz_json:new()))
+       | kz_json:to_proplist(kz_json:get_value(<<"rx_result">>, FaxJObj, kz_json:new()))
       ]).
