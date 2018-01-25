@@ -33,9 +33,11 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
+-define(SCHEMA, <<"media">>).
+
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?MODULE_STRING).
+    kz_json_schema:default_object(?SCHEMA).
 
 -spec content_length(doc()) -> kz_term:api_integer().
 content_length(Doc) ->
