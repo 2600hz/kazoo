@@ -34,8 +34,15 @@ Key | Description | Type | Default | Required | Support Level
 `music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..2048)` |   | `false` |  
 `music_on_hold` | The default music on hold parameters | `object()` | `{}` | `false` |  
 `name` | A friendly name for the account | `string(1..128)` |   | `true` |  
-`notifications./[a-z_]+/` | notification template with account overrides | [#/definitions/notifications](#notifications) |   | `false` |  
-`notifications` | account-specific notification templates | `object()` |   | `false` |  
+`notifications.first_occurrence.sent_initial_call` | has the account made their first call | `boolean()` | `false` | `false` |  
+`notifications.first_occurrence.sent_initial_registration` | has the account registered their first device | `boolean()` | `false` | `false` |  
+`notifications.first_occurrence` | send emails on these account-firsts | `object()` |   | `false` |  
+`notifications.low_balance.enabled` | should the account be checked for this alert | `boolean()` | `true` | `false` |  
+`notifications.low_balance.last_notification` | Timestamp, in gregorian seconds, of when the last low_balance alert was sent | `integer()` |   | `false` |  
+`notifications.low_balance.sent_low_balance` | has the alert been sent (avoids duplication/spamming) | `boolean()` |   | `false` |  
+`notifications.low_balance.threshold` | account balance to send alert on | `number()` |   | `false` |  
+`notifications.low_balance` | Low balance settings | `object()` |   | `false` |  
+`notifications` | account notification settings | `object()` |   | `false` |  
 `org` | Full legal name of the organization | `string()` |   | `false` |  
 `preflow.always` | The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request | `string()` |   | `false` |  
 `preflow` | Each property provides functionality that can be applied to calls using the callflow application | `object()` | `{}` | `false` |  
@@ -172,34 +179,6 @@ Key | Description | Type | Default | Required | Support Level
 `numbers` | A list of static numbers with their flows | `object()` |   | `false` |  
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `patterns` | A list of patterns with their flows | `object()` |   | `false` |  
-
-##### notifications
-
-Notifications templates
-
-
-Key | Description | Type | Default | Required | Support Level
---- | ----------- | ---- | ------- | -------- | -------------
-`bcc.email_addresses.[]` |   | `string()` |   | `false` |  
-`bcc.email_addresses` | BCC Email Addresses | `array(string())` |   | `false` |  
-`bcc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false` |  
-`bcc` | Bcc email field | `object()` |   | `false` |  
-`category` | Category of the template, for grouping purposes | `string(1..)` |   | `false` |  
-`cc.email_addresses.[]` |   | `string()` |   | `false` |  
-`cc.email_addresses` | CC Email Addresses | `array(string())` |   | `false` |  
-`cc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false` |  
-`cc` | CC email field | `object()` |   | `false` |  
-`enabled` | Enable notification | `boolean()` | `true` | `false` |  
-`friendly_name` | Friendly name of the template | `string(1..)` |   | `false` |  
-`from` | From: email address | `string()` |   | `true` |  
-`macros` |   | `object()` | `{}` | `false` |  
-`reply_to` | Reply-To: email address | `string()` |   | `false` |  
-`subject` | Email subject | `string(1..200)` |   | `true` |  
-`template_charset` |   | `string(1..)` | `utf-8` | `false` |  
-`to.email_addresses.[]` |   | `string()` |   | `false` |  
-`to.email_addresses` |   | `array(string())` |   | `false` |  
-`to.type` |   | `string('original' | 'specified' | 'admins')` |   | `false` |  
-`to` | To email field | `object()` |   | `true` |  
 
 ##### notify.callback
 
