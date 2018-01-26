@@ -273,8 +273,8 @@ resume(ServerRef) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec end_wrapup(kz_types:server_ref()) -> 'ok'.
-end_wrapup(FSM) ->
-    gen_fsm:send_all_state_event(FSM, {'end_wrapup'}).
+end_wrapup(ServerRef) ->
+    gen_statem:cast(ServerRef, {'end_wrapup'}).
 
 %%--------------------------------------------------------------------
 %% @doc
