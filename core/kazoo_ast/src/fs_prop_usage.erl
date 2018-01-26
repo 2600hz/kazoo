@@ -17,6 +17,8 @@ to_header_file() ->
     Usage = process(),
     write_usage_to_header(Usage).
 
+write_usage_to_header([]) ->
+    io:format("failed to process ecallmgr for usage~n");
 write_usage_to_header(Usage) ->
     {'ok', IO} = file:open(event_filter_filename()
                           ,['write'
@@ -25,9 +27,15 @@ write_usage_to_header(Usage) ->
     write_usage_to_header(Usage, IO).
 
 write_usage_to_header(Usage, IO) ->
+    io:format("usage: ~p~n", [Usage]),
     EventFilters = lists:foldl(fun write_mod_usage/2, sets:new(), Usage),
-    [First|Sorted] = lists:usort(lists:filter(fun ignored_headers/1, sets:to_list(EventFilters))),
+    io:format("event filters: ~p~n", [sets:to_list(EventFilters)]),
+    write_headers(IO, lists:usort(lists:filter(fun ignored_headers/1, sets:to_list(EventFilters)))).
 
+write_headers(IO, []) ->
+    io:format("no headers detected~n", []),
+    'ok' = file:close(IO);
+write_headers(IO, [First|Sorted]) ->
     'ok' = file:write(IO, "-ifndef(FS_GENERATED_EVENT_FILTERS_HRL).\n\n"),
 
     'ok' = file:write(IO, io_lib:format("-define(FS_GENERATED_EVENT_FILTERS~n       ,[~p~n", [First])),
