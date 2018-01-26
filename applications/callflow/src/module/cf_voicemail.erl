@@ -792,7 +792,7 @@ message_count_prompts(New, Saved) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec message_prompt(kz_json:objects(), binary(), non_neg_integer(), mailbox()) ->
-                          kapps_call_command:audio_macro_prompts().
+                            kapps_call_command:audio_macro_prompts().
 message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone, skip_envelope='false'}) ->
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
@@ -802,7 +802,7 @@ message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone, skip_
     ,{'prompt', <<"vm-message_menu">>}
     ];
 message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
-    lager:info("mailbox is set to skip playing message envelope"),
+    lager:debug("mailbox is set to skip playing message envelope"),
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
     ,{'play', Message}
