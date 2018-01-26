@@ -57,7 +57,7 @@ SRCS = $(wildcard src/*.erl)
 SUB_SRCS = $(wildcard src/*/*.erl)
 SOURCES     ?= $(SRCS) $(SUB_SRCS)
 SUB_BEAMS = $(notdir $(SUB_SRCS))
-BEAMS = $(SRCS:src/%.erl=ebin/%.beam) $(SUB_BEAMS:%.erl=ebin/%.beam)
+BEAMS = $(sort $(SOURCES:src/%.erl=ebin/%.beam) $(SUB_BEAMS:%.erl=ebin/%.beam))
 TEST_BEAMS = $(wildcard ebin/*.beam)
 TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 
