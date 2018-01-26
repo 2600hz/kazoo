@@ -531,7 +531,13 @@
                                         ]).
 -define(NOTIFY_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"update">>}
-                              ,{<<"Status">>, [<<"completed">>, <<"failed">>, <<"pending">>]}
+                              ,{<<"Status">>, [<<"completed">>
+                                              ,<<"disabled">>
+                                              ,<<"failed">>
+                                              ,<<"ignored">>
+                                              ,<<"pending">>
+                                              ]
+                               }
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
 

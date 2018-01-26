@@ -142,11 +142,11 @@ maybe_process_req(DataJObj) ->
 
 -spec maybe_process_req(kz_json:object(), boolean()) -> 'ok'.
 maybe_process_req(DataJObj, false) ->
-    Msg = io_lib:format("request or box ~s has no emails or owner doesn't want emails"
+    Msg = io_lib:format("requestor or box ~s has no emails or owner doesn't want emails"
                        ,[kz_json:get_value(<<"voicemail_box">>, DataJObj)]
                        ),
     lager:debug(Msg),
-    teletype_util:send_update(DataJObj, <<"completed">>, kz_term:to_binary(Msg));
+    teletype_util:send_update(DataJObj, <<"ignored">>, kz_term:to_binary(Msg));
 maybe_process_req(DataJObj, true) ->
     do_process_req(DataJObj).
 
