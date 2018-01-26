@@ -437,11 +437,11 @@ create_credits(Context) ->
 
 -spec reset_low_balance_notification(kz_term:ne_binary()) -> 'ok'.
 reset_low_balance_notification(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'error', _} -> 'ok';
         {'ok', AccountJObj0} ->
-            AccountJObj1 = kz_account:reset_low_balance_sent(AccountJObj0),
-            AccountJObj2 = kz_account:remove_low_balance_tstamp(AccountJObj1),
+            AccountJObj1 = kzd_accounts:reset_low_balance_sent(AccountJObj0),
+            AccountJObj2 = kzd_accounts:remove_low_balance_tstamp(AccountJObj1),
             kz_util:account_update(AccountJObj2)
     end.
 

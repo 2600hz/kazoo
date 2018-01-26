@@ -2,6 +2,7 @@
 
 -export([new/0]).
 -export([audit/1, audit/2, set_audit/2]).
+-export([account_id/2, account_id/3, set_account_id/3]).
 -export([authenticating_user/1, authenticating_user/2, set_authenticating_user/2]).
 -export([authenticating_user_account_id/1, authenticating_user_account_id/2, set_authenticating_user_account_id/2]).
 -export([authenticating_user_account_name/1, authenticating_user_account_name/2, set_authenticating_user_account_name/2]).
@@ -16,9 +17,11 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
+-define(SCHEMA, <<"audit_logs">>).
+
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?MODULE_STRING).
+    kz_json_schema:default_object(?SCHEMA).
 
 -spec audit(doc()) -> kz_term:api_object().
 audit(Doc) ->
@@ -31,6 +34,18 @@ audit(Doc, Default) ->
 -spec set_audit(doc(), kz_json:object()) -> doc().
 set_audit(Doc, Audit) ->
     kz_json:set_value([<<"audit">>], Audit, Doc).
+
+-spec account_id(doc(), kz_json:key()) -> kz_term:api_object().
+account_id(Doc, AccountId) ->
+    account_id(Doc, AccountId, 'undefined').
+
+-spec account_id(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+account_id(Doc, AccountId, Default) ->
+    kz_json:get_json_value([<<"audit">>, AccountId], Doc, Default).
+
+-spec set_account_id(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_account_id(Doc, AccountId, Value) ->
+    kz_json:set_value([<<"audit">>, AccountId], Value, Doc).
 
 -spec authenticating_user(doc()) -> kz_term:api_object().
 authenticating_user(Doc) ->

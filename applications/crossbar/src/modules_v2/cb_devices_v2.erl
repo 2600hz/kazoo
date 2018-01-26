@@ -366,7 +366,7 @@ load_users_device_summary(Context, UserId) ->
 validate_request('undefined', Context) ->
     maybe_check_mdn('undefined', Context);
 validate_request(DeviceId, Context) ->
-    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
+    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_check_mdn(DeviceId, Context1);
         _Else -> Context1
@@ -534,7 +534,7 @@ prepare_outbound_flags(DeviceId, Context) ->
 
 -spec prepare_device_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
@@ -631,9 +631,9 @@ check_emergency_caller_id(DeviceId, Context) ->
 check_device_type_change('undefined', Context) ->
     check_device_schema('undefined', Context);
 check_device_type_change(DeviceId, Context) ->
-    NewDeviceType = kz_device:device_type(cb_context:req_data(Context)),
+    NewDeviceType = kzd_devices:device_type(cb_context:req_data(Context)),
     IsSuperAdmin = cb_context:is_superduper_admin(Context),
-    OldDeviceType = kz_device:device_type(cb_context:fetch(Context, 'db_doc')),
+    OldDeviceType = kzd_devices:device_type(cb_context:fetch(Context, 'db_doc')),
     case {NewDeviceType, OldDeviceType} of
         {Same, Same} -> check_device_schema(DeviceId, Context);
         _Else when IsSuperAdmin -> check_device_schema(DeviceId, Context);
@@ -660,7 +660,7 @@ on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
-    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
+    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -670,7 +670,7 @@ on_successful_validation(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_device(DeviceId, Context) ->
-    crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
+    crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -681,7 +681,7 @@ load_device(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
-    AccountRealm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
@@ -836,8 +836,8 @@ maybe_remove_aggregate(_, _, _) -> 'false'.
                         cb_context:context().
 put_action(Context, DeviceId, <<"notify">>) ->
     lager:debug("publishing NOTIFY for ~s", [DeviceId]),
-    Username = kz_device:sip_username(cb_context:doc(Context)),
-    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Username = kzd_devices:sip_username(cb_context:doc(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     Req = props:filter_undefined(
             [{<<"Body">>, cb_context:req_value(Context, [<<"data">>, <<"body">>, <<"data">>])}
             ,{<<"Content-Type">>, cb_context:req_value(Context, [<<"data">>, <<"body">>, <<"content_type">>])}
@@ -858,9 +858,9 @@ put_action(Context, DeviceId, <<"notify">>) ->
 %%--------------------------------------------------------------------
 -spec get_device_type(cb_context:context()) -> kz_term:api_binary().
 get_device_type(Context) ->
-    case kz_device:device_type(cb_context:fetch(Context, 'db_doc')) of
+    case kzd_devices:device_type(cb_context:fetch(Context, 'db_doc')) of
         'undefined' ->
-            kz_device:device_type(cb_context:req_data(Context));
+            kzd_devices:device_type(cb_context:req_data(Context));
         DeviceType -> DeviceType
     end.
 

@@ -129,7 +129,7 @@ new(AccountId, Props) ->
 %%--------------------------------------------------------------------
 -spec create_message_name(kz_term:ne_binary(), kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:ne_binary().
 create_message_name(BoxNum, 'undefined', UtcSeconds) ->
-    create_message_name(BoxNum, kz_account:default_timezone(), UtcSeconds);
+    create_message_name(BoxNum, kzd_accounts:default_timezone(), UtcSeconds);
 create_message_name(BoxNum, Timezone, UtcSeconds) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(UtcSeconds)),
     case localtime:utc_to_local(UtcDateTime, Timezone) of
@@ -349,7 +349,7 @@ change_message_name(NBoxJ, MsgJObj) ->
 %%--------------------------------------------------------------------
 -spec change_to_sip_field(kz_term:ne_binary(), doc(), doc()) -> doc().
 change_to_sip_field(AccountId, NBoxJ, MsgJObj) ->
-    Realm = kz_account:fetch_realm(AccountId),
+    Realm = kzd_accounts:fetch_realm(AccountId),
     BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),
     Metadata = metadata(MsgJObj),
     To = <<BoxNum/binary, "@", Realm/binary>>,

@@ -91,9 +91,9 @@ maybe_add_number_info(JObj) ->
 %%--------------------------------------------------------------------
 -spec build_account_tree(kz_term:ne_binary()) -> kz_term:proplist().
 build_account_tree(AccountId) ->
-    {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    [{AncestorId, ?NE_BINARY=kz_account:fetch_name(AncestorId)}
-     || AncestorId <- kz_account:tree(AccountDoc)
+    {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
+    [{AncestorId, ?NE_BINARY=kzd_accounts:fetch_name(AncestorId)}
+     || AncestorId <- kzd_accounts:tree(AccountDoc)
     ].
 
 %%--------------------------------------------------------------------
@@ -106,7 +106,7 @@ build_account_tree(AccountId) ->
 find_realm(JObj, <<_/binary>> = AccountId) ->
     case kz_call_event:account_id(JObj) of
         undefined ->
-            case kz_account:fetch_realm(AccountId) of
+            case kzd_accounts:fetch_realm(AccountId) of
                 undefined -> <<"unknown">>;
                 Realm -> Realm
             end;

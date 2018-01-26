@@ -267,7 +267,7 @@ should_restrict_call(Data, Call, Number) ->
 %%--------------------------------------------------------------------
 -spec should_restrict_call_by_account(kapps_call:call(), kz_term:ne_binary()) -> boolean().
 should_restrict_call_by_account(Call, Number) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
+    case kzd_accounts:fetch(kapps_call:account_id(Call)) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = knm_converters:classify(Number),

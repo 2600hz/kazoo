@@ -15,6 +15,7 @@
 -export([notifications_email/1, notifications_email/2, set_notifications_email/2]).
 -export([notifications_email_send_to/1, notifications_email_send_to/2, set_notifications_email_send_to/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
+-export([number/2, number/3, set_number/3]).
 -export([port_state/1, port_state/2, set_port_state/2]).
 -export([transfer_date/1, transfer_date/2, set_transfer_date/2]).
 
@@ -24,9 +25,11 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
+-define(SCHEMA, <<"port_requests">>).
+
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?MODULE_STRING).
+    kz_json_schema:default_object(?SCHEMA).
 
 -spec bill(doc()) -> kz_term:api_object().
 bill(Doc) ->
@@ -195,6 +198,18 @@ numbers(Doc, Default) ->
 -spec set_numbers(doc(), kz_json:object()) -> doc().
 set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
+
+-spec number(doc(), kz_json:key()) -> kz_term:api_object().
+number(Doc, Number) ->
+    number(Doc, Number, 'undefined').
+
+-spec number(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+number(Doc, Number, Default) ->
+    kz_json:get_json_value([<<"numbers">>, Number], Doc, Default).
+
+-spec set_number(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_number(Doc, Number, Value) ->
+    kz_json:set_value([<<"numbers">>, Number], Value, Doc).
 
 -spec port_state(doc()) -> binary().
 port_state(Doc) ->

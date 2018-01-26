@@ -90,10 +90,10 @@ thing_doc(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"access_lists">>, []}, {<<"accounts">>, [AccountId]} | _] ->
             lager:debug("loading access lists from account: '~s'", [AccountId]),
-            thing_doc(Context, AccountId, kz_account:type());
+            thing_doc(Context, AccountId, kzd_accounts:type());
         [{<<"access_lists">>, []}, {<<"devices">>, [DeviceId]} | _] ->
             lager:debug("loading access lists from device: '~s'", [DeviceId]),
-            thing_doc(Context, DeviceId, kz_device:type());
+            thing_doc(Context, DeviceId, kzd_devices:type());
         _Nouns ->
             cb_context:add_system_error('faulty_request'
                                        ,<<"access lists not supported on this URI path">>
@@ -214,7 +214,7 @@ after_delete(Context, _RespStatus) ->
 
 -spec flush_acl(kz_json:object()) -> 'ok' | {'error', any()}.
 flush_acl(Doc) ->
-    Cmd = props:filter_undefined([{<<"Realm">>, kz_account:fetch_realm(kz_doc:account_id(Doc))}
+    Cmd = props:filter_undefined([{<<"Realm">>, kzd_accounts:fetch_realm(kz_doc:account_id(Doc))}
                                  ,{<<"Device">>, kz_json:get_value([<<"sip">>,<<"username">>], Doc)}
                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),

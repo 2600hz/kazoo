@@ -381,8 +381,8 @@ find_reseller_account(AccountId) ->
 
 -spec get_account_tree(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_account_tree(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {ok , JObj} -> kz_account:tree(JObj);
+    case kzd_accounts:fetch(AccountId) of
+        {ok , JObj} -> kzd_accounts:tree(JObj);
         {error, _Reason} ->
             lager:debug("failed to find account ~p parents: ~p", [AccountId, _Reason]),
             []

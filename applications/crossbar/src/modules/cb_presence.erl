@@ -264,7 +264,7 @@ validate_presence_thing(Context, _ReqNouns) ->
 -spec load_device(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_device(Context, ThingId) ->
     %% validating device
-    crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
+    crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 -spec load_presence_for_user(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_presence_for_user(Context, UserId) ->
@@ -394,8 +394,8 @@ publish_presence_update(Context, PresenceId, PresenceState) ->
 
 -spec find_presence_id(kz_json:object()) -> kz_term:api_binary().
 find_presence_id(JObj) ->
-    case kz_device:is_device(JObj) of
-        'true' -> kz_device:presence_id(JObj);
+    case kzd_devices:is_device(JObj) of
+        'true' -> kzd_devices:presence_id(JObj);
         'false' -> kzd_user:presence_id(JObj)
     end.
 

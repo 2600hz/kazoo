@@ -52,37 +52,36 @@ TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
 DEPS_RULES = .deps.mk
 
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
 ## SOURCES provides a way to specify compilation order (left to right)
-SRCS = $(wildcard src/*.erl)
-SUB_SRCS = $(wildcard src/*/*.erl)
-SOURCES     ?= $(SRCS) $(SUB_SRCS)
-SUB_BEAMS = $(notdir $(SUB_SRCS))
-BEAMS = $(SRCS:src/%.erl=ebin/%.beam) $(SUB_BEAMS:%.erl=ebin/%.beam)
-TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
+SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
+MODULE_NAMES := $(sort $(foreach module,$(SOURCES),$(shell basename $(module) .erl)))
+MODULES := $(shell echo $(MODULE_NAMES) | sed 's/ /,/g')
 
-## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-ifeq ($(wildcard ebin/*.app),)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
-
-else
+TEST_SOURCES := $(SOURCES) $(wildcard test/*.erl)
+TEST_MODULE_NAMES := $(sort $(foreach module,$(TEST_SOURCES),$(shell basename $(module) .erl)))
+TEST_MODULES := $(shell echo $(TEST_MODULE_NAMES) | sed 's/ /,/g')
 
 ifneq ($(wildcard $(DEPS_RULES)),)
 include $(DEPS_RULES)
 endif
 
-compile: $(BEAMS)
+## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
+
+ebin/$(PROJECT).app: $(SOURCES)
+	@mkdir -p ebin/
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src > $@
 
 ebin/%.beam: src/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
 
 ebin/%.beam: src/*/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
-endif
-
-ebin/$(PROJECT).app: $(SOURCES)
-	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 depend: $(DEPS_RULES)
 
@@ -106,9 +105,9 @@ test/$(PROJECT).app: $(TEST_SOURCES)
 	@mkdir -p test/
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(TEST_PA) -o ebin/ $?
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > ebin/$(PROJECT).app
 
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > $@
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > ebin/$(PROJECT).app
 
 clean: clean-test
 	@$(if $(wildcard cover/*), rm -r cover)
@@ -123,7 +122,7 @@ TEST_CONFIG=$(ROOT)/rel/config-test.ini
 
 ## Use this one when debugging
 test: compile-test
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 test.%: compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$*], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
@@ -135,7 +134,7 @@ eunit: compile-test eunit-run
 
 eunit-run:
 	@mkdir -p $(COVER_REPORT_DIR)
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
 
 cover: $(ROOT)/make/cover.mk
 	COVER=1 $(MAKE) eunit

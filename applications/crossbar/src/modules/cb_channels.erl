@@ -342,7 +342,7 @@ group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
             {EPs, Context1} = user_endpoints(Context, EndpointId),
             {EPs ++ Acc, Context1};
         <<"device">> ->
-            Context1 = crossbar_doc:load(EndpointId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
+            Context1 = crossbar_doc:load(EndpointId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())),
             {[cb_context:doc(Context1) | Acc], Context1};
         _Type ->
             lager:debug("skipping type ~s", [_Type]),
@@ -360,7 +360,7 @@ account_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context(), kz_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
-    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     Paths = [[<<"doc">>, <<"sip">>, <<"username">>]
             ,[<<"sip">>, <<"username">>]
             ],

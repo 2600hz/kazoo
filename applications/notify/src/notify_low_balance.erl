@@ -49,7 +49,7 @@ handle_req(JObj, _Props) ->
     MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
-    {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
+    {'ok', Account} = kzd_accounts:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     notify_util:maybe_send_update(send(kz_json:get_integer_value(<<"Current-Balance">>, JObj), Account)
                                  ,RespQ
@@ -87,7 +87,7 @@ send(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(integer(), kz_json:object()) -> kz_term:proplist().
 create_template_props(CurrentBalance, Account) ->
-    Threshold = kz_account:low_balance_threshold(kz_doc:id(Account)),
+    Threshold = kzd_accounts:low_balance_threshold(kz_doc:id(Account)),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
     ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}

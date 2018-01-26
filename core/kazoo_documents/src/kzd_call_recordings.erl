@@ -30,13 +30,14 @@
 -include("kz_documents.hrl").
 
 -define(PVT_TYPE, <<"call_recording">>).
+-define(SCHEMA, <<"call_recordings">>).
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -spec new() -> doc().
 new() ->
-    kz_doc:set_type(kz_json_schema:default_object(?MODULE_STRING), type()).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 -spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.

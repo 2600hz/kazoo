@@ -104,7 +104,7 @@ to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
       localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")).
 -else.
 to_gregorian_seconds(Datetime, 'undefined') ->
-    to_gregorian_seconds(Datetime, kz_account:default_timezone());
+    to_gregorian_seconds(Datetime, kzd_accounts:default_timezone());
 to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
     calendar:datetime_to_gregorian_seconds(
       localtime:local_to_local(Datetime, binary_to_list(FromTimezone), "Etc/UTC")

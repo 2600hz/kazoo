@@ -50,7 +50,7 @@ handle_req(JObj, _Props) ->
     MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
-    {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
+    {'ok', Account} = kzd_accounts:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
     Occurrence = kz_json:get_binary_value(<<"Occurrence">>, JObj),
 
     Props = create_template_props(Account, Occurrence),

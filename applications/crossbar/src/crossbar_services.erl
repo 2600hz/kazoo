@@ -171,7 +171,7 @@ dry_run(Services) ->
 -spec calc_service_updates(cb_context:context(), kz_term:ne_binary()) ->
                                   kz_services:services() | 'undefined'.
 calc_service_updates(Context, <<"device">>) ->
-    DeviceType = kz_device:device_type(cb_context:doc(Context)),
+    DeviceType = kzd_devices:device_type(cb_context:doc(Context)),
     Services = fetch_service(Context),
     kz_service_devices:reconcile(Services, DeviceType);
 calc_service_updates(Context, <<"user">>) ->
@@ -264,7 +264,7 @@ reconcile(Context) ->
 base_audit_log(Context, Services) ->
     AccountId = cb_context:account_id(Context),
     AccountJObj = cb_context:account_doc(Context),
-    Tree = kz_account:tree(AccountJObj) ++ [AccountId],
+    Tree = kzd_accounts:tree(AccountJObj) ++ [AccountId],
 
     lists:foldl(fun base_audit_log_fold/2
                ,kzd_audit_log:new()
@@ -287,7 +287,7 @@ base_audit_log_fold({F, V1, V2}, Acc) -> F(Acc, V1, V2).
 -spec base_audit_account(cb_context:context(), kz_services:services()) ->
                                 kz_json:object().
 base_audit_account(Context, Services) ->
-    AccountName = kz_account:name(cb_context:account_doc(Context)),
+    AccountName = kzd_accounts:name(cb_context:account_doc(Context)),
     Diff = kz_services:diff_quantities(Services),
 
     kz_json:from_list(
@@ -304,11 +304,11 @@ base_auth_user_info(Context) ->
     kz_json:from_list(
       props:filter_empty(
         [{<<"account_id">>, kz_doc:account_id(AccountJObj)}
-        ,{<<"account_name">>, kz_account:name(AccountJObj)}
+        ,{<<"account_name">>, kzd_accounts:name(AccountJObj)}
         ,{<<"created">>, kz_doc:created(AccountJObj)}
-        ,{<<"realm">>, kz_account:realm(AccountJObj)}
-        ,{<<"language">>, kz_account:language(AccountJObj)}
-        ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+        ,{<<"realm">>, kzd_accounts:realm(AccountJObj)}
+        ,{<<"language">>, kzd_accounts:language(AccountJObj)}
+        ,{<<"timezone">>, kzd_accounts:timezone(AccountJObj)}
         ,{<<"auth_user_id">>, kz_json:get_value(<<"owner_id">>, AuthDoc)}
         ,{<<"original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
         ,{<<"original_auth_user_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}

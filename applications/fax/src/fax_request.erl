@@ -389,10 +389,10 @@ maybe_add_owner_to_notify_list(List, OwnerEmail) ->
 
 -spec maybe_update_fax_settings_from_account(state()) -> any().
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
+    case kzd_accounts:fetch(kapps_call:account_id(Call)) of
         {'ok', JObj} ->
             lager:debug("updating fax settings from account"),
-            update_fax_settings(Call, kz_account:fax_settings(JObj));
+            update_fax_settings(Call, kzd_accounts:fax_settings(JObj));
         {'error', _} ->
             lager:debug("no settings for local fax - missing account"),
             update_fax_settings(Call, kz_json:new())

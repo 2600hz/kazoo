@@ -1255,15 +1255,7 @@ request_media_url(MediaName, Type, CallId, JObj) ->
                                     )
     of
         {'ok', MediaResp} ->
-            MediaUrl = kz_json:find(<<"Stream-URL">>, MediaResp, <<>>),
-            CacheProps = media_url_cache_props(MediaName),
-            _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                    ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                                    ,MediaUrl
-                                    ,CacheProps
-                                    ),
-            lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
-            {'ok', MediaUrl};
+            maybe_cache_media_response(MediaName, MediaResp);
         {'returned', _JObj, _BR} ->
             lager:debug("no media manager available", []),
             {'error', 'timeout'};
@@ -1273,6 +1265,25 @@ request_media_url(MediaName, Type, CallId, JObj) ->
         {'error', _R}=E ->
             lager:debug("error when getting media url from amqp ~p", [_R]),
             E
+    end.
+
+-spec maybe_cache_media_response(kz_term:ne_binary(), kz_json:objects()) ->
+                                        {'ok', kz_term:ne_binary()} |
+                                        {'error', 'not_found'}.
+maybe_cache_media_response(MediaName, MediaResp) ->
+    case kz_json:find(<<"Stream-URL">>, MediaResp, <<>>) of
+        <<>> ->
+            lager:info("no stream URL found for media ~s", [MediaName]),
+            {'error', 'not_found'};
+        MediaUrl ->
+            CacheProps = media_url_cache_props(MediaName),
+            _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
+                                    ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                                    ,MediaUrl
+                                    ,CacheProps
+                                    ),
+            lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
+            {'ok', MediaUrl}
     end.
 
 -spec media_url_cache_props(kz_term:ne_binary()) -> kz_cache:store_options().

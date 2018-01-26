@@ -32,11 +32,12 @@ build_accessor(SchemaPath, 'ok') ->
         'undefined' ->
             ?LOG_INFO("no properties for ~s~n", [SchemaId]);
         {Exports, Accessors} ->
+            {PatternExports, PatternAccessors} = accessors_from_patterns(kz_json:get_json_value(<<"patternProperties">>, SchemaJObj)),
             save_module(SchemaId, [BaseModule
-                                  ,lists:reverse(Exports), "\n"
+                                  ,lists:reverse(Exports ++ PatternExports), "\n"
                                   ,base_includes()
-                                  ,base_types()
-                                  ,lists:reverse(Accessors)
+                                  ,base_types(kz_doc:id(SchemaJObj))
+                                  ,lists:reverse(Accessors ++ PatternAccessors)
                                   ])
     end.
 
@@ -46,43 +47,51 @@ save_module(Id, FileContents) ->
     'ok' = file:write_file(Filename, FileContents),
     ?LOG_INFO("wrote ~s~n", [Filename]).
 
+accessors_from_patterns('undefined') ->
+    {[], []};
+accessors_from_patterns(PatternProperties) ->
+    {Accessors, _} = kz_json:foldl(fun accessor_from_pattern/3
+                                  ,{{[], []}, []}
+                                  ,PatternProperties
+                                  ),
+    Accessors.
+
+accessor_from_pattern(<<"^", _/binary>>, _Properties, Acc) -> Acc;
+accessor_from_pattern(_Pattern, Properties, {Acc, Path}) ->
+    Acc1 = accessor_from_pattern(Path, key_from_path(Path), Properties, Acc),
+    {Acc1, Path}.
+
+accessor_from_pattern(Path, Key, Properties, {Exports, Accessors}) ->
+    {add_pattern_exports(clean_name(Path), Key, Exports)
+    ,add_pattern_accessors(clean_name(Path), Key, Properties, Accessors)
+    }.
+
+key_from_path([]) ->
+    <<"index">>;
+key_from_path([_|_]=Path) ->
+    key_from_parent(lists:last(Path)).
+
+key_from_parent(<<"children">>) ->
+    <<"child">>;
+key_from_parent(<<"i18n">>) ->
+    <<"language">>;
+key_from_parent(<<"audit">>) ->
+    <<"account_id">>;
+key_from_parent(<<"plan">>) ->
+    <<"plan_name">>;
+key_from_parent(Parent) ->
+    ?LOG_INFO("parent: ~p", [Parent]),
+    case kz_binary:strip_right(Parent, <<"s">>) of
+        Parent -> kz_binary:join([Parent, <<"index">>], <<"_">>);
+        Singular -> Singular
+    end.
+
 accessors_from_properties('undefined') -> 'undefined';
 accessors_from_properties(Properties) ->
     kz_json:foldl(fun accessor_from_properties/3
                  ,{base_exports(), base_accessors()}
                  ,Properties
                  ).
-
-base_module(SchemaName) ->
-    ["-", "module(kzd_", clean_name(SchemaName), ").\n"].
-
-clean_name([_|_]=Names) ->
-    [clean_name(Name) || Name <- Names];
-clean_name(Name) ->
-    binary:replace(Name, <<"-">>, <<"_">>, ['global']).
-
-base_exports() ->
-    ["\n"
-     "-export([new/0]).\n"
-    ].
-
-base_includes() ->
-    ["\n"
-     "-include(\"kz_documents.hrl\").\n"
-    ].
-
-base_types() ->
-    ["\n"
-     "-type doc() :: kz_json:object().\n"
-     "-export_type([doc/0]).\n"
-    ].
-
-base_accessors() ->
-    ["\n"
-     "-spec new() -> doc().\n"
-     "new() ->\n"
-     "    kz_json_schema:default_object(?MODULE_STRING).\n"
-    ].
 
 accessor_from_properties(?NE_BINARY=Property, Schema, Acc) ->
     accessor_from_properties([Property], Schema, Acc);
@@ -93,16 +102,28 @@ accessor_from_properties(Property, Schema, {Exports, Accessors}) ->
     maybe_add_sub_properties(Property, Schema, Acc, kz_json:get_value(<<"type">>, Schema)).
 
 maybe_add_sub_properties(Property, Schema, Acc0, <<"object">>) ->
-    kz_json:foldl(fun(SubProperty, SubSchema, Acc) ->
-                          add_sub_property(SubProperty, SubSchema, Acc, Property)
-                  end
-                 ,Acc0
-                 ,kz_json:get_json_value(<<"properties">>, Schema, kz_json:new())
-                 );
+    Acc1 = kz_json:foldl(fun(SubProperty, SubSchema, Acc) ->
+                                 add_sub_property(SubProperty, SubSchema, Acc, Property)
+                         end
+                        ,Acc0
+                        ,kz_json:get_json_value(<<"properties">>, Schema, kz_json:new())
+                        ),
+    {Acc2, _} = kz_json:foldl(fun accessor_from_pattern/3
+                             ,{Acc1, Property}
+                             ,kz_json:get_json_value(<<"patternProperties">>, Schema, kz_json:new())
+                             ),
+    Acc2;
 maybe_add_sub_properties(_Property, _Schema, Acc, _Type) -> Acc.
 
 add_sub_property(SubProperty, SubSchema, Acc, ParentProperty) ->
     accessor_from_properties(ParentProperty ++ [SubProperty], SubSchema, Acc).
+
+getter_name([], Key) ->
+    kz_term:to_lower_binary(Key);
+getter_name([_Parent], Key) ->
+    kz_term:to_lower_binary(Key);
+getter_name([_|_]=Path, Key) ->
+    kz_binary:join([getter_name(lists:droplast(Path)), clean_name(Key)], <<"_">>).
 
 getter_name([_|_]=Properties) ->
     kz_binary:join([getter_name(P) || P <- Properties], <<"_">>);
@@ -112,6 +133,12 @@ getter_name(Property) ->
 add_exports(Property, Exports) ->
     Getter = getter_name(Property),
     [["-export([", Getter, "/1, ", Getter, "/2, set_", Getter, "/2]).\n"]
+     | Exports
+    ].
+
+add_pattern_exports(Property, Key, Exports) ->
+    Getter = getter_name(Property, Key),
+    [["-export([", Getter, "/2, ", Getter, "/3, set_", Getter, "/3]).\n"]
      | Exports
     ].
 
@@ -133,11 +160,44 @@ add_accessors(Property, Schema, Accessors) ->
      ,"    kz_json:", JSONGetterFun, "(", JSONPath, ", Doc, Default).\n"
      ,"\n"
      ,"-spec set_", Getter, "(doc(), ", ReturnType, ") -> doc().\n"
-     ,"\n"
      ,"set_", Getter, "(Doc, ", SetVar, ") ->\n"
      ,"    kz_json:set_value(", JSONPath, ", ", SetVar, ", Doc).\n"
      ]
      | Accessors
+    ].
+
+add_pattern_accessors(ParentProperty, Key, Schema, Accessors) ->
+    {JSONGetterFun, ReturnType} = json_getter_fun(Schema),
+    Default = default_value(Schema, JSONGetterFun),
+
+    Getter = getter_name(ParentProperty, Key),
+    GetterKey = kz_ast_util:smash_snake(Key, <<>>),
+    SetVar = <<"Value">>,
+    JSONPath = json_path(ParentProperty, GetterKey),
+
+    [["\n"
+     ,"-spec ", Getter, "(doc(), kz_json:key()) -> ", default_return_type(ReturnType, Default), ".\n"
+     ,Getter, "(Doc, ", GetterKey, ") ->\n"
+     ,"    ", Getter, "(Doc, ", GetterKey, ", ", Default, ").\n"
+     ,"\n"
+     ,"-spec ", Getter, "(doc(), kz_json:key(), Default) -> ", ReturnType, " | Default.\n"
+     ,Getter, "(Doc, ", GetterKey, ", Default) ->\n"
+     ,"    kz_json:", JSONGetterFun, "(", JSONPath, ", Doc, Default).\n"
+     ,"\n"
+     ,"-spec set_", Getter, "(doc(), kz_json:key(), ", ReturnType, ") -> doc().\n"
+     ,"set_", Getter, "(Doc, ", GetterKey, ", ", SetVar, ") ->\n"
+     ,"    kz_json:set_value(", JSONPath, ", ", SetVar, ", Doc).\n"
+     ]
+     | Accessors
+    ].
+
+json_path([], Var) ->
+    ["[", Var, "]"];
+json_path([Parent | Properties], Var) ->
+    ["[", json_path(Parent)
+    ,[[", ", json_path(Property)] || Property <- Properties]
+    ,", ", Var
+    ,"]"
     ].
 
 json_path([Parent|Properties]) ->
@@ -225,3 +285,38 @@ default_return_type("kz_term:" ++ Type, "'undefined'") ->
 default_return_type(Type, "'undefined'") ->
     ["kz_term:api_" | Type];
 default_return_type(Type, _Default) -> Type.
+
+
+base_module(SchemaName) ->
+    ["-", "module(kzd_", clean_name(SchemaName), ").\n"].
+
+clean_name([]) -> [];
+clean_name([_|_]=Names) ->
+    [clean_name(Name) || Name <- Names];
+clean_name(Name) ->
+    binary:replace(Name, <<"-">>, <<"_">>, ['global']).
+
+base_exports() ->
+    ["\n"
+     "-export([new/0]).\n"
+    ].
+
+base_includes() ->
+    ["\n"
+     "-include(\"kz_documents.hrl\").\n"
+    ].
+
+base_types(SchemaId) ->
+    ["\n"
+     "-type doc() :: kz_json:object().\n"
+     "-export_type([doc/0]).\n"
+     "\n"
+     "-define(SCHEMA, <<\"", SchemaId, "\">>).\n"
+    ].
+
+base_accessors() ->
+    ["\n"
+     "-spec new() -> doc().\n"
+     "new() ->\n"
+     "    kz_json_schema:default_object(?SCHEMA).\n"
+    ].

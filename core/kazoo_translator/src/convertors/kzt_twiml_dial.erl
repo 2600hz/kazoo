@@ -302,12 +302,12 @@ sip_uri(Call, URI) ->
     SIPDevice = sip_device(URI),
     kz_endpoint:create_sip_endpoint(SIPDevice, kz_json:new(), Call).
 
--spec sip_device(kzsip_uri:uri()) -> kz_device:doc().
+-spec sip_device(kzsip_uri:uri()) -> kzd_devices:doc().
 sip_device(URI) ->
     lists:foldl(fun({F, V}, D) -> F(D, V) end
-               ,kz_device:new()
-               ,[{fun kz_device:set_sip_invite_format/2, <<"route">>}
-                ,{fun kz_device:set_sip_route/2, kzsip_uri:encode(URI)}
+               ,kzd_devices:new()
+               ,[{fun kzd_devices:set_sip_invite_format/2, <<"route">>}
+                ,{fun kzd_devices:set_sip_route/2, kzsip_uri:encode(URI)}
                 ]).
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, kapps_call:from_realm(Call)]).

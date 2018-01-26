@@ -104,7 +104,7 @@ account_info(Context) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     kz_json:from_list(
       [{<<"account_id">>, AccountId}
-      ,{<<"account_name">>, kz_account:fetch_name(AccountId)}
+      ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
       ,{<<"language">>, crossbar_util:get_language(AccountId)}
       ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
       ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
@@ -120,7 +120,7 @@ auth_info(Context) ->
     kz_json:from_list(
       [{<<"account_id">>, AccountId}
       ,{<<"owner_id">>, OwnerId}
-      ,{<<"account_name">>, kz_account:fetch_name(AccountId)}
+      ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
       ,{<<"method">>, kz_json:get_value(<<"method">>, JObj)}
       ,{<<"created">>, kz_doc:created(JObj)}
       ,{<<"language">>, crossbar_util:get_language(AccountId, OwnerId)}

@@ -49,7 +49,7 @@ send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
            ,{<<"Routes">>, []}
            ,{<<"Method">>, <<"park">>}
            ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-           ,{<<"From-Realm">>, kz_account:fetch_realm(AccountId)}
+           ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(ReqJObj),

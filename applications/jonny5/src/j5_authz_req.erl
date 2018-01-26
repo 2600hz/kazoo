@@ -294,7 +294,7 @@ maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
 get_outbound_flags(Endpoint) ->
 %%% TODO: without a kapps_call we can not support dynamic
 %%%     flags yet
-    case kz_device:outbound_static_flags(Endpoint) of
+    case kzd_devices:outbound_static_flags(Endpoint) of
         [] -> 'undefined';
         Flags -> Flags
     end.

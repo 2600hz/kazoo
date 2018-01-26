@@ -15,7 +15,7 @@ base() ->
     [{assign_to, ?RESELLER_ACCOUNT_ID}
     ,{dry_run, false}
     ,{<<"auth_by_account">>
-     ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, false)
+     ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, false)
      }
     ].
 

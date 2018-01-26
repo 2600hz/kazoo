@@ -223,7 +223,7 @@ anonymize_cid(AccountId, {Name, _}, ?HIDE_NUMBER) ->
 -spec get_default_privacy_mode(kz_json:object()) -> kz_term:ne_binary().
 get_default_privacy_mode(JObj) ->
     AccountId = get_value(<<"Account-ID">>, JObj, get_master_account()),
-    case get_legacy_anonymizer(kz_account:fetch(AccountId)) of
+    case get_legacy_anonymizer(kzd_accounts:fetch(AccountId)) of
         'undefined' ->
             kapps_account_config:get_global(AccountId
                                            ,?PRIVACY_CAT

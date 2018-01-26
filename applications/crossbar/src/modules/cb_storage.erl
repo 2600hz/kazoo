@@ -94,9 +94,9 @@ do_authorize(Context, 'system') -> cb_context:is_superduper_admin(Context);
 do_authorize(Context, 'system_plans') -> cb_context:is_superduper_admin(Context);
 do_authorize(Context, {'system_plan', _PlanId}) -> cb_context:is_superduper_admin(Context);
 do_authorize(Context, {'reseller_plans', _AccountId}) ->
-    kz_account:is_reseller(cb_context:account_doc(Context));
+    kzd_accounts:is_reseller(cb_context:account_doc(Context));
 do_authorize(Context, {'reseller_plan', _PlanId, _AccountId}) ->
-    kz_account:is_reseller(cb_context:account_doc(Context));
+    kzd_accounts:is_reseller(cb_context:account_doc(Context));
 do_authorize(Context, {'account', AccountId}) ->
     cb_context:is_superduper_admin(Context)
         orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)

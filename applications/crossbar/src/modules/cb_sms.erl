@@ -168,7 +168,7 @@ on_successful_validation(Context) ->
     AccountId = cb_context:account_id(Context),
     MODB = cb_context:account_modb(Context),
     ResellerId = cb_context:reseller_id(Context),
-    Realm = kz_account:fetch_realm(AccountId),
+    Realm = kzd_accounts:fetch_realm(AccountId),
 
     {AuthorizationType, Authorization, OwnerId} =
         case {cb_context:user_id(Context), cb_context:auth_user_id(Context)} of
@@ -231,14 +231,14 @@ on_successful_validation(Context) ->
 
 -spec get_default_caller_id(cb_context:context(), kz_term:api_binary()) -> kz_term:api_binary().
 get_default_caller_id(Context, 'undefined') ->
-    {'ok', JObj} = kz_account:fetch(cb_context:account_id(Context)),
+    {'ok', JObj} = kzd_accounts:fetch(cb_context:account_id(Context)),
     kz_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
                              ,JObj
                              ,kz_privacy:anonymous_caller_id_number(cb_context:account_id(Context))
                              );
 get_default_caller_id(Context, OwnerId) ->
     AccountDb = cb_context:account_db(Context),
-    {'ok', JObj1} = kz_account:fetch(AccountDb),
+    {'ok', JObj1} = kzd_accounts:fetch(AccountDb),
     {'ok', JObj2} = kz_datamgr:open_cache_doc(AccountDb, OwnerId),
     kz_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
                              ,kz_json:merge(JObj1, JObj2)

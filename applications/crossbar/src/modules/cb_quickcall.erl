@@ -42,7 +42,7 @@ validate(Context, _Number) ->
     validate_quickcall(Context, cb_context:req_nouns(Context)).
 
 validate_quickcall(Context, ?DEVICES_QCALL_NOUNS(DeviceId, _Number)) ->
-    validate_quickcall(load_endpoint(Context, DeviceId, kz_device:type()));
+    validate_quickcall(load_endpoint(Context, DeviceId, kzd_devices:type()));
 validate_quickcall(Context, ?USERS_QCALL_NOUNS(UserId, _Number)) ->
     validate_quickcall(load_endpoint(Context, UserId, kzd_user:type())).
 

@@ -36,7 +36,7 @@
 -spec check_initial_call(kz_term:ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
                 'true' -> io:format("account ~s has made their first call!~n", [AccountId]);
@@ -55,7 +55,7 @@ check_initial_call(Account) when is_binary(Account) ->
 -spec check_initial_registration(kz_term:ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
                 'true' -> io:format("account ~s has registered successfully~n", [AccountId]);

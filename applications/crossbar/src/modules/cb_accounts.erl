@@ -50,7 +50,7 @@
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
 
--define(PVT_TYPE, kz_account:type()).
+-define(PVT_TYPE, kzd_accounts:type()).
 -define(CHILDREN, <<"children">>).
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
@@ -240,7 +240,7 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            ApiKey = kz_account:api_key(JObj),
+            ApiKey = kzd_accounts:api_key(JObj),
             RespJObj = kz_json:from_list([{<<"api_key">>, ApiKey}]),
             cb_context:set_resp_data(Context1, RespJObj);
         _Else -> Context1
@@ -293,7 +293,7 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
-    {'ok', Existing} = kz_account:fetch(AccountId),
+    {'ok', Existing} = kzd_accounts:fetch(AccountId),
     Context1 = crossbar_doc:save(Context),
 
     case cb_context:resp_status(Context1) of
@@ -338,7 +338,7 @@ put(Context, PathAccountId) ->
     NewAccountId = kz_doc:id(JObj, kz_datamgr:get_uuid()),
     try create_new_account_db(prepare_context(NewAccountId, Context)) of
         C ->
-            Tree = kz_account:tree(JObj),
+            Tree = kzd_accounts:tree(JObj),
             _ = maybe_update_descendants_count(Tree),
             _ = create_apps_store_doc(NewAccountId),
             leak_pvt_fields(PathAccountId, C)
@@ -366,7 +366,7 @@ put(Context, _AccountId, ?API_KEY) ->
     case cb_context:resp_status(C1) of
         'success' ->
             JObj = cb_context:doc(C1),
-            ApiKey = kz_account:api_key(JObj),
+            ApiKey = kzd_accounts:api_key(JObj),
             RespJObj = kz_json:from_list([{<<"api_key">>, ApiKey}]),
             cb_context:set_resp_data(C1, RespJObj);
         _ -> C1
@@ -394,7 +394,7 @@ delete(Context, Account) ->
             cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, AccountId}]),  Context);
         'true' ->
             Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
-            _ = maybe_update_descendants_count(kz_account:tree(cb_context:doc(Context1))),
+            _ = maybe_update_descendants_count(kzd_accounts:tree(cb_context:doc(Context1))),
             Context1
     end.
 
@@ -519,11 +519,11 @@ validate_request(AccountId, Context) ->
 -spec ensure_account_has_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 ensure_account_has_realm(_AccountId, Context) ->
     JObj = cb_context:req_data(Context),
-    case kz_account:realm(JObj) of
+    case kzd_accounts:realm(JObj) of
         'undefined' ->
             Realm = random_realm(),
             lager:debug("req has no realm, creating random realm '~s'", [Realm]),
-            cb_context:set_req_data(Context, kz_account:set_realm(JObj, Realm));
+            cb_context:set_req_data(Context, kzd_accounts:set_realm(JObj, Realm));
         _Realm ->
             lager:debug("req has realm '~s'", [_Realm]),
             Context
@@ -534,14 +534,14 @@ ensure_account_has_timezone(_AccountId, Context) ->
     JObj = cb_context:req_data(Context),
     Timezone = kz_json:get_value(<<"timezone">>, JObj, get_timezone_from_parent(Context)),
     lager:debug("selected timezone: ~s", [Timezone]),
-    cb_context:set_req_data(Context, kz_account:set_timezone(JObj, Timezone)).
+    cb_context:set_req_data(Context, kzd_accounts:set_timezone(JObj, Timezone)).
 
 -spec get_timezone_from_parent(cb_context:context()) -> kz_term:ne_binary().
 get_timezone_from_parent(Context) ->
     case create_new_tree(Context) of
-        'error' -> kz_account:default_timezone();
-        [] -> kz_account:default_timezone();
-        Tree -> kz_account:timezone(lists:last(Tree))
+        'error' -> kzd_accounts:default_timezone();
+        [] -> kzd_accounts:default_timezone();
+        Tree -> kzd_accounts:timezone(lists:last(Tree))
     end.
 
 -spec random_realm() -> kz_term:ne_binary().
@@ -573,7 +573,7 @@ cleanup_leaky_keys(_AccountId, Context) ->
 
 -spec validate_realm_is_unique(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_realm_is_unique(AccountId, Context) ->
-    Realm = kz_account:realm(cb_context:req_data(Context)),
+    Realm = kzd_accounts:realm(cb_context:req_data(Context)),
     case is_unique_realm(AccountId, Realm) of
         'true' ->
             lager:debug("realm ~s is indeed unique", [Realm]),
@@ -588,7 +588,7 @@ validate_realm_is_unique(AccountId, Context) ->
 
 -spec validate_account_name_is_unique(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_account_name_is_unique(AccountId, Context) ->
-    Name = kz_account:name(cb_context:req_data(Context)),
+    Name = kzd_accounts:name(cb_context:req_data(Context)),
     case maybe_is_unique_account_name(AccountId, Name) of
         'true' ->
             lager:debug("name ~s is indeed unique", [Name]),
@@ -637,7 +637,7 @@ maybe_import_enabled(Context, 'success') ->
     Enabled = kz_json:get_value(<<"enabled">>, Doc),
     NewDoc = kz_json:delete_key(<<"enabled">>, Doc),
     lager:debug("import enabled: ~p", [Enabled]),
-    case lists:member(AuthAccountId, kz_account:tree(Doc)) of
+    case lists:member(AuthAccountId, kzd_accounts:tree(Doc)) of
         'false' -> cb_context:set_doc(Context, NewDoc);
         'true' -> maybe_import_enabled(Context, NewDoc, Enabled)
     end.
@@ -647,8 +647,8 @@ maybe_import_enabled(Context, 'success') ->
 maybe_import_enabled(Context, _, 'undefined') -> Context;
 maybe_import_enabled(Context, Doc, IsEnabled) ->
     NewDoc = case kz_term:is_true(IsEnabled) of
-                 'true' -> kz_account:enable(Doc);
-                 'false' -> kz_account:disable(Doc)
+                 'true' -> kzd_accounts:enable(Doc);
+                 'false' -> kzd_accounts:disable(Doc)
              end,
     cb_context:set_doc(Context, NewDoc).
 
@@ -747,7 +747,7 @@ leak_pvt_fields(_AccountId, Context, _Status) -> Context.
 leak_pvt_allow_additions(Context) ->
     cb_context:set_resp_data(Context
                             ,kz_json:set_value(<<"wnm_allow_additions">>
-                                              ,kz_account:allow_number_additions(cb_context:doc(Context))
+                                              ,kzd_accounts:allow_number_additions(cb_context:doc(Context))
                                               ,cb_context:resp_data(Context)
                                               )
                             ).
@@ -756,7 +756,7 @@ leak_pvt_allow_additions(Context) ->
 leak_pvt_superduper_admin(Context) ->
     cb_context:set_resp_data(Context
                             ,kz_json:set_value(<<"superduper_admin">>
-                                              ,kz_account:is_superduper_admin(cb_context:doc(Context))
+                                              ,kzd_accounts:is_superduper_admin(cb_context:doc(Context))
                                               ,cb_context:resp_data(Context)
                                               )
                             ).
@@ -770,7 +770,7 @@ leak_pvt_api_key(Context) ->
         'true' ->
             cb_context:set_resp_data(Context
                                     ,kz_json:set_value(<<"api_key">>
-                                                      ,kz_account:api_key(cb_context:doc(Context))
+                                                      ,kzd_accounts:api_key(cb_context:doc(Context))
                                                       ,cb_context:resp_data(Context)
                                                       )
                                     )
@@ -788,7 +788,7 @@ leak_pvt_created(Context) ->
 -spec leak_pvt_enabled(cb_context:context()) -> cb_context:context().
 leak_pvt_enabled(Context) ->
     RespJObj = cb_context:resp_data(Context),
-    case kz_account:is_enabled(cb_context:doc(Context)) of
+    case kzd_accounts:is_enabled(cb_context:doc(Context)) of
         'true' ->
             cb_context:set_resp_data(Context
                                     ,kz_json:set_value(<<"enabled">>, 'true', RespJObj)
@@ -852,7 +852,7 @@ find_reseller_id(Context, PathAccountId) ->
 
 -spec leak_notification_preference(cb_context:context()) -> cb_context:context().
 leak_notification_preference(Context) ->
-    leak_notification_preference(Context, kz_account:notification_preference(cb_context:doc(Context))).
+    leak_notification_preference(Context, kzd_accounts:notification_preference(cb_context:doc(Context))).
 
 -spec leak_notification_preference(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 leak_notification_preference(Context, 'undefined') ->
@@ -865,7 +865,7 @@ leak_notification_preference(Context, Pref) ->
                                   cb_context:context().
 leak_trial_time_left(Context) ->
     JObj = cb_context:doc(Context),
-    leak_trial_time_left(Context, JObj, kz_account:trial_expiration(JObj)).
+    leak_trial_time_left(Context, JObj, kzd_accounts:trial_expiration(JObj)).
 
 -spec leak_trial_time_left(cb_context:context(), kz_json:object(), kz_term:api_integer()) ->
                                   cb_context:context().
@@ -876,7 +876,7 @@ leak_trial_time_left(Context, _JObj, 'undefined') ->
     cb_context:set_resp_data(Context, RespData);
 leak_trial_time_left(Context, JObj, _Expiration) ->
     RespData = kz_json:set_value(<<"trial_time_left">>
-                                ,kz_account:trial_time_left(JObj)
+                                ,kzd_accounts:trial_time_left(JObj)
                                 ,cb_context:resp_data(Context)
                                 ),
     cb_context:set_resp_data(Context, RespData).
@@ -1064,7 +1064,7 @@ load_account_tree(Context) ->
 get_authorized_account_tree(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     lists:dropwhile(fun(E) -> E =/= AuthAccountId end
-                   ,kz_account:tree(cb_context:doc(Context))
+                   ,kzd_accounts:tree(cb_context:doc(Context))
                    ).
 
 -spec format_account_tree_results(cb_context:context(), kz_json:objects()) -> cb_context:context().
@@ -1147,7 +1147,7 @@ find_accounts_from_tree([AccountId|Tree], JObjs, AuthAccountId, Acc) ->
 -spec account_from_tree(kz_json:object()) -> kz_json:object().
 account_from_tree(JObj) ->
     kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}
-                      ,{<<"name">>, kz_account:name(JObj)}
+                      ,{<<"name">>, kzd_accounts:name(JObj)}
                       ]).
 
 %%--------------------------------------------------------------------
@@ -1188,16 +1188,16 @@ add_pvt_vsn(Context) ->
 -spec add_pvt_enabled(cb_context:context()) -> cb_context:context().
 add_pvt_enabled(Context) ->
     JObj = cb_context:doc(Context),
-    case lists:reverse(kz_account:tree(JObj)) of
+    case lists:reverse(kzd_accounts:tree(JObj)) of
         [ParentId | _] ->
             ParentDb = kz_util:format_account_id(ParentId, 'encoded'),
             case (not kz_term:is_empty(ParentId))
                 andalso kz_datamgr:open_doc(ParentDb, ParentId)
             of
                 {'ok', Parent} ->
-                    case kz_account:is_enabled(Parent) of
-                        'true'  -> cb_context:set_doc(Context, kz_account:enable(JObj));
-                        'false' -> cb_context:set_doc(Context, kz_account:disable(JObj))
+                    case kzd_accounts:is_enabled(Parent) of
+                        'true'  -> cb_context:set_doc(Context, kzd_accounts:enable(JObj));
+                        'false' -> cb_context:set_doc(Context, kzd_accounts:disable(JObj))
                     end;
                 _Else -> Context
             end;
@@ -1208,7 +1208,7 @@ add_pvt_enabled(Context) ->
 -spec maybe_add_pvt_api_key(cb_context:context()) -> cb_context:context().
 maybe_add_pvt_api_key(Context) ->
     JObj = cb_context:doc(Context),
-    case kz_account:api_key(JObj) of
+    case kzd_accounts:api_key(JObj) of
         'undefined' -> add_pvt_api_key(Context);
         _Else -> Context
     end.
@@ -1217,11 +1217,11 @@ maybe_add_pvt_api_key(Context) ->
 add_pvt_api_key(Context) ->
     JObj = cb_context:doc(Context),
     APIKey = kz_term:to_hex_binary(crypto:strong_rand_bytes(32)),
-    cb_context:set_doc(Context, kz_account:set_api_key(JObj, APIKey)).
+    cb_context:set_doc(Context, kzd_accounts:set_api_key(JObj, APIKey)).
 
 -spec maybe_add_pvt_tree(cb_context:context()) -> cb_context:context().
 maybe_add_pvt_tree(Context) ->
-    case kz_account:tree(cb_context:doc(Context)) of
+    case kzd_accounts:tree(cb_context:doc(Context)) of
         [_|_] -> Context;
         _Else -> add_pvt_tree(Context)
     end.
@@ -1230,7 +1230,7 @@ maybe_add_pvt_tree(Context) ->
 add_pvt_tree(Context) ->
     case create_new_tree(Context) of
         'error' -> cb_context:add_system_error('empty_tree_accounts_exist', Context);
-        Tree -> cb_context:set_doc(Context, kz_account:set_tree(cb_context:doc(Context), Tree))
+        Tree -> cb_context:set_doc(Context, kzd_accounts:set_tree(cb_context:doc(Context), Tree))
     end.
 
 -spec create_new_tree(cb_context:context() | kz_term:api_binary()) -> kz_term:ne_binaries() | 'error'.
@@ -1249,7 +1249,7 @@ create_new_tree(Parent) when is_binary(Parent) ->
     case kz_datamgr:open_doc(ParentDb, ParentId) of
         {'error', _} -> create_new_tree('undefined');
         {'ok', JObj} ->
-            kz_account:tree(JObj) ++ [ParentId]
+            kzd_accounts:tree(JObj) ++ [ParentId]
     end;
 create_new_tree(Context) ->
     create_new_tree(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
@@ -1275,7 +1275,7 @@ create_new_tree(Context, _Verb, _Nouns) ->
 load_account_db(Context, [AccountId|_]) ->
     load_account_db(Context, AccountId);
 load_account_db(Context, AccountId) when is_binary(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             AccountDb = kz_util:format_account_db(AccountId),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
@@ -1284,7 +1284,7 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
                               ,[{fun cb_context:set_resp_status/2, 'success'}
                                ,{fun cb_context:set_account_db/2, AccountDb}
                                ,{fun cb_context:set_account_id/2, AccountId}
-                               ,{fun cb_context:set_account_name/2, kz_account:name(JObj)}
+                               ,{fun cb_context:set_account_name/2, kzd_accounts:name(JObj)}
                                ,{fun cb_context:set_reseller_id/2, ResellerId}
                                ]);
         {'error', 'not_found'} ->
@@ -1346,11 +1346,11 @@ create_new_account_db(Context) ->
 maybe_set_notification_preference(Context) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services:find_reseller_id(AccountId),
-    case kz_account:fetch(ResellerId) of
+    case kzd_accounts:fetch(ResellerId) of
         {'error', _E} ->
             lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
         {'ok', AccountJObj} ->
-            case kz_account:notification_preference(AccountJObj) of
+            case kzd_accounts:notification_preference(AccountJObj) of
                 'undefined' ->
                     lager:debug("notification preference not set on reseller '~s'", [ResellerId]);
                 Preference ->
@@ -1361,7 +1361,7 @@ maybe_set_notification_preference(Context) ->
 -spec set_notification_preference(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 set_notification_preference(Context, Preference) ->
     AccountDb = cb_context:account_db(Context),
-    AccountDefinition = kz_account:set_notification_preference(cb_context:doc(Context), Preference),
+    AccountDefinition = kzd_accounts:set_notification_preference(cb_context:doc(Context), Preference),
     case kz_datamgr:save_doc(AccountDb, AccountDefinition) of
         {'error', _R} ->
             lager:error("failed to update account definition: ~p", [_R]);
@@ -1409,7 +1409,7 @@ create_account_definition(Context) ->
 
 -spec maybe_set_trial_expires(kz_json:object()) -> kz_json:object().
 maybe_set_trial_expires(JObj) ->
-    case kz_account:is_trial_account(JObj) of
+    case kzd_accounts:is_trial_account(JObj) of
         'false' -> JObj;
         'true' -> set_trial_expires(JObj)
     end.
@@ -1418,7 +1418,7 @@ maybe_set_trial_expires(JObj) ->
 set_trial_expires(JObj) ->
     TrialTime = kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
     Expires = kz_time:now_s() + TrialTime,
-    kz_account:set_trial_expiration(JObj, Expires).
+    kzd_accounts:set_trial_expiration(JObj, Expires).
 
 
 -spec load_initial_views(cb_context:context()) -> 'ok'.
@@ -1505,9 +1505,9 @@ notify_new_account(Context, _AuthDoc) ->
     _ = cb_context:put_reqid(Context),
     JObj = cb_context:doc(Context),
     lager:debug("triggering new account notification for ~s", [cb_context:account_id(Context)]),
-    Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
-             ,{<<"Account-Realm">>, kz_account:realm(JObj)}
-             ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
+    Notify = [{<<"Account-Name">>, kzd_accounts:name(JObj)}
+             ,{<<"Account-Realm">>, kzd_accounts:realm(JObj)}
+             ,{<<"Account-API-Key">>, kzd_accounts:api_key(JObj)}
              ,{<<"Account-ID">>, cb_context:account_id(Context)}
              ,{<<"Account-DB">>, cb_context:account_db(Context)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)

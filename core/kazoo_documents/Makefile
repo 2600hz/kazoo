@@ -5,7 +5,7 @@ TEST_EBINS = $(ROOT)/applications/crossbar/ebin
 SRC_FILES := $(sort $(wildcard src/*.erl.src))
 ERL_FILES := $(SRC_FILES:.erl.src=.erl)
 
-SOURCES = src/*.erl $(ERL_FILES)
+SOURCES = $(wildcard src/*.erl) $(ERL_FILES)
 COMPILE_MOAR = $(ERL_FILES)
 
 all: compile
@@ -32,5 +32,6 @@ kz-test:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_fixturedb/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_data/
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_schemas/
 
 include $(ROOT)/make/kz.mk

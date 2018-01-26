@@ -35,7 +35,7 @@ update_device(JObj, AuthToken) ->
             ,maybe_add_device_defaults(Request)
             ,AuthToken
             ,AccountId
-            ,kz_device:mac_address(JObj)
+            ,kzd_devices:mac_address(JObj)
             ).
 
 -spec delete_device(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
@@ -44,7 +44,7 @@ delete_device(JObj, AuthToken) ->
             ,'undefined'
             ,AuthToken
             ,kz_doc:account_id(JObj)
-            ,kz_device:mac_address(JObj)
+            ,kzd_devices:mac_address(JObj)
             ).
 
 -spec maybe_add_device_defaults(kz_json:object()) -> kz_json:object().
@@ -73,7 +73,7 @@ device_settings(JObj) ->
       [{<<"brand">>, get_brand(JObj)}
       ,{<<"family">>, get_family(JObj)}
       ,{<<"model">>, get_model(JObj)}
-      ,{<<"name">>, kz_device:name(JObj)}
+      ,{<<"name">>, kzd_devices:name(JObj)}
       ,{<<"settings">>, settings(JObj)}
       ]).
 
@@ -136,7 +136,7 @@ delete_account(AccountId, AuthToken) ->
 -spec update_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} -> update_account(AccountId, JObj, AuthToken);
         {'error', _R} ->
             lager:debug("unable to fetch account ~s: ~p", [AccountId, _R])
@@ -179,14 +179,14 @@ maybe_save_device(Device, Settings, AccountId, AuthToken) ->
                 [{<<"brand">>, get_brand(Device)}
                 ,{<<"family">>, get_family(Device)}
                 ,{<<"model">>, get_model(Device)}
-                ,{<<"name">>, kz_device:name(Device)}
+                ,{<<"name">>, kzd_devices:name(Device)}
                 ,{<<"settings">>, Settings}
                 ]),
     catch save_device(AccountId, Device, Request, AuthToken).
 
 -spec save_device(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 save_device(AccountId, Device, Request, AuthToken) ->
-    case kz_device:mac_address(Device) of
+    case kzd_devices:mac_address(Device) of
         'undefined' -> 'ok';
         MacAddress ->
             send_req('devices_post', Request, AuthToken, AccountId, MacAddress)
@@ -299,8 +299,8 @@ settings_sip(JObj) ->
                  ],
     Realm = kz_json:get_first_defined(RealmPaths, JObj),
     Props = props:filter_undefined(
-              [{<<"username">>, kz_device:sip_username(JObj)}
-              ,{<<"password">>, kz_device:sip_password(JObj)}
+              [{<<"username">>, kzd_devices:sip_username(JObj)}
+              ,{<<"password">>, kzd_devices:sip_password(JObj)}
               ,{<<"realm">>, Realm}
               ]),
     kz_json:from_list(Props).
@@ -375,7 +375,7 @@ get_label(Doc) ->
 -spec get_feature_key(kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
 get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
-    case kz_device:presence_id(UserJObj) of
+    case kzd_devices:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             kz_json:from_list(
@@ -394,7 +394,7 @@ get_feature_key(<<"speed_dial">>=Type, Value, Brand, Family, _AccountId, Assoc) 
       ]);
 get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
-    case kz_device:presence_id(UserJObj) of
+    case kzd_devices:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             Label = <<"Park ", (get_label(AccountId, Presence))/binary>>,

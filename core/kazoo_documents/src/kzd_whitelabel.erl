@@ -26,14 +26,15 @@
 
 -include("kz_documents.hrl").
 
--define(ID, <<"whitelabel">>).
-
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
+-define(SCHEMA, <<"whitelabel">>).
+-define(ID, <<"whitelabel">>).
+
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?MODULE_STRING).
+    kz_json_schema:default_object(?SCHEMA).
 
 -spec company_name(doc()) -> kz_term:api_binary().
 company_name(Doc) ->

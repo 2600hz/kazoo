@@ -176,7 +176,7 @@ sip_user_of_endpoint(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
-            kz_device:sip_username(Endpoint)
+            kzd_devices:sip_username(Endpoint)
     end.
 
 -spec no_users(kapps_call:call()) -> any().

@@ -56,6 +56,9 @@
                                                 ]}
                          ]).
 
+-ifdef(TEST).
+load(Schema) -> fload(Schema).
+-else.
 -spec load(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
 load(<<"./", Schema/binary>>) -> load(Schema);
@@ -66,6 +69,7 @@ load(<<_/binary>> = Schema) ->
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
     end;
 load(Schema) -> load(kz_term:to_binary(Schema)).
+-endif.
 
 -spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
                                        {'error', 'not_found'}.
@@ -883,7 +887,7 @@ default_properties(Flat) ->
                               <<"default">> =:= lists:last(Keys)
                                   andalso {'true', {lists:droplast(Keys), Value}}
                       end
-                      ,Flat
+                     ,Flat
                      ).
 
 -spec filtering_list(kz_json:object()) -> list(kz_json:keys() | []).

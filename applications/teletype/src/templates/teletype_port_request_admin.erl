@@ -108,9 +108,9 @@ handle_port_request(DataJObj) ->
 
 -spec account_tree(kz_term:ne_binary()) -> kz_term:proplist().
 account_tree(AccountId) ->
-    {'ok', AccountJObj} = kz_account:fetch(AccountId),
-    [{AncestorId, kz_account:fetch_name(AncestorId)}
-     || AncestorId <- kz_account:tree(AccountJObj)
+    {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
+    [{AncestorId, kzd_accounts:fetch_name(AncestorId)}
+     || AncestorId <- kzd_accounts:tree(AccountJObj)
     ].
 
 maybe_set_emails(DataJObj) ->
