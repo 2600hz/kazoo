@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
+-export([build_leg_vars/1, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
         ,route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
         ,acl_xml/1, not_found/0, empty_response/0
         ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
@@ -468,8 +468,21 @@ check_dtmf_type(Props) ->
         _ -> action_el(<<"start_dtmf">>)
     end.
 
+-spec build_leg_vars(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binaries().
+build_leg_vars([]) -> [];
+build_leg_vars([_|_]=Prop) -> lists:foldr(fun get_channel_vars/2, [], Prop);
+build_leg_vars(JObj) -> build_leg_vars(kz_json:to_proplist(JObj)).
+
 -spec get_leg_vars(kz_json:object() | kz_term:proplist()) -> iolist().
 get_leg_vars([]) -> [];
+get_leg_vars([Binary|_]=Binaries)
+  when is_binary(Binary) ->
+    ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
+    ,string:join([kz_term:to_list(V) || V <- Binaries]
+                ,?BRIDGE_CHANNEL_VAR_SEPARATOR
+                )
+    ,"]"
+    ];
 get_leg_vars([_|_]=Prop) ->
     ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)

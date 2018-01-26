@@ -19509,7 +19509,16 @@
                 "Profile-Name": {
                     "type": "string"
                 },
+                "Proxy-IP": {
+                    "type": "string"
+                },
                 "Proxy-Path": {
+                    "type": "string"
+                },
+                "Proxy-Port": {
+                    "type": "string"
+                },
+                "Proxy-Protocol": {
                     "type": "string"
                 },
                 "RPid": {
@@ -19525,6 +19534,12 @@
                     "type": "string"
                 },
                 "Registrar-Node": {
+                    "type": "string"
+                },
+                "Source-IP": {
+                    "type": "string"
+                },
+                "Source-Port": {
                     "type": "string"
                 },
                 "Status": {

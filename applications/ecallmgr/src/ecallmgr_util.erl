@@ -81,8 +81,8 @@
                          ,channel_selection = <<"a">> :: kz_term:ne_binary()
                          ,interface = <<"RR">> :: kz_term:ne_binary() % for Skype
                          ,sip_interface
-                         ,channel_vars = ["[",[],"]"] :: iolist()
-                         ,header_vars = ["[",[],"]"] :: iolist()
+                         ,channel_vars = [] :: kz_term:ne_binaries()
+                         ,header_vars = [] :: kz_term:ne_binaries()
                          ,include_channel_vars = 'true' :: boolean()
                          ,failover
                          }).
@@ -743,14 +743,14 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
 
 -spec endpoint_jobj_to_record_vars(kz_json:object(), bridge_endpoint()) -> bridge_endpoint().
 endpoint_jobj_to_record_vars(Endpoint, #bridge_endpoint{include_channel_vars='true'}=Bridge) ->
-    Bridge#bridge_endpoint{channel_vars=ecallmgr_fs_xml:get_leg_vars(Endpoint)};
+    Bridge#bridge_endpoint{channel_vars=ecallmgr_fs_xml:build_leg_vars(Endpoint)};
 endpoint_jobj_to_record_vars(Endpoint, #bridge_endpoint{include_channel_vars='false'}=Bridge) ->
     Props = lists:filter(fun({<<"Custom-SIP-Headers">>, _}) -> 'true';
                             (_) -> 'false'
                          end
                         ,kz_json:to_proplist(Endpoint)
                         ),
-    Bridge#bridge_endpoint{header_vars=ecallmgr_fs_xml:get_leg_vars(Props)}.
+    Bridge#bridge_endpoint{header_vars=ecallmgr_fs_xml:build_leg_vars(Props)}.
 
 -spec get_endpoint_span(kz_json:object()) -> kz_term:ne_binary().
 get_endpoint_span(Endpoint) ->
@@ -900,16 +900,17 @@ build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
                                {'ok', bridge_channel()} |
                                {'error', any()}.
 build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
-    Routines = [fun(C) -> maybe_clean_contact(C, Endpoint) end
-               ,fun(C) -> ensure_username_present(C, Endpoint) end
-               ,fun(C) -> maybe_replace_fs_path(C, Endpoint) end
-               ,fun(C) -> maybe_replace_transport(C, Endpoint) end
-               ,fun(C) -> maybe_format_user(C, Endpoint) end
-               ,fun(C) -> maybe_set_interface(C, Endpoint) end
-               ,fun(C) -> append_channel_vars(C, Endpoint) end
+    Routines = [fun get_sip_contact/1
+               ,fun maybe_clean_contact/2
+               ,fun ensure_username_present/2
+               ,fun maybe_replace_fs_path/2
+               ,fun maybe_replace_transport/2
+               ,fun maybe_format_user/2
+               ,fun maybe_set_interface/2
+               ,fun maybe_append_channel_vars/2
                ],
-    try lists:foldl(fun(F, C) -> F(C) end, get_sip_contact(Endpoint), Routines) of
-        Channel -> {'ok', Channel}
+    try lists:foldl(fun build_sip_channel_fold/2, Endpoint, Routines) of
+        {Channel, _} -> {'ok', Channel}
     catch
         _E:{'badmatch', {'error', 'not_found'}} ->
             lager:warning("Failed to build sip channel trying failover", []),
@@ -919,6 +920,24 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
             lager:warning("Failed to build sip channel (~s): ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             {'error', 'invalid'}
+    end.
+
+-type build_channel_fun_1() :: fun((bridge_endpoint()) -> bridge_channel() | {bridge_channel(), bridge_endpoint()}).
+-type build_channel_fun_2() :: fun((bridge_channel(), bridge_endpoint()) -> bridge_channel() | {bridge_channel(), bridge_endpoint()}).
+
+-type build_channel_fun() :: build_channel_fun_1() | build_channel_fun_2().
+-type build_channel_acc() :: bridge_channel() | {bridge_channel(), bridge_endpoint()}.
+
+-spec build_sip_channel_fold(build_channel_fun(), build_channel_acc()) -> build_channel_acc().
+build_sip_channel_fold(Fun, {Contact, Endpoint}) ->
+    case Fun(Contact, Endpoint) of
+        {NewContact, NewEndpoint} -> {NewContact, NewEndpoint};
+        NewContact -> {NewContact, Endpoint}
+    end;
+build_sip_channel_fold(Fun, Endpoint) ->
+    case Fun(Endpoint) of
+        {NewContact, NewEndpoint} -> {NewContact, NewEndpoint};
+        NewContact -> {NewContact, Endpoint}
     end.
 
 -spec maybe_failover(kz_json:object()) ->
@@ -954,9 +973,12 @@ get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) -
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                 ,realm=Realm
                                 ,username=Username
-                                }) ->
-    {'ok', Contact} = ecallmgr_registrar:lookup_contact(Realm, Username),
-    binary:replace(Contact, <<">">>, <<>>);
+                                ,channel_vars=CVs
+                                }=EP) ->
+    {'ok', Contact, Props} = ecallmgr_registrar:lookup_contact(Realm, Username),
+    Vars = ecallmgr_fs_xml:build_leg_vars(Props),
+    NewEP = EP#bridge_endpoint{channel_vars=Vars ++ CVs},
+    {binary:replace(Contact, <<">">>, <<>>), NewEP};
 get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) -> IPAddress.
 -endif.
 
@@ -1049,23 +1071,27 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface= <<"sofia/", _/binar
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<"sofia/", SIPInterface/binary, "/", Contact/binary>>.
 
--spec append_channel_vars(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
-append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'
-                                             ,header_vars=["[",[],"]"]
-                                             }) ->
+-spec maybe_append_channel_vars(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
+maybe_append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'
+                                                   ,header_vars=[]
+                                                   }) ->
     'false' = kz_term:is_empty(Contact),
     Contact;
-append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'
-                                             ,header_vars=HeaderVars
-                                             }) ->
+maybe_append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'
+                                                   ,header_vars=HeaderVars
+                                                   }) ->
     'false' = kz_term:is_empty(Contact),
-    list_to_binary([HeaderVars, Contact]);
-append_channel_vars(Contact, #bridge_endpoint{channel_vars=["[",[],"]"]}) ->
+    list_to_binary([ecallmgr_fs_xml:get_leg_vars(HeaderVars), Contact]);
+maybe_append_channel_vars(Contact, #bridge_endpoint{channel_vars=[]
+                                                   ,header_vars=[]
+                                                   }) ->
     'false' = kz_term:is_empty(Contact),
     Contact;
-append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
+maybe_append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars
+                                                   ,header_vars=HeaderVars
+                                                   }) ->
     'false' = kz_term:is_empty(Contact),
-    list_to_binary([ChannelVars, Contact]).
+    list_to_binary([ecallmgr_fs_xml:get_leg_vars(ChannelVars++HeaderVars), Contact]).
 
 %%--------------------------------------------------------------------
 %% @public
