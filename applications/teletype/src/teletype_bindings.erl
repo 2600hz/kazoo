@@ -78,6 +78,16 @@ maybe_send_update(JObj, RoutingKey, #{'failed' := [{_, Reason}|_]}=Map) ->
     print_result(RoutingKey, Map),
     Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
     teletype_util:send_update(JObj, <<"failed">>, Reason, Metadata);
+maybe_send_update(JObj, RoutingKey, #{'disabled' := _Completed}=Map) ->
+    %% for now just send the first disabled as failure message
+    print_result(RoutingKey, Map),
+    Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
+    teletype_util:send_update(JObj, <<"disabled">>, 'undefined', Metadata);
+maybe_send_update(JObj, RoutingKey, #{'ignored' := _Completed}=Map) ->
+    %% for now just send the first ignored as failure message
+    print_result(RoutingKey, Map),
+    Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
+    teletype_util:send_update(JObj, <<"ignored">>, 'undefined', Metadata);
 maybe_send_update(JObj, RoutingKey, Map) ->
     print_result(RoutingKey, Map),
     Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
