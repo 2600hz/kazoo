@@ -123,13 +123,20 @@ handle_media_doc_change(JObj, _Change) ->
     {'ok', Doc} = kz_datamgr:open_doc(Db, kz_json:get_value(<<"ID">>, JObj)),
     gen_listener:cast(?MODULE, {'add_mapping', Db, Doc}).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Parse the kz_media_map prompt ID from media doc ID.
+%% Keeping old format separator "%2F" for backwards compatibility,
+%% i.e. deleting prompts carried forward from Kazoo < 4.0
+%% @end
+%%--------------------------------------------------------------------
 -spec extract_prompt_id(kz_term:ne_binary()) -> kz_term:ne_binary().
-extract_prompt_id(<<_Lang:5/binary, "%2F", PromptId/binary>>) ->
-    PromptId;
-extract_prompt_id(<<_Lang:2/binary, "%2F", PromptId/binary>>) ->
-    PromptId;
-extract_prompt_id(MediaId) ->
-    MediaId.
+extract_prompt_id(<<_Lang:5/binary, "/", PromptId/binary>>) -> PromptId;
+extract_prompt_id(<<_Lang:2/binary, "/", PromptId/binary>>) -> PromptId;
+extract_prompt_id(<<_Lang:5/binary, "%2F", PromptId/binary>>) -> PromptId;
+extract_prompt_id(<<_Lang:2/binary, "%2F", PromptId/binary>>) -> PromptId;
+extract_prompt_id(MediaId) -> MediaId.
 
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE.
