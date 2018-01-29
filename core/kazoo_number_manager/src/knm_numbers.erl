@@ -736,6 +736,7 @@ update_for_reconcile(T, Options) ->
 save_phone_numbers(T) ->
     do_in_wrap(fun knm_phone_number:save/1, T).
 
+-spec save_numbers(t()) -> t_pn().
 save_numbers(T) ->
     pipe(T, [fun knm_providers:save/1
             ,fun save_phone_numbers/1
