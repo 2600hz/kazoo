@@ -137,6 +137,7 @@
                  ,exists = 'false' :: boolean()
                  ,skip_instructions = 'false' :: boolean()
                  ,skip_greeting = 'false' :: boolean()
+                 ,skip_envelope = 'false' :: boolean()
                  ,unavailable_media_id :: kz_term:api_ne_binary()
                  ,temporary_unavailable_media_id :: kz_term:api_ne_binary()
                  ,name_media_id :: kz_term:api_ne_binary()
@@ -787,6 +788,33 @@ message_count_prompts(New, Saved) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Returns the message audio prompt
+%% @end
+%%--------------------------------------------------------------------
+-spec message_prompt(kz_json:objects(), binary(), non_neg_integer(), mailbox()) ->
+                            kapps_call_command:audio_macro_prompts().
+message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone
+                                                       ,skip_envelope='false'
+                                                       }) ->
+    [{'prompt', <<"vm-message_number">>}
+    ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
+    ,{'play', Message}
+    ,{'prompt', <<"vm-received">>}
+    ,{'say',  get_unix_epoch(kz_json:get_integer_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+    ,{'prompt', <<"vm-message_menu">>}
+    ];
+message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
+    lager:debug("mailbox is set to skip playing message envelope"),
+    [{'prompt', <<"vm-message_number">>}
+    ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
+    ,{'play', Message}
+    ,{'prompt', <<"vm-message_menu">>}
+    ].
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Plays back a message then the menu, and continues to loop over the
 %% menu utill
 %% @end
@@ -798,18 +826,11 @@ play_messages(Messages, Count, Box, Call) ->
 
 -spec play_messages(kz_json:objects(), kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
                            'ok' | 'complete'.
-play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
-                                                           }=Box, Call) ->
+play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
     AccountId = kapps_call:account_id(Call),
     Message = kvm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
-    Prompt = [{'prompt', <<"vm-message_number">>}
-             ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
-             ,{'play', Message}
-             ,{'prompt', <<"vm-received">>}
-             ,{'say',  get_unix_epoch(kz_json:get_integer_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
-             ,{'prompt', <<"vm-message_menu">>}
-             ],
+    Prompt = message_prompt(Messages, Message, Count, Box),
     case message_menu(Prompt, Box, Call) of
         {'ok', 'keep'} ->
             lager:info("caller chose to save the message"),
@@ -1553,6 +1574,8 @@ get_mailbox_profile(Data, Call) ->
                          kzd_voicemail_box:skip_instructions(MailboxJObj, Default#mailbox.skip_instructions)
                     ,skip_greeting =
                          kzd_voicemail_box:skip_greeting(MailboxJObj, Default#mailbox.skip_greeting)
+                    ,skip_envelope =
+                         kzd_voicemail_box:skip_envelope(MailboxJObj, Default#mailbox.skip_envelope)
                     ,pin =
                          kzd_voicemail_box:pin(MailboxJObj, <<>>)
                     ,timezone =
