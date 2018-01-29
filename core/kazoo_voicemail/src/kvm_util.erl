@@ -21,7 +21,6 @@
         ,enforce_retention/1, enforce_retention/2, is_prior_to_retention/2
 
         ,publish_saved_notify/5, publish_voicemail_saved/5
-        ,get_notify_completed_message/1
         ,get_caller_id_name/1, get_caller_id_number/1
         ]).
 
@@ -315,24 +314,6 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ],
     kapps_notify_publisher:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-
--spec get_notify_completed_message(kz_json:objects()) -> kz_json:object().
-get_notify_completed_message(JObjs) ->
-    get_notify_completed_message(JObjs, kz_json:new()).
-
--spec get_notify_completed_message(kz_json:objects(), kz_json:object()) -> kz_json:object().
-get_notify_completed_message([], Acc) -> Acc;
-get_notify_completed_message([JObj|JObjs], Acc) ->
-    case kz_json:get_value(<<"Status">>, JObj) of
-        <<"completed">> -> get_notify_completed_message([], JObj);
-        _ -> get_notify_completed_message(JObjs, Acc)
-    end.
 
 %%%===================================================================
 %%% Internal functions

@@ -15833,7 +15833,7 @@
                 },
                 "Event-Name": {
                     "enum": [
-                        "update"
+                        "notify_update"
                     ],
                     "type": "string"
                 },
@@ -15850,7 +15850,7 @@
                     "type": "string"
                 },
                 "Preview": {
-                    "type": "string"
+                    "type": "boolean"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -15858,7 +15858,9 @@
                 "Status": {
                     "enum": [
                         "completed",
+                        "disabled",
                         "failed",
+                        "ignored",
                         "pending"
                     ],
                     "type": "string"

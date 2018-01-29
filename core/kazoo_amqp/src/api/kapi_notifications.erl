@@ -172,7 +172,9 @@ notify_update_definition() ->
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]
                     ,values = [{<<"Status">>, [<<"completed">>
+                                              ,<<"disabled">>
                                               ,<<"failed">>
+                                              ,<<"ignored">>
                                               ,<<"pending">>
                                               ]}
                                | ?NOTIFY_VALUES(<<"notify_update">>)

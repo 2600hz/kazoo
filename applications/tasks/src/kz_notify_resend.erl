@@ -33,7 +33,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".notify_resend">>).
 -define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
 
-%% notify resned crawler settungs
+%% notify resend crawler settings
 -define(NOTIFY_RESEND_ENABLED,
         kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"notify_resend_enabled">>, 'true')).
 -define(TIME_BETWEEN_CYCLE,
@@ -297,7 +297,7 @@ call_collect(undefined, _) -> 'ok';
 call_collect(API, PublishFun) ->
     kz_amqp_worker:call_collect(kz_json:recursive_to_proplist(API)
                                ,fun kapi_notifications:PublishFun/1
-                               ,fun collecting/1
+                               ,fun kapps_notify_publisher:collecting/1
                                ,?PUBLISH_TIMEOUT
                                ).
 
@@ -336,15 +336,15 @@ db_bulk_result(JObj) ->
     end.
 
 -spec handle_result(kz_amqp_worker:request_return()) -> boolean().
-handle_result({'ok', Resp}) -> is_completed(Resp);
+handle_result({'ok', Resp}) -> kapps_notify_publisher:is_completed(Resp);
 handle_result({'error', [Error|_]=List}) ->
     case kz_json:is_json_object(Error) of
-        'true' -> is_completed(List);
+        'true' -> kapps_notify_publisher:is_completed(List);
         _ -> 'false'
     end;
 handle_result({'error', _Reason}) -> 'false';
-handle_result({'returned', _, Resp}) -> is_completed(Resp);
-handle_result({'timeout', Resp}) -> is_completed(Resp).
+handle_result({'returned', _, Resp}) -> kapps_notify_publisher:is_completed(Resp);
+handle_result({'timeout', Resp}) -> kapps_notify_publisher:is_completed(Resp).
 
 -spec maybe_reschedule(kz_term:ne_binary(), kz_json:object(), map()) -> map().
 maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
@@ -428,26 +428,3 @@ new_results_map() ->
     #{ok => []
      ,ko => []
      }.
-
--spec collecting(kz_json:objects()) -> boolean().
-collecting([JObj|_]) ->
-    case kapi_notifications:notify_update_v(JObj)
-        andalso kz_json:get_value(<<"Status">>, JObj)
-    of
-        <<"completed">> -> 'true';
-        <<"failed">> -> 'true';
-        _ -> 'false'
-    end.
-
--spec is_completed(kz_json:object() | kz_json:objects()) -> boolean().
-is_completed([]) -> 'false';
-is_completed([JObj|_]) ->
-    case kapi_notifications:notify_update_v(JObj)
-        andalso kz_json:get_value(<<"Status">>, JObj)
-    of
-        <<"completed">> -> 'true';
-        %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
-        %% <<"pending">> -> 'true';
-        _ -> 'false'
-    end;
-is_completed(JObj) -> is_completed([JObj]).
