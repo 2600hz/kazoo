@@ -1370,6 +1370,211 @@
             },
             "type": "object"
         },
+        "callflows.audio_macro": {
+            "description": "Validator for the audio_macro callflow's data object",
+            "properties": {
+                "language": {
+                    "description": "The language of the speaker",
+                    "type": "string"
+                },
+                "macro": {
+                    "default": [],
+                    "description": "The audio macro data",
+                    "items": {
+                        "description": "The individual media to play",
+                        "oneOf": [
+                            {
+                                "$ref": "callflows.play",
+                                "description": "media file to play",
+                                "properties": {
+                                    "type": {
+                                        "enum": [
+                                            "play"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "callflows.audio_macro.prompt",
+                                "description": "prompt to play",
+                                "properties": {
+                                    "type": {
+                                        "enum": [
+                                            "prompt"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "callflows.audio_macro.say",
+                                "description": "say macro to execute",
+                                "properties": {
+                                    "type": {
+                                        "enum": [
+                                            "say"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "callflows.tts",
+                                "description": "TTS text to say",
+                                "properties": {
+                                    "type": {
+                                        "enum": [
+                                            "tts"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        ],
+                        "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.audio_macro.prompt": {
+            "description": "Validator for playing prompts",
+            "properties": {
+                "id": {
+                    "description": "Prompt ID",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "The language of the speaker",
+                    "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.audio_macro.say": {
+            "description": "Validator for executing say commands",
+            "properties": {
+                "gender": {
+                    "description": "The gender of the speaker",
+                    "enum": [
+                        "masculine",
+                        "feminine",
+                        "neuter"
+                    ],
+                    "type": "string"
+                },
+                "language": {
+                    "description": "The language of the speaker",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "The method to use when saying the text",
+                    "enum": [
+                        "none",
+                        "pronounced",
+                        "iterated",
+                        "counted"
+                    ],
+                    "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "text": {
+                    "description": "Text to say",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type to use when saying the text",
+                    "enum": [
+                        "number",
+                        "items",
+                        "persons",
+                        "messages",
+                        "currency",
+                        "time_measurement",
+                        "current_date",
+                        "current_time",
+                        "current_date_time",
+                        "telephone_number",
+                        "telephone_extension",
+                        "url",
+                        "ip_address",
+                        "e-mail_address",
+                        "postal_address",
+                        "account_number",
+                        "name_spelled",
+                        "name_phonetic",
+                        "short_date_time"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "callflows.branch_bnumber": {
             "description": "Validator for the branch_bnumber callflow's data object",
             "properties": {},
@@ -3160,7 +3365,6 @@
                     "type": "string"
                 },
                 "language": {
-                    "default": "en",
                     "description": "The language of the speaker",
                     "type": "string"
                 },
