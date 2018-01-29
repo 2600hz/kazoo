@@ -27,7 +27,7 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc recieve and store a new voicemail message
+%% @doc receive and store a new voicemail message
 %% expected options:
 %% [{<<"Attachment-Name">>, AttachmentName}
 %% ,{<<"Box-Id">>, BoxId}
@@ -317,7 +317,7 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs) ->
         {'error', 'timeout'} ->
             move_copy_final_check(AccountId, FromId, ToId);
         {'error', 'conflict'} ->
-            Msg = io_lib:format("conflict occured during moving voicemail ~s / ~s to ~s / ~s"
+            Msg = io_lib:format("conflict occurred during moving voicemail ~s / ~s to ~s / ~s"
                                ,[FromDb, FromId, ToDb, ToId]
                                ),
             Subject = <<"Conflict during forward voicemail message">>,
@@ -421,7 +421,7 @@ do_copy(AccountId, ?NE_BINARY = FromId, ToId, Funs) ->
         {'error', 'timeout'} ->
             move_copy_final_check(AccountId, FromId, ToId);
         {'error', 'conflict'} ->
-            Msg = io_lib:format("conflict occured during forwarding voicemail ~s / ~s to ~s / ~s"
+            Msg = io_lib:format("conflict occurred during forwarding voicemail ~s / ~s to ~s / ~s"
                                ,[FromDb, FromId, ToDb, ToId]
                                ),
             Subject = <<"Conflict during forward voicemail message">>,
@@ -742,17 +742,15 @@ remove_malform_vm(Call, ForwardId) ->
 -spec notify_and_update_meta(kapps_call:call(), ne_binary(), integer(), kz_proplist()) -> {'ok', kapps_call:call()}.
 notify_and_update_meta(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
-    NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
+    NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props, 'nothing'),
 
     case kvm_util:publish_saved_notify(MediaId, BoxId, Call, Length, Props) of
         {'ok', JObjs} ->
-            JObj = kvm_util:get_notify_completed_message(JObjs),
-            log_notification_response(NotifyAction, MediaId, JObj, Call),
-            maybe_update_meta(Length, NotifyAction, Call, MediaId, BoxId);
+            NewAction = is_notified_successfully(Call, MediaId, JObjs, NotifyAction),
+            maybe_update_meta(Length, NewAction, Call, MediaId, BoxId);
         {'timeout', JObjs} ->
-            JObj = kvm_util:get_notify_completed_message(JObjs),
-            log_notification_response(NotifyAction, MediaId, JObj, Call),
-            maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId);
+            NewAction = is_notified_successfully(Call, MediaId, JObjs, NotifyAction),
+            maybe_update_meta(Length, NewAction, Call, MediaId, BoxId);
         {'error', _R} ->
             AccountId = kapps_call:account_id(Call),
             lager:debug("failed to send new voicemail notification for message ~s in account ~s: ~p"
@@ -760,26 +758,23 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
             maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
--spec log_notification_response(notify_action(), ne_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
-log_notification_response('nothing', _MediaId, _UpdateJObj, Call) ->
-    AccountId = kapps_call:account_id(Call),
-    lager:debug("successfully sent new voicemail notification for message ~s in account ~s: ~s"
-               ,[_MediaId, AccountId, kz_json:encode(_UpdateJObj)]);
-log_notification_response(_Action, MediaId, UpdateJObj, Call) ->
-    AccountId = kapps_call:account_id(Call),
-    case kz_json:get_value(<<"Status">>, UpdateJObj) of
-        <<"completed">> ->
-            lager:debug("successfully sent new voicemail notification for message ~s in account ~s: ~s"
-                       ,[MediaId, AccountId, kz_json:encode(UpdateJObj)]);
-        <<"failed">> ->
-            lager:debug("failed to send new voicemail notification for message ~s in account ~s: ~s"
-                       ,[MediaId
-                        ,AccountId
-                        ,kz_json:get_value(<<"Failure-Message">>, UpdateJObj)
-                        ]);
-        _ ->
-            lager:info("failed to send new voicemail notification for message ~s in account ~s: timeout"
-                      ,[MediaId, AccountId])
+%%--------------------------------------------------------------------
+%% @private
+%% @doc If notification was successfully processed return the NotifyAction.
+%% Otherwise return action 'nothing' to store the message as new voicemail.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_notified_successfully(kapps_call:call(), ne_binary(), kz_json:object(), notify_action()) -> notify_action().
+is_notified_successfully(Call, _MediaId, [], _) ->
+    lager:debug("failed to send new voicemail notification for message ~s in account ~s: timeout", [_MediaId, kapps_call:account_id(Call)]),
+    'nothing';
+is_notified_successfully(Call, MediaId, [JObj|JObjs], NotifyAction) ->
+    case kz_json:get_value(<<"Status">>, JObj) of
+        <<"completed">> -> NotifyAction;
+        <<"disabled">> -> 'nothing';
+        <<"ignored">> -> 'nothing';
+        <<"failed">> -> 'nothing';
+        _ -> is_notified_successfully(Call, MediaId, JObjs, NotifyAction)
     end.
 
 -spec maybe_update_meta(pos_integer(), notify_action(), kapps_call:call(), ne_binary(), ne_binary()) -> {'ok', kapps_call:call()}.

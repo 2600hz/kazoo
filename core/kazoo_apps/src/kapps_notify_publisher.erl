@@ -8,6 +8,8 @@
 
 -export([call_collect/2
         ,cast/2
+
+        ,collecting/1
         ,is_completed/1
         ]).
 
@@ -121,8 +123,8 @@ save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
     lager:error("max try to save payload for notification ~s publish attempt", [_NotifyType]);
 save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?KZ_PENDING_NOTIFY_DB, JObj) of
-        {'ok', _} ->
-            lager:warning("payload for failed notification ~s publish attempt was saved to ~s", [NotifyType, kz_doc:id(JObj)]);
+        {'ok', Saved} ->
+            lager:warning("payload for failed notification ~s publish attempt was saved to ~s", [NotifyType, kz_doc:id(Saved)]);
         {'error', 'not_found'} ->
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
@@ -142,28 +144,40 @@ collecting([JObj|_]) ->
         andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
+        <<"disabled">> -> 'true';
+        <<"ignored">> -> 'true';
         <<"failed">> -> 'true';
         _ -> 'false'
     end.
 
 %% @private
 %% @doc whether or not the publish is completed by teletype
--spec is_completed(kz_json:objects()) -> boolean().
+-spec is_completed(kz_json:object() | kz_json:objects()) -> boolean().
 is_completed([]) -> 'false';
 is_completed([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
         andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
+        <<"disabled">> ->
+            Reason = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj, <<>>),
+            lager:debug("notification is disabled ~p", [Reason]),
+            'true';
+        <<"ignored">> ->
+            Reason = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj, <<>>),
+            lager:debug("teletype has ignored the notification ~p", [Reason]),
+            'true';
         <<"failed">> ->
             FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj),
             ShouldIgnore = should_ignore_failure(FailureMsg),
             lager:debug("teletype failed with reason ~s, ignoring: ~s", [FailureMsg, ShouldIgnore]),
             ShouldIgnore;
-        %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
+        %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
-    end.
+    end;
+is_completed(JObj) ->
+    is_completed([JObj]).
 
 -spec should_ignore_failure(api_ne_binary()) -> boolean().
 should_ignore_failure(<<"missing_from">>) -> 'true';
@@ -231,7 +245,7 @@ json_to_failure_reason({ErrorType, JObjs}) when is_list(JObjs) ->
                         >>;
         <<"pending">> -> <<"timeout during publishing, last message from teletype is 'pending'">>;
         <<"completed">> -> <<"it shouldn't be here">>;
-        _ -> <<"recieved ", (cast_to_binary(ErrorType))/binary, " without any response from teletype">>
+        _ -> <<"received ", (cast_to_binary(ErrorType))/binary, " without any response from teletype">>
     end;
 json_to_failure_reason({'error', JObj}) ->
     json_to_failure_reason({'error', [JObj]});

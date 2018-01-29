@@ -935,7 +935,7 @@ public_proplist(Key, JObj) ->
 notification_disabled(DataJObj, TemplateId) ->
     AccountId = kapi_notifications:account_id(DataJObj),
     lager:debug("notification ~s handling not configured for account ~s", [TemplateId, AccountId]),
-    send_update(DataJObj, <<"completed">>).
+    send_update(DataJObj, <<"disabled">>, <<"notification is disabled">>).
 
 -spec maybe_get_attachments(kz_json:object() | api_binary()) -> attachments().
 maybe_get_attachments('undefined') -> [];
