@@ -32,7 +32,7 @@ pages:
 #    - 'applications/crossbar/doc/ubiquiti_auth.md'
 #    - 'applications/crossbar/doc/user_authentication.md'
 
-- 'System Preparation'
+- 'System Preparation':
   - 'Branding':
     - 'applications/crossbar/doc/whitelabeling.md'
 # Email notifications? Macros? Templates?
