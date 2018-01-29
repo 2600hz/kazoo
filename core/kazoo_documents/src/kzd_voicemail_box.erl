@@ -127,9 +127,10 @@ skip_greeting(Box, Default) ->
     kz_json:is_true(?KEY_SKIP_GREETING, Box, Default).
 
 -spec skip_envelope(doc()) -> boolean().
--spec skip_envelope(doc(), Default) -> boolean() | Default.
 skip_envelope(Box) ->
     skip_envelope(Box, 'false').
+
+-spec skip_envelope(doc(), Default) -> boolean() | Default.
 skip_envelope(Box, Default) ->
     kz_json:is_true(?KEY_SKIP_ENVELOPE, Box, Default).
 
