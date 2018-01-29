@@ -48,6 +48,7 @@
                       ,{<<"agent">>, <<"logout">>}
                       ,{<<"agent">>, <<"pause">>}
                       ,{<<"agent">>, <<"resume">>}
+                      ,{<<"agent">>, <<"end_wrapup">>}
                       ,{<<"agent">>, <<"login_queue">>}
                       ,{<<"agent">>, <<"logout_queue">>}
                       ]
