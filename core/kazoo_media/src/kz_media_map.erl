@@ -392,7 +392,7 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
     lager:debug("adding language ~s for prompt ~s to map for ~s", [Lang, PromptId, AccountId]),
     Languages = kz_json:set_value(Lang
                                  ,kz_media_util:prompt_path(kz_doc:account_id(JObj, ?KZ_MEDIA_DB)
-                                                           ,kz_doc:id(JObj)
+                                                           ,kz_http_util:urlencode(kz_doc:id(JObj))
                                                            )
                                  ,Langs
                                  ),
