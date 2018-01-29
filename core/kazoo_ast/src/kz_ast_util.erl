@@ -323,7 +323,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
         end,
 
     maybe_sub_properties_to_row(SchemaJObj
-                               ,kz_json:get_value(<<"type">>, Settings)
+                               ,get_type(Settings)
                                ,Names
                                ,Settings
                                ,{[?TABLE_ROW(cell_wrap(kz_binary:join(Names, <<".">>))
@@ -388,7 +388,7 @@ support_level([Name|Names], SchemaJObj) ->
     end.
 
 schema_type(Settings) ->
-    case schema_type(Settings, kz_json:get_ne_value(<<"type">>, Settings)) of
+    case schema_type(Settings, get_type(Settings)) of
         <<"[", _/binary>>=Type -> Type;
         Type -> cell_wrap(Type)
     end.
@@ -423,7 +423,7 @@ maybe_schema_type_from_oneof(Settings) ->
         'undefined' ->
             maybe_schema_type_from_anyof(Settings);
         OneOf ->
-            SchemaTypes = [schema_type(OneOfJObj, kz_json:get_ne_value(<<"type">>, OneOfJObj))
+            SchemaTypes = [schema_type(OneOfJObj, get_type(OneOfJObj))
                            || OneOfJObj <- OneOf
                           ],
             kz_binary:join(SchemaTypes, <<" | ">>)
@@ -433,7 +433,7 @@ maybe_schema_type_from_anyof(Settings) ->
     case kz_json:get_list_value(<<"anyOf">>, Settings) of
         'undefined' -> throw('no_type');
         AnyOf ->
-            SchemaTypes = [schema_type(AnyOfJObj, kz_json:get_ne_value(<<"type">>, AnyOfJObj))
+            SchemaTypes = [schema_type(AnyOfJObj, get_type(AnyOfJObj))
                            || AnyOfJObj <- AnyOf
                           ],
             kz_binary:join(SchemaTypes, <<" || ">>)
@@ -483,20 +483,25 @@ cell_wrap(Type) ->
     [<<"`">>, kz_term:to_binary(Type), <<"`">>].
 
 maybe_sub_properties_to_row(SchemaJObj, <<"object">>, Names, Settings, {_,_}=Acc0) ->
+    ?LOG_DEBUG("names: ~p ~p~n", [Names, Settings]),
     Acc2 = lists:foldl(fun(Key, {_,_}=Acc1) ->
                                maybe_object_properties_to_row(SchemaJObj, Key, Acc1, Names, Settings)
                        end
                       ,Acc0
                       ,[<<"properties">>, <<"patternProperties">>]
                       ),
-    maybe_any_of_to_rows(SchemaJObj, Names, Settings, Acc2);
+    maybe_one_of_to_rows(SchemaJObj
+                        ,Names
+                        ,Settings
+                        ,maybe_any_of_to_rows(SchemaJObj, Names, Settings, Acc2)
+                        );
 maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, {Table, Refs}) ->
     case kz_json:get_ne_value([<<"items">>, <<"type">>], Settings) of
         <<"object">> = Type ->
             maybe_sub_properties_to_row(SchemaJObj
                                        ,Type
                                        ,Names ++ ["[]"]
-                                       ,kz_json:get_value(<<"items">>, Settings, kz_json:new())
+                                       ,kz_json:get_json_value(<<"items">>, Settings, kz_json:new())
                                        ,{Table, Refs}
                                        );
         <<"string">> = Type ->
@@ -518,7 +523,15 @@ maybe_sub_properties_to_row(SchemaJObj, [_|_]=Types, Names, Settings, Acc) ->
                ,Acc
                ,Types
                );
+maybe_sub_properties_to_row(SchemaJObj, 'undefined', Names, Settings, Acc) ->
+    case kz_json:get_ne_binary_value(<<"$ref">>, Settings) of
+        'undefined' -> Acc;
+        RefId ->
+            {'ok', RefSchema} = kz_json_schema:fload(RefId),
+            maybe_sub_properties_to_row(SchemaJObj, get_type(RefSchema), Names, Settings, Acc)
+    end;
 maybe_sub_properties_to_row(_SchemaJObj, _Type, _Keys, _Settings, Acc) ->
+    ?LOG_DEBUG("ignoring type ~p for ~p", [_Type, _Keys]),
     Acc.
 
 maybe_object_properties_to_row(SchemaJObj, Key, Acc0, Names, Settings) ->
@@ -535,6 +548,23 @@ maybe_regex_name(<<"patternProperties">>, Name) ->
 maybe_regex_name(_Key, Name) ->
     Name.
 
+maybe_one_of_to_rows(SchemaJObj, Names, Settings, Acc0) ->
+    lists:foldl(fun(SubSchema, Acc1) ->
+                        maybe_one_of_to_row(SchemaJObj, Names, SubSchema, Acc1)
+                end
+               ,Acc0
+               ,kz_json:get_list_value(<<"oneOf">>, Settings, [])
+               ).
+
+maybe_one_of_to_row(SchemaJObj, Names, Settings, {Table, Refs0}) ->
+    Acc0 = {Table, maybe_add_ref(Refs0, Settings)},
+    ?LOG_DEBUG("one-of ~p settings: ~p", [Names, Settings]),
+    maybe_sub_properties_to_row(SchemaJObj
+                               ,get_type(Settings)
+                               ,Names
+                               ,Settings
+                               ,Acc0
+                               ).
 
 maybe_any_of_to_rows(SchemaJObj, Names, Settings, Acc0) ->
     lists:foldl(fun(SubSchema, Acc1) ->
@@ -558,6 +588,9 @@ maybe_any_of_to_row(SchemaJObj, Names, Settings, Acc0) ->
                 property_to_row(SchemaJObj, Names ++ [K], V, Acc)
         end,
     kz_json:foldl(F, Acc0, PlusPatternProperties).
+
+get_type(Schema) ->
+    kz_json:get_value(<<"type">>, Schema).
 
 get_properties(Schema) ->
     kz_json:get_json_value(<<"properties">>, Schema, kz_json:new()).
