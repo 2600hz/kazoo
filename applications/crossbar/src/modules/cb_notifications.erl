@@ -1245,13 +1245,18 @@ merge_available(AccountAvailable, Available) ->
 -spec merge_fold(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 merge_fold(Overridden, Acc) ->
     Id = kz_doc:id(Overridden),
-    {[Master], Filtered} = lists:partition(fun(JObj) -> kz_doc:id(JObj) =:= Id end, Acc),
-    Values = [{<<"friendly_name">>, kz_json:get_value(<<"friendly_name">>, Master)}
-             ,{<<"macros">>, kz_json:get_value(<<"macros">>, Master)}
-             ],
-    JObj = kz_json:set_values(Values, Overridden),
-    lager:debug("noting ~s is overridden in account", [Id]),
-    [note_account_override(JObj) | Filtered].
+    case lists:partition(fun(JObj) -> kz_doc:id(JObj) =:= Id end, Acc) of
+        {[Master], Filtered} ->
+            Values = [{<<"friendly_name">>, kz_json:get_value(<<"friendly_name">>, Master)}
+                     ,{<<"macros">>, kz_json:get_value(<<"macros">>, Master)}
+                     ],
+            JObj = kz_json:set_values(Values, Overridden),
+            lager:debug("noting ~s is overridden in account", [Id]),
+            [note_account_override(JObj) | Filtered];
+        {[], _Filtered} ->
+            lager:warning("notification ~s exists on the account, but doesn't exist on the system. Ignoring", [Id]),
+            Acc
+    end.
 
 -type normalize_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
