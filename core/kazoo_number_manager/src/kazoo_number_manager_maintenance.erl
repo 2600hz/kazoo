@@ -388,12 +388,17 @@ check_assigned_to(AccountDb, Db, Conflicts) ->
     AccountId = kz_util:format_account_id(AccountDb),
     Ids = gb_sets:to_list(Conflicts),
     ToRead = [[AccountId, Id] || Id <- Ids],
-    PNIds = case kz_datamgr:get_results(Db, <<"numbers/assigned_to">>, [{keys, ToRead}]) of
+
+    %% CAUTION: should return Conflicts if there are no wrong assigned or we couldn't get the result from db
+    PNIds = case ToRead =/= []
+                andalso kz_datamgr:get_results(Db, <<"numbers/assigned_to">>, [{keys, ToRead}])
+            of
+                'false' -> Conflicts;
+                {'ok', []} -> Conflicts;
                 {'ok', PNs} ->
                     gb_sets:from_list([kz_doc:id(JObj) || JObj <- PNs]);
                 {'error', _Error} ->
                     ?LOG(" [~s] failed to check assignments of conflicted numbers: ~p", [AccountId, _Error]),
-                    %% CAUTION: returning the same conflicted Ids, because we don't know the assignments are wrong or not yet
                     Conflicts
             end,
 
@@ -413,7 +418,7 @@ check_assigned_to(AccountDb, Db, Conflicts) ->
 -spec warn_delete(ne_binary(), kz_proplist()) -> 'true'.
 warn_delete(AccountId, WrongAssigned) ->
     io:put_chars([" [", AccountId, "] deleting numbers which are not assigned to this account:", $\n
-                 ,[["\t\t ", Id, ": removing due to wrong assignment", $\n] || Id <- WrongAssigned]
+                 ,[["\t", Id, ": removing due to wrong assignment", $\n] || Id <- WrongAssigned]
                  ]
                 ),
     'true'.
@@ -424,7 +429,7 @@ log_saved_failed(_, _, []) -> 'ok';
 log_saved_failed(AccountDb, Db, Props) ->
     AccountId = kz_util:format_account_id(AccountDb),
     io:put_chars([" [", AccountId, "] failed to save ", integer_to_binary(length(Props)), " number(s) into number db '", Db, "':\n"
-                 ,[[" [", AccountId, "] ", Num, ": ", Error, $\n]
+                 ,[["\t", Num, ": ", Error, $\n]
                    || {Num, Error} <- Props
                   ]
                  ]).
