@@ -793,7 +793,9 @@ message_count_prompts(New, Saved) ->
 %%--------------------------------------------------------------------
 -spec message_prompt(kz_json:objects(), binary(), non_neg_integer(), mailbox()) ->
                             kapps_call_command:audio_macro_prompts().
-message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone, skip_envelope='false'}) ->
+message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone
+                                                       ,skip_envelope='false'
+                                                       }) ->
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
     ,{'play', Message}
@@ -824,8 +826,7 @@ play_messages(Messages, Count, Box, Call) ->
 
 -spec play_messages(kz_json:objects(), kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
                            'ok' | 'complete'.
-play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
-                                                           }=Box, Call) ->
+play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
     AccountId = kapps_call:account_id(Call),
     Message = kvm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
