@@ -320,6 +320,9 @@ Updates crossbar docs with the schema table from the ref (auto-gen) version
 
 Parses the ecallmgr code looking for keys used to access values in the FreeSWITCH proplist and builds a header file at applications/ecallmgr/src/fs\_event\_filters.hrl for use when initializing mod\_kazoo.
 
+## generate-kzd-builders.escript
+
+Builds accessor modules (`.erl.src` files) in `core/kazoo_documents/src` from the API schemas. Changes to the `.erl.src` should be manually migrated to the corresponding `.erl` file.
 
 ## generate-schemas.escript
 

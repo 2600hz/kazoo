@@ -1,15 +1,10 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "callflows.tts",
-    "description": "Validator for the TTS (Text-to-speech) callflow action",
+    "_id": "callflows.audio_macro.prompt",
+    "description": "Validator for playing prompts",
     "properties": {
-        "engine": {
-            "description": "What TTS engine to use",
-            "enum": [
-                "flite",
-                "ispeech",
-                "voicefabric"
-            ],
+        "id": {
+            "description": "Prompt ID",
             "type": "string"
         },
         "language": {
@@ -36,21 +31,7 @@
                 "type": "string"
             },
             "type": "array"
-        },
-        "text": {
-            "description": "The text to speak",
-            "maxLength": 1000,
-            "minLength": 1,
-            "type": "string"
-        },
-        "voice": {
-            "default": "female",
-            "description": "What voice to use when speaking the text",
-            "type": "string"
         }
     },
-    "required": [
-        "text"
-    ],
     "type": "object"
 }

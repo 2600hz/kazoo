@@ -14,6 +14,7 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("crossbar/src/crossbar.hrl").
+-include_lib("kazoo_ast/src/kz_ast.hrl").
 
 -define(REF_PATH
        ,code:lib_dir('crossbar'), "doc", "ref"
@@ -25,9 +26,6 @@
 -define(SWAGGER_JSON
        ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
        ).
-
--define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
--define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
 
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
 -define(ENDPOINTS_PREFIX, "{ENDPOINT_TYPE}/{ENDPOINT_ID}").

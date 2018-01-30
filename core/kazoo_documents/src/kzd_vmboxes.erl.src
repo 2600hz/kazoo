@@ -17,6 +17,7 @@
 -export([pin/1, pin/2, set_pin/2]).
 -export([require_pin/1, require_pin/2, set_require_pin/2]).
 -export([save_after_notify/1, save_after_notify/2, set_save_after_notify/2]).
+-export([skip_envelope/1, skip_envelope/2, set_skip_envelope/2]).
 -export([skip_greeting/1, skip_greeting/2, set_skip_greeting/2]).
 -export([skip_instructions/1, skip_instructions/2, set_skip_instructions/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
@@ -224,6 +225,18 @@ save_after_notify(Doc, Default) ->
 -spec set_save_after_notify(doc(), boolean()) -> doc().
 set_save_after_notify(Doc, SaveAfterNotify) ->
     kz_json:set_value([<<"save_after_notify">>], SaveAfterNotify, Doc).
+
+-spec skip_envelope(doc()) -> boolean().
+skip_envelope(Doc) ->
+    skip_envelope(Doc, false).
+
+-spec skip_envelope(doc(), Default) -> boolean() | Default.
+skip_envelope(Doc, Default) ->
+    kz_json:get_boolean_value([<<"skip_envelope">>], Doc, Default).
+
+-spec set_skip_envelope(doc(), boolean()) -> doc().
+set_skip_envelope(Doc, SkipEnvelope) ->
+    kz_json:set_value([<<"skip_envelope">>], SkipEnvelope, Doc).
 
 -spec skip_greeting(doc()) -> boolean().
 skip_greeting(Doc) ->

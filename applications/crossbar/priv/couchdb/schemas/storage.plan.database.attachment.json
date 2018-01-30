@@ -19,5 +19,6 @@
         "stub": {
             "type": "boolean"
         }
-    }
+    },
+    "type": "object"
 }

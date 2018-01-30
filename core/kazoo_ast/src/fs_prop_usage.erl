@@ -27,9 +27,7 @@ write_usage_to_header(Usage) ->
     write_usage_to_header(Usage, IO).
 
 write_usage_to_header(Usage, IO) ->
-    io:format("usage: ~p~n", [Usage]),
     EventFilters = lists:foldl(fun write_mod_usage/2, sets:new(), Usage),
-    io:format("event filters: ~p~n", [sets:to_list(EventFilters)]),
     write_headers(IO, lists:usort(lists:filter(fun ignored_headers/1, sets:to_list(EventFilters)))).
 
 write_headers(IO, []) ->

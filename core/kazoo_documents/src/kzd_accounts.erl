@@ -18,7 +18,14 @@
 -export([music_on_hold_media_id/1, music_on_hold_media_id/2, set_music_on_hold_media_id/2]).
 -export([name/1, name/2, set_name/2]).
 -export([notifications/1, notifications/2, set_notifications/2]).
--export([notification/2, notification/3, set_notification/3]).
+-export([notifications_first_occurrence/1, notifications_first_occurrence/2, set_notifications_first_occurrence/2]).
+-export([notifications_first_occurrence_sent_initial_call/1, notifications_first_occurrence_sent_initial_call/2, set_notifications_first_occurrence_sent_initial_call/2]).
+-export([notifications_first_occurrence_sent_initial_registration/1, notifications_first_occurrence_sent_initial_registration/2, set_notifications_first_occurrence_sent_initial_registration/2]).
+-export([notifications_low_balance/1, notifications_low_balance/2, set_notifications_low_balance/2]).
+-export([notifications_low_balance_enabled/1, notifications_low_balance_enabled/2, set_notifications_low_balance_enabled/2]).
+-export([notifications_low_balance_last_notification/1, notifications_low_balance_last_notification/2, set_notifications_low_balance_last_notification/2]).
+-export([notifications_low_balance_sent_low_balance/1, notifications_low_balance_sent_low_balance/2, set_notifications_low_balance_sent_low_balance/2]).
+-export([notifications_low_balance_threshold/1, notifications_low_balance_threshold/2, set_notifications_low_balance_threshold/2]).
 -export([org/1, org/2, set_org/2]).
 -export([preflow/1, preflow/2, set_preflow/2]).
 -export([preflow_always/1, preflow_always/2, set_preflow_always/2]).
@@ -297,17 +304,101 @@ notifications(Doc, Default) ->
 set_notifications(Doc, Notifications) ->
     kz_json:set_value([<<"notifications">>], Notifications, Doc).
 
--spec notification(doc(), kz_json:key()) -> kz_term:api_object().
-notification(Doc, Notification) ->
-    notification(Doc, Notification, 'undefined').
+-spec notifications_first_occurrence(doc()) -> kz_term:api_object().
+notifications_first_occurrence(Doc) ->
+    notifications_first_occurrence(Doc, 'undefined').
 
--spec notification(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
-notification(Doc, Notification, Default) ->
-    kz_json:get_json_value([<<"notifications">>, Notification], Doc, Default).
+-spec notifications_first_occurrence(doc(), Default) -> kz_json:object() | Default.
+notifications_first_occurrence(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"first_occurrence">>], Doc, Default).
 
--spec set_notification(doc(), kz_json:key(), kz_json:object()) -> doc().
-set_notification(Doc, Notification, Value) ->
-    kz_json:set_value([<<"notifications">>, Notification], Value, Doc).
+-spec set_notifications_first_occurrence(doc(), kz_json:object()) -> doc().
+set_notifications_first_occurrence(Doc, NotificationsFirstOccurrence) ->
+    kz_json:set_value([<<"notifications">>, <<"first_occurrence">>], NotificationsFirstOccurrence, Doc).
+
+-spec notifications_first_occurrence_sent_initial_call(doc()) -> boolean().
+notifications_first_occurrence_sent_initial_call(Doc) ->
+    notifications_first_occurrence_sent_initial_call(Doc, false).
+
+-spec notifications_first_occurrence_sent_initial_call(doc(), Default) -> boolean() | Default.
+notifications_first_occurrence_sent_initial_call(Doc, Default) ->
+    kz_json:get_boolean_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], Doc, Default).
+
+-spec set_notifications_first_occurrence_sent_initial_call(doc(), boolean()) -> doc().
+set_notifications_first_occurrence_sent_initial_call(Doc, NotificationsFirstOccurrenceSentInitialCall) ->
+    kz_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], NotificationsFirstOccurrenceSentInitialCall, Doc).
+
+-spec notifications_first_occurrence_sent_initial_registration(doc()) -> boolean().
+notifications_first_occurrence_sent_initial_registration(Doc) ->
+    notifications_first_occurrence_sent_initial_registration(Doc, false).
+
+-spec notifications_first_occurrence_sent_initial_registration(doc(), Default) -> boolean() | Default.
+notifications_first_occurrence_sent_initial_registration(Doc, Default) ->
+    kz_json:get_boolean_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], Doc, Default).
+
+-spec set_notifications_first_occurrence_sent_initial_registration(doc(), boolean()) -> doc().
+set_notifications_first_occurrence_sent_initial_registration(Doc, NotificationsFirstOccurrenceSentInitialRegistration) ->
+    kz_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], NotificationsFirstOccurrenceSentInitialRegistration, Doc).
+
+-spec notifications_low_balance(doc()) -> kz_term:api_object().
+notifications_low_balance(Doc) ->
+    notifications_low_balance(Doc, 'undefined').
+
+-spec notifications_low_balance(doc(), Default) -> kz_json:object() | Default.
+notifications_low_balance(Doc, Default) ->
+    kz_json:get_json_value([<<"notifications">>, <<"low_balance">>], Doc, Default).
+
+-spec set_notifications_low_balance(doc(), kz_json:object()) -> doc().
+set_notifications_low_balance(Doc, NotificationsLowBalance) ->
+    kz_json:set_value([<<"notifications">>, <<"low_balance">>], NotificationsLowBalance, Doc).
+
+-spec notifications_low_balance_enabled(doc()) -> boolean().
+notifications_low_balance_enabled(Doc) ->
+    notifications_low_balance_enabled(Doc, true).
+
+-spec notifications_low_balance_enabled(doc(), Default) -> boolean() | Default.
+notifications_low_balance_enabled(Doc, Default) ->
+    kz_json:get_boolean_value([<<"notifications">>, <<"low_balance">>, <<"enabled">>], Doc, Default).
+
+-spec set_notifications_low_balance_enabled(doc(), boolean()) -> doc().
+set_notifications_low_balance_enabled(Doc, NotificationsLowBalanceEnabled) ->
+    kz_json:set_value([<<"notifications">>, <<"low_balance">>, <<"enabled">>], NotificationsLowBalanceEnabled, Doc).
+
+-spec notifications_low_balance_last_notification(doc()) -> kz_term:api_integer().
+notifications_low_balance_last_notification(Doc) ->
+    notifications_low_balance_last_notification(Doc, 'undefined').
+
+-spec notifications_low_balance_last_notification(doc(), Default) -> integer() | Default.
+notifications_low_balance_last_notification(Doc, Default) ->
+    kz_json:get_integer_value([<<"notifications">>, <<"low_balance">>, <<"last_notification">>], Doc, Default).
+
+-spec set_notifications_low_balance_last_notification(doc(), integer()) -> doc().
+set_notifications_low_balance_last_notification(Doc, NotificationsLowBalanceLastNotification) ->
+    kz_json:set_value([<<"notifications">>, <<"low_balance">>, <<"last_notification">>], NotificationsLowBalanceLastNotification, Doc).
+
+-spec notifications_low_balance_sent_low_balance(doc()) -> kz_term:api_boolean().
+notifications_low_balance_sent_low_balance(Doc) ->
+    notifications_low_balance_sent_low_balance(Doc, 'undefined').
+
+-spec notifications_low_balance_sent_low_balance(doc(), Default) -> boolean() | Default.
+notifications_low_balance_sent_low_balance(Doc, Default) ->
+    kz_json:get_boolean_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], Doc, Default).
+
+-spec set_notifications_low_balance_sent_low_balance(doc(), boolean()) -> doc().
+set_notifications_low_balance_sent_low_balance(Doc, NotificationsLowBalanceSentLowBalance) ->
+    kz_json:set_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], NotificationsLowBalanceSentLowBalance, Doc).
+
+-spec notifications_low_balance_threshold(doc()) -> kz_term:api_number().
+notifications_low_balance_threshold(Doc) ->
+    notifications_low_balance_threshold(Doc, 'undefined').
+
+-spec notifications_low_balance_threshold(doc(), Default) -> number() | Default.
+notifications_low_balance_threshold(Doc, Default) ->
+    kz_json:get_float_value([<<"notifications">>, <<"low_balance">>, <<"threshold">>], Doc, Default).
+
+-spec set_notifications_low_balance_threshold(doc(), number()) -> doc().
+set_notifications_low_balance_threshold(Doc, NotificationsLowBalanceThreshold) ->
+    kz_json:set_value([<<"notifications">>, <<"low_balance">>, <<"threshold">>], NotificationsLowBalanceThreshold, Doc).
 
 -spec org(doc()) -> kz_term:api_binary().
 org(Doc) ->
@@ -789,7 +880,7 @@ low_balance_threshold(AccountId, Default) when is_binary(AccountId) ->
         {'ok', JObj} -> low_balance_threshold(JObj, Default)
     end;
 low_balance_threshold(Doc, Default) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
+    LowBalance = notifications_low_balance(Doc, kz_json:new()),
     case kz_json:get_float_value(<<"threshold">>, LowBalance) of
         'undefined' -> topup_threshold(Doc, Default);
         Threshold -> Threshold
@@ -797,8 +888,7 @@ low_balance_threshold(Doc, Default) ->
 
 -spec set_low_balance_threshold(doc(), float()) -> doc().
 set_low_balance_threshold(Doc, Threshold) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kz_json:set_value(<<"threshold">>, Threshold, LowBalance)).
+    set_notifications_low_balance_threshold(Doc, Threshold).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -807,19 +897,16 @@ set_low_balance_threshold(Doc, Threshold) ->
 %%--------------------------------------------------------------------
 -spec low_balance_sent(doc()) -> boolean().
 low_balance_sent(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
+    LowBalance = notifications_low_balance(Doc, kz_json:new()),
     kz_json:is_true(<<"sent_low_balance">>, LowBalance).
 
 -spec set_low_balance_sent(doc()) -> doc().
 set_low_balance_sent(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kz_json:set_value(<<"sent_low_balance">>, 'true', LowBalance)).
-
+    set_notifications_low_balance_sent_low_balance(Doc, 'true').
 
 -spec reset_low_balance_sent(doc()) -> doc().
 reset_low_balance_sent(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kz_json:set_value(<<"sent_low_balance">>, 'false', LowBalance)).
+    set_notifications_low_balance_sent_low_balance(Doc, 'false').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -828,22 +915,20 @@ reset_low_balance_sent(Doc) ->
 %%--------------------------------------------------------------------
 -spec low_balance_enabled(doc()) -> boolean().
 low_balance_enabled(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
+    LowBalance = notifications_low_balance(Doc, kz_json:new()),
     kz_json:is_true(<<"enabled">>, LowBalance).
 
 -spec set_low_balance_enabled(doc()) -> doc().
 set_low_balance_enabled(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kz_json:set_value(<<"enabled">>, 'true', LowBalance)).
+    set_notifications_low_balance_enabled(Doc, 'true').
 
 -spec reset_low_balance_enabled(doc()) -> doc().
 reset_low_balance_enabled(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kz_json:set_value(<<"enabled">>, 'true', LowBalance)).
+    set_notifications_low_balance_enabled(Doc, 'true').
 
 -spec low_balance_enabled_exists(doc()) -> boolean().
 low_balance_enabled_exists(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
+    LowBalance = notifications_low_balance(Doc, kz_json:new()),
     'undefined' =/= kz_json:get_value(<<"enabled">>, LowBalance).
 
 %%--------------------------------------------------------------------
@@ -853,7 +938,7 @@ low_balance_enabled_exists(Doc) ->
 %%--------------------------------------------------------------------
 -spec low_balance_tstamp(doc()) -> kz_term:api_number().
 low_balance_tstamp(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
+    LowBalance = notifications_low_balance(Doc, kz_json:new()),
     kz_json:get_integer_value([<<"last_notification">>], LowBalance).
 
 -spec set_low_balance_tstamp(doc()) -> doc().
@@ -862,13 +947,12 @@ set_low_balance_tstamp(Doc) ->
 
 -spec set_low_balance_tstamp(doc(), kz_term:gregorian_seconds()) -> doc().
 set_low_balance_tstamp(Doc, TStamp) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kz_json:set_value([<<"last_notification">>], TStamp, LowBalance)).
+    set_notifications_low_balance_last_notification(Doc, TStamp).
 
 -spec remove_low_balance_tstamp(doc()) -> doc().
 remove_low_balance_tstamp(Doc) ->
-    LowBalance = notification(Doc, <<"low_balance">>, kz_json:new()),
-    set_notification(Doc, <<"low_balance">>, kz_json:delete_key([<<"last_notification">>], LowBalance)).
+    LowBalance = notifications_low_balance(Doc, kz_json:new()),
+    set_notifications_low_balance(Doc, kz_json:delete_key([<<"last_notification">>], LowBalance)).
 
 -spec home_zone(kz_term:ne_binary() | doc()) -> kz_term:api_binary().
 home_zone(AccountId) when is_binary(AccountId) ->
@@ -896,20 +980,18 @@ set_home_zone(JObj, Zone) ->
 
 -spec sent_initial_registration(doc()) -> boolean().
 sent_initial_registration(Doc) ->
-    FirstOccurrence = notification(Doc, <<"first_occurrence">>, kz_json:new()),
+    FirstOccurrence = notifications_first_occurrence(Doc, kz_json:new()),
     kz_json:is_true(<<"sent_initial_registration">>, FirstOccurrence).
 
 -spec set_initial_registration_sent(doc(), boolean()) -> doc().
 set_initial_registration_sent(Doc, Sent) ->
-    FirstOccurrence = notification(Doc, <<"first_occurrence">>, kz_json:new()),
-    set_notification(Doc, <<"first_occurrence">>, kz_json:set_value(<<"sent_initial_registration">>, Sent, FirstOccurrence)).
+    set_notifications_first_occurrence_sent_initial_registration(Doc, Sent).
 
 -spec sent_initial_call(doc()) -> boolean().
 sent_initial_call(Doc) ->
-    FirstOccurrence = notification(Doc, <<"first_occurrence">>, kz_json:new()),
+    FirstOccurrence = notifications_first_occurrence(Doc, kz_json:new()),
     kz_json:is_true(<<"sent_initial_call">>, FirstOccurrence).
 
 -spec set_initial_call_sent(doc(), boolean()) -> doc().
 set_initial_call_sent(Doc, Sent) ->
-    FirstOccurrence = notification(Doc, <<"first_occurrence">>, kz_json:new()),
-    set_notification(Doc, <<"first_occurrence">>, kz_json:set_value(<<"sent_initial_call">>, Sent, FirstOccurrence)).
+    set_notifications_first_occurrence_sent_initial_call(Doc, Sent).
