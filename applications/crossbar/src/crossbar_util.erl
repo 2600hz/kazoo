@@ -73,7 +73,6 @@
 -export([maybe_refresh_fs_xml/2
         ,refresh_fs_xml/1
         ]).
--export([maybe_validate_quickcall/1]).
 
 -ifdef(TEST).
 -export([trunkstore_servers_changed/2]).
@@ -1252,31 +1251,3 @@ update_descendants_count(AccountId, JObj, NewCount) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
--spec maybe_validate_quickcall(cb_context:context()) ->
-                                      cb_context:context().
-maybe_validate_quickcall(Context) ->
-    case kz_buckets:consume_tokens(?APP_NAME
-                                  ,cb_modules_util:bucket_name(Context)
-                                  ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
-                                  )
-    of
-        'false' -> cb_context:add_system_error('too_many_requests', Context);
-        'true' -> maybe_validate_quickcall(Context, cb_context:resp_status(Context))
-    end.
-
--spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) ->
-                                      cb_context:context().
-maybe_validate_quickcall(Context, 'success') ->
-    AllowAnon = kz_json:is_true(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
-
-    case AllowAnon
-        orelse cb_context:is_authenticated(Context)
-        orelse kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anonymous_quickcalls">>, 'true')
-    of
-        'false' -> cb_context:add_system_error('invalid_credentials', Context);
-        'true' -> Context
-    end;
-maybe_validate_quickcall(Context, _Status) ->
-    lager:info("quickcall failed to validate, status ~p, not proceeding", [_Status]),
-    Context.
