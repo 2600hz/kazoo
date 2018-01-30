@@ -1377,7 +1377,7 @@
                     "description": "The language of the speaker",
                     "type": "string"
                 },
-                "macro": {
+                "macros": {
                     "default": [],
                     "description": "The audio macro data",
                     "items": {
@@ -1387,7 +1387,7 @@
                                 "$ref": "callflows.play",
                                 "description": "media file to play",
                                 "properties": {
-                                    "type": {
+                                    "macro": {
                                         "enum": [
                                             "play"
                                         ],
@@ -1399,7 +1399,7 @@
                                 "$ref": "callflows.audio_macro.prompt",
                                 "description": "prompt to play",
                                 "properties": {
-                                    "type": {
+                                    "macro": {
                                         "enum": [
                                             "prompt"
                                         ],
@@ -1411,7 +1411,7 @@
                                 "$ref": "callflows.audio_macro.say",
                                 "description": "say macro to execute",
                                 "properties": {
-                                    "type": {
+                                    "macro": {
                                         "enum": [
                                             "say"
                                         ],
@@ -1423,7 +1423,7 @@
                                 "$ref": "callflows.tts",
                                 "description": "TTS text to say",
                                 "properties": {
-                                    "type": {
+                                    "macro": {
                                         "enum": [
                                             "tts"
                                         ],
