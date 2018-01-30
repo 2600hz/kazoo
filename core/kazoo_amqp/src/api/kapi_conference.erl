@@ -25,7 +25,8 @@
 -export([mute_participant/1, mute_participant_v/1]).
 -export([play/1, play_v/1
         ,tones/1, tones_v/1
-        ,say/1, say_v/1, tts/1, tts_v/1
+        ,say/1, say_v/1
+        ,tts/1, tts_v/1
         ]).
 -export([record/1, record_v/1]).
 -export([recordstop/1, recordstop_v/1]).
