@@ -26130,7 +26130,8 @@
                 "stub": {
                     "type": "boolean"
                 }
-            }
+            },
+            "type": "object"
         },
         "storage.plan.database.document": {
             "description": "schema for document type storage plan",
