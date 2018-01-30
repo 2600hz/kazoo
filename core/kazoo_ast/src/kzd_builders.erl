@@ -34,11 +34,12 @@ build_accessor(SchemaPath, 'ok') ->
         'undefined' -> 'ok';
         {Exports, Accessors} ->
             {PatternExports, PatternAccessors} = accessors_from_patterns(kz_json:get_json_value(<<"patternProperties">>, SchemaJObj)),
+
             save_module(SchemaId, [BaseModule
-                                  ,lists:reverse(Exports ++ PatternExports), "\n"
+                                  ,lists:reverse(Exports) ++ lists:reverse(PatternExports), "\n"
                                   ,base_includes()
                                   ,base_types(kz_doc:id(SchemaJObj))
-                                  ,lists:reverse(Accessors ++ PatternAccessors)
+                                  ,lists:reverse(Accessors) ++ lists:reverse(PatternAccessors)
                                   ])
     end.
 
