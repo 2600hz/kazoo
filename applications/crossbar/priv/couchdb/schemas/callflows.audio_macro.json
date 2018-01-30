@@ -15,53 +15,33 @@
                 "oneOf": [
                     {
                         "$ref": "callflows.play",
-                        "description": "media file to play",
-                        "properties": {
-                            "macro": {
-                                "enum": [
-                                    "play"
-                                ],
-                                "type": "string"
-                            }
-                        }
+                        "description": "media file to play"
                     },
                     {
                         "$ref": "callflows.audio_macro.prompt",
-                        "description": "prompt to play",
-                        "properties": {
-                            "macro": {
-                                "enum": [
-                                    "prompt"
-                                ],
-                                "type": "string"
-                            }
-                        }
+                        "description": "prompt to play"
                     },
                     {
                         "$ref": "callflows.audio_macro.say",
-                        "description": "say macro to execute",
-                        "properties": {
-                            "macro": {
-                                "enum": [
-                                    "say"
-                                ],
-                                "type": "string"
-                            }
-                        }
+                        "description": "say macro to execute"
                     },
                     {
                         "$ref": "callflows.tts",
-                        "description": "TTS text to say",
-                        "properties": {
-                            "macro": {
-                                "enum": [
-                                    "tts"
-                                ],
-                                "type": "string"
-                            }
-                        }
+                        "description": "TTS text to say"
                     }
                 ],
+                "properties": {
+                    "macro": {
+                        "description": "the macro type to process",
+                        "enum": [
+                            "play",
+                            "prompt",
+                            "say",
+                            "tts"
+                        ],
+                        "type": "string"
+                    }
+                },
                 "type": "object"
             },
             "minItems": 1,

@@ -11,10 +11,7 @@ Validator for the audio_macro callflow's data object
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `language` | The language of the speaker | `string()` |   | `false` |  
-`macros.[].macro` |   | `string('tts')` |   | `false` |  
-`macros.[].macro` |   | `string('say')` |   | `false` |  
-`macros.[].macro` |   | `string('prompt')` |   | `false` |  
-`macros.[].macro` |   | `string('play')` |   | `false` |  
+`macros.[].macro` | the macro type to process | `string('play' | 'prompt' | 'say' | 'tts')` |   | `false` |  
 `macros` | The audio macro data | `array(object())` | `[]` | `false` |  
 `terminators.[]` |   | `string()` |   | `false` |  
 `terminators` | What DTMF can terminate playback of the audio | `array(string())` | `["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]` | `false` |  
