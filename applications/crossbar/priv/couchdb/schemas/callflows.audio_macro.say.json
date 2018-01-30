@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "callflows.say",
+    "_id": "callflows.audio_macro.say",
     "description": "Validator for executing say commands",
     "properties": {
         "gender": {
