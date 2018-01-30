@@ -39,7 +39,7 @@
 
 -behaviour(gen_cf_action).
 
--include("callflow.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -export([handle/2]).
 
@@ -274,8 +274,7 @@ route_to_match(Call, Callflow) ->
 %% Audio Prompts
 %%------------------------------------------------------------------------------
 -spec play_user(kapps_call:call(), kapps_call_command:audio_macro_prompt(), any()) ->
-                       {'ok', binary()} |
-                       {'error', atom()}.
+                       kapps_call_command:collect_digits_return().
 play_user(Call, UsernameTuple, _MatchNum) ->
     play_and_collect(Call, [{'prompt', ?PROMPT_RESULT_NUMBER}
                            ,UsernameTuple
@@ -287,8 +286,7 @@ play_invalid(Call) ->
     kapps_call_command:audio_macro([{'prompt', ?PROMPT_INVALID_KEY}], Call).
 
 -spec play_confirm_match(kapps_call:call(), directory_user()) ->
-                                {'ok', binary()} |
-                                {'error', atom()}.
+                                kapps_call_command:collect_digits_return().
 play_confirm_match(Call, User) ->
     UserName = username_audio_macro(Call, User),
     lager:info("playing confirm_match with username: ~p", [UserName]),
@@ -342,8 +340,7 @@ play_and_collect(Call, AudioMacro) ->
     play_and_collect(Call, AudioMacro, 1).
 
 -spec play_and_collect(kapps_call:call(), kapps_call_command:audio_macro_prompts(), non_neg_integer()) ->
-                              {'ok', binary()} |
-                              {'error', atom()}.
+                              kapps_call_command:collect_digits_return().
 play_and_collect(Call, AudioMacro, NumDigits) ->
     NoopID = kapps_call_command:audio_macro(AudioMacro, Call),
     lager:info("play and collect noopID: ~s", [NoopID]),
