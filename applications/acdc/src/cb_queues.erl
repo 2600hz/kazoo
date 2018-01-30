@@ -727,7 +727,7 @@ fetch_ranged_queue_stats(Context, StartRange) ->
             cb_context:add_validation_error(<<"end_range">>, <<"maximum">>, Msg, Context);
         F when F < Past, To > Past ->
             %% range overlaps archived/real data, use real
-            fetch_ranged_queue_stats(Context, Past, To, Past >= Past);
+            fetch_ranged_queue_stats(Context, Past, To, 'true');
         F ->
             fetch_ranged_queue_stats(Context, F, To, F >= Past)
     end.
