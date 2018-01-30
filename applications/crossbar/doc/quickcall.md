@@ -11,11 +11,16 @@ Key | Type | Description
 `auto_answer` | `boolean()` | Tells the SIP phone to auto-answer the call, if supported
 `cid-name` | `string()` | Set the caller ID name (defaults to "Device QuickCall")
 `cid-number` | `string()` | Set the caller ID number (defaults to the `{PHONE_NUMBER}`)
+`custom_application_vars` | `object()` | Custom data to include on the call (and events related to the call)
 `ignore-early-media` | `boolean()` | Toggle whether to ignore [early media](https://freeswitch.org/confluence/display/FREESWITCH/Early+Media)
 `media` | `string('bypass', 'process')` | Toggle whether to go peer-to-peer([bypass](https://freeswitch.org/confluence/display/FREESWITCH/Bypass+Media+Overview) with the RTP
 `number_filter` | `boolean()`, `regex()` | If true, remove non-alphanumeric characters. If a regex, use the first capture group as the "number" to dial.
+`target_call_id` | `string()` | An existing call-id used to determine what media server to create the quickcall leg on
 `timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
-`custom_application_vars` | `object()` | Custom data to include on the call (and events related to the call)
+
+##### Target Call ID
+
+If you know ahead of time that this new quickcall leg will be interacting with an existing call leg, you can supply the existing call-id to the API call to ensure the new leg will be created on the same media server as the existing call leg.
 
 ##### Custom Application Vars
 
