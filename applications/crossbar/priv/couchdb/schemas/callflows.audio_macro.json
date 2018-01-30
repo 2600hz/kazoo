@@ -15,19 +15,51 @@
                 "oneOf": [
                     {
                         "$ref": "callflows.play",
-                        "description": "media file to play"
+                        "description": "media file to play",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "play"
+                                ],
+                                "type": "string"
+                            }
+                        }
                     },
                     {
                         "$ref": "callflows.audio_macro.prompt",
-                        "description": "prompt to play"
+                        "description": "prompt to play",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "prompt"
+                                ],
+                                "type": "string"
+                            }
+                        }
                     },
                     {
                         "$ref": "callflows.audio_macro.say",
-                        "description": "say macro to execute"
+                        "description": "say macro to execute",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "say"
+                                ],
+                                "type": "string"
+                            }
+                        }
                     },
                     {
                         "$ref": "callflows.tts",
-                        "description": "TTS text to say"
+                        "description": "TTS text to say",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "tts"
+                                ],
+                                "type": "string"
+                            }
+                        }
                     }
                 ],
                 "properties": {

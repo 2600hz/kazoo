@@ -567,15 +567,8 @@ maybe_one_of_to_rows(SchemaJObj, Names, Settings, Acc0) ->
                ,kz_json:get_list_value(<<"oneOf">>, Settings, [])
                ).
 
-maybe_one_of_to_row(SchemaJObj, Names, Settings, {Table, Refs0}) ->
-    Acc0 = {Table, maybe_add_ref(Refs0, Settings)},
-    ?LOG_DEBUG("one-of ~p settings: ~p", [Names, Settings]),
-    maybe_sub_properties_to_row(SchemaJObj
-                               ,get_type(Settings)
-                               ,Names
-                               ,Settings
-                               ,Acc0
-                               ).
+maybe_one_of_to_row(_SchemaJObj, _Names, Settings, {Table, Refs0}) ->
+    {Table, maybe_add_ref(Refs0, Settings)}.
 
 maybe_any_of_to_rows(SchemaJObj, Names, Settings, Acc0) ->
     lists:foldl(fun(SubSchema, Acc1) ->
