@@ -56,7 +56,8 @@ accessors_from_patterns(PatternProperties) ->
                                   ),
     Accessors.
 
-accessor_from_pattern(<<"^", _/binary>>, _Properties, Acc) -> Acc;
+accessor_from_pattern(<<"^_", _/binary>>, _Properties, Acc) -> Acc;
+accessor_from_pattern(<<"^_pvt", _/binary>>, _Properties, Acc) -> Acc;
 accessor_from_pattern(_Pattern, Properties, {Acc, Path}) ->
     Acc1 = accessor_from_pattern(Path, key_from_path(Path), Properties, Acc),
     {Acc1, Path}.
