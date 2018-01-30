@@ -453,6 +453,7 @@
     "mobile_manager.url": "mobile_manager url",
     "modb.active_modbs": "modb active modbs",
     "modb.routines": "modb routines",
+    "navi.notification_servers": "all apps that users can subscribe to push notifications from",
     "notify.autoload_modules": "teletype modules to start when teletype is started",
     "notify.backoff_fudge_ms": "notify backoff fudge in milliseconds",
     "notify.cnam_request.default_to": "notify.cnam_request default to",

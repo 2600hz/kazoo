@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "push_notification_subscriptions",
+    "description": "Schema for a push notification subscription",
+    "properties": {
+        "notification_preferences": {
+            "description": "The types of notifications that the user wants to receive",
+            "items": {
+                "enum": [
+                    "new_voicemail",
+                    "missed_call"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "notification_registration_id": {
+            "description": "The registration id for the mobile device",
+            "type": "string"
+        },
+        "notification_type": {
+            "description": "The type of notification service to use",
+            "enum": [
+                "apns",
+                "fcm"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "notification_preferences",
+        "notification_registration_id",
+        "notification_type"
+    ],
+    "type": "object"
+}

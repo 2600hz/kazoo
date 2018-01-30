@@ -1,0 +1,85 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.navi",
+    "description": "Schema for navi system_config",
+    "properties": {
+        "notification_servers": {
+            "description": "all apps that users can subscribe to push notifications from",
+            "items": {
+                "anyOf": [
+                    {
+                        "properties": {
+                            "notification_type": {
+                                "enum": [
+                                    "apns"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "certificate",
+                            "default_topic",
+                            "environment",
+                            "key"
+                        ]
+                    },
+                    {
+                        "properties": {
+                            "notification_type": {
+                                "enum": [
+                                    "fcm"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "api_key"
+                        ]
+                    }
+                ],
+                "properties": {
+                    "api_key": {
+                        "description": "the android api key for the app that will send push notifications",
+                        "type": "string"
+                    },
+                    "app_name": {
+                        "description": "an identifier for the app that will be sending push notifications",
+                        "type": "string"
+                    },
+                    "certificate": {
+                        "description": "the Apple provider certificate for apns notifications, stored in .pem format",
+                        "type": "string"
+                    },
+                    "default_topic": {
+                        "description": "the base topic for the app to receive notifications (iOS only)"
+                    },
+                    "environment": {
+                        "description": "the environment of the app (prod or dev). Only used for apns",
+                        "enum": [
+                            "dev",
+                            "prod"
+                        ],
+                        "type": "string"
+                    },
+                    "key": {
+                        "description": "the RSA private key for apns notifications, stored in .pem format",
+                        "type": "string"
+                    },
+                    "notification_type": {
+                        "description": "the notification service that should be used for this notification server",
+                        "enum": [
+                            "apns",
+                            "fcm"
+                        ],
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "app_name",
+                    "notification_type"
+                ],
+                "type": "object"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}

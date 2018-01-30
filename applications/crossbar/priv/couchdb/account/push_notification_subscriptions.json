@@ -1,0 +1,25 @@
+{
+    "_id": "_design/push_notification_subscriptions",
+    "language": "javascript",
+    "views": {
+        "by_app_by_device": {
+            "map": "function(doc) { if (doc.pvt_type != 'push_notification_subscription' || doc.pvt_deleted) return; emit([doc.pvt_user_id, doc.pvt_device_id, doc.pvt_app_name], {id: doc._id, app_name: doc.pvt_app_name, notification_type: doc.notification_type, notification_registration_id: doc.notification_registration_id, notification_preferences: doc.notification_preferences, user_id: doc.pvt_user_id, device_id: doc.pvt_device_id});}"
+        },
+        "by_device": {
+            "map": "function(doc) { if (doc.pvt_type != 'push_notification_subscription' || doc.pvt_deleted) return; emit(doc.pvt_device_id, {id: doc._id, notification_type: doc.notification_type, notification_registration_id: doc.notification_registration_id, user_id: doc.pvt_user_id, device_id: doc.pvt_device_id});}"
+        },
+        "by_user": {
+            "map": "function(doc) { if (doc.pvt_type != 'push_notification_subscription' || doc.pvt_deleted) return; emit(doc.pvt_user_id, doc);}"
+        },
+        "by_user_by_subscription": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'push_notification_subscription' || doc.pvt_deleted) return;",
+                "  doc.notification_preferences.forEach(function(currentValue) {",
+                "    emit([doc.pvt_user_id, currentValue], { app_name: doc.pvt_app_name, notification_type: doc.notification_type, notification_registration_id: doc.notification_registration_id });",
+                "  });",
+                "}"
+            ]
+        }
+    }
+}

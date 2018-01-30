@@ -1,0 +1,21 @@
+{application, navi,
+ [
+  {description, "Navi - An application for listening to events in kazoo and preparing push notifications"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [navi_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
+
+                 , fcm
+                 , inaka_apns
+                 ]},
+  {mod, {navi_app, []}}
+ ]}.

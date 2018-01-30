@@ -1,0 +1,16 @@
+{application, fcm, [
+                    {description, "An Erlang client for Firebase Cloud Messaging (FCM)"},
+                    {vsn, "4.0.0"},
+                    {registered, [fcm_sup]},
+                    {applications, [
+                                    kernel,
+                                    stdlib,
+                                    inets,
+                                    ssl,
+                                    lager,
+                                    jsx
+                                   ]},
+                    {mod, {fcm_app, []}},
+                    {modules, []},
+                    {env, []}
+                   ]}.
