@@ -221,6 +221,7 @@ apis:
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
 	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/api/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-kzd-builders.escript
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs: docs-validate docs-report docs-setup docs-build

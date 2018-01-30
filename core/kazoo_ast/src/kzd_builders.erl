@@ -9,12 +9,14 @@
 
 -spec build_accessors() -> 'ok'.
 build_accessors() ->
-    filelib:fold_files(kz_term:to_list(kz_ast_util:schema_path(<<>>))
-                      ,"^[a-z_]+\\.json$"
-                      ,'false'
-                      ,fun build_accessor/2
-                      ,'ok'
-                      ).
+    io:format("building accessors: "),
+    'ok' = filelib:fold_files(kz_term:to_list(kz_ast_util:schema_path(<<>>))
+                             ,"^[a-z_]+\\.json$"
+                             ,'false'
+                             ,fun build_accessor/2
+                             ,'ok'
+                             ),
+    io:format(" done~n").
 
 -spec build_accessor(file:filename()) -> 'ok'.
 build_accessor(SchemaPath) ->
@@ -22,15 +24,14 @@ build_accessor(SchemaPath) ->
 
 -spec build_accessor(file:filename(), 'ok') -> 'ok'.
 build_accessor(SchemaPath, 'ok') ->
+    io:format("."),
     {'ok', SchemaJObj} = kz_json_schema:fload(SchemaPath),
     SchemaId = kz_doc:id(SchemaJObj),
-    ?LOG_INFO("building ~s~n", [SchemaId]),
 
     BaseModule = base_module(SchemaId),
 
     case accessors_from_properties(kz_json:get_json_value(<<"properties">>, SchemaJObj)) of
-        'undefined' ->
-            ?LOG_INFO("no properties for ~s~n", [SchemaId]);
+        'undefined' -> 'ok';
         {Exports, Accessors} ->
             {PatternExports, PatternAccessors} = accessors_from_patterns(kz_json:get_json_value(<<"patternProperties">>, SchemaJObj)),
             save_module(SchemaId, [BaseModule
@@ -44,8 +45,7 @@ build_accessor(SchemaPath, 'ok') ->
 save_module(Id, FileContents) ->
     SrcDir = code:lib_dir('kazoo_documents', 'src'),
     Filename = filename:join([SrcDir, <<"kzd_", Id/binary, ".erl.src">>]),
-    'ok' = file:write_file(Filename, FileContents),
-    ?LOG_INFO("wrote ~s~n", [Filename]).
+    'ok' = file:write_file(Filename, FileContents).
 
 accessors_from_patterns('undefined') ->
     {[], []};
@@ -80,7 +80,6 @@ key_from_parent(<<"audit">>) ->
 key_from_parent(<<"plan">>) ->
     <<"plan_name">>;
 key_from_parent(Parent) ->
-    ?LOG_INFO("parent: ~p", [Parent]),
     case kz_binary:strip_right(Parent, <<"s">>) of
         Parent -> kz_binary:join([Parent, <<"index">>], <<"_">>);
         Singular -> Singular
@@ -237,10 +236,8 @@ json_getter_fun(Schema, <<"string">>) ->
             {"get_binary_value", "binary()"}
     end;
 json_getter_fun(_Schema, [_|_]=_Type) ->
-    ?LOG_INFO("composite type ~p~n", [_Type]),
     {"get_value", "any()"}; %% composite type
 json_getter_fun(_Schema, _Type) ->
-    ?LOG_INFO("unhandled type ~p~n", [_Type]),
     {"get_value", "any()"}.
 
 list_return_subtype(Schema) ->
@@ -258,7 +255,6 @@ list_return_subtype(_Schema, <<"integer">>) -> "kz_term:integers()";
 list_return_subtype(_Schema, <<"number">>) -> "[number()]";
 list_return_subtype(_Schema, <<"object">>) -> "kz_json:objects()";
 list_return_subtype(_Schema, _Type) ->
-    ?LOG_INFO("unhandled subtype ~p~n", [_Type]),
     "list()".
 
 default_value(Schema, JSONGetterFun) ->
