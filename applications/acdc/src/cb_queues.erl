@@ -711,7 +711,7 @@ format_stats(Context, Resp) ->
      ).
 
 fetch_ranged_queue_stats(Context, StartRange) ->
-    MaxRange = ?ACDC_ARCHIVE_WINDOW,
+    MaxRange = ?ACDC_CLEANUP_WINDOW,
 
     Now = kz_time:now_s(),
     Past = Now - MaxRange,
