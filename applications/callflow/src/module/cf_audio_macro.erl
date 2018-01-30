@@ -9,9 +9,13 @@
 
 -behaviour(gen_cf_action).
 
+-export([handle/2]).
+
 -include("callflow.hrl").
 
--export([handle/2]).
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -32,7 +36,7 @@ get_macro(Data, Call) ->
                                  ,Data
                                  ,kapps_call:account_id(Call)
                                  }
-                                ,kz_json:get_list_value(<<"macro">>, Data, [])
+                                ,kz_json:get_list_value(<<"macros">>, Data, [])
                                 ),
     lists:reverse(Macros).
 
@@ -43,7 +47,7 @@ get_macro(Data, Call) ->
 
 -spec get_macro_entry(kz_json:object(), acc()) -> acc().
 get_macro_entry(Macro, Acc) ->
-    get_macro_entry(Macro, Acc, kz_json:get_ne_binary_value(<<"type">>, Macro)).
+    get_macro_entry(Macro, Acc, kz_json:get_ne_binary_value(<<"macro">>, Macro)).
 
 -spec get_macro_entry(kz_json:object(), acc(), kz_term:ne_binary()) -> acc().
 get_macro_entry(Macro, {Macros, Data, AccountId}=Acc, <<"play">>) ->
@@ -112,3 +116,31 @@ macro(Args, Type) ->
         [] -> 'undefined';
         Macro -> list_to_tuple([Type | Macro])
     end.
+
+-ifdef(TEST).
+
+schema_test_() ->
+    Data = kz_json:decode(
+             <<"{\"macros\":[
+               {\"macro\":\"play\"
+               ,\"id\":\"play_me\"
+               }
+               ,{\"macro\":\"tts\"
+               ,\"text\":\"this can be said\"
+               ,\"language\":\"en-us\"
+               }
+               ,{\"macro\":\"prompt\"
+               ,\"id\":\"vm-enter_pin\"
+               }
+               ,{\"macro\":\"say\"
+               ,\"text\":\"123\"
+               ,\"method\":\"pronounced\"
+               ,\"type\":\"number\"
+               }
+               ]
+    }">>),
+    Validated = kz_json_schema:validate(<<"callflows.audio_macro">>, Data),
+    ?LOG_DEBUG("validated: ~p", [Validated]),
+    ?_assertMatch({'ok', _}, Validated).
+
+-endif.
