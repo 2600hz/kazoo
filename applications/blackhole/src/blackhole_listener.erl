@@ -377,6 +377,8 @@ remove_bh_binding(_ETS, _Binding, _Key, _Else) ->
 
 add_bh_binding({'hook', AccountId}) ->
     kz_hooks:register(AccountId);
+add_bh_binding({'hook', <<"*">>, _Event}) ->
+    kz_hooks:register();
 add_bh_binding({'hook', AccountId, Event}) ->
     kz_hooks:register(AccountId, Event);
 add_bh_binding({'amqp', Wapi, Options}) ->
@@ -384,6 +386,8 @@ add_bh_binding({'amqp', Wapi, Options}) ->
 
 remove_bh_binding({'hook', AccountId}) ->
     kz_hooks:deregister(AccountId);
+remove_bh_binding({'hook', <<"*">>, _Event}) ->
+    kz_hooks:deregister();
 remove_bh_binding({'hook', AccountId, Event}) ->
     kz_hooks:deregister(AccountId, Event);
 remove_bh_binding({'amqp', Wapi, Options}) ->
