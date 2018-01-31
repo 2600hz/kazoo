@@ -31,7 +31,7 @@ handle(Data, Call) ->
 
     Command = kz_json:from_list(
                 [{<<"Application-Name">>, <<"tts">>}
-                ,{<<"Text">>, text(Data)}
+                ,{<<"Text">>, to_say(Data)}
                 ,{<<"Terminators">>, kapps_call_command:tts_terminators(terminators(Data))}
                 ,{<<"Voice">>, kapps_call_command:tts_voice(voice(Data))}
                 ,{<<"Language">>, kapps_call_command:tts_language(language(Data), Call)}
@@ -78,7 +78,7 @@ language(Data) ->
 voice(Data) ->
     kz_json:get_binary_value(<<"voice">>, Data).
 
-text(Data) ->
+to_say(Data) ->
     kz_json:get_binary_value(<<"text">>, Data).
 
 endless_playback(Data) ->
