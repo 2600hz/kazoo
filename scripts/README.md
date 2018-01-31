@@ -84,7 +84,7 @@ Each line on the text file has the format `{correct}|{mispelt} [{misspelt} ...]`
 
 ## check-unstaged.bash
 
-Checks if any unstanged changes are found in the repo and exits if so. Used in CircleCI to fail builds with unstaged changes after applying code checks, spell checking, etc.
+Checks if any unstaged changes are found in the repo and exits if so. Used in CircleCI to fail builds with unstaged changes after applying code checks, spell checking, etc.
 
 
 ## check-xref.escript
@@ -101,7 +101,7 @@ Xref: listing undefined_functions
 Done
 ```
 
-If there are any calls to non-existant modules, or non-exported functions, you will get errors listed here.
+If there are any calls to nonexistent modules, or non-exported functions, you will get errors listed here.
 
 
 ## circleci-build-erlang.sh
@@ -288,7 +288,7 @@ In this example, the `cb_context.erl` has 115 evil specs, 119 lines were removed
 
 ```shell
 $ scripts/evil_specs_remover.escript -k
-Searching for evil sepcspecs...
+Searching for evil specspecs...
 processing 1 file(s) with evil specspec:
   file /home/hesaam/work/2600hz/kazoo/scripts/../applications/crossbar/src/cb_context.erl (115 specs): -119 +200
 
@@ -740,7 +740,7 @@ Here no errors were generated.
 
 ## `validate_mkdocs.py`
 
-Parses the mkdocs.yml and looks for non-existent docs
+Parses the mkdocs.yml and looks for nonexistent docs
 
 
 ## `wh_to_kz.sh`
