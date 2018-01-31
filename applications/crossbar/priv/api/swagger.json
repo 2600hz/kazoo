@@ -1396,6 +1396,18 @@
                                 }
                             },
                             {
+                                "$ref": "callflows.audio_macro.tone",
+                                "description": "tone to play",
+                                "properties": {
+                                    "macro": {
+                                        "enum": [
+                                            "tone"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
                                 "$ref": "callflows.audio_macro.prompt",
                                 "description": "prompt to play",
                                 "properties": {
@@ -1583,6 +1595,38 @@
                         "short_date_time"
                     ],
                     "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.audio_macro.tone": {
+            "description": "Validator for playing a tone - TGML",
+            "properties": {
+                "duration_off": {
+                    "description": "time, in milliseconds, for turning the tone off",
+                    "type": "integer"
+                },
+                "duration_on": {
+                    "description": "time, in milliseconds, for turning the tone on",
+                    "type": "integer"
+                },
+                "frequencies": {
+                    "description": "The tone frequencies to play",
+                    "items": {
+                        "description": "The tone frequency",
+                        "type": "integer"
+                    },
+                    "type": "array"
+                },
+                "repeat": {
+                    "description": "how many times to repeat the tone",
+                    "type": "integer"
+                },
+                "volume": {
+                    "description": "Volume of the tone being played",
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -13489,6 +13533,9 @@
                 },
                 "Conference-ID": {
                     "type": "string"
+                },
+                "Endless-Playback": {
+                    "type": "boolean"
                 },
                 "Engine": {
                     "type": "string"

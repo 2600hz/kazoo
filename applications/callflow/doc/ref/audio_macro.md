@@ -43,6 +43,19 @@ Key | Description | Type | Default | Required | Support Level
 `text` | Text to say | `string()` |   | `false` |  
 `type` | The type to use when saying the text | `string('number' | 'items' | 'persons' | 'messages' | 'currency' | 'time_measurement' | 'current_date' | 'current_time' | 'current_date_time' | 'telephone_number' | 'telephone_extension' | 'url' | 'ip_address' | 'e-mail_address' | 'postal_address' | 'account_number' | 'name_spelled' | 'name_phonetic' | 'short_date_time')` |   | `false` |  
 
+##### callflows.audio_macro.tone
+
+Validator for playing a tone - TGML
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`duration_off` | time, in milliseconds, for turning the tone off | `integer()` |   | `false` |  
+`duration_on` | time, in milliseconds, for turning the tone on | `integer()` |   | `false` |  
+`frequencies` | The tone frequencies to play | `array(integer())` |   | `false` |  
+`repeat` | how many times to repeat the tone | `integer()` |   | `false` |  
+`volume` | Volume of the tone being played | `integer()` |   | `false` |  
+
 ##### callflows.play
 
 Validator for the play callflow's data object
