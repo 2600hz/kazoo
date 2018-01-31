@@ -1451,7 +1451,8 @@
                                     "play",
                                     "prompt",
                                     "say",
-                                    "tts"
+                                    "tts",
+                                    "tone"
                                 ],
                                 "type": "string"
                             }
