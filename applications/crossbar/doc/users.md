@@ -25,6 +25,7 @@ Key | Description | Type | Default | Required
 `call_restriction` | Device level call restrictions for each available number classification | `object()` | `{}` | `false`
 `call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
 `caller_id` | The device caller ID parameters | `object()` | `{}` | `false`
+`caller_id_outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Takes precedence over the same property on device and account doc. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing (useful for overriding default settings) | `string('full' | 'name' | 'number' | 'none')` |   | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean()` |   | `false`
 `contact_list` | Contect List Parameters | `object()` | `{}` | `false`
 `dial_plan` | A list of rules used to modify dialed numbers | `object()` | `{}` | `false`

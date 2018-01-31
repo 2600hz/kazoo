@@ -379,6 +379,17 @@
                     "description": "The account default caller ID parameters",
                     "type": "object"
                 },
+                "caller_id_outbound_privacy": {
+                    "description": "Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing",
+                    "enum": [
+                        "full",
+                        "name",
+                        "number",
+                        "none"
+                    ],
+                    "required": false,
+                    "type": "string"
+                },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
                     "default": {},
@@ -3742,6 +3753,17 @@
                     "default": {},
                     "description": "The device caller ID parameters",
                     "type": "object"
+                },
+                "caller_id_outbound_privacy": {
+                    "description": "Determines what appears as caller id for offnet outbound calls. Takes precedence over the same property on device and account doc. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing (useful for overriding default settings)",
+                    "enum": [
+                        "full",
+                        "name",
+                        "number",
+                        "none"
+                    ],
+                    "required": false,
+                    "type": "string"
                 },
                 "contact_list": {
                     "default": {},
@@ -29936,6 +29958,17 @@
                     "default": {},
                     "description": "The device caller ID parameters",
                     "type": "object"
+                },
+                "caller_id_outbound_privacy": {
+                    "description": "Determines what appears as caller id for offnet outbound calls. Takes precedence over the same property on device and account doc. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing (useful for overriding default settings)",
+                    "enum": [
+                        "full",
+                        "name",
+                        "number",
+                        "none"
+                    ],
+                    "required": false,
+                    "type": "string"
                 },
                 "contact_list": {
                     "default": {},
