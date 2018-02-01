@@ -1,0 +1,83 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "voicemail_keys",
+    "description": "DTMF keys for voicemail callflow module",
+    "properties": {
+        "configure": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will enter the config menu when pressed at the main menu"
+        },
+        "continue": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will continue to the next callflow element when pressed at the greeting or instructions menu"
+        },
+        "delete": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will delete the voicemail message when pressed at the post playback menu"
+        },
+        "exit": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will exit the main menu when pressed"
+        },
+        "hear_new": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will play new voicemail messages when pressed at the main menu"
+        },
+        "hear_saved": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will play saved voicemail messages when pressed at the main menu"
+        },
+        "keep": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will keep the voicemail message when pressed at the post playback menu"
+        },
+        "listen": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will listen to the recording when pressed at the recording review menu"
+        },
+        "login": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will log into the voicemail box when pressed at the compose voicemail menu"
+        },
+        "next": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will go to the next voicemail message when pressed at the post playback menu"
+        },
+        "operator": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will call the operator when pressed"
+        },
+        "prev": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will go to the previous voicemail message when pressed at the post playback menu"
+        },
+        "rec_name": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will enter the record the voicemail box name when pressed at the config menu"
+        },
+        "rec_unavailable": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will enter the record the unavailable greeting when pressed at the config menu"
+        },
+        "record": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will record when pressed at the recording review menu"
+        },
+        "replay": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will replay the voicemail message when pressed at the post playback menu"
+        },
+        "return_main": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will return to the main menu when pressed at the config menu"
+        },
+        "save": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will save when pressed at the recording review menu"
+        },
+        "set_pin": {
+            "$ref": "voicemail_keys.dtmf_key",
+            "description": "DTMF key which will allow the user to set their pin when pressed at the config menu"
+        }
+    }
+}

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -65,11 +65,12 @@ did(Number) ->
 
 
 -spec req(atom(), [nonempty_string()]) -> kz_json:object().
--spec req(atom(), [nonempty_string()], kz_json:object()) -> kz_json:object().
 req(Method, Path) ->
     req(Method, Path, kz_json:new()).
 
 -ifdef(TEST).
+
+-spec req(atom(), [nonempty_string()], kz_json:object()) -> kz_json:object().
 req('post', ["number_searches"], JObj) ->
     case kz_json:get_value([<<"search_descriptor">>, <<"prefix">>], JObj) of
         <<"800">> -> rep_fixture("telnyx_tollfree_search.json");
@@ -103,6 +104,8 @@ rep_fixture(Fixture) ->
     rep({'ok', 200, [], list_to_binary(knm_util:fixture(Fixture))}).
 
 -else.
+
+-spec req(atom(), [nonempty_string()], kz_json:object()) -> kz_json:object().
 req('delete'=_Method, Path, EmptyJObj) ->
     Url = ?URL(Path),
     Headers = http_headers(EmptyJObj),
@@ -196,12 +199,12 @@ maybe_filter_rates('true', JObj) ->
     kz_json:set_value(<<"result">>, Results, JObj).
 
 -spec maybe_apply_limit(kz_json:object()) -> kz_json:object().
--spec maybe_apply_limit(kz_json:object(), ne_binary()) -> kz_json:object().
 maybe_apply_limit(JObj) ->
     maybe_apply_limit(maybe_apply_limit(JObj, <<"result">>)
                      ,<<"inexplicit_result">>
                      ).
 
+-spec maybe_apply_limit(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_apply_limit(JObj, ResultField) ->
     Limit = kz_json:get_integer_value(<<"limit">>, JObj, 100),
     Result = take(Limit, kz_json:get_value(ResultField, JObj, [])),

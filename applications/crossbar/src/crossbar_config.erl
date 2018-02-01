@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,16 +19,16 @@
 -spec flush() -> 'ok'.
 flush() -> kapps_config:flush(?CONFIG_CAT).
 
--spec autoload_modules() -> ne_binaries().
--spec autoload_modules(ne_binaries() | atoms()) -> ne_binaries().
+-spec autoload_modules() -> kz_term:ne_binaries().
 autoload_modules() ->
-    autoload_modules([]).
+    autoload_modules(?DEFAULT_MODULES).
 
+-spec autoload_modules(kz_term:ne_binaries() | kz_term:atoms()) -> kz_term:ne_binaries().
 autoload_modules(Default) ->
     Modules = kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, Default),
     remove_versioned_modules(Modules).
 
--spec remove_versioned_modules(binaries() | atoms()) -> binaries().
+-spec remove_versioned_modules(kz_term:binaries() | kz_term:atoms()) -> kz_term:binaries().
 remove_versioned_modules(Modules) ->
     lists:usort(lists:map(fun remove_module_version/1, Modules)).
 
@@ -47,10 +47,10 @@ maybe_remove_module_version("2v_" ++ Module) ->
 maybe_remove_module_version(Module) ->
     list_to_binary(lists:reverse(Module)).
 
--spec set_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
+-spec set_autoload_modules(kz_term:ne_binaries() | kz_term:atoms()) -> {'ok', kz_json:object()}.
 set_autoload_modules(Modules) ->
     kapps_config:set(?CONFIG_CAT, <<"autoload_modules">>, Modules).
 
--spec set_default_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
+-spec set_default_autoload_modules(kz_term:ne_binaries() | kz_term:atoms()) -> {'ok', kz_json:object()}.
 set_default_autoload_modules(Modules) ->
     kapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, Modules).

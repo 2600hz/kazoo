@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Fax document manipulation
 %%% @end
@@ -66,69 +66,78 @@
 new() ->
     kz_json:from_list([{<<"pvt_type">>, type()}]).
 
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
--spec owner_id(doc()) -> api_binary().
--spec owner_id(doc(), Default) -> ne_binary() | Default.
+-spec owner_id(doc()) -> kz_term:api_binary().
 owner_id(FaxDoc) ->
     owner_id(FaxDoc, 'undefined').
+
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(FaxDoc, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, FaxDoc, Default).
 
--spec faxbox_id(doc()) -> api_binary().
--spec faxbox_id(doc(), Default) -> ne_binary() | Default.
+-spec faxbox_id(doc()) -> kz_term:api_binary().
 faxbox_id(FaxDoc) ->
     faxbox_id(FaxDoc, 'undefined').
+
+-spec faxbox_id(doc(), Default) -> kz_term:ne_binary() | Default.
 faxbox_id(FaxDoc, Default) ->
     kz_json:get_value(?KEY_FAXBOX_ID, FaxDoc, Default).
 
--spec timezone(doc()) -> api_binary().
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(doc()) -> kz_term:api_binary().
 timezone(FaxDoc) ->
     timezone(FaxDoc, 'undefined').
+
+-spec timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 timezone(FaxDoc, Default) ->
     kz_json:get_value(?KEY_TIMEZONE, FaxDoc, Default).
 
--spec retries(doc()) -> api_integer().
--spec retries(doc(), Default) -> integer() | Default.
+-spec retries(doc()) -> kz_term:api_integer().
 retries(FaxDoc) ->
     retries(FaxDoc, 'undefined').
+
+-spec retries(doc(), Default) -> integer() | Default.
 retries(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_RETRIES, FaxDoc, Default).
 
--spec attempts(doc()) -> api_integer().
--spec attempts(doc(), Default) -> integer() | Default.
+-spec attempts(doc()) -> kz_term:api_integer().
 attempts(FaxDoc) ->
     attempts(FaxDoc, 'undefined').
+
+-spec attempts(doc(), Default) -> integer() | Default.
 attempts(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_ATTEMPTS, FaxDoc, Default).
 
--spec from_number(doc()) -> api_binary().
--spec from_number(doc(), Default) -> api_binary() | Default.
+-spec from_number(doc()) -> kz_term:api_binary().
 from_number(FaxDoc) ->
     from_number(FaxDoc, 'undefined').
+
+-spec from_number(doc(), Default) -> kz_term:api_binary() | Default.
 from_number(FaxDoc, Default) ->
     kz_json:get_value(?KEY_FROM_NUMBER, FaxDoc, Default).
 
--spec to_number(doc()) -> api_binary().
--spec to_number(doc(), Default) -> api_binary() | Default.
+-spec to_number(doc()) -> kz_term:api_binary().
 to_number(FaxDoc) ->
     to_number(FaxDoc, 'undefined').
+
+-spec to_number(doc(), Default) -> kz_term:api_binary() | Default.
 to_number(FaxDoc, Default) ->
     kz_json:get_value(?KEY_TO_NUMBER, FaxDoc, Default).
 
--spec from_name(doc()) -> api_binary().
--spec from_name(doc(), Default) -> api_binary() | Default.
+-spec from_name(doc()) -> kz_term:api_binary().
 from_name(FaxDoc) ->
     from_name(FaxDoc, 'undefined').
+
+-spec from_name(doc(), Default) -> kz_term:api_binary() | Default.
 from_name(FaxDoc, Default) ->
     kz_json:get_value(?KEY_FROM_NAME, FaxDoc, Default).
 
--spec to_name(doc()) -> api_binary().
--spec to_name(doc(), Default) -> api_binary() | Default.
+-spec to_name(doc()) -> kz_term:api_binary().
 to_name(FaxDoc) ->
     to_name(FaxDoc, 'undefined').
+
+-spec to_name(doc(), Default) -> kz_term:api_binary() | Default.
 to_name(FaxDoc, Default) ->
     kz_json:get_value(?KEY_TO_NAME, FaxDoc, Default).
 
@@ -136,10 +145,11 @@ to_name(FaxDoc, Default) ->
 notifications(FaxDoc) ->
     kz_json:get_value(?KEY_NOTIFICATIONS, FaxDoc, kz_json:new()).
 
--spec folder(doc()) -> api_binary().
--spec folder(doc(), Default) -> api_binary() | Default.
+-spec folder(doc()) -> kz_term:api_binary().
 folder(FaxDoc) ->
     folder(FaxDoc, 'undefined').
+
+-spec folder(doc(), Default) -> kz_term:api_binary() | Default.
 folder(FaxDoc, Default) ->
     kz_json:get_value(?KEY_FOLDER, FaxDoc, Default).
 
@@ -151,17 +161,19 @@ document(FaxDoc) ->
 document_url(FaxDoc) ->
     kz_json:get_value(?KEY_DOCUMENT_URL, FaxDoc).
 
--spec identity_name(doc()) -> api_binary().
--spec identity_name(doc(), Default) -> api_binary() | Default.
+-spec identity_name(doc()) -> kz_term:api_binary().
 identity_name(FaxDoc) ->
     identity_name(FaxDoc, 'undefined').
+
+-spec identity_name(doc(), Default) -> kz_term:api_binary() | Default.
 identity_name(FaxDoc, Default) ->
     kz_json:get_value(?KEY_IDENTITY_NAME, FaxDoc, Default).
 
--spec identity_number(doc()) -> api_binary().
--spec identity_number(doc(), Default) -> api_binary() | Default.
+-spec identity_number(doc()) -> kz_term:api_binary().
 identity_number(FaxDoc) ->
     identity_number(FaxDoc, 'undefined').
+
+-spec identity_number(doc(), Default) -> kz_term:api_binary() | Default.
 identity_number(FaxDoc, Default) ->
     kz_json:get_value(?KEY_IDENTITY_NUMBER, FaxDoc, Default).
 
@@ -177,37 +189,42 @@ rx_result(FaxDoc) ->
 result(FaxDoc) ->
     kz_json:get_first_defined([?KEY_RX_RESULT, ?KEY_TX_RESULT], FaxDoc, kz_json:new()).
 
--spec job_node(doc()) -> api_binary().
--spec job_node(doc(), Default) -> api_binary() | Default.
+-spec job_node(doc()) -> kz_term:api_binary().
 job_node(FaxDoc) ->
     job_node(FaxDoc, 'undefined').
+
+-spec job_node(doc(), Default) -> kz_term:api_binary() | Default.
 job_node(FaxDoc, Default) ->
     kz_json:get_value(?KEY_JOB_NODE, FaxDoc, Default).
 
--spec job_status(doc()) -> api_binary().
--spec job_status(doc(), Default) -> api_binary() | Default.
+-spec job_status(doc()) -> kz_term:api_binary().
 job_status(FaxDoc) ->
     job_status(FaxDoc, 'undefined').
+
+-spec job_status(doc(), Default) -> kz_term:api_binary() | Default.
 job_status(FaxDoc, Default) ->
     kz_json:get_value(?KEY_JOB_STATUS, FaxDoc, Default).
 
--spec size(doc()) -> api_integer().
--spec size(doc(), Default) -> integer() | Default.
+-spec size(doc()) -> kz_term:api_integer().
 size(FaxDoc) ->
     size(FaxDoc, 'undefined').
+
+-spec size(doc(), Default) -> integer() | Default.
 size(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_SIZE, FaxDoc, Default).
 
--spec pages(doc()) -> api_integer().
--spec pages(doc(), Default) -> integer() | Default.
+-spec pages(doc()) -> kz_term:api_integer().
 pages(FaxDoc) ->
     pages(FaxDoc, 'undefined').
+
+-spec pages(doc(), Default) -> integer() | Default.
 pages(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_PAGES, FaxDoc, Default).
 
--spec retry_after(doc()) -> api_integer().
--spec retry_after(doc(), Default) -> integer() | Default.
+-spec retry_after(doc()) -> kz_term:api_integer().
 retry_after(FaxDoc) ->
     retry_after(FaxDoc, 'undefined').
+
+-spec retry_after(doc(), Default) -> integer() | Default.
 retry_after(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_RETRY_AFTER, FaxDoc, Default).

@@ -55,7 +55,7 @@ pending() ->
 %% Same as pending/2 without showing details
 %% @end
 %%--------------------------------------------------------------------
--spec pending(ne_binary()) -> 'no_return'.
+-spec pending(kz_term:ne_binary()) -> 'no_return'.
 pending(ShowCount) ->
     pending(ShowCount, <<"false">>).
 
@@ -69,7 +69,7 @@ pending(ShowCount) ->
 %%   Details: Whether or not to show notifications details
 %% @end
 %%--------------------------------------------------------------------
--spec pending(ne_binary(), ne_binary()) -> 'no_return'.
+-spec pending(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 pending(ShowCount, <<"true">>) ->
     Total = get_total([{group_level, 0}]),
     RunningIds = [kz_doc:id(J) || J <- kz_notify_resend:running()],
@@ -104,7 +104,7 @@ pending(ShowCount, _Details) ->
 %% process.
 %% @end
 %%--------------------------------------------------------------------
--spec pending_by_type(ne_binary()) -> 'no_return'.
+-spec pending_by_type(kz_term:ne_binary()) -> 'no_return'.
 pending_by_type(Type) ->
     Total = get_total([{startkey, [Type, 0]}
                       ,{endkey, [Type, kz_time:now_s()]}
@@ -136,7 +136,7 @@ failed() ->
 %% Same as failed/2 without showing details
 %% @end
 %%--------------------------------------------------------------------
--spec failed(ne_binary()) -> 'no_return'.
+-spec failed(kz_term:ne_binary()) -> 'no_return'.
 failed(ShowCount) ->
     failed(ShowCount, <<"false">>).
 
@@ -149,7 +149,7 @@ failed(ShowCount) ->
 %%   Details: Whether or not to show notifications details
 %% @end
 %%--------------------------------------------------------------------
--spec failed(ne_binary(), ne_binary()) -> 'no_return'.
+-spec failed(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 failed(ShowCount, <<"true">>) ->
     Total = get_total([{group_level, 0}], ?FAILED_TYPE_VIEW),
     ViewOptions = [{'limit', ShowCount}
@@ -176,7 +176,7 @@ failed(ShowCount, _Details) ->
 %% Show failed notification by type, limited to first 100
 %% @end
 %%--------------------------------------------------------------------
--spec failed_by_type(ne_binary()) -> 'no_return'.
+-spec failed_by_type(kz_term:ne_binary()) -> 'no_return'.
 failed_by_type(Type) ->
     Total = get_total([{startkey, [Type, 0]}
                       ,{endkey, [Type, kz_time:now_s()]}
@@ -198,7 +198,7 @@ failed_by_type(Type) ->
 %% Send the notification by Id
 %% @end
 %%--------------------------------------------------------------------
--spec send_notify(ne_binary()) -> 'no_return'.
+-spec send_notify(kz_term:ne_binary()) -> 'no_return'.
 send_notify(Id) ->
     case kz_notify_resend:send_single(Id) of
         {'ok', JObj} ->
@@ -218,7 +218,7 @@ send_notify(Id) ->
 %% Show details for the notification by Id
 %% @end
 %%--------------------------------------------------------------------
--spec notify_info(ne_binary()) -> 'no_return'.
+-spec notify_info(kz_term:ne_binary()) -> 'no_return'.
 notify_info(Id) ->
     _ = case kz_datamgr:open_doc(?KZ_PENDING_NOTIFY_DB, Id) of
             {'ok', JObj} ->
@@ -228,7 +228,7 @@ notify_info(Id) ->
         end,
     'no_return'.
 
--spec delete(ne_binary()) -> 'no_return'.
+-spec delete(kz_term:ne_binary()) -> 'no_return'.
 delete(Id) ->
     case kz_datamgr:del_doc(?KZ_PENDING_NOTIFY_DB, Id) of
         {'ok', _} -> io:format("notification ~s has been deleted~n", [Id]);
@@ -236,7 +236,7 @@ delete(Id) ->
     end,
     'no_return'.
 
--spec delete_older_than(gregorian_seconds()) -> 'no_return'.
+-spec delete_older_than(kz_time:gregorian_seconds()) -> 'no_return'.
 delete_older_than(Timestamp) ->
     TsTamp = kz_term:to_integer(Timestamp),
     ViewOptions = [{startkey, [0]}
@@ -254,7 +254,7 @@ delete_older_than(Timestamp) ->
     bulk_delete(ToBeDeleted),
     'no_return'.
 
--spec delete_between(gregorian_seconds(), gregorian_seconds()) -> 'no_return'.
+-spec delete_between(kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> 'no_return'.
 delete_between(StartTimestamp, EndTimestamp) ->
     Start = kz_term:to_integer(StartTimestamp),
     End = kz_term:to_integer(EndTimestamp),
@@ -307,11 +307,11 @@ statistics() ->
     io:format("Total running: ~b~n", [length(kz_notify_resend:running())]),
     'no_return'.
 
--spec get_total(kz_proplist()) -> non_neg_integer().
+-spec get_total(kz_term:proplist()) -> non_neg_integer().
 get_total(ViewOptions) ->
     get_total(ViewOptions, <<"pending_notify/pending_by_type">>).
 
--spec get_total(kz_proplist(), ne_binary()) -> non_neg_integer().
+-spec get_total(kz_term:proplist(), kz_term:ne_binary()) -> non_neg_integer().
 get_total(ViewOptions, View) ->
     case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, View, ViewOptions) of
         {'ok', Rs} ->
@@ -345,7 +345,7 @@ print_job_table(ViewOptions, RunningIds, View) ->
         end,
     ?JOB_TABLE_EDGE.
 
--spec format_modified_date(kz_json:object()) -> ne_binary().
+-spec format_modified_date(kz_json:object()) -> kz_term:ne_binary().
 format_modified_date(JObj) ->
     Modified = kz_json:get_integer_value(<<"modified">>, JObj, kz_json:get_integer_value(<<"pvt_modified">>, JObj)),
     RetryAfter = kz_json:get_integer_value(<<"retry_after">>, JObj, 0),

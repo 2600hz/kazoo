@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Intra-whapp comm
 %%% @end
@@ -64,7 +64,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec subscribe(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec subscribe(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 subscribe(Prop) when is_list(Prop) ->
     case subscribe_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SUBSCRIBE_HEADERS, ?OPTIONAL_SUBSCRIBE_HEADERS);
@@ -72,15 +72,16 @@ subscribe(Prop) when is_list(Prop) ->
     end;
 subscribe(JObj) -> subscribe(kz_json:to_proplist(JObj)).
 
--spec subscribe_v(api_terms()) -> boolean().
+-spec subscribe_v(kz_term:api_terms()) -> boolean().
 subscribe_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SUBSCRIBE_HEADERS, ?SUBSCRIBE_VALUES, ?SUBSCRIBE_TYPES);
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
 
--spec publish_subscribe(api_terms()) -> 'ok'.
--spec publish_subscribe(api_terms(), binary()) -> 'ok'.
+-spec publish_subscribe(kz_term:api_terms()) -> 'ok'.
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_subscribe(kz_term:api_terms(), binary()) -> 'ok'.
 publish_subscribe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun subscribe/1),
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
@@ -90,7 +91,7 @@ publish_subscribe(Req, ContentType) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec notify(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec notify(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 notify(Prop) when is_list(Prop) ->
     case notify_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NOTIFY_HEADERS, ?OPTIONAL_NOTIFY_HEADERS);
@@ -98,14 +99,15 @@ notify(Prop) when is_list(Prop) ->
     end;
 notify(JObj) -> notify(kz_json:to_proplist(JObj)).
 
--spec notify_v(api_terms()) -> boolean().
+-spec notify_v(kz_term:api_terms()) -> boolean().
 notify_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NOTIFY_HEADERS, ?NOTIFY_VALUES, ?NOTIFY_TYPES);
 notify_v(JObj) -> notify_v(kz_json:to_proplist(JObj)).
 
--spec publish_notify(api_terms()) -> 'ok'.
--spec publish_notify(api_terms(), binary()) -> 'ok'.
+-spec publish_notify(kz_term:api_terms()) -> 'ok'.
 publish_notify(JObj) -> publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
 publish_notify(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
@@ -115,7 +117,7 @@ publish_notify(Req, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_q(Queue, props:get_value('restrict_to', Props), Props).
 
@@ -144,11 +146,11 @@ bind_q(Queue, [_|Restrict], Props) ->
     bind_q(Queue, Restrict, Props);
 bind_q(_, [], _) -> 'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(ne_binary(), atoms() | 'undefined', kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q(Queue, props:get_value('restrict_to', Props), Props).
 
+-spec unbind_q(kz_term:ne_binary(), kz_term:atoms() | 'undefined', kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', Props) ->
     amqp_util:unbind_q_from_exchange(Queue
                                     ,?SUBSCRIBE_RK(Props)

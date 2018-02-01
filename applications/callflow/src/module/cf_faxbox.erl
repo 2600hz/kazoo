@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Instructs the switch to receive a fax from the caller
 %%% Stores the fax in the database and optionally emails a configured
@@ -40,7 +40,7 @@ handle(Data, Call) ->
     kapi_fax:publish_req(Props),
     cf_exe:control_usurped(Call).
 
--spec lookup_fax_option(kapps_call:call(), kz_json:object()) -> ne_binary().
+-spec lookup_fax_option(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
 lookup_fax_option(Call, Data) ->
     FaxBoxId = get_faxbox_id(Data),
     DefaultFaxBoxOption = case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), FaxBoxId) of
@@ -49,7 +49,7 @@ lookup_fax_option(Call, Data) ->
                           end,
     kz_json:get_value(?FAX_OPTION, Data, DefaultFaxBoxOption).
 
--spec get_faxbox_id(kz_json:object()) -> api_binary().
+-spec get_faxbox_id(kz_json:object()) -> kz_term:api_binary().
 get_faxbox_id(JObj) ->
     case kz_json:get_ne_binary_value(<<"id">>, JObj) of
         'undefined' -> kz_json:get_ne_binary_value(<<"faxbox_id">>, JObj);

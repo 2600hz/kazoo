@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Given a rate_req, find appropriate rate for the call
 %%% @end
@@ -19,7 +19,7 @@ init() ->
         ],
     'ok'.
 
--spec handle_req(kapi_rate:req(), kz_proplist()) -> 'ok'.
+-spec handle_req(kapi_rate:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RateReq, _Props) ->
     'true' = kapi_rate:req_v(RateReq),
     _ = kz_util:put_callid(RateReq),
@@ -58,8 +58,8 @@ maybe_empty_mobile_log(RateReq) ->
         _ -> ""
     end.
 
--spec get_rate_data(kapi_rate:req(), api_ne_binary()) ->
-                           {'ok', api_terms()} |
+-spec get_rate_data(kapi_rate:req(), kz_term:api_ne_binary()) ->
+                           {'ok', kz_term:api_terms()} |
                            {'error', 'no_rate_found'}.
 get_rate_data(RateReq, <<"mobile">>) ->
     ToDID = kz_json:get_value(<<"To-DID">>, RateReq),
@@ -93,8 +93,8 @@ get_rate_data(RateReq, _AuthType) ->
             get_rate_data(RateReq, ToDID, FromDID, Rates)
     end.
 
--spec get_rate_data(kapi_rate:req(), ne_binary(), api_binary(), kz_json:objects()) ->
-                           {'ok', api_terms()} |
+-spec get_rate_data(kapi_rate:req(), kz_term:ne_binary(), kz_term:api_binary(), kz_json:objects()) ->
+                           {'ok', kz_term:api_terms()} |
                            {'error', 'no_rate_found'}.
 get_rate_data(RateReq, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),
@@ -119,11 +119,11 @@ get_rate_data_from_sorted(RateReq, _ToDID, _FromDID, [Rate|_]) ->
                ),
     {'ok', rate_resp(Rate, RateReq)}.
 
--spec maybe_get_rate_discount(kapi_rate:req()) -> api_binary().
--spec maybe_get_rate_discount(kapi_rate:req(), api_binary()) -> api_binary().
+-spec maybe_get_rate_discount(kapi_rate:req()) -> kz_term:api_binary().
 maybe_get_rate_discount(RateReq) ->
     maybe_get_rate_discount(RateReq, kz_json:get_value(<<"Account-ID">>, RateReq)).
 
+-spec maybe_get_rate_discount(kapi_rate:req(), kz_term:api_binary()) -> kz_term:api_binary().
 maybe_get_rate_discount(_RateReq, 'undefined') -> 'undefined';
 maybe_get_rate_discount(RateReq, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -138,7 +138,7 @@ maybe_get_rate_discount(RateReq, AccountId) ->
             kz_json:get_value([<<"pvt_discounts">>, Classification, <<"percentage">>], Def)
     end.
 
--spec rate_resp(kz_json:object(), kapi_rate:req()) -> kz_proplist().
+-spec rate_resp(kz_json:object(), kapi_rate:req()) -> kz_term:proplist().
 rate_resp(Rate, RateReq) ->
     RateCost = kzd_rate:rate_cost(Rate),
     RateSurcharge = kzd_rate:surcharge(Rate),
@@ -168,7 +168,7 @@ rate_resp(Rate, RateReq) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec should_update_callee_id(ne_binary() | kapi_rate:req()) -> boolean().
+-spec should_update_callee_id(kz_term:ne_binary() | kapi_rate:req()) -> boolean().
 should_update_callee_id(?NE_BINARY = AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountDoc} ->

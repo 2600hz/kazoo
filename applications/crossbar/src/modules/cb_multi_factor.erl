@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Multi factor authentication configuration API endpoint
@@ -58,13 +58,13 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
                        boolean() |
-                       {'halt', cb_context:context()}.
+                       {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_system_multi_factor(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec authorize(cb_context:context(), path_token()) ->
                        boolean() |
-                       {'halt', cb_context:context()}.
+                       {'stop', cb_context:context()}.
 authorize(Context, _) ->
     authorize_system_multi_factor(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
@@ -73,13 +73,13 @@ authorize(_Context, _, _) -> 'true'.
 
 -spec authorize_system_multi_factor(cb_context:context(), req_nouns(), http_method()) ->
                                            boolean() |
-                                           {'halt', cb_context:context()}.
+                                           {'stop', cb_context:context()}.
 authorize_system_multi_factor(_, [{<<"multi_factor">>, []}], ?HTTP_GET) -> 'true';
 authorize_system_multi_factor(C, [{<<"multi_factor">>, []}], ?HTTP_PUT) -> cb_context:is_superduper_admin(C);
 authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], ?HTTP_GET) -> cb_context:is_superduper_admin(C);
 authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], ?HTTP_POST) -> cb_context:is_superduper_admin(C);
 authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], ?HTTP_PATCH) -> cb_context:is_superduper_admin(C);
-authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], _) -> {'halt', cb_context:add_system_error('forbidden', C)};
+authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], _) -> {'stop', cb_context:add_system_error('forbidden', C)};
 authorize_system_multi_factor(_, _, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -233,7 +233,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>)).
 
@@ -244,7 +244,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"multi_factor_provider">>, Context, OnSuccess).
@@ -255,7 +255,7 @@ update(Id, Context) ->
 %% Load a login attempt log from MODB
 %% @end
 %%--------------------------------------------------------------------
--spec read_attempt_log(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read_attempt_log(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read_attempt_log(?MATCH_MODB_PREFIX(YYYY, MM, _) = AttemptId, Context) ->
     Year  = kz_term:to_integer(YYYY),
     Month = kz_term:to_integer(MM),
@@ -268,7 +268,7 @@ read_attempt_log(?MATCH_MODB_PREFIX(YYYY, MM, _) = AttemptId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
@@ -319,7 +319,7 @@ merge_summary(Configured, Available) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = kz_json:set_value(<<"pvt_provider_type">>, <<"multi_factor">>, cb_context:doc(Context)),
     cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"provider">>));

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handles inspection of incoming caller id and branching to a child
 %%% callflow node accordingly.
@@ -65,14 +65,14 @@ handle(Data, Call) ->
 %% Handle a caller id "match" condition
 %% @end
 %%--------------------------------------------------------------------
--spec handle_match(kz_json:object(), kapps_call:call(), ne_binary()) -> 'ok'.
+-spec handle_match(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 handle_match(Data, Call, CallerIdNumber) ->
     case kz_json:is_true(<<"use_absolute_mode">>, Data, 'false') of
         'true' -> maybe_branch_on_caller_id(Data, Call, CallerIdNumber);
         'false' -> maybe_branch_on_regex(Data, Call)
     end.
 
--spec maybe_branch_on_caller_id(kz_json:object(), kapps_call:call(), ne_binary()) -> 'ok'.
+-spec maybe_branch_on_caller_id(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 maybe_branch_on_caller_id(Data, Call, CallerIdNumber) ->
     case is_callflow_child(CallerIdNumber, Call) of
         'true' -> update_caller_identity(Data, Call);
@@ -105,7 +105,7 @@ handle_no_match(Call) ->
 %% Check if the given node name is a callflow child
 %% @end
 %%--------------------------------------------------------------------
--spec is_callflow_child(ne_binary(), kapps_call:call()) -> boolean().
+-spec is_callflow_child(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 is_callflow_child(Name, Call) ->
     lager:debug("Looking for callflow child ~s", [Name]),
     case cf_exe:attempt(Name, Call) of
@@ -145,7 +145,7 @@ update_caller_identity(Data, Call) ->
 %% @doc validate that all required parameters are defined
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_caller_identity(api_binary(), api_binary(), api_binary()) -> boolean().
+-spec is_valid_caller_identity(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
 is_valid_caller_identity('undefined', _Number, _UserId) -> 'false';
 is_valid_caller_identity(_Name, 'undefined', _UserId) -> 'false';
 is_valid_caller_identity(_Name, _Number, 'undefined') -> 'false';

@@ -25,12 +25,12 @@
 -define(ACCOUNT_NAMES, [<<"accountone">>]).
 -define(PHONE_NUMBERS, [<<"+12345678901">>]).
 
--spec cleanup_numbers(pqc_cb_api:state(), ne_binaries()) -> 'ok'.
+-spec cleanup_numbers(pqc_cb_api:state(), kz_term:ne_binaries()) -> 'ok'.
 cleanup_numbers(_API, Numbers) ->
     _ = knm_numbers:delete(Numbers, [{'auth_by',  <<"system">>}]),
     'ok'.
 
--spec list_number(pqc_cb_api:state(), api_ne_binary(), ne_binary()) -> pqc_cb_api:response().
+-spec list_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 list_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
 list_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number),
@@ -38,7 +38,7 @@ list_number(API, AccountId, Number) ->
 
     pqc_cb_api:make_request([200, 404], fun kz_http:get/2, URL, RequestHeaders).
 
--spec add_number(pqc_cb_api:state(), api_ne_binary(), ne_binary()) -> pqc_cb_api:response().
+-spec add_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 add_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
 add_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number),
@@ -53,7 +53,7 @@ add_number(API, AccountId, Number) ->
                            ,kz_json:encode(RequestEnvelope)
                            ).
 
--spec remove_number(pqc_cb_api:state(), api_ne_binary(), ne_binary()) -> pqc_cb_api:response().
+-spec remove_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 remove_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
 remove_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number),
@@ -64,7 +64,7 @@ remove_number(API, AccountId, Number) ->
                            ,RequestHeaders
                            ).
 
--spec activate_number(pqc_cb_api:state(), api_ne_binary(), ne_binary()) -> pqc_cb_api:response().
+-spec activate_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 activate_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
 activate_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number, "activate"),
@@ -77,14 +77,15 @@ activate_number(API, AccountId, Number) ->
                            ,kz_json:encode(RequestEnvelope)
                            ).
 
--spec number_url(ne_binary(), ne_binary()) -> string().
--spec number_url(ne_binary(), ne_binary(), string()) -> string().
+-spec number_url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 number_url(AccountId, Number) ->
     string:join([pqc_cb_accounts:account_url(AccountId)
                 ,"phone_numbers", kz_term:to_list(kz_http_util:urlencode(Number))
                 ]
                ,"/"
                ).
+
+-spec number_url(kz_term:ne_binary(), kz_term:ne_binary(), string()) -> string().
 number_url(AccountId, Number, PathToken) ->
     string:join([pqc_cb_accounts:account_url(AccountId)
                 ,"phone_numbers", kz_term:to_list(kz_http_util:urlencode(Number))
@@ -135,10 +136,10 @@ initial_state() ->
     pqc_kazoo_model:new(API).
 
 -spec command(any()) -> proper_types:type().
--spec command(any(), boolean()) -> proper_types:type().
 command(Model) ->
     command(Model, pqc_kazoo_model:has_accounts(Model)).
 
+-spec command(any(), boolean()) -> proper_types:type().
 command(Model, 'false') ->
     pqc_cb_accounts:command(Model, name());
 command(Model, 'true') ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Callflow document manipulation
 %%% @end
@@ -49,7 +49,7 @@ new() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
 %%--------------------------------------------------------------------
@@ -58,11 +58,11 @@ type() -> ?PVT_TYPE.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec numbers(doc()) -> ne_binaries().
+-spec numbers(doc()) -> kz_term:ne_binaries().
 numbers(Doc) ->
     kz_json:get_value(?NUMBERS, Doc, []).
 
--spec set_numbers(doc(), ne_binaries()) -> doc().
+-spec set_numbers(doc(), kz_term:ne_binaries()) -> doc().
 set_numbers(Doc, Numbers) ->
     kz_json:set_value(?NUMBERS, Numbers, Doc).
 
@@ -72,11 +72,11 @@ set_numbers(Doc, Numbers) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec patterns(doc()) -> ne_binaries().
+-spec patterns(doc()) -> kz_term:ne_binaries().
 patterns(Doc) ->
     kz_json:get_value(?PATTERNS, Doc, []).
 
--spec set_patterns(doc(), ne_binaries()) -> doc().
+-spec set_patterns(doc(), kz_term:ne_binaries()) -> doc().
 set_patterns(Doc, Patterns) ->
     kz_json:set_value(?PATTERNS, Patterns, Doc).
 
@@ -96,10 +96,12 @@ is_feature_code(Doc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec flow(doc()) -> api_object().
--spec flow(doc(), Default) -> kz_json:object() | Default.
+
+-spec flow(doc()) -> kz_term:api_object().
 flow(Doc) ->
     flow(Doc, 'undefined').
+
+-spec flow(doc(), Default) -> kz_json:object() | Default.
 flow(Doc, Default) ->
     kz_json:get_json_value(?FLOW, Doc, Default).
 
@@ -143,7 +145,7 @@ validate_flow(Doc) ->
     end.
 -endif.
 
--spec prepend_preflow(doc(), ne_binary()) -> doc().
+-spec prepend_preflow(doc(), kz_term:ne_binary()) -> doc().
 prepend_preflow(Callflow, PreflowId) ->
     AmendedFlow =
         kz_json:from_list([{<<"module">>, <<"callflow">>}

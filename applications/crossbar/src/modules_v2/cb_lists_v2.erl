@@ -1,5 +1,5 @@
 %%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Match list module
 %%%
@@ -32,7 +32,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec maybe_migrate(ne_binary()) -> 'ok'.
+-spec maybe_migrate(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
@@ -41,7 +41,7 @@ maybe_migrate(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec migrate(ne_binary(), kz_json:objects()) -> 'ok'.
+-spec migrate(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate(AccountDb, [List | Lists]) ->
     DocId = kz_json:get_value(<<"id">>, List),
     Entries = kz_json:to_proplist(kz_json:get_value([<<"doc">>, <<"entries">>], List, kz_json:new())),
@@ -75,52 +75,64 @@ init() ->
     ].
 
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_ListId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_ListId, ?ENTRIES) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_ListId, ?ENTRIES, _ListEntryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_ListId, ?ENTRIES, _ListEntryId, ?VCARD) ->
     [?HTTP_GET];
 allowed_methods(_ListId, ?ENTRIES, _ListEntryId, ?PHOTO) ->
     [?HTTP_POST].
 
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_ListId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_ListId, ?ENTRIES) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_ListId, ?ENTRIES, _EntryId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_ListId, ?ENTRIES, _EntryId, ?VCARD) -> 'true'.
 
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
--spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
 content_types_provided(Context) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _, _) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _, _, _) ->
     Context.
+
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
 content_types_provided(Context, _, ?ENTRIES, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context
                                          ,[{'to_binary'
@@ -132,18 +144,22 @@ content_types_provided(Context, _, ?ENTRIES, _, ?VCARD) ->
                                          ).
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_req(cb_context:req_verb(Context), Context, []).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ListId) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId]).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ListId, ?ENTRIES) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId, ?ENTRIES]).
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ListId, ?ENTRIES, EntryId) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId, ?ENTRIES, EntryId]).
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ListId, ?ENTRIES, EntryId, ?VCARD) ->
     validate_req(cb_context:req_verb(Context), Context, [ListId, ?ENTRIES, EntryId, ?VCARD]).
 
@@ -196,49 +212,55 @@ validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
     RespData = kzd_user:to_vcard(JObj4),
     cb_context:set_resp_data(Context1, [RespData, "\n"]).
 
--spec validate_doc(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_doc(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_doc(Id, Type, Context) ->
     OnSuccess = fun(C) -> on_successfull_validation(Id, Type, C) end,
     cb_context:validate_request_data(type_schema_name(Type), Context, OnSuccess).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ListId) ->
     _ = delete(Context, ListId, ?ENTRIES),
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     crossbar_doc:delete(Context1).
+
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, ?ENTRIES) ->
     Docs = [kz_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
     AccountDb = kz_util:format_account_id(cb_context:account_db(Context), 'encoded'),
     %% do we need 'soft' delete as in crossbar_doc?
     kz_datamgr:del_docs(AccountDb, Docs),
     Context.
+
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, ?ENTRIES, _EntryId) ->
     crossbar_doc:delete(Context).
 
 -spec save(cb_context:context()) -> cb_context:context().
--spec save(cb_context:context(), path_token()) -> cb_context:context().
--spec save(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec save(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
--spec save(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context) ->
     crossbar_doc:save(Context).
+
+-spec save(cb_context:context(), path_token()) -> cb_context:context().
 save(Context, _) ->
     save(Context).
+
+-spec save(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 save(Context, _, ?ENTRIES) ->
     save(Context).
+
+-spec save(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context, _, ?ENTRIES, _) ->
     save(Context).
+
+-spec save(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context, _, ?ENTRIES, EntryId, ?PHOTO) ->
     %% May be move code from cb_users_v2 to crossbar_doc?
     cb_users_v2:post(Context, EntryId, ?PHOTO).
 
--spec type_schema_name(ne_binary()) -> ne_binary().
+-spec type_schema_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 type_schema_name(?TYPE_LIST) -> <<"lists">>;
 type_schema_name(?TYPE_LIST_ENTRY) -> <<"list_entries">>.
 
--spec on_successfull_validation(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successfull_validation(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 on_successfull_validation('undefined', Type, Context) ->
     Doc = kz_json:set_values([{<<"pvt_type">>, Type}], cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);
@@ -251,7 +273,7 @@ set_org(JObj, Context) ->
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY)),
     set_org(JObj, Context1, cb_context:resp_status(Context1), ListId).
 
--spec set_org(kz_json:object(), cb_context:context(), crossbar_status(), ne_binary()) -> kz_json:object().
+-spec set_org(kz_json:object(), cb_context:context(), crossbar_status(), kz_term:ne_binary()) -> kz_json:object().
 set_org(JObj, Context, 'success', _) ->
     case kz_json:get_value(<<"org">>, cb_context:doc(Context)) of
         'undefined' -> JObj;

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -57,19 +57,21 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--type authorize_return() :: boolean() | {'halt', cb_context:context()}.
+-type authorize_return() :: boolean() | {'stop', cb_context:context()}.
 
 -spec authorize(cb_context:context()) -> authorize_return().
--spec authorize(cb_context:context(), path_token()) -> authorize_return().
--spec authorize(cb_context:context(), path_token(), path_token()) -> authorize_return().
 authorize(Context) ->
     case cb_context:is_superduper_admin(Context)
         andalso cb_context:req_nouns(Context) of
-        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)};
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)};
         [{<<"system_configs">>, _}] -> 'true';
-        _ -> {'halt', cb_context:add_system_error('bad_identifier', Context)}
+        _ -> {'stop', cb_context:add_system_error('bad_identifier', Context)}
     end.
+
+-spec authorize(cb_context:context(), path_token()) -> authorize_return().
 authorize(Context, _Id) -> authorize(Context).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> authorize_return().
 authorize(Context, _Id, _Node) -> authorize(Context).
 
 %%--------------------------------------------------------------------
@@ -79,13 +81,16 @@ authorize(Context, _Id, _Node) -> authorize(Context).
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_SystemConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT, ?HTTP_PATCH].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_SystemConfigId, _Node) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
@@ -98,11 +103,14 @@ allowed_methods(_SystemConfigId, _Node) ->
 %%    /system_configs/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_Id) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_Id, _Node) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -170,7 +178,7 @@ validate_document_request(Context, Id, FullConfig) ->
 %% Node API
 %%--------------------------------------------------------------------
 
--spec validate_document_node(cb_context:context(), path_token(), http_method(), api_ne_binary()) -> cb_context:context().
+-spec validate_document_node(cb_context:context(), path_token(), http_method(), kz_term:api_ne_binary()) -> cb_context:context().
 validate_document_node(Context, Id, ?HTTP_GET, Node) ->
     Config =
         case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, false)) of
@@ -222,10 +230,12 @@ put(Context, _Id) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
     crossbar_doc:save(Context).
+
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id, Node) ->
     Ctx = crossbar_doc:save(Context),
     case cb_context:resp_status(Ctx) of
@@ -235,9 +245,10 @@ post(Context, Id, Node) ->
     end.
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
--spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id) ->
     post(Context, Id).
+
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, Node) ->
     post(Context, Id, Node).
 
@@ -247,18 +258,19 @@ patch(Context, Id, Node) ->
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
+
 -spec delete(cb_context:context(), path_token()) ->
-                    cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) ->
-                    cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), api_object() | kz_json:objects()) ->
                     cb_context:context().
 delete(Context, _Id) ->
     crossbar_doc:delete(Context, ?HARD_DELETE).
 
+-spec delete(cb_context:context(), path_token(), path_token()) ->
+                    cb_context:context().
 delete(Context, Id, Node) ->
     delete(Context, Id, Node, cb_context:doc(Context)).
 
+-spec delete(cb_context:context(), path_token(), path_token(), kz_term:api_object() | kz_json:objects()) ->
+                    cb_context:context().
 delete(Context, Id, _Node, 'undefined') ->
     crossbar_util:response_bad_identifier(Id, Context);
 delete(Context, Id, Node, Doc) ->
@@ -275,7 +287,7 @@ delete(Context, Id, Node, Doc) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read_for_delete(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read_for_delete(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read_for_delete(Id, Context) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     case cb_context:resp_status(Context) of
@@ -303,7 +315,7 @@ summary(Context) ->
 %% Normalizes the results of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), ne_binaries()) -> ne_binaries().
+-spec normalize_view_results(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"key">>, JObj) | Acc].
 
@@ -314,18 +326,18 @@ set_db_to_system(Context) ->
                        ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
                        ]).
 
--spec maybe_set_private_fields(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_set_private_fields(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_private_fields(ConfigId, JObj) ->
     case kapps_config:get_category(ConfigId) of
         {ok, Doc} -> kz_json:merge(JObj, kz_doc:private_fields(Doc));
         _ -> kz_doc:set_id(JObj, ConfigId)
     end.
 
--spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec set_id(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(Id, JObj) ->
     kz_json:set_value(<<"id">>, Id, JObj).
 
--spec set_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec set_id(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(Id, Node, JObj) ->
     kz_json:set_value(<<"id">>, <<Id/binary, "/", Node/binary>>, JObj).
 

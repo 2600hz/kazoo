@@ -56,12 +56,12 @@
        ).
 -define(ISPEECH_TTS_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url_ispeech">>, <<"http://api.ispeech.org/api/json">>)).
 
--spec set_api_key(ne_binary()) -> 'ok'.
+-spec set_api_key(kz_term:ne_binary()) -> 'ok'.
 set_api_key(Key) ->
     {'ok', _} = kapps_config:set_default(?MOD_CONFIG_CAT, <<"tts_api_key">>, Key),
     'ok'.
 
--spec create(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
+-spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> create_resp().
 create(Text, Voice, Format, Options) ->
     VoiceMappings = ?ISPEECH_VOICE_MAPPINGS,
     case props:get_value(kz_term:to_lower_binary(Voice), VoiceMappings) of
@@ -71,7 +71,7 @@ create(Text, Voice, Format, Options) ->
             make_request(Text, ISpeechVoice, Format, Options)
     end.
 
--spec make_request(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
+-spec make_request(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> create_resp().
 make_request(Text, ISpeechVoice, Format, Options) ->
     BaseUrl = ?ISPEECH_TTS_URL,
 
@@ -101,7 +101,7 @@ make_request(Text, ISpeechVoice, Format, Options) ->
 
 -spec create_response(kz_http:ret()) ->
                              kz_http:req_id() |
-                             {'ok', ne_binary(), ne_binary()} |
+                             {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
                              {'error', 'tts_provider_failure', binary()}.
 create_response({'error', _R}) ->
     lager:warning("creating speech file failed with error ~p", [_R]),

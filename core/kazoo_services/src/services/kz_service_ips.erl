@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -18,9 +18,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), api_binary() | kz_proplist()) ->
-                       kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     case kz_ips:assigned(AccountId) of
@@ -32,6 +31,8 @@ reconcile(Services) ->
             kz_services:update(<<"ips">>, <<"dedicated">>, length(JObjs), S)
     end.
 
+-spec reconcile(kz_services:services(), kz_term:api_binary() | kz_term:proplist()) ->
+                       kz_services:services().
 reconcile(Services, 'undefined') -> Services;
 reconcile(Services0, IpType) when is_binary(IpType) ->
     Services1 = reconcile(Services0),
@@ -44,7 +45,7 @@ reconcile(Services, Props) ->
                ,Props
      ).
 
--spec reconcile_foldl({ne_binary(), integer() | ne_binary()}, kz_services:services()) ->
+-spec reconcile_foldl({kz_term:ne_binary(), integer() | kz_term:ne_binary()}, kz_services:services()) ->
                              kz_services:services().
 reconcile_foldl({Type, Quantity}, Services) ->
     OldQuantity = kz_services:updated_quantity(<<"ips">>, Type, Services),

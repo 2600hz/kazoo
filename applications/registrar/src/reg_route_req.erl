@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Look up IP for authorization/replaying of route_req
 %%% @end
@@ -18,7 +18,7 @@
 -spec init() -> 'ok'.
 init() -> 'ok'.
 
--spec handle_route_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_route_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_route_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
     kz_util:put_callid(JObj),
@@ -30,10 +30,10 @@ handle_route_req(JObj, _Props) ->
     end.
 
 -spec maybe_replay_route_req(kz_json:object(), kz_json:object()) -> 'ok'.
--spec maybe_replay_route_req(kz_json:object(), kz_json:object(), api_binary()) -> 'ok'.
 maybe_replay_route_req(JObj, CCVs) ->
     maybe_replay_route_req(JObj, CCVs, kz_json:get_value(<<"From-Network-Addr">>, JObj)).
 
+-spec maybe_replay_route_req(kz_json:object(), kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_replay_route_req(_JObj, _CCVs, 'undefined') ->
     lager:debug("failing to reply route req with no IP to use");
 maybe_replay_route_req(JObj, CCVs, IP) ->
@@ -57,8 +57,8 @@ maybe_replay_route_req(JObj, CCVs, IP) ->
 %% lookup auth by IP in cache/database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_account_by_ip(ne_binary()) ->
-                                  {'ok', kz_proplist()} |
+-spec lookup_account_by_ip(kz_term:ne_binary()) ->
+                                  {'ok', kz_term:proplist()} |
                                   {'error', 'not_founnd'}.
 lookup_account_by_ip(IP) ->
     lager:debug("looking up IP: ~s in db ~s", [IP, ?KZ_SIP_DB]),

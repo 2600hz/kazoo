@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Device document manipulation
 %%% @end
@@ -56,13 +56,14 @@
 new() ->
     kz_json:from_list([{<<"pvt_type">>, type()}]).
 
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
--spec notification_emails(doc()) -> ne_binaries().
--spec notification_emails(doc(), Default) -> ne_binaries() | Default.
+-spec notification_emails(doc()) -> kz_term:ne_binaries().
 notification_emails(Box) ->
     notification_emails(Box, []).
+
+-spec notification_emails(doc(), Default) -> kz_term:ne_binaries() | Default.
 notification_emails(Box, Default) ->
     case kz_json:get_list_value(?KEY_NOTIFY_EMAILS, Box) of
         'undefined' ->
@@ -74,24 +75,25 @@ notification_emails(Box, Default) ->
         Emails -> Emails
     end.
 
--spec set_notification_emails(doc(), api_binaries()) -> doc().
+-spec set_notification_emails(doc(), kz_term:api_binaries()) -> doc().
 set_notification_emails(Box, 'undefined') ->
     kz_json:delete_key(?KEY_NOTIFY_EMAILS, Box);
 set_notification_emails(Box, Emails) ->
     kz_json:set_value(?KEY_NOTIFY_EMAILS, Emails, Box).
 
--spec owner_id(doc()) -> api_binary().
--spec owner_id(doc(), Default) -> ne_binary() | Default.
+-spec owner_id(doc()) -> kz_term:api_binary().
 owner_id(Box) ->
     owner_id(Box, 'undefined').
+
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(Box, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
--spec timezone(doc()) -> ne_binary().
+-spec timezone(doc()) -> kz_term:ne_binary().
 timezone(Box) ->
     timezone(Box, 'undefined').
 
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 timezone(Box, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
@@ -99,7 +101,7 @@ timezone(Box, Default) ->
         TZ -> TZ
     end.
 
--spec owner_timezone(doc(), Default) -> ne_binary() | Default.
+-spec owner_timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_timezone(Box, Default) ->
     case kzd_user:fetch(kz_doc:account_db(Box), owner_id(Box)) of
         {'ok', OwnerJObj} -> kzd_user:timezone(OwnerJObj, Default);
@@ -107,55 +109,62 @@ owner_timezone(Box, Default) ->
     end.
 
 -spec skip_instructions(doc()) -> boolean().
--spec skip_instructions(doc(), Default) -> boolean() | Default.
 skip_instructions(Box) ->
     skip_instructions(Box, 'false').
+
+-spec skip_instructions(doc(), Default) -> boolean() | Default.
 skip_instructions(Box, Default) ->
     kz_json:is_true(?KEY_SKIP_INSTRUCTIONS, Box, Default).
 
 -spec skip_greeting(doc()) -> boolean().
--spec skip_greeting(doc(), Default) -> boolean() | Default.
 skip_greeting(Box) ->
     skip_greeting(Box, 'false').
+
+-spec skip_greeting(doc(), Default) -> boolean() | Default.
 skip_greeting(Box, Default) ->
     kz_json:is_true(?KEY_SKIP_GREETING, Box, Default).
 
--spec pin(doc()) -> api_binary().
--spec pin(doc(), Default) -> ne_binary() | Default.
+-spec pin(doc()) -> kz_term:api_binary().
 pin(Box) ->
     pin(Box, 'undefined').
-pin(Box, Default) ->
-    kz_json:get_binary_value(?KEY_PIN, Box, Default).
 
--spec mailbox_number(doc()) -> api_binary().
--spec mailbox_number(doc(), Default) -> ne_binary() | Default.
+-spec pin(doc(), Default) -> kz_term:ne_binary() | Default.
+pin(Box, Default) ->
+    kz_json:get_ne_binary_value(?KEY_PIN, Box, Default).
+
+-spec mailbox_number(doc()) -> kz_term:api_binary().
 mailbox_number(Box) ->
     mailbox_number(Box, 'undefined').
+
+-spec mailbox_number(doc(), Default) -> kz_term:ne_binary() | Default.
 mailbox_number(Box, Default) ->
     kz_json:get_binary_value(?KEY_MAILBOX_NUMBER, Box, Default).
 
 -spec pin_required(doc()) -> boolean().
--spec pin_required(doc(), Default) -> boolean() | Default.
 pin_required(Box) ->
     pin_required(Box, 'false').
+
+-spec pin_required(doc(), Default) -> boolean() | Default.
 pin_required(Box, Default) ->
     kz_json:is_true(?KEY_PIN_REQUIRED, Box, Default).
 
 -spec check_if_owner(doc()) -> boolean().
--spec check_if_owner(doc(), Default) -> boolean() | Default.
 check_if_owner(Box) ->
     check_if_owner(Box, 'false').
+
+-spec check_if_owner(doc(), Default) -> boolean() | Default.
 check_if_owner(Box, Default) ->
     kz_json:is_true(?KEY_CHECK_IF_OWNER, Box, Default).
 
 -spec is_setup(doc()) -> boolean().
--spec is_setup(doc(), Default) -> boolean() | Default.
 is_setup(Box) ->
     is_setup(Box, 'false').
+
+-spec is_setup(doc(), Default) -> boolean() | Default.
 is_setup(Box, Default) ->
     kz_json:is_true(?KEY_IS_SETUP, Box, Default).
 
--spec media_extension(doc()) -> ne_binary().
+-spec media_extension(doc()) -> kz_term:ne_binary().
 media_extension(Box) ->
     AccountId = kz_doc:account_id(Box),
     kz_json:get_ne_binary_value(<<"media_extension">>, Box, ?ACCOUNT_VM_EXTENSION(AccountId)).

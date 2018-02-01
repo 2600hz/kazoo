@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
 %%% @end
@@ -84,11 +84,11 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--spec get_inherited_value(api_binary(), fun()) -> any().
+-spec get_inherited_value(kz_term:api_binary(), fun()) -> any().
 get_inherited_value(Account, ValueFun) ->
     get_inherited_value(Account, ValueFun, 'undefined').
 
--spec get_inherited_value(api_binary(), fun(), any()) -> any().
+-spec get_inherited_value(kz_term:api_binary(), fun(), any()) -> any().
 get_inherited_value('undefined', _ValueFun, Default) ->
     Default;
 
@@ -99,14 +99,14 @@ get_inherited_value(Account, ValueFun, Default) ->
         Value -> Value
     end.
 
--spec check_account(api_binary(), fun()) -> any().
+-spec check_account(kz_term:api_binary(), fun()) -> any().
 check_account(Account, ValueFun) ->
     case fetch(Account) of
         {'error', _Err} -> 'undefined';
         {'ok', JObj} -> ValueFun(JObj)
     end.
 
--spec check_reseller(api_binary(), fun(), any()) -> any().
+-spec check_reseller(kz_term:api_binary(), fun(), any()) -> any().
 check_reseller(Account, ValueFun, Default) ->
     Reseller = kz_services:find_reseller_id(Account),
     case check_account(Reseller, ValueFun) of
@@ -128,7 +128,7 @@ new() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> <<"account">>.
 
 %%--------------------------------------------------------------------
@@ -136,7 +136,7 @@ type() -> <<"account">>.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(doc()) -> api_binary().
+-spec id(doc()) -> kz_term:api_binary().
 id(JObj) ->
     kz_doc:id(JObj).
 
@@ -145,15 +145,15 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_ne_binary()) -> {'ok', doc()} |
-                                {'error', any()}.
+-spec fetch(kz_term:api_ne_binary()) -> {'ok', doc()} |
+                                        {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(Account=?NE_BINARY) ->
     fetch(Account, 'account').
 
--spec fetch(api_ne_binary(), 'account' | 'accounts') -> {'ok', doc()} |
-                                                        {'error', any()}.
+-spec fetch(kz_term:api_ne_binary(), 'account' | 'accounts') -> {'ok', doc()} |
+                                                                {'error', any()}.
 fetch('undefined', _) ->
     {'error', 'invalid_db_name'};
 fetch(Account, 'account') ->
@@ -163,7 +163,7 @@ fetch(Account, 'account') ->
 fetch(AccountId, 'accounts') ->
     open_cache_doc(?KZ_ACCOUNTS_DB, AccountId).
 
--spec open_cache_doc(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
+-spec open_cache_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', doc()} | {'error', any()}.
 open_cache_doc(Db, AccountId) ->
     kz_datamgr:open_cache_doc(Db, AccountId, [{cache_failures,false}]).
 
@@ -172,7 +172,7 @@ open_cache_doc(Db, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_name(ne_binary()) -> api_ne_binary().
+-spec fetch_name(kz_term:ne_binary()) -> kz_term:api_ne_binary().
 fetch_name(Account) ->
     case fetch(Account) of
         {ok, JObj} -> name(JObj);
@@ -181,10 +181,11 @@ fetch_name(Account) ->
             undefined
     end.
 
--spec name(doc()) -> api_ne_binary().
--spec name(doc(), Default) -> ne_binary() | Default.
+-spec name(doc()) -> kz_term:api_ne_binary().
 name(JObj) ->
     name(JObj, 'undefined').
+
+-spec name(doc(), Default) -> kz_term:ne_binary() | Default.
 name(JObj, Default) ->
     kz_json:get_value(?NAME, JObj, Default).
 
@@ -193,7 +194,7 @@ name(JObj, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_name(doc(), ne_binary()) -> doc().
+-spec set_name(doc(), kz_term:ne_binary()) -> doc().
 set_name(JObj, Name) ->
     kz_json:set_value(?NAME, Name, JObj).
 
@@ -202,7 +203,7 @@ set_name(JObj, Name) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_realm(ne_binary()) -> api_ne_binary().
+-spec fetch_realm(kz_term:ne_binary()) -> kz_term:api_ne_binary().
 fetch_realm(Account) ->
     case fetch(Account) of
         {ok, JObj} -> realm(JObj);
@@ -216,10 +217,12 @@ fetch_realm(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec realm(doc()) -> api_ne_binary().
--spec realm(doc(), Default) -> ne_binary() | Default.
+
+-spec realm(doc()) -> kz_term:api_ne_binary().
 realm(JObj) ->
     realm(JObj, 'undefined').
+
+-spec realm(doc(), Default) -> kz_term:ne_binary() | Default.
 realm(JObj, Default) ->
     kz_json:get_ne_value(?REALM, JObj, Default).
 
@@ -228,7 +231,7 @@ realm(JObj, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_realm(doc(), ne_binary()) -> doc().
+-spec set_realm(doc(), kz_term:ne_binary()) -> doc().
 set_realm(JObj, Realm) ->
     kz_json:set_value(?REALM, Realm, JObj).
 
@@ -237,10 +240,12 @@ set_realm(JObj, Realm) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec language(doc()) -> api_ne_binary().
--spec language(doc(), Default) -> ne_binary() | Default.
+
+-spec language(doc()) -> kz_term:api_ne_binary().
 language(JObj) ->
     language(JObj, 'undefined').
+
+-spec language(doc(), Default) -> kz_term:ne_binary() | Default.
 language(JObj, Default) ->
     kz_json:get_ne_binary_value(?LANGUAGE, JObj, Default).
 
@@ -249,7 +254,7 @@ language(JObj, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_language(doc(), ne_binary()) -> doc().
+-spec set_language(doc(), kz_term:ne_binary()) -> doc().
 set_language(JObj, Language) ->
     kz_json:set_value(?LANGUAGE, Language, JObj).
 
@@ -258,7 +263,7 @@ set_language(JObj, Language) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec timezone(api_ne_binary() | doc()) -> ne_binary().
+-spec timezone(kz_term:api_ne_binary() | doc()) -> kz_term:ne_binary().
 timezone('undefined') -> default_timezone();
 timezone(AccountId) when is_binary(AccountId) ->
     case fetch(AccountId) of
@@ -270,7 +275,7 @@ timezone(AccountId) when is_binary(AccountId) ->
 timezone(JObj) ->
     timezone(JObj, 'undefined').
 
--spec timezone(api_ne_binary() | doc(), Default) -> ne_binary() | Default.
+-spec timezone(kz_term:api_ne_binary() | doc(), Default) -> kz_term:ne_binary() | Default.
 timezone('undefined', 'undefined') ->
     default_timezone();
 timezone('undefined', <<"inherit">>) -> %% UI-1808
@@ -294,12 +299,12 @@ timezone(JObj, Default) ->
         TZ -> TZ
     end.
 
--spec parent_timezone(ne_binary(), api_ne_binary()) -> ne_binary().
+-spec parent_timezone(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 parent_timezone(AccountId, AccountId) -> default_timezone();
 parent_timezone(_AccountId, 'undefined') -> default_timezone();
 parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
 
--spec default_timezone() -> ne_binary().
+-spec default_timezone() -> kz_term:ne_binary().
 default_timezone() ->
     kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>).
 
@@ -308,11 +313,11 @@ default_timezone() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_timezone(doc(), ne_binary()) -> doc().
+-spec set_timezone(doc(), kz_term:ne_binary()) -> doc().
 set_timezone(JObj, Timezone) ->
     kz_json:set_value(?TIMEZONE, Timezone, JObj).
 
--spec home_zone(ne_binary() | doc()) -> api_binary().
+-spec home_zone(kz_term:ne_binary() | doc()) -> kz_term:api_binary().
 home_zone(AccountId) when is_binary(AccountId) ->
     case fetch(AccountId) of
         {'error', _R} -> 'undefined';
@@ -322,7 +327,7 @@ home_zone(AccountId) when is_binary(AccountId) ->
 home_zone(JObj) ->
     home_zone(JObj, 'undefined').
 
--spec home_zone(ne_binary() | doc(), api_binary()) -> api_binary().
+-spec home_zone(kz_term:ne_binary() | doc(), kz_term:api_binary()) -> kz_term:api_binary().
 home_zone(AccountId, Default) when is_binary(AccountId) ->
     case fetch(AccountId) of
         {'error', _R} -> Default;
@@ -332,7 +337,7 @@ home_zone(AccountId, Default) when is_binary(AccountId) ->
 home_zone(JObj, Default) ->
     kz_json:get_value(?HOME_ZONE, JObj, Default).
 
--spec set_home_zone(doc(), api_binary()) -> doc().
+-spec set_home_zone(doc(), kz_term:api_binary()) -> doc().
 set_home_zone(JObj, Zone) ->
     kz_json:set_value(?HOME_ZONE, Zone, JObj).
 
@@ -341,12 +346,12 @@ set_home_zone(JObj, Zone) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_threshold(ne_binary() | doc()) -> api_float().
+-spec low_balance_threshold(kz_term:ne_binary() | doc()) -> kz_term:api_float().
 low_balance_threshold(Thing) ->
     Default = kapps_config:get_float(<<"notify.low_balance">>, <<"threshold">>, 5.00),
     low_balance_threshold(Thing, Default).
 
--spec low_balance_threshold(ne_binary() | doc(), Default) -> float() | Default.
+-spec low_balance_threshold(kz_term:ne_binary() | doc(), Default) -> float() | Default.
 low_balance_threshold(AccountId, Default) when is_binary(AccountId) ->
     case fetch(AccountId) of
         {'error', _R} -> low_balance_threshold(kz_json:new(), Default);
@@ -405,7 +410,7 @@ low_balance_enabled_exists(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_tstamp(doc()) -> api_number().
+-spec low_balance_tstamp(doc()) -> kz_term:api_number().
 low_balance_tstamp(JObj) ->
     kz_json:get_integer_value(?LOW_BALANCE_TSTAMP, JObj).
 
@@ -427,7 +432,7 @@ remove_low_balance_tstamp(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec topup_threshold(doc()) -> api_float().
+-spec topup_threshold(doc()) -> kz_term:api_float().
 topup_threshold(JObj) ->
     topup_threshold(JObj, 'undefined').
 
@@ -471,7 +476,7 @@ set_initial_call_sent(JObj, Sent) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec parent_account_id(doc()) -> api_binary().
+-spec parent_account_id(doc()) -> kz_term:api_binary().
 parent_account_id(JObj) ->
     case tree(JObj) of
         [] -> 'undefined';
@@ -483,7 +488,7 @@ parent_account_id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_parent_account(ne_binary()) -> {'ok', doc()} | {'error', any()}.
+-spec get_parent_account(kz_term:ne_binary()) -> {'ok', doc()} | {'error', any()}.
 get_parent_account(AccountId) ->
     case get_parent_account_id(AccountId) of
         'undefined' -> {'error', 'not_found'};
@@ -496,7 +501,7 @@ get_parent_account(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_parent_account_id(ne_binary()) -> api_binary().
+-spec get_parent_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
 get_parent_account_id(AccountId) ->
     case fetch(AccountId) of
         {'ok', JObj} -> parent_account_id(JObj);
@@ -510,7 +515,7 @@ get_parent_account_id(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_tree(api_binary()) -> api_binaries() | 'undefined'.
+-spec fetch_tree(kz_term:api_binary()) -> kz_term:api_binaries() | 'undefined'.
 fetch_tree('undefined') ->
     'undefined';
 fetch_tree(AccountId) ->
@@ -524,10 +529,11 @@ fetch_tree(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tree(doc()) -> ne_binaries().
--spec tree(doc(), Default) -> ne_binaries() | Default.
+-spec tree(doc()) -> kz_term:ne_binaries().
 tree(JObj) ->
     tree(JObj, []).
+
+-spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(JObj, Default) ->
     kz_json:get_list_value(?TREE, JObj, Default).
 
@@ -536,7 +542,7 @@ tree(JObj, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_tree(doc(), ne_binaries()) -> doc().
+-spec set_tree(doc(), kz_term:ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->
     kz_json:set_value(?TREE, Tree, JObj).
 
@@ -545,7 +551,7 @@ set_tree(JObj, Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notification_preference(doc()) -> api_binary().
+-spec notification_preference(doc()) -> kz_term:api_binary().
 notification_preference(JObj) ->
     Pref = notification_preference(JObj, [
                                           ?NOTIFY_PREF
@@ -559,7 +565,7 @@ notification_preference(JObj) ->
         _Default       -> <<"notify">>
     end.
 
--spec notification_preference(doc(), list()) -> api_binary().
+-spec notification_preference(doc(), list()) -> kz_term:api_binary().
 notification_preference(_JObj, []) ->
     'undefined';
 
@@ -576,7 +582,7 @@ notification_preference(JObj, [H|T]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_notification_preference(doc(), ne_binary()) -> doc().
+-spec set_notification_preference(doc(), kz_term:ne_binary()) -> doc().
 set_notification_preference(JObj, Pref) ->
     kz_json:set_value(?NOTIFY_PREF, Pref, JObj).
 
@@ -612,7 +618,7 @@ disable(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec api_key(doc()) -> api_binary().
+-spec api_key(doc()) -> kz_term:api_binary().
 api_key(JObj) ->
     kz_json:get_value(?API_KEY, JObj).
 
@@ -621,7 +627,7 @@ api_key(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_api_key(doc(), ne_binary()) -> doc().
+-spec set_api_key(doc(), kz_term:ne_binary()) -> doc().
 set_api_key(JObj, ApiKey) ->
     kz_json:set_value(?API_KEY, ApiKey, JObj).
 
@@ -656,11 +662,11 @@ allow_number_additions(JObj) ->
 set_allow_number_additions(JObj, IsAllowed) ->
     kz_json:set_value(?ALLOW_NUMBER_ADDITIONS, kz_term:is_true(IsAllowed), JObj).
 
--spec trial_expiration(doc()) -> api_integer().
--spec trial_expiration(doc(), Default) -> integer() | Default.
+-spec trial_expiration(doc()) -> kz_term:api_integer().
 trial_expiration(JObj) ->
     trial_expiration(JObj, 'undefined').
 
+-spec trial_expiration(doc(), Default) -> integer() | Default.
 trial_expiration(JObj, Default) ->
     kz_json:get_integer_value(?KEY_TRIAL_EXPIRATION, JObj, Default).
 
@@ -669,7 +675,7 @@ trial_expiration(JObj, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_trial_expiration(doc(), gregorian_seconds()) -> doc().
+-spec set_trial_expiration(doc(), kz_time:gregorian_seconds()) -> doc().
 set_trial_expiration(JObj, Expiration) ->
     JObj1 = kz_json:delete_key(?KEY_TRIAL_ACCOUNT, JObj),
     kz_json:set_value(?KEY_TRIAL_EXPIRATION, Expiration, JObj1).
@@ -679,10 +685,12 @@ set_trial_expiration(JObj, Expiration) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec trial_time_left(doc()) -> integer().
--spec trial_time_left(doc(), gregorian_seconds()) -> integer().
 trial_time_left(JObj) ->
     trial_time_left(JObj, kz_time:now_s()).
+
+-spec trial_time_left(doc(), kz_time:gregorian_seconds()) -> integer().
 trial_time_left(JObj, Now) ->
     case trial_expiration(JObj) of
         'undefined' -> 0;
@@ -694,10 +702,12 @@ trial_time_left(JObj, Now) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec trial_has_expired(doc()) -> boolean().
--spec trial_has_expired(doc(), gregorian_seconds()) -> boolean().
 trial_has_expired(JObj) ->
     trial_has_expired(JObj, kz_time:now_s()).
+
+-spec trial_has_expired(doc(), kz_time:gregorian_seconds()) -> boolean().
 trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined'
         andalso trial_time_left(JObj, Now) =< 0.
@@ -707,7 +717,7 @@ trial_has_expired(JObj, Now) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_expired(doc()) -> 'false' | {'true', gregorian_seconds()}.
+-spec is_expired(doc()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
 is_expired(JObj) ->
     case trial_has_expired(JObj) of
         'false' -> 'false';
@@ -765,7 +775,7 @@ reseller_id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_reseller_id(doc(), ne_binary()) -> doc().
+-spec set_reseller_id(doc(), kz_term:ne_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->
     kz_json:set_value(?RESELLER_ID, ResellerId, JObj).
 
@@ -774,14 +784,16 @@ set_reseller_id(JObj, ResellerId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec dial_plan(doc()) -> api_object().
--spec dial_plan(doc(), Default) -> kz_json:object() | Default.
+
+-spec dial_plan(doc()) -> kz_term:api_object().
 dial_plan(JObj) ->
     dial_plan(JObj, 'undefined').
+
+-spec dial_plan(doc(), Default) -> kz_json:object() | Default.
 dial_plan(JObj, Default) ->
     kz_json:get_json_value(?KEY_DIAL_PLAN, JObj, Default).
 
--spec fax_settings(doc() | ne_binary()) -> doc().
+-spec fax_settings(doc() | kz_term:ne_binary()) -> doc().
 fax_settings(AccountId)
   when is_binary(AccountId) ->
     case fetch(AccountId) of
@@ -795,10 +807,10 @@ fax_settings(JObj) ->
         _ -> FaxSettings
     end.
 
--spec preflow_id(doc()) -> api_ne_binary().
--spec preflow_id(doc(), Default) -> ne_binary() | Default.
+-spec preflow_id(doc()) -> kz_term:api_ne_binary().
 preflow_id(Doc) ->
     preflow_id(Doc, 'undefined').
 
+-spec preflow_id(doc(), Default) -> kz_term:ne_binary() | Default.
 preflow_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"preflow">>, <<"always">>], Doc, Default).

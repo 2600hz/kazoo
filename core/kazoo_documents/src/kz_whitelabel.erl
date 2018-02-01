@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
 %%% @end
@@ -26,7 +26,7 @@
 
 -include("kz_documents.hrl").
 
--spec fetch(api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec fetch(kz_term:api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
@@ -37,18 +37,18 @@ fetch(Account) ->
 port_hide(JObj) ->
     kz_json:is_true(?PORT_HIDE, JObj).
 
--spec port_email(kz_json:object()) -> api_binary().
+-spec port_email(kz_json:object()) -> kz_term:api_binary().
 port_email(JObj) ->
     kz_json:get_ne_binary_value(?PORT_EMAIL, JObj).
 
--spec port_authority(kz_json:object()) -> api_binary().
+-spec port_authority(kz_json:object()) -> kz_term:api_binary().
 port_authority(JObj) ->
     kz_json:get_ne_binary_value(?PORT_AUTHORITY, JObj).
 
--spec port_loa(kz_json:object()) -> api_binary().
+-spec port_loa(kz_json:object()) -> kz_term:api_binary().
 port_loa(JObj) ->
     kz_json:get_ne_binary_value(?PORT_LOA, JObj).
 
--spec port_resporg(kz_json:object()) -> api_binary().
+-spec port_resporg(kz_json:object()) -> kz_term:api_binary().
 port_resporg(JObj) ->
     kz_json:get_ne_binary_value(?PORT_RESPORG, JObj).

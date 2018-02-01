@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -11,7 +11,7 @@
 
 -include("conference.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Options) ->
     'true' = kapi_conference:add_participant_v(JObj),
     Call = kapps_call:from_json(JObj),

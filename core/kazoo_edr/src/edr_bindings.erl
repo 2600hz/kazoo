@@ -47,7 +47,7 @@ bind(Binding, Module, Fun, Payload) ->
                                                                                 ,payload=Payload
                                                                                 }).
 
--spec binding_keys(edr_binding()) -> ne_binaries().
+-spec binding_keys(edr_binding()) -> kz_term:ne_binaries().
 %% Accounts
 binding_keys(#edr_binding{include_descendants='true'}=Binding) ->
     binding_keys(Binding#edr_binding{account_id= <<"*">>, include_descendants='false'});
@@ -80,14 +80,14 @@ binding_keys(#edr_binding{severity=Severities
 levels(Level, AllLevels) ->
     lists:dropwhile(fun(L) -> L =/= Level end, AllLevels).
 
--spec binding_key(edr_severity(), edr_verbosity(), api_ne_binary(), ne_binary()) -> ne_binary().
+-spec binding_key(edr_severity(), edr_verbosity(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 binding_key(Severity, Verbosity, AccountId, AppName) ->
     <<"edr.", (kz_term:to_binary(Severity))/binary, "."
       ,(kz_term:to_binary(Verbosity))/binary, "."
       ,(kz_term:to_binary(AccountId))/binary, "."
       ,(kz_term:to_binary(AppName))/binary>>.
 
--spec event_binding_key(edr_event()) -> ne_binary().
+-spec event_binding_key(edr_event()) -> kz_term:ne_binary().
 event_binding_key(#edr_event{account_id=AccountId
                             ,severity=Severity
                             ,verbosity=Verbosity
@@ -131,7 +131,7 @@ bindings_from_json(JObj) ->
                 ,exact_verbosity=kz_json:is_true(<<"exact_verbosity">>, JObj, 'false')
                 }.
 
--spec severity_from_json(api_ne_binary() | api_ne_binaries()) -> edr_severity().
+-spec severity_from_json(kz_term:api_ne_binary() | kz_term:api_ne_binaries()) -> edr_severity().
 severity_from_json(Severities) when is_list(Severities) ->
     [severity_from_json(Severity) || Severity <- Severities];
 severity_from_json(Severity) when is_binary(Severity) ->
@@ -140,7 +140,7 @@ severity_from_json(Severity) when is_binary(Severity) ->
 severity_from_json('undefined') ->
     'info'.
 
--spec verbosity_from_json(api_ne_binary() | api_ne_binaries()) -> edr_verbosity().
+-spec verbosity_from_json(kz_term:api_ne_binary() | kz_term:api_ne_binaries()) -> edr_verbosity().
 verbosity_from_json(Verbosities) when is_list(Verbosities) ->
     [verbosity_from_json(Verbosity) || Verbosity <- Verbosities];
 verbosity_from_json(Verbosity) when is_binary(Verbosity) ->
@@ -163,8 +163,8 @@ bindings_to_json(Binding=#edr_binding{}) ->
                       ,{<<"exact_verbosity">>, Binding#edr_binding.exact_verbosity}
                       ]).
 
--spec severity_or_verbosity_to_json(edr_severity() | edr_verbosity()) -> ne_binary();
-                                   (edr_severities() | edr_verbosities()) -> ne_binaries().
+-spec severity_or_verbosity_to_json(edr_severity() | edr_verbosity()) -> kz_term:ne_binary();
+                                   (edr_severities() | edr_verbosities()) -> kz_term:ne_binaries().
 severity_or_verbosity_to_json(Values) when is_list(Values) ->
     [severity_or_verbosity_to_json(Value) || Value <- Values];
 severity_or_verbosity_to_json(Value) ->

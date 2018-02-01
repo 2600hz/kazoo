@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -51,10 +51,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_GroupId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -67,9 +69,11 @@ allowed_methods(_GroupId) ->
 %%    /groups/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -82,8 +86,8 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_groups(Context, cb_context:req_verb(Context)).
 
@@ -92,6 +96,7 @@ validate_groups(Context, ?HTTP_GET) ->
 validate_groups(Context, ?HTTP_PUT) ->
     create(Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_group(Context, Id, cb_context:req_verb(Context)).
 
@@ -163,7 +168,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"group">>)).
 
@@ -174,7 +179,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"groups">>, Context, OnSuccess).
@@ -186,7 +191,7 @@ update(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
@@ -210,7 +215,7 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"group">>));
 on_successful_validation(Id, Context) ->

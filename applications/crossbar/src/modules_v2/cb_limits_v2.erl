@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -155,10 +155,10 @@ load_limit(Context) ->
     leak_pvt_fields(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 -spec leak_pvt_fields(cb_context:context()) -> cb_context:context().
--spec leak_pvt_fields(cb_context:context(), crossbar_status()) -> cb_context:context().
 leak_pvt_fields(Context) ->
     leak_pvt_fields(Context, cb_context:resp_status(Context)).
 
+-spec leak_pvt_fields(cb_context:context(), crossbar_status()) -> cb_context:context().
 leak_pvt_fields(Context, 'success') ->
     Routines = [fun leak_pvt_allow_postpay/1
                ,fun leak_pvt_max_postpay_amount/1
@@ -201,13 +201,14 @@ on_successful_validation(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_handle_load_failure(cb_context:context()) ->
-                                       cb_context:context().
--spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
                                        cb_context:context().
 maybe_handle_load_failure(Context) ->
     maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
 
+-spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
+                                       cb_context:context().
 maybe_handle_load_failure(Context, 404) ->
     Data = cb_context:req_data(Context),
     NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}

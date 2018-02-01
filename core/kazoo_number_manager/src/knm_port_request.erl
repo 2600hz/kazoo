@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -68,7 +68,7 @@ init() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec current_state(kz_json:object()) -> api_binary().
+-spec current_state(kz_json:object()) -> kz_term:api_binary().
 current_state(JObj) ->
     kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED).
 
@@ -95,8 +95,8 @@ public_fields(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) -> {'ok', kz_json:object()} |
-                          {'error', 'not_found'}.
+-spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                  {'error', 'not_found'}.
 -ifdef(TEST).
 get(?TEST_NEW_PORT_NUM) -> {ok, ?TEST_NEW_PORT_REQ};
 get(?NE_BINARY) -> {error, not_found}.
@@ -117,8 +117,8 @@ get(DID=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_active_ports(ne_binary()) -> {'ok', kz_json:objects()} |
-                                           {'error', 'not_found'}.
+-spec account_active_ports(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
+                                                   {'error', 'not_found'}.
 account_active_ports(AccountId) ->
     ViewOptions = [{'key', AccountId}
                   ,'include_docs'
@@ -136,7 +136,7 @@ account_active_ports(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_has_active_port(ne_binary()) -> boolean().
+-spec account_has_active_port(kz_term:ne_binary()) -> boolean().
 account_has_active_port(AccountId) ->
     case account_active_ports(AccountId) of
         {'ok', [_|_]} -> 'true';
@@ -176,7 +176,7 @@ normalize_number_map(N, Meta) ->
     {knm_converters:normalize(N), Meta}.
 
 %% @public
--spec new(kz_json:object(), ne_binary(), api_ne_binary()) -> kz_json:object().
+-spec new(kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
 new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
     Normalized = normalize_numbers(PortReq),
     Metadata = transition_metadata(AuthAccountId, AuthUserId),
@@ -191,19 +191,16 @@ new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec transition_to_submitted(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_pending(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_scheduled(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_complete(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_rejected(kz_json:object(), transition_metadata()) -> transition_response().
--spec transition_to_canceled(kz_json:object(), transition_metadata()) -> transition_response().
 
+-spec transition_to_submitted(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_submitted(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_REJECTED], ?PORT_SUBMITTED).
 
+-spec transition_to_pending(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_pending(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_SUBMITTED], ?PORT_PENDING).
 
+-spec transition_to_scheduled(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_scheduled(JObj, Metadata) ->
     ToScheduled = states_to_scheduled(?SHOULD_ALLOW_FROM_SUBMITTED),
     transition(JObj, Metadata, ToScheduled, ?PORT_SCHEDULED).
@@ -213,15 +210,18 @@ states_to_scheduled(_AllowFromSubmitted='false') ->
 states_to_scheduled(_AllowFromSubmitted='true') ->
     [?PORT_SUBMITTED | states_to_scheduled('false')].
 
+-spec transition_to_complete(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_complete(JObj, Metadata) ->
     case transition(JObj, Metadata, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
         {'error', _}=E -> E;
         {'ok', Transitioned} -> completed_port(Transitioned)
     end.
 
+-spec transition_to_rejected(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_rejected(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED], ?PORT_REJECTED).
 
+-spec transition_to_canceled(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_canceled(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
@@ -230,7 +230,7 @@ transition_to_canceled(JObj, Metadata) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_transition(kz_json:object(), transition_metadata(), ne_binary()) -> transition_response().
+-spec maybe_transition(kz_json:object(), transition_metadata(), kz_term:ne_binary()) -> transition_response().
 maybe_transition(PortReq, Metadata, ?PORT_SUBMITTED) ->
     transition_to_submitted(PortReq, Metadata);
 maybe_transition(PortReq, Metadata, ?PORT_PENDING) ->
@@ -244,13 +244,13 @@ maybe_transition(PortReq, Metadata, ?PORT_REJECTED) ->
 maybe_transition(PortReq, Metadata, ?PORT_CANCELED) ->
     transition_to_canceled(PortReq, Metadata).
 
--spec transition(kz_json:object(), transition_metadata(), ne_binaries(), ne_binary()) ->
-                        transition_response().
--spec transition(kz_json:object(), transition_metadata(), ne_binaries(), ne_binary(), ne_binary()) ->
+-spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
                         transition_response().
 transition(JObj, Metadata, FromStates, ToState) ->
     transition(JObj, Metadata, FromStates, ToState, current_state(JObj)).
 
+-spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                        transition_response().
 transition(_JObj, _Metadata, [], _ToState, _CurrentState) ->
     lager:debug("cant go from ~s to ~s", [_CurrentState, _ToState]),
     lager:debug("metadata: ~p", [_Metadata]),
@@ -262,7 +262,7 @@ transition(JObj, Metadata, [_FromState | FromStates], ToState, CurrentState) ->
     lager:debug("skipping from ~s to ~s c ~p", [_FromState, ToState, CurrentState]),
     transition(JObj, Metadata, FromStates, ToState, CurrentState).
 
--spec successful_transition(kz_json:object(), ne_binary(), ne_binary(), transition_metadata()) -> kz_json:object().
+-spec successful_transition(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), transition_metadata()) -> kz_json:object().
 successful_transition(JObj, FromState, ToState, Metadata) ->
     MetadataJObj = transition_metadata_jobj(FromState, ToState, Metadata),
     NewTransitions = [MetadataJObj | kz_json:get_list_value(?PORT_PVT_TRANSITIONS, JObj, [])],
@@ -271,7 +271,7 @@ successful_transition(JObj, FromState, ToState, Metadata) ->
              ],
     kz_json:set_values(Values, JObj).
 
--spec transition_metadata_jobj(api_ne_binary(), ne_binary(), transition_metadata()) -> kz_json:object().
+-spec transition_metadata_jobj(kz_term:api_ne_binary(), kz_term:ne_binary(), transition_metadata()) -> kz_json:object().
 transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
                                               ,auth_account_name := AuthAccountName
                                               ,auth_user_id := OptionalUserId
@@ -294,7 +294,7 @@ transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
                              ]}
       ]).
 
--spec maybe_user(api_ne_binary(), api_ne_binary(), api_ne_binary()) -> kz_proplist().
+-spec maybe_user(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:proplist().
 maybe_user(undefined, _, _) -> [];
 maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
     [{<<"user">>, [{<<"id">>, UserId}
@@ -304,21 +304,21 @@ maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
     ].
 
 %% @public
--type transition_metadata() :: #{auth_account_id => ne_binary()
-                                ,auth_account_name => api_ne_binary()
-                                ,auth_user_id => api_ne_binary()
-                                ,user_first_name => api_ne_binary()
-                                ,user_last_name => api_ne_binary()
-                                ,optional_reason => api_ne_binary()
+-type transition_metadata() :: #{auth_account_id => kz_term:ne_binary()
+                                ,auth_account_name => kz_term:api_ne_binary()
+                                ,auth_user_id => kz_term:api_ne_binary()
+                                ,user_first_name => kz_term:api_ne_binary()
+                                ,user_last_name => kz_term:api_ne_binary()
+                                ,optional_reason => kz_term:api_ne_binary()
                                 }.
 
 %% @public
--spec transition_metadata(ne_binary(), api_ne_binary()) -> transition_metadata().
+-spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
 transition_metadata(AuthAccountId, AuthUserId) ->
     transition_metadata(AuthAccountId, AuthUserId, undefined).
 
 %% @public
--spec transition_metadata(ne_binary(), api_ne_binary(), api_ne_binary()) -> transition_metadata().
+-spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
 transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
     OptionalUserId = case UserId of
                          ?NE_BINARY -> UserId;
@@ -350,10 +350,12 @@ get_user_name(AuthAccountId, UserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec charge_for_port(kz_json:object()) -> 'ok' | 'error'.
--spec charge_for_port(kz_json:object(), ne_binary()) -> 'ok' | 'error'.
 charge_for_port(JObj) ->
     charge_for_port(JObj, kz_doc:account_id(JObj)).
+
+-spec charge_for_port(kz_json:object(), kz_term:ne_binary()) -> 'ok' | 'error'.
 charge_for_port(_JObj, AccountId) ->
     Services = kz_services:fetch(AccountId),
     Cost = kz_services:activation_charges(<<"number_services">>, ?FEATURE_PORT, Services),
@@ -365,7 +367,7 @@ charge_for_port(_JObj, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_to_app(ne_binary(), api_ne_binary(), kz_json:object()) ->
+-spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
                            {'ok', kz_json:object()} |
                            {'error', any()}.
 assign_to_app(Number, NewApp, JObj) ->
@@ -507,8 +509,8 @@ clear_numbers_from_port(PortReq) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_send_request(kz_json:object()) -> 'ok'.
--spec maybe_send_request(kz_json:object(), api_binary()) -> 'ok'.
 maybe_send_request(JObj) ->
     kz_util:put_callid(kz_doc:id(JObj)),
     AccountId = kz_doc:account_id(JObj),
@@ -520,6 +522,7 @@ maybe_send_request(JObj) ->
             lager:error("failed to open account ~s:~p", [AccountId, _R])
     end.
 
+-spec maybe_send_request(kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_send_request(JObj, 'undefined')->
     lager:debug("'submitted_port_requests_url' is not set for account ~s", [kz_doc:account_id(JObj)]);
 maybe_send_request(JObj, Url)->
@@ -537,7 +540,7 @@ maybe_send_request(JObj, Url)->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_request(kz_json:object(), ne_binary()) -> 'error' | 'ok'.
+-spec send_request(kz_json:object(), kz_term:ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}
               ,{"User-Agent", kz_term:to_list(node())}
@@ -571,7 +574,7 @@ send_request(JObj, Url) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_attachements(ne_binary(), kz_json:object()) -> 'error' | 'ok'.
+-spec send_attachements(kz_term:ne_binary(), kz_json:object()) -> 'error' | 'ok'.
 send_attachements(Url, JObj) ->
     try fetch_and_send(Url, JObj) of
         'ok' -> 'ok'
@@ -584,7 +587,7 @@ send_attachements(Url, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_and_send(ne_binary(), kz_json:object()) -> 'ok'.
+-spec fetch_and_send(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 fetch_and_send(Url, JObj) ->
     Id = kz_doc:id(JObj),
     Attachments = kz_doc:attachments(JObj, kz_json:new()),
@@ -604,7 +607,7 @@ fetch_and_send(Url, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_attachment(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), binary()) ->
+-spec send_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), binary()) ->
                              'error' | 'ok'.
 send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = kz_json:get_value(<<"content_type">>, Options),
@@ -668,18 +671,18 @@ prepare_docs_for_migrate(Docs) ->
                        =/= 'undefined'
     ].
 
--spec migrate_doc(kz_json:object()) -> api_object().
+-spec migrate_doc(kz_json:object()) -> kz_term:api_object().
 migrate_doc(PortRequest) ->
     case kz_json:get_value(?PORT_PVT_TREE, PortRequest) of
         'undefined' -> update_doc(PortRequest);
         _Tree -> 'undefined'
     end.
 
--spec update_doc(kz_json:object()) -> api_object().
--spec update_doc(kz_json:object(), api_binary()) -> api_object().
+-spec update_doc(kz_json:object()) -> kz_term:api_object().
 update_doc(PortRequest) ->
     update_doc(PortRequest, kz_doc:account_id(PortRequest)).
 
+-spec update_doc(kz_json:object(), kz_term:api_binary()) -> kz_term:api_object().
 update_doc(_Doc, 'undefined') ->
     lager:debug("no account id in doc ~s", [kz_doc:id(_Doc)]),
     'undefined';

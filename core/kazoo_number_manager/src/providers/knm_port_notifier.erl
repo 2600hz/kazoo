@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle publishing notification events for new port requests
@@ -25,13 +25,14 @@
 %% produce notifications if the porting object changes
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary(), ne_binary()) -> knm_number:knm_number().
 save(N) ->
     PN = knm_number:phone_number(N),
     State = kz_json:get_ne_binary_value(?PVT_STATE, knm_phone_number:doc(PN)),
     save(N, knm_phone_number:state(PN), State).
 
+-spec save(knm_number:knm_number(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
     Port = case feature(Number) of
                undefined -> kz_json:new();
@@ -76,12 +77,12 @@ maybe_port_feature(Number) ->
 
 -spec maybe_port_changed(knm_number:knm_number(), kz_json:object()) ->
                                 knm_number:knm_number().
--spec maybe_port_changed(knm_number:knm_number(), kz_json:object(), boolean()) ->
-                                knm_number:knm_number().
 maybe_port_changed(Number, Port) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     maybe_port_changed(Number, Port, DryRun).
 
+-spec maybe_port_changed(knm_number:knm_number(), kz_json:object(), boolean()) ->
+                                knm_number:knm_number().
 maybe_port_changed(Number, _Port, 'true') -> Number;
 maybe_port_changed(Number, Port, 'false') ->
     CurrentPort = feature(Number),

@@ -17,28 +17,28 @@
 -type yes_or_no() :: <<_:16>> | <<_:24>>.
 -type state_two_letters() :: <<_:16>>.
 
--type qs_option() :: {'did', ne_binary()} |
-                     {'name', ne_binary()} |
-                     {'cmd', ne_binary()} |
+-type qs_option() :: {'did', kz_term:ne_binary()} |
+                     {'name', kz_term:ne_binary()} |
+                     {'cmd', kz_term:ne_binary()} |
                      {'xml', yes_or_no()} |
-                     {'routesip', ne_binary()} |
-                     {'npanxx', ne_binary()} |
-                     {'type', ne_binary()} |
+                     {'routesip', kz_term:ne_binary()} |
+                     {'npanxx', kz_term:ne_binary()} |
+                     {'type', kz_term:ne_binary()} |
                      {'withrates', yes_or_no()} |
-                     {'provider', ne_binary()} |
+                     {'provider', kz_term:ne_binary()} |
                      {'cnam', yes_or_no()} |
-                     {'address', ne_binary()} |
-                     {'city', ne_binary()} |
+                     {'address', kz_term:ne_binary()} |
+                     {'city', kz_term:ne_binary()} |
                      {'state', state_two_letters()} |
-                     {'zip', ne_binary() | integer()} |
-                     {'ratecenter', ne_binary()} |
+                     {'zip', kz_term:ne_binary() | integer()} |
+                     {'ratecenter', kz_term:ne_binary()} |
                      {'smsonly', yes_or_no()} |
-                     {'login', ne_binary()} |
-                     {'pass', ne_binary()}.
+                     {'login', kz_term:ne_binary()} |
+                     {'pass', kz_term:ne_binary()}.
 -type qs_options() :: [qs_option()].
 
 -type query_option() :: {'qs', qs_options()} |
-                        {'uri', ne_binary()}.
+                        {'uri', kz_term:ne_binary()}.
 -type query_options() :: [query_option()].
 
 -define(KNM_VITELITY_HRL, 'true').

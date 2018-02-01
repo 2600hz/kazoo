@@ -4,7 +4,7 @@
 
 -include("kazoo_speech.hrl").
 
--spec convert_content(binary(), ne_binary(), ne_binary()) -> binary() | 'error'.
+-spec convert_content(binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> binary() | 'error'.
 convert_content(Content, <<"audio/mpeg">>=_ConvertFrom, <<"application/wav">> = _ConvertTo) ->
     Mp3File = kazoo_speech_util:tmp_file_name(<<"mp3">>),
     WavFile = kazoo_speech_util:tmp_file_name(<<"wav">>),

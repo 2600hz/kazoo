@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Directory lookups from FS
 %%% @end
@@ -29,7 +29,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-               ,options = [] :: kz_proplist()
+               ,options = [] :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -40,9 +40,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+
+-spec start_link(atom()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -61,7 +63,7 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
@@ -85,7 +87,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -99,7 +101,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind_to_directory', #state{node=Node}=State) ->
     case freeswitch:bind(Node, 'directory') of
         'ok' -> {'noreply', State};
@@ -121,7 +123,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
            ,#state{node=Node}=State) ->
     _ = kz_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
@@ -174,7 +176,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_directory_lookup(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
+-spec handle_directory_lookup(kz_term:ne_binary(), kz_term:proplist(), atom()) -> fs_handlecall_ret().
 handle_directory_lookup(Id, Props, Node) ->
     kz_util:put_callid(Id),
     lager:debug("received fetch request (~s) user directory from ~s", [Id, Node]),
@@ -184,7 +186,7 @@ handle_directory_lookup(Id, Props, Node) ->
         _Other -> directory_not_found(Node, Id)
     end.
 
--spec maybe_sip_auth_response(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
+-spec maybe_sip_auth_response(kz_term:ne_binary(), kz_term:proplist(), atom()) -> fs_handlecall_ret().
 maybe_sip_auth_response(Id, Props, Node) ->
     case kz_term:is_not_empty(props:get_value(<<"sip_auth_response">>, Props)) of
         'false' -> maybe_kamailio_association(Id, Props, Node);
@@ -193,7 +195,7 @@ maybe_sip_auth_response(Id, Props, Node) ->
             lookup_user(Node, Id, <<"password">>, Props)
     end.
 
--spec maybe_kamailio_association(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
+-spec maybe_kamailio_association(kz_term:ne_binary(), kz_term:proplist(), atom()) -> fs_handlecall_ret().
 maybe_kamailio_association(Id, Props, Node) ->
     case kz_term:is_not_empty(kzd_freeswitch:authorizing_id(Props))
         andalso kz_term:is_not_empty(kzd_freeswitch:authorizing_type(Props))
@@ -202,7 +204,7 @@ maybe_kamailio_association(Id, Props, Node) ->
         'false' -> directory_not_found(Node, Id)
     end.
 
--spec kamailio_association(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
+-spec kamailio_association(kz_term:ne_binary(), kz_term:proplist(), atom()) -> fs_handlecall_ret().
 kamailio_association(Id, Props, Node) ->
     Password = kz_binary:rand_hex(12),
     Realm = props:get_value(<<"domain">>, Props),
@@ -220,13 +222,13 @@ kamailio_association(Id, Props, Node) ->
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
--spec directory_not_found(atom(), ne_binary()) -> fs_handlecall_ret().
+-spec directory_not_found(atom(), kz_term:ne_binary()) -> fs_handlecall_ret().
 directory_not_found(Node, Id) ->
     {'ok', Xml} = ecallmgr_fs_xml:not_found(),
     lager:debug("sending authn not found XML to ~w", [Node]),
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
--spec lookup_user(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
+-spec lookup_user(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
     Domain = props:get_value(<<"domain">>, Props),
     {'ok', Xml} =
@@ -244,7 +246,7 @@ lookup_user(Node, Id, Method,  Props) ->
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
--spec get_auth_realm(kz_proplist()) -> ne_binary().
+-spec get_auth_realm(kz_term:proplist()) -> kz_term:ne_binary().
 get_auth_realm(Props) ->
     case props:get_first_defined([<<"sip_auth_realm">>
                                  ,<<"domain">>
@@ -260,7 +262,7 @@ get_auth_realm(Props) ->
             end
     end.
 
--spec get_auth_uri_realm(kz_proplist()) -> ne_binary().
+-spec get_auth_uri_realm(kz_term:proplist()) -> kz_term:ne_binary().
 get_auth_uri_realm(Props) ->
     AuthURI = props:get_value(<<"sip_auth_uri">>, Props, <<>>),
     case binary:split(AuthURI, <<"@">>) of
@@ -272,7 +274,7 @@ get_auth_uri_realm(Props) ->
                                     ], Props)
     end.
 
--spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary()
+-spec handle_lookup_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
                         ,{'ok', kz_json:object()} | {'error', _}) ->
                                 {'ok', _}.
 handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {'ok', JObj}) ->
@@ -292,7 +294,7 @@ handle_lookup_resp(_, _, _, {'error', _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
     ecallmgr_fs_xml:not_found().
 
--spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec maybe_query_registrar(kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                                    {'ok', kz_json:object()} |
                                    {'error', any()}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
@@ -301,7 +303,7 @@ maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
         {'error', 'not_found'} -> query_registrar(Realm, Username, Node, Id, Method, Props)
     end.
 
--spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec query_registrar(kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                              {'ok', kz_json:object()} |
                              {'error', any()}.
 query_registrar(Realm, Username, Node, Id, Method, Props) ->
@@ -337,7 +339,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
 %%   to wait for conferences, etc.  Since Kamailio does not honor
 %%   Defer-Response we can use that flag on registrar errors
 %%   to queue in Kazoo but still advance Kamailio, just need to check here.
--spec maybe_defered_error(ne_binary(), ne_binary(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', 'timeout'}.
+-spec maybe_defered_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', 'timeout'}.
 maybe_defered_error(Realm, Username, JObj) ->
     case kapi_authn:resp_v(JObj) of
         'false' -> {'error', 'timeout'};

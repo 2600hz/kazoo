@@ -2,6 +2,10 @@
 
 ## give a module name, grep the codebase for calls to that module
 ## create a list of beam files and feed it to dialyzer
+
+pushd $(dirname $0) > /dev/null
+cd $(pwd -P)/..
+
 MODULE=$1
 ERL_FILES=$(grep -rl "$1:" {core,applications} --include "*.erl" --exclude="\*pqc.erl" | grep -v "test/")
 MOD_BEAM=$(find {core,applications} -name "$MODULE.beam")
@@ -20,6 +24,9 @@ done
 
 shift
 
+BEAM_FILES+=("core/kazoo_stdlib/ebin/kz_types.beam")
 ARGS=${BEAM_FILES[@]}
 echo "dialyzing usages of $MODULE"
 dialyzer --plt .kazoo.plt $MOD_BEAM $ARGS $@
+
+popd > /dev/null

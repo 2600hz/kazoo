@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(ReqJObj, _Props) ->
     'true' = kapi_authz:balance_check_req_v(ReqJObj),
     kz_util:put_callid(?APP_NAME),
@@ -22,7 +22,7 @@ handle_req(ReqJObj, _Props) ->
     ServerId = kz_api:server_id(ReqJObj),
     kapi_authz:publish_balance_check_resp(ServerId, Resp).
 
--spec account_balance(ne_binary(), ne_binaries()) -> ne_binaries().
+-spec account_balance(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 account_balance(AccountId, Acc) ->
     Limits = j5_limits:get(AccountId),
     [ {AccountId, j5_per_minute:maybe_credit_available(0, Limits)} | Acc ].

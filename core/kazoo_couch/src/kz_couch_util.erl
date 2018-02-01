@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Util functions used by kazoo_couch
 %%% @end
@@ -33,9 +33,9 @@
 %% @end
 %%------------------------------------------------------------------------------
 -type retry504_ret() :: any().
-%% 'ok' | ne_binary() |
+%% 'ok' | kz_term:ne_binary() |
 %% {'ok', kz_json:object() | kz_json:objects() |
-%%  binary() | ne_binaries() | boolean() | integer()
+%%  binary() | kz_term:ne_binaries() | boolean() | integer()
 %% } |
 %% couchbeam_error() |
 %% {'error', 'timeout'}.
@@ -93,7 +93,7 @@ retry504s(Fun, Cnt) ->
 new_connection(#{}=Map) ->
     connect(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
 
--spec maybe_add_auth(string(), string(), kz_proplist()) -> kz_proplist().
+-spec maybe_add_auth(string(), string(), kz_term:proplist()) -> kz_term:proplist().
 maybe_add_auth("", _Pass, Options) -> Options;
 maybe_add_auth(User, Pass, Options) ->
     [{'basic_auth', {User, Pass}} | Options].
@@ -105,7 +105,7 @@ check_options(Options) ->
                ],
     lists:foldl(fun(Fun, Opts) -> Fun(Opts) end, Options, Routines).
 
--spec maybe_default_recv_timeout(kz_proplist()) -> kz_proplist().
+-spec maybe_default_recv_timeout(kz_term:proplist()) -> kz_term:proplist().
 maybe_default_recv_timeout(Options) ->
     case props:get_value('recv_timeout', Options) of
         'undefined' -> [{'recv_timeout', 20000} | Options];
@@ -182,10 +182,10 @@ add_couch_version(_, _, #server{options=Options}=Conn) ->
                                {'error', any()}.
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
--spec server_url(server()) -> ne_binary().
+-spec server_url(server()) -> kz_term:ne_binary().
 server_url(#server{url=Url}) -> Url.
 
--spec db_url(server(), ne_binary()) -> ne_binary().
+-spec db_url(server(), kz_term:ne_binary()) -> kz_term:ne_binary().
 db_url(#server{}=Conn, DbName) ->
     Server = server_url(Conn),
     list_to_binary([Server, "/", DbName]).
@@ -196,11 +196,12 @@ db_url(#server{}=Conn, DbName) ->
 %% returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
--spec get_db(kz_data:connection(), ne_binary()) -> db().
--spec get_db(kz_data:connection(), ne_binary(), couch_version()) -> db().
+
+-spec get_db(kz_data:connection(), kz_term:ne_binary()) -> db().
 get_db(Conn, DbName) ->
     get_db(Conn, DbName, kazoo_couch:server_version(Conn)).
 
+-spec get_db(kz_data:connection(), kz_term:ne_binary(), couch_version()) -> db().
 get_db(Conn, DbName, Driver) ->
     ConnToUse =
         case is_admin_db(DbName, Driver) of
@@ -210,7 +211,7 @@ get_db(Conn, DbName, Driver) ->
     {'ok', Db} = couchbeam:open_db(ConnToUse, DbName),
     Db.
 
--spec is_admin_db(ne_binary(), couch_version()) -> boolean().
+-spec is_admin_db(kz_term:ne_binary(), couch_version()) -> boolean().
 is_admin_db(<<"_dbs">>, 'couchdb_2') -> 'true';
 is_admin_db(<<"_users">>, 'couchdb_2') -> 'true';
 is_admin_db(<<"_nodes">>, 'couchdb_2') -> 'true';
@@ -294,7 +295,7 @@ format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
     E.
 
--spec maybe_add_rev(couchbeam_db(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec maybe_add_rev(couchbeam_db(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
     case props:get_value('rev', Options) =:= 'undefined'
         andalso do_fetch_rev(Db, DocId)
@@ -316,8 +317,8 @@ maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
             Options
     end.
 
--spec do_fetch_rev(couchbeam_db(), ne_binary()) ->
-                          ne_binary() |
+-spec do_fetch_rev(couchbeam_db(), kz_term:ne_binary()) ->
+                          kz_term:ne_binary() |
                           couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) ->
     case kz_term:is_empty(DocId) of

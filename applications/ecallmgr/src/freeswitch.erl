@@ -50,8 +50,9 @@
              ]).
 
 -spec version(atom()) -> fs_api_return().
--spec version(atom(), pos_integer()) -> fs_api_return().
 version(Node) -> ?FS_MODULE:version(Node).
+
+-spec version(atom(), pos_integer()) -> fs_api_return().
 version(Node, Timeout) -> ?FS_MODULE:version(Node, Timeout).
 
 -spec noevents(atom()) -> fs_api_return().
@@ -61,26 +62,31 @@ noevents(Node) -> ?FS_MODULE:noevents(Node).
 close(Node) -> ?FS_MODULE:close(Node).
 
 -spec getpid(atom()) -> fs_api_return().
--spec getpid(atom(), pos_integer()) -> fs_api_return().
 getpid(Node) -> ?FS_MODULE:getpid(Node).
+
+-spec getpid(atom(), pos_integer()) -> fs_api_return().
 getpid(Node, Timeout) -> ?FS_MODULE:getpid(Node, Timeout).
 
 -spec bind(atom(), atom()) -> fs_api_return().
--spec bind(atom(), atom(), pos_integer()) -> fs_api_return().
 bind(Node, Type) -> ?FS_MODULE:bind(Node, Type).
+
+-spec bind(atom(), atom(), pos_integer()) -> fs_api_return().
 bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string()) -> 'ok'.
+fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
+
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
                          'ok' | {'error', 'baduuid'}.
-fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
 fetch_reply(Node, FetchID, Section, Reply, Timeout) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Timeout).
 
--spec api(atom(), text()) -> fs_api_return().
--spec api(atom(), text(), text()) -> fs_api_return().
--spec api(atom(), text(), text(), kz_timeout()) -> fs_api_return().
+-spec api(atom(), kz_term:text()) -> fs_api_return().
 api(Node, Cmd) -> ?FS_MODULE:api(Node, Cmd).
+
+-spec api(atom(), kz_term:text(), kz_term:text()) -> fs_api_return().
 api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
+
+-spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).
 
 %% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
@@ -96,13 +102,15 @@ bgapi(Node, Cmd, Args, Fun) -> ?FS_MODULE:bgapi(Node, Cmd, Args, Fun).
 -spec bgapi(atom(), atom(), string() | binary(), fun(), list()) -> fs_api_return().
 bgapi(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi(Node, Cmd, Args, Fun, CallBackParams).
 
--spec bgapi(atom(), ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
+-spec bgapi(atom(), kz_term:ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
 bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) -> ?FS_MODULE:bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun).
 
 -type event() :: atom() | kz_json:object().
+
 -spec event(atom(), event() | [event()]) -> 'ok' | {'error', 'timeout' | 'exception'}.
--spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 event(Node, Events) -> ?FS_MODULE:event(Node, Events).
+
+-spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 event(Node, Events, Timeout) -> ?FS_MODULE:event(Node, Events, Timeout).
 
 -spec nixevent(atom(), event() | [event()]) -> 'ok'.
@@ -114,7 +122,7 @@ sendevent(Node, EventName, Headers) -> ?FS_MODULE:sendevent(Node, EventName, Hea
 -spec sendevent_custom(atom(), atom(), list()) -> 'ok'.
 sendevent_custom(Node, SubClassName, Headers) -> ?FS_MODULE:sendevent_custom(Node, SubClassName, Headers).
 
--spec sendmsg(atom(), ne_binary(), list()) -> fs_api_return().
+-spec sendmsg(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
 sendmsg(Node, UUID, Headers) -> ?FS_MODULE:sendmsg(Node, UUID, Headers).
 
 -spec config(atom()) -> 'ok'.

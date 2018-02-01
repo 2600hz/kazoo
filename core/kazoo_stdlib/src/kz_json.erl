@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end
@@ -122,19 +122,19 @@
 -spec new() -> object().
 new() -> ?JSON_WRAPPER([]).
 
--spec encode(json_term()) -> text().
--spec encode(json_term(), encode_options()) -> text().
+-spec encode(json_term()) -> kz_term:text().
 encode(JObj) -> encode(JObj, []).
 
+-spec encode(json_term(), encode_options()) -> kz_term:text().
 encode(JObj, Options) -> jiffy:encode(JObj, Options).
 
--spec unsafe_decode(iolist() | ne_binary()) -> json_term().
--spec unsafe_decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
+-spec unsafe_decode(iolist() | kz_term:ne_binary()) -> json_term().
 unsafe_decode(Thing) when is_list(Thing);
                           is_binary(Thing) ->
     unsafe_decode(Thing, <<"application/json">>).
 
+-spec unsafe_decode(iolist() | kz_term:ne_binary(), kz_term:ne_binary()) -> json_term().
 unsafe_decode(JSON, <<"application/json">>) ->
     try jiffy:decode(JSON)
     catch
@@ -150,13 +150,13 @@ unsafe_decode(JSON, <<"application/json">>) ->
             throw({'invalid_json', {'error', {0, 'decoder_exit'}}, JSON})
     end.
 
--spec decode(iolist() | ne_binary()) -> json_term().
--spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
+-spec decode(iolist() | kz_term:ne_binary()) -> json_term().
 decode(Thing) when is_list(Thing)
                    orelse is_binary(Thing) ->
     decode(Thing, <<"application/json">>).
 
+-spec decode(iolist() | kz_term:ne_binary(), kz_term:ne_binary()) -> json_term().
 decode(JSON, <<"application/json">>) ->
     try unsafe_decode(JSON)
     catch
@@ -201,10 +201,10 @@ is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
 -spec is_json_object(any()) -> boolean().
--spec is_json_object(path(), any()) -> boolean().
 is_json_object(?JSON_WRAPPER(P)) when is_list(P) -> 'true';
 is_json_object(_) -> 'false'.
 
+-spec is_json_object(path(), any()) -> boolean().
 is_json_object(Key, JObj) ->
     is_json_object(get_value(Key, JObj)).
 
@@ -242,7 +242,7 @@ is_json_term(MaybeJObj) ->
 %% Finds out whether 2 JSON objects are recursively identical.
 %% @end
 %%--------------------------------------------------------------------
--spec are_equal(api_object(), api_object()) -> boolean().
+-spec are_equal(kz_term:api_object(), kz_term:api_object()) -> boolean().
 are_equal('undefined', 'undefined') -> 'true';
 are_equal('undefined', _) -> 'false';
 are_equal(_, 'undefined') -> 'false';
@@ -291,13 +291,15 @@ recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime
 recursive_from_list(_Else) -> null.
 
 %% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
+
 -spec merge(objects()) -> object().
--spec merge(object(), object()) -> object().
 merge([JObjInit | JObjs]) ->
     lists:foldl(fun(JObj, Acc) -> merge(Acc, JObj) end
                ,JObjInit
                ,JObjs
                ).
+
+-spec merge(object(), object()) -> object().
 merge(JObj1, JObj2) ->
     merge(fun merge_right/2, JObj1, JObj2).
 
@@ -488,7 +490,7 @@ sum_jobjs([FirstJObj|JObjs], Sumer)
 %% Both lists MUST be of same size.
 %% @end
 %%--------------------------------------------------------------------
--spec order_by(path(), ne_binaries(), [objects()]) -> objects().
+-spec order_by(path(), kz_term:ne_binaries(), [objects()]) -> objects().
 order_by(Path, Ids, ListOfJObjs)
   when is_list(Ids), is_list(ListOfJObjs) ->
     _ = [[put(get_value(Path, JObj), JObj) || JObj <- JObjs]
@@ -496,19 +498,21 @@ order_by(Path, Ids, ListOfJObjs)
         ],
     [erase(Id) || Id <- Ids].
 
--spec to_proplist(object() | objects()) ->
-                         json_proplist() | json_proplists() | flat_proplist().
--spec to_proplist(path(), object() | objects()) ->
-                         json_proplist() | json_proplists() | flat_proplist().
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
+
+-spec to_proplist(object() | objects()) ->
+                         json_proplist() | json_proplists() | flat_proplist().
 to_proplist(JObjs) when is_list(JObjs) -> [to_proplist(JObj) || JObj <- JObjs];
 to_proplist(?JSON_WRAPPER(Prop)) -> Prop.
 
 %% convert everything starting at a specific key
+
+-spec to_proplist(path(), object() | objects()) ->
+                         json_proplist() | json_proplists() | flat_proplist().
 to_proplist(Key, JObj) -> to_proplist(get_json_value(Key, JObj, new())).
 
--spec recursive_to_proplist(object() | objects() | kz_proplist()) -> kz_proplist().
+-spec recursive_to_proplist(object() | objects() | kz_term:proplist()) -> kz_term:proplist().
 recursive_to_proplist(?JSON_WRAPPER(Props)) ->
     [{K, recursive_to_proplist(V)} || {K, V} <- Props];
 recursive_to_proplist(Props) when is_list(Props) ->
@@ -521,21 +525,23 @@ recursive_to_proplist(Else) -> Else.
 %% Convert a json object to a map
 %% @end
 %%--------------------------------------------------------------------
+
 -spec to_map(object() | objects()) -> map().
--spec to_map(path(), object() | objects()) -> map().
 to_map(JObjs) when is_list(JObjs) ->
     lists:foldl(fun to_map_fold/2, #{}, JObjs);
 to_map(JObj) ->
     recursive_to_map(JObj).
 
 %% convert everything starting at a specific key
+
+-spec to_map(path(), object() | objects()) -> map().
 to_map(Key, JObj) ->
     recursive_to_map(get_json_value(Key, JObj, new())).
 
 to_map_fold(JObj, #{}=Map) ->
     maps:merge(Map, recursive_to_map(JObj)).
 
--spec recursive_to_map(object() | objects() | kz_proplist()) -> map().
+-spec recursive_to_map(object() | objects() | kz_term:proplist()) -> map().
 recursive_to_map(?JSON_WRAPPER(Props)) ->
     maps:from_list([{K, recursive_to_map(V)} || {K, V} <- Props]);
 recursive_to_map(List) when is_list(List) ->
@@ -559,9 +565,10 @@ recursive_from_map(List) when is_list(List) ->
     [recursive_from_map(Item) || Item <- List];
 recursive_from_map(Else) -> Else.
 
--spec get_json_value(path(), object()) -> api_object().
--spec get_json_value(path(), object(), Default) -> Default | object().
+-spec get_json_value(path(), object()) -> kz_term:api_object().
 get_json_value(Key, JObj) -> get_json_value(Key, JObj, 'undefined').
+
+-spec get_json_value(path(), object(), Default) -> Default | object().
 get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -569,10 +576,11 @@ get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
         _ -> Default
     end.
 
--spec get_ne_json_value(path(), object()) -> api_object().
--spec get_ne_json_value(path(), object(), Default) -> Default | object().
+-spec get_ne_json_value(path(), object()) -> kz_term:api_object().
 get_ne_json_value(Key, JObj) ->
     get_ne_json_value(Key, JObj, 'undefined').
+
+-spec get_ne_json_value(path(), object(), Default) -> Default | object().
 get_ne_json_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -582,12 +590,12 @@ get_ne_json_value(Key, JObj, Default) ->
     end.
 
 -type filter_pred() :: fun(({key(), json_term()}) -> boolean()).
--spec filter(filter_pred(), object()) -> object().
--spec filter(filter_pred(), object(), path()) -> object() | objects().
 
+-spec filter(filter_pred(), object()) -> object().
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
 
+-spec filter(filter_pred(), object(), path()) -> object() | objects().
 filter(Pred, ?JSON_WRAPPER(_)=JObj, Path) when is_list(Path),
                                                is_function(Pred, 1) ->
     Filtered = filter(Pred, get_json_value(Path, JObj)),
@@ -630,20 +638,22 @@ foldr(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldr(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldr(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
 
--spec get_string_value(path(), object() | objects()) -> api_list().
--spec get_string_value(path(), object(), Default) -> list() | Default.
+-spec get_string_value(path(), object() | objects()) -> kz_term:api_list().
 get_string_value(Key, JObj) ->
     get_string_value(Key, JObj, 'undefined').
+
+-spec get_string_value(path(), object(), Default) -> list() | Default.
 get_string_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_list/1)
     end.
 
--spec get_list_value(path(), object() | objects()) -> api_list().
--spec get_list_value(path(), object() | objects(), Default) -> Default | list().
+-spec get_list_value(path(), object() | objects()) -> kz_term:api_list().
 get_list_value(Key, JObj) ->
     get_list_value(Key, JObj, 'undefined').
+
+-spec get_list_value(path(), object() | objects(), Default) -> Default | list().
 get_list_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -651,20 +661,22 @@ get_list_value(Key, JObj, Default) ->
         _Else -> Default
     end.
 
--spec get_binary_value(path(), object() | objects()) -> api_binary().
--spec get_binary_value(path(), object() | objects(), Default) -> binary() | Default.
+-spec get_binary_value(path(), object() | objects()) -> kz_term:api_binary().
 get_binary_value(Key, JObj) ->
     get_binary_value(Key, JObj, 'undefined').
+
+-spec get_binary_value(path(), object() | objects(), Default) -> binary() | Default.
 get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_binary/1)
     end.
 
--spec get_ne_binary_value(path(), object() | objects()) -> api_ne_binary().
--spec get_ne_binary_value(path(), object() | objects(), Default) -> ne_binary() | Default.
+-spec get_ne_binary_value(path(), object() | objects()) -> kz_term:api_ne_binary().
 get_ne_binary_value(Key, JObj) ->
     get_ne_binary_value(Key, JObj, 'undefined').
+
+-spec get_ne_binary_value(path(), object() | objects(), Default) -> kz_term:ne_binary() | Default.
 get_ne_binary_value(Key, JObj, Default) ->
     case get_binary_value(Key, JObj, Default) of
         Default -> Default;
@@ -672,10 +684,11 @@ get_ne_binary_value(Key, JObj, Default) ->
         Value -> Value
     end.
 
--spec get_lower_binary(path(), object() | objects()) -> api_binary().
--spec get_lower_binary(path(), object() | objects(), Default) -> binary() | Default.
+-spec get_lower_binary(path(), object() | objects()) -> kz_term:api_binary().
 get_lower_binary(Key, JObj) ->
     get_lower_binary(Key, JObj, 'undefined').
+
+-spec get_lower_binary(path(), object() | objects(), Default) -> binary() | Default.
 get_lower_binary(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -683,50 +696,56 @@ get_lower_binary(Key, JObj, Default) ->
     end.
 
 %% must be an existing atom
--spec get_atom_value(path(), object() | objects()) -> api_atom().
--spec get_atom_value(path(), object() | objects(), Default) -> atom() | Default.
+
+-spec get_atom_value(path(), object() | objects()) -> kz_term:api_atom().
 get_atom_value(Key, JObj) ->
     get_atom_value(Key, JObj, 'undefined').
+
+-spec get_atom_value(path(), object() | objects(), Default) -> atom() | Default.
 get_atom_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_atom/1)
     end.
 
--spec get_boolean_value(path(), object() | objects()) -> api_atom().
--spec get_boolean_value(path(), object() | objects(), Default) -> atom() | Default.
+-spec get_boolean_value(path(), object() | objects()) -> kz_term:api_atom().
 get_boolean_value(Key, JObj) ->
     get_boolean_value(Key, JObj, 'undefined').
+
+-spec get_boolean_value(path(), object() | objects(), Default) -> atom() | Default.
 get_boolean_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_boolean/1)
     end.
 
--spec get_integer_value(path(), object() | objects()) -> api_integer().
--spec get_integer_value(path(), object() | objects(), Default) -> integer() | Default.
+-spec get_integer_value(path(), object() | objects()) -> kz_term:api_integer().
 get_integer_value(Key, JObj) ->
     get_integer_value(Key, JObj, 'undefined').
+
+-spec get_integer_value(path(), object() | objects(), Default) -> integer() | Default.
 get_integer_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_integer/1)
     end.
 
--spec get_number_value(path(), object() | objects()) -> api_number().
--spec get_number_value(path(), object() | objects(), Default) -> number() | Default.
+-spec get_number_value(path(), object() | objects()) -> kz_term:api_number().
 get_number_value(Key, JObj) ->
     get_number_value(Key, JObj, 'undefined').
+
+-spec get_number_value(path(), object() | objects(), Default) -> number() | Default.
 get_number_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> kz_term:safe_cast(Value, Default, fun kz_term:to_number/1)
     end.
 
--spec get_float_value(path(), object() | objects()) -> api_float().
--spec get_float_value(path(), object() | objects(), Default) -> float() | Default.
+-spec get_float_value(path(), object() | objects()) -> kz_term:api_float().
 get_float_value(Key, JObj) ->
     get_float_value(Key, JObj, 'undefined').
+
+-spec get_float_value(path(), object() | objects(), Default) -> float() | Default.
 get_float_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -734,9 +753,10 @@ get_float_value(Key, JObj, Default) ->
     end.
 
 -spec is_false(path(), object() | objects()) -> boolean().
--spec is_false(path(), object() | objects(), Default) -> boolean() | Default.
 is_false(Key, JObj) ->
     kz_term:is_false(get_value(Key, JObj)).
+
+-spec is_false(path(), object() | objects(), Default) -> boolean() | Default.
 is_false(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -744,20 +764,21 @@ is_false(Key, JObj, Default) ->
     end.
 
 -spec is_true(path(), object() | objects()) -> boolean().
--spec is_true(path(), object() | objects(), Default) -> boolean() | Default.
 is_true(Key, JObj) ->
     is_true(Key, JObj, 'false').
+
+-spec is_true(path(), object() | objects(), Default) -> boolean() | Default.
 is_true(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         V -> kz_term:is_true(V)
     end.
 
--spec get_binary_boolean(path(), object() | objects()) -> api_ne_binary().
--spec get_binary_boolean(path(), object() | objects(), Default) -> Default | ne_binary().
+-spec get_binary_boolean(path(), object() | objects()) -> kz_term:api_ne_binary().
 get_binary_boolean(Key, JObj) ->
     get_binary_boolean(Key, JObj, 'undefined').
 
+-spec get_binary_boolean(path(), object() | objects(), Default) -> Default | kz_term:ne_binary().
 get_binary_boolean(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -776,9 +797,10 @@ get_keys1(KVs) when is_list(KVs) -> lists:seq(1, length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
 -spec get_ne_value(path(), object() | objects()) -> api_json_term().
--spec get_ne_value(path(), object() | objects(), Default) -> json_term() | Default.
 get_ne_value(Key, JObj) ->
     get_ne_value(Key, JObj, 'undefined').
+
+-spec get_ne_value(path(), object() | objects(), Default) -> json_term() | Default.
 get_ne_value(Key, JObj, Default) ->
     Value = get_value(Key, JObj),
     case kz_term:is_empty(Value) of
@@ -793,10 +815,12 @@ get_ne_value(Key, JObj, Default) ->
 %% Returns the value at Key
 %% @end
 %%--------------------------------------------------------------------
+
 -spec find(path(), objects()) -> api_json_term().
--spec find(path(), objects(), Default) -> json_term() | Default.
 find(Key, JObjs) ->
     find(Key, JObjs, 'undefined').
+
+-spec find(path(), objects(), Default) -> json_term() | Default.
 find(_, [], Default) -> Default;
 find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
     try get_value(Key, JObj) of
@@ -807,9 +831,10 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
     end.
 
 -spec find_first_defined(paths(), objects()) -> api_json_term().
--spec find_first_defined(paths(), objects(), Default) -> json_term() | Default.
 find_first_defined(Keys, JObjs) ->
     find_first_defined(Keys, JObjs, 'undefined').
+
+-spec find_first_defined(paths(), objects(), Default) -> json_term() | Default.
 find_first_defined([], _JObjs, Default) -> Default;
 find_first_defined([Key|Keys], JObjs, Default) ->
     try find(Key, JObjs) of
@@ -826,10 +851,12 @@ find_first_defined([Key|Keys], JObjs, Default) ->
 %% Returns the json object or 'undefined'
 %% @end
 %%--------------------------------------------------------------------
--spec find_value(path(), json_term(), objects()) -> api_object().
--spec find_value(path(), json_term(), objects(), Default) -> object() | Default.
+
+-spec find_value(path(), json_term(), objects()) -> kz_term:api_object().
 find_value(Key, Value, JObjs) ->
     find_value(Key, Value, JObjs, 'undefined').
+
+-spec find_value(path(), json_term(), objects(), Default) -> object() | Default.
 find_value(_Key, _Value, [], Default) -> Default;
 find_value(Key, Value, [JObj|JObjs], Default) ->
     try get_value(Key, JObj) of
@@ -840,9 +867,10 @@ find_value(Key, Value, [JObj|JObjs], Default) ->
     end.
 
 -spec get_first_defined(paths(), object()) -> json_term() | 'undefined'.
--spec get_first_defined(paths(), object(), Default) -> json_term() | Default.
 get_first_defined(Keys, JObj) ->
     get_first_defined(Keys, JObj, 'undefined').
+
+-spec get_first_defined(paths(), object(), Default) -> json_term() | Default.
 get_first_defined([], _JObj, Default) -> Default;
 get_first_defined([H|T], JObj, Default) ->
     try get_value(H, JObj) of
@@ -853,10 +881,10 @@ get_first_defined([H|T], JObj, Default) ->
     end.
 
 -spec get_value(path(), object() | objects()) -> json_term() | 'undefined'.
--spec get_value(path(), object() | objects(), Default) -> json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, 'undefined').
 
+-spec get_value(path(), object() | objects(), Default) -> json_term() | Default.
 get_value([Key|Ks], L, Default) when is_list(L) ->
     try
         get_value1(Ks, lists:nth(kz_term:to_integer(Key), L), Default)
@@ -868,7 +896,7 @@ get_value([Key|Ks], L, Default) when is_list(L) ->
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec get_value1(path(), api_object() | objects(), Default) ->
+-spec get_value1(path(), kz_term:api_object() | objects(), Default) ->
                         json_term() | Default.
 get_value1([], 'undefined', Default) -> Default;
 get_value1([], JObj, _Default) -> JObj;
@@ -891,12 +919,12 @@ get_value1(_K, _V, _D) ->
     erlang:error(badarg).
 
 -spec values(object()) -> json_terms().
--spec values(path(), object()) -> json_terms().
 values(JObj) ->
     [get_value(Key, JObj)
      || Key <- ?MODULE:get_keys(JObj)
     ].
 
+-spec values(path(), object()) -> json_terms().
 values(Key, JObj) ->
     values(get_value(Key, JObj, new())).
 
@@ -1015,8 +1043,8 @@ set_value1([], Value, _JObj) -> Value.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec delete_key(path(), object() | objects()) -> object() | objects().
--spec delete_key(path(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
 delete_key(Keys, JObj) when is_list(Keys) ->
     delete_key(Keys, JObj, 'no_prune');
 delete_key(Key, JObj) ->
@@ -1032,6 +1060,8 @@ delete_key(Key, JObj) ->
 %%    'prune' -> {[]}
 %% @end
 %%--------------------------------------------------------------------
+
+-spec delete_key(path(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
 delete_key(Key, JObj, 'prune') when not is_list(Key) ->
     prune([Key], JObj);
 delete_key(Key, JObj, 'no_prune') when not is_list(Key) ->
@@ -1145,11 +1175,11 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %% Read a json fixture file from the filesystem into memory
 %% @end
 %%--------------------------------------------------------------------
--spec load_fixture_from_file(atom(), nonempty_string() | ne_binary()) ->
+-spec load_fixture_from_file(atom(), nonempty_string() | kz_term:ne_binary()) ->
                                     object() |
                                     {'error', atom()}.
 
--spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), iodata()) ->
+-spec load_fixture_from_file(atom(), nonempty_string() | kz_term:ne_binary(), iodata()) ->
                                     object() |
                                     {'error', atom()}.
 
@@ -1211,7 +1241,7 @@ normalize_value(Obj) ->
         'false' -> Obj
     end.
 
--spec normalize_key(ne_binary()) -> ne_binary().
+-spec normalize_key(kz_term:ne_binary()) -> kz_term:ne_binary().
 normalize_key(Key) when is_binary(Key) ->
     << <<(normalize_key_char(B))>> || <<B>> <= Key>>.
 
@@ -1223,10 +1253,10 @@ normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % fr
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
 
--type search_replace_format() :: {ne_binary(), ne_binary()} |
-                                 {ne_binary(), ne_binary(), fun((any()) -> any())}.
+-type search_replace_format() :: {kz_term:ne_binary(), kz_term:ne_binary()} |
+                                 {kz_term:ne_binary(), kz_term:ne_binary(), fun((any()) -> any())}.
 -type search_replace_formatters() :: [search_replace_format()].
--spec normalize_jobj(object(), ne_binaries(), search_replace_formatters()) -> object().
+-spec normalize_jobj(object(), kz_term:ne_binaries(), search_replace_formatters()) -> object().
 normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
     normalize_jobj(
       lists:foldl(fun search_replace_format/2

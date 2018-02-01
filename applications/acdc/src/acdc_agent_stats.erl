@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Collector of stats for agents
 %%% @end
@@ -34,16 +34,18 @@
 -include("acdc_stats.hrl").
 
 -spec status_table_id() -> atom().
--spec status_key_pos() -> pos_integer().
--spec status_table_opts() -> kz_proplist().
 status_table_id() -> 'acdc_stats_status'.
+
+-spec status_key_pos() -> pos_integer().
 status_key_pos() -> #status_stat.id.
+
+-spec status_table_opts() -> kz_term:proplist().
 status_table_opts() ->
     ['protected', 'named_table'
     ,{'keypos', status_key_pos()}
     ].
 
--spec agent_ready(ne_binary(), ne_binary()) -> 'ok'.
+-spec agent_ready(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_ready(AccountId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -57,7 +59,7 @@ agent_ready(AccountId, AgentId) ->
                              ,fun kapi_acdc_stats:publish_status_ready/1
                              ).
 
--spec agent_logged_in(ne_binary(), ne_binary()) -> 'ok'.
+-spec agent_logged_in(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_logged_in(AccountId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -71,7 +73,7 @@ agent_logged_in(AccountId, AgentId) ->
                              ,fun kapi_acdc_stats:publish_status_logged_in/1
                              ).
 
--spec agent_logged_out(ne_binary(), ne_binary()) -> 'ok'.
+-spec agent_logged_out(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_logged_out(AccountId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -85,7 +87,7 @@ agent_logged_out(AccountId, AgentId) ->
                              ,fun kapi_acdc_stats:publish_status_logged_out/1
                              ).
 
--spec agent_pending_logged_out(ne_binary(), ne_binary()) ->
+-spec agent_pending_logged_out(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                       'ok'.
 agent_pending_logged_out(AccountId, AgentId) ->
     Prop = props:filter_undefined(
@@ -100,12 +102,12 @@ agent_pending_logged_out(AccountId, AgentId) ->
                              ,fun kapi_acdc_stats:publish_status_pending_logged_out/1
                              ).
 
--spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) ->
-                              'ok'.
--spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary(), api_binary()) ->
+-spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               'ok'.
 agent_connecting(AccountId, AgentId, CallId) ->
     agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined', 'undefined').
+-spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                              'ok'.
 agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -123,12 +125,12 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, Queue
                              ,fun kapi_acdc_stats:publish_status_connecting/1
                              ).
 
--spec agent_connected(ne_binary(), ne_binary(), ne_binary()) ->
-                             'ok'.
--spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary(), api_binary()) ->
+-spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                              'ok'.
 agent_connected(AccountId, AgentId, CallId) ->
     agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined', 'undefined').
+-spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                             'ok'.
 agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -146,7 +148,7 @@ agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueI
                              ,fun kapi_acdc_stats:publish_status_connected/1
                              ).
 
--spec agent_wrapup(ne_binary(), ne_binary(), integer()) -> 'ok'.
+-spec agent_wrapup(kz_term:ne_binary(), kz_term:ne_binary(), integer()) -> 'ok'.
 agent_wrapup(AccountId, AgentId, WaitTime) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -161,7 +163,7 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
                              ,fun kapi_acdc_stats:publish_status_wrapup/1
                              ).
 
--spec agent_paused(ne_binary(), ne_binary(), api_integer()) -> 'ok'.
+-spec agent_paused(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> 'ok'.
 agent_paused(AccountId, AgentId, 'undefined') ->
     lager:debug("undefined pause time for ~s(~s)", [AgentId, AccountId]);
 agent_paused(AccountId, AgentId, PauseTime) ->
@@ -178,7 +180,7 @@ agent_paused(AccountId, AgentId, PauseTime) ->
                              ,fun kapi_acdc_stats:publish_status_paused/1
                              ).
 
--spec agent_outbound(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec agent_outbound(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_outbound(AccountId, AgentId, CallId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -193,7 +195,7 @@ agent_outbound(AccountId, AgentId, CallId) ->
                              ,fun kapi_acdc_stats:publish_status_outbound/1
                              ).
 
--spec handle_status_stat(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_status_stat(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_status_stat(JObj, Props) ->
     'true' = case (EventName = kz_json:get_value(<<"Event-Name">>, JObj)) of
                  <<"ready">> -> kapi_acdc_stats:status_ready_v(JObj);
@@ -231,11 +233,11 @@ handle_status_stat(JObj, Props) ->
                       }
                      ).
 
--spec status_stat_id(ne_binary(), pos_integer(), any()) -> ne_binary().
+-spec status_stat_id(kz_term:ne_binary(), pos_integer(), any()) -> kz_term:ne_binary().
 status_stat_id(AgentId, Timestamp, _EventName) ->
     <<AgentId/binary, "::", (kz_term:to_binary(Timestamp))/binary>>.
 
--spec handle_status_query(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_status_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_status_query(JObj, _Prop) ->
     'true' = kapi_acdc_stats:status_req_v(JObj),
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -247,7 +249,7 @@ handle_status_query(JObj, _Prop) ->
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
     end.
 
--spec publish_query_errors(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec publish_query_errors(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 publish_query_errors(RespQ, MsgId, Errors) ->
     API = [{<<"Error-Reason">>, Errors}
           ,{<<"Msg-ID">>, MsgId}
@@ -333,7 +335,7 @@ status_match_builder_fold(<<"Status">>, Status, {StatusStat, Contstraints}) ->
     };
 status_match_builder_fold(_, _, Acc) -> Acc.
 
--spec query_statuses(ne_binary(), ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
+-spec query_statuses(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
 query_statuses(RespQ, MsgId, Match, Limit) ->
     case ets:select(status_table_id(), Match) of
         [] ->

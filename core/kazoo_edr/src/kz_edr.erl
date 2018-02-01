@@ -16,8 +16,8 @@
 %% Callback for new process
 -export([send_event/1]).
 
--spec event(ne_binary(), ne_binary(), edr_severity(), edr_verbosity(), kz_json:object()) -> 'ok'.
--spec event(ne_binary(), ne_binary(), edr_severity(), edr_verbosity(), kz_json:object(), api_ne_binary()) -> 'ok'.
+-spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object()) -> 'ok'.
+-spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object(), kz_term:api_ne_binary()) -> 'ok'.
 event(AppName, AppVersion, Severity, Verbosity, Body) ->
     event(AppName, AppVersion, Severity, Verbosity, Body, 'undefined').
 event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -43,7 +43,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -84,14 +84,14 @@ get_channel(Consumer, Timeout) when is_pid(Consumer) ->
             request_and_wait(Consumer, kz_amqp_channel:consumer_broker(), Timeout)
     end.
 
--spec request_channel(pid(), api_binary()) -> kz_amqp_assignment().
+-spec request_channel(pid(), kz_term:api_binary()) -> kz_amqp_assignment().
 request_channel(Consumer, 'undefined') when is_pid(Consumer) ->
     Broker = kz_amqp_connections:primary_broker(),
     gen_server:call(?SERVER, {'request_float', Consumer, Broker});
 request_channel(Consumer, Broker) when is_pid(Consumer) ->
     gen_server:call(?SERVER, {'request_sticky', Consumer, Broker}).
 
--spec add_channel(ne_binary(), pid(), pid()) -> 'ok'.
+-spec add_channel(kz_term:ne_binary(), pid(), pid()) -> 'ok'.
 add_channel(Broker, Connection, Channel)
   when is_pid(Channel)
        andalso is_binary(Broker) ->
@@ -145,7 +145,7 @@ init([]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'request_float', Consumer, Broker}, _, State) ->
     _ = import_pending_channels(),
     {'reply', assign_or_reserve(Consumer, Broker, 'float'), State};
@@ -167,7 +167,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_channel_primary_broker', Broker, Connection, Channel}, State) ->
     _ = add_channel_primary_broker(Broker, Connection, Channel),
     {'noreply', State};
@@ -205,7 +205,7 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
     handle_down_msg(find_reference(Ref), Reason),
@@ -366,7 +366,7 @@ maybe_reassign(#kz_amqp_assignment{}=ConsumerAssignment, Broker) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec assign_or_reserve(pid(), api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
+-spec assign_or_reserve(pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
 assign_or_reserve(Consumer, 'undefined', Type) ->
     %% When there is no primary broker we will not be able to
     %% find a channel so just make a reservation
@@ -485,7 +485,7 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_channel_primary_broker(ne_binary(), pid(), pid()) -> 'true'.
+-spec add_channel_primary_broker(kz_term:ne_binary(), pid(), pid()) -> 'true'.
 add_channel_primary_broker(Broker, Connection, Channel) ->
     %% This will find any reservations that require a channel
     %% and assign it the new channel
@@ -511,7 +511,7 @@ add_channel_primary_broker(Broker, Connection, Channel) ->
             assign_channel(Assignment, Broker, Connection, Channel)
     end.
 
--spec maybe_reclaim_channel(ne_binary(), pid(), pid()) -> 'true'.
+-spec maybe_reclaim_channel(kz_term:ne_binary(), pid(), pid()) -> 'true'.
 maybe_reclaim_channel(Broker, Connection, Channel) ->
     %% This will attemp to find a floating channel not using
     %% the primary broker and move to the new channel
@@ -534,7 +534,7 @@ maybe_reclaim_channel(Broker, Connection, Channel) ->
             assign_channel(Assignment, Broker, Connection, Channel)
     end.
 
--spec add_channel_alternate_broker(ne_binary(), pid(), pid()) -> 'true'.
+-spec add_channel_alternate_broker(kz_term:ne_binary(), pid(), pid()) -> 'true'.
 add_channel_alternate_broker(Broker, Connection, Channel) ->
     %% This will find any sticky reservations that require a
     %% channel from this broker and assign it the new channel
@@ -549,7 +549,7 @@ add_channel_alternate_broker(Broker, Connection, Channel) ->
             assign_channel(Assignment, Broker, Connection, Channel)
     end.
 
--spec assign_channel(kz_amqp_assignment(), ne_binary(), pid(), pid()) -> 'true'.
+-spec assign_channel(kz_amqp_assignment(), kz_term:ne_binary(), pid(), pid()) -> 'true'.
 assign_channel(#kz_amqp_assignment{channel_ref=Ref}=Assignment
               ,Broker, Connection, Channel)
   when is_reference(Ref) ->
@@ -594,7 +594,7 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
     _ = send_notifications(Assigment),
     'true'.
 
--spec cache(ne_binary(), pid(), pid()) -> 'true'.
+-spec cache(kz_term:ne_binary(), pid(), pid()) -> 'true'.
 cache(Broker, Connection, Channel) ->
     Ref = erlang:monitor('process', Channel),
     lager:debug("added new channel ~p on ~s to available pool"
@@ -672,7 +672,7 @@ notify_watchers(#kz_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_reserve(api_pid(), api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
+-spec maybe_reserve(kz_term:api_pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
 maybe_reserve(Consumer, Broker, Type) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
@@ -690,7 +690,7 @@ maybe_reserve(Consumer, Broker, Type) ->
             ExistingAssignment
     end.
 
--spec reserve(api_pid(), api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
+-spec reserve(kz_term:api_pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
 reserve(Consumer, Broker, 'sticky') when Broker =/= 'undefined' ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #kz_amqp_assignment{consumer=Consumer
@@ -829,9 +829,9 @@ wait_for_assignment(Timeout) ->
         Timeout -> {'error', 'timeout'}
     end.
 
--spec request_and_wait(pid(), api_binary(), 'infinity') -> kz_amqp_assignment();
-                      (pid(), api_binary(), non_neg_integer()) -> kz_amqp_assignment() |
-                                                                  {'error', 'timeout'}.
+-spec request_and_wait(pid(), kz_term:api_binary(), 'infinity') -> kz_amqp_assignment();
+                      (pid(), kz_term:api_binary(), non_neg_integer()) -> kz_amqp_assignment() |
+                                                                          {'error', 'timeout'}.
 request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
     case request_channel(Consumer, Broker) of
         #kz_amqp_assignment{channel=Channel}=Assignment

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2017, 2600Hz
+%%% @copyright (c) 2010-2018, 2600Hz
 %%% @doc
 %%% Utility module for V3 Kazoo Migration
 %%% @end
@@ -33,7 +33,7 @@ json_objs_to_csv([], _) -> [];
 json_objs_to_csv(JObjs, _) ->
     kz_json:encode(JObjs).
 
--spec test_convert(ne_binary()) -> 'ok' | {'error', any()}.
+-spec test_convert(kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 test_convert(AccountDb) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of

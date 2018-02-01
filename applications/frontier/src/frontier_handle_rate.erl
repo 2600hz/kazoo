@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,30 +29,30 @@ is_device_defaults(JObj) ->
     frontier_utils:is_device(JObj)
         andalso IsDefaultRates.
 
--spec names() -> ne_binaries().
+-spec names() -> kz_term:ne_binaries().
 names() ->
     [<<"registrations">>
     ,<<"invites">>
     ,<<"total_packets">>
     ].
 
--spec methods() -> ne_binaries().
+-spec methods() -> kz_term:ne_binaries().
 methods() ->
     [<<"REGISTER">>
     ,<<"INVITE">>
     ,<<"TOTAL">>
     ].
 
--spec name_to_method(ne_binary()) -> ne_binary().
+-spec name_to_method(kz_term:ne_binary()) -> kz_term:ne_binary().
 name_to_method(Name) ->
     Props = lists:zip(names(), methods()),
     props:get_value(Name, Props).
 
--spec resolve_method(ne_binary()) -> ne_binary().
+-spec resolve_method(kz_term:ne_binary()) -> kz_term:ne_binary().
 resolve_method(Method) ->
     props:get_value(Method, lists:zip(methods(), names())).
 
--spec handle_rate_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_rate_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_rate_req(JObj, _Props) ->
     Entity = kz_json:get_value(<<"Entity">>, JObj),
     IncludeRealm = kz_json:is_true(<<"With-Realm">>, JObj, 'false'),
@@ -61,7 +61,7 @@ handle_rate_req(JObj, _Props) ->
     Limits = lookup_rate_limit_records(Entity, IncludeRealm, MethodList),
     send_response(Limits, JObj).
 
--spec lookup_methods(kz_json:object()) -> api_binaries().
+-spec lookup_methods(kz_json:object()) -> kz_term:api_binaries().
 lookup_methods(JObj) ->
     Method = kz_json:get_value(<<"Method">>, JObj),
     MethodName = case Method of
@@ -87,11 +87,11 @@ send_response(Limits, Reqest) ->
     kapi_frontier:publish_ratelimits_resp(Srv, kz_json:merge_jobjs(Limits, RespStub)).
 
 
--spec lookup_rate_limit_records(ne_binary()) -> kz_json:object().
+-spec lookup_rate_limit_records(kz_term:ne_binary()) -> kz_json:object().
 lookup_rate_limit_records(Entity) ->
     lookup_rate_limit_records(Entity, 'true', names()).
 
--spec lookup_rate_limit_records(ne_binary(), boolean(), ne_binaries()) -> kz_json:object().
+-spec lookup_rate_limit_records(kz_term:ne_binary(), boolean(), kz_term:ne_binaries()) -> kz_json:object().
 lookup_rate_limit_records(Entity, IncludeRealm, MethodList) ->
     lager:info("Handle rate limit request for ~s", [Entity]),
     Realm = frontier_utils:extract_realm(Entity),
@@ -105,7 +105,7 @@ lookup_rate_limit_records(Entity, IncludeRealm, MethodList) ->
                 end,
     lists:foldl(fun fold_responses/2, kz_json:new(), lists:flatten(Responses)).
 
--spec build_list_of_querynames(ne_binary(), boolean()) -> ne_binaries().
+-spec build_list_of_querynames(kz_term:ne_binary(), boolean()) -> kz_term:ne_binaries().
 build_list_of_querynames(Entity, IncludeRealm) ->
     Realm = frontier_utils:extract_realm(Entity),
     Username = frontier_utils:extract_username(Entity),
@@ -120,7 +120,7 @@ build_list_of_querynames(Entity, IncludeRealm) ->
         'false' -> [QueryName]
     end.
 
--spec run_rate_limits_query(ne_binary(), ne_binary(), boolean(), ne_binaries()) -> kz_json:objects().
+-spec run_rate_limits_query(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kz_term:ne_binaries()) -> kz_json:objects().
 run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
     EntityList = build_list_of_querynames(Entity, IncludeRealm),
     Rates = fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB),
@@ -138,7 +138,7 @@ run_rate_limits_query(Entity, AccountDB, IncludeRealm, MethodList) ->
         end,
     Rates ++ FromSysCOnfig.
 
--spec to_json_key(ne_binary()) -> ne_binary().
+-spec to_json_key(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_json_key(Token) ->
     Tokens = binary:split(Token, <<"_">>),
     kz_binary:join([kz_binary:ucfirst(T) || T <- Tokens], <<"-">>).
@@ -169,7 +169,7 @@ fold_responses(Record, Acc) ->
          end,
     kz_json:set_value(Type, S3, Acc).
 
--spec make_deny_rates(ne_binary(), boolean(), ne_binaries()) -> kz_json:objects().
+-spec make_deny_rates(kz_term:ne_binary(), boolean(), kz_term:ne_binaries()) -> kz_json:objects().
 make_deny_rates(Entity, IncludeRealm, MethodList) ->
     Rates = deny_rates_for_entity(Entity, MethodList),
     Realm = frontier_utils:extract_realm(Entity),
@@ -181,7 +181,7 @@ make_deny_rates(Entity, IncludeRealm, MethodList) ->
     end.
 
 %% Kamailio expects -1 for unkown entities
--spec deny_rates_for_entity(ne_binary(), ne_binaries()) -> kz_json:objects().
+-spec deny_rates_for_entity(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:objects().
 deny_rates_for_entity(Entity, MethodList) ->
     lists:flatmap(fun(Method) ->
                           construct_records(Method, Entity, -1, -1)
@@ -189,7 +189,7 @@ deny_rates_for_entity(Entity, MethodList) ->
                  ,MethodList
                  ).
 
--spec construct_records(ne_binary(), ne_binary(), ne_binary() | integer(), ne_binary() | integer()) ->
+-spec construct_records(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | integer(), kz_term:ne_binary() | integer()) ->
                                kz_json:objects().
 construct_records(Method, Entity, RPM, RPS) ->
     {Name, Type} = case binary:split(Entity, <<"@">>) of
@@ -209,11 +209,11 @@ construct_records(Method, Entity, RPM, RPS) ->
      || JObj <- [RPMObject, RPSObject]
     ].
 
--spec section_type(ne_binary()) -> ne_binary().
+-spec section_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 section_type(<<"realm">>) -> <<"account">>;
 section_type(<<"device">>) -> <<"device">>.
 
--spec fetch_rates_from_sys_config(ne_binary() | ne_binaries(), ne_binary(), ne_binaries()) ->
+-spec fetch_rates_from_sys_config(kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                                          kz_json:objects().
 fetch_rates_from_sys_config(_, _, []) ->
     lager:info("sysconfig: Empty request - empty response"),
@@ -234,7 +234,7 @@ fetch_rates_from_sys_config(<<_/binary>> = Entity, Type, MethodList) ->
                         end
                 end, [], MethodList).
 
--spec fetch_rates(ne_binaries(), boolean(), ne_binaries(), ne_binary()) -> kz_json:objects().
+-spec fetch_rates(kz_term:ne_binaries(), boolean(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:objects().
 fetch_rates(_, _, [], _) ->
     lager:info("document: Empty request - empty response"),
     [];
@@ -258,7 +258,7 @@ fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
         {_, Partial} -> Partial ++ fetch_from_parents(AccountDB, MethodList, Realm)
     end.
 
--spec fetch_from_parents(ne_binary(), ne_binaries(), ne_binary()) -> kz_json:objects().
+-spec fetch_from_parents(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:objects().
 fetch_from_parents(AccountDb, MethodList, Realm) ->
     case kz_account:fetch(AccountDb) of
         {'ok', JObj} ->
@@ -268,7 +268,7 @@ fetch_from_parents(AccountDb, MethodList, Realm) ->
             lager:info("Cant't access to db: ~p", [_Reason])
     end.
 
--spec check_fallbacks(ne_binaries(), ne_binaries(), ne_binary()) -> kz_json:objects().
+-spec check_fallbacks(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:objects().
 check_fallbacks(Tree, MethodList, Realm) ->
     Result = lists:foldl(fun (X, Acc) -> check_fallback(X, Acc, MethodList, Realm) end, 'empty', Tree),
     case Result of
@@ -276,7 +276,7 @@ check_fallbacks(Tree, MethodList, Realm) ->
         _ -> Result
     end.
 
--spec check_fallback(ne_binary(), atom() | kz_json:objects(), ne_binaries(), ne_binary()) ->
+-spec check_fallback(kz_term:ne_binary(), atom() | kz_json:objects(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
                             atom() | kz_json:objects().
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
     AccountDB = kz_util:format_account_id(AccountId, 'encoded'),
@@ -297,7 +297,7 @@ check_fallback(_, Acc, _, _) ->
     Acc.
 
 -type couch_ret() :: {'ok', kz_json:object()} | {'error', any()}.
--spec build_results(couch_ret(), ne_binaries(), ne_binary()) -> kz_json:objects().
+-spec build_results(couch_ret(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:objects().
 build_results({'error', _Reason}, _, _) ->
     lager:error("Can't fetch data from db: ~p", [_Reason]),
     [];
@@ -305,7 +305,7 @@ build_results({'ok', JObj}, MethodList, Realm) ->
     Limits = kz_json:get_value(<<"account">>, JObj),
     lists:foldl(fun (M, Acc) -> build(M, Acc, Limits, Realm) end,[],MethodList).
 
--spec build(ne_binary(), kz_json:objects(), kz_json:object(), ne_binary()) -> kz_json:objects().
+-spec build(kz_term:ne_binary(), kz_json:objects(), kz_json:object(), kz_term:ne_binary()) -> kz_json:objects().
 build(Method, Acc, JObj, Realm) ->
     PerMinute = kz_json:get_value([?MINUTE, Method], JObj),
     PerSecond = kz_json:get_value([?SECOND, Method], JObj),
@@ -320,14 +320,13 @@ build(Method, Acc, JObj, Realm) ->
 -type rates_ret() :: {status(), kz_json:objects()}.
 
 -spec handle_db_response(kz_json:objects(), boolean()) -> rates_ret().
--spec handle_db_response(kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
--spec handle_db_response(kz_json:objects(), kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
 handle_db_response(JObjs, IncludeRealm) ->
     {DefaultRates, OtherRates} = lists:partition(fun is_device_defaults/1, JObjs),
     {AccountRates, DeviceRates} = lists:partition(fun frontier_utils:is_realm/1, OtherRates),
 
     handle_db_response(AccountRates, DeviceRates, DefaultRates, IncludeRealm).
 
+-spec handle_db_response(kz_json:objects(), kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
 handle_db_response(AccountRates, [], DefaultRates, IncludeRealm) ->
     lager:debug("using default rates for the device"),
     handle_db_response(AccountRates, DefaultRates, IncludeRealm);
@@ -335,6 +334,7 @@ handle_db_response(AccountRates, DeviceRates, _DefaultRates, IncludeRealm) ->
     lager:debug("found rates in the device doc"),
     handle_db_response(AccountRates, DeviceRates, IncludeRealm).
 
+-spec handle_db_response(kz_json:objects(), kz_json:objects(), boolean()) -> rates_ret().
 handle_db_response([], DeviceRates, 'true') ->
     {'need_account', DeviceRates};
 handle_db_response(AccountRates, DeviceRates, _IncludeRealm) ->

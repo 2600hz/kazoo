@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz INC
+%%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -32,48 +32,48 @@
 -spec new() -> analysis().
 new() -> #ci_analysis{}.
 
--spec set_call_id(analysis(), ne_binary()) -> analysis().
+-spec set_call_id(analysis(), kz_term:ne_binary()) -> analysis().
 set_call_id(Analysis, CallId) ->
     Analysis#ci_analysis{call_id=CallId}.
 
--spec call_id(analysis()) -> api_binary().
+-spec call_id(analysis()) -> kz_term:api_binary().
 call_id(#ci_analysis{call_id=CallId}) ->
     CallId.
 
--spec set_originate_type(analysis(), ne_binary()) -> analysis().
+-spec set_originate_type(analysis(), kz_term:ne_binary()) -> analysis().
 set_originate_type(Analysis, <<"phone">> = Type) ->
     Analysis#ci_analysis{originate_type=Type};
 set_originate_type(Analysis, <<"carrier">> = Type) ->
     Analysis#ci_analysis{originate_type=Type}.
 
--spec originate_type(analysis()) -> api_binary().
+-spec originate_type(analysis()) -> kz_term:api_binary().
 originate_type(#ci_analysis{originate_type=Type}) -> Type.
 
--spec set_terminate_type(analysis(), ne_binary()) -> analysis().
+-spec set_terminate_type(analysis(), kz_term:ne_binary()) -> analysis().
 set_terminate_type(Analysis, <<"phone">> = Type) ->
     Analysis#ci_analysis{terminate_type=Type};
 set_terminate_type(Analysis, <<"carrier">> = Type) ->
     Analysis#ci_analysis{terminate_type=Type}.
 
--spec terminate_type(analysis()) -> api_binary().
+-spec terminate_type(analysis()) -> kz_term:api_binary().
 terminate_type(#ci_analysis{terminate_type=Type}) ->
     Type.
 
--spec set_failure_location(analysis(), ne_binary()) -> analysis().
+-spec set_failure_location(analysis(), kz_term:ne_binary()) -> analysis().
 set_failure_location(Analysis, <<"origination">> = Location) ->
     Analysis#ci_analysis{failure_location=Location};
 set_failure_location(Analysis, <<"termination">> = Location) ->
     Analysis#ci_analysis{failure_location=Location}.
 
--spec failure_location(analysis()) -> api_binary().
+-spec failure_location(analysis()) -> kz_term:api_binary().
 failure_location(#ci_analysis{failure_location=Location}) ->
     Location.
 
--spec set_reason(analysis(), ne_binary()) -> analysis().
+-spec set_reason(analysis(), kz_term:ne_binary()) -> analysis().
 set_reason(Analysis, Reason) ->
     Analysis#ci_analysis{reason=Reason}.
 
--spec reason(analysis()) -> api_binary().
+-spec reason(analysis()) -> kz_term:api_binary().
 reason(#ci_analysis{reason=Reason}) ->
     Reason.
 

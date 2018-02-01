@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Routing requests, responses, and wins!
 %%% @end
@@ -101,7 +101,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec number_req(api_terms()) ->
+-spec number_req(kz_term:api_terms()) ->
                         {'ok', iolist()} |
                         {'error', string()}.
 number_req(Prop) when is_list(Prop) ->
@@ -111,7 +111,7 @@ number_req(Prop) when is_list(Prop) ->
     end;
 number_req(JObj) -> number_req(kz_json:to_proplist(JObj)).
 
--spec number_req_v(api_terms()) -> boolean().
+-spec number_req_v(kz_term:api_terms()) -> boolean().
 number_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NUMBER_REQ_HEADERS, ?NUMBER_REQ_VALUES, ?NUMBER_REQ_TYPES);
 number_req_v(JObj) -> number_req_v(kz_json:to_proplist(JObj)).
@@ -121,7 +121,7 @@ number_req_v(JObj) -> number_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api_terms()) ->
+-spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 req(Prop) when is_list(Prop) ->
@@ -131,7 +131,7 @@ req(Prop) when is_list(Prop) ->
     end;
 req(JObj) -> req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(kz_term:api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DISCOVERY_REQ_HEADERS, ?DISCOVERY_REQ_VALUES, ?DISCOVERY_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
@@ -142,7 +142,7 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(api_terms()) ->
+-spec resp(kz_term:api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
 resp(Prop) when is_list(Prop) ->
@@ -152,7 +152,7 @@ resp(Prop) when is_list(Prop) ->
     end;
 resp(JObj) -> resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(api_terms()) -> boolean().
+-spec resp_v(kz_term:api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DISCOVERY_RESP_HEADERS, ?DISCOVERY_RESP_VALUES, ?DISCOVERY_RESP_TYPES);
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
@@ -163,7 +163,7 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec flush(api_terms()) ->
+-spec flush(kz_term:api_terms()) ->
                    {'ok', iolist()} |
                    {'error', string()}.
 flush(Prop) when is_list(Prop) ->
@@ -173,7 +173,7 @@ flush(Prop) when is_list(Prop) ->
     end;
 flush(JObj) -> flush(kz_json:to_proplist(JObj)).
 
--spec flush_v(api_terms()) -> boolean().
+-spec flush_v(kz_term:api_terms()) -> boolean().
 flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DISCOVERY_FLUSH_HEADERS, ?DISCOVERY_FLUSH_VALUES, ?DISCOVERY_FLUSH_TYPES);
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
@@ -182,11 +182,11 @@ flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 %% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
 
@@ -199,39 +199,43 @@ unbind_q(Queue, _Props) ->
 declare_exchanges() ->
     amqp_util:new_exchange(?DISCOVERY_EXCHANGE, ?DISCOVERY_EXCHANGE_TYPE).
 
--spec publish_flush(api_terms()) -> 'ok'.
--spec publish_flush(api_terms(), binary()) -> 'ok'.
+-spec publish_flush(kz_term:api_terms()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flush(kz_term:api_terms(), binary()) -> 'ok'.
 publish_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DISCOVERY_FLUSH_VALUES, fun flush/1),
     amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_FLUSH_RK, Payload, ContentType).
 
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), binary()) -> 'ok'.
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DISCOVERY_REQ_VALUES, fun req/1),
     amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?DISCOVERY_REQ_RK, Payload, ContentType).
 
--spec publish_number_req(api_terms()) -> 'ok'.
--spec publish_number_req(api_terms(), binary()) -> 'ok'.
+-spec publish_number_req(kz_term:api_terms()) -> 'ok'.
 publish_number_req(JObj) ->
     publish_number_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_number_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_number_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NUMBER_REQ_VALUES, fun number_req/1),
     amqp_util:basic_publish(?DISCOVERY_EXCHANGE, ?NUMBER_REQ_RK, Payload, ContentType).
 
--spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
     publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?DISCOVERY_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec query_id(kz_json:object() | kz_proplist()) -> ne_binary().
+-spec query_id(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binary().
 query_id(Props) when is_list(Props) ->
     props:get_ne_binary_value(?KEY_QUERY_ID, Props);
 query_id(JObj) ->
@@ -249,10 +253,10 @@ offset(JObj) ->
 results(JObj) ->
     kz_json:get_value(?KEY_RESULTS, JObj).
 
--spec prefix(kz_json:object()) -> ne_binary().
+-spec prefix(kz_json:object()) -> kz_term:ne_binary().
 prefix(JObj) ->
     kz_json:get_value(?KEY_PREFIX, JObj).
 
--spec number(kz_json:object()) -> ne_binary().
+-spec number(kz_json:object()) -> kz_term:ne_binary().
 number(JObj) ->
     kz_json:get_value(?KEY_NUMBER, JObj).

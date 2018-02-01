@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Metaflows execute on top of a call
@@ -89,8 +89,7 @@ validate_metaflows(Context, ?HTTP_POST) ->
 validate_metaflows(Context, ?HTTP_DELETE) ->
     validate_delete_metaflows(Context, thing_doc(Context)).
 
--spec thing_doc(cb_context:context()) -> api_object().
--spec thing_doc(cb_context:context(), ne_binary()) -> api_object().
+-spec thing_doc(cb_context:context()) -> kz_term:api_object().
 thing_doc(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"metaflows">>, []}, {_Thing, [ThingId]} | _] ->
@@ -99,6 +98,7 @@ thing_doc(Context) ->
         _Nouns -> 'undefined'
     end.
 
+-spec thing_doc(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_object().
 thing_doc(Context, ThingId) ->
     Context1 = crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION_ANY),
     case cb_context:resp_status(Context1) of
@@ -108,7 +108,7 @@ thing_doc(Context, ThingId) ->
             'undefined'
     end.
 
--spec validate_get_metaflows(cb_context:context(), api_object()) -> cb_context:context().
+-spec validate_get_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_get_metaflows(Context, 'undefined') ->
     {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_get_metaflows(Context, AccountDoc);
@@ -116,7 +116,7 @@ validate_get_metaflows(Context, Doc) ->
     Metaflows = kz_json:get_value(<<"metaflows">>, Doc, kz_json:new()),
     crossbar_util:response(Metaflows, Context).
 
--spec validate_delete_metaflows(cb_context:context(), api_object()) -> cb_context:context().
+-spec validate_delete_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
 validate_delete_metaflows(Context, 'undefined') ->
     {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_delete_metaflows(Context, AccountDoc);
@@ -128,12 +128,12 @@ validate_delete_metaflows(Context, Doc) ->
 
 -spec validate_set_metaflows(cb_context:context()) ->
                                     cb_context:context().
--spec validate_set_metaflows(cb_context:context(), kz_json:object(), api_object()) ->
-                                    cb_context:context().
 validate_set_metaflows(Context) ->
     lager:debug("metaflow data is valid, setting on thing"),
     validate_set_metaflows(Context, cb_context:doc(Context), thing_doc(Context)).
 
+-spec validate_set_metaflows(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
+                                    cb_context:context().
 validate_set_metaflows(Context, Metaflows, 'undefined') ->
     lager:debug("no doc found, using account doc"),
     {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
@@ -154,11 +154,11 @@ post(Context) ->
     lager:debug("saving ~p", [Doc]),
     after_post(crossbar_doc:save(Context), kz_doc:type(Doc)).
 
--spec after_post(cb_context:context(), ne_binary()) -> cb_context:context().
--spec after_post(cb_context:context(), ne_binary(), crossbar_status()) -> cb_context:context().
+-spec after_post(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 after_post(Context, DocType) ->
     after_post(Context, DocType, cb_context:resp_status(Context)).
 
+-spec after_post(cb_context:context(), kz_term:ne_binary(), crossbar_status()) -> cb_context:context().
 after_post(Context, <<"account">>, 'success') ->
     _ = cb_accounts:replicate_account_definition(cb_context:doc(Context)),
     lager:debug("saved, returning the metaflows"),
@@ -184,10 +184,10 @@ delete(Context) ->
     after_delete(crossbar_doc:save(Context)).
 
 -spec after_delete(cb_context:context()) -> cb_context:context().
--spec after_delete(cb_context:context(), crossbar_status()) -> cb_context:context().
 after_delete(Context) ->
     after_delete(Context, cb_context:resp_status(Context)).
 
+-spec after_delete(cb_context:context(), crossbar_status()) -> cb_context:context().
 after_delete(Context, 'success') ->
     crossbar_util:response(kz_json:new(), Context);
 after_delete(Context, _RespStatus) ->

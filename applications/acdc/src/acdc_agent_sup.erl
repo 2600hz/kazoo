@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -37,13 +37,16 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(kz_json:object()) -> startlink_ret().
--spec start_link(kapps_call:call(), ne_binary()) -> startlink_ret().
--spec start_link(ne_binary(), ne_binary(), kz_json:object(), ne_binaries()) -> startlink_ret().
+
+-spec start_link(kz_json:object()) -> kz_types:startlink_ret().
 start_link(AgentJObj) ->
     supervisor:start_link(?SERVER, [AgentJObj]).
+
+-spec start_link(kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(ThiefCall, QueueId) ->
     supervisor:start_link(?SERVER, [ThiefCall, QueueId]).
+
+-spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
 start_link(AcctId, AgentId, AgentJObj, Queues) ->
     supervisor:start_link(?SERVER, [AcctId, AgentId, AgentJObj, Queues]).
 
@@ -51,7 +54,7 @@ start_link(AcctId, AgentId, AgentJObj, Queues) ->
 stop(Supervisor) ->
     supervisor:terminate_child('acdc_agents_sup', Supervisor).
 
--spec restart(pid()) -> sup_startchild_ret().
+-spec restart(pid()) -> kz_types:sup_startchild_ret().
 restart(Supervisor) ->
     _ = stop(Supervisor),
     supervisor:restart_child('acdc_agents_sup', Supervisor).
@@ -90,21 +93,21 @@ print_status([{K, V}|T]) ->
     ?PRINT("  ~s: ~p", [K, V]),
     print_status(T).
 
--spec listener(pid()) -> api_pid().
+-spec listener(pid()) -> kz_term:api_pid().
 listener(Super) ->
     case child_of_type(Super, 'acdc_agent_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec fsm(pid()) -> api_pid().
+-spec fsm(pid()) -> kz_term:api_pid().
 fsm(Super) ->
     case child_of_type(Super, 'acdc_agent_fsm') of
         [] -> 'undefined';
         [P] -> P
     end.
 
--spec child_of_type(pid(), atom()) -> pids().
+-spec child_of_type(pid(), atom()) -> kz_term:pids().
 child_of_type(S, T) -> [P || {Ty, P, 'worker', _} <- supervisor:which_children(S), T =:= Ty].
 
 %%%===================================================================
@@ -120,7 +123,7 @@ child_of_type(S, T) -> [P || {Ty, P, 'worker', _} <- supervisor:which_children(S
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init(Args) ->
     RestartStrategy = 'one_for_all',
     MaxRestarts = 2,

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Handles storage proxy requests for media binaries
 %%% @end
@@ -7,10 +7,10 @@
 %%%
 %%%-------------------------------------------------------------------
 -module(kz_media_store_proxy).
+-behaviour(cowboy_handler).
 
--export([init/3
+-export([init/2
         ,terminate/3
-        ,handle/2
         ]).
 
 -include("kazoo_media.hrl").
@@ -23,19 +23,37 @@
 -type state() :: #state{}.
 
 -type body() :: {'ok', binary(), cowboy_req:req()} | {'more', binary(), cowboy_req:req()}.
--type validate_request_ret() :: {'ok', media_store_path()} | {'error', integer()}.
--type handler_return() :: {'ok', cowboy_req:req(), state()} | {'shutdown',  cowboy_req:req(), 'ok'}.
+-type validate_request_ret() :: {'ok', media_store_path()} | {'error', reply_code()}.
+-type handler_return() :: {'ok', cowboy_req:req(), 'ok' | state()}.
 
--spec init({any(), any()}, cowboy_req:req(), kz_proplist()) -> handler_return().
-init({_Transport, _Proto}, Req, _Opts) ->
+-type reply_code() :: 200 | 400 | 404 | 500.
+
+-spec init(cowboy_req:req(), kz_term:proplist()) -> handler_return().
+init(Req, _Opts) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
-    case authenticate(Req) of
-        'true' ->
-            validate_request(cowboy_req:path_info(Req));
-        'false' ->
-            lager:debug("request did not provide valid credentials"),
-            {'shutdown', unauthorized(Req), 'ok'}
-    end.
+    check_authn(Req, authenticate(Req)).
+
+-spec check_authn(cowboy_req:req(), boolean()) -> handler_return().
+check_authn(Req, 'true') ->
+    check_validation(Req, cowboy_req:path_info(Req));
+check_authn(Req, 'false') ->
+    lager:info("request did not provide valid credentials"),
+    {'ok', unauthorized(Req), 'ok'}.
+
+-spec check_validation(cowboy_req:req(), kz_term:ne_binaries()) -> handler_return().
+check_validation(Req, [EncodedUrl, _Filename]) ->
+    lager:debug("encoded url: ~s", [EncodedUrl]),
+    check_url(Req, decode_url(EncodedUrl));
+check_validation(Req, _Else) ->
+    lager:info("unexpected path in request: ~p", [_Else]),
+    reply_error(404, Req).
+
+-spec check_url(cowboy_req:req(), 'error' | media_store_path()) -> handler_return().
+check_url(Req, 'error') ->
+    lager:info("url decoding failed on ~p", [hd(cowboy_req:path_info(Req))]),
+    reply_error(404, Req);
+check_url(Req, Path) ->
+    validate_path_request(Req, Path).
 
 -spec authenticate(cowboy_req:req()) -> boolean().
 authenticate(Req) ->
@@ -54,23 +72,23 @@ maybe_basic_authentication(Req) ->
             maybe_basic_authentication(Username, Password)
     end.
 
--spec maybe_basic_authentication(ne_binary(), ne_binary()) -> boolean().
+-spec maybe_basic_authentication(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 maybe_basic_authentication(Username, Password) ->
     AuthUsername = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
     AuthPassword = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
     not kz_term:is_empty(AuthUsername)
         andalso not kz_term:is_empty(AuthPassword)
-        andalso Username == AuthUsername
-        andalso Password == AuthPassword.
+        andalso Username =:= AuthUsername
+        andalso Password =:= AuthPassword.
 
 -spec maybe_acl_authentication(cowboy_req:req()) -> boolean().
 maybe_acl_authentication(Req) ->
     ACLs = kapps_config:get(?CONFIG_CAT, <<"proxy_store_acls">>, [<<"127.0.0.0/24">>]),
-    {{IpTuple, _PeerPort}, _Req1} = cowboy_req:peer(Req),
+    {IpTuple, _PeerPort} = cowboy_req:peer(Req),
     Ip = kz_network_utils:iptuple_to_binary(IpTuple),
     maybe_acl_authentication(ACLs, Ip).
 
--spec maybe_acl_authentication(ne_binaries(), ne_binary()) -> boolean().
+-spec maybe_acl_authentication(kz_term:ne_binaries(), kz_term:ne_binary()) -> boolean().
 maybe_acl_authentication([], Ip) ->
     lager:debug("ip address ~s can not be authenticated via ACLs", [Ip]),
     'false';
@@ -83,17 +101,17 @@ maybe_acl_authentication([ACL|ACLs], Ip) ->
             maybe_acl_authentication(ACLs, Ip)
     end.
 
--spec credentials(cowboy_req:req()) -> {api_binary(), api_binary(), cowboy_req:req()}.
-credentials(Req0) ->
-    case cowboy_req:header(<<"authorization">>, Req0) of
-        {'undefined', Req1} ->
-            {'undefined', 'undefined', Req1};
-        {Authorization, Req1} ->
+-spec credentials(cowboy_req:req()) -> {kz_term:api_binary(), kz_term:api_binary(), cowboy_req:req()}.
+credentials(Req) ->
+    case cowboy_req:header(<<"authorization">>, Req) of
+        'undefined' ->
+            {'undefined', 'undefined', Req};
+        Authorization ->
             {Username, Password} = credentials_from_header(Authorization),
-            {Username, Password, Req1}
+            {Username, Password, Req}
     end.
 
--spec credentials_from_header(ne_binary()) -> {api_binary(), api_binary()}.
+-spec credentials_from_header(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 credentials_from_header(AuthorizationHeader) ->
     case binary:split(AuthorizationHeader, <<$\s>>) of
         [<<"Basic">>, EncodedCredentials] ->
@@ -102,7 +120,7 @@ credentials_from_header(AuthorizationHeader) ->
             {'undefined', 'undefined'}
     end.
 
--spec decoded_credentials(ne_binary()) -> {api_binary(), api_binary()}.
+-spec decoded_credentials(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 decoded_credentials(EncodedCredentials) ->
     DecodedCredentials = base64:decode(EncodedCredentials),
     case binary:split(DecodedCredentials, <<$:>>) of
@@ -116,10 +134,9 @@ decoded_credentials(EncodedCredentials) ->
 unauthorized(Req0) ->
     Req1 = cowboy_req:set_resp_header(<<"Www-Authenticate">>, <<"Basic realm=\"Kazoo Media Storage Proxy\"">>, Req0),
     Req2 = cowboy_req:set_resp_body(unauthorized_body(), Req1),
-    {'ok', Req3} = cowboy_req:reply(401, Req2),
-    Req3.
+    cowboy_req:reply(401, Req2).
 
--spec unauthorized_body() -> ne_binary().
+-spec unauthorized_body() -> kz_term:ne_binary().
 unauthorized_body() ->
     <<"
     <!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"
@@ -135,18 +152,20 @@ unauthorized_body() ->
 
 -spec handle(cowboy_req:req(), state()) -> handler_return().
 handle(Req, State) ->
-    case cowboy_req:body(Req) of
-        {'error', Reason} -> handle_error(Reason, Req, State);
-        Body -> handle_body(Body, State)
-    end.
+    handle_body(cowboy_req:read_body(Req), State).
 
 -spec handle_body(body(), state()) -> handler_return().
 handle_body({'more', Contents, Req}, #state{file=Device}=State) ->
+    lager:debug("recv part of file"),
     case file:write(Device, Contents) of
         'ok' -> handle(Req, State);
         {'error', Reason} -> failure(Reason, Req)
     end;
+handle_body({'ok', <<>>, Req}, #state{file=Device}=State) ->
+    lager:debug("recv empty req body"),
+    handle_close(Req, State, file:close(Device));
 handle_body({'ok', Contents, Req}, #state{file=Device}=State) ->
+    lager:debug("recv file"),
     case file:write(Device, Contents) of
         'ok' -> handle_close(Req, State, file:close(Device));
         {'error', Reason} -> failure(Reason, Req)
@@ -157,43 +176,30 @@ handle_close(Req, State, 'ok') ->
 handle_close(Req, _State, {'error', Reason}) ->
     failure(Reason, Req).
 
-handle_error(Reason, Req, #state{file=Device}=State) ->
-    _ = file:close(Device),
-    lager:debug("received error ~p requesting for body", [Reason]),
-    reply_error(500, State, Req).
-
--spec validate_request({list(), cowboy_req:req()}) -> handler_return().
-validate_request({[EncodedUrl, _Filename], Req}) ->
-    case decode_url(EncodedUrl) of
-        'error' -> reply_error(404, Req);
-        Path -> validate_request(Path, Req)
-    end;
-validate_request({_Else , Req}) ->
-    lager:debug("unexpected path: ~p", [_Else]),
-    reply_error(404, Req).
-
--spec validate_request(media_store_path(), cowboy_req:req()) -> handler_return().
-validate_request(Path, Req) ->
-    case is_appropriate_content_type(Path, Req) of
-        {'ok', NewPath} -> setup_context(NewPath, Req);
+-spec validate_path_request(cowboy_req:req(), media_store_path()) -> handler_return().
+validate_path_request(Req, Path) ->
+    case is_appropriate_content_type(Req, Path) of
+        {'ok', NewPath} -> setup_context(Req, NewPath);
         {'error', Code} -> reply_error(Code, Req)
     end.
 
-setup_context(#media_store_path{att=Attachment}=Path, Req) ->
+-spec setup_context(cowboy_req:req(), media_store_path()) -> handler_return().
+setup_context(Req, #media_store_path{att=Attachment}=Path) ->
     Filename = list_to_binary(["/tmp/", kz_binary:rand_hex(16), "_", Attachment]),
     case file:open(Filename, ['write', 'exclusive']) of
         {'ok', IODevice} ->
+            lager:debug("opened ~s for writing", [Filename]),
             State = #state{media=Path
                           ,filename=Filename
                           ,file=IODevice
                           },
-            {'ok', Req, State};
+            handle(Req, State);
         {'error', Reason} ->
             lager:debug("error ~p opening file ~s", [Reason, Filename]),
             reply_error(500, Req)
     end.
 
--spec decode_url(ne_binary()) -> media_store_path() | 'error'.
+-spec decode_url(kz_term:ne_binary()) -> media_store_path() | 'error'.
 decode_url(Url) ->
     try binary_to_term(base64:decode(kz_util:uri_decode(Url))) of
         {Db, Id, Attachment, Options} ->
@@ -206,19 +212,19 @@ decode_url(Url) ->
         _:_ -> 'error'
     end.
 
--spec is_appropriate_content_type(media_store_path(), cowboy_req:req()) -> validate_request_ret().
-is_appropriate_content_type(Path, Req0) ->
-    case cowboy_req:header(<<"content-type">>, Req0) of
-        {<<"audio/", _/binary>> = CT, _Req1}->
+-spec is_appropriate_content_type(cowboy_req:req(), media_store_path()) -> validate_request_ret().
+is_appropriate_content_type(Req, Path) ->
+    case cowboy_req:header(<<"content-type">>, Req) of
+        <<"audio/", _/binary>> = CT ->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT);
-        {<<"video/", _/binary>> = CT, _Req1}->
+        <<"video/", _/binary>> = CT ->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT);
-        {<<"image/", _/binary>> = CT, _Req1}->
+        <<"image/", _/binary>> = CT ->
             lager:debug("found content-type via header: ~s", [CT]),
             ensure_extension_present(Path, CT);
-        {_CT, _Req1} ->
+        _CT ->
             lager:debug("inappropriate content-type via headers: ~s", [_CT]),
             is_appropriate_extension(Path)
     end.
@@ -241,12 +247,12 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path) ->
             {'error', 415}
     end.
 
--spec add_content_type(media_store_path(), ne_binary()) -> media_store_path().
+-spec add_content_type(media_store_path(), kz_term:ne_binary()) -> media_store_path().
 add_content_type(#media_store_path{opt=Options}= Path, CT) ->
-    NewOptions = props:set_value('content_type', kz_term:to_list(CT), Options),
+    NewOptions = props:set_value('content-type', kz_term:to_list(CT), Options),
     Path#media_store_path{opt=NewOptions}.
 
--spec ensure_extension_present(media_store_path(), ne_binary()) -> validate_request_ret().
+-spec ensure_extension_present(media_store_path(), kz_term:ne_binary()) -> validate_request_ret().
 ensure_extension_present(#media_store_path{att=Attachment}=Path, CT) ->
     case kz_term:is_empty(filename:extension(Attachment))
         andalso kz_mime:to_extension(CT)
@@ -267,13 +273,12 @@ store(#state{filename=Filename, media=Path}=State, Req) ->
     case file:read_file(Filename) of
         {'ok', Data} -> store(Path, Data, State, Req);
         {'error', Reason} ->
-            lager:debug("error ~p opening file ~s", [Reason, Filename]),
+            lager:info("error ~p opening file ~s", [Reason, Filename]),
             reply_error(500, State, Req)
     end.
 
-
-
--spec store(media_store_path(), ne_binary(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
+-spec store(media_store_path(), kz_term:ne_binary(), state(), cowboy_req:req()) ->
+                   {'ok', cowboy_req:req(), state()}.
 store(#media_store_path{db=Db
                        ,id=Id
                        ,att=Attachment
@@ -292,35 +297,37 @@ store(#media_store_path{db=Db
             {'ok', failure(Reason, Req0), State}
     end.
 
--spec success(kz_json:object(), kz_proplist(), cowboy_req:req()) -> cowboy_req:req().
+-spec success(kz_json:object(), kz_term:proplist(), cowboy_req:req()) -> cowboy_req:req().
 success(JObj, Props, Req0) ->
     Body = io_lib:format("~s~n", [kz_json:encode(kz_json:set_value(<<"ok">>, 'true', JObj))]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
-    Headers = [{kz_term:to_binary(H), kz_term:to_binary(V)} || {H, V} <- props:get_value('headers', Props, [])],
-    {'ok', Req2} = cowboy_req:reply(200, Headers, Req1),
-    Req2.
+    Headers = maps:from_list([{kz_term:to_binary(H), kz_term:to_binary(V)}
+                              || {H, V} <- props:get_value('headers', Props, [])
+                             ]),
+    lager:info("replying with 200"),
+    cowboy_req:reply(200, Headers, Req1).
 
 -spec failure(any(), cowboy_req:req()) -> cowboy_req:req().
 failure(Reason, Req0) ->
     Body = io_lib:format("~p~n", [Reason]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
-    {'ok', Req2} = cowboy_req:reply(500, Req1),
-    Req2.
+    lager:info("replying with 500 error: ~s", [Body]),
+    cowboy_req:reply(500, Req1).
 
--spec reply_error(integer(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), 'ok'}.
-reply_error(Code, Req0) ->
-    {'ok', Req1} = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, 'ok'}.
+-spec reply_error(reply_code(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
+reply_error(Code, Req) ->
+    lager:info("replying with error ~p", [Code]),
+    {'ok', cowboy_req:reply(Code, Req), 'ok'}.
 
--spec reply_error(integer(), state(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), state()}.
-reply_error(Code, State, Req0) ->
-    {'ok', Req1} = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, State}.
+-spec reply_error(reply_code(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
+reply_error(Code, State, Req) ->
+    lager:info("replying with error ~p", [Code]),
+    {'ok', cowboy_req:reply(Code, Req), State}.
 
--spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
-terminate(_Reason, Req, 'ok') ->
-    Req;
-terminate(_Reason, Req, #state{file=Device, filename=Filename}) ->
+-spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
+terminate(_Reason, _Req, 'ok') ->
+    lager:debug("terminating handler: ~p", [_Reason]);
+terminate(_Reason, _Req, #state{file=Device, filename=Filename}) ->
     catch(file:close(Device)),
     catch(file:delete(Filename)),
-    Req.
+    lager:debug("closed files and terminated handler: ~p", [_Reason]).

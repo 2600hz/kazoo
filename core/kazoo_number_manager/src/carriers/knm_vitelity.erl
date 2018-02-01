@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -51,8 +51,8 @@ is_local() -> 'false'.
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
-                                      {error, any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
+                                              {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
@@ -62,7 +62,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+1",Prefix/binary>>, Quantity, Options) ->
@@ -137,7 +137,7 @@ is_number_billable(_) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec classify_and_find(ne_binary(), pos_integer(), knm_carriers:options()) ->
+-spec classify_and_find(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
                                {'ok', knm_number:knm_numbers()} |
                                {'error', any()}.
 classify_and_find(Prefix, Quantity, Options) ->
@@ -175,7 +175,7 @@ tollfree_options(Quantity, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_options(ne_binary(), knm_carriers:options()) ->
+-spec local_options(kz_term:ne_binary(), knm_carriers:options()) ->
                            knm_vitelity_util:query_options().
 local_options(Prefix, Options) when byte_size(Prefix) =< 3 ->
     LocalOptions = [{'qs', [{'npa', Prefix}
@@ -213,7 +213,7 @@ local_options(Prefix, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary(), pos_integer(), knm_carriers:options(), knm_vitelity_util:query_options()) ->
+-spec find(kz_term:ne_binary(), pos_integer(), knm_carriers:options(), knm_vitelity_util:query_options()) ->
                   {'ok', knm_number:knm_numbers()} |
                   {'error', any()}.
 find(Prefix, Quantity, Options, VitelityOptions) ->
@@ -239,7 +239,7 @@ to_number(DID, CarrierData, QID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec query_vitelity(ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
+-spec query_vitelity(kz_term:ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 -ifdef(TEST).
@@ -277,7 +277,7 @@ query_vitelity(Prefix, Quantity, QOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_resp(ne_binary(), pos_integer(), text()) ->
+-spec process_xml_resp(kz_term:ne_binary(), pos_integer(), kz_term:text()) ->
                               {'ok', kz_json:object()} |
                               {'error', any()}.
 process_xml_resp(Prefix, Quantity, XML_binary) ->
@@ -296,7 +296,7 @@ process_xml_resp(Prefix, Quantity, XML_binary) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_content_tag(ne_binary(), pos_integer(), xml_el()) ->
+-spec process_xml_content_tag(kz_term:ne_binary(), pos_integer(), kz_types:xml_el()) ->
                                      {'ok', kz_json:object()} |
                                      {'error', any()}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
@@ -317,10 +317,8 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', any()}.
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), kz_proplist()) ->
+
+-spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_el()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
@@ -330,6 +328,9 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
                                                  }) ->
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
+-spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_els(), kz_term:proplist()) ->
+                                 {'ok', kz_json:object()} |
+                                 {'error', any()}.
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
     {'ok', kz_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
@@ -356,7 +357,7 @@ process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec number_matches_prefix(kz_json:object(), ne_binary()) -> boolean().
+-spec number_matches_prefix(kz_json:object(), kz_term:ne_binary()) -> boolean().
 number_matches_prefix(JObj, Prefix) ->
     PrefixLen = byte_size(Prefix),
     CountryCode = kz_json:get_value(<<"country_code">>, JObj, <<"+1">>),
@@ -373,7 +374,7 @@ number_matches_prefix(JObj, Prefix) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec xml_did_to_json(xml_el()) -> kz_json:object().
+-spec xml_did_to_json(kz_types:xml_el()) -> kz_json:object().
 xml_did_to_json(#xmlElement{name='did'
                            ,content=[#xmlText{}]=DID
                            }) ->
@@ -404,7 +405,7 @@ xml_did_to_json(#xmlElement{name='number'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec purchase_local_options(ne_binary()) -> knm_vitelity_util:query_options().
+-spec purchase_local_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 purchase_local_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"getlocaldid">>}
@@ -421,7 +422,7 @@ purchase_local_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec purchase_tollfree_options(ne_binary()) -> knm_vitelity_util:query_options().
+-spec purchase_tollfree_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 purchase_tollfree_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"gettollfree">>}
@@ -458,7 +459,7 @@ query_vitelity(Number, QOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_resp(knm_number:knm_number(), text()) ->
+-spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
                               knm_number:knm_number().
 process_xml_resp(Number, XML_binary) ->
     XML = unicode:characters_to_list(XML_binary),
@@ -476,7 +477,7 @@ process_xml_resp(Number, XML_binary) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_content_tag(knm_number:knm_number(), xml_el()) ->
+-spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
                                      knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
                                            ,content=Children
@@ -498,7 +499,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec release_did_options(ne_binary()) -> knm_vitelity_util:query_options().
+-spec release_did_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 release_did_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"removedid">>}

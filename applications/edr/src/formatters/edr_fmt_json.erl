@@ -16,7 +16,7 @@
 
 -include("../edr.hrl").
 
--spec format_event(kz_json:object(), edr_event()) -> ne_binary().
+-spec format_event(kz_json:object(), edr_event()) -> kz_term:ne_binary().
 format_event(Opts, Event) ->
     encode(Opts, to_jobj(Opts, Event)).
 
@@ -46,7 +46,7 @@ to_jobj(_Opts, Event, _IncludeMeta, 'false') ->
 to_jobj(Opts, Event, IncludeMeta, 'true') ->
     kz_json:normalize(to_jobj(Opts, Event, IncludeMeta, 'false')).
 
--spec encode(kz_json:object(), kz_json:object()) -> ne_binary().
+-spec encode(kz_json:object(), kz_json:object()) -> kz_term:ne_binary().
 encode(Opts, JObj) ->
     case kz_json:is_true(<<"pretty">>, Opts, 'false') of
         'true' -> kz_json:encode(JObj, ['pretty']);

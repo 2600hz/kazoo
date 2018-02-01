@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -22,11 +22,11 @@ start_link() ->
     'ignore'.
 
 -spec do_init() -> 'ok'.
--spec do_init(ne_binary()) -> 'ok'.
 do_init() ->
     init_dbs(),
     init_modules().
 
+-spec do_init(kz_term:ne_binary()) -> 'ok'.
 do_init(MasterAccountDb) ->
     init_master_account_db(MasterAccountDb),
     init_modules().
@@ -36,29 +36,40 @@ init_dbs() ->
     _ = init_master_account_db(),
     webhooks_util:init_webhook_db().
 
--spec maybe_init_account(kz_json:object(), kz_proplist()) -> 'ok' | 'false'.
+-spec maybe_init_account(kz_json:object(), kz_term:proplist()) -> 'ok' | 'false'.
 maybe_init_account(JObj, _Props) ->
     Database = kapi_conf:get_database(JObj),
     kz_datamgr:db_classification(Database) =:= 'account'
         andalso do_init(Database).
 
 -spec init_master_account_db() -> 'ok'.
--spec init_master_account_db(ne_binary()) -> 'ok'.
 init_master_account_db() ->
     case kapps_util:get_master_account_db() of
         {'ok', MasterAccountDb} ->
-            init_master_account_db(MasterAccountDb);
+            init_master_account_db(MasterAccountDb),
+            remove_old_notifications_webhooks(MasterAccountDb);
         {'error', _} ->
             lager:debug("master account hasn't been created yet"),
             webhooks_shared_listener:add_account_bindings()
     end.
 
+-spec init_master_account_db(kz_term:ne_binary()) -> 'ok'.
 init_master_account_db(MasterAccountDb) ->
-    _ = kz_datamgr:revise_doc_from_file(MasterAccountDb
-                                       ,'webhooks'
-                                       ,<<"webhooks.json">>
-                                       ),
+    _ = kz_datamgr:revise_doc_from_file(MasterAccountDb, 'webhooks', <<"webhooks.json">>),
     lager:debug("loaded view into master db ~s", [MasterAccountDb]).
+
+-spec remove_old_notifications_webhooks(kz_term:ne_binary()) -> 'ok'.
+remove_old_notifications_webhooks(MasterAccountDb) ->
+    ToRemove = [<<"webhooks_callflow">>
+               ,<<"webhooks_inbound_fax">>
+               ,<<"webhooks_outbound_fax">>
+               ],
+    case kz_datamgr:del_docs(MasterAccountDb, ToRemove) of
+        {'ok', _} ->
+            lager:debug("old notifications webhooks deleted");
+        {'error', _Reason} ->
+            lager:debug("failed to remove old notifications webhooks: ~p", [_Reason])
+    end.
 
 -spec init_modules() -> 'ok'.
 init_modules() ->
@@ -77,11 +88,11 @@ init_module(Module) ->
             lager:debug("~s failed: ~s: ~p", [Module, _E, _R])
     end.
 
--spec existing_modules() -> atoms().
+-spec existing_modules() -> kz_term:atoms().
 existing_modules() ->
     existing_modules(code:lib_dir(kz_term:to_atom(?APP_NAME))).
 
--spec existing_modules(string()) -> atoms().
+-spec existing_modules(string()) -> kz_term:atoms().
 existing_modules(WebhooksRoot) ->
     ModulesDirectory = filename:join(WebhooksRoot, "ebin"),
     Extension = ".beam",
@@ -90,7 +101,6 @@ existing_modules(WebhooksRoot) ->
             ,"webhooks_disabler"
             ,"webhooks_init"
             ,"webhooks_listener"
-            ,"webhooks_maint_listener"
             ,"webhooks_maintenance"
             ,"webhooks_shared_listener"
             ,"webhooks_skel"

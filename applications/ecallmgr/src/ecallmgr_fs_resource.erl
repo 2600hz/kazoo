@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node :: atom()
-               ,options :: kz_proplist()
+               ,options :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -48,9 +48,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+
+-spec start_link(atom()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
@@ -61,7 +63,7 @@ start_link(Node, Options) ->
                             ],
                             [Node, Options]).
 
--spec handle_originate_req(kz_json:object(), kz_proplist()) -> sup_startchild_ret().
+-spec handle_originate_req(kz_json:object(), kz_term:proplist()) -> kz_types:sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
     Node = props:get_value('node', Props),
@@ -83,7 +85,7 @@ handle_originate_req(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
@@ -104,7 +106,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -118,7 +120,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -132,7 +134,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'update_options', NewOptions}, State) ->
     {'noreply', State#state{options=NewOptions}, 'hibernate'};
 handle_info({'EXIT', _, 'noconnection'}, State) ->

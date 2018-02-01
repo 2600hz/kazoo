@@ -11,20 +11,22 @@
 
 -compile({no_auto_import,[get/1]}).
 
--spec get_pos_integer(ne_binary()) -> api_pos_integer().
--spec get_pos_integer(ne_binary(), Default) -> pos_integer() | Default.
+-spec get_pos_integer(kz_term:ne_binary()) -> kz_term:api_pos_integer().
 get_pos_integer(Key) ->
     get_pos_integer(Key, 'undefined').
+
+-spec get_pos_integer(kz_term:ne_binary(), Default) -> pos_integer() | Default.
 get_pos_integer(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
         {'ok', Value} -> as_integer(Value, Default, fun(V) -> V > 0 end)
     end.
 
--spec get_ne_binary(ne_binary()) -> api_ne_binary().
--spec get_ne_binary(ne_binary(), Default) -> ne_binary() | Default.
+-spec get_ne_binary(kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_ne_binary(Key) ->
     get_ne_binary(Key, 'undefined').
+
+-spec get_ne_binary(kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
 get_ne_binary(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
@@ -32,10 +34,11 @@ get_ne_binary(Key, Default) ->
             nonempty(kz_term:to_binary(Value), Default)
     end.
 
--spec get_ne_binaries(ne_binary()) -> api_ne_binaries().
--spec get_ne_binaries(ne_binary(), Default) -> ne_binaries() | Default.
+-spec get_ne_binaries(kz_term:ne_binary()) -> kz_term:api_ne_binaries().
 get_ne_binaries(Key) ->
     get_ne_binaries(Key, 'undefined').
+
+-spec get_ne_binaries(kz_term:ne_binary(), Default) -> kz_term:ne_binaries() | Default.
 get_ne_binaries(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
@@ -43,10 +46,11 @@ get_ne_binaries(Key, Default) ->
             nonempty(Value, Default)
     end.
 
--spec get_json(ne_binary()) -> api_object().
--spec get_json(ne_binary(), Default) -> kz_json:object() | Default.
+-spec get_json(kz_term:ne_binary()) -> kz_term:api_object().
 get_json(Key) ->
     get_json(Key, 'undefined').
+
+-spec get_json(kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 get_json(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
@@ -54,10 +58,11 @@ get_json(Key, Default) ->
             as_json(Value, Default)
     end.
 
--spec get_is_true(ne_binary()) -> boolean().
--spec get_is_true(ne_binary(), Default) -> boolean() | Default.
+-spec get_is_true(kz_term:ne_binary()) -> boolean().
 get_is_true(Key) ->
     get_is_true(Key, 'false').
+
+-spec get_is_true(kz_term:ne_binary(), Default) -> boolean() | Default.
 get_is_true(Key, Default) ->
     case get(Key) of
         'undefined' -> Default;
@@ -65,8 +70,8 @@ get_is_true(Key, Default) ->
             as_boolean(Value, Default)
     end.
 
--spec get(ne_binary()) -> 'undefined' |
-                          {'ok', any()}.
+-spec get(kz_term:ne_binary()) -> 'undefined' |
+                                  {'ok', any()}.
 get(<<_/binary>>=Key) ->
     application:get_env(?APP, kz_term:to_atom(Key, 'true')).
 

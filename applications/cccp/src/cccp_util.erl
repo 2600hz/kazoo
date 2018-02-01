@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -25,14 +25,14 @@
 
 -define(DEFAULT_CALLEE_REGEX, <<"^\\+?\\d{7,}$">>).
 
--spec relay_amqp(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec relay_amqp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
     case kapps_call:kvs_fetch('consumer_pid', props:get_value('call', Props)) of
         Pid when is_pid(Pid) -> kapps_call_command:relay_event(Pid, JObj);
         _ -> 'ok'
     end.
 
--spec handle_disconnect(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_disconnect(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_disconnect(JObj, Props) ->
     case (<<"CHANNEL_EXECUTE_COMPLETE">> =:= kz_json:get_value(<<"Event-Name">>, JObj))
         andalso is_binary(kz_json:get_value(<<"Hangup-Code">>, JObj))
@@ -62,7 +62,7 @@ handle_disconnect_cause(JObj, Call) ->
             kapps_call_command:queued_hangup(Call)
     end.
 
--spec authorize(ne_binary(), ne_binary()) ->
+-spec authorize(kz_term:ne_binary(), kz_term:ne_binary()) ->
                        {'ok', kz_json:object()} |
                        'empty' |
                        'error'.
@@ -77,14 +77,14 @@ authorize(Value, View) ->
     end.
 
 -spec get_number(kapps_call:call()) ->
-                        {'num_to_dial', ne_binary()} |
-                        'ok'.
--spec get_number(kapps_call:call(), integer()) ->
-                        {'num_to_dial', ne_binary()} |
+                        {'num_to_dial', kz_term:ne_binary()} |
                         'ok'.
 get_number(Call) ->
     get_number(Call, 3).
 
+-spec get_number(kapps_call:call(), integer()) ->
+                        {'num_to_dial', kz_term:ne_binary()} |
+                        'ok'.
 get_number(Call, 0) ->
     lager:info("run out of attempts amount... hanging up"),
     kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
@@ -102,7 +102,7 @@ get_number(Call, Retries) ->
             get_number(Call, Retries - 1)
     end.
 
--spec verify_entered_number(ne_binary(), kapps_call:call(), integer()) -> 'ok'.
+-spec verify_entered_number(kz_term:ne_binary(), kapps_call:call(), integer()) -> 'ok'.
 verify_entered_number(EnteredNumber, Call, Retries) ->
     Number = knm_converters:normalize(re:replace(EnteredNumber, "[^0-9]", "", ['global', {'return', 'binary'}])),
     case cccp_allowed_callee(Number) of
@@ -115,7 +115,7 @@ verify_entered_number(EnteredNumber, Call, Retries) ->
     end.
 
 -spec get_last_dialed_number(kapps_call:call()) ->
-                                    {'num_to_dial', ne_binary()} |
+                                    {'num_to_dial', kz_term:ne_binary()} |
                                     'ok'.
 get_last_dialed_number(Call) ->
     DocId = kapps_call:kvs_fetch('auth_doc_id', Call),
@@ -129,14 +129,14 @@ get_last_dialed_number(Call) ->
             check_restrictions(LastDialed, Call)
     end.
 
--spec store_last_dialed(ne_binary(), ne_binary()) -> 'ok'.
+-spec store_last_dialed(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 store_last_dialed(Number, DocId) ->
     {'ok', Doc} = kz_datamgr:update_doc(?KZ_CCCPS_DB, DocId, [{<<"pvt_last_dialed">>, Number}]),
     _ = kz_datamgr:update_doc(kz_doc:account_db(Doc), DocId, [{<<"pvt_last_dialed">>, Number}]),
     'ok'.
 
--spec check_restrictions(ne_binary(), kapps_call:call()) ->
-                                {'num_to_dial', ne_binary()} |
+-spec check_restrictions(kz_term:ne_binary(), kapps_call:call()) ->
+                                {'num_to_dial', kz_term:ne_binary()} |
                                 'ok'.
 check_restrictions(Number, Call) ->
     DocId = kapps_call:kvs_fetch('auth_doc_id', Call),
@@ -151,7 +151,7 @@ check_restrictions(Number, Call) ->
             is_user_restricted(Number, kz_json:get_value(<<"user_id">>, Doc), AccountDb, Call)
     end.
 
--spec is_number_restricted(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_number_restricted(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_number_restricted(Number, DocId, AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> 'false';
@@ -160,8 +160,8 @@ is_number_restricted(Number, DocId, AccountDb) ->
             kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
 
--spec is_user_restricted(ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) ->
-                                {'num_to_dial', ne_binary()} |
+-spec is_user_restricted(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
+                                {'num_to_dial', kz_term:ne_binary()} |
                                 'ok'.
 is_user_restricted(Number, UserId, AccountDb, Call) ->
     case is_number_restricted(Number, UserId, AccountDb) of
@@ -177,7 +177,7 @@ hangup_unauthorized_call(Call) ->
     kapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
     kapps_call_command:queued_hangup(Call).
 
--spec cccp_allowed_callee(ne_binary()) -> boolean().
+-spec cccp_allowed_callee(kz_term:ne_binary()) -> boolean().
 cccp_allowed_callee(Number) ->
     Regex = kapps_config:get_binary(?CCCP_CONFIG_CAT, <<"allowed_callee_regex">>, ?DEFAULT_CALLEE_REGEX),
     case re:run(Number, Regex) of
@@ -189,7 +189,7 @@ cccp_allowed_callee(Number) ->
             'true'
     end.
 
--spec build_request(api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), ne_binary(),binary(),binary()) -> kz_proplist().
+-spec build_request(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(),binary(),binary()) -> kz_term:proplist().
 build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainCID, RetainName, RetainNumber) ->
     Realm = kz_account:fetch_realm(AccountId),
     CCVs = props:filter_undefined([{<<"Account-ID">>, AccountId}
@@ -232,13 +232,13 @@ build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainC
        | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec bridge(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), binary(), binary()) -> 'ok'.
+-spec bridge(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary()) -> 'ok'.
 bridge(CallId, ToDID, AuthorizingId, CtrlQ, AccountId, RetainCID, RetainName, RetainNumber) ->
     Req = build_request(CallId, ToDID, AuthorizingId, 'undefined', CtrlQ, AccountId, <<"bridge">>, RetainCID, RetainName, RetainNumber),
     kapi_resource:publish_originate_req(Req).
 
--spec compose_cid(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
-                         {api_binary(), api_binary()}.
+-spec compose_cid(kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary()) ->
+                         {kz_term:api_binary(), kz_term:api_binary()}.
 compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId) ->
     case RetainCID of
         <<"true">> ->
@@ -247,7 +247,7 @@ compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId) ->
             {'undefined','undefined'}
     end.
 
--spec maybe_outbound_call(ne_binary(), binary(), binary(), ne_binary()) ->
+-spec maybe_outbound_call(kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary()) ->
                                  {binary(), binary()}.
 maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
     case knm_converters:is_reconcilable(ToDID) of
@@ -262,22 +262,22 @@ maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
             end
     end.
 
--spec maybe_cid_name(api_ne_binary(), api_ne_binary()) -> api_ne_binary().
+-spec maybe_cid_name(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 maybe_cid_name(<<Name/binary>>, _) -> Name;
 maybe_cid_name(_, Number) -> Number.
 
--spec build_presence(api_ne_binary(), ne_binary()) -> api_ne_binary().
+-spec build_presence(kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 build_presence(<<Number/binary>>, Realm) -> <<Number/binary, "@", Realm/binary>>;
 build_presence(_, _) -> 'undefined'.
 
--spec current_account_outbound_directions(ne_binary()) -> ne_binaries().
+-spec current_account_outbound_directions(kz_term:ne_binary()) -> kz_term:ne_binaries().
 current_account_outbound_directions(AccountId) ->
     [kz_json:get_ne_binary_value(<<"destination">>, Channel)
      || Channel <- current_account_channels(AccountId),
         <<"outbound">> =:= kz_json:get_ne_binary_value(<<"direction">>, Channel)
     ].
 
--spec count_user_legs(ne_binary(), ne_binary()) -> integer().
+-spec count_user_legs(kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
 count_user_legs(UserId, AccountId) ->
     lists:foldl(fun(Channel, Acc) ->
                         is_user_channel(Channel, UserId) + Acc
@@ -286,14 +286,14 @@ count_user_legs(UserId, AccountId) ->
                ,current_account_channels(AccountId)
                ).
 
--spec is_user_channel(kz_json:object(), ne_binary()) -> integer().
+-spec is_user_channel(kz_json:object(), kz_term:ne_binary()) -> integer().
 is_user_channel(Channel, UserId) ->
     case kz_json:get_ne_binary_value(<<"authorizing_id">>, Channel) of
         UserId -> 1;
         _ -> 0
     end.
 
--spec current_account_channels(ne_binary()) -> kz_json:objects().
+-spec current_account_channels(kz_term:ne_binary()) -> kz_json:objects().
 current_account_channels(AccountId) ->
     Req = [{<<"Realm">>, kz_account:fetch_realm(AccountId)}
           ,{<<"Usernames">>, []}

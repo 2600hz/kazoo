@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz, INC
+%%% @copyright (C) 2013-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -29,15 +29,15 @@
 %% Return a section of the config file
 %% @end
 %%--------------------------------------------------------------------
--spec get(section()) -> kz_proplist().
+-spec get(section()) -> kz_term:proplist().
 get(Section) ->
     find_values(Section, ?DEFAULT_DEFAULTS).
 
--spec get(section(), atom()) -> kz_proplist().
+-spec get(section(), atom()) -> kz_term:proplist().
 get(Section, Key) ->
     get(Section, Key, ?DEFAULT_DEFAULTS).
 
--spec get(section(), atom(), Default) -> kz_proplist() | Default.
+-spec get(section(), atom(), Default) -> kz_term:proplist() | Default.
 get(Section, Key, Default) ->
     case find_values(Section, Key) of
         [] -> Default;
@@ -143,8 +143,8 @@ get_node_section_name() ->
 %% Set or unset enviroment variables
 %% @end
 %%--------------------------------------------------------------------
+
 -spec set(section(), atom(), term()) -> 'ok'.
--spec set({section(), kz_proplist()}, kz_proplist()) -> 'ok'.
 set(Section, Key, Value) ->
     Props = load(),
     case props:get_value(Section, Props) of
@@ -156,6 +156,7 @@ set(Section, Key, Value) ->
             set({Section, NewSection}, props:delete(Section, Props))
     end.
 
+-spec set({section(), kz_term:proplist()}, kz_term:proplist()) -> 'ok'.
 set(NewSection, Props) ->
     NewProps = props:insert_value(NewSection, Props),
     application:set_env(?APP, ?MODULE, NewProps).
@@ -176,7 +177,7 @@ unset(Section, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_values(section(), kz_proplist()) -> list().
+-spec find_values(section(), kz_term:proplist()) -> list().
 find_values(Section, ?DEFAULT_DEFAULTS) ->
     get_sections(Section, load());
 find_values(Section, Keys) when is_list(Keys) ->
@@ -191,7 +192,7 @@ find_values(Section, Key) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_sections(section(), kz_proplist()) -> kz_proplist().
+-spec get_sections(section(), kz_term:proplist()) -> kz_term:proplist().
 get_sections('zone' = Section, Prop) ->
     Sections = props:get_all_values(Section, Prop),
     format_sections(Sections, 'name', []);
@@ -199,7 +200,7 @@ get_sections(Section, Prop) ->
     Sections = props:get_all_values(Section, Prop),
     format_sections(Sections).
 
--spec get_section(section()) -> kz_proplist().
+-spec get_section(section()) -> kz_term:proplist().
 get_section(Section) ->
     Prop = load(),
     Sections = props:get_all_values(Section, Prop),
@@ -211,10 +212,10 @@ get_section(Section) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec format_sections(kz_proplist()) -> kz_proplist().
+-spec format_sections(kz_term:proplist()) -> kz_term:proplist().
 format_sections(Sections) -> format_sections(Sections, 'zone', []).
 
--spec format_sections(kz_proplist(), atom(), kz_proplist()) -> kz_proplist().
+-spec format_sections(kz_term:proplist(), atom(), kz_term:proplist()) -> kz_term:proplist().
 format_sections([], _, Acc) -> local_sections(lists:reverse(Acc));
 format_sections([Section | T], ZoneFilter, Acc) ->
     case props:get_value('host', Section, 'zone') of
@@ -224,8 +225,8 @@ format_sections([Section | T], ZoneFilter, Acc) ->
             format_sections(T, ZoneFilter, [{kz_term:to_binary(Host), Section} | Acc])
     end.
 
--spec format_zone_section(kz_proplist(), kz_proplist(), atom(), kz_proplist()) ->
-                                 kz_proplist().
+-spec format_zone_section(kz_term:proplist(), kz_term:proplist(), atom(), kz_term:proplist()) ->
+                                 kz_term:proplist().
 format_zone_section(Section, Sections, ZoneFilter, Acc) ->
     case props:get_value(ZoneFilter, Section, 'generic') of
         'generic' ->
@@ -240,10 +241,10 @@ format_zone_section(Section, Sections, ZoneFilter, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_sections(kz_proplist()) -> kz_proplist().
+-spec local_sections(kz_term:proplist()) -> kz_term:proplist().
 local_sections(Sections) -> local_sections(Sections, []).
 
--spec local_sections(kz_proplist(), kz_proplist()) -> kz_proplist().
+-spec local_sections(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 local_sections([], Acc) ->
     props:get_first_defined(['zones', 'generics'], Acc, []);
 local_sections([Section | T], Acc) ->
@@ -254,10 +255,10 @@ local_sections([Section | T], Acc) ->
         {'false', _} -> local_sections(T, Acc)
     end.
 
--type section_type() :: {'generic' | ne_binary() | {'zone', atom()}, kz_proplist()}.
+-type section_type() :: {'generic' | kz_term:ne_binary() | {'zone', atom()}, kz_term:proplist()}.
 
--spec add_section('generics' | 'zones', section_type(), kz_proplist()) ->
-                         kz_proplist().
+-spec add_section('generics' | 'zones', section_type(), kz_term:proplist()) ->
+                         kz_term:proplist().
 add_section(Group, Value, Props) ->
     props:set_value(Group, [Value | props:get_value(Group, Props, [])], Props).
 
@@ -267,9 +268,9 @@ add_section(Group, Value, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_local_section({ne_binary() | atom(), any()}) -> {'false', 'generic'} |
-                                                         {'false', 'zone'} |
-                                                         {boolean(), ne_binary()}.
+-spec is_local_section({kz_term:ne_binary() | atom(), any()}) -> {'false', 'generic'} |
+                                                                 {'false', 'zone'} |
+                                                                 {boolean(), kz_term:ne_binary()}.
 is_local_section({'generic', _}) ->
     {'false', 'generic'};
 is_local_section({{'zone', Zone}, _}) ->
@@ -291,7 +292,7 @@ is_local_section({SectionHost, _}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_values(atom(), kz_proplist()) -> list().
+-spec get_values(atom(), kz_term:proplist()) -> list().
 get_values(Key, Sections) -> get_values(Sections, Key, []).
 
 get_values([], _, []) -> [];
@@ -306,7 +307,7 @@ get_values([{_, Values} | T], Key, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load() -> kz_proplist().
+-spec load() -> kz_term:proplist().
 load() ->
     case erlang:get(?SETTINGS_KEY) of
         'undefined' ->
@@ -330,6 +331,6 @@ zone() ->
         {'ok', Zone} -> Zone
     end.
 
--spec zone(atom()) -> ne_binary() | atom().
+-spec zone(atom()) -> kz_term:ne_binary() | atom().
 zone('binary') -> kz_term:to_binary(zone());
 zone(_) -> zone().

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors:
@@ -40,8 +40,9 @@ allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec resource_exists() -> false.
--spec resource_exists(path_tokens()) -> true.
 resource_exists() -> false.
+
+-spec resource_exists(path_tokens()) -> true.
 resource_exists(_) -> true.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
@@ -72,7 +73,7 @@ validate(Context, ?HTTP_POST, ConfigId) ->
     Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
     validate_with_parent(Context, ConfigId, Parent).
 
--spec validate_with_parent(cb_context:context(), ne_binary(), kz_json:object()) -> cb_context:context().
+-spec validate_with_parent(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> cb_context:context().
 validate_with_parent(Context, ConfigId, Parent) ->
     RequestData = strip_id(cb_context:req_data(Context)),
     FullConfig = kz_json:merge(Parent, RequestData),
@@ -102,12 +103,12 @@ delete(Context, _ConfigId) ->
         _ -> crossbar_doc:delete(Context, ?HARD_DELETE)
     end.
 
--spec set_config_to_context(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec set_config_to_context(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 set_config_to_context(ConfigId, Context) ->
     Config = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
     crossbar_doc:handle_datamgr_success(set_id(ConfigId, Config), Context).
 
--spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec set_id(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(ConfigId, JObj) -> kz_json:set_value(<<"id">>, kapps_config_util:account_doc_id(ConfigId), JObj).
 
 -spec strip_id(kz_json:object()) -> kz_json:object().

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for local resource documents
@@ -50,10 +50,12 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_ResourceTemplateId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -65,9 +67,11 @@ allowed_methods(_ResourceTemplateId) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -194,7 +198,7 @@ forbidden(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
     Context1 = check_template_name(Context),
     case cb_context:has_errors(Context1) of
@@ -208,7 +212,7 @@ validate_request(ResourceId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(ResourceId, Context) ->
     crossbar_doc:patch_and_validate(ResourceId, Context, fun validate_request/2).
 
@@ -227,7 +231,7 @@ check_template_name(Context) ->
         _Name -> cb_context:set_resp_status(Context, 'success')
     end.
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     JObj = kz_doc:set_type(cb_context:req_data(Context), <<"resource_template">>),
     cb_context:set_resp_status(cb_context:set_doc(Context, JObj), 'success');

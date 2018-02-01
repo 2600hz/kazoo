@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("jonny5.hrl").
 
--spec remove_call_charges(api_binary(), api_binary()) -> 'ok'.
+-spec remove_call_charges(kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 remove_call_charges('undefined', _) -> 'ok';
 remove_call_charges(_, 'undefined') -> 'ok';
 remove_call_charges(AccountId, CallId) ->
@@ -55,7 +55,7 @@ send_system_alert(Request) ->
                             ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)
                             ).
 
--spec add_limit_details(api_ne_binary(), ne_binary(), kz_proplist()) -> kz_proplist().
+-spec add_limit_details(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 add_limit_details('undefined', _, Props) -> Props;
 add_limit_details(Account, Prefix, Props) ->
     AccountId = kz_util:format_account_id(Account),
@@ -94,7 +94,7 @@ outbound_trunks(AccountId, Limits) ->
 max_postpay(Limits) ->
     wht_util:units_to_dollars(j5_limits:max_postpay(Limits)).
 
--spec get_account_name(api_binary()) -> ne_binary().
+-spec get_account_name(kz_term:api_binary()) -> kz_term:ne_binary().
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
     case kz_account:fetch_name(Account) of
@@ -102,7 +102,7 @@ get_account_name(Account) ->
         Name -> Name
     end.
 
--spec current_balance(ne_binary()) -> ne_binary().
+-spec current_balance(kz_term:ne_binary()) -> kz_term:ne_binary().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
         {'ok', Balance} -> wht_util:units_to_dollars(Balance);

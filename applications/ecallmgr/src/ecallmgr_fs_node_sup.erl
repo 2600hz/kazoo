@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -43,59 +43,59 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     supervisor:start_link({'local', Node}, ?MODULE, [Node, Options]).
 
--spec node_srv(pid()) -> api_pid().
+-spec node_srv(pid()) -> kz_term:api_pid().
 node_srv(Supervisor) ->
     srv(which_children(Supervisor), "edon_").
 
--spec authn_srv(pid()) -> api_pid().
+-spec authn_srv(pid()) -> kz_term:api_pid().
 authn_srv(Supervisor) ->
     srv(which_children(Supervisor), "nhtua_").
 
--spec route_sup_srv(pid()) -> api_pid().
+-spec route_sup_srv(pid()) -> kz_term:api_pid().
 route_sup_srv(Supervisor) ->
     srv(which_children(Supervisor), "pus_etuor_").
 
--spec route_srv(pid()) -> api_pid().
+-spec route_srv(pid()) -> kz_term:api_pid().
 route_srv(Supervisor) ->
     srv(which_children(route_sup_srv(Supervisor)), "etuor_").
 
--spec channel_srv(pid()) -> api_pid().
+-spec channel_srv(pid()) -> kz_term:api_pid().
 channel_srv(Supervisor) ->
     srv(which_children(Supervisor), "lennahc_").
 
--spec config_srv(pid()) -> api_pid().
+-spec config_srv(pid()) -> kz_term:api_pid().
 config_srv(Supervisor) ->
     srv(which_children(Supervisor), "gifnoc_").
 
--spec resource_srv(pid()) -> api_pid().
+-spec resource_srv(pid()) -> kz_term:api_pid().
 resource_srv(Supervisor) ->
     srv(which_children(Supervisor), "ecruoser_").
 
--spec notify_srv(pid()) -> api_pid().
+-spec notify_srv(pid()) -> kz_term:api_pid().
 notify_srv(Supervisor) ->
     srv(which_children(Supervisor), "yfiton_").
 
--spec authz_srv(pid()) -> api_pid().
+-spec authz_srv(pid()) -> kz_term:api_pid().
 authz_srv(Supervisor) ->
     srv(which_children(Supervisor), "zhtua_").
 
--spec cdr_srv(pid()) -> api_pid().
+-spec cdr_srv(pid()) -> kz_term:api_pid().
 cdr_srv(Supervisor) ->
     srv(which_children(Supervisor), "rdc_").
 
--spec conference_srv(pid()) -> api_pid().
+-spec conference_srv(pid()) -> kz_term:api_pid().
 conference_srv(Supervisor) ->
     srv(which_children(Supervisor), "ecnerefnoc_").
 
--spec event_stream_sup(pid()) -> api_pid().
+-spec event_stream_sup(pid()) -> kz_term:api_pid().
 event_stream_sup(Supervisor) ->
     srv(which_children(Supervisor), "pus_maerts_tneve_").
 
--spec msg_srv(pid()) -> api_pid().
+-spec msg_srv(pid()) -> kz_term:api_pid().
 msg_srv(Supervisor) ->
     srv(which_children(Supervisor), "gsm_").
 
@@ -112,7 +112,7 @@ msg_srv(Supervisor) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init([Node, Options]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
@@ -141,7 +141,7 @@ child_name(NodeB, Args, Module, <<"worker">>) ->
     Mod = kz_term:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS_TYPE(Name, Mod, Args, 'transient').
 
--spec srv([{atom(), pid(), any(), any()}] | tuple(), list()) -> api_pid().
+-spec srv([{atom(), pid(), any(), any()}] | tuple(), list()) -> kz_term:api_pid().
 srv([], _) -> 'undefined';
 srv([{Name, Pid, _, _} | Children], Suffix) ->
     %% FIXME: use lists:suffix
@@ -158,17 +158,17 @@ maybe_correct_modules(Modules)
     maybe_correct_modules(kz_json:from_list(FixedModules));
 maybe_correct_modules(JObj) -> set_order(JObj).
 
--spec fix_module_type(ne_binary()) -> kz_json:object().
+-spec fix_module_type(kz_term:ne_binary()) -> kz_json:object().
 fix_module_type(<<"pus_", _/binary>>) ->
     kz_json:from_list([{<<"type">>, <<"supervisor">>}]);
 fix_module_type(_) ->
     kz_json:from_list([{<<"type">>, <<"worker">>}]).
 
--spec maybe_module_deprecated(ne_binary()) -> ne_binary().
+-spec maybe_module_deprecated(kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_module_deprecated(<<"route">>) -> <<"route_sup">>;
 maybe_module_deprecated(Mod) -> Mod.
 
--spec fix_module(ne_binary() | string()) -> {ne_binary(), kz_json:object()}.
+-spec fix_module(kz_term:ne_binary() | string()) -> {kz_term:ne_binary(), kz_json:object()}.
 fix_module(Mod)
   when not is_binary(Mod)->
     fix_module(kz_term:to_binary(Mod));

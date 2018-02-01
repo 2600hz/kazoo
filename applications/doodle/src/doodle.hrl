@@ -19,7 +19,7 @@
                                   ,exchange :: binary()
                                   ,type :: binary()
                                   ,queue :: binary()
-                                  ,options :: kz_proplist()
+                                  ,options :: kz_term:proplist()
                                   }).
 
 -type amqp_listener_connection() :: #amqp_listener_connection{}.

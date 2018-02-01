@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Ubiquiti SSO auth module
 %%% @end
@@ -139,7 +139,7 @@ maybe_authenticate_user(Context) ->
     LoginURL = crossbar_util:get_path(?SSO_URL, <<"login">>),
 
     case kz_http:post(kz_term:to_list(LoginURL)
-                     ,[{"Content-Type","application/json"}]
+                     ,[{"content-type","application/json"}]
                      ,kz_json:encode(login_req(Context))
                      )
     of
@@ -165,7 +165,7 @@ login_req(Context) ->
                      ,kz_json:delete_key(<<"username">>, Data)
                      ).
 
--spec auth_response(kz_proplist(), binary()) -> kz_json:object().
+-spec auth_response(kz_term:proplist(), binary()) -> kz_json:object().
 auth_response(_RespHeaders, RespBody) ->
     RespJObj = kz_json:decode(RespBody),
     UUID = kz_json:get_value(<<"uuid">>, RespJObj),
@@ -176,7 +176,7 @@ auth_response(_RespHeaders, RespBody) ->
                                    )
                                  ).
 
--spec maybe_add_account_information(api_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_account_information(kz_term:api_binary(), kz_json:object()) -> kz_json:object().
 maybe_add_account_information('undefined', AuthResponse) ->
     AuthResponse;
 maybe_add_account_information(UUID, AuthResponse) ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz inc
+%%% @copyright (C) 2018, 2600Hz inc
 %%% @doc
 %%%
 %%% @end
@@ -47,7 +47,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -65,7 +65,7 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     'true' = kapi_websockets:get_req_v(ApiJObj),
     kz_util:put_callid(ApiJObj),
@@ -120,7 +120,7 @@ update_socket(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_sockets(ne_binary()) -> [bh_context:context(), ...] | {'error', 'not_found'}.
+-spec get_sockets(kz_term:ne_binary()) -> [bh_context:context(), ...] | {'error', 'not_found'}.
 get_sockets(AccountId) ->
     gen_server:call(?SERVER, {'get_sockets', AccountId}).
 
@@ -129,7 +129,7 @@ get_sockets(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_socket(ne_binary()) -> {'ok', bh_context:context()} | {'error', 'not_found'}.
+-spec get_socket(kz_term:ne_binary()) -> {'ok', bh_context:context()} | {'error', 'not_found'}.
 get_socket(Id) ->
     gen_server:call(?SERVER, {'get_socket', Id}).
 
@@ -176,7 +176,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'get_sockets', AccountId}, _From, State) ->
     Pattern = #bh_context{auth_account_id=AccountId, _='_'},
     Result =
@@ -207,7 +207,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_socket', Context}, State) ->
     _ = ets:insert(State, Context),
     {noreply, State};
@@ -230,7 +230,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -242,7 +242,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -285,7 +285,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_get_req_data(api_binary(), api_binary(), api_binary()) -> any().
+-spec handle_get_req_data(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> any().
 handle_get_req_data('undefined', 'undefined', Node) ->
     lager:warning("received undefined blackhole get req ~s", [Node]);
 handle_get_req_data(AccountId, 'undefined', Node) ->

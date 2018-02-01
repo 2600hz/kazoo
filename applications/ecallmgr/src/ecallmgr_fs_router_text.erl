@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Receive route(dialplan) requests from FS, request routes and respond
 %%% @end
@@ -28,7 +28,7 @@
 -define(DEFAULT_BINDINGS, [?DEFAULT_FREESWITCH_CONTEXT]).
 
 -record(state, {node = 'undefined' :: atom()
-               ,options = [] :: kz_proplist()
+               ,options = [] :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -39,9 +39,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+
+-spec start_link(atom()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -60,7 +62,7 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
@@ -82,7 +84,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -96,7 +98,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind_to_chatplan', #state{node=Node}=State) ->
     Bindings = ecallmgr_config:get_ne_binaries(?BINDINGS_CFG_KEY, ?DEFAULT_BINDINGS, Node),
     case ecallmgr_fs_router_util:register_bindings(Node, ?FETCH_SECTION, Bindings) of
@@ -119,7 +121,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'route', Section, EventName, SubClass, Context, FSId, 'undefined', FSData}, State) ->
     MsgId = kz_binary:rand_hex(16),
     handle_info({'route', Section, EventName, SubClass, Context, FSId, MsgId, [{<<"Unique-ID">>, MsgId} | FSData]}, State);
@@ -175,14 +177,14 @@ should_expand_var({<<?CHANNEL_VAR_PREFIX, _/binary>>, _}) -> 'true';
 should_expand_var({<<"sip_", _/binary>>, _}) -> 'true';
 should_expand_var(_) -> 'false'.
 
--spec init_message_props(kz_proplist()) -> kz_proplist().
+-spec init_message_props(kz_term:proplist()) -> kz_term:proplist().
 init_message_props(Props) ->
     Routines = [fun add_message_missing_props/1
                ,fun expand_message_vars/1
                ],
     lists:foldl(fun(F,P) -> F(P) end, Props, Routines).
 
--spec add_message_missing_props(kz_proplist()) -> kz_proplist().
+-spec add_message_missing_props(kz_term:proplist()) -> kz_term:proplist().
 add_message_missing_props(Props) ->
     props:insert_values([{<<"Call-Direction">>, <<"outbound">>}
                         ,{<<"Resource-Type">>,<<"sms">>}
@@ -193,26 +195,26 @@ add_message_missing_props(Props) ->
                        ,Props
                        ).
 
--spec expand_message_vars(kz_proplist()) -> kz_proplist().
+-spec expand_message_vars(kz_term:proplist()) -> kz_term:proplist().
 expand_message_vars(Props) ->
     lists:foldl(fun expand_message_var/2
                ,Props
                ,props:filter(fun should_expand_var/1, Props)
                ).
 
--spec expand_message_var({ne_binary(), ne_binary()}, kz_proplist()) ->
-                                kz_proplist().
+-spec expand_message_var({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) ->
+                                kz_term:proplist().
 expand_message_var({K,V}, Ac) ->
     case props:get_value(<<"variable_", K/binary>>, Ac) of
         'undefined' -> props:set_value(<<"variable_", K/binary>>, V, Ac);
         _ -> Ac
     end.
 
--spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, MsgId, Props) ->
     do_process_route_req(Section, Node, FetchId, MsgId, init_message_props(Props)).
 
--spec do_process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec do_process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 do_process_route_req(Section, Node, FetchId, MsgId, Props) ->
     case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, MsgId, Props) of
         'ok' ->
@@ -221,7 +223,7 @@ do_process_route_req(Section, Node, FetchId, MsgId, Props) ->
             start_message_handling(Node, FetchId, MsgId, JObj)
     end.
 
--spec start_message_handling(atom(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec start_message_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 start_message_handling(_Node, FetchId, MsgId, JObj) ->
     ServerQ = kz_api:server_id(JObj),
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),

@@ -33,8 +33,8 @@
 -define(DEFAULT_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_sample_rate">>, 8000)).
 -define(DEFAULT_STEREO_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_stereo_sample_rate">>, 16000)).
 
--type fs_app() :: {ne_binary(), binary() | 'noop'} |
-                  {ne_binary(), ne_binary(), atom()}.
+-type fs_app() :: {kz_term:ne_binary(), binary() | 'noop'} |
+                  {kz_term:ne_binary(), kz_term:ne_binary(), atom()}.
 -type fs_apps() :: [fs_app()].
 
 -type fs_api_ret()       :: {'ok', binary()} |
@@ -53,64 +53,64 @@
                              {'error', 'badarg' | 'session_attach_failed' | 'badsession' | 'baduuid'} |
                              'timeout'.
 
--record(sip_subscription, {key :: api_binary() | '_'
-                          ,to :: api_binary() | '$1' | '_'
-                          ,from :: api_binary() | '$2' | '_'
+-record(sip_subscription, {key :: kz_term:api_binary() | '_'
+                          ,to :: kz_term:api_binary() | '$1' | '_'
+                          ,from :: kz_term:api_binary() | '$2' | '_'
                           ,node :: atom() | '$1' | '_'
                           ,expires = 300 :: pos_integer() | '$1' | '_'
                           ,timestamp = kz_time:now_s() :: pos_integer() | '$2' | '_'
                           }).
 
--record(channel, {uuid :: api_binary() | '$1' | '$2' | '_'
-                 ,destination :: ne_binary() | '_'
-                 ,direction :: api_binary() | '$1' | '_'
-                 ,account_id :: api_binary() | '$1' | '$2' | '_'
-                 ,account_billing :: api_binary() | '$7' | '_'
-                 ,authorizing_id :: api_binary() | '$1' | '$3' | '_'
-                 ,authorizing_type :: api_binary() | '_'
-                 ,is_authorized :: api_boolean() | '_'
-                 ,owner_id :: api_binary() | '$1' | '_'
-                 ,resource_id :: api_binary() | '$4' | '_'
-                 ,presence_id :: api_binary() | '$2' | '_'
-                 ,fetch_id :: api_binary() | '$5' | '_'
-                 ,bridge_id :: api_binary() | '$5' | '_'
-                 ,reseller_id :: api_binary() | '$1' | '$2' | '_'
-                 ,reseller_billing :: api_binary() | '_'
-                 ,realm :: ne_binary() | '_' | '$2'
-                 ,username :: api_binary() | '_' | '$1'
+-record(channel, {uuid :: kz_term:api_binary() | '$1' | '$2' | '_'
+                 ,destination :: kz_term:ne_binary() | '_'
+                 ,direction :: kz_term:api_binary() | '$1' | '_'
+                 ,account_id :: kz_term:api_binary() | '$1' | '$2' | '_'
+                 ,account_billing :: kz_term:api_binary() | '$7' | '_'
+                 ,authorizing_id :: kz_term:api_binary() | '$1' | '$3' | '_'
+                 ,authorizing_type :: kz_term:api_binary() | '_'
+                 ,is_authorized :: kz_term:api_boolean() | '_'
+                 ,owner_id :: kz_term:api_binary() | '$1' | '_'
+                 ,resource_id :: kz_term:api_binary() | '$4' | '_'
+                 ,presence_id :: kz_term:api_binary() | '$2' | '_'
+                 ,fetch_id :: kz_term:api_binary() | '$5' | '_'
+                 ,bridge_id :: kz_term:api_binary() | '$5' | '_'
+                 ,reseller_id :: kz_term:api_binary() | '$1' | '$2' | '_'
+                 ,reseller_billing :: kz_term:api_binary() | '_'
+                 ,realm :: kz_term:ne_binary() | '_' | '$2'
+                 ,username :: kz_term:api_binary() | '_' | '$1'
                  ,import_moh = 'false' :: boolean() | '_'
                  ,answered = 'true' :: boolean() | '_'
-                 ,other_leg :: api_binary() | '$2' | '_'
+                 ,other_leg :: kz_term:api_binary() | '$2' | '_'
                  ,node :: atom() | '$1' | '$2' | '$3' | '_'
                  ,former_node :: atom() | '$2' | '_'
-                 ,timestamp :: gregorian_seconds() | '$3' | '_'
-                 ,profile :: api_binary() | '_'
-                 ,context :: api_binary() | '_'
-                 ,dialplan :: api_binary() | '_'
+                 ,timestamp :: kz_time:gregorian_seconds() | '$3' | '_'
+                 ,profile :: kz_term:api_binary() | '_'
+                 ,context :: kz_term:api_binary() | '_'
+                 ,dialplan :: kz_term:api_binary() | '_'
                  ,precedence = 5 :: pos_integer() | '$2' | '_'
                  ,handling_locally = 'false' :: boolean() | '_' %% is this ecallmgr handling the call control?
-                 ,to_tag :: api_binary() | '_'
-                 ,from_tag :: api_binary() | '_'
-                 ,interaction_id :: api_binary() | '$5' | '_'
-                 ,callee_number :: api_binary() | '$5' | '_'
-                 ,callee_name :: api_binary() | '$5' | '_'
+                 ,to_tag :: kz_term:api_binary() | '_'
+                 ,from_tag :: kz_term:api_binary() | '_'
+                 ,interaction_id :: kz_term:api_binary() | '$5' | '_'
+                 ,callee_number :: kz_term:api_binary() | '$5' | '_'
+                 ,callee_name :: kz_term:api_binary() | '$5' | '_'
                  ,is_loopback :: boolean() | '_'
-                 ,loopback_leg_name :: api_binary() | '_'
-                 ,loopback_other_leg :: api_binary() | '_'
-                 ,callflow_id :: api_binary() | '_'
+                 ,loopback_leg_name :: kz_term:api_binary() | '_'
+                 ,loopback_other_leg :: kz_term:api_binary() | '_'
+                 ,callflow_id :: kz_term:api_binary() | '_'
                  ,is_onhold = 'false' :: boolean() | '_'
-                 ,cavs :: kz_proplist() | '_' | 'undefined'
+                 ,cavs :: kz_term:proplist() | '_' | 'undefined'
                  }).
 
 -type channel() :: #channel{}.
 -type channels() :: [channel()].
 -type channel_updates() :: [{pos_integer(), any()}].
 
--record(conference, {name :: api_binary() | '$1' | '_'
-                    ,uuid :: api_binary() | '$1' | '_'
+-record(conference, {name :: kz_term:api_binary() | '$1' | '_'
+                    ,uuid :: kz_term:api_binary() | '$1' | '_'
                     ,node :: atom() | '$1' | '$2' | '_'
                     ,participants = 0 :: non_neg_integer() | '_'
-                    ,profile_name = <<"default">> :: ne_binary() | '_'
+                    ,profile_name = <<"default">> :: kz_term:ne_binary() | '_'
                     ,with_floor :: 'undefined' | non_neg_integer() | '_' % which participant has the floor
                     ,lost_floor :: 'undefined' | non_neg_integer() | '_' % which participant has lost the floor
                     ,running = 'true' :: boolean() | '_'
@@ -121,10 +121,10 @@
                     ,exit_sound = 'true' :: boolean() | '_'
                     ,enter_sound = 'true' :: boolean() | '_'
                     ,start_time = kz_time:now_s() :: non_neg_integer() | '_'
-                    ,switch_hostname :: api_binary() | '_'
-                    ,switch_url :: api_binary() | '_'
-                    ,switch_external_ip :: api_binary() | '_'
-                    ,account_id :: api_binary() | '_'
+                    ,switch_hostname :: kz_term:api_binary() | '_'
+                    ,switch_url :: kz_term:api_binary() | '_'
+                    ,switch_external_ip :: kz_term:api_binary() | '_'
+                    ,account_id :: kz_term:api_binary() | '_'
                     ,handling_locally = 'false' :: boolean() | '_' %% was this ecallmgr handling the call control?
                     ,origin_node :: atom() | '_'
                     ,control_node :: atom() | '_'
@@ -133,16 +133,16 @@
 -type conference() :: #conference{}.
 -type conferences() :: [conference()].
 
--record(participant, {uuid :: api_ne_binary() | '$1' | '_'
+-record(participant, {uuid :: kz_term:api_ne_binary() | '$1' | '_'
                      ,node :: atom() | '$2' | '_'
-                     ,conference_uuid :: api_ne_binary() | '$1'| '_'
-                     ,conference_name :: api_ne_binary() | '$1'| '_'
-                     ,join_time = kz_time:now_s() :: gregorian_seconds() | '_'
-                     ,caller_id_name :: api_ne_binary() | '_'
-                     ,caller_id_number :: api_ne_binary() | '_'
-                     ,conference_channel_vars = [] :: kz_proplist() | '_'
-                     ,custom_channel_vars = [] :: kz_proplist() | '_'
-                     ,custom_application_vars = [] :: kz_proplist() | '_'
+                     ,conference_uuid :: kz_term:api_ne_binary() | '$1'| '_'
+                     ,conference_name :: kz_term:api_ne_binary() | '$1'| '_'
+                     ,join_time = kz_time:now_s() :: kz_time:gregorian_seconds() | '_'
+                     ,caller_id_name :: kz_term:api_ne_binary() | '_'
+                     ,caller_id_number :: kz_term:api_ne_binary() | '_'
+                     ,conference_channel_vars = [] :: kz_term:proplist() | '_'
+                     ,custom_channel_vars = [] :: kz_term:proplist() | '_'
+                     ,custom_application_vars = [] :: kz_term:proplist() | '_'
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].

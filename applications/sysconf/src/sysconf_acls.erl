@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,7 +18,7 @@
 
 -type acls() :: kz_json:object().
 
--spec build(ne_binary()) -> acls().
+-spec build(kz_term:ne_binary()) -> acls().
 build(Node) ->
     Routines = [fun offnet_resources/1
                ,fun local_resources/1
@@ -27,9 +27,7 @@ build(Node) ->
     PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     collect(system_config_acls(Node), PidRefs).
 
--spec collect(kz_json:object(), pid_refs()) ->
-                     kz_json:object().
--spec collect(kz_json:object(), pid_refs(), kz_timeout()) ->
+-spec collect(kz_json:object(), kz_term:pid_refs()) ->
                      kz_json:object().
 collect(ACLs, PidRefs) ->
     collect(ACLs, PidRefs, request_timeout()).
@@ -38,6 +36,8 @@ collect(ACLs, PidRefs) ->
 request_timeout() ->
     ?REQUEST_TIMEOUT + ?REQUEST_TIMEOUT_FUDGE.
 
+-spec collect(kz_json:object(), kz_term:pid_refs(), timeout()) ->
+                     kz_json:object().
 collect(ACLs, [], _Timeout) ->
     lager:debug("acls built with ~p ms to spare", [_Timeout]),
     ACLs;
@@ -61,7 +61,7 @@ collect(ACLs, PidRefs, Timeout) ->
             ACLs
     end.
 
--spec system_config_acls(ne_binary()) -> acls().
+-spec system_config_acls(kz_term:ne_binary()) -> acls().
 system_config_acls(Node) ->
     kapps_config:get_current(<<"ecallmgr">>, <<"acls">>, kz_json:new(), Node).
 
@@ -92,7 +92,7 @@ needs_resolving(JObj, {IPs, ToResolve}) ->
         'false' -> {IPs, [{IP, JObj} | ToResolve]}
     end.
 
--spec wait_for_pid_refs(pid_refs()) -> 'ok'.
+-spec wait_for_pid_refs(kz_term:pid_refs()) -> 'ok'.
 wait_for_pid_refs(PidRefs) ->
     wait_for_pid_refs(PidRefs, ?REQUEST_TIMEOUT).
 wait_for_pid_refs([], _Timeout) -> 'ok';
@@ -111,7 +111,7 @@ wait_for_pid_refs(PidRefs, Timeout) ->
     end.
 
 %% @private
--spec resolve_hostname(pid(), ne_binary(), kz_json:object(), fun()) -> 'ok'.
+-spec resolve_hostname(pid(), kz_term:ne_binary(), kz_json:object(), fun()) -> 'ok'.
 resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
     lager:debug("attempting to resolve '~s'", [ResolveMe]),
     StrippedHost = hd(binary:split(ResolveMe, <<";">>)),
@@ -128,7 +128,7 @@ resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
             lager:debug("resolved '~s' (~s) for ~p: '~s'", [StrippedHost, ResolveMe, Collector, kz_binary:join(IPs, <<"','">>)])
     end.
 
--spec maybe_capture_ip(pid(), ne_binary(), kz_json:object(), fun()) -> 'ok'.
+-spec maybe_capture_ip(pid(), kz_term:ne_binary(), kz_json:object(), fun()) -> 'ok'.
 maybe_capture_ip(Collector, CaptureMe, JObj, ACLBuilderFun) ->
     case re:run(CaptureMe, ?IP_REGEX, [{'capture', 'all', 'binary'}]) of
         {'match', [_All, IP]} ->
@@ -138,7 +138,7 @@ maybe_capture_ip(Collector, CaptureMe, JObj, ACLBuilderFun) ->
             lager:debug("failed to find IP at start of '~s'", [CaptureMe])
     end.
 
--spec handle_sip_auth_result(pid(), kz_json:object(), ne_binaries()) -> 'ok'.
+-spec handle_sip_auth_result(pid(), kz_json:object(), kz_term:ne_binaries()) -> 'ok'.
 handle_sip_auth_result(Collector, JObj, IPs) ->
     AccountId = kz_json:get_value([<<"value">>, <<"account_id">>], JObj),
     AuthorizingId = kz_doc:id(JObj),
@@ -177,12 +177,12 @@ handle_resource_result(Collector, JObj) ->
     ServerPidRefs = resource_server_ips(Collector, Doc),
     wait_for_pid_refs(InboundPidRefs ++ ServerPidRefs).
 
--spec handle_resource_result(pid(), kz_json:object(), ne_binaries()) -> 'ok'.
+-spec handle_resource_result(pid(), kz_json:object(), kz_term:ne_binaries()) -> 'ok'.
 handle_resource_result(Collector, JObj, IPs) ->
     AuthorizingId = kz_doc:id(JObj),
     add_trusted_objects(Collector, 'undefined', AuthorizingId, <<"resource">>, IPs).
 
--spec resource_inbound_ips(pid(), kz_json:object()) -> pid_refs().
+-spec resource_inbound_ips(pid(), kz_json:object()) -> kz_term:pid_refs().
 resource_inbound_ips(Collector, JObj) ->
     [kz_util:spawn_monitor(fun resolve_hostname/4, [Collector
                                                    ,IP
@@ -192,7 +192,7 @@ resource_inbound_ips(Collector, JObj) ->
      || IP <- kz_json:get_value(<<"inbound_ips">>, JObj, [])
     ].
 
--spec resource_server_ips(pid(), kz_json:object()) -> pid_refs().
+-spec resource_server_ips(pid(), kz_json:object()) -> kz_term:pid_refs().
 resource_server_ips(Collector, JObj) ->
     [kz_util:spawn_monitor(fun resolve_hostname/4, [Collector
                                                    ,kz_json:get_value(<<"server">>, Gateway)
@@ -203,7 +203,7 @@ resource_server_ips(Collector, JObj) ->
         kz_json:is_true(<<"enabled">>, Gateway, 'false')
     ].
 
--spec add_trusted_objects(pid(), api_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec add_trusted_objects(pid(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 add_trusted_objects(_Collector, _AccountId, _AuthorizingId, _AuthorizingType, []) -> 'ok';
 add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, [IP|IPs]) ->
     Props = kz_json:from_list(

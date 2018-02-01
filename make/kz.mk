@@ -64,7 +64,7 @@ ebin/$(PROJECT).app: $(SOURCES)
 	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 app_src:
-	ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find $(ROOT) -name $(PROJECT).app.src)
+	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find $(ROOT) -name $(PROJECT).app.src)
 
 
 json: JSON = $(shell find . -name '*.json')
@@ -103,7 +103,9 @@ COVERDATA=$(PROJECT).coverdata
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
-eunit: compile-test
+eunit: compile-test eunit-run
+
+eunit-run:
 	@mkdir -p $(COVER_REPORT_DIR)
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
 
@@ -119,8 +121,10 @@ $(ROOT)/make/cover.mk: $(ROOT)/make/core.mk
 $(ROOT)/make/core.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/core/core.mk' -O $(ROOT)/make/core.mk
 
-proper: ERLC_OPTS += -DPROPER
-proper: compile-test eunit
+proper: compile-proper eunit-run
+
+compile-proper: ERLC_OPTS += -DPROPER
+compile-proper: compile-test
 
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):
@@ -128,7 +132,7 @@ $(PLT):
 
 dialyze: TO_DIALYZE ?= $(abspath ebin)
 dialyze: $(PLT) compile
-	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
 
 REBAR=$(ROOT)/deps/.erlang.mk/rebar/rebar
@@ -153,6 +157,7 @@ perf: compile-test
 
 fixture_shell: ERL_CRASH_DUMP = "$(ROOT)/$(shell date +%s)_ecallmgr_erl_crash.dump"
 fixture_shell: ERL_LIBS = "$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications:$(shell echo $(ROOT)/deps/rabbitmq_erlang_client-*/deps)"
+fixture_shell: NODE_NAME ?= fixturedb
 fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
-		erl -name fixturedb -s reloader "$$@"
+		erl -name '$(NODE_NAME)' -s reloader "$$@"

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,26 +19,26 @@
         ,get_entity_type/1
         ]).
 
--spec get_entity_type(ne_binary()) -> ne_binary().
+-spec get_entity_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_entity_type(Entity) ->
     case binary:split(Entity, <<"@">>) of
         [_, _] -> <<"device">>;
         [_] -> <<"realm">>
     end.
 
--spec is_device_entity(ne_binary()) -> boolean().
+-spec is_device_entity(kz_term:ne_binary()) -> boolean().
 is_device_entity(Entity) ->
     Realm = extract_realm(Entity),
     Realm =/= Entity.
 
--spec extract_realm(ne_binary()) -> ne_binary().
+-spec extract_realm(kz_term:ne_binary()) -> kz_term:ne_binary().
 extract_realm(Entity) ->
     case binary:split(Entity, <<"@">>) of
         [_, OnRealm] -> OnRealm;
         [JustRealm] -> JustRealm
     end.
 
--spec extract_username(ne_binary()) -> api_binary().
+-spec extract_username(kz_term:ne_binary()) -> kz_term:api_binary().
 extract_username(Entity) ->
     case binary:split(Entity, <<"@">>) of
         [Username, _] -> Username;

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz, INC
+%%% @copyright (C) 2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -21,11 +21,11 @@
 %%% View-related
 %%%===================================================================
 
--spec design_info(server_map(), ne_binary(), ne_binary()) -> doc_resp().
+-spec design_info(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> doc_resp().
 design_info(_Server, _DbName, Design) ->
     {ok, kz_json:from_list([{<<"name">>, Design}])}.
 
--spec all_design_docs(server_map(), ne_binary(), kz_data:options()) -> docs_resp().
+-spec all_design_docs(server_map(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 all_design_docs(Server, DbName, _Options) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
     Path = kz_fixturedb_util:docs_dir(Db),
@@ -39,24 +39,26 @@ all_design_docs(Server, DbName, _Options) ->
             {ok, [kz_http_util:urldecode(kz_term:to_binary(filename:basename(D))) || D <- DesignDocs]}
     end.
 
--spec get_results(server_map(), ne_binary(), ne_binary(), kz_data:options()) -> docs_resp().
+-spec get_results(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 get_results(Server, DbName, Design, Options) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
-    %%props:get_first_defined(?DANGEROUS_VIEW_OPTS, Options) =/= undefined
-    %%    andalso io:format(user, "~n~s:~b ~s you're testing too much, go home~n", [?MODULE, ?LINE, Design]),
     case kz_fixturedb_util:open_view(Db, kz_term:to_binary(Design), Options) of
         {ok, Result} -> {ok, prepare_view_result(Server, DbName, Result, Options)};
-        {error, _} -> {error, invalid_view_name}
+        {error, _} ->
+            ?SUP_LOG_ERROR("view file ~s does not not exists, view_options ~p"
+                          ,[kz_fixturedb_util:view_path(Db, Design, Options), Options]
+                          ),
+            {error, invalid_view_name}
     end.
 
--spec get_results_count(server_map(), ne_binary(), ne_binary(), kz_data:options()) -> {ok, non_neg_integer()} | fixture_error().
+-spec get_results_count(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> {ok, non_neg_integer()} | fixture_error().
 get_results_count(Server, DbName, Design, Options) ->
     case get_results(Server, DbName, Design, Options) of
         {ok, JObjs} -> {ok, erlang:length(JObjs)};
         {error, _}=Error -> Error
     end.
 
--spec all_docs(server_map(), ne_binary(), kz_data:options()) -> docs_resp().
+-spec all_docs(server_map(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 all_docs(Server, DbName, Options) ->
     get_results(Server, DbName, <<"all_docs">>, Options).
 
@@ -64,16 +66,24 @@ all_docs(Server, DbName, Options) ->
 %%% Internal functions
 %%%===================================================================
 
--spec prepare_view_result(server_map(), ne_binary(), kz_json:objects(), kz_data:options()) -> kz_json:objects().
+-spec prepare_view_result(server_map(), kz_term:ne_binary(), kz_json:objects(), kz_data:options()) -> kz_json:objects().
 prepare_view_result(Server, DbName, Result, Options) ->
-    case props:get_value(include_docs, Options, false) of
+    case props:get_value(include_docs, Options, false)
+        andalso kz_term:is_false(props:get_first_defined([reduce, group, group_level], Options, false))
+    of
         false -> sort_and_limit(Result, Options);
         true ->
-            [kz_json:set_value(<<"doc">>, Opened, V)
+            [kz_json:set_value(<<"doc">>, JObjOrUndefined, V)
              || V <- sort_and_limit(Result, Options),
-                {OkError, Opened} <- [kz_fixturedb_doc:open_doc(Server, DbName, kz_doc:id(V), Options)],
-                OkError =/= error
+                JObjOrUndefined <- [include_doc_or_undefined(Server, DbName, kz_doc:id(V), Options)]
             ]
+    end.
+
+-spec include_doc_or_undefined(server_map(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_data:options()) -> kz_term:api_object().
+include_doc_or_undefined(Server, DbName, DocId, Options) ->
+    case kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options) of
+        {ok, JObj} -> JObj;
+        {error, _} -> undefined
     end.
 
 -spec sort_and_limit(kz_json:objects(), kz_data:options()) -> kz_json:objects().
@@ -84,7 +94,7 @@ sort_and_limit(Result, Options) ->
         true -> limit_result(lists:reverse(Result), Limit)
     end.
 
--spec limit_result(kz_json:objects(), api_integer()) -> kz_json:objects().
+-spec limit_result(kz_json:objects(), kz_term:api_integer()) -> kz_json:objects().
 limit_result(Result, Limit) when is_integer(Limit),
                                  Limit > 0 ->
     try lists:split(Limit, Result) of

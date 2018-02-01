@@ -11,11 +11,11 @@
 -define(IN, <<"in">>).
 -define(OUT, <<"out">>).
 
--spec inbound(kz_json:object()) -> api_object().
--spec inbound(kz_json:object(), Default) -> kz_json:object() | Default.
+-spec inbound(kz_json:object()) -> kz_term:api_object().
 inbound(CSH) ->
     inbound(CSH, 'undefined').
 
+-spec inbound(kz_json:object(), Default) -> kz_json:object() | Default.
 inbound(CSH, Default) ->
     LegacyCSH = kz_json:filter(fun filter_csh/1, CSH),
     InCSH = kz_json:get_value(?IN, CSH, kz_json:new()),
@@ -28,29 +28,31 @@ inbound(CSH, Default) ->
     end.
 
 -spec inbound_header(kz_json:object(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
--spec inbound_header(kz_json:object(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 inbound_header(DeviceJObj, Name) ->
     inbound_header(DeviceJObj, Name, 'undefined').
+
+-spec inbound_header(kz_json:object(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 inbound_header(DeviceJObj, Name, Default) ->
     kz_json:get_ne_value(Name, inbound(DeviceJObj), Default).
 
 -spec outbound_header(kz_json:object(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
--spec outbound_header(kz_json:object(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 outbound_header(DeviceJObj, Name) ->
     outbound_header(DeviceJObj, Name, 'undefined').
+
+-spec outbound_header(kz_json:object(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 outbound_header(DeviceJObj, Name, Default) ->
     kz_json:get_ne_value(Name, outbound(DeviceJObj), Default).
 
--spec filter_csh({ne_binary(), any()}) -> boolean().
+-spec filter_csh({kz_term:ne_binary(), any()}) -> boolean().
 filter_csh({<<"in">>, _}) -> 'false';
 filter_csh({<<"out">>, _}) -> 'false';
 filter_csh(_) -> 'true'.
 
--spec outbound(kz_json:object()) -> api_object().
--spec outbound(kz_json:object(), Default) -> kz_json:object() | Default.
+-spec outbound(kz_json:object()) -> kz_term:api_object().
 outbound(CSH) ->
     outbound(CSH, 'undefined').
 
+-spec outbound(kz_json:object(), Default) -> kz_json:object() | Default.
 outbound(CSH, Default) ->
     LegacyCSH = kz_json:filter(fun filter_csh/1, CSH),
     OutCSH = kz_json:get_value(?OUT, CSH, kz_json:new()),

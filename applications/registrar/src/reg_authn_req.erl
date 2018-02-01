@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handle authn_req messages
 %%% @end
@@ -24,7 +24,7 @@
 -spec init() -> 'ok'.
 init() -> 'ok'.
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_authn:req_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -108,7 +108,7 @@ create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
           ++ generate_security_ccvs(AuthUser))
       ]).
 
--spec maybe_get_presence_id(auth_user()) -> api_binary().
+-spec maybe_get_presence_id(auth_user()) -> kz_term:api_binary().
 maybe_get_presence_id(#auth_user{account_db=AccountDb
                                 ,authorizing_id=DeviceId
                                 ,owner_id=OwnerId
@@ -124,7 +124,7 @@ maybe_get_presence_id(#auth_user{account_db=AccountDb
             end
     end.
 
--spec get_presence_id(api_binary(), api_binary(), api_binary()) -> api_binary().
+-spec get_presence_id(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binary().
 get_presence_id('undefined', _, _) -> 'undefined';
 get_presence_id(_, 'undefined', 'undefined') -> 'undefined';
 get_presence_id(AccountDb, DeviceId, 'undefined') ->
@@ -132,7 +132,7 @@ get_presence_id(AccountDb, DeviceId, 'undefined') ->
 get_presence_id(AccountDb, DeviceId, OwnerId) ->
     maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId).
 
--spec maybe_get_owner_presence_id(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+-spec maybe_get_owner_presence_id(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'error', _} -> 'undefined';
@@ -143,7 +143,7 @@ maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
             end
     end.
 
--spec get_device_presence_id(ne_binary(), ne_binary()) -> api_binary().
+-spec get_device_presence_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 get_device_presence_id(AccountDb, DeviceId) ->
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
@@ -154,14 +154,14 @@ get_device_presence_id(AccountDb, DeviceId) ->
             end
     end.
 
--spec create_specific_ccvs(auth_user(), ne_binary()) -> kz_proplist().
+-spec create_specific_ccvs(auth_user(), kz_term:ne_binary()) -> kz_term:proplist().
 create_specific_ccvs(#auth_user{msisdn=MSISDN}, ?GSM_ANY_METHOD) ->
     [{<<"Caller-ID">>, MSISDN}
     ,{<<"Caller-ID-Number">>, MSISDN}
     ];
 create_specific_ccvs(_, _) -> [].
 
--spec create_custom_sip_headers(api_binary(), auth_user()) -> api_object().
+-spec create_custom_sip_headers(kz_term:api_binary(), auth_user()) -> kz_term:api_object().
 create_custom_sip_headers(?GSM_ANY_METHOD
                          ,#auth_user{a3a8_kc=KC
                                     ,a3a8_sres=SRES
@@ -182,11 +182,11 @@ create_custom_sip_headers(?GSM_ANY_METHOD
      );
 create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
 
--spec create_custom_sip_headers(kz_proplist()) -> api_object().
+-spec create_custom_sip_headers(kz_term:proplist()) -> kz_term:api_object().
 create_custom_sip_headers([]) -> 'undefined';
 create_custom_sip_headers(Props) -> kz_json:from_list(Props).
 
--spec get_tel_uri(api_binary()) -> api_binary().
+-spec get_tel_uri(kz_term:api_binary()) -> kz_term:api_binary().
 get_tel_uri('undefined') -> 'undefined';
 get_tel_uri(Number) -> <<"<tel:", Number/binary,">">>.
 
@@ -196,7 +196,7 @@ get_tel_uri(Number) -> <<"<tel:", Number/binary,">">>.
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user(ne_binary(), ne_binary(), kz_json:object()) ->
+-spec lookup_auth_user(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                               {'ok', auth_user()} |
                               {'error', any()}.
 lookup_auth_user(Username, Realm, Req) ->
@@ -205,7 +205,7 @@ lookup_auth_user(Username, Realm, Req) ->
         {'ok', JObj} -> check_auth_user(JObj, Username, Realm, Req)
     end.
 
--spec get_auth_user(ne_binary(), ne_binary()) ->
+-spec get_auth_user(kz_term:ne_binary(), kz_term:ne_binary()) ->
                            {'ok', kz_json:object()} |
                            {'error', 'not_found'}.
 get_auth_user(Username, Realm) ->
@@ -223,7 +223,7 @@ get_auth_user(Username, Realm) ->
             get_auth_user_in_account(Username, Realm, AccountDB)
     end.
 
--spec get_auth_user_in_agg(ne_binary(), ne_binary()) ->
+-spec get_auth_user_in_agg(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                   {'ok', kz_json:object()} |
                                   {'error', 'not_found'}.
 get_auth_user_in_agg(Username, Realm) ->
@@ -247,7 +247,7 @@ get_auth_user_in_agg(Username, Realm) ->
             {'ok', User}
     end.
 
--spec get_auth_user_in_account(ne_binary(), ne_binary(), ne_binary()) ->
+-spec get_auth_user_in_account(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                       {'ok', kz_json:object()} |
                                       {'error', 'not_found'}.
 get_auth_user_in_account(Username, Realm, AccountDB) ->
@@ -272,7 +272,7 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec check_auth_user(kz_json:object(), ne_binary(), ne_binary(), kz_json:object()) ->
+-spec check_auth_user(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                              {'ok', auth_user()} |
                              {'error', 'disabled'}.
 check_auth_user(JObj, Username, Realm, Req) ->
@@ -287,7 +287,7 @@ check_auth_user(JObj, Username, Realm, Req) ->
             {'error', 'disabled'}
     end.
 
--spec jobj_to_auth_user(kz_json:object(), ne_binary(), ne_binary(), kz_json:object()) ->
+-spec jobj_to_auth_user(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                                {'ok', auth_user()} |
                                {'error', any()}.
 jobj_to_auth_user(JObj, Username, Realm, Req) ->
@@ -310,14 +310,14 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
 
--spec get_auth_type(kz_json:object()) -> ne_binary().
+-spec get_auth_type(kz_json:object()) -> kz_term:ne_binary().
 get_auth_type(AuthDoc) ->
     case kz_json:get_first_defined([<<"endpoint_type">>, <<"device_type">>], AuthDoc) of
         <<"mobile">> -> <<"mobile">>;
         _ -> kz_doc:type(AuthDoc, <<"anonymous">>)
     end.
 
--spec get_auth_value(kz_json:object()) -> api_object().
+-spec get_auth_value(kz_json:object()) -> kz_term:api_object().
 get_auth_value(JObj) ->
     kz_json:get_first_defined([[<<"doc">>,<<"sip">>]
                               ,<<"value">>
@@ -337,7 +337,7 @@ add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
                               }
     end.
 
--spec get_auth_method(kz_json:object() | ne_binary()) -> ne_binary().
+-spec get_auth_method(kz_json:object() | kz_term:ne_binary()) -> kz_term:ne_binary().
 get_auth_method(?GSM_ANY_METHOD=M) when is_binary(M)-> <<"gsm">>;
 get_auth_method(M) when is_binary(M) -> M;
 get_auth_method(JObj) ->
@@ -348,7 +348,7 @@ get_auth_method(JObj) ->
                              ,<<"password">>
                              ).
 
--spec maybe_auth_method(auth_user(), kz_json:object(), kz_json:object(), ne_binary()) ->
+-spec maybe_auth_method(auth_user(), kz_json:object(), kz_json:object(), kz_term:ne_binary()) ->
                                {'ok', auth_user()} |
                                {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
@@ -376,7 +376,7 @@ maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)->
 -define(GSM_PRE_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
 -define(GSM_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
 
--spec maybe_update_gsm(api_binary(), auth_user()) -> auth_user().
+-spec maybe_update_gsm(kz_term:api_binary(), auth_user()) -> auth_user().
 maybe_update_gsm(<<"PRE-REGISTER">>, AuthUser) ->
     lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_PRE_REGISTER_ROUTINES);
 maybe_update_gsm(<<"REGISTER">>, AuthUser) ->
@@ -395,7 +395,7 @@ maybe_msisdn(#auth_user{msisdn='undefined'
     maybe_msisdn_from_callflows(AuthUser, <<"user">>, OwnerId);
 maybe_msisdn(AuthUser) -> AuthUser.
 
--spec maybe_msisdn_from_callflows(auth_user(), ne_binary(), ne_binary()) -> auth_user().
+-spec maybe_msisdn_from_callflows(auth_user(), kz_term:ne_binary(), kz_term:ne_binary()) -> auth_user().
 maybe_msisdn_from_callflows(#auth_user{account_db=AccountDB}=AuthUser
                            ,Type
                            ,Id
@@ -444,7 +444,7 @@ gsm_auth(AuthUser) -> {'ok', AuthUser}.
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_id(kz_json:object()) -> api_binary().
+-spec get_account_id(kz_json:object()) -> kz_term:api_binary().
 get_account_id(JObj) ->
     case get_account_db(JObj) of
         'undefined' -> 'undefined';
@@ -457,7 +457,7 @@ get_account_id(JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_db(kz_json:object()) -> api_binary().
+-spec get_account_db(kz_json:object()) -> kz_term:api_binary().
 get_account_db(JObj) ->
     case kz_json:get_first_defined([[<<"doc">>, <<"pvt_account_db">>]
                                    ,<<"pvt_account_db">>
@@ -469,11 +469,11 @@ get_account_db(JObj) ->
         AccountDb -> kz_util:format_account_id(AccountDb, 'encoded')
     end.
 
--spec remove_dashes(ne_binary()) -> ne_binary().
+-spec remove_dashes(kz_term:ne_binary()) -> kz_term:ne_binary().
 remove_dashes(Bin) ->
     << <<B>> || <<B>> <= Bin, B =/= $->>.
 
--spec encryption_method_map(kz_proplist(), api_binaries() | kz_json:object()) -> kz_proplist().
+-spec encryption_method_map(kz_term:proplist(), kz_term:api_binaries() | kz_json:object()) -> kz_term:proplist().
 encryption_method_map(Props, []) -> Props;
 encryption_method_map(Props, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
@@ -485,12 +485,12 @@ encryption_method_map(Props, JObj) ->
     Methods = kz_json:get_value(Key, JObj, []),
     encryption_method_map(Props, Methods).
 
--spec generate_security_ccvs(auth_user()) -> kz_proplist().
--spec generate_security_ccvs(auth_user(), kz_proplist()) -> kz_proplist().
 
+-spec generate_security_ccvs(auth_user()) -> kz_term:proplist().
 generate_security_ccvs(#auth_user{}=User) ->
     generate_security_ccvs(User, []).
 
+-spec generate_security_ccvs(auth_user(), kz_term:proplist()) -> kz_term:proplist().
 generate_security_ccvs(#auth_user{}=User, Acc0) ->
     CCVFuns = [fun maybe_enforce_security/1
               ,fun maybe_set_encryption_flags/1
@@ -498,7 +498,7 @@ generate_security_ccvs(#auth_user{}=User, Acc0) ->
     {_, Acc} = lists:foldl(fun(F, Acc) -> F(Acc) end, {User, Acc0}, CCVFuns),
     Acc.
 
--spec maybe_enforce_security({auth_user(), kz_proplist()}) -> {auth_user(), kz_proplist()}.
+-spec maybe_enforce_security({auth_user(), kz_term:proplist()}) -> {auth_user(), kz_term:proplist()}.
 maybe_enforce_security({#auth_user{doc=JObj}=User, Acc}) ->
     case kz_json:is_true([<<"media">>
                          ,<<"encryption">>
@@ -509,6 +509,6 @@ maybe_enforce_security({#auth_user{doc=JObj}=User, Acc}) ->
         'false' -> {User, Acc}
     end.
 
--spec maybe_set_encryption_flags({auth_user(), kz_proplist()}) -> {auth_user(), kz_proplist()}.
+-spec maybe_set_encryption_flags({auth_user(), kz_term:proplist()}) -> {auth_user(), kz_term:proplist()}.
 maybe_set_encryption_flags({#auth_user{doc=JObj}=User, Acc}) ->
     {User, encryption_method_map(Acc, JObj)}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -42,8 +42,8 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec advertise(api_terms()) -> {'ok', iolist()} |
-                                {'error', string()}.
+-spec advertise(kz_term:api_terms()) -> {'ok', iolist()} |
+                                        {'error', string()}.
 advertise(Prop) when is_list(Prop) ->
     case advertise_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ADVERTISE_HEADERS, ?OPTIONAL_ADVERTISE_HEADERS);
@@ -52,7 +52,7 @@ advertise(Prop) when is_list(Prop) ->
 advertise(JObj) ->
     advertise(kz_json:to_proplist(JObj)).
 
--spec advertise_v(api_terms()) -> boolean().
+-spec advertise_v(kz_term:api_terms()) -> boolean().
 advertise_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ADVERTISE_HEADERS, ?ADVERTISE_VALUES, ?ADVERTISE_TYPES);
 advertise_v(JObj) ->
@@ -63,7 +63,7 @@ advertise_v(JObj) ->
 %% bind to a queue to the asr exchange and events
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_nodes(Queue).
 
@@ -90,10 +90,12 @@ declare_exchanges() ->
 %% prepare and publish a nodes advertise message
 %% @end
 %%--------------------------------------------------------------------
--spec publish_advertise(api_terms()) -> 'ok'.
--spec publish_advertise(api_terms(), ne_binary()) -> 'ok'.
+
+-spec publish_advertise(kz_term:api_terms()) -> 'ok'.
 publish_advertise(JObj) ->
     publish_advertise(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_advertise(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_advertise(Advertise, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Advertise, ?ADVERTISE_VALUES, fun advertise/1),
     amqp_util:nodes_publish(Payload, ContentType).

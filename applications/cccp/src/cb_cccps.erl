@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -64,10 +64,12 @@ init_db() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_CCCPId) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -80,9 +82,11 @@ allowed_methods(_CCCPId) ->
 %%    /cccps/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -95,13 +99,16 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_cccps(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_cccp(Context, Id, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, _Id, ?AUTODIAL) ->
     validate_cccp(Context, ?AUTODIAL, cb_context:req_verb(Context)).
 
@@ -139,7 +146,7 @@ validate_cccp(Context, Id, ?HTTP_POST) ->
 validate_cccp(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
--spec send_new_camping(kz_json:object(), ne_binary()) -> 'ok'.
+-spec send_new_camping(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_new_camping(JObj, AccountId) ->
     Req = [{<<"Camping-Request">>, JObj}
           ,{<<"Account-ID">>, AccountId}
@@ -210,7 +217,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"cccp">>)).
 
@@ -221,7 +228,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"cccps">>, Context, OnSuccess).
@@ -243,7 +250,7 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"cccp">>));
 on_successful_validation(Id, Context) ->
@@ -300,7 +307,7 @@ error_pin_exists(Context) ->
                                    ,Context
                                    ).
 
--spec error_number_is_not_reconcilable(cb_context:context(), ne_binary()) ->
+-spec error_number_is_not_reconcilable(cb_context:context(), kz_term:ne_binary()) ->
                                               cb_context:context().
 error_number_is_not_reconcilable(Context, CID) ->
     cb_context:add_validation_error(<<"cccp">>
@@ -338,7 +345,7 @@ unique_pin(Context) ->
         _ -> 'false'
     end.
 
--spec authorize_listing(ne_binary(), ne_binary()) ->
+-spec authorize_listing(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                {'ok', kz_json:object() | kz_json:objects()} |
                                'empty' |
                                'error'.

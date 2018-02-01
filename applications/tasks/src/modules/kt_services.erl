@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2017, 2600Hz
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -49,7 +49,7 @@ init() ->
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 
--spec output_header(ne_binary()) -> kz_tasks:output_header().
+-spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
 output_header(<<"descendant_quantities">>) ->
     [<<"account_id">>
     ,<<"year">>
@@ -63,15 +63,15 @@ output_header(<<"descendant_quantities">>) ->
 -spec help(kz_json:object()) -> kz_json:object().
 help(JObj) -> help(JObj, <<?CATEGORY>>).
 
--spec help(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category) ->
     lists:foldl(fun(Action, J) -> help(J, Category, Action) end, JObj, ?ACTIONS).
 
--spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category, Action) ->
     kz_json:set_value([Category, Action], kz_json:from_list(action(Action)), JObj).
 
--spec action(ne_binary()) -> kz_proplist().
+-spec action(kz_term:ne_binary()) -> kz_term:proplist().
 action(<<"descendant_quantities">>) ->
     [{<<"description">>, <<"List per-month descendant accounts quantities">>}
     ,{<<"doc">>, <<"Attempts to create a month-on-month listing of quantities used by descendant accounts.\n"
@@ -118,7 +118,7 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
 
 %%% Triggerables
 
--spec cleanup(ne_binary()) -> ok.
+-spec cleanup(kz_term:ne_binary()) -> ok.
 cleanup(?KZ_SERVICES_DB) ->
     lager:debug("checking ~s for abandoned accounts", [?KZ_SERVICES_DB]),
     cleanup_orphaned_services_docs();
@@ -129,7 +129,7 @@ cleanup(_SystemDb) -> ok.
 %%% Internal functions
 %%%===================================================================
 
--spec rows_for_quantities(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) -> [kz_csv:mapped_row()].
+-spec rows_for_quantities(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> [kz_csv:mapped_row()].
 rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) ->
     lists:append(
       [quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem)
@@ -138,7 +138,7 @@ rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) ->
           EoMItem <- [kz_json:get_value(Category, EoM)]
       ]).
 
--spec quantities_for_items(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) -> [kz_csv:mapped_row()].
+-spec quantities_for_items(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object(), kz_term:api_object()) -> [kz_csv:mapped_row()].
 quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem) ->
     [#{<<"account_id">> => AccountId
       ,<<"year">> => YYYY
@@ -151,7 +151,7 @@ quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem) ->
      || Item <- fields(BoMItem, EoMItem)
     ].
 
--spec modb_service_quantities(ne_binary(), ne_binary()) -> kz_json:object().
+-spec modb_service_quantities(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 modb_service_quantities(MoDB, Id) ->
     case kz_datamgr:open_doc(MoDB, Id) of
         {'ok', JObj} -> kz_json:get_value(<<"quantities">>, JObj);
@@ -160,7 +160,7 @@ modb_service_quantities(MoDB, Id) ->
             kz_json:new()
     end.
 
--spec fields(api_object(), api_object()) -> ne_binaries().
+-spec fields(kz_term:api_object(), kz_term:api_object()) -> kz_term:ne_binaries().
 fields('undefined', JObjB) ->
     fields(kz_json:new(), JObjB);
 fields(JObjA, 'undefined') ->
@@ -168,7 +168,7 @@ fields(JObjA, 'undefined') ->
 fields(JObjA, JObjB) ->
     lists:usort(kz_json:get_keys(JObjA) ++ kz_json:get_keys(JObjB)).
 
--spec maybe_integer_to_binary(ne_binary(), api_object()) -> api_non_neg_integer().
+-spec maybe_integer_to_binary(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_non_neg_integer().
 maybe_integer_to_binary(_, 'undefined') -> 'undefined';
 maybe_integer_to_binary(Item, JObj) ->
     case kz_json:get_integer_value(Item, JObj) of
@@ -178,7 +178,6 @@ maybe_integer_to_binary(Item, JObj) ->
 
 
 -spec cleanup_orphaned_services_docs() -> 'ok'.
--spec cleanup_orphaned_services_docs(kz_json:objects()) -> 'ok'.
 cleanup_orphaned_services_docs() ->
     case kz_datamgr:all_docs(?KZ_SERVICES_DB) of
         {'ok', Docs} -> cleanup_orphaned_services_docs(Docs);
@@ -186,12 +185,13 @@ cleanup_orphaned_services_docs() ->
             lager:debug("failed to get all docs from ~s: ~p", [?KZ_SERVICES_DB, _E])
     end.
 
+-spec cleanup_orphaned_services_docs(kz_json:objects()) -> 'ok'.
 cleanup_orphaned_services_docs([]) -> 'ok';
 cleanup_orphaned_services_docs([View|Views]) ->
     cleanup_orphaned_services_doc(View),
     cleanup_orphaned_services_docs(Views).
 
--spec cleanup_orphaned_services_doc(kz_json:object() | ne_binary()) -> 'ok'.
+-spec cleanup_orphaned_services_doc(kz_json:object() | kz_term:ne_binary()) -> 'ok'.
 cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
 cleanup_orphaned_services_doc(AccountId=?NE_BINARY) ->
     case kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded')) of

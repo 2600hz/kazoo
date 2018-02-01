@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz, INC
+%%% @copyright (C) 2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -24,7 +24,7 @@
 %% @doc Read configuration and do authentication with configured MFA provider
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(kz_proplist()) -> result().
+-spec authenticate(kz_term:proplist()) -> result().
 authenticate(Claims) ->
     Configs = get_configs(props:get_value(<<"mfa_options">>, Claims)),
     case provider(Configs) of
@@ -46,7 +46,7 @@ authenticate(Claims) ->
 %% @doc Get MFA provider and checks it's enabled or not
 %% @end
 %%--------------------------------------------------------------------
--spec provider(api_object()) -> ne_binary() | {'disabled', ne_binary()} | {'error', 'no_provider'}.
+-spec provider(kz_term:api_object()) -> kz_term:ne_binary() | {'disabled', kz_term:ne_binary()} | {'error', 'no_provider'}.
 provider(Configs) ->
     Name = kz_json:get_ne_value(<<"provider_name">>, Configs),
     IsDefined = kz_term:is_not_empty(Name),
@@ -62,7 +62,7 @@ provider(Configs) ->
 %% get system default configuration
 %% @end
 %%--------------------------------------------------------------------
--spec get_configs('undefined' | kz_proplist() | kz_json:object()) -> api_object().
+-spec get_configs('undefined' | kz_term:proplist() | kz_json:object()) -> kz_term:api_object().
 get_configs('undefined') ->
     get_system_configs();
 get_configs(Options) when is_list(Options) ->
@@ -72,7 +72,7 @@ get_configs(Options) when is_list(Options) ->
 get_configs(JObj) ->
     get_configs(kz_json:recursive_to_proplist(JObj)).
 
--spec get_account_configs(api_binary(), api_binary()) -> api_object().
+-spec get_account_configs(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_object().
 get_account_configs('undefined', _ConfigId) -> get_system_configs();
 get_account_configs(_AccountId, 'undefined') -> get_system_configs();
 get_account_configs(AccountId, ConfigId) ->
@@ -90,7 +90,7 @@ get_account_configs(AccountId, ConfigId) ->
             'undefined'
     end.
 
--spec get_system_configs() -> api_object().
+-spec get_system_configs() -> kz_term:api_object().
 get_system_configs() ->
     lager:debug("get authentication factor configuration from system config"),
     DefaultProvider = default_provider(),
@@ -101,9 +101,9 @@ get_system_configs() ->
             'undefined'
     end.
 
--spec module_name(ne_binary()) -> atom().
+-spec module_name(kz_term:ne_binary()) -> atom().
 module_name(Provider) -> kz_term:to_atom(<<"kz_mfa_", Provider/binary>>, 'true').
 
--spec default_provider() -> ne_binary().
+-spec default_provider() -> kz_term:ne_binary().
 default_provider() ->
     kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>, <<"duo">>).

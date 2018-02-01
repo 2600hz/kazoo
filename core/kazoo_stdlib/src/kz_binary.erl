@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%% Conversion of types
 %%% @end
@@ -60,10 +60,11 @@ pad_left(Bin, _Size, _Value) -> Bin.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec join([text()]) -> binary().
--spec join([text()], iodata() | char()) -> binary().
 
+-spec join([kz_term:text()]) -> binary().
 join(Bins) -> join(Bins, <<", ">>).
+
+-spec join([kz_term:text()], iodata() | char()) -> binary().
 join([], _) -> <<>>;
 join([Bin], _) -> kz_term:to_binary(Bin);
 join([Bin|Bins], Sep) ->
@@ -71,10 +72,10 @@ join([Bin|Bins], Sep) ->
       [kz_term:to_binary(Bin)] ++ [[Sep, kz_term:to_binary(B)] || B <- Bins]
      ).
 
--spec md5(text()) -> ne_binary().
+-spec md5(kz_term:text()) -> kz_term:ne_binary().
 md5(Text) -> kz_term:to_hex_binary(erlang:md5(kz_term:to_binary(Text))).
 
--spec remove_white_spaces(binary(), kz_proplist()) -> binary().
+-spec remove_white_spaces(binary(), kz_term:proplist()) -> binary().
 remove_white_spaces(Bin, Opts) ->
     case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
         'false' -> Bin;
@@ -86,10 +87,10 @@ remove_white_spaces(Bin) ->
     << <<X>> || <<X>> <= Bin, X =/= $\s >>.
 
 -spec clean(binary()) -> binary().
--spec clean(binary(), kz_proplist()) -> binary().
 clean(Bin) ->
     clean(Bin, []).
 
+-spec clean(binary(), kz_term:proplist()) -> binary().
 clean(Bin, Opts) ->
     Routines = [fun remove_white_spaces/2],
     lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
@@ -98,11 +99,9 @@ clean(Bin, Opts) ->
 -type strip_options() :: [strip_option()].
 
 -spec strip(binary()) -> binary().
--spec strip(binary(), strip_option() | strip_options()) -> binary().
--spec strip_left(binary(), char() | binary()) -> binary().
--spec strip_right(binary(), char() | binary()) -> binary().
 strip(B) -> strip(B, 'both').
 
+-spec strip(binary(), strip_option() | strip_options()) -> binary().
 strip(B, 'left') -> strip_left(B, $\s);
 strip(B, 'right') -> strip_right(B, $\s);
 strip(B, 'both') -> strip_right(strip_left(B, $\s), $\s);
@@ -110,9 +109,11 @@ strip(B, C) when is_integer(C) -> strip_right(strip_left(B, C), C);
 strip(B, Cs) when is_list(Cs) ->
     lists:foldl(fun(C, Acc) -> strip(Acc, C) end, B, Cs).
 
+-spec strip_left(binary(), char() | binary()) -> binary().
 strip_left(<<C, B/binary>>, C) -> strip_left(B, C);
 strip_left(B, _) -> B.
 
+-spec strip_right(binary(), char() | binary()) -> binary().
 strip_right(C, C) -> <<>>;
 strip_right(<<C, B/binary>>, C) ->
     case strip_right(B, C) of
@@ -129,11 +130,12 @@ strip_right(<<>>, _) -> <<>>.
 %% Ensure a binary is a maximum given size, truncating it if not.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec truncate(binary(), non_neg_integer()) -> binary().
--spec truncate(binary(), non_neg_integer(), 'left' | 'right') -> binary().
 truncate(Bin, Size) ->
     truncate(Bin, Size, 'right').
 
+-spec truncate(binary(), non_neg_integer(), 'left' | 'right') -> binary().
 truncate(Bin, Size, 'left') ->
     truncate_left(Bin, Size);
 truncate(Bin, Size, 'right') ->
@@ -159,7 +161,7 @@ suffix(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
         _:_ -> 'false'
     end.
 
--spec hexencode(text()) -> binary().
+-spec hexencode(kz_term:text()) -> binary().
 hexencode(<<_/binary>> = Bin) ->
     hexencode(Bin, <<>>);
 hexencode(S) ->
@@ -177,10 +179,10 @@ from_hex(Bin) ->
     kz_term:to_binary(from_hex_string(kz_term:to_list(Bin))).
 
 -spec from_hex_string(list()) -> list().
--spec from_hex_string(list(), list()) -> list().
 from_hex_string(Str) ->
     from_hex_string(Str, []).
 
+-spec from_hex_string(list(), list()) -> list().
 from_hex_string([], Acc) -> lists:reverse(Acc);
 from_hex_string([Div, Rem | T], Acc) ->
     Lo = hex_char_to_binary(Rem),
@@ -196,17 +198,17 @@ hex_char_to_binary(B) when B < 58 ->
 hex_char_to_binary(B) ->
     kz_term:to_lower_char(B) - ($a - 10).
 
--spec rand_hex(pos_integer() | binary() | string()) -> ne_binary().
+-spec rand_hex(pos_integer() | binary() | string()) -> kz_term:ne_binary().
 rand_hex(Size) when not is_integer(Size) ->
     rand_hex(kz_term:to_integer(Size));
 rand_hex(Size) when is_integer(Size)
                     andalso Size > 0 ->
     kz_term:to_hex_binary(crypto:strong_rand_bytes(Size)).
 
--spec ucfirst(ne_binary()) -> ne_binary().
+-spec ucfirst(kz_term:ne_binary()) -> kz_term:ne_binary().
 ucfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_upper_char(F)):8, Bin/binary>>.
 
--spec lcfirst(ne_binary()) -> ne_binary().
+-spec lcfirst(kz_term:ne_binary()) -> kz_term:ne_binary().
 lcfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_lower_char(F)):8, Bin/binary>>.
 
 -spec pos(char(), binary()) -> non_neg_integer() | -1.

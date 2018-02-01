@@ -10,11 +10,11 @@ Schema for a temporal rules sets
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true`
-`temporal_rules.[]` |   | `string()` |   | `false`
-`temporal_rules` | Temporal Rules | `array(string())` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` |  
+`temporal_rules.[]` |   | `string()` |   | `false` |  
+`temporal_rules` | Temporal Rules | `array(string())` |   | `false` |  
 
 
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -47,7 +47,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
@@ -60,7 +60,7 @@ start_link() ->
                            ,[]
                            ).
 
--spec handle_req(kapi_maintenance:req(), kz_proplist()) -> 'ok'.
+-spec handle_req(kapi_maintenance:req(), kz_term:proplist()) -> 'ok'.
 handle_req(MaintJObj, _Props) ->
     'true' = kapi_maintenance:req_v(MaintJObj),
 
@@ -86,7 +86,7 @@ send_resp(MaintJObj, Created) ->
 code('true') -> 200;
 code('false') -> 500.
 
--spec message(boolean()) -> ne_binary().
+-spec message(boolean()) -> kz_term:ne_binary().
 message('true') -> <<"Created ", (?KZ_CONFIG_DB)/binary>>;
 message('false') -> <<"Did not create ", (?KZ_CONFIG_DB)/binary>>.
 
@@ -117,7 +117,7 @@ init([]) ->
 %%                                   {stop, Reason, Reply, State} |
 %%                                   {stop, Reason, State}
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -128,7 +128,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -143,7 +143,7 @@ handle_cast(_Msg, State) ->
 %%                                   {noreply, State, Timeout} |
 %%                                   {stop, Reason, State}
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -152,7 +152,7 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -200,7 +200,7 @@ cleanup_invalid_notify_docs([JObj|JObjs]) ->
     _ = maybe_remove_invalid_notify_doc(kz_doc:type(Doc), Id, Doc),
     cleanup_invalid_notify_docs(JObjs).
 
--spec maybe_remove_invalid_notify_doc(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_remove_invalid_notify_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_remove_invalid_notify_doc(<<"notification">>, <<"notification", _/binary>>, _) -> 'ok';
 maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
     _ = kz_datamgr:del_doc(?KZ_CONFIG_DB, JObj),
@@ -217,7 +217,7 @@ delete_system_media_references() ->
         {'error', 'not_found'} -> 'ok'
     end.
 
--spec delete_system_media_references(ne_binary(), kz_json:object()) -> 'ok'.
+-spec delete_system_media_references(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 delete_system_media_references(DocId, CallResponsesDoc) ->
     TheKey = <<"default">>,
     Default = kz_json:get_value(TheKey, CallResponsesDoc),
@@ -254,8 +254,8 @@ remove_system_media_ref(Key, Value, Acc) -> kz_json:set_value(Key, Value, Acc).
 %% default_timezone
 %% @end
 %%--------------------------------------------------------------------
+
 -spec accounts_config_deprecate_timezone_for_default_timezone() -> 'ok'.
--spec accounts_config_deprecate_timezone_for_default_timezone(kz_json:object()) -> 'ok'.
 accounts_config_deprecate_timezone_for_default_timezone() ->
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, <<"accounts">>) of
         {'ok', AccountsConfig} ->
@@ -264,6 +264,7 @@ accounts_config_deprecate_timezone_for_default_timezone() ->
             lager:warning("unable to fetch system_config/accounts: ~p", [E])
     end.
 
+-spec accounts_config_deprecate_timezone_for_default_timezone(kz_json:object()) -> 'ok'.
 accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig) ->
     PublicFields = kz_doc:public_fields(AccountsConfig),
     case kz_json:get_keys(PublicFields) of
@@ -281,13 +282,13 @@ deprecate_timezone_for_default_timezone(Nodes, AccountsConfig) ->
 
 -spec deprecate_timezone_for_node(kz_json:key(), kz_json:object()) ->
                                          kz_json:object().
--spec deprecate_timezone_for_node(kz_json:key(), kz_json:object(), api_ne_binary(), api_ne_binary()) ->
-                                         kz_json:object().
 deprecate_timezone_for_node(Node, AccountsConfig) ->
     Timezone = kz_json:get_value([Node, <<"timezone">>], AccountsConfig),
     DefaultTimezone = kz_json:get_value([Node, <<"default_timezone">>], AccountsConfig),
     deprecate_timezone_for_node(Node, AccountsConfig, Timezone, DefaultTimezone).
 
+-spec deprecate_timezone_for_node(kz_json:key(), kz_json:object(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+                                         kz_json:object().
 deprecate_timezone_for_node(_Node, AccountsConfig, 'undefined', _Default) ->
     AccountsConfig;
 deprecate_timezone_for_node(Node, AccountsConfig, Timezone, 'undefined') ->

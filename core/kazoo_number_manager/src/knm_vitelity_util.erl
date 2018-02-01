@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -41,13 +41,13 @@
                                   )
        ).
 
--spec api_uri() -> ne_binary().
+-spec api_uri() -> kz_term:ne_binary().
 api_uri() -> ?API_URL.
 
--spec config_cat() -> ne_binary().
+-spec config_cat() -> kz_term:ne_binary().
 config_cat() -> ?KNM_VITELITY_CONFIG_CAT.
 
--spec add_options_fold({atom(), api_binary()}, query_options()) ->
+-spec add_options_fold({atom(), kz_term:api_binary()}, query_options()) ->
                               query_options().
 add_options_fold({_K, 'undefined'}, Options) -> Options;
 add_options_fold({K, V}, Options) ->
@@ -63,7 +63,7 @@ add_options_fold({K, V}, Options) ->
         end).
 -endif.
 
--spec get_query_value(ne_binary(), knm_carriers:options()) -> any().
+-spec get_query_value(kz_term:ne_binary(), knm_carriers:options()) -> any().
 get_query_value(<<"cnam">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
 get_query_value(<<"login">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
 get_query_value(<<"pass">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
@@ -72,15 +72,16 @@ get_query_value(<<"type">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
 get_query_value(<<"withrates">>=Key, Options) -> ?QUERY_VALUE(Key, Options).
 
 -spec default_options() -> qs_options().
--spec default_options(kz_proplist()) -> qs_options().
 default_options() ->
     default_options([]).
+
+-spec default_options(kz_term:proplist()) -> qs_options().
 default_options(Options) ->
     [{'login', get_query_value(<<"login">>, Options)}
     ,{'pass', get_query_value(<<"pass">>, Options)}
     ].
 
--spec build_uri(query_options()) -> ne_binary().
+-spec build_uri(query_options()) -> kz_term:ne_binary().
 build_uri(Options) ->
     URI = props:get_value('uri', Options),
     QS = kz_term:to_binary(
@@ -90,43 +91,43 @@ build_uri(Options) ->
               ))),
     <<URI/binary, "?", QS/binary>>.
 
--spec xml_resp_status_msg(xml_els()) -> api_binary().
+-spec xml_resp_status_msg(kz_types:xml_els()) -> kz_term:api_binary().
 xml_resp_status_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'status')).
 
--spec xml_resp_error_msg(xml_els()) -> api_binary().
+-spec xml_resp_error_msg(kz_types:xml_els()) -> kz_term:api_binary().
 xml_resp_error_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'error')).
 
--spec xml_resp_response_msg(xml_els()) -> api_binary().
+-spec xml_resp_response_msg(kz_types:xml_els()) -> kz_term:api_binary().
 xml_resp_response_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'response')).
 
--spec xml_resp_numbers(xml_els()) -> xml_el() | 'undefined'.
+-spec xml_resp_numbers(kz_types:xml_els()) -> kz_types:xml_el() | 'undefined'.
 xml_resp_numbers(XmlEls) ->
     xml_resp_tag(XmlEls, 'numbers').
 
--spec xml_resp_info(xml_els()) -> xml_el() | 'undefined'.
+-spec xml_resp_info(kz_types:xml_els()) -> kz_types:xml_el() | 'undefined'.
 xml_resp_info(XmlEls) ->
     xml_resp_tag(XmlEls, 'info').
 
--spec xml_resp_response(xml_els()) -> xml_el() | 'undefined'.
+-spec xml_resp_response(kz_types:xml_els()) -> kz_types:xml_el() | 'undefined'.
 xml_resp_response(XmlEls) ->
     xml_resp_tag(XmlEls, 'response').
 
--spec xml_resp_tag(xml_els(), atom()) -> xml_el() | 'undefined'.
+-spec xml_resp_tag(kz_types:xml_els(), atom()) -> kz_types:xml_el() | 'undefined'.
 xml_resp_tag([#xmlElement{name=Name}=El|_], Name) -> El;
 xml_resp_tag([_|Els], Name) ->
     xml_resp_tag(Els, Name);
 xml_resp_tag([], _Name) ->
     'undefined'.
 
--spec xml_el_to_binary('undefined' | xml_el()) -> api_binary().
+-spec xml_el_to_binary('undefined' | kz_types:xml_el()) -> kz_term:api_binary().
 xml_el_to_binary('undefined') -> 'undefined';
 xml_el_to_binary(#xmlElement{content=Content}) ->
     kz_xml:texts_to_binary(Content).
 
--spec xml_els_to_proplist(xml_els()) -> kz_proplist().
+-spec xml_els_to_proplist(kz_types:xml_els()) -> kz_term:proplist().
 xml_els_to_proplist(Els) ->
     [KV || El <- Els,
            begin
@@ -135,7 +136,7 @@ xml_els_to_proplist(Els) ->
            end
     ].
 
--spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), api_binary() | kz_json:object()}.
+-spec xml_el_to_kv_pair(kz_types:xml_el()) -> {kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()}.
 xml_el_to_kv_pair(#xmlElement{name='did'
                              ,content=Value
                              }) ->
@@ -170,8 +171,8 @@ xml_el_to_kv_pair(#xmlElement{name=Name
             }
     end.
 
--spec query_vitelity(ne_binary()) ->
-                            {'ok', text()} |
+-spec query_vitelity(kz_term:ne_binary()) ->
+                            {'ok', kz_term:text()} |
                             {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
@@ -184,7 +185,7 @@ query_vitelity(URI) ->
             E
     end.
 
--spec get_short_state(ne_binary()) -> state_two_letters() | 'undefined'.
+-spec get_short_state(kz_term:ne_binary()) -> state_two_letters() | 'undefined'.
 get_short_state(FullState) ->
     States = [{<<"alabama">>, <<"AL">>}
              ,{<<"alaska">>, <<"AK">>}
@@ -249,7 +250,7 @@ get_short_state(FullState) ->
     State = kz_term:to_lower_binary(FullState),
     props:get_value(State, States).
 
--spec get_routesip() -> ne_binary().
+-spec get_routesip() -> kz_term:ne_binary().
 -ifdef(TEST).
 get_routesip() -> <<"1.2.3.4">>.
 -else.

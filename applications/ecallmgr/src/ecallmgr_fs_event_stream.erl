@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -21,7 +21,7 @@
 
 -define(SERVER, ?MODULE).
 
--type bindings() :: atom() | [atom(),...] | ne_binary() | ne_binaries().
+-type bindings() :: atom() | [atom(),...] | kz_term:ne_binary() | kz_term:ne_binaries().
 
 -record(state, {node :: atom()
                ,bindings :: bindings()
@@ -29,9 +29,9 @@
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
-               ,idle_alert = 'infinity' :: kz_timeout()
-               ,switch_url :: api_ne_binary()
-               ,switch_uri :: api_ne_binary()
+               ,idle_alert = 'infinity' :: timeout()
+               ,switch_url :: kz_term:api_ne_binary()
+               ,switch_uri :: kz_term:api_ne_binary()
                ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -43,7 +43,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), bindings(), bindings()) -> startlink_ret().
+-spec start_link(atom(), bindings(), bindings()) -> kz_types:startlink_ret().
 start_link(Node, Bindings, Subclasses) ->
     gen_server:start_link(?SERVER, [Node, Bindings, Subclasses], []).
 
@@ -86,7 +86,7 @@ init([Node, Bindings, Subclasses]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -100,7 +100,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
     PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
@@ -131,7 +131,7 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,switch_info='false'
@@ -199,7 +199,7 @@ handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
 
--spec handle_fs_props(api_binary(), kzd_freeswitch:data(), atom(), ne_binary(), ne_binary()) -> pid().
+-spec handle_fs_props(kz_term:api_binary(), kzd_freeswitch:data(), atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
 handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
     kz_util:put_callid(UUID),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
@@ -268,11 +268,11 @@ request_event_stream(#state{node=Node}=State) ->
             {'stop', ErrorReason}
     end.
 
--spec get_event_bindings(state()) -> atoms().
+-spec get_event_bindings(state()) -> kz_term:atoms().
 get_event_bindings(State) ->
     get_event_bindings(State, []).
 
--spec get_event_bindings(state(), atoms()) -> atoms().
+-spec get_event_bindings(state(), kz_term:atoms()) -> kz_term:atoms().
 get_event_bindings(#state{bindings='undefined'
                          ,subclasses='undefined'
                          ,idle_alert='infinity'
@@ -307,17 +307,17 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
                       ,[kz_term:to_atom(Binding, 'true') | Acc]
                       ).
 
--spec maybe_bind(atom(), atoms()) ->
-                        {'ok', {text(), inet:port_number()}} |
-                        {'error', any()} |
-                        {'EXIT', any()}.
--spec maybe_bind(atom(), atoms(), non_neg_integer()) ->
-                        {'ok', {text(), inet:port_number()}} |
+-spec maybe_bind(atom(), kz_term:atoms()) ->
+                        {'ok', {kz_term:text(), inet:port_number()}} |
                         {'error', any()} |
                         {'EXIT', any()}.
 maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
 
+-spec maybe_bind(atom(), kz_term:atoms(), non_neg_integer()) ->
+                        {'ok', {kz_term:text(), inet:port_number()}} |
+                        {'error', any()} |
+                        {'EXIT', any()}.
 maybe_bind(Node, Bindings, 2) ->
     case catch gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2 * ?MILLISECONDS_IN_SECOND) of
         {'ok', {_IP, _Port}}=OK -> OK;
@@ -336,7 +336,7 @@ maybe_bind(Node, Bindings, Attempts) ->
             maybe_bind(Node, Bindings, Attempts+1)
     end.
 
--spec idle_alert_timeout() -> kz_timeout().
+-spec idle_alert_timeout() -> timeout().
 idle_alert_timeout() ->
     case ecallmgr_config:get_integer(<<"event_stream_idle_alert">>, 0) of
         Timeout when Timeout =< 30 -> 'infinity';

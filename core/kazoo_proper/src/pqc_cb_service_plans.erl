@@ -18,14 +18,14 @@ create_service_plan(_API, ServicePlan) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     kz_datamgr:save_doc(MasterAccountDb, ServicePlan).
 
--spec delete_service_plan(pqc_cb_api:state(), ne_binary()) ->
+-spec delete_service_plan(pqc_cb_api:state(), kz_term:ne_binary()) ->
                                  {'ok', kz_json:object()} |
                                  {'error', any()}.
 delete_service_plan(_API, ServicePlanId) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     kz_datamgr:del_doc(MasterAccountDb, ServicePlanId).
 
--spec assign_service_plan(pqc_cb_api:state(), ne_binary() | proper_types:type(), ne_binary()) -> pqc_cb_api:response().
+-spec assign_service_plan(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type(), kz_term:ne_binary()) -> pqc_cb_api:response().
 assign_service_plan(API, AccountId, ServicePlanId) ->
     URL = account_service_plan_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
@@ -40,7 +40,7 @@ assign_service_plan(API, AccountId, ServicePlanId) ->
                            ,kz_json:encode(RequestEnvelope)
                            ).
 
--spec available_service_plans(pqc_cb_api:state(), ne_binary() | proper_types:type()) ->
+-spec available_service_plans(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type()) ->
                                      pqc_cb_api:response().
 available_service_plans(API, AccountId) ->
     URL = string:join([account_service_plan_url(AccountId), "available"], "/"),
@@ -51,7 +51,7 @@ available_service_plans(API, AccountId) ->
                            ,RequestHeaders
                            ).
 
--spec account_service_plan_url(ne_binary()) -> string().
+-spec account_service_plan_url(kz_term:ne_binary()) -> string().
 account_service_plan_url(AccountId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "service_plans"], "/").
 

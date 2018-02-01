@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -28,11 +28,11 @@
 
 -include("kzt.hrl").
 
--spec get_terminators(kz_proplist()) -> ne_binaries().
+-spec get_terminators(kz_term:proplist()) -> kz_term:ne_binaries().
 get_terminators(Props) ->
     kapi_dialplan:terminators(props:get_binary_value('terminators', Props)).
 
--spec get_lang(kz_proplist()) -> ne_binary().
+-spec get_lang(kz_term:proplist()) -> kz_term:ne_binary().
 get_lang(Props) ->
     case props:get_binary_value('language', Props) of
         'undefined' -> ?DEFAULT_TTS_LANG;
@@ -44,7 +44,7 @@ get_lang(Props) ->
         <<"it">> -> <<"it">>
     end.
 
--spec get_voice(kz_proplist()) -> ne_binary().
+-spec get_voice(kz_term:proplist()) -> kz_term:ne_binary().
 get_voice(Props) ->
     case props:get_binary_value('voice', Props) of
         <<"man">> -> <<"male">>;
@@ -54,19 +54,20 @@ get_voice(Props) ->
         'undefined' -> ?DEFAULT_TTS_VOICE
     end.
 
--spec get_engine(kz_proplist()) -> ne_binary().
+-spec get_engine(kz_term:proplist()) -> kz_term:ne_binary().
 get_engine(Props) ->
     case props:get_binary_value('engine', Props) of
         'undefined' -> ?DEFAULT_TTS_ENGINE;
         Engine -> Engine
     end.
 
--spec loop_count(kz_proplist()) -> integer().
+-spec loop_count(kz_term:proplist()) -> integer().
 loop_count(Props) -> props:get_integer_value('loop', Props, 1).
 
--spec finish_dtmf(kz_proplist()) -> ne_binary().
--spec finish_dtmf(kz_proplist(), ne_binary()) -> ne_binary().
+-spec finish_dtmf(kz_term:proplist()) -> kz_term:ne_binary().
 finish_dtmf(Props) -> finish_dtmf(Props, <<"#">>).
+
+-spec finish_dtmf(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:ne_binary().
 finish_dtmf(Props, Default) when is_list(Props) ->
     case props:get_binary_value('finishOnKey', Props) of
         'undefined' -> Default;
@@ -75,11 +76,11 @@ finish_dtmf(Props, Default) when is_list(Props) ->
             DTMF
     end.
 
--spec get_finish_key(kz_proplist()) -> ne_binaries().
+-spec get_finish_key(kz_term:proplist()) -> kz_term:ne_binaries().
 get_finish_key(Props) ->
     kapi_dialplan:terminators(props:get_binary_value('finishOnKey', Props)).
 
--spec get_max_length(kz_proplist()) -> pos_integer().
+-spec get_max_length(kz_term:proplist()) -> pos_integer().
 get_max_length(Props) ->
     Max = kapps_config:get_integer(?MODULE, <<"max_length">>, 3600),
     case props:get_integer_value('maxLength', Props) of
@@ -88,7 +89,7 @@ get_max_length(Props) ->
     end.
 
 %% limit pause to 1 hour (3600000 ms)
--spec pause_for(kz_proplist()) -> 1000..3600000.
+-spec pause_for(kz_term:proplist()) -> 1000..3600000.
 pause_for(Props) ->
     case props:get_integer_value('length', Props) of
         'undefined' -> ?MILLISECONDS_IN_SECOND;
@@ -96,29 +97,30 @@ pause_for(Props) ->
         N when is_integer(N), N > 3600 -> 3600000
     end.
 
--spec action_url(kz_proplist()) -> api_binary().
+-spec action_url(kz_term:proplist()) -> kz_term:api_binary().
 action_url(Props) -> props:get_binary_value('action', Props).
 
--spec reject_prompt(kz_proplist()) -> api_binary().
+-spec reject_prompt(kz_term:proplist()) -> kz_term:api_binary().
 reject_prompt(Props) -> props:get_binary_value('prompt', Props).
 
--spec timeout_s(kz_proplist()) -> pos_integer().
--spec timeout_s(kz_proplist(), pos_integer()) -> pos_integer().
+-spec timeout_s(kz_term:proplist()) -> pos_integer().
 timeout_s(Props) -> timeout_s(Props, 30).
+
+-spec timeout_s(kz_term:proplist(), pos_integer()) -> pos_integer().
 timeout_s(Props, Default) ->
     case props:get_integer_value('timeout', Props, Default) of
         N when is_integer(N), N > 3600 -> 3600;
         N when is_integer(N), N > 0 -> N
     end.
 
--spec num_digits(kz_proplist()) -> kz_timeout().
+-spec num_digits(kz_term:proplist()) -> timeout().
 num_digits(Props) ->
     case props:get_integer_value('numDigits', Props) of
         'undefined' -> 'infinity';
         N when is_integer(N), N > 0 -> N
     end.
 
--spec reject_reason(kz_proplist()) -> ne_binary().
+-spec reject_reason(kz_term:proplist()) -> kz_term:ne_binary().
 reject_reason(Props) ->
     case props:get_binary_value('reason', Props) of
         'undefined' -> <<"rejected">>;
@@ -126,10 +128,10 @@ reject_reason(Props) ->
         <<"busy">> -> <<"busy">>
     end.
 
--spec reject_code(ne_binary()) -> ne_binary().
+-spec reject_code(kz_term:ne_binary()) -> kz_term:ne_binary().
 reject_code(<<"busy">>) -> <<"486">>;
 reject_code(<<"rejected">>) -> <<"503">>.
 
--spec reject_status(ne_binary()) -> ne_binary().
+-spec reject_status(kz_term:ne_binary()) -> kz_term:ne_binary().
 reject_status(<<"486">>) -> ?STATUS_BUSY;
 reject_status(<<"503">>) -> ?STATUS_NOANSWER.

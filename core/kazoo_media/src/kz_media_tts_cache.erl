@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -34,14 +34,14 @@
 
 -define(TIMEOUT_MESSAGE, {'$kz_media_tts_cache', 'tts_timeout'}).
 
--record(state, {text :: api_ne_binary()
+-record(state, {text :: kz_term:api_ne_binary()
                ,contents = <<>> :: binary()
                ,status :: 'streaming' | 'ready'
                ,kz_http_req_id :: kz_http:req_id()
                ,reqs :: [{pid(), reference()}]
                ,meta :: kz_json:object()
                ,timer_ref :: reference()
-               ,id :: ne_binary() %% used in publishing doc_deleted
+               ,id :: kz_term:ne_binary() %% used in publishing doc_deleted
                }).
 -type state() :: #state{}.
 
@@ -52,14 +52,14 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(ne_binary(), kz_json:object()) -> startlink_ret().
+-spec start_link(kz_term:ne_binary(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Id, JObj) ->
     gen_server:start_link(?SERVER, [Id, JObj], []).
 
--spec single(pid()) -> {kz_json:object(), ne_binary()}.
+-spec single(pid()) -> {kz_json:object(), kz_term:ne_binary()}.
 single(Srv) -> gen_server:call(Srv, 'single').
 
--spec continuous(pid()) -> {kz_json:object(), ne_binary()}.
+-spec continuous(pid()) -> {kz_json:object(), kz_term:ne_binary()}.
 continuous(Srv) -> gen_server:call(Srv, 'continuous').
 
 -spec stop(pid()) -> 'ok'.
@@ -110,7 +110,7 @@ init([Id, JObj]) ->
                  ,id = Id
                  }}.
 
--spec get_language(ne_binary()) -> ne_binary().
+-spec get_language(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_language(<<"en">>) -> <<"en-us">>;
 get_language(<<L:2/binary>>) -> <<L/binary, "-", L/binary>>;
 get_language(Language) -> Language.
@@ -129,7 +129,7 @@ get_language(Language) -> Language.
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('single', _From, #state{meta=Meta
                                    ,contents=Contents
                                    ,status=ready
@@ -157,7 +157,7 @@ handle_call('continuous', _From, #state{}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('stop', State) ->
     lager:debug("asked to stop, going down"),
     {'stop', 'normal', State};
@@ -174,7 +174,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) ->
     lager:debug("timeout expired, going down"),
     {'stop', 'normal', State};
@@ -288,7 +288,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec kv_to_bin(kz_proplist()) -> kz_proplist().
+-spec kv_to_bin(kz_term:proplist()) -> kz_term:proplist().
 kv_to_bin(L) ->
     [{kz_term:to_binary(K), kz_term:to_binary(V)} || {K,V} <- L].
 
@@ -301,7 +301,7 @@ stop_timer(Ref) when is_reference(Ref) ->
     _ = erlang:cancel_timer(Ref),
     'ok'.
 
--spec publish_doc_update(ne_binary()) -> 'ok'.
+-spec publish_doc_update(kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Id) ->
     API =
         [{<<"ID">>, Id}

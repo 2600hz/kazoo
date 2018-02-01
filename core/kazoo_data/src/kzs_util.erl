@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% kazoo data utils
 %%% @end
@@ -11,6 +11,8 @@
         ,db_priority/1
         ]).
 
+-export([get_view_json/1, get_view_json/2, get_views_json/2]).
+
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_documents/include/kzd_ratedeck.hrl").
 -include("kz_data.hrl").
@@ -20,7 +22,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_classification(text()) -> db_classification().
+-spec db_classification(kz_term:text()) -> db_classification().
 db_classification(Db) when not is_binary(Db) ->
     db_classification(kz_term:to_binary(Db));
 db_classification(<<"_users">>) -> 'external';
@@ -91,7 +93,7 @@ db_classification(_Database) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_priority(text()) -> non_neg_integer().
+-spec db_priority(kz_term:text()) -> non_neg_integer().
 db_priority(Db) when not is_binary(Db) ->
     db_priority(kz_term:to_binary(Db));
 db_priority(?KZ_CONFIG_DB) -> 0;
@@ -131,3 +133,24 @@ db_priority(?MATCH_RESOURCE_SELECTORS_RAW(_AccountId)) -> 23;
 db_priority(?MATCH_PROVISIONER_ENCODED(_AccountId)) -> 24;
 db_priority(?MATCH_PROVISIONER_encoded(_AccountId)) -> 24;
 db_priority(_Database) -> 24.
+
+
+-spec get_views_json(atom(), string()) -> kz_datamgr:views_listing().
+get_views_json(App, Folder) ->
+    Pattern = filename:join([code:priv_dir(App), "couchdb", Folder, "*.json"]),
+    [ViewListing
+     || File <- filelib:wildcard(Pattern),
+        {?NE_BINARY,_}=ViewListing <- [catch get_view_json(File)]
+    ].
+
+-spec get_view_json(atom(), kz_term:text()) -> kz_datamgr:view_listing().
+get_view_json(App, File) ->
+    Path = filename:join([code:priv_dir(App), "couchdb", File]),
+    get_view_json(Path).
+
+-spec get_view_json(kz_term:text()) -> kz_datamgr:view_listing().
+get_view_json(Path) ->
+    lager:debug("fetching view from ~s", [Path]),
+    {'ok', Bin} = file:read_file(Path),
+    JObj = kz_json:decode(Bin),
+    {kz_doc:id(JObj), JObj}.

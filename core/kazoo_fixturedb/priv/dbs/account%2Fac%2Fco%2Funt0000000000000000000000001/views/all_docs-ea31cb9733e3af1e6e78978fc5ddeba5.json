@@ -1,0 +1,21 @@
+[
+    {
+        "id": "vmbox01-msg05-private-media-timestamp",
+        "key": "vmbox01-msg05-private-media-timestamp",
+        "value": "1-1eaea95d0193811ffda4e2ec3f7ead50"
+    },
+    {
+        "id": "vmbox01-msg06-now_s",
+        "key": "vmbox01-msg06-now_s",
+        "value": "1-1eaea95d0193811ffda4e2ec3f7ead50"
+    },
+    {
+        "id": "vmbox01-msg07-private-media-timestamp",
+        "key": "vmbox01-msg07-private-media-timestamp",
+        "value": "1-1eaea95d0193811ffda4e2ec3f7ead50"
+    },
+    {
+        "error": "not_found",
+        "key": "vmbox01-msg08-no_private_media-box_timestamp"
+    }
+]

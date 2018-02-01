@@ -27,6 +27,7 @@ for ERL in $ERL_FILES; do
     fi
 done
 
+BEAM_FILES+=("core/kazoo_stdlib/ebin/kz_types.beam")
 ARGS=${BEAM_FILES[@]}
 echo "dialyzing changed files(${#BEAM_FILES[@]}):"
 dialyzer --plt .kazoo.plt $MOD_BEAM $ARGS $@

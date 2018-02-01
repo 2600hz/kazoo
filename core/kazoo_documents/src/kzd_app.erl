@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
 %%% @end
@@ -60,7 +60,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary(), api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec fetch(kz_term:api_binary(), kz_term:api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined', _) ->
     {'error', 'account_id_undefined'};
 fetch(_, 'undefined') ->
@@ -73,7 +73,7 @@ fetch(Account, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id(kz_json:object()) -> ne_binary().
+-spec id(kz_json:object()) -> kz_term:ne_binary().
 id(JObj) ->
     kz_doc:id(JObj).
 
@@ -99,7 +99,7 @@ unpublish(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(kz_json:object()) -> api_binary().
+-spec name(kz_json:object()) -> kz_term:api_binary().
 name(JObj) ->
     kz_json:get_ne_binary_value(?NAME, JObj).
 
@@ -108,7 +108,7 @@ name(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec i18n(kz_json:object()) -> api_object().
+-spec i18n(kz_json:object()) -> kz_term:api_object().
 i18n(JObj) ->
     kz_json:get_json_value(?I18N, JObj).
 
@@ -117,7 +117,7 @@ i18n(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tags(kz_json:object()) -> ne_binaries().
+-spec tags(kz_json:object()) -> kz_term:ne_binaries().
 tags(JObj) ->
     kz_json:get_list_value(?TAGS, JObj, []).
 
@@ -126,7 +126,7 @@ tags(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec icon(kz_json:object()) -> api_binary().
+-spec icon(kz_json:object()) -> kz_term:api_binary().
 icon(JObj) ->
     kz_json:get_ne_binary_value(?ICON, JObj).
 
@@ -135,7 +135,7 @@ icon(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec api_url(kz_json:object()) -> api_binary().
+-spec api_url(kz_json:object()) -> kz_term:api_binary().
 api_url(JObj) ->
     kz_json:get_ne_binary_value(?API_URL, JObj).
 
@@ -144,7 +144,7 @@ api_url(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec source_url(kz_json:object()) -> api_binary().
+-spec source_url(kz_json:object()) -> kz_term:api_binary().
 source_url(JObj) ->
     kz_json:get_ne_binary_value(?SOURCE_URL, JObj).
 
@@ -153,7 +153,7 @@ source_url(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec author(kz_json:object()) -> api_binary().
+-spec author(kz_json:object()) -> kz_term:api_binary().
 author(JObj) ->
     kz_json:get_ne_binary_value(?AUTHOR, JObj).
 
@@ -162,7 +162,7 @@ author(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec version(kz_json:object()) -> ne_binary().
+-spec version(kz_json:object()) -> kz_term:ne_binary().
 version(JObj) ->
     kz_json:get_ne_binary_value(?VERSION, JObj).
 
@@ -171,7 +171,7 @@ version(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec license(kz_json:object()) -> ne_binary().
+-spec license(kz_json:object()) -> kz_term:ne_binary().
 license(JObj) ->
     kz_json:get_ne_binary_value(?LICENSE, JObj).
 
@@ -180,7 +180,7 @@ license(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec price(kz_json:object()) -> api_float().
+-spec price(kz_json:object()) -> kz_term:api_float().
 price(JObj) ->
     kz_json:get_float_value(?PRICE, JObj).
 
@@ -189,7 +189,7 @@ price(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec phase(kz_json:object()) -> api_binary().
+-spec phase(kz_json:object()) -> kz_term:api_binary().
 phase(JObj) ->
     kz_json:get_ne_binary_value(?PHASE, JObj).
 
@@ -198,7 +198,7 @@ phase(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec screenshots(kz_json:object()) -> ne_binaries().
+-spec screenshots(kz_json:object()) -> kz_term:ne_binaries().
 screenshots(JObj) ->
     kz_json:get_list_value(?SCREENSHOTS, JObj, []).
 
@@ -216,7 +216,7 @@ urls(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_id(kz_json:object()) -> ne_binary().
+-spec account_id(kz_json:object()) -> kz_term:ne_binary().
 account_id(JObj) ->
     kz_doc:account_id(JObj).
 
@@ -234,11 +234,11 @@ users(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_users(kz_json:object()) -> api_binary().
+-spec allowed_users(kz_json:object()) -> kz_term:api_binary().
 allowed_users(JObj) ->
     allowed_users(JObj, 'undefined').
 
--spec allowed_users(kz_json:object(), Default) -> ne_binary() | Default.
+-spec allowed_users(kz_json:object(), Default) -> kz_term:ne_binary() | Default.
 allowed_users(JObj, Default) ->
     kz_json:get_value(?ALLOWED_USERS, JObj, Default).
 

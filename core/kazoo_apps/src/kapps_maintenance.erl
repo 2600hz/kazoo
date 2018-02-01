@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -58,11 +58,13 @@
         ,get_all_account_views/0
         ]).
 
+-export([init_system/0, init_dbs/0]).
+
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 -include("kazoo_apps.hrl").
 
 -type bind() :: 'migrate' | 'refresh' | 'refresh_account'.
--spec binding(bind() | {bind(), ne_binary()}) -> ne_binary().
+-spec binding(bind() | {bind(), kz_term:ne_binary()}) -> kz_term:ne_binary().
 binding('migrate') -> <<"maintenance.migrate">>;
 binding('refresh') -> <<"maintenance.refresh">>;
 binding('refresh_account') -> <<"maintenance.refresh.account">>;
@@ -71,8 +73,9 @@ binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
     <<CommonPath/binary, ".", Specific/binary>>.
 
 -spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
--spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
 bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
+
+-spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
 unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
@@ -83,10 +86,9 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
 
--spec refresh_account_db(ne_binary()) -> 'ok'.
+-spec refresh_account_db(kz_term:ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
-    Classification = 'account' = kz_datamgr:db_classification(Database),
-    kapi_maintenance:refresh_views(Database, Classification),
+    kz_datamgr:refresh_views(Database),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -99,7 +101,7 @@ refresh_account_db(Database) ->
 rebuild_token_auth() ->
     rebuild_token_auth(5 * ?MILLISECONDS_IN_SECOND).
 
--spec rebuild_token_auth(text() | integer()) -> 'ok'.
+-spec rebuild_token_auth(kz_term:text() | integer()) -> 'ok'.
 rebuild_token_auth(Pause) ->
     _ = kz_datamgr:db_delete(?KZ_TOKEN_DB),
     timer:sleep(kz_term:to_integer(Pause)),
@@ -130,7 +132,7 @@ migrate_to_4_0() ->
 migrate() ->
     migrate(2 * ?MILLISECONDS_IN_SECOND).
 
--spec migrate(text() | integer()) -> 'no_return'.
+-spec migrate(kz_term:text() | integer()) -> 'no_return'.
 migrate(Pause) ->
     _ = migrate_system(),
     _ = kapps_config:migrate(),
@@ -144,7 +146,7 @@ migrate(Pause) ->
 
     'no_return'.
 
--spec migrate(text() | integer(), ne_binaries()) -> 'no_return'.
+-spec migrate(kz_term:text() | integer(), kz_term:ne_binaries()) -> 'no_return'.
 migrate(Pause, Databases) ->
     Accounts = [kz_util:format_account_id(Db, 'encoded')
                 || Db <- Databases,
@@ -161,11 +163,11 @@ migrate(Pause, Databases) ->
 
     'no_return'.
 
--spec parallel_migrate(text() | integer()) -> 'no_return'.
+-spec parallel_migrate(kz_term:text() | integer()) -> 'no_return'.
 parallel_migrate(Workers) ->
     parallel_migrate(Workers, 2 * ?MILLISECONDS_IN_SECOND).
 
--spec parallel_migrate(text() | integer(), text() | integer()) -> 'no_return'.
+-spec parallel_migrate(kz_term:text() | integer(), kz_term:text() | integer()) -> 'no_return'.
 parallel_migrate(Workers, Pause) ->
     _ = migrate_system(),
     _ = kapps_config:migrate(),
@@ -176,8 +178,8 @@ parallel_migrate(Workers, Pause) ->
     SplitDbs = split(AccountSplit, AccountDbs, OtherSplit, Others, []),
     parallel_migrate(Pause, SplitDbs, []).
 
--type split_results() :: [{ne_binaries(), ne_binaries()}].
--spec split(integer(), ne_binaries(), integer(), ne_binaries(), split_results()) -> split_results().
+-type split_results() :: [{kz_term:ne_binaries(), kz_term:ne_binaries()}].
+-spec split(integer(), kz_term:ne_binaries(), integer(), kz_term:ne_binaries(), split_results()) -> split_results().
 split(_, [], _, [], Results) -> Results;
 split(AccountSplit, Accounts, OtherSplit, Others, Results) ->
     {OtherDbs, RemainingOthers} = split(OtherSplit, Others),
@@ -192,7 +194,7 @@ split(Count, List) ->
         'true' -> lists:split(Count, List)
     end.
 
--spec parallel_migrate(integer(), split_results(), references()) -> 'no_return'.
+-spec parallel_migrate(integer(), split_results(), kz_term:references()) -> 'no_return'.
 parallel_migrate(_, [], Refs) -> wait_for_parallel_migrate(Refs);
 parallel_migrate(Pause, [{Accounts, Others}|Remaining], Refs) ->
     Self = self(),
@@ -201,12 +203,12 @@ parallel_migrate(Pause, [{Accounts, Others}|Remaining], Refs) ->
     _Pid = kz_util:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Dbs, Self]),
     parallel_migrate(Pause, Remaining, [Ref|Refs]).
 
--spec parallel_migrate_worker(reference(), integer(), ne_binaries(), pid()) -> reference().
+-spec parallel_migrate_worker(reference(), integer(), kz_term:ne_binaries(), pid()) -> reference().
 parallel_migrate_worker(Ref, Pause, Databases, Parent) ->
     _ = (catch migrate(Pause, Databases)),
     Parent ! Ref.
 
--spec wait_for_parallel_migrate(references()) -> 'no_return'.
+-spec wait_for_parallel_migrate(kz_term:references()) -> 'no_return'.
 wait_for_parallel_migrate([]) ->
     %% Migrate settings for kazoo_media
     io:format("running media migrations...~n"),
@@ -226,7 +228,7 @@ wait_for_parallel_migrate([Ref|Refs]) ->
 -spec blocking_refresh() -> 'no_return'.
 blocking_refresh() -> refresh().
 
--spec blocking_refresh(text() | non_neg_integer()) -> 'no_return'.
+-spec blocking_refresh(kz_term:text() | non_neg_integer()) -> 'no_return'.
 blocking_refresh(Pause) ->
     Databases = get_databases(),
     refresh(Databases, Pause).
@@ -237,58 +239,42 @@ blocking_refresh(Pause) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec refresh() -> 'no_return'.
--spec refresh(ne_binaries(), text() | non_neg_integer()) -> 'no_return'.
--spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer(), pid()) -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
     refresh(Databases, 2 * ?MILLISECONDS_IN_SECOND).
 
+-spec refresh(kz_term:ne_binaries(), kz_term:text() | non_neg_integer()) -> 'no_return'.
 refresh(Databases, Pause) ->
     Total = length(Databases),
-    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
-    kz_amqp_worker:relay_to(Worker, self()),
+    refresh(Databases, kz_term:to_integer(Pause), Total).
 
-    refresh(Databases, kz_term:to_integer(Pause), Total, Worker).
-
-refresh([], _, _, Worker) ->
-    kz_amqp_worker:checkin_worker(Worker),
-    'no_return';
-refresh([Database|Databases], Pause, Total, Worker) ->
+-spec refresh(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
+refresh([], _, _) -> 'no_return';
+refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
              ,[self(), length(Databases) + 1, Total, Database]),
-    _ = do_refresh(Database, Worker),
+    _ = refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
             'true' -> 'ok'
         end,
-    refresh(Databases, Pause, Total, Worker).
+    refresh(Databases, Pause, Total).
 
--spec get_databases() -> ne_binaries().
+-spec get_databases() -> kz_term:ne_binaries().
 get_databases() ->
     {'ok', Databases} = kz_datamgr:db_info(),
     lists:sort(fun get_database_sort/2, lists:usort(Databases ++ ?KZ_SYSTEM_DBS)).
 
--spec get_database_sort(ne_binary(), ne_binary()) -> boolean().
+-spec get_database_sort(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 get_database_sort(Db1, Db2) ->
     kzs_util:db_priority(Db1) < kzs_util:db_priority(Db2).
 
--type refresh_result() :: {kz_amqp_worker:request_return()
-                          ,kz_amqp_worker:request_return()
-                          }.
--spec refresh(ne_binary()) -> 'ok'.
+-spec refresh(kz_term:ne_binary()) -> 'ok'.
 refresh(Database) ->
-    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
-    kz_amqp_worker:relay_to(Worker, self()),
-    _ = do_refresh(Database, Worker),
-    kz_amqp_worker:checkin_worker(Worker).
-
--spec do_refresh(ne_binary(), pid()) -> refresh_result().
-do_refresh(Database, Worker) ->
-    Classification = kz_datamgr:db_classification(Database),
-    {kapi_maintenance:refresh_database(Database, Worker, Classification)
-    ,kapi_maintenance:refresh_views(Database, Worker, Classification)
-    }.
+    kz_datamgr:refresh_views(Database),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -301,7 +287,7 @@ remove_depreciated_databases() ->
     Databases = get_databases(),
     remove_depreciated_databases(Databases).
 
--spec remove_depreciated_databases(ne_binaries()) -> 'ok'.
+-spec remove_depreciated_databases(kz_term:ne_binaries()) -> 'ok'.
 remove_depreciated_databases([]) -> 'ok';
 remove_depreciated_databases([Database|Databases]) ->
     _ = case kz_datamgr:db_classification(Database) of
@@ -337,7 +323,7 @@ cleanup_aggregated_accounts([JObj|JObjs]) ->
         end,
     cleanup_aggregated_accounts(JObjs).
 
--spec cleanup_aggregated_account(ne_binary()) -> 'ok'.
+-spec cleanup_aggregated_account(kz_term:ne_binary()) -> 'ok'.
 cleanup_aggregated_account(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -346,7 +332,7 @@ cleanup_aggregated_account(Account) ->
         _Else -> 'ok'
     end.
 
--spec remove_aggregated_account(ne_binary()) -> 'ok'.
+-spec remove_aggregated_account(kz_term:ne_binary()) -> 'ok'.
 remove_aggregated_account(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     {'ok', JObj} = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
@@ -378,7 +364,7 @@ cleanup_aggregated_devices([JObj|JObjs]) ->
         end,
     cleanup_aggregated_devices(JObjs).
 
--spec cleanup_aggregated_device(ne_binary()) -> 'ok'.
+-spec cleanup_aggregated_device(kz_term:ne_binary()) -> 'ok'.
 cleanup_aggregated_device(DocId) ->
     {'ok', JObj} = kz_datamgr:open_doc(?KZ_SIP_DB, DocId),
     case kz_json:get_first_defined([<<"pvt_account_db">>
@@ -392,7 +378,7 @@ cleanup_aggregated_device(DocId) ->
             verify_aggregated_device(AccountDb, AccountId, JObj)
     end.
 
--spec verify_aggregated_device(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec verify_aggregated_device(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 verify_aggregated_device(AccountDb, AccountId, JObj) ->
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} ->
@@ -409,7 +395,7 @@ verify_aggregated_device(AccountDb, AccountId, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_voicemail_media(ne_binary()) ->
+-spec cleanup_voicemail_media(kz_term:ne_binary()) ->
                                      {'ok', kz_json:objects()} |
                                      {'error', any()}.
 cleanup_voicemail_media(Account) ->
@@ -433,7 +419,7 @@ cleanup_orphan_modbs() ->
                      end,
     lists:foreach(DeleteOrphaned, AccountMODbs).
 
--spec get_messages(ne_binary()) -> ne_binaries().
+-spec get_messages(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_messages(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     ViewOptions = ['include_docs'],
@@ -445,7 +431,7 @@ get_messages(Account) ->
             []
     end.
 
--spec extract_messages(kz_json:objects() | kz_json:object(), ne_binaries()) -> ne_binaries().
+-spec extract_messages(kz_json:objects() | kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 extract_messages([], CurMessages) -> CurMessages;
 extract_messages([Mess|Messages], CurMessages) ->
     extract_messages(Messages, [kz_json:get_value(<<"media_id">>, Mess)|CurMessages]);
@@ -453,7 +439,7 @@ extract_messages(JObj, CurMessages) ->
     Messages = kz_json:get_value([<<"doc">>, <<"messages">>], JObj, []),
     extract_messages(Messages, CurMessages).
 
--spec get_medias(ne_binary()) -> ne_binaries().
+-spec get_medias(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_medias(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     ViewOptions = [],
@@ -470,13 +456,12 @@ get_medias(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_limits() -> 'ok'.
--spec migrate_limits(atom() | string() | binary()) -> 'ok'.
 
+-spec migrate_limits() -> 'ok'.
 migrate_limits() ->
     migrate_all_limits(kapps_util:get_all_accounts()).
 
--spec migrate_all_limits(ne_binaries()) -> 'ok'.
+-spec migrate_all_limits(kz_term:ne_binaries()) -> 'ok'.
 migrate_all_limits(Accounts) ->
     Total = length(Accounts),
     lists:foldr(fun(A, C) -> migrate_limits_fold(A, C, Total) end, 1, Accounts),
@@ -490,6 +475,7 @@ migrate_limits_fold(AccountDb, Current, Total) ->
         end,
     Current + 1.
 
+-spec migrate_limits(atom() | string() | binary()) -> 'ok'.
 migrate_limits(Account) when not is_binary(Account) ->
     migrate_limits(kz_term:to_binary(Account));
 migrate_limits(Account) ->
@@ -517,7 +503,7 @@ migrate_limits(Account) ->
     _ = kz_datamgr:save_doc(AccountDb, JObj),
     'ok'.
 
--spec clean_trunkstore_docs(ne_binary(), integer(), integer()) ->
+-spec clean_trunkstore_docs(kz_term:ne_binary(), integer(), integer()) ->
                                    {integer(), integer()}.
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
     ViewOptions = ['include_docs'
@@ -528,7 +514,7 @@ clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
         {'error', _}=E -> E
     end.
 
--spec clean_trunkstore_docs(ne_binary(), kz_json:objects(), integer(), integer()) ->
+-spec clean_trunkstore_docs(kz_term:ne_binary(), kz_json:objects(), integer(), integer()) ->
                                    {integer(), integer()}.
 
 clean_trunkstore_docs(_, [], Trunks, InboundTrunks) ->
@@ -560,9 +546,8 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_media() -> 'ok'.
--spec migrate_media(atom() | string() | binary()) -> 'ok'.
 
+-spec migrate_media() -> 'ok'.
 migrate_media() ->
     Accounts = kapps_util:get_all_accounts(),
     Total = length(Accounts),
@@ -574,6 +559,7 @@ migrate_media_fold(AccountDb, Current, Total) ->
     _ = migrate_media(AccountDb),
     Current + 1.
 
+-spec migrate_media(atom() | string() | binary()) -> 'ok'.
 migrate_media(Account) when not is_binary(Account) ->
     migrate_media(kz_term:to_binary(Account));
 migrate_media(Account) ->
@@ -608,13 +594,13 @@ migrate_media(Account) ->
 ensure_aggregate_devices() ->
     ensure_aggregate_devices(kapps_util:get_all_accounts()).
 
--spec ensure_aggregate_devices(ne_binaries()) -> 'ok'.
+-spec ensure_aggregate_devices(kz_term:ne_binaries()) -> 'ok'.
 ensure_aggregate_devices([]) -> 'ok';
 ensure_aggregate_devices([Account|Accounts]) ->
     _ = ensure_aggregate_device(Account),
     ensure_aggregate_devices(Accounts).
 
--spec ensure_aggregate_device(ne_binary()) -> 'ok'.
+-spec ensure_aggregate_device(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_device(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
@@ -625,7 +611,7 @@ ensure_aggregate_device(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec refresh_account_devices(ne_binary(), ne_binary(), kz_json:objects()) -> 'ok'.
+-spec refresh_account_devices(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 refresh_account_devices(AccountDb, AccountRealm, Devices) ->
     _ = [kapps_util:add_aggregate_device(AccountDb, kz_json:get_value(<<"doc">>, Device))
          || Device <- Devices,
@@ -633,12 +619,12 @@ refresh_account_devices(AccountDb, AccountRealm, Devices) ->
         ],
     'ok'.
 
--spec should_aggregate_device(ne_binary(), kz_json:object()) -> boolean().
+-spec should_aggregate_device(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_aggregate_device(AccountRealm, Device) ->
     kz_device:sip_realm(Device, AccountRealm) =/= AccountRealm
         orelse kz_device:sip_ip(Device) =/= 'undefined'.
 
--spec remove_aggregate_devices(ne_binary(), ne_binary(), kz_json:objects()) -> 'ok'.
+-spec remove_aggregate_devices(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
     _ = [kapps_util:rm_aggregate_device(AccountDb, kz_json:get_value(<<"doc">>, Device))
          || Device <- Devices,
@@ -646,7 +632,7 @@ remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
         ],
     'ok'.
 
--spec should_remove_aggregate(ne_binary(), kz_json:object()) -> boolean().
+-spec should_remove_aggregate(kz_term:ne_binary(), kz_json:object()) -> boolean().
 should_remove_aggregate(AccountRealm, Device) ->
     kz_device:sip_realm(Device, AccountRealm) =:= AccountRealm
         andalso kz_device:sip_ip(Device) =:= 'undefined'.
@@ -657,7 +643,7 @@ should_remove_aggregate(AccountRealm, Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_invalid_acccount_dbs() -> ne_binaries().
+-spec find_invalid_acccount_dbs() -> kz_term:ne_binaries().
 find_invalid_acccount_dbs() ->
     lists:foldr(fun find_invalid_acccount_dbs_fold/2, [], kapps_util:get_all_accounts()).
 
@@ -674,7 +660,7 @@ find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_migrate_attachments(ne_binary(), ne_binary(), kz_json:object()) -> any().
+-spec maybe_migrate_attachments(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> any().
 maybe_migrate_attachments(AccountDb, Id, JObj) ->
     case kz_doc:attachments(JObj) of
         'undefined' ->
@@ -686,7 +672,7 @@ maybe_migrate_attachments(AccountDb, Id, JObj) ->
                 ]
     end.
 
--spec migrate_attachment(ne_binary(), kz_json:object()) -> 'ok'.
+-spec migrate_attachment(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 migrate_attachment(AccountDb, ViewJObj) ->
     Id = kz_doc:id(ViewJObj),
     _ = case kz_datamgr:open_doc(AccountDb, Id) of
@@ -732,7 +718,7 @@ remove_deprecated_attachment_properties(AccountDb, Id, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_attachment(ne_binary(), kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec migrate_attachment(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
     DocCT = kz_json:get_value(<<"content_type">>, JObj),
     MetaCT = kz_json:get_value(<<"content_type">>, MetaData),
@@ -752,7 +738,7 @@ maybe_update_attachment_content_type(A, MCT, DocCT) ->
         {'false', 'false'} -> {A, find_attachment_content_type(A)}
     end.
 
--spec find_attachment_content_type(ne_binary()) -> ne_binary().
+-spec find_attachment_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 find_attachment_content_type(A) ->
     try cow_mimetypes:all(A) of
         {Type, SubType, _Options} -> kz_binary:join([Type, SubType], <<"/">>)
@@ -760,7 +746,7 @@ find_attachment_content_type(A) ->
         'error':'function_clause' -> <<"audio/mpeg">>
     end.
 
--spec maybe_add_extension({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary()}.
+-spec maybe_add_extension({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 maybe_add_extension({A, CT}=T) ->
     case kz_term:is_empty(filename:extension(A)) of
         'false' -> T;
@@ -773,8 +759,8 @@ maybe_add_extension({A, CT}=T) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type attachment_and_content() :: {ne_binary(), ne_binary()}.
--spec maybe_update_attachment(ne_binary(), ne_binary(), attachment_and_content(), attachment_and_content()) -> 'ok'.
+-type attachment_and_content() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec maybe_update_attachment(kz_term:ne_binary(), kz_term:ne_binary(), attachment_and_content(), attachment_and_content()) -> 'ok'.
 maybe_update_attachment(_, _, {Attachment, CT}, {Attachment, CT}) -> 'ok';
 maybe_update_attachment(AccountDb, Id, {OrigAttach, _CT1}, {NewAttach, CT}) ->
     %% this preforms the following:
@@ -794,7 +780,7 @@ maybe_update_attachment(AccountDb, Id, {OrigAttach, _CT1}, {NewAttach, CT}) ->
                ],
     lists:foldl(fun(F, Acc) -> F(Acc) end, [], Updaters).
 
--spec try_load_attachment(ne_binary(), ne_binary(), ne_binary()) ->
+-spec try_load_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                  binary().
 try_load_attachment(AccountDb, Id, OrigAttach) ->
     case kz_datamgr:fetch_attachment(AccountDb, Id, OrigAttach) of
@@ -804,7 +790,7 @@ try_load_attachment(AccountDb, Id, OrigAttach) ->
             throw(E)
     end.
 
--spec maybe_resave_attachment(binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec maybe_resave_attachment(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      'ok'.
 maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
     {'ok', Rev} = kz_datamgr:lookup_doc_rev(AccountDb, Id),
@@ -832,7 +818,7 @@ maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
             end
     end.
 
--spec maybe_cleanup_old_attachment(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec maybe_cleanup_old_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_cleanup_old_attachment(_AccountDb, _Id, NewAttach, NewAttach) ->
     io:format("updated content type for ~s/~s/~s~n", [_AccountDb, _Id, NewAttach]);
 maybe_cleanup_old_attachment(AccountDb, Id, OrigAttach, NewAttach) ->
@@ -851,7 +837,7 @@ maybe_cleanup_old_attachment(AccountDb, Id, OrigAttach, NewAttach) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_extension(ne_binary(), ne_binary()) -> ne_binary().
+-spec add_extension(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 add_extension(A, <<"audio/x-wav">>) ->
     <<A/binary, ".wav">>;
 add_extension(A, <<"audio/wav">>) ->
@@ -874,7 +860,7 @@ add_extension(A, _) -> A.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_audio_content(ne_binary()) -> boolean().
+-spec is_audio_content(kz_term:ne_binary()) -> boolean().
 is_audio_content(<<"audio/", _/binary>>) -> 'true';
 is_audio_content(_) -> 'false'.
 
@@ -884,7 +870,7 @@ is_audio_content(_) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_delete_db(ne_binary()) -> 'ok'.
+-spec maybe_delete_db(kz_term:ne_binary()) -> 'ok'.
 maybe_delete_db(Database) ->
     case kapps_config:get_is_true(?SYSCONFIG_COUCH, <<"allow_maintenance_db_delete">>, 'false') of
         'true' ->
@@ -900,11 +886,8 @@ maybe_delete_db(Database) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary()) ->
-                            {'ok', kz_json:objects()} |
-                            {'error', _} |
-                            'ok'.
--spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary(), integer()) ->
+
+-spec purge_doc_type(kz_term:ne_binaries() | kz_term:ne_binary(), kz_term:ne_binary()) ->
                             {'ok', kz_json:objects()} |
                             {'error', _} |
                             'ok'.
@@ -933,6 +916,10 @@ purge_doc_type(Type, Account) when not is_binary(Account) ->
                   ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   ).
 
+-spec purge_doc_type(kz_term:ne_binaries() | kz_term:ne_binary(), kz_term:ne_binary(), integer()) ->
+                            {'ok', kz_json:objects()} |
+                            {'error', _} |
+                            'ok'.
 purge_doc_type(Type, Account, ChunkSize) ->
     Db = kz_util:format_account_id(Account, 'encoded'),
     Opts = [{'key', Type}
@@ -948,10 +935,11 @@ purge_doc_type(Type, Account, ChunkSize) ->
             purge_doc_type(Type, Account, ChunkSize)
     end.
 
--spec call_id_status(ne_binary()) -> 'ok'.
--spec call_id_status(ne_binary(), boolean() | ne_binary()) -> 'ok'.
+-spec call_id_status(kz_term:ne_binary()) -> 'ok'.
 call_id_status(CallId) ->
     call_id_status(CallId, 'false').
+
+-spec call_id_status(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
 call_id_status(CallId, Verbose) ->
     Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
            | kz_api:default_headers(<<"shell">>, <<"0">>)
@@ -967,7 +955,7 @@ call_id_status(CallId, Verbose) ->
             lager:info("failed to get status of '~s': '~p'", [CallId, _E])
     end.
 
--spec show_status(ne_binary(), boolean(), api_terms()) -> 'ok'.
+-spec show_status(kz_term:ne_binary(), boolean(), kz_term:api_terms()) -> 'ok'.
 show_status(CallId, 'false', Resp) ->
     lager:info("channel '~s' has status '~s'", [CallId, kapi_call:get_status(Resp)]);
 show_status(CallId, 'true', Resp) ->
@@ -977,11 +965,11 @@ show_status(CallId, 'true', Resp) ->
     lager:info("Responding App: ~s", [kz_json:get_value(<<"App-Name">>, Resp)]),
     lager:info("Responding Node: ~s", [kz_json:get_value(<<"Node">>, Resp)]).
 
--spec last_migrate_version() -> ne_binary().
+-spec last_migrate_version() -> kz_term:ne_binary().
 last_migrate_version() ->
     kapps_config:get_ne_binary(?MODULE, <<"migrate_current_version">>, <<"3.22">>).
 
--spec set_last_migrate_version(ne_binary()) -> {'ok', kz_json:object()}.
+-spec set_last_migrate_version(kz_term:ne_binary()) -> {'ok', kz_json:object()}.
 set_last_migrate_version(Version) ->
     kapps_config:set(?MODULE, <<"migrate_current_version">>, Version).
 
@@ -989,7 +977,7 @@ set_last_migrate_version(Version) ->
 migrate_system() ->
     migrate_system(last_migrate_version(), kz_util:kazoo_version()).
 
--spec migrate_system(ne_binary(), ne_binary()) -> 'ok'.
+-spec migrate_system(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 migrate_system(ThisVersion, ThisVersion) ->
     lager:notice("system config version is ~s", [ThisVersion]);
 migrate_system(PreviousVersion, ThisVersion) ->
@@ -1008,7 +996,7 @@ migrate_system(PreviousVersion, ThisVersion) ->
         'false' -> 'ok'
     end.
 
--spec migrate_system_version_routines(ne_binary(), ne_binary()) -> [fun()].
+-spec migrate_system_version_routines(kz_term:ne_binary(), kz_term:ne_binary()) -> [fun()].
 migrate_system_version_routines(<<"3.22">>, _) ->
     [fun handle_module_rename/0];
 migrate_system_version_routines(_, _) -> [].
@@ -1040,7 +1028,7 @@ maybe_new(_) -> kz_json:new().
 get_config_document(Id) ->
     kz_doc:public_fields(maybe_new(kapps_config:get_category(Id))).
 
--spec validate_system_config(ne_binary()) -> [{_, _}].
+-spec validate_system_config(kz_term:ne_binary()) -> [{_, _}].
 validate_system_config(Id) ->
     Doc = get_config_document(Id),
     Keys = kz_json:get_keys(Doc),
@@ -1061,7 +1049,7 @@ get_error({error, Errors}) -> [ get_error(Error) || Error <- Errors ];
 get_error({Code, _Schema, Error, Value, Path}) -> {Code, Error, Value, Path};
 get_error(X) -> X.
 
--spec cleanup_system_config(ne_binary()) -> {'ok', kz_json:object()}.
+-spec cleanup_system_config(kz_term:ne_binary()) -> {'ok', kz_json:object()}.
 cleanup_system_config(Id) ->
     Doc = maybe_new(kapps_config:get_category(Id)),
     ErrorKeys = [ Key || {Key, _} <- validate_system_config(Id), Key =/= no_schema_for ],
@@ -1072,7 +1060,7 @@ cleanup_system_config(Id) ->
 cleanup_system_configs() ->
     [ cleanup_system_config(Id) || {Id, _Err} <- validate_system_configs() ].
 
--spec validate_system_configs() -> [{ne_binary(), _}].
+-spec validate_system_configs() -> [{kz_term:ne_binary(), _}].
 validate_system_configs() ->
     Results = [ {Config, validate_system_config(Config)} || Config <- kapps_config_doc:list_configs() ],
     [ Result || Result = {_, Status} <- Results, Status =/= [] ].
@@ -1105,3 +1093,26 @@ fetch_all_account_views() ->
      |kapps_util:get_views_json('crossbar', "account")
      ++ kapps_util:get_views_json('callflow', "views")
     ].
+
+-spec init_dbs() -> 'ok'.
+init_dbs() ->
+    SipViews = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)],
+    _ = kapps_util:update_views(?KZ_SIP_DB, SipViews, 'false'),
+    Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
+            ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
+            ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
+            ],
+    _ = kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'false'),
+    _ = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB, 'kazoo_ips', "views"),
+    'ok'.
+
+register_account_views() ->
+    kazoo_modb_maintenance:register_views(),
+    Views = fetch_all_account_views(),
+    kz_datamgr:register_views('account', Views).
+
+-spec init_system() -> 'ok'.
+init_system() ->
+    init_dbs(),
+    register_account_views(),
+    lager:notice("system initialized").

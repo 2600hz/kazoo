@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -40,7 +40,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -54,16 +54,16 @@ add(#data_connection{tag='undefined'}=Connection) ->
 add(#data_connection{}=Connection) ->
     gen_server:cast(?SERVER, {'add_connection', Connection}).
 
--spec wait_for_connection() -> 'ok' | 'no_connection'.
--spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
--spec wait_for_connection(any(), kz_timeout()) -> 'ok' | 'no_connection'.
 
+-spec wait_for_connection() -> 'ok' | 'no_connection'.
 wait_for_connection() ->
     wait_for_connection('local').
 
+-spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
 wait_for_connection(Tag) ->
     wait_for_connection(Tag, 'infinity').
 
+-spec wait_for_connection(any(), timeout()) -> 'ok' | 'no_connection'.
 wait_for_connection(_Tag, 0) -> 'no_connection';
 wait_for_connection(Tag, Timeout) ->
     Start = os:timestamp(),
@@ -100,12 +100,13 @@ get_server(Tag) ->
         _ -> 'undefined'
     end.
 
+
 -spec test_conn() -> {'ok', kz_json:object()} |
                      {'error', any()}.
+test_conn() -> test_conn('local').
+
 -spec test_conn(term()) -> {'ok', kz_json:object()} |
                            {'error', any()}.
-
-test_conn() -> test_conn('local').
 test_conn(Tag) ->
     case get_server(Tag) of
         'undefined' -> {'error', 'server_not_available'};
@@ -152,7 +153,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -166,7 +167,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_connection', #data_connection{}=Connection}, State) ->
     lager:info("adding connection"),
     maybe_start_new_connection(Connection),
@@ -188,7 +189,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

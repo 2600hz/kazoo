@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,19 +12,19 @@
 
 -include("media.hrl").
 
--spec prompt_url(ne_binary()) -> 'ok'.
--spec prompt_url(ne_binary(), ne_binary()) -> 'ok'.
--spec prompt_url(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 
+-spec prompt_url(kz_term:ne_binary()) -> 'ok'.
 prompt_url(PromptId) ->
     AccountId = ?KZ_MEDIA_DB,
     Language = kz_media_util:default_prompt_language(),
     prompt_url(PromptId, AccountId, Language).
 
+-spec prompt_url(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 prompt_url(PromptId, AccountId) ->
     Language = kz_media_util:prompt_language(AccountId),
     prompt_url(PromptId, AccountId, Language).
 
+-spec prompt_url(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 prompt_url(PromptId, AccountId, Language) ->
     case kz_media_url:playback(<<"prompt://", AccountId/binary, "/", PromptId/binary, "/", Language/binary>>, kz_json:new()) of
         {'error', _E} ->

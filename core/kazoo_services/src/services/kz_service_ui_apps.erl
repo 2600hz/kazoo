@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -23,8 +23,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), ne_binary()) -> kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     case kz_datamgr:open_doc(?ACCOUNTS_DB, AccountId) of
@@ -49,6 +49,7 @@ reconcile_account(Services, AccountDoc) ->
                  ,kz_json:get_value(<<"ui_apps">>, AccountDoc, kz_json:new())
                  ).
 
+-spec reconcile(kz_services:services(), kz_term:ne_binary()) -> kz_services:services().
 reconcile(Services, AppName) ->
     %% Because you can only be charged once for an app
     NewServices = kz_services:reset_category(?CATEGORY, Services),

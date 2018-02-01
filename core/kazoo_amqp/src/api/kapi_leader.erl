@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017 2600Hz
+%%% @copyright (C) 2018 2600Hz
 %%% @doc
 %%% FS passthrough API
 %%% @end
@@ -32,11 +32,11 @@ whoami(Pid) when is_pid(Pid) ->
         _ -> Pid
     end.
 
--spec queue() -> ne_binary().
+-spec queue() -> kz_term:ne_binary().
 queue() ->
     queue(self()).
 
--spec queue(pid()) -> ne_binary().
+-spec queue(pid()) -> kz_term:ne_binary().
 queue(Pid) when is_pid(Pid) ->
     case whoami(Pid) of
         Pid -> exit(<<"not registered">>);
@@ -48,26 +48,26 @@ queue(Name) when is_atom(Name) ->
 queue({Name, Node}) ->
     queue(Name, Node).
 
--spec queue(atom(), atom()) -> ne_binary().
+-spec queue(atom(), atom()) -> kz_term:ne_binary().
 queue(Name, Node) ->
     iolist_to_binary(io_lib:format("~s-~s", [Node, Name])).
 
--spec route() -> ne_binary().
+-spec route() -> kz_term:ne_binary().
 route() ->
     route(self()).
 
--spec route(pid() | atom()) -> ne_binary().
+-spec route(pid() | atom()) -> kz_term:ne_binary().
 route(Pid) when is_pid(Pid) ->
     {'registered_name', Name} = erlang:process_info(Pid, 'registered_name'),
     route(Name);
 route(Name) when is_atom(Name) ->
     route(Name, node()).
 
--spec route(atom(), atom()) -> ne_binary().
+-spec route(atom(), atom()) -> kz_term:ne_binary().
 route(Name, Node) ->
     iolist_to_binary(io_lib:format("~s.~s", [Name, Node])).
 
--spec req(api_terms()) -> api_formatter_return().
+-spec req(kz_term:api_terms()) -> api_formatter_return().
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?LEADER_REQ_HEADERS, ?OPTIONAL_LEADER_REQ_HEADERS);
@@ -76,7 +76,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(kz_term:api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?LEADER_REQ_HEADERS, ?LEADER_REQ_VALUES, ?LEADER_REQ_TYPES);
 req_v(JObj) ->
@@ -91,15 +91,16 @@ req_v(JObj) ->
 declare_exchanges() ->
     amqp_util:leader_exchange().
 
--spec publish_req(ne_binary(), api_terms()) -> 'ok'.
--spec publish_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_req(Routing, JObj) ->
     publish_req(Routing, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Routing, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?LEADER_REQ_VALUES, fun req/1),
     amqp_util:leader_publish(Routing, Payload, ContentType).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, [{'name', Name}]) ->
     Node = node(),
     ProcessQ = iolist_to_binary(io_lib:format("~s.~s", [Name, Node])),
@@ -107,6 +108,6 @@ bind_q(Queue, [{'name', Name}]) ->
     _ = ['ok' = amqp_util:bind_q_to_leader(Queue, Bind) || Bind <- [ProcessQ, BroadcastQ]],
     'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _) ->
     'ok' = amqp_util:unbind_q_from_leader(Queue, <<"process">>).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle e911 provisioning
@@ -28,12 +28,13 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
+-spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -67,7 +68,7 @@ delete(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_valid_location(kz_json:object()) -> {'ok', kz_json:object()} |
-                                             {'error', ne_binary()}.
+                                             {'error', kz_term:ne_binary()}.
 is_valid_location(Location) ->
     URL = knm_vitelity_util:build_uri(location_options(Location)),
     case knm_vitelity_util:query_vitelity(URL) of
@@ -81,7 +82,7 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_location(ne_binary() | knm_number:knm_number()) ->
+-spec get_location(kz_term:ne_binary() | knm_number:knm_number()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
 get_location(?NE_BINARY=DID) ->
@@ -109,12 +110,13 @@ feature(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
--spec maybe_update_e911(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 maybe_update_e911(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     maybe_update_e911(Number, IsDryRun).
 
+-spec maybe_update_e911(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 maybe_update_e911(Number, 'true') ->
     CurrentE911 = feature(Number),
     E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
@@ -159,8 +161,8 @@ maybe_update_e911(Number, 'false') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_number(knm_number:knm_number()) ->
-                           {'ok', kz_json:object() | ne_binary()} |
-                           {'error', ne_binary()}.
+                           {'ok', kz_json:object() | kz_term:ne_binary()} |
+                           {'error', kz_term:ne_binary()}.
 remove_number(Number) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
     URI = knm_vitelity_util:build_uri(remove_e911_options(DID)),
@@ -175,7 +177,7 @@ remove_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_e911_options(ne_binary()) -> knm_vitelity_util:query_options().
+-spec remove_e911_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 remove_e911_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'xml', <<"yes">>}
@@ -191,7 +193,7 @@ remove_e911_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_location_options(ne_binary()) -> knm_vitelity_util:query_options().
+-spec get_location_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 get_location_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'xml', <<"yes">>}
@@ -208,8 +210,8 @@ get_location_options(DID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
-                         {'ok', kz_json:object() | ne_binary()} |
-                         {'error', ne_binary()}.
+                         {'ok', kz_json:object() | kz_term:ne_binary()} |
+                         {'error', kz_term:ne_binary()}.
 update_e911(Number, Address) ->
     URI = knm_vitelity_util:build_uri(e911_options(Number, Address)),
     case knm_vitelity_util:query_vitelity(URI) of
@@ -252,7 +254,7 @@ e911_options(Number, AddressJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_unit(ne_binary()) -> {api_binary(), api_binary()}.
+-spec get_unit(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 get_unit(ExtendedAddress) ->
     case binary:split(ExtendedAddress, <<" ">>) of
         [UnitType, UnitNumber|_] -> {UnitType, UnitNumber};
@@ -260,7 +262,7 @@ get_unit(ExtendedAddress) ->
         _ -> {'undefined', 'undefined'}
     end.
 
--spec get_caller_name(knm_number:knm_number(), kz_json:object()) -> ne_binary().
+-spec get_caller_name(knm_number:knm_number(), kz_json:object()) -> kz_term:ne_binary().
 get_caller_name(Number, AddressJObj) ->
     case kz_json:get_ne_binary_value(?CUSTOMER_NAME, AddressJObj) of
         ?NE_BINARY=Name -> Name;
@@ -301,8 +303,8 @@ location_options(AddressJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_resp(text()) -> {'ok', kz_json:object() | ne_binary()} |
-                                  {'error', ne_binary()}.
+-spec process_xml_resp(kz_term:text()) -> {'ok', kz_json:object() | kz_term:ne_binary()} |
+                                          {'error', kz_term:ne_binary()}.
 process_xml_resp(RespXML_binary) ->
     RespXML = unicode:characters_to_list( RespXML_binary),
     try xmerl_scan:string(RespXML) of
@@ -319,8 +321,8 @@ process_xml_resp(RespXML_binary) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_content_tag(xml_el()) -> {'ok', kz_json:object() | ne_binary()} |
-                                           {'error', ne_binary()}.
+-spec process_xml_content_tag(kz_types:xml_el()) -> {'ok', kz_json:object() | kz_term:ne_binary()} |
+                                                    {'error', kz_term:ne_binary()}.
 process_xml_content_tag(#xmlElement{name='content'
                                    ,content=Children
                                    }) ->
@@ -336,7 +338,7 @@ process_xml_content_tag(#xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec xml_resp(xml_els()) -> kz_json:object() | ne_binary().
+-spec xml_resp(kz_types:xml_els()) -> kz_json:object() | kz_term:ne_binary().
 xml_resp([#xmlElement{name='info'
                      ,content=Content
                      }

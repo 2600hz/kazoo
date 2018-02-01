@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -39,18 +39,18 @@
 -define(PVT_TYPE, <<"token_restrictions">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".token_restrictions">>).
 
--spec default_priv_level() -> ne_binary().
+-spec default_priv_level() -> kz_term:ne_binary().
 default_priv_level() ->
     kapps_config:get_binary(?MOD_CONFIG_CAT
                            ,<<"default_priv_level">>
                            ,<<"admin">>
                            ).
 
--spec default_method_restrictions() -> api_object().
+-spec default_method_restrictions() -> kz_term:api_object().
 default_method_restrictions() ->
     kapps_config:get_json(?MOD_CONFIG_CAT, ?CATCH_ALL).
 
--spec method_restrictions(atom()) -> api_object().
+-spec method_restrictions(atom()) -> kz_term:api_object().
 method_restrictions(AuthModule) ->
     kapps_config:get_json(?MOD_CONFIG_CAT, AuthModule).
 
@@ -76,10 +76,10 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     load_restrictions(Context);
 validate(Context, ?HTTP_POST) ->
@@ -130,7 +130,7 @@ delete(Context) ->
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
                        'false' |
-                       {'true' | 'halt', cb_context:context()}.
+                       {'true' | 'stop', cb_context:context()}.
 authorize(Context) ->
     case maybe_deny_access(Context) of
         'false' -> 'false';
@@ -139,7 +139,7 @@ authorize(Context) ->
             Cause = kz_json:from_list(
                       [{<<"cause">>, <<"access denied by token restrictions">>}]
                      ),
-            {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
+            {'stop', cb_context:add_system_error('forbidden', Cause, Context)}
     end.
 
 -spec maybe_deny_access(cb_context:context()) -> boolean().
@@ -154,7 +154,7 @@ maybe_deny_access(Context) ->
 get_auth_restrictions(AuthDoc) ->
     kz_json:get_json_value(<<"restrictions">>, AuthDoc).
 -else.
--spec get_auth_restrictions(api_object()) -> api_object().
+-spec get_auth_restrictions(kz_term:api_object()) -> kz_term:api_object().
 get_auth_restrictions('undefined') ->
     lager:debug("no auth doc to check"),
     'undefined';
@@ -185,15 +185,15 @@ maybe_deny_access(Context, Restrictions) ->
         _Else -> 'false'
     end.
 
--spec match_endpoint(cb_context:context(), api_object()) ->
-                            api_object().
+-spec match_endpoint(cb_context:context(), kz_term:api_object()) ->
+                            kz_term:api_object().
 match_endpoint(Context, Restrictions) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
 
     match_request_endpoint(Restrictions, ReqEndpoint).
 
--spec match_request_endpoint(api_object(), ne_binary()) ->
-                                    api_objects().
+-spec match_request_endpoint(kz_term:api_object(), kz_term:ne_binary()) ->
+                                    kz_term:api_objects().
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
     kz_json:get_list_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
@@ -202,15 +202,15 @@ match_request_endpoint(Restrictions, ReqEndpoint) ->
         EndpointRestrictions -> EndpointRestrictions
     end.
 
--spec match_account(cb_context:context(), api_objects()) -> api_object().
+-spec match_account(cb_context:context(), kz_term:api_objects()) -> kz_term:api_object().
 match_account(_Context, 'undefined') -> 'undefined';
 match_account(_Context, []) -> 'undefined';
 match_account(Context, EndpointRestrictions) ->
     AllowedAccounts = allowed_accounts(Context),
     find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
 
--spec find_endpoint_restrictions_by_account(ne_binaries(), kz_json:objects()) ->
-                                                   api_object().
+-spec find_endpoint_restrictions_by_account(kz_term:ne_binaries(), kz_json:objects()) ->
+                                                   kz_term:api_object().
 find_endpoint_restrictions_by_account(_Accounts, []) ->
     'undefined';
 find_endpoint_restrictions_by_account(AllowedAccounts
@@ -225,7 +225,7 @@ find_endpoint_restrictions_by_account(AllowedAccounts
             find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
     end.
 
--spec maybe_match_accounts(ne_binaries(), api_binaries()) -> boolean().
+-spec maybe_match_accounts(kz_term:ne_binaries(), kz_term:api_binaries()) -> boolean().
 maybe_match_accounts(_AllowedAccounts, 'undefined') -> 'true';
 maybe_match_accounts(_AllowedAccounts, [?CATCH_ALL]) -> 'true';
 maybe_match_accounts(AllowedAccounts, RestrictionAccounts) ->
@@ -235,7 +235,7 @@ maybe_match_accounts(AllowedAccounts, RestrictionAccounts) ->
       sets:intersection(SetsAllowedAccounts, SetsRsAccounts)
      ) > 0.
 
--spec allowed_accounts(cb_context:context()) -> ne_binaries().
+-spec allowed_accounts(cb_context:context()) -> kz_term:ne_binaries().
 allowed_accounts(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
 
@@ -249,7 +249,7 @@ allowed_accounts(Context) ->
 allowed_accounts(?AUTH_ACCOUNT_ID, ?ACCOUNT_ID = AccountId) ->
     [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>].
 -else.
--spec allowed_accounts(api_binary(), api_binary()) -> ne_binaries().
+-spec allowed_accounts(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:ne_binaries().
 allowed_accounts('undefined', _AccountId) -> [?CATCH_ALL];
 allowed_accounts(_AuthAccountId, 'undefined') -> [?CATCH_ALL];
 allowed_accounts(AuthAccountId, AccountId) ->
@@ -259,7 +259,7 @@ allowed_accounts(AuthAccountId, AccountId) ->
     end.
 -endif.
 
--spec match_arguments(cb_context:context(), api_object()) ->
+-spec match_arguments(cb_context:context(), kz_term:api_object()) ->
                              http_methods().
 match_arguments(_Context, 'undefined') -> [];
 match_arguments(Context, RulesJObj) ->
@@ -267,7 +267,7 @@ match_arguments(Context, RulesJObj) ->
     RuleKeys = kz_json:get_keys(RulesJObj),
     match_argument_patterns(ReqParams, RulesJObj, RuleKeys).
 
--spec match_argument_patterns(req_nouns(), kz_json:object(), ne_binaries()) ->
+-spec match_argument_patterns(req_nouns(), kz_json:object(), kz_term:ne_binaries()) ->
                                      http_methods().
 match_argument_patterns(_ReqParams, _RulesJObj, []) -> [];
 match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
@@ -277,7 +277,7 @@ match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
             kz_json:get_list_value(MatchedRuleKey, RulesJObj, [])
     end.
 
--spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().
+-spec match_rules(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:api_binary().
 match_rules(_ReqParams, []) -> 'undefined';
 match_rules(ReqParams, [RuleKey|RuleKeys]) ->
     case does_rule_match(RuleKey, ReqParams) of
@@ -285,7 +285,7 @@ match_rules(ReqParams, [RuleKey|RuleKeys]) ->
         'true' -> RuleKey
     end.
 
--spec does_rule_match(ne_binary(), ne_binaries()) -> boolean().
+-spec does_rule_match(kz_term:ne_binary(), kz_term:ne_binaries()) -> boolean().
 does_rule_match(RuleKey, ReqParams) ->
     kazoo_bindings:matches(binary:split(RuleKey, <<"/">>, ['global', 'trim'])
                           ,ReqParams

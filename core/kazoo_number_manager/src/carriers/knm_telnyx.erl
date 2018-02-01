@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% A Number Manager module for carrier: telnyx.com
@@ -63,8 +63,8 @@ is_number_billable(_Number) -> 'true'.
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
-                                      {error, any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
+                                              {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 
@@ -74,7 +74,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(<<"+1", Prefix:3/binary, _/binary>>, Quantity, Options)
   when ?IS_US_TOLLFREE(Prefix) ->
@@ -153,7 +153,7 @@ should_lookup_cnam() -> 'true'.
 %%% Internals
 
 -type kind() :: 'npa' | 'tollfree' | 'region'.
--spec numbers(kind(), pos_integer(), ne_binary(), api_ne_binary()) ->
+-spec numbers(kind(), pos_integer(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                      kz_json:objects().
 numbers(SearchKind, Quantity, Prefix, NXX) ->
     Descriptor = kz_json:from_list(search_prefix(SearchKind, Prefix, NXX)),

@@ -204,7 +204,7 @@
 -define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
 -define(SMS_OUTBOUND_OPTIONS, kapps_config:get_json(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)).
 
--spec message(api_terms()) -> api_formatter_return().
+-spec message(kz_term:api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->
     EPs = [begin
                {'ok', EPProps} = message_endpoint_headers(EP),
@@ -221,27 +221,27 @@ message(Prop) when is_list(Prop) ->
 message(JObj) ->
     message(kz_json:to_proplist(JObj)).
 
--spec message_v(api_terms()) -> boolean().
+-spec message_v(kz_term:api_terms()) -> boolean().
 message_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SMS_REQ_HEADERS, ?SMS_REQ_VALUES, ?SMS_REQ_TYPES);
 message_v(JObj) ->
     message_v(kz_json:to_proplist(JObj)).
 
--spec message_endpoint_headers(api_terms()) -> {'ok', kz_proplist()} |
-                                               {'error', string()}.
+-spec message_endpoint_headers(kz_term:api_terms()) -> {'ok', kz_term:proplist()} |
+                                                       {'error', string()}.
 message_endpoint_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?SMS_REQ_ENDPOINT_HEADERS, ?OPTIONAL_SMS_REQ_ENDPOINT_HEADERS);
 message_endpoint_headers(JObj) ->
     message_endpoint_headers(kz_json:to_proplist(JObj)).
 
--spec message_endpoint_v(api_terms()) -> boolean().
+-spec message_endpoint_v(kz_term:api_terms()) -> boolean().
 message_endpoint_v(Prop) when is_list(Prop) ->
     kz_api:validate_message(Prop, ?SMS_REQ_ENDPOINT_HEADERS, ?SMS_REQ_ENDPOINT_VALUES, ?SMS_REQ_ENDPOINT_TYPES);
 message_endpoint_v(JObj) ->
     message_endpoint_v(kz_json:to_proplist(JObj)).
 
--spec delivery(api_terms()) -> {'ok', iolist()} |
-                               {'error', string()}.
+-spec delivery(kz_term:api_terms()) -> {'ok', iolist()} |
+                                       {'error', string()}.
 delivery(Prop) when is_list(Prop) ->
     case delivery_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DELIVERY_HEADERS, ?OPTIONAL_DELIVERY_HEADERS);
@@ -249,13 +249,13 @@ delivery(Prop) when is_list(Prop) ->
     end;
 delivery(JObj) -> delivery(kz_json:to_proplist(JObj)).
 
--spec delivery_v(api_terms()) -> boolean().
+-spec delivery_v(kz_term:api_terms()) -> boolean().
 delivery_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DELIVERY_HEADERS, ?DELIVERY_REQ_VALUES, ?DELIVERY_TYPES);
 delivery_v(JObj) -> delivery_v(kz_json:to_proplist(JObj)).
 
--spec inbound(api_terms()) -> {'ok', iolist()} |
-                              {'error', string()}.
+-spec inbound(kz_term:api_terms()) -> {'ok', iolist()} |
+                                      {'error', string()}.
 inbound(Prop) when is_list(Prop) ->
     case inbound_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?INBOUND_HEADERS, ?OPTIONAL_INBOUND_HEADERS);
@@ -263,13 +263,13 @@ inbound(Prop) when is_list(Prop) ->
     end;
 inbound(JObj) -> inbound(kz_json:to_proplist(JObj)).
 
--spec inbound_v(api_terms()) -> boolean().
+-spec inbound_v(kz_term:api_terms()) -> boolean().
 inbound_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?INBOUND_HEADERS, ?INBOUND_REQ_VALUES, ?INBOUND_TYPES);
 inbound_v(JObj) -> inbound_v(kz_json:to_proplist(JObj)).
 
--spec outbound(api_terms()) -> {'ok', iolist()} |
-                               {'error', string()}.
+-spec outbound(kz_term:api_terms()) -> {'ok', iolist()} |
+                                       {'error', string()}.
 outbound(Prop) when is_list(Prop) ->
     case outbound_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?OUTBOUND_HEADERS, ?OPTIONAL_OUTBOUND_HEADERS);
@@ -277,13 +277,13 @@ outbound(Prop) when is_list(Prop) ->
     end;
 outbound(JObj) -> outbound(kz_json:to_proplist(JObj)).
 
--spec outbound_v(api_terms()) -> boolean().
+-spec outbound_v(kz_term:api_terms()) -> boolean().
 outbound_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?OUTBOUND_HEADERS, ?OUTBOUND_REQ_VALUES, ?OUTBOUND_TYPES);
 outbound_v(JObj) -> outbound_v(kz_json:to_proplist(JObj)).
 
--spec resume(api_terms()) -> {'ok', iolist()} |
-                             {'error', string()}.
+-spec resume(kz_term:api_terms()) -> {'ok', iolist()} |
+                                     {'error', string()}.
 resume(Prop) when is_list(Prop) ->
     case resume_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESUME_REQ_HEADERS, ?OPTIONAL_RESUME_REQ_HEADERS);
@@ -291,7 +291,7 @@ resume(Prop) when is_list(Prop) ->
     end;
 resume(JObj) -> resume(kz_json:to_proplist(JObj)).
 
--spec resume_v(api_terms()) -> boolean().
+-spec resume_v(kz_term:api_terms()) -> boolean().
 resume_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESUME_REQ_HEADERS, ?RESUME_REQ_VALUES, ?RESUME_REQ_TYPES);
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
@@ -300,14 +300,14 @@ resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
 %% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, props:get_value('message_id', Props, <<"*">>)),
     RouteId = ?LOWER(props:get_value('route_id', Props, <<"*">>)),
     Exchange = props:get_value('exchange', Props, ?SMS_EXCHANGE),
     bind_q(Exchange, Queue, CallId, RouteId, props:get_value('restrict_to', Props)).
 
--spec bind_q(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Exchange, Queue, CallId, RouteId, 'undefined') ->
     amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
     amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
@@ -331,14 +331,14 @@ bind_q(Exchange, Queue, CallId, RouteId, ['outbound'|Restrict]) ->
     bind_q(Exchange, Queue, CallId, RouteId, Restrict);
 bind_q(_, _, _, _, []) -> 'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, props:get_value('message_id', Props, <<"*">>)),
     RouteId = ?LOWER(props:get_value('route_id', Props, <<"*">>)),
     Exchange = props:get_value('exchange', Props, ?SMS_EXCHANGE),
     unbind_q(Exchange, Queue, CallId, RouteId, props:get_value('restrict_to', Props)).
 
--spec unbind_q(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Exchange, Queue, CallId, RouteId, 'undefined') ->
     'ok' = amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), Exchange),
     'ok' = amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), Exchange),
@@ -371,10 +371,11 @@ unbind_q(_, _, _, _, []) -> 'ok'.
 declare_exchanges() ->
     amqp_util:new_exchange(?SMS_EXCHANGE, <<"topic">>).
 
--spec publish_message(api_terms()) -> 'ok'.
--spec publish_message(api_terms(), binary()) -> 'ok'.
+-spec publish_message(kz_term:api_terms()) -> 'ok'.
 publish_message(JObj) ->
     publish_message(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_message(kz_term:api_terms(), binary()) -> 'ok'.
 publish_message(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SMS_REQ_VALUES, fun message/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
@@ -382,10 +383,11 @@ publish_message(Req, ContentType) ->
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     amqp_util:basic_publish(Exchange, ?SMS_ROUTING_KEY(RouteId, CallId), Payload, ContentType).
 
--spec publish_inbound(api_terms()) -> 'ok'.
--spec publish_inbound(api_terms(), binary()) -> 'ok'.
+-spec publish_inbound(kz_term:api_terms()) -> 'ok'.
 publish_inbound(JObj) ->
     publish_inbound(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_inbound(kz_term:api_terms(), binary()) -> 'ok'.
 publish_inbound(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?INBOUND_REQ_VALUES, fun inbound/1),
     MessageId = props:get_value(<<"Message-ID">>, Req),
@@ -393,10 +395,11 @@ publish_inbound(Req, ContentType) ->
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     amqp_util:basic_publish(Exchange, ?INBOUND_ROUTING_KEY(RouteId, MessageId), Payload, ContentType).
 
--spec publish_outbound(api_terms()) -> 'ok'.
--spec publish_outbound(api_terms(), binary()) -> 'ok'.
+-spec publish_outbound(kz_term:api_terms()) -> 'ok'.
 publish_outbound(JObj) ->
     publish_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_outbound(kz_term:api_terms(), binary()) -> 'ok'.
 publish_outbound(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OUTBOUND_REQ_VALUES, fun outbound/1),
     MessageId = props:get_value(<<"Message-ID">>, Req),
@@ -406,26 +409,27 @@ publish_outbound(Req, ContentType) ->
     Opts = amqp_options(?SMS_OUTBOUND_OPTIONS),
     amqp_util:basic_publish(Exchange, RK, Payload, ContentType, Opts).
 
--spec publish_delivery(api_terms()) -> 'ok'.
--spec publish_delivery(api_terms(), binary()) -> 'ok'.
+-spec publish_delivery(kz_term:api_terms()) -> 'ok'.
 publish_delivery(JObj) ->
     publish_delivery(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_delivery(kz_term:api_terms(), binary()) -> 'ok'.
 publish_delivery(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DELIVERY_REQ_VALUES, fun delivery/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     amqp_util:basic_publish(Exchange, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
 
--spec publish_targeted_delivery(ne_binary(), api_terms()) -> 'ok'.
--spec publish_targeted_delivery(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_targeted_delivery(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_targeted_delivery(RespQ, JObj) ->
     publish_targeted_delivery(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_targeted_delivery(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_targeted_delivery(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?DELIVERY_REQ_VALUES, fun delivery/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_resume(api_terms() | ne_binary()) -> 'ok'.
--spec publish_resume(api_terms(), binary()) -> 'ok'.
+-spec publish_resume(kz_term:api_terms() | kz_term:ne_binary()) -> 'ok'.
 publish_resume(SMS) when is_binary(SMS) ->
     Payload = [{<<"SMS-ID">>, SMS}
                | kz_api:default_headers(<<"API">>, <<"0.9.7">>)
@@ -433,13 +437,15 @@ publish_resume(SMS) when is_binary(SMS) ->
     publish_resume(Payload, ?DEFAULT_CONTENT_TYPE);
 publish_resume(JObj) ->
     publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resume(kz_term:api_terms(), binary()) -> 'ok'.
 publish_resume(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RESUME_REQ_VALUES, fun resume/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     amqp_util:basic_publish(Exchange, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
 
--spec amqp_options(api_object()) -> kz_proplist().
+-spec amqp_options(kz_term:api_object()) -> kz_term:proplist().
 amqp_options('undefined') -> [];
 amqp_options(JObj) ->
     [{kz_term:to_atom(K, 'true'), V}

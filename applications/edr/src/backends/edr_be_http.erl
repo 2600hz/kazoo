@@ -23,7 +23,7 @@
 
 -record(state, {url :: string()
                ,method :: atom()
-               ,headers :: kz_proplist()
+               ,headers :: kz_term:proplist()
                ,async :: boolean()
                ,httpc_options :: [{atom(), any()}]
                ,formatter :: module()
@@ -31,7 +31,7 @@
                }).
 -type state() :: #state{}.
 
--spec start_link(backend()) -> startlink_ret().
+-spec start_link(backend()) -> kz_types:startlink_ret().
 start_link(Backend) ->
     gen_edr_backend:start_link(?MODULE, Backend).
 
@@ -71,7 +71,7 @@ push(#state{async='true', httpc_options=_Opts, url=_Url, method=_Method, headers
     %% TODO: Implement - I haven't yet figured out how httpc async requests work
     {'error', 'not_implemented'}.
 
--spec payload(state(), edr_event()) -> ne_binary().
+-spec payload(state(), edr_event()) -> kz_term:ne_binary().
 payload(#state{formatter=Formatter, formatter_options=FormatterOptions}, #edr_event{}=Event) ->
     Formatter:format_event(FormatterOptions, Event).
 

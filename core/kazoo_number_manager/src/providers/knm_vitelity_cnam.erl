@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -22,12 +22,13 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
+-spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     handle_outbound_cnam(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -92,7 +93,7 @@ handle_outbound_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec try_update_outbound_cnam(knm_number:knm_number(), ne_binary()) ->
+-spec try_update_outbound_cnam(knm_number:knm_number(), kz_term:ne_binary()) ->
                                       knm_number:knm_number().
 try_update_outbound_cnam(Number, NewCNAM) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
@@ -113,7 +114,7 @@ try_update_outbound_cnam(Number, NewCNAM) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec outbound_cnam_options(ne_binary(), ne_binary()) ->
+-spec outbound_cnam_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    knm_vitelity_util:query_options().
 outbound_cnam_options(DID, NewCNAM) ->
     [{'qs', [{'cmd', <<"lidb">>}
@@ -131,7 +132,7 @@ outbound_cnam_options(DID, NewCNAM) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_outbound_xml_resp(knm_number:knm_number(), ne_binary(), text()) ->
+-spec process_outbound_xml_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_term:text()) ->
                                        knm_number:knm_number().
 process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
     XML = unicode:characters_to_list(XML_binary),
@@ -153,7 +154,7 @@ process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_outbound_resp(knm_number:knm_number(), ne_binary(), xml_els()) ->
+-spec process_outbound_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
                                    knm_number:knm_number().
 process_outbound_resp(Number, FeatureData, Children) ->
     case knm_vitelity_util:xml_resp_status_msg(Children) of
@@ -169,7 +170,7 @@ process_outbound_resp(Number, FeatureData, Children) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_outbound_response_tag(knm_number:knm_number(), ne_binary(), xml_els()) ->
+-spec check_outbound_response_tag(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
                                          knm_number:knm_number().
 check_outbound_response_tag(Number, NewCNAM, Children) ->
     case knm_vitelity_util:xml_resp_response_msg(Children) of
@@ -190,12 +191,13 @@ check_outbound_response_tag(Number, NewCNAM, Children) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec handle_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
--spec handle_inbound_cnam(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 handle_inbound_cnam(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     handle_inbound_cnam(Number, IsDryRun).
 
+-spec handle_inbound_cnam(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 handle_inbound_cnam(Number, 'true') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
@@ -238,7 +240,7 @@ remove_inbound_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_inbound_options(ne_binary()) -> knm_vitelity_util:query_options().
+-spec remove_inbound_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 remove_inbound_options(Number) ->
     [{'qs', [{'did', knm_converters:to_npan(Number)}
             ,{'cmd', <<"cnamdisable">>}
@@ -276,7 +278,7 @@ add_inbound_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec inbound_options(ne_binary()) -> knm_vitelity_util:query_options().
+-spec inbound_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 inbound_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"cnamenable">>}
@@ -292,7 +294,7 @@ inbound_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_resp(knm_number:knm_number(), text()) ->
+-spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
                               knm_number:knm_number().
 process_xml_resp(Number, XML) ->
     try xmerl_scan:string(XML) of
@@ -309,7 +311,7 @@ process_xml_resp(Number, XML) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_content_tag(knm_number:knm_number(), xml_el()) ->
+-spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
                                      knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
                                            ,content=Children

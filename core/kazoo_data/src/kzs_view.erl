@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% data adapter behaviour
 %%% @end
@@ -21,25 +21,25 @@
 -include("kz_data.hrl").
 
 %%% View-related functions -----------------------------------------------------
--spec design_compact(map(), ne_binary(), ne_binary()) -> boolean().
+-spec design_compact(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 design_compact(#{server := {App, Conn}}, DbName, Design) -> App:design_compact(Conn, DbName, Design).
 
--spec design_info(map(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | data_error().
+-spec design_info(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | data_error().
 design_info(#{server := {App, Conn}}, DBName, Design) -> App:design_info(Conn, DBName, Design).
 
--spec all_design_docs(map(), ne_binary(), view_options()) ->
+-spec all_design_docs(map(), kz_term:ne_binary(), view_options()) ->
                              {'ok', kz_json:objects()} |
                              data_error().
 all_design_docs(#{server := {App, Conn}}, DBName, Options) ->
     App:all_design_docs(Conn, DBName, Options).
 
--spec all_docs(map(), ne_binary(), view_options()) ->
+-spec all_docs(map(), kz_term:ne_binary(), view_options()) ->
                       {'ok', kz_json:objects()} |
                       data_error().
 all_docs(#{server := {App, Conn}}, DbName, Options) ->
     App:all_docs(Conn, DbName, Options).
 
--spec get_results(map(), ne_binary(), ne_binary(), view_options()) ->
+-spec get_results(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
                          {'ok', kz_json:objects() | kz_json:path()} |
                          data_error().
 get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
@@ -49,13 +49,13 @@ get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
 %% Need to see how to get couchbeam to return the "rows" property instead of the result
 %% list; that would be better, but for not, setting the view's "reduce" to the _count
 %% function will suffice (provided a reduce isn't already defined).
--spec get_results_count(map(), ne_binary(), ne_binary(), view_options()) ->
+-spec get_results_count(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
                                {'ok', integer()} |
                                data_error().
 get_results_count(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
     App:get_results_count(Conn, DbName, DesignDoc, ViewOptions).
 
--spec doc_type_from_view(ne_binary(), ne_binary()) -> ne_binary().
+-spec doc_type_from_view(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 doc_type_from_view(<<"faxes">>, _ViewName) -> <<"fax">>;
 doc_type_from_view(<<"cdrs">>, _ViewName) -> <<"cdr">>;
 doc_type_from_view(<<"recordings">>, _ViewName) -> <<"call_recording">>;

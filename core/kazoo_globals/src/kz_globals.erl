@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -92,8 +92,8 @@
 -define(TAB_NAME, 'kazoo_global_names').
 
 -record(state, {zone = 'local' :: atom()
-               ,zones = [] :: kz_proplist()
-               ,queue :: api_binary()
+               ,zones = [] :: kz_term:proplist()
+               ,queue :: kz_term:api_binary()
                ,node = node() :: atom()
                ,is_consuming = 'false' :: boolean()
                ,has_ets = 'false' :: boolean()
@@ -107,7 +107,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -137,7 +137,7 @@ send(Name, Msg) ->
             kz_global:pid(Global)
     end.
 
--spec whereis_name(kz_global:name()) -> api_pid().
+-spec whereis_name(kz_global:name()) -> kz_term:api_pid().
 whereis_name(Name) ->
     gen_listener:call(?SERVER, {'whereis_name', Name}, ?MILLISECONDS_IN_DAY).
 
@@ -167,7 +167,7 @@ register_name(Name, Pid) ->
 registered() ->
     kz_global:all_names(?TAB_NAME).
 
--spec stats() -> kz_proplist().
+-spec stats() -> kz_term:proplist().
 stats() ->
     case kz_global:stats(?TAB_NAME) of
         [] -> [{'total', 0}];
@@ -202,7 +202,7 @@ table_options() -> ['set'
 -spec gift_data() -> 'ok'.
 gift_data() -> 'ok'.
 
--spec find_me() -> api_pid().
+-spec find_me() -> kz_term:api_pid().
 find_me() ->
     whereis(?SERVER).
 
@@ -246,7 +246,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), globals_state()) -> handle_call_ret_state(globals_state()).
+-spec handle_call(any(), kz_term:pid_ref(), globals_state()) -> kz_types:handle_call_ret_state(globals_state()).
 handle_call('flush', _From, State) ->
     ets:delete_all_objects(?TAB_NAME),
     lager:debug("flushed table"),
@@ -301,7 +301,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), globals_state()) -> handle_cast_ret_state(globals_state()).
+-spec handle_cast(any(), globals_state()) -> kz_types:handle_cast_ret_state(globals_state()).
 handle_cast({'amqp_delete', Global, 'undefined'}, State) ->
     kz_global_proxy:stop(kz_global:pid(Global)),
     {'noreply', State};
@@ -352,7 +352,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), globals_state()) -> handle_info_ret_state(globals_state()).
+-spec handle_info(any(), globals_state()) -> kz_types:handle_info_ret_state(globals_state()).
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     lager:debug("monitor ~p detected process ~p exited with reason ~p", [Ref, Pid, Reason]),
     erlang:demonitor(Ref, ['flush']),
@@ -377,7 +377,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, State) ->
     case kz_api:node(JObj) =:= kz_term:to_binary(node()) of
         'true' -> 'ignore';
@@ -645,7 +645,7 @@ amqp_query(Name, From) ->
             end
     end.
 
--spec handle_amqp_call(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_amqp_call(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_call(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
@@ -683,7 +683,7 @@ amqp_reply(JObj, Result) ->
     Publisher = fun(P) -> kapi_globals:publish_reply(ServerId, P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
--spec handle_amqp_send(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_amqp_send(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_send(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
@@ -701,7 +701,7 @@ maybe_handle_local_send(_JObj, _Global, 'true', 'false') -> 'ok';
 maybe_handle_local_send(JObj, Global, 'true', 'true') ->
     kz_global_proxy:send(kz_global:pid(Global), kapi_globals:message(JObj)).
 
--spec handle_amqp_query(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_amqp_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_query(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
         'undefined' -> amqp_query_empty_reply(JObj);
@@ -744,7 +744,7 @@ amqp_query_reply(JObj, Global) ->
     Publisher = fun(P) -> kapi_globals:publish_query_resp(ServerId, P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
--spec handle_amqp_register(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_amqp_register(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_register(JObj, _Props) ->
     lager:debug("checking amqp register ~p: ~p", [kapi_globals:state(JObj), JObj]),
     handle_amqp_register_state(JObj, kapi_globals:state(JObj)).
@@ -797,7 +797,7 @@ amqp_register_reply(JObj, Global) ->
                ),
     kz_amqp_worker:cast(Payload, Publisher).
 
--spec handle_amqp_unregister(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_amqp_unregister(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_unregister(JObj, _Props) ->
     case where(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
@@ -846,10 +846,10 @@ delete_by_node(Node) ->
     lager:info("deleted ~p proxies for expired node ~p", [length(_Res), Node]).
 
 -spec delete_global(kz_global:global(), term()) -> 'ok' | 'true'.
--spec delete_global(kz_global:global(), term(), atom()) -> 'ok' | 'true'.
 delete_global(Global, Reason) ->
     delete_global(Global, Reason, kz_global:node(Global)).
 
+-spec delete_global(kz_global:global(), term(), atom()) -> 'ok' | 'true'.
 delete_global(Global, Reason, Node) when Node =:= node() ->
     do_amqp_unregister(Global, Reason);
 delete_global(Global, _Reason, _Node) ->
@@ -857,26 +857,26 @@ delete_global(Global, _Reason, _Node) ->
     ets:delete(?TAB_NAME, kz_global:name(Global)).
 
 -spec remonitor_globals() -> 'ok'.
--spec remonitor_globals('$end_of_table' | {[kz_global:global()], ets:continuation()}) ->
-                               'ok'.
 remonitor_globals() ->
     remonitor_globals(
       ets:select(table_id(), [{'_', [], ['$_']}], 1)
      ).
 
+-spec remonitor_globals('$end_of_table' | {[kz_global:global()], ets:continuation()}) ->
+                               'ok'.
 remonitor_globals('$end_of_table') -> 'ok';
 remonitor_globals({[Global], Continuation}) ->
     remonitor_global(Global),
     remonitor_globals(ets:select(Continuation)).
 
 -spec remonitor_global(kz_global:global()) -> 'true'.
--spec remonitor_global(kz_global:global(), boolean(), boolean()) -> 'true'.
 remonitor_global(Global) ->
     remonitor_global(Global
                     ,erlang:is_process_alive(kz_global:pid(Global))
                     ,kz_global:is_local(Global)
                     ).
 
+-spec remonitor_global(kz_global:global(), boolean(), boolean()) -> 'true'.
 remonitor_global(Global, 'false', _IsLocal) ->
     lager:info("global ~p(~p) down, cleaning up"
               ,[kz_global:pid(Global), kz_global:name(Global)]

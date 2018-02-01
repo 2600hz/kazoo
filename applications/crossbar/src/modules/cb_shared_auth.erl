@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Shared token auth module, this module validates the token
 %%% against a trusted central token server.  If the token
@@ -79,11 +79,12 @@ resource_exists() -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authorize(cb_context:context()) -> boolean().
--spec authorize(cb_context:context(), req_nouns()) -> boolean().
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
+-spec authorize(cb_context:context(), req_nouns()) -> boolean().
 authorize(_, [{<<"shared_auth">>, _}]) ->'true';
 authorize(_, _) -> 'false'.
 
@@ -92,11 +93,12 @@ authorize(_, _) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authenticate(cb_context:context()) -> boolean().
--spec authenticate(http_method(), req_nouns()) -> boolean().
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec authenticate(http_method(), req_nouns()) -> boolean().
 authenticate(?HTTP_PUT, [{<<"shared_auth">>, []}]) -> 'true';
 authenticate(_, _) -> 'false'.
 
@@ -125,11 +127,12 @@ authenticate(_, _) -> 'false'.
 %% Failure here returns 400 or 401
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate_request(cb_context:context(), http_method(), api_object()) -> cb_context:context().
 validate(Context) ->
     validate_request(Context, cb_context:req_verb(Context), cb_context:auth_doc(Context)).
 
+-spec validate_request(cb_context:context(), http_method(), kz_term:api_object()) -> cb_context:context().
 validate_request(Context, ?HTTP_PUT, _) ->
     _ = cb_context:put_reqid(Context),
     SharedToken = kz_json:get_value(<<"shared_token">>, cb_context:req_data(Context)),
@@ -232,7 +235,7 @@ create_local_token(Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token(api_binary(), nonempty_string()) ->
+-spec authenticate_shared_token(kz_term:api_binary(), nonempty_string()) ->
                                        {'ok', string() | binary()} |
                                        {'error', atom()} |
                                        {'forbidden', atom()}.
@@ -277,7 +280,7 @@ import_missing_data(Account, User) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_ne_binary(), kz_json:object()) -> boolean().
+-spec import_missing_account(kz_term:api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
     'false';
@@ -337,7 +340,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(ne_binary(), api_ne_binary(), kz_json:object()) -> boolean().
+-spec import_missing_user(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% This listener handles call CHANNEL_DESTROY events.
 %%% It is started by cf_singular_call_hooks and will
@@ -51,7 +51,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
--spec start_link(kapps_call:call()) -> startlink_ret().
+-spec start_link(kapps_call:call()) -> kz_types:startlink_ret().
 start_link(Call) ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
                                      ,{'responders', ?RESPONDERS}
@@ -67,7 +67,7 @@ start_link(Call) ->
 %% CHANNEL_DESTROY.
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_event(kz_json:object(), kz_proplist()) -> any().
+-spec handle_call_event(kz_json:object(), kz_term:proplist()) -> any().
 handle_call_event(JObj, Props) ->
     case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->

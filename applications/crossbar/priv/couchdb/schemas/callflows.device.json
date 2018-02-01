@@ -4,16 +4,27 @@
     "properties": {
         "can_call_self": {
             "description": "Toggle whether devices of the same owner can call each other",
+            "support_level": "supported",
             "type": "boolean"
         },
         "can_text_self": {
             "description": "Toggle whether devices of the same owner can text each other",
+            "support_level": "alpha",
             "type": "boolean"
         },
         "delay": {
             "default": 0,
             "description": "How long to delay ringing the device, in seconds",
             "type": "integer"
+        },
+        "dial_strategy": {
+            "default": "simultaneous",
+            "description": "Dial strategy for the device",
+            "enum": [
+                "simultaneous",
+                "single"
+            ],
+            "type": "string"
         },
         "id": {
             "description": "Device ID",

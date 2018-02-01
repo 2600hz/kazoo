@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -66,7 +66,7 @@
 -define(ACL_FLUSH_TYPES, []).
 
 
--spec ratelimits_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec ratelimits_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 ratelimits_resp(Prop) when is_list(Prop) ->
     case ratelimits_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESP_HEADERS, ?OPTIONAL_RESP_HEADERS);
@@ -74,24 +74,25 @@ ratelimits_resp(Prop) when is_list(Prop) ->
     end;
 ratelimits_resp(JObj) -> ratelimits_resp(kz_json:to_proplist(JObj)).
 
--spec publish_ratelimits_resp(ne_binary(), kz_json:object()) -> ok.
--spec publish_ratelimits_resp(ne_binary(), api_terms(), ne_binary()) -> ok.
+-spec publish_ratelimits_resp(kz_term:ne_binary(), kz_json:object()) -> ok.
 publish_ratelimits_resp(Srv, JObj) -> publish_ratelimits_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_ratelimits_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_ratelimits_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATELIMITS_RESP_VALUES, fun ratelimits_resp/1),
     amqp_util:targeted_publish(Srv, Payload, ContentType).
 
--spec ratelimits_req_v(api_terms()) -> boolean().
+-spec ratelimits_req_v(kz_term:api_terms()) -> boolean().
 ratelimits_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REQ_HEADERS, ?RATELIMITS_REQ_VALUES, ?REQ_TYPES);
 ratelimits_req_v(JObj) -> ratelimits_req_v(kz_json:to_proplist(JObj)).
 
--spec ratelimits_resp_v(api_terms()) -> boolean().
+-spec ratelimits_resp_v(kz_term:api_terms()) -> boolean().
 ratelimits_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESP_HEADERS, ?RATELIMITS_RESP_VALUES, ?RATELIMITS_RESP_TYPES);
 ratelimits_resp_v(JObj) -> ratelimits_req_v(kz_json:to_proplist(JObj)).
 
--spec acls_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec acls_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 acls_resp(Prop) when is_list(Prop) ->
     case acls_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESP_HEADERS, ?OPTIONAL_RESP_HEADERS);
@@ -99,32 +100,33 @@ acls_resp(Prop) when is_list(Prop) ->
     end;
 acls_resp(JObj) -> acls_resp(kz_json:to_proplist(JObj)).
 
--spec publish_acls_resp(ne_binary(), kz_json:object()) -> ok.
--spec publish_acls_resp(ne_binary(), api_terms(), ne_binary()) -> ok.
+-spec publish_acls_resp(kz_term:ne_binary(), kz_json:object()) -> ok.
 publish_acls_resp(Srv, JObj) -> publish_acls_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_acls_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> ok.
 publish_acls_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ACL_RESP_VALUES, fun acls_resp/1),
     amqp_util:targeted_publish(Srv, Payload, ContentType).
 
--spec acls_req_v(api_terms()) -> boolean().
+-spec acls_req_v(kz_term:api_terms()) -> boolean().
 acls_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REQ_HEADERS, ?ACL_REQ_VALUES, ?REQ_TYPES);
 acls_req_v(JObj) -> acls_req_v(kz_json:to_proplist(JObj)).
 
--spec acls_resp_v(api_terms()) -> boolean().
+-spec acls_resp_v(kz_term:api_terms()) -> boolean().
 acls_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESP_HEADERS, ?ACL_RESP_VALUES, ?ACL_RESP_TYPES);
 acls_resp_v(JObj) -> acls_resp_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, _Props) ->
     amqp_util:bind_q_to_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, _Props) ->
     amqp_util:unbind_q_from_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
--spec flush(api_terms()) ->
+-spec flush(kz_term:api_terms()) ->
                    {'ok', iolist()} |
                    {'error', string()}.
 flush(Prop) when is_list(Prop) ->
@@ -134,15 +136,16 @@ flush(Prop) when is_list(Prop) ->
     end;
 flush(JObj) -> flush(kz_json:to_proplist(JObj)).
 
--spec flush_v(api_terms()) -> boolean().
+-spec flush_v(kz_term:api_terms()) -> boolean().
 flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ACL_FLUSH_HEADERS, ?ACL_FLUSH_VALUES, ?ACL_FLUSH_TYPES);
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
--spec publish_flush(api_terms()) -> 'ok'.
--spec publish_flush(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_flush(kz_term:api_terms()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ACL_FLUSH_VALUES, fun flush/1),
     amqp_util:basic_publish(?ACL_FRONTIER_EXCHANGE, ?ACL_ROUTE_KEY, Payload, ContentType).

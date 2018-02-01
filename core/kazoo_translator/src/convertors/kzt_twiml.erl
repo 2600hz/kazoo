@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -16,7 +16,7 @@
         ]).
 
 -spec parse_cmds(binary()) ->
-                        {'ok', xml_els()} |
+                        {'ok', kz_types:xml_els()} |
                         {'error', 'not_parsed'}.
 parse_cmds(XMLBin) ->
     try xmerl_scan:string(kz_term:to_list(XMLBin)) of
@@ -28,7 +28,7 @@ parse_cmds(XMLBin) ->
             {'error', 'not_parsed'}
     end.
 
--spec exec(kapps_call:call(), xml_el() | text()) ->
+-spec exec(kapps_call:call(), kz_types:xml_el() | kz_term:text()) ->
                   {'error', kapps_call:call()} |
                   {'request', kapps_call:call()} |
                   {'stop', kapps_call:call()}.
@@ -47,7 +47,7 @@ exec(Call, Resp) ->
             {'error', Call}
     end.
 
--spec exec_elements(kapps_call:call(), xml_els() | xml_texts()) ->
+-spec exec_elements(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts()) ->
                            {'error', kapps_call:call()} |
                            {'request', kapps_call:call()} |
                            {'stop', kapps_call:call()}.
@@ -70,7 +70,7 @@ exec_elements(Call, [El|Els]) ->
             {'error', Call}
     end.
 
--spec exec_element(kapps_call:call(), xml_el()) ->
+-spec exec_element(kapps_call:call(), kz_types:xml_el()) ->
                           {'ok', kapps_call:call()} |
                           {'request', kapps_call:call()} |
                           {'stop', kapps_call:call()} |
@@ -144,7 +144,7 @@ exec_element(Call, _Xml) ->
     lager:debug("unhandled XML object: ~p", [_Xml]),
     {'ok', Call}.
 
--spec req_params(kapps_call:call()) -> kz_proplist().
+-spec req_params(kapps_call:call()) -> kz_term:proplist().
 req_params(Call) ->
     props:filter_undefined(
       [{<<"CallSid">>, kapps_call:call_id(Call)}
@@ -178,7 +178,7 @@ hangup(Call) ->
     kapps_call_command:hangup(Call),
     {'stop', kzt_util:update_call_status(?STATUS_COMPLETED, Call)}.
 
--spec reject(kapps_call:call(), xml_attribs()) ->
+-spec reject(kapps_call:call(), kz_types:xml_attribs()) ->
                     {'stop', kapps_call:call()}.
 reject(Call, Attrs) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
@@ -190,7 +190,7 @@ reject(Call, Attrs) ->
     _ = kapps_call_command:response(Code, Reason, kzt_twiml_util:reject_prompt(Props), Call),
     {'stop', kzt_util:update_call_status(kzt_twiml_util:reject_status(Code), Call)}.
 
--spec pause(kapps_call:call(), xml_attribs()) ->
+-spec pause(kapps_call:call(), kz_types:xml_attribs()) ->
                    {'ok', kapps_call:call()}.
 pause(Call, Attrs) ->
     kapps_call_command:answer(Call),
@@ -201,7 +201,7 @@ pause(Call, Attrs) ->
     timer:sleep(PauseFor),
     {'ok', Call}.
 
--spec set_variable(kapps_call:call(), xml_attribs()) ->
+-spec set_variable(kapps_call:call(), kz_types:xml_attribs()) ->
                           {'ok', kapps_call:call()}.
 set_variable(Call, Attrs) ->
     kapps_call_command:answer(Call),
@@ -211,7 +211,7 @@ set_variable(Call, Attrs) ->
                                        ,Call
             )}.
 
--spec set_variables(kapps_call:call(), xml_els()) -> kapps_call:call().
+-spec set_variables(kapps_call:call(), kz_types:xml_els()) -> kapps_call:call().
 set_variables(Call, Els) when is_list(Els) ->
     lists:foldl(fun(#xmlElement{name='Variable'
                                ,attributes=Attrs
@@ -220,7 +220,7 @@ set_variables(Call, Els) when is_list(Els) ->
                    (_, C) -> C
                 end, Call, Els).
 
--spec play(kapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
+-spec play(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
                   {'ok', kapps_call:call()} |
                   {'error', _, kapps_call:call()}.
 play(Call, XmlText, Attrs) ->
@@ -236,7 +236,7 @@ play(Call, XmlText, Attrs) ->
         N when N > 0 -> kzt_receiver:play_loop(Call, PlayMe, Terminators, N)
     end.
 
--spec redirect(kapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
+-spec redirect(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
                       {'request', kapps_call:call()}.
 redirect(Call, XmlText, Attrs) ->
     kapps_call_command:answer(Call),
@@ -261,7 +261,7 @@ redirect(Call, XmlText, Attrs) ->
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
 %% @private
--spec exec_gather_els(pid(), kapps_call:call(), xml_els()) -> 'ok'.
+-spec exec_gather_els(pid(), kapps_call:call(), kz_types:xml_els()) -> 'ok'.
 exec_gather_els(_Parent, _Call, []) ->
     lager:info("finished gather sub elements");
 exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
@@ -273,7 +273,7 @@ exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
         {'ok', Call1} -> exec_gather_els(Parent, Call1, SubActions)
     end.
 
--spec exec_gather_els(kapps_call:call(), xml_els()) ->
+-spec exec_gather_els(kapps_call:call(), kz_types:xml_els()) ->
                              {'ok', kapps_call:call()}.
 exec_gather_els(Call, SubActions) ->
     {_Pid, _Ref}=PidRef =
@@ -281,7 +281,7 @@ exec_gather_els(Call, SubActions) ->
     lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
     {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
 
--spec gather(kapps_call:call(), xml_els(), xml_attribs()) ->
+-spec gather(kapps_call:call(), kz_types:xml_els(), kz_types:xml_attribs()) ->
                     kzt_receiver:collect_dtmfs_return().
 gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
@@ -291,7 +291,7 @@ gather(Call, SubActions, Attrs) ->
                                ),
     gather(C, Attrs).
 
--spec gather(kapps_call:call(), xml_attribs()) ->
+-spec gather(kapps_call:call(), kz_types:xml_attribs()) ->
                     kzt_receiver:collect_dtmfs_return().
 gather(Call, Attrs) ->
     kapps_call_command:answer(Call),
@@ -303,7 +303,7 @@ gather(Call, Attrs) ->
 
     gather(Call, FinishKey, Timeout, Props, kzt_twiml_util:num_digits(Props)).
 
--spec gather(kapps_call:call(), api_binary(), kz_timeout(), kz_proplist(), pos_integer()) ->
+-spec gather(kapps_call:call(), kz_term:api_binary(), timeout(), kz_term:proplist(), pos_integer()) ->
                     {'ok', kapps_call:call()} |
                     {'request', kapps_call:call()} |
                     {'error', _, kapps_call:call()} |
@@ -326,7 +326,7 @@ on_first_dtmf(Call) ->
             exit(Pid, 'kill')
     end.
 
--spec gather_finished(kapps_call:call(), kz_proplist()) ->
+-spec gather_finished(kapps_call:call(), kz_term:proplist()) ->
                              {'ok', kapps_call:call()} |
                              {'request', kapps_call:call()}.
 gather_finished(Call, Props) ->
@@ -369,7 +369,7 @@ record_call(Call, Attrs) ->
         _E -> lager:debug("call record failed: ~p", [_E]), {'stop', Call}
     end.
 
--spec finish_record_call(kapps_call:call(), kz_proplist(), ne_binary()) ->
+-spec finish_record_call(kapps_call:call(), kz_term:proplist(), kz_term:ne_binary()) ->
                                 {'request', kapps_call:call()}.
 finish_record_call(Call, Props, MediaName) ->
     CurrentUri = kzt_util:get_voice_uri(Call),

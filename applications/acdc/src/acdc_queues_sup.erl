@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -36,26 +36,26 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(ne_binary(), ne_binary()) -> startlink_ret().
+-spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 new(AcctId, QueueId) ->
     case find_queue_supervisor(AcctId, QueueId) of
         P when is_pid(P) -> {'ok', P};
         'undefined' -> supervisor:start_child(?SERVER, [AcctId, QueueId])
     end.
 
--spec workers() -> pids().
+-spec workers() -> kz_term:pids().
 workers() ->
     [Pid || {_, Pid, 'supervisor', _} <- supervisor:which_children(?SERVER), is_pid(Pid)].
 
--spec find_acct_supervisors(ne_binary()) -> pids().
+-spec find_acct_supervisors(kz_term:ne_binary()) -> kz_term:pids().
 find_acct_supervisors(AcctId) ->
     [Super || Super <- workers(), is_queue_in_acct(Super, AcctId)].
 
--spec is_queue_in_acct(pid(), ne_binary()) -> boolean().
+-spec is_queue_in_acct(pid(), kz_term:ne_binary()) -> boolean().
 is_queue_in_acct(Super, AcctId) ->
     case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
         {'EXIT', _} -> 'false';
@@ -63,11 +63,11 @@ is_queue_in_acct(Super, AcctId) ->
         _ -> 'false'
     end.
 
--spec find_queue_supervisor(ne_binary(), ne_binary()) -> api_pid().
--spec find_queue_supervisor(ne_binary(), ne_binary(), pids()) -> api_pid().
+-spec find_queue_supervisor(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_pid().
 find_queue_supervisor(AcctId, QueueId) ->
     find_queue_supervisor(AcctId, QueueId, workers()).
 
+-spec find_queue_supervisor(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:pids()) -> kz_term:api_pid().
 find_queue_supervisor(_AcctId, _QueueId, []) -> 'undefined';
 find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
     case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
@@ -100,7 +100,7 @@ queues_running() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,

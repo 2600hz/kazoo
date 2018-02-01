@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
@@ -27,7 +27,7 @@
 -define(CHANNEL_VARS, <<"Custom-Channel-Vars">>).
 -define(CCV(Key), [?CHANNEL_VARS, Key]).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -67,7 +67,7 @@ maybe_ignore_loopback(JObj) ->
      <<"ignoring cdr request for loopback channel">>
     }.
 
--spec is_normal_hangup_cause(api_binary()) -> boolean().
+-spec is_normal_hangup_cause(kz_term:api_binary()) -> boolean().
 is_normal_hangup_cause('undefined') -> 'true';
 is_normal_hangup_cause(<<"NORMAL", _/binary>>) -> 'true';
 is_normal_hangup_cause(_) -> 'false'.
@@ -78,7 +78,7 @@ handle_req(JObj) ->
     Timestamp = kz_call_event:timestamp(JObj),
     prepare_and_save(AccountId, Timestamp, JObj).
 
--spec prepare_and_save(account_id(), gregorian_seconds(), kz_json:object()) -> 'ok'.
+-spec prepare_and_save(account_id(), kz_time:gregorian_seconds(), kz_json:object()) -> 'ok'.
 prepare_and_save(AccountId, Timestamp, JObj) ->
     Routines = [fun update_pvt_parameters/3
                ,fun update_ccvs/3
@@ -96,7 +96,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                    ),
     'ok'.
 
--spec update_pvt_parameters(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec update_pvt_parameters(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
             ,{'crossbar_doc_vsn', 2}
@@ -110,7 +110,7 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
             ],
     kz_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
--spec update_ccvs(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec update_ccvs(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 update_ccvs(_, _, JObj) ->
     CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
@@ -131,7 +131,7 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
             }
     end.
 
--spec set_doc_id(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec set_doc_id(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = kz_call_event:call_id(JObj),
     %% we should consider this because there is a lost channel in case of
@@ -140,27 +140,27 @@ set_doc_id(_, Timestamp, JObj) ->
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     kz_doc:set_id(JObj, DocId).
 
--spec set_call_priority(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec set_call_priority(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 set_call_priority(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Call-Priority">>).
 
--spec set_recording_url(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec set_recording_url(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 set_recording_url(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Recording-Url">>).
 
--spec maybe_set_e164_destination(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec maybe_set_e164_destination(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"E164-Destination">>).
 
--spec is_conference(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec is_conference(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Is-Conference">>, {fun kz_json:is_true/3, 'false'}).
 
 -spec maybe_leak_ccv(kz_json:object(), kz_json:path()) -> kz_json:object().
--spec maybe_leak_ccv(kz_json:object(), kz_json:path(), {fun(), any()}) -> kz_json:object().
 maybe_leak_ccv(JObj, Key) ->
     maybe_leak_ccv(JObj, Key, {fun kz_json:get_value/3, 'undefined'}).
 
+-spec maybe_leak_ccv(kz_json:object(), kz_json:path(), {fun(), any()}) -> kz_json:object().
 maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
     case GetFun(?CCV(Key), JObj, Default) of
         'undefined' -> JObj;
@@ -171,7 +171,7 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
                                   )
     end.
 
--spec set_interaction(api_binary(), gregorian_seconds(), kz_json:object()) ->
+-spec set_interaction(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) ->
                              kz_json:object().
 set_interaction(_AccountId, _Timestamp, JObj) ->
     Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>, ?CALL_INTERACTION_DEFAULT),
@@ -187,7 +187,7 @@ set_interaction(_AccountId, _Timestamp, JObj) ->
                       ,kz_json:delete_key(?CCV(<<?CALL_INTERACTION_ID>>), kz_doc:set_id(JObj, DocId))
                       ).
 
--spec save_cdr(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
+-spec save_cdr(kz_term:api_binary(), kz_time:gregorian_seconds(), kz_json:object()) -> kz_json:object().
 save_cdr(_, _, JObj) ->
     CDRDb = kz_doc:account_db(JObj),
     case cdr_util:save_cdr(CDRDb, kz_json:normalize_jobj(JObj)) of

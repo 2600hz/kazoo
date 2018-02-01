@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Collect DTMF into an optional key for later retrieval
 %%% "data":{
@@ -83,7 +83,7 @@ collect_more_digits(Data, Call, AlreadyCollected, MaxDigits) ->
             lager:debug("failed to collect DTMF: ~p", [_E])
     end.
 
--spec truncate_after_terminator(binary(), ne_binaries()) -> binary().
+-spec truncate_after_terminator(binary(), kz_term:ne_binaries()) -> binary().
 truncate_after_terminator(AlreadyCollected, Terminators) ->
     hd(binary:split(AlreadyCollected, Terminators)).
 
@@ -97,7 +97,7 @@ truncate_after_terminator_test_() ->
     ].
 -endif.
 
--spec collection_name(kz_json:object()) -> ne_binary().
+-spec collection_name(kz_json:object()) -> kz_term:ne_binary().
 collection_name(Data) ->
     case kz_json:get_value(<<"collection_name">>, Data) of
         <<_/binary>> = Name -> Name;
@@ -125,7 +125,7 @@ interdigit(Data) ->
         N when N > 0 -> N
     end.
 
--spec terminators(kz_json:object()) -> ne_binaries().
+-spec terminators(kz_json:object()) -> kz_term:ne_binaries().
 terminators(Data) ->
     case kz_json:get_first_defined([<<"terminator">>, <<"terminators">>], Data) of
         'undefined' -> [<<"#">>];

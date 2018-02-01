@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%%
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -17,8 +17,9 @@
 -include_lib("kazoo_documents/include/doc_types.hrl").
 
 -define(ID, kz_term:to_binary(?MODULE)).
--define(NAME, <<"object">>).
--define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
+-define(HOOK_NAME, <<"object">>).
+-define(NAME, <<"Object">>).
+-define(DESC, <<"Receive notifications when objects (like JSON document objects) in Kazoo are changed">>).
 
 -define(OBJECT_TYPES
        ,kapps_config:get(?APP_NAME, <<"object_types">>, ?DOC_TYPES)).
@@ -76,7 +77,7 @@ bindings_and_responders() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_bindings(ne_binary()) -> gen_listener:bindings().
+-spec account_bindings(kz_term:ne_binary()) -> gen_listener:bindings().
 account_bindings(_AccountId) -> [].
 
 %%--------------------------------------------------------------------
@@ -84,13 +85,13 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> any().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> any().
 handle_event(JObj, _Props) ->
     kz_util:put_callid(JObj),
     'true' = kapi_conf:doc_update_v(JObj),
 
     AccountId = find_account_id(JObj),
-    case webhooks_util:find_webhooks(?NAME, AccountId) of
+    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
         [] ->
             lager:debug("no hooks to handle ~s for ~s"
                        ,[kz_api:event_name(JObj), AccountId]
@@ -103,16 +104,18 @@ handle_event(JObj, _Props) ->
             webhooks_util:fire_hooks(Event, Filtered)
     end.
 
--spec match_action_type(webhook(), api_binary(), api_binary()) -> boolean().
-match_action_type(#webhook{hook_event = ?NAME
+-spec match_action_type(webhook(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
+match_action_type(#webhook{hook_event = ?HOOK_NAME
                           ,custom_data='undefined'
-                          }, _Action, _Type) -> 'true';
-match_action_type(#webhook{hook_event = ?NAME
+                          }, _Action, _Type) ->
+    'true';
+match_action_type(#webhook{hook_event = ?HOOK_NAME
                           ,custom_data=JObj
                           }, Action, Type) ->
     kz_json:get_value(<<"action">>, JObj) =:= Action
         andalso kz_json:get_value(<<"type">>, JObj) =:= Type;
-match_action_type(#webhook{}, _Action, _Type) -> 'true'.
+match_action_type(#webhook{}, _Action, _Type) ->
+    'true'.
 
 %%%===================================================================
 %%% Internal functions
@@ -133,7 +136,7 @@ bindings() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_event(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec format_event(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 format_event(JObj, AccountId) ->
     kz_json:from_list(
       [{<<"id">>, kapi_conf:get_id(JObj)}
@@ -147,12 +150,12 @@ format_event(JObj, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_id(kz_json:object()) -> ne_binary().
+-spec find_account_id(kz_json:object()) -> kz_term:ne_binary().
 find_account_id(JObj) ->
     DB = kapi_conf:get_database(JObj),
     find_account_id(kzs_util:db_classification(DB), DB, kapi_conf:get_id(JObj)).
 
--spec find_account_id(atom(), ne_binary(), ne_binary()) -> ne_binary().
+-spec find_account_id(atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 find_account_id(Classification, DB, _Id)
   when Classification =:= 'account';
        Classification =:= 'modb' ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -211,22 +211,22 @@
         ,hold_control_command/1, hold_control_command/2
         ]).
 
--type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
-                              {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
+-type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), kz_term:binaries()} |
+                              {'prompt', binary()} | {'prompt', binary(), kz_term:ne_binaries()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} |
                               {'say', binary(), binary(), binary(), binary()} |
                               {'tones', kz_json:objects()} |
-                              {'tts', ne_binary()} |
-                              {'tts', ne_binary(), ne_binary()} |
-                              {'tts', ne_binary(), ne_binary(), ne_binary()}.
+                              {'tts', kz_term:ne_binary()} |
+                              {'tts', kz_term:ne_binary(), kz_term:ne_binary()} |
+                              {'tts', kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 -type audio_macro_prompts() :: [audio_macro_prompt()].
 -export_type([audio_macro_prompt/0
              ,audio_macro_prompts/0
              ,store_fun/0
              ]).
 
--type store_fun() :: ne_binary() | fun(() -> ne_binary()).
+-type store_fun() :: kz_term:ne_binary() | fun(() -> kz_term:ne_binary()).
 
 -define(CONFIG_CAT, <<"call_command">>).
 
@@ -263,11 +263,11 @@ default_message_timeout() ->
 default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
 
--spec storage_timeout(ne_binary()) -> pos_integer().
+-spec storage_timeout(kz_term:ne_binary()) -> pos_integer().
 storage_timeout(App) ->
     ?STORAGE_TIMEOUT(App).
 
--spec storage_retries(ne_binary()) -> pos_integer().
+-spec storage_retries(kz_term:ne_binary()) -> pos_integer().
 storage_retries(App) ->
     ?STORAGE_RETRIES(App).
 
@@ -276,15 +276,14 @@ storage_retries(App) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec presence(ne_binary(), ne_binary() | kapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary(), api_binary() | kapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() , api_binary() , kapps_call:call() | 'undefined') -> 'ok'.
--spec presence(ne_binary(), ne_binary() , api_binary() , api_binary(), kapps_call:call() | 'undefined') -> 'ok'.
+
+-spec presence(kz_term:ne_binary(), kz_term:ne_binary() | kapps_call:call()) -> 'ok'.
 presence(State, <<_/binary>> = PresenceId) ->
     presence(State, PresenceId, 'undefined');
 presence(State, Call) ->
     presence(State, kapps_call:from(Call)).
 
+-spec presence(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary() | kapps_call:call()) -> 'ok'.
 presence(State, PresenceId, 'undefined') ->
     presence(State, PresenceId, 'undefined', 'undefined');
 presence(State, PresenceId, <<_/binary>> = CallId) ->
@@ -292,9 +291,11 @@ presence(State, PresenceId, <<_/binary>> = CallId) ->
 presence(State, PresenceId, Call) ->
     presence(State, PresenceId, kapps_call:call_id(Call), Call).
 
+-spec presence(kz_term:ne_binary(), kz_term:ne_binary() , kz_term:api_binary() , kapps_call:call() | 'undefined') -> 'ok'.
 presence(State, PresenceId, CallId, Call) ->
     presence(State, PresenceId, CallId, 'undefined', Call).
 
+-spec presence(kz_term:ne_binary(), kz_term:ne_binary() , kz_term:api_binary() , kz_term:api_binary(), kapps_call:call() | 'undefined') -> 'ok'.
 presence(State, PresenceId, CallId, 'undefined', 'undefined') ->
     [User, Realm] = binary:split(PresenceId, <<"@">>),
     Command = props:filter_undefined(
@@ -343,7 +344,7 @@ presence(State, PresenceId, CallId, TargetURI, Call) ->
                 ]),
     kapi_presence:publish_update(Command).
 
--spec module_as_app( kapps_call:call() ) -> ne_binary().
+-spec module_as_app( kapps_call:call() ) -> kz_term:ne_binary().
 module_as_app(Call) ->
     JObj = kapps_call:kvs_fetch(<<"cf_flow">>, kz_json:new(), Call),
     kz_json:get_value(<<"module">>, JObj, ?APP_NAME).
@@ -355,9 +356,8 @@ module_as_app(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec channel_status(kapps_call:call()) ->
-                            'ok' | {'error', 'no_channel_id'}.
--spec channel_status(api_binary(), api_binary()) ->
+
+-spec channel_status(kz_term:api_binary(), kz_term:api_binary()) ->
                             'ok' | {'error', 'no_channel_id'}.
 channel_status('undefined', _) -> {'error', 'no_channel_id'};
 channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
@@ -367,10 +367,11 @@ channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
 channel_status(Call, SrvQueue) ->
     channel_status(kapps_call:call_id(Call), SrvQueue).
 
--spec channel_status_command(ne_binary() | kapps_call:call()) -> kz_proplist().
--spec channel_status_command(ne_binary() | kapps_call:call(), api_boolean()) -> kz_proplist().
+-spec channel_status_command(kz_term:ne_binary() | kapps_call:call()) -> kz_term:proplist().
 channel_status_command(CallId) ->
     channel_status_command(CallId, 'undefined').
+
+-spec channel_status_command(kz_term:ne_binary() | kapps_call:call(), kz_term:api_boolean()) -> kz_term:proplist().
 channel_status_command(<<_/binary>> = CallId, ActiveOnly) ->
     props:filter_undefined(
       [{<<"Call-ID">>, CallId}
@@ -379,11 +380,13 @@ channel_status_command(<<_/binary>> = CallId, ActiveOnly) ->
 channel_status_command(Call, ActiveOnly) ->
     channel_status_command(kapps_call:call_id(Call), ActiveOnly).
 
+-spec channel_status(kapps_call:call()) ->
+                            'ok' | {'error', 'no_channel_id'}.
 channel_status(Call) ->
     'true' = kapps_call:is_call(Call),
     channel_status(kapps_call:call_id(Call), kapps_call:controller_queue(Call)).
 
--spec b_channel_status(api_binary() | kapps_call:call()) ->
+-spec b_channel_status(kz_term:api_binary() | kapps_call:call()) ->
                               kapps_api_std_return().
 b_channel_status('undefined') -> {'error', 'no_channel_id'};
 b_channel_status(ChannelId) when is_binary(ChannelId) ->
@@ -419,21 +422,24 @@ channel_status_filter([JObj|JObjs]) ->
 %% @end
 %%--------------------------------------------------------------------
 -type relay_fun() :: fun((pid() | atom(), any()) -> any()).
+
 -spec relay_event(pid(), kz_json:object()) -> any().
--spec relay_event(pid(), kz_json:object(), relay_fun()) -> any().
 relay_event(Pid, JObj) ->
     relay_event(Pid, JObj, fun erlang:send/2).
+
+-spec relay_event(pid(), kz_json:object(), relay_fun()) -> any().
 relay_event(Pid, JObj, RelayFun) ->
     RelayFun(Pid, {'amqp_msg', JObj}).
 
--spec receive_event(kz_timeout()) ->
+-spec receive_event(timeout()) ->
                            {'ok', kz_json:object()} |
                            {'error', 'timeout'}.
--spec receive_event(kz_timeout(), boolean()) ->
+receive_event(Timeout) -> receive_event(Timeout, 'true').
+
+-spec receive_event(timeout(), boolean()) ->
                            {'ok', kz_json:object()} |
                            {'other', kz_json:object() | any()} |
                            {'error', 'timeout'}.
-receive_event(Timeout) -> receive_event(Timeout, 'true').
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
 receive_event(Timeout, IgnoreOthers) ->
     Start = os:timestamp(),
@@ -447,12 +453,12 @@ receive_event(Timeout, IgnoreOthers) ->
     end.
 
 -spec audio_macro(audio_macro_prompts(), kapps_call:call()) ->
-                         ne_binary().
--spec audio_macro(audio_macro_prompts(), kapps_call:call(), kz_json:objects()) ->
-                         binary().
+                         kz_term:ne_binary().
 audio_macro([], Call) -> noop(Call);
 audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, []).
 
+-spec audio_macro(audio_macro_prompts(), kapps_call:call(), kz_json:objects()) ->
+                         binary().
 audio_macro([], Call, Queue) ->
     NoopId = kz_datamgr:get_uuid(),
     Prompts = [kz_json:from_list(
@@ -518,19 +524,22 @@ audio_macro([{'tts', Text, Voice, Lang, Engine}|T], Call, Queue) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec response(ne_binary(), kapps_call:call()) ->
-                      {'ok', ne_binary()} |
-                      {'error', 'no_response'}.
--spec response(ne_binary(), api_binary(), kapps_call:call()) ->
-                      {'ok', ne_binary()} |
-                      {'error', 'no_response'}.
--spec response(ne_binary(), api_binary(), api_binary(), kapps_call:call()) ->
-                      {'ok', ne_binary()} |
+
+-spec response(kz_term:ne_binary(), kapps_call:call()) ->
+                      {'ok', kz_term:ne_binary()} |
                       {'error', 'no_response'}.
 response(Code, Call) ->
     response(Code, 'undefined', Call).
+
+-spec response(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) ->
+                      {'ok', kz_term:ne_binary()} |
+                      {'error', 'no_response'}.
 response(Code, Cause, Call) ->
     response(Code, Cause, 'undefined', Call).
+
+-spec response(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
+                      {'ok', kz_term:ne_binary()} |
+                      {'error', 'no_response'}.
 response(Code, Cause, Media, Call) ->
     kz_call_response:send(Call, Code, Cause, Media).
 
@@ -539,45 +548,49 @@ response(Code, Cause, Media, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pickup(ne_binary(), kapps_call:call()) -> 'ok'.
--spec pickup(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
--spec pickup(ne_binary(), api_binary(), boolean(), kapps_call:call()) -> 'ok'.
--spec pickup(ne_binary(), api_binary(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
--spec pickup(ne_binary(), api_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 
+-spec pickup(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
     Command = pickup_command(TargetCallId, Call),
     send_command(Command, Call).
 
+-spec pickup(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Insert, Call) ->
     Command = pickup_command(TargetCallId, Insert, Call),
     send_command(Command, Call).
 
+-spec pickup(kz_term:ne_binary(), kz_term:api_binary(), boolean(), kapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
     Command = pickup_command(TargetCallId, Insert, ContinueOnFail, Call),
     send_command(Command, Call).
 
+-spec pickup(kz_term:ne_binary(), kz_term:api_binary(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     Command = pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
     send_command(Command, Call).
 
+-spec pickup(kz_term:ne_binary(), kz_term:api_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     Command = pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     send_command(Command, Call).
 
--spec pickup_command(ne_binary(), kapps_call:call()) -> kz_proplist().
--spec pickup_command(ne_binary(), ne_binary(), kapps_call:call()) -> kz_proplist().
--spec pickup_command(ne_binary(), ne_binary(), boolean(), kapps_call:call()) -> kz_proplist().
--spec pickup_command(ne_binary(), ne_binary(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
--spec pickup_command(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
+-spec pickup_command(kz_term:ne_binary(), kapps_call:call()) -> kz_term:proplist().
 pickup_command(TargetCallId, Call) ->
     pickup_command(TargetCallId, <<"tail">>, Call).
+
+-spec pickup_command(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:proplist().
 pickup_command(TargetCallId, Insert, Call) ->
     pickup_command(TargetCallId, Insert, 'false', Call).
+
+-spec pickup_command(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> kz_term:proplist().
 pickup_command(TargetCallId, Insert, ContinueOnFail, Call) ->
     pickup_command(TargetCallId, Insert, ContinueOnFail, 'true', Call).
+
+-spec pickup_command(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), kapps_call:call()) -> kz_term:proplist().
 pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
+
+-spec pickup_command(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kz_term:proplist().
 pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     [{<<"Application-Name">>, <<"call_pickup">>}
     ,{<<"Target-Call-ID">>, TargetCallId}
@@ -588,28 +601,32 @@ pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfter
     ,{<<"Call-ID">>, kapps_call:call_id(Call)}
     ].
 
--spec b_pickup(ne_binary(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
--spec b_pickup(ne_binary(), ne_binary(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
--spec b_pickup(ne_binary(), ne_binary(), boolean(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
--spec b_pickup(ne_binary(), ne_binary(), boolean(), boolean(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
--spec b_pickup(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) ->
+-spec b_pickup(kz_term:ne_binary(), kapps_call:call()) ->
                       {'ok', kz_json:object()}.
 b_pickup(TargetCallId, Call) ->
     pickup(TargetCallId, Call),
     wait_for_channel_unbridge().
+
+-spec b_pickup(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
+                      {'ok', kz_json:object()}.
 b_pickup(TargetCallId, Insert, Call) ->
     pickup(TargetCallId, Insert, Call),
     wait_for_channel_unbridge().
+
+-spec b_pickup(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
+                      {'ok', kz_json:object()}.
 b_pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, Call),
     wait_for_channel_unbridge().
+
+-spec b_pickup(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), kapps_call:call()) ->
+                      {'ok', kz_json:object()}.
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
     wait_for_channel_unbridge().
+
+-spec b_pickup(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) ->
+                      {'ok', kz_json:object()}.
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
@@ -619,45 +636,49 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec connect_leg(ne_binary(), kapps_call:call()) -> 'ok'.
--spec connect_leg(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
--spec connect_leg(ne_binary(), api_binary(), boolean(), kapps_call:call()) -> 'ok'.
--spec connect_leg(ne_binary(), api_binary(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
--spec connect_leg(ne_binary(), api_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 
+-spec connect_leg(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 connect_leg(TargetCallId, Call) ->
     Command = connect_leg_command(TargetCallId, Call),
     send_command(Command, Call).
 
+-spec connect_leg(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 connect_leg(TargetCallId, Insert, Call) ->
     Command = connect_leg_command(TargetCallId, Insert, Call),
     send_command(Command, Call).
 
+-spec connect_leg(kz_term:ne_binary(), kz_term:api_binary(), boolean(), kapps_call:call()) -> 'ok'.
 connect_leg(TargetCallId, Insert, ContinueOnFail, Call) ->
     Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, Call),
     send_command(Command, Call).
 
+-spec connect_leg(kz_term:ne_binary(), kz_term:api_binary(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
     send_command(Command, Call).
 
+-spec connect_leg(kz_term:ne_binary(), kz_term:api_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterConnect_Leg, Call) ->
     Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterConnect_Leg, Call),
     send_command(Command, Call).
 
--spec connect_leg_command(ne_binary(), kapps_call:call()) -> kz_proplist().
--spec connect_leg_command(ne_binary(), ne_binary(), kapps_call:call()) -> kz_proplist().
--spec connect_leg_command(ne_binary(), ne_binary(), boolean(), kapps_call:call()) -> kz_proplist().
--spec connect_leg_command(ne_binary(), ne_binary(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
--spec connect_leg_command(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
+-spec connect_leg_command(kz_term:ne_binary(), kapps_call:call()) -> kz_term:proplist().
 connect_leg_command(TargetCallId, Call) ->
     connect_leg_command(TargetCallId, <<"tail">>, Call).
+
+-spec connect_leg_command(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:proplist().
 connect_leg_command(TargetCallId, Insert, Call) ->
     connect_leg_command(TargetCallId, Insert, 'false', Call).
+
+-spec connect_leg_command(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> kz_term:proplist().
 connect_leg_command(TargetCallId, Insert, ContinueOnFail, Call) ->
     connect_leg_command(TargetCallId, Insert, ContinueOnFail, 'true', Call).
+
+-spec connect_leg_command(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), kapps_call:call()) -> kz_term:proplist().
 connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
+
+-spec connect_leg_command(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kz_term:proplist().
 connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     [{<<"Application-Name">>, <<"connect_leg">>}
     ,{<<"Target-Call-ID">>, TargetCallId}
@@ -668,28 +689,32 @@ connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Park
     ,{<<"Call-ID">>, kapps_call:call_id(Call)}
     ].
 
--spec b_connect_leg(ne_binary(), kapps_call:call()) ->
-                           {'ok', kz_json:object()}.
--spec b_connect_leg(ne_binary(), ne_binary(), kapps_call:call()) ->
-                           {'ok', kz_json:object()}.
--spec b_connect_leg(ne_binary(), ne_binary(), boolean(), kapps_call:call()) ->
-                           {'ok', kz_json:object()}.
--spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), kapps_call:call()) ->
-                           {'ok', kz_json:object()}.
--spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) ->
+-spec b_connect_leg(kz_term:ne_binary(), kapps_call:call()) ->
                            {'ok', kz_json:object()}.
 b_connect_leg(TargetCallId, Call) ->
     connect_leg(TargetCallId, Call),
     wait_for_channel_unbridge().
+
+-spec b_connect_leg(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
+                           {'ok', kz_json:object()}.
 b_connect_leg(TargetCallId, Insert, Call) ->
     connect_leg(TargetCallId, Insert, Call),
     wait_for_channel_unbridge().
+
+-spec b_connect_leg(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
+                           {'ok', kz_json:object()}.
 b_connect_leg(TargetCallId, Insert, ContinueOnFail, Call) ->
     connect_leg(TargetCallId, Insert, ContinueOnFail, Call),
     wait_for_channel_unbridge().
+
+-spec b_connect_leg(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), kapps_call:call()) ->
+                           {'ok', kz_json:object()}.
 b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
     wait_for_channel_unbridge().
+
+-spec b_connect_leg(kz_term:ne_binary(), kz_term:ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) ->
+                           {'ok', kz_json:object()}.
 b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
@@ -700,11 +725,11 @@ b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterP
 %% Create a redirect request to the Contact on Server
 %% @end
 %%--------------------------------------------------------------------
--spec redirect(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec redirect(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 redirect(Contact, Call) ->
     redirect(Contact, 'undefined', Call).
 
--spec redirect(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec redirect(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
@@ -721,7 +746,7 @@ redirect(Contact, Server, Call) ->
 %% Create a redirect request to Node
 %% @end
 %%--------------------------------------------------------------------
--spec redirect_to_node(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec redirect_to_node(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 redirect_to_node(Contact, Node, Call) ->
     lager:debug("redirect ~s to ~s", [Contact, Node]),
     Command = [{<<"Redirect-Contact">>, Contact}
@@ -737,18 +762,19 @@ redirect_to_node(Contact, Node, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec flush_dtmf(kapps_call:call()) -> ne_binary().
+-spec flush_dtmf(kapps_call:call()) -> kz_term:ne_binary().
 flush_dtmf(Call) -> play(<<"silence_stream://50">>, Call).
 
--spec send_dtmf(ne_binary(), kapps_call:call()) -> 'ok'.
--spec send_dtmf(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec send_dtmf(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 send_dtmf(DTMFs, Call) ->
     send_dtmf(DTMFs, 'undefined', Call).
+
+-spec send_dtmf(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 send_dtmf(DTMFs, Duration, Call) ->
     Cmd = send_dtmf_command(DTMFs, Duration),
     send_command(Cmd, Call).
 
--spec send_dtmf_command(ne_binary(), api_binary()) -> kz_proplist().
+-spec send_dtmf_command(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:proplist().
 send_dtmf_command(DTMFs, Duration) ->
     props:filter_undefined(
       [{<<"DTMFs">>, DTMFs}
@@ -756,12 +782,12 @@ send_dtmf_command(DTMFs, Duration) ->
       ,{<<"Application-Name">>, <<"send_dtmf">>}
       ]).
 
--spec recv_dtmf(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec recv_dtmf(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 recv_dtmf(DTMFs, Call) ->
     Cmd = recv_dtmf_command(DTMFs),
     send_command(Cmd, Call).
 
--spec recv_dtmf_command(ne_binary()) -> kz_proplist().
+-spec recv_dtmf_command(kz_term:ne_binary()) -> kz_term:proplist().
 recv_dtmf_command(DTMFs) ->
     props:filter_undefined(
       [{<<"DTMFs">>, DTMFs}
@@ -776,11 +802,12 @@ recv_dtmf_command(DTMFs) ->
 %%   can not be used to set system settings
 %% @end
 %%--------------------------------------------------------------------
--spec set(api_object(), api_object(), kapps_call:call()) -> 'ok'.
--spec set(api_object(), api_object(), api_object(), kapps_call:call()) -> 'ok'.
+
+-spec set(kz_term:api_object(), kz_term:api_object(), kapps_call:call()) -> 'ok'.
 set(ChannelVars, CallVars, Call) ->
     set(ChannelVars, CallVars, 'undefined', Call).
 
+-spec set(kz_term:api_object(), kz_term:api_object(), kz_term:api_object(), kapps_call:call()) -> 'ok'.
 set('undefined', CallVars, AppVars, Call) -> set(kz_json:new(), CallVars, AppVars, Call);
 set(ChannelVars, 'undefined', AppVars, Call) -> set(ChannelVars, kz_json:new(), AppVars, Call);
 set(ChannelVars, CallVars, AppVars, Call) ->
@@ -799,7 +826,7 @@ set(ChannelVars, CallVars, AppVars, Call) ->
             send_command(Command, Call)
     end.
 
--spec set_terminators(api_binaries(), kapps_call:call()) -> 'ok'.
+-spec set_terminators(kz_term:api_binaries(), kapps_call:call()) -> 'ok'.
 set_terminators(Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"set_terminators">>}
               ,{<<"Terminators">>, Terminators}
@@ -814,13 +841,12 @@ set_terminators(Terminators, Call) ->
 %%   can not the switch vars
 %% @end
 %%--------------------------------------------------------------------
+
+
 -spec fetch(kapps_call:call()) -> 'ok'.
--spec fetch(boolean(), kapps_call:call()) -> 'ok'.
-
--spec b_fetch(kapps_call:call()) -> kapps_api_std_return().
--spec b_fetch(boolean(), kapps_call:call()) -> kapps_api_std_return().
-
 fetch(Call) -> fetch('false', Call).
+
+-spec fetch(boolean(), kapps_call:call()) -> 'ok'.
 fetch(FromOtherLeg, Call) ->
     Command = [{<<"Application-Name">>, <<"fetch">>}
               ,{<<"Insert-At">>, <<"now">>}
@@ -828,7 +854,10 @@ fetch(FromOtherLeg, Call) ->
               ],
     send_command(Command, Call).
 
+-spec b_fetch(kapps_call:call()) -> kapps_api_std_return().
 b_fetch(Call) -> b_fetch('false', Call).
+
+-spec b_fetch(boolean(), kapps_call:call()) -> kapps_api_std_return().
 b_fetch(FromOtherLeg, Call) ->
     fetch(FromOtherLeg, Call),
     case wait_for_message(Call, <<"fetch">>) of
@@ -843,14 +872,15 @@ b_fetch(FromOtherLeg, Call) ->
 %% Produces the low level kz_api request to ring the channel
 %% @end
 %%--------------------------------------------------------------------
+
 -spec ring(kapps_call:call()) -> 'ok'.
--spec b_ring(kapps_call:call()) ->
-                    kapps_api_error() |
-                    {'ok', kz_json:object()}.
 ring(Call) ->
     Command = [{<<"Application-Name">>, <<"ring">>}],
     send_command(Command, Call).
 
+-spec b_ring(kapps_call:call()) ->
+                    kapps_api_error() |
+                    {'ok', kz_json:object()}.
 b_ring(Call) ->
     ring(Call),
     wait_for_message(Call, <<"ring">>).
@@ -861,27 +891,27 @@ b_ring(Call) ->
 %% Instructs the switch to expect to receive a fax
 %% @end
 %%--------------------------------------------------------------------
+
 -spec receive_fax(kapps_call:call()) -> 'ok'.
--spec receive_fax(boolean(), kapps_call:call()) -> 'ok'.
--spec receive_fax(boolean() | api_binary()
-                 ,boolean() | api_binary()
-                 ,kapps_call:call()) -> 'ok'.
--spec receive_fax(boolean() | api_binary()
-                 ,boolean() | api_binary()
-                 ,api_binary()
-                 ,kapps_call:call()) -> 'ok'.
--spec b_receive_fax(kapps_call:call()) -> wait_for_fax_ret().
 receive_fax(Call) ->
     receive_fax(get_default_t38_setting(), Call).
 
+-spec receive_fax(boolean(), kapps_call:call()) -> 'ok'.
 receive_fax(DefaultFlag, Call) ->
     receive_fax(DefaultFlag, 'undefined', 'undefined', Call).
 
+-spec receive_fax(boolean() | kz_term:api_binary()
+                 ,boolean() | kz_term:api_binary()
+                 ,kapps_call:call()) -> 'ok'.
 receive_fax('undefined', 'undefined', Call) ->
     receive_fax(get_default_t38_setting(), 'undefined', 'undefined', Call);
 receive_fax(ResourceFlag, ReceiveFlag, Call) ->
     receive_fax(ResourceFlag, ReceiveFlag, 'undefined', Call).
 
+-spec receive_fax(boolean() | kz_term:api_binary()
+                 ,boolean() | kz_term:api_binary()
+                 ,kz_term:api_binary()
+                 ,kapps_call:call()) -> 'ok'.
 receive_fax(ResourceFlag, ReceiveFlag, LocalFilename, Call) ->
     Commands = props:filter_undefined([{<<"Application-Name">>, <<"receive_fax">>}
                                       ,{<<"Fax-Local-Filename">>, LocalFilename}
@@ -889,11 +919,12 @@ receive_fax(ResourceFlag, ReceiveFlag, LocalFilename, Call) ->
                                       ]),
     send_command(Commands, Call).
 
+-spec b_receive_fax(kapps_call:call()) -> wait_for_fax_ret().
 b_receive_fax(Call) ->
     receive_fax(Call),
     wait_for_fax().
 
--spec get_default_t38_setting() -> boolean() | ne_binary().
+-spec get_default_t38_setting() -> boolean() | kz_term:ne_binary().
 get_default_t38_setting() ->
     case kapps_config:get_ne_binary(<<"fax">>, <<"inbound_t38_default">>, <<"true">>) of
         <<"auto">> -> <<"auto">>;
@@ -906,16 +937,18 @@ get_default_t38_setting() ->
 %% Produces the low level kz_api request to answer the channel
 %% @end
 %%--------------------------------------------------------------------
+
 -spec answer(kapps_call:call()) -> 'ok'.
--spec answer_now(kapps_call:call()) -> 'ok'.
--spec b_answer(kapps_call:call()) ->
-                      kapps_api_error() |
-                      {'ok', kz_json:object()}.
 answer(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}], Call).
+
+-spec answer_now(kapps_call:call()) -> 'ok'.
 answer_now(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}
                                  ,{<<"Insert-At">>, <<"now">>}
                                  ], Call).
 
+-spec b_answer(kapps_call:call()) ->
+                      kapps_api_error() |
+                      {'ok', kz_json:object()}.
 b_answer(Call) ->
     answer(Call),
     wait_for_message(Call, <<"answer">>).
@@ -926,12 +959,13 @@ b_answer(Call) ->
 %% Produces the low level kz_api request to echo the channel
 %% @end
 %%--------------------------------------------------------------------
+
 -spec echo(kapps_call:call()) -> 'ok'.
+echo(Call) -> send_command([{<<"Application-Name">>, <<"echo">>}], Call).
+
 -spec b_echo(kapps_call:call()) ->
                     kapps_api_error() |
                     {'ok', kz_json:object()}.
-echo(Call) -> send_command([{<<"Application-Name">>, <<"echo">>}], Call).
-
 b_echo(Call) ->
     echo(Call),
     wait_for_message(Call, <<"echo">>).
@@ -957,25 +991,21 @@ break(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec queued_hangup(kapps_call:call()) -> 'ok'.
+
+
 -spec hangup(kapps_call:call()) -> 'ok'.
--spec hangup(boolean(), kapps_call:call()) -> 'ok'.
-
--spec b_hangup(kapps_call:call()) ->
-                      {'ok', 'channel_hungup'}.
--spec b_hangup(boolean(), kapps_call:call()) ->
-                      {'ok', 'channel_hungup' | 'leg_hangup'}.
-
 hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
+-spec queued_hangup(kapps_call:call()) -> 'ok'.
 queued_hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}],
     send_command(Command, Call).
 
+-spec hangup(boolean(), kapps_call:call()) -> 'ok'.
 hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
               ,{<<"Other-Leg-Only">>, OtherLegOnly}
@@ -983,9 +1013,14 @@ hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
               ],
     send_command(Command, Call).
 
+-spec b_hangup(kapps_call:call()) ->
+                      {'ok', 'channel_hungup'}.
 b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
+
+-spec b_hangup(boolean(), kapps_call:call()) ->
+                      {'ok', 'channel_hungup' | 'leg_hangup'}.
 b_hangup('false', Call) ->
     hangup(Call),
     wait_for_hangup();
@@ -999,41 +1034,33 @@ b_hangup('true', Call) ->
 %% Produces the low level kz_api request to page the call
 %% @end
 %%--------------------------------------------------------------------
+
+
 -spec page(kz_json:objects(), kapps_call:call()) -> 'ok'.
--spec page(kz_json:objects(), integer(), kapps_call:call()) -> 'ok'.
--spec page(kz_json:objects(), integer(), api_binary(), kapps_call:call()) -> 'ok'.
--spec page(kz_json:objects(), integer(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
--spec page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), kapps_call:call()) -> 'ok'.
--spec page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), api_object(), kapps_call:call()) -> 'ok'.
--spec page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), api_object(), api_object(), kapps_call:call()) -> 'ok'.
-
--spec b_page(kz_json:objects(), kapps_call:call()) ->
-                    wait_for_application_return().
--spec b_page(kz_json:objects(), integer(), kapps_call:call()) ->
-                    wait_for_application_return().
--spec b_page(kz_json:objects(), integer(), api_binary(), kapps_call:call()) ->
-                    wait_for_application_return().
--spec b_page(kz_json:objects(), integer(), api_binary(), api_binary(), kapps_call:call()) ->
-                    wait_for_application_return().
--spec b_page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), kapps_call:call()) ->
-                    wait_for_application_return().
--spec b_page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), api_object(), kapps_call:call()) ->
-                    wait_for_application_return().
--spec b_page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), api_object(), api_object(), kapps_call:call()) ->
-                    wait_for_application_return().
-
 page(Endpoints, Call) ->
     page(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+
+-spec page(kz_json:objects(), integer(), kapps_call:call()) -> 'ok'.
 page(Endpoints, Timeout, Call) ->
     page(Endpoints, Timeout, 'undefined', Call).
+
+-spec page(kz_json:objects(), integer(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 page(Endpoints, Timeout, CIDName, Call) ->
     page(Endpoints, Timeout, CIDName, 'undefined', Call).
+
+-spec page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 page(Endpoints, Timeout, CIDName, CIDNumber, Call) ->
     page(Endpoints, Timeout, CIDName, CIDNumber, 'undefined', Call).
+
+-spec page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kapps_call:call()) -> 'ok'.
 page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
     page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, 'undefined', Call).
+
+-spec page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_object(), kapps_call:call()) -> 'ok'.
 page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Call) ->
     page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, 'undefined', Call).
+
+-spec page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_object(), kz_term:api_object(), kapps_call:call()) -> 'ok'.
 page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) ->
     Command = [{<<"Application-Name">>, <<"page">>}
               ,{<<"Endpoints">>, Endpoints}
@@ -1046,18 +1073,38 @@ page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) ->
               ],
     send_command(Command, Call).
 
+-spec b_page(kz_json:objects(), kapps_call:call()) ->
+                    wait_for_application_return().
 b_page(Endpoints, Call) ->
     b_page(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+
+-spec b_page(kz_json:objects(), integer(), kapps_call:call()) ->
+                    wait_for_application_return().
 b_page(Endpoints, Timeout, Call) ->
     b_page(Endpoints, Timeout, 'undefined', Call).
+
+-spec b_page(kz_json:objects(), integer(), kz_term:api_binary(), kapps_call:call()) ->
+                    wait_for_application_return().
 b_page(Endpoints, Timeout, CIDName, Call) ->
     b_page(Endpoints, Timeout, CIDName, 'undefined', Call).
+
+-spec b_page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
+                    wait_for_application_return().
 b_page(Endpoints, Timeout, CIDName, CIDNumber, Call) ->
     b_page(Endpoints, Timeout, CIDName, CIDNumber, 'undefined', Call).
+
+-spec b_page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kapps_call:call()) ->
+                    wait_for_application_return().
 b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
     b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, 'undefined', Call).
+
+-spec b_page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_object(), kapps_call:call()) ->
+                    wait_for_application_return().
 b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Call) ->
     b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, 'undefined', Call).
+
+-spec b_page(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_object(), kz_term:api_object(), kapps_call:call()) ->
+                    wait_for_application_return().
 b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) ->
     page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call),
     wait_for_application(Call, <<"page">>).
@@ -1068,31 +1115,7 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) 
 %% Produces the low level kz_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
--spec bridge(kz_json:objects(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api_binary(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), kapps_call:call()) -> 'ok'.
--spec bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
 
--spec b_bridge(kz_json:objects(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api_binary(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
--spec b_bridge(kz_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), api_binary(), kapps_call:call()) ->
-                      kapps_api_bridge_return().
 
 bridge_command(Endpoints, Call) ->
     bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
@@ -1120,52 +1143,90 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
     ,{<<"Ignore-Forward">>, IgnoreForward}
     ].
 
+-spec bridge(kz_json:objects(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Call) ->
     Command = bridge_command(Endpoints, Call),
     send_command(Command, Call).
+
+-spec bridge(kz_json:objects(), integer(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Timeout, Call) ->
     Command = bridge_command(Endpoints, Timeout, Call),
     send_command(Command, Call).
+
+-spec bridge(kz_json:objects(), integer(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Timeout, Strategy, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, Call),
     send_command(Command, Call).
+
+-spec bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
     send_command(Command, Call).
+
+-spec bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
     send_command(Command, Call).
+
+-spec bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     send_command(Command, Call).
+
+-spec bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
     send_command(Command, Call).
+
+-spec bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call),
     send_command(Command, Call).
 
+-spec b_bridge(kz_json:objects(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Call) ->
     bridge(Endpoints, Call),
     b_bridge_wait(?DEFAULT_TIMEOUT_S, Call).
+
+-spec b_bridge(kz_json:objects(), integer(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Timeout, Call) ->
     bridge(Endpoints, Timeout, Call),
     b_bridge_wait(Timeout, Call).
+
+-spec b_bridge(kz_json:objects(), integer(), kz_term:api_binary(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Timeout, Strategy, Call) ->
     bridge(Endpoints, Timeout, Strategy, Call),
     b_bridge_wait(Timeout, Call).
+
+-spec b_bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
     b_bridge_wait(Timeout, Call).
+
+-spec b_bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
     b_bridge_wait(Timeout, Call).
+
+-spec b_bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     b_bridge_wait(Timeout, Call).
+
+-spec b_bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_binary(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
     b_bridge_wait(Timeout, Call).
+
+-spec b_bridge(kz_json:objects(), integer(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_object(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
+                      kapps_api_bridge_return().
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call),
     b_bridge_wait(Timeout, Call).
@@ -1177,25 +1238,29 @@ b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((kz_term:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + ?EXTRA_BRIDGE_TIMEOUT , Call).
 
 -spec unbridge(kapps_call:call()) -> 'ok'.
--spec unbridge(kapps_call:call(), api_ne_binary()) -> 'ok'.
--spec unbridge(kapps_call:call(), api_ne_binary(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
     Command = unbridge_command(Call),
     send_command(Command, Call).
+
+-spec unbridge(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 unbridge(Call, Leg) ->
     Command = unbridge_command(Call, Leg),
     send_command(Command, Call).
+
+-spec unbridge(kapps_call:call(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> 'ok'.
 unbridge(Call, Leg, Insert) ->
     Command = unbridge_command(Call, Leg, Insert),
     send_command(Command, Call).
 
--spec unbridge_command(kapps_call:call()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), api_ne_binary()) -> kz_proplist().
--spec unbridge_command(kapps_call:call(), api_ne_binary(), ne_binary()) -> kz_proplist().
+-spec unbridge_command(kapps_call:call()) -> kz_term:proplist().
 unbridge_command(Call) ->
     unbridge_command(Call, <<"Both">>).
+
+-spec unbridge_command(kapps_call:call(), kz_term:api_ne_binary()) -> kz_term:proplist().
 unbridge_command(Call, Leg) ->
     unbridge_command(Call, Leg, <<"now">>).
+
+-spec unbridge_command(kapps_call:call(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 unbridge_command(Call, Leg, Insert) ->
     [{<<"Application-Name">>, <<"unbridge">>}
     ,{<<"Insert-At">>, Insert}
@@ -1204,23 +1269,26 @@ unbridge_command(Call, Leg, Insert) ->
     ].
 
 -spec soft_hold(kapps_call:call()) -> 'ok'.
--spec soft_hold(kapps_call:call(), api_binary()) -> 'ok'.
 soft_hold(Call) ->
     soft_hold(Call, <<"1">>).
+
+-spec soft_hold(kapps_call:call(), kz_term:api_binary()) -> 'ok'.
 soft_hold(Call, UnholdKey) ->
     Command = soft_hold_command(kapps_call:call_id(Call), UnholdKey),
     send_command(Command, Call).
 
--spec soft_hold_command(ne_binary(), ne_binary()) ->
-                               kz_proplist().
--spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary()) ->
-                               kz_proplist().
--spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary(), ne_binary()) ->
-                               kz_proplist().
+-spec soft_hold_command(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                               kz_term:proplist().
 soft_hold_command(CallId, UnholdKey) ->
     soft_hold_command(CallId, UnholdKey, 'undefined', 'undefined').
+
+-spec soft_hold_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
+                               kz_term:proplist().
 soft_hold_command(CallId, UnholdKey, AMOH, BMOH) ->
     soft_hold_command(CallId, UnholdKey, AMOH, BMOH, <<"now">>).
+
+-spec soft_hold_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) ->
+                               kz_term:proplist().
 soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
     props:filter_undefined([{<<"Application-Name">>, <<"soft_hold">>}
                            ,{<<"Call-ID">>, CallId}
@@ -1229,8 +1297,8 @@ soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
                             | build_moh_keys(AMOH, BMOH)
                            ]).
 
--spec build_moh_keys(api_binary(), api_binary()) ->
-                            kz_proplist_kv(ne_binary(), api_binary()).
+-spec build_moh_keys(kz_term:api_binary(), kz_term:api_binary()) ->
+                            kz_term:proplist_kv(kz_term:ne_binary(), kz_term:api_binary()).
 build_moh_keys('undefiend', _) -> [];
 build_moh_keys(AMOH, BMOH) ->
     [{<<"A-MOH">>, AMOH}
@@ -1243,28 +1311,24 @@ build_moh_keys(AMOH, BMOH) ->
 %% Produces the low level kz_api request to park the channel
 %% @end
 %%--------------------------------------------------------------------
+
+
+
 -spec hold(kapps_call:call()) -> 'ok'.
--spec hold(api_binary(), kapps_call:call()) -> 'ok'.
-
--spec hold_command(kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
--spec hold_command(api_binary(), kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
-
--spec b_hold(kapps_call:call()) ->
-                    kapps_api_std_return().
--spec b_hold(kz_timeout() | api_binary(), kapps_call:call()) ->
-                    kapps_api_std_return().
--spec b_hold(kz_timeout(), api_binary(), kapps_call:call()) ->
-                    kapps_api_std_return().
-
 hold(Call) -> hold('undefined', Call).
+
+-spec hold(kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 hold(MOH, Call) ->
     Command = hold_command(MOH, Call),
     send_command(Command, Call).
 
+-spec hold_command(kapps_call:call() | kz_term:ne_binary()) ->
+                          kz_json:object().
 hold_command(Call) ->
     hold_command('undefined', Call).
+
+-spec hold_command(kz_term:api_binary(), kapps_call:call() | kz_term:ne_binary()) ->
+                          kz_json:object().
 hold_command(MOH, CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"hold">>}
@@ -1277,32 +1341,40 @@ hold_command(MOH, Call) ->
                 ,kapps_call:call_id_direct(Call)
                 ).
 
+-spec b_hold(kapps_call:call()) ->
+                    kapps_api_std_return().
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 
+-spec b_hold(timeout() | kz_term:api_binary(), kapps_call:call()) ->
+                    kapps_api_std_return().
 b_hold(Timeout, Call) when is_integer(Timeout);
                            Timeout =:= 'infinity' ->
     b_hold(Timeout, 'undefined', Call);
 b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
 
+-spec b_hold(timeout(), kz_term:api_binary(), kapps_call:call()) ->
+                    kapps_api_std_return().
 b_hold(Timeout, MOH, Call) ->
     hold(MOH, Call),
     wait_for_message(Call, <<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
 
+
+
 -spec hold_control(kapps_call:call()) -> 'ok'.
--spec hold_control(api_binary(), kapps_call:call()) -> 'ok'.
-
--spec hold_control_command(kapps_call:call() | ne_binary()) ->
-                                  kz_json:object().
--spec hold_control_command(api_binary(), kapps_call:call() | ne_binary()) ->
-                                  kz_json:object().
-
 hold_control(Call) -> hold_control(<<"toggle">>, Call).
+
+-spec hold_control(kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 hold_control(Action, Call) ->
     Command = hold_control_command(Action, Call),
     send_command(Command, Call).
 
+-spec hold_control_command(kapps_call:call() | kz_term:ne_binary()) ->
+                                  kz_json:object().
 hold_control_command(Call) ->
     hold_control_command(<<"toggle">>, Call).
+
+-spec hold_control_command(kz_term:api_binary(), kapps_call:call() | kz_term:ne_binary()) ->
+                                  kz_json:object().
 hold_control_command(Action, CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"hold_control">>}
@@ -1318,7 +1390,7 @@ park(Call) ->
     Command = park_command(Call),
     send_command(Command, Call).
 
--spec park_command(kapps_call:call() | ne_binary()) -> kz_json:object().
+-spec park_command(kapps_call:call() | kz_term:ne_binary()) -> kz_json:object().
 park_command(CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"park">>}
@@ -1335,19 +1407,21 @@ park_command(Call) ->
 %% caller.
 %% @end
 %%--------------------------------------------------------------------
--spec prompt(ne_binary(), kapps_call:call()) -> ne_binary().
--spec prompt(ne_binary(), ne_binary(), kapps_call:call()) -> ne_binary().
 
--spec b_prompt(ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_prompt(ne_binary(), ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 
+-spec prompt(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 prompt(Prompt, Call) ->
     play(kapps_call:get_prompt(Call, Prompt), Call).
+
+-spec prompt(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 prompt(Prompt, Lang, Call) ->
     play(kapps_call:get_prompt(Call, Prompt, Lang), Call).
 
+-spec b_prompt(kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_prompt(Prompt, Call) ->
     b_play(kapps_call:get_prompt(Call, Prompt), Call).
+
+-spec b_prompt(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_prompt(Prompt, Lang, Call) ->
     b_play(kapps_call:get_prompt(Call, Prompt, Lang), Call).
 
@@ -1359,42 +1433,26 @@ b_prompt(Prompt, Lang, Call) ->
 %% can use to skip playback.
 %% @end
 %%--------------------------------------------------------------------
--spec play(ne_binary(), kapps_call:call()) ->
-                  ne_binary().
--spec play(ne_binary(), api_binaries(), kapps_call:call()) ->
-                  ne_binary().
--spec play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
-                  ne_binary().
--spec play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
-                  ne_binary().
 
--spec play_command(ne_binary(), kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
--spec play_command(ne_binary(), api_binaries(), kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
--spec play_command(ne_binary(), api_binaries(), api_binary(), kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
--spec play_command(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
 
--spec b_play(ne_binary(), kapps_call:call()) ->
-                    kapps_api_std_return().
--spec b_play(ne_binary(), api_binaries(), kapps_call:call()) ->
-                    kapps_api_std_return().
--spec b_play(ne_binary(), api_binaries(), api_binary(), kapps_call:call()) ->
-                    kapps_api_std_return().
--spec b_play(ne_binary(), api_binaries(), api_binary(), api_boolean(), kapps_call:call()) ->
-                    kapps_api_std_return().
 
+-spec play_command(kz_term:ne_binary(), kapps_call:call() | kz_term:ne_binary()) ->
+                          kz_json:object().
 play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
 
+-spec play_command(kz_term:ne_binary(), kz_term:api_binaries(), kapps_call:call() | kz_term:ne_binary()) ->
+                          kz_json:object().
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
 
+-spec play_command(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call() | kz_term:ne_binary()) ->
+                          kz_json:object().
 play_command(Media, Terminators, Leg, Call) ->
     play_command(Media, Terminators, Leg, 'false', Call).
 
+-spec play_command(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_boolean(), kapps_call:call() | kz_term:ne_binary()) ->
+                          kz_json:object().
 play_command(Media, Terminators, Leg, Endless, CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"play">>}
@@ -1407,19 +1465,30 @@ play_command(Media, Terminators, Leg, Endless, CallId=?NE_BINARY) ->
 play_command(Media, Terminators, Leg, Endless, Call) ->
     play_command(Media, Terminators, Leg, Endless, kapps_call:call_id(Call)).
 
--spec play_terminators(api_binaries()) -> ne_binaries().
+-spec play_terminators(kz_term:api_binaries()) -> kz_term:ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
 play_terminators(Ts) -> lists:usort(Ts).
 
--spec play_leg(api_binary()) -> api_binary().
+-spec play_leg(kz_term:api_binary()) -> kz_term:api_binary().
 play_leg('undefined') -> 'undefined';
 play_leg(Leg) -> kz_binary:ucfirst(Leg).
 
+-spec play(kz_term:ne_binary(), kapps_call:call()) ->
+                  kz_term:ne_binary().
 play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
+
+-spec play(kz_term:ne_binary(), kz_term:api_binaries(), kapps_call:call()) ->
+                  kz_term:ne_binary().
 play(Media, Terminators, Call) ->
     play(Media, Terminators, 'undefined', Call).
+
+-spec play(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) ->
+                  kz_term:ne_binary().
 play(Media, Terminators, Leg, Call) ->
     play(Media, Terminators, Leg, 'false', Call).
+
+-spec play(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_boolean(), kapps_call:call()) ->
+                  kz_term:ne_binary().
 play(Media, Terminators, Leg, Endless, Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
@@ -1434,12 +1503,23 @@ play(Media, Terminators, Leg, Endless, Call) ->
     send_command(Command, Call),
     NoopId.
 
+-spec b_play(kz_term:ne_binary(), kapps_call:call()) ->
+                    kapps_api_std_return().
 b_play(Media, Call) ->
     b_play(Media, ?ANY_DIGIT, Call).
+
+-spec b_play(kz_term:ne_binary(), kz_term:api_binaries(), kapps_call:call()) ->
+                    kapps_api_std_return().
 b_play(Media, Terminators, Call) ->
     b_play(Media, Terminators, 'undefined', Call).
+
+-spec b_play(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) ->
+                    kapps_api_std_return().
 b_play(Media, Terminators, Leg, Call) ->
     b_play(Media, Terminators, Leg, 'false', Call).
+
+-spec b_play(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_boolean(), kapps_call:call()) ->
+                    kapps_api_std_return().
 b_play(Media, Terminators, Leg, Endless, Call) ->
     wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
 
@@ -1451,17 +1531,21 @@ b_play(Media, Terminators, Leg, Endless, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec tts(api_binary(), kapps_call:call()) -> ne_binary().
--spec tts(api_binary(), api_binary(), kapps_call:call()) -> ne_binary().
--spec tts(api_binary(), api_binary(), api_binary(), kapps_call:call()) -> ne_binary().
--spec tts(api_binary(), api_binary(), api_binary(), api_binaries(), kapps_call:call()) -> ne_binary().
--spec tts(api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), kapps_call:call()) -> ne_binary().
 
+-spec tts(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Call) -> tts(SayMe, kazoo_tts:default_voice(), Call).
+
+-spec tts(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Call) -> tts(SayMe, Voice, kapps_call:language(Call), Call).
+
+-spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
+
+-spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators, kazoo_tts:default_provider(Call), Call).
+
+-spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
     NoopId = kz_datamgr:get_uuid(),
 
@@ -1477,19 +1561,23 @@ tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
     send_command(Command, Call),
     NoopId.
 
--spec tts_command(api_binary(), kapps_call:call()) -> kz_json:object().
--spec tts_command(api_binary(), api_binary(), kapps_call:call()) -> kz_json:object().
--spec tts_command(api_binary(), api_binary(), api_binary(), kapps_call:call()) -> kz_json:object().
--spec tts_command(api_binary(), api_binary(), api_binary(), api_binaries(), kapps_call:call()) -> kz_json:object().
--spec tts_command(api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), kapps_call:call()) -> kz_json:object().
+-spec tts_command(kz_term:api_binary(), kapps_call:call()) -> kz_json:object().
 tts_command(SayMe, Call) ->
     tts_command(SayMe, kazoo_tts:default_voice(), Call).
+
+-spec tts_command(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_json:object().
 tts_command(SayMe, Voice, Call) ->
     tts_command(SayMe, Voice, kapps_call:language(Call), Call).
+
+-spec tts_command(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_json:object().
 tts_command(SayMe, Voice, Language, Call) ->
     tts_command(SayMe, Voice, Language, ?ANY_DIGIT, Call).
+
+-spec tts_command(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kapps_call:call()) -> kz_json:object().
 tts_command(SayMe, Voice, Language, Terminators, Call) ->
     tts_command(SayMe, Voice, Language, Terminators, kazoo_tts:default_provider(Call), Call).
+
+-spec tts_command(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kz_json:object().
 tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"tts">>}
@@ -1501,7 +1589,7 @@ tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
--spec tts_terminators(api_ne_binaries()) -> api_ne_binaries().
+-spec tts_terminators(kz_term:api_ne_binaries()) -> kz_term:api_ne_binaries().
 tts_terminators('undefined') -> ?ANY_DIGIT;
 tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
@@ -1512,24 +1600,28 @@ tts_voice(Voice) -> Voice.
 tts_language('undefined', Call) -> kapps_call:language(Call);
 tts_language(Language, _Call) -> Language.
 
--spec tts_engine(api_ne_binary(), kapps_call:call()) -> ne_binary().
+-spec tts_engine(kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts_engine('undefined', Call) -> kazoo_tts:default_provider(Call);
 tts_engine(Engine, _Call) -> Engine.
 
--spec b_tts(api_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_tts(api_binary(), api_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_tts(api_binary(), api_binary(), api_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_tts(api_binary(), api_binary(), api_binary(), api_binaries(), kapps_call:call()) -> kapps_api_std_return().
--spec b_tts(api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), kapps_call:call()) -> kapps_api_std_return().
 
+-spec b_tts(kz_term:api_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_tts(SayMe, Call) ->
     wait_for_noop(Call, tts(SayMe, Call)).
+
+-spec b_tts(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_tts(SayMe, Voice, Call) ->
     wait_for_noop(Call, tts(SayMe, Voice, Call)).
+
+-spec b_tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_tts(SayMe, Voice, Lang, Call) ->
     wait_for_noop(Call, tts(SayMe, Voice, Lang, Call)).
+
+-spec b_tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kapps_call:call()) -> kapps_api_std_return().
 b_tts(SayMe, Voice, Lang, Terminators, Call) ->
     wait_for_noop(Call, tts(SayMe, Voice, Lang, Terminators, Call)).
+
+-spec b_tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
     wait_for_noop(Call, tts(SayMe, Voice, Lang, Terminators, Engine, Call)).
 
@@ -1540,26 +1632,25 @@ b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
 %%--------------------------------------------------------------------
--spec record(ne_binary(), kapps_call:call()) -> 'ok'.
--spec record(ne_binary(), binaries(), kapps_call:call()) -> 'ok'.
--spec record(ne_binary(), binaries(),  api_binary() | integer(), kapps_call:call()) -> 'ok'.
--spec record(ne_binary(), binaries(),  api_binary() | integer(), api_binary() | integer(), kapps_call:call()) -> 'ok'.
--spec record(ne_binary(), binaries(),  api_binary() | integer(), api_binary() | integer(),  api_binary() | integer(), kapps_call:call()) -> 'ok'.
 
--spec b_record(ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_record(ne_binary(), binaries(), kapps_call:call()) -> kapps_api_std_return().
--spec b_record(ne_binary(), binaries(), api_binary() | integer(), kapps_call:call()) -> kapps_api_std_return().
--spec b_record(ne_binary(), binaries(), api_binary() | integer(), api_binary() | integer(), kapps_call:call()) -> kapps_api_std_return().
--spec b_record(ne_binary(), binaries(), api_binary() | integer(), api_binary() | integer(), api_binary() | integer(), kapps_call:call()) -> kapps_api_std_return().
 
+-spec record(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
+
+-spec record(kz_term:ne_binary(), kz_term:binaries(), kapps_call:call()) -> 'ok'.
 record(MediaName, Terminators, Call) ->
     record(MediaName, Terminators, <<"300">>, Call).
+
+-spec record(kz_term:ne_binary(), kz_term:binaries(),  kz_term:api_binary() | integer(), kapps_call:call()) -> 'ok'.
 record(MediaName, Terminators, TimeLimit, Call) ->
     record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
+
+-spec record(kz_term:ne_binary(), kz_term:binaries(),  kz_term:api_binary() | integer(), kz_term:api_binary() | integer(), kapps_call:call()) -> 'ok'.
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
+
+-spec record(kz_term:ne_binary(), kz_term:binaries(),  kz_term:api_binary() | integer(), kz_term:api_binary() | integer(),  kz_term:api_binary() | integer(), kapps_call:call()) -> 'ok'.
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     Command = [{<<"Application-Name">>, <<"record">>}
               ,{<<"Media-Name">>, MediaName}
@@ -1570,14 +1661,23 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) -
               ],
     send_command(Command, Call).
 
+-spec b_record(kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_record(MediaName, Call) ->
     b_record(MediaName, ?ANY_DIGIT, Call).
+
+-spec b_record(kz_term:ne_binary(), kz_term:binaries(), kapps_call:call()) -> kapps_api_std_return().
 b_record(MediaName, Terminators, Call) ->
     b_record(MediaName, Terminators, <<"300">>, Call).
+
+-spec b_record(kz_term:ne_binary(), kz_term:binaries(), kz_term:api_binary() | integer(), kapps_call:call()) -> kapps_api_std_return().
 b_record(MediaName, Terminators, TimeLimit, Call) ->
     b_record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
+
+-spec b_record(kz_term:ne_binary(), kz_term:binaries(), kz_term:api_binary() | integer(), kz_term:api_binary() | integer(), kapps_call:call()) -> kapps_api_std_return().
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
     b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
+
+-spec b_record(kz_term:ne_binary(), kz_term:binaries(), kz_term:api_binary() | integer(), kz_term:api_binary() | integer(), kz_term:api_binary() | integer(), kapps_call:call()) -> kapps_api_std_return().
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>
@@ -1587,37 +1687,42 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
                                  ,'infinity'
                                  ).
 
--spec verify_media_name(kz_json:object(), ne_binary()) -> boolean().
+-spec verify_media_name(kz_json:object(), kz_term:ne_binary()) -> boolean().
 verify_media_name(JObj, MediaName) ->
     case kzc_recording:get_response_media(JObj) of
         {_, MediaName} -> 'true';
         _ -> 'false'
     end.
 
--spec start_record_call(kz_proplist(), kapps_call:call()) -> 'ok'.
--spec start_record_call(kz_proplist(), api_binary() | pos_integer(), kapps_call:call()) -> 'ok'.
--spec start_record_call(kz_proplist(), api_binary() | pos_integer(), ne_binaries(), kapps_call:call()) -> 'ok'.
+-spec start_record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
 start_record_call(Media, Call) ->
     record_call(Media, <<"start">>, Call).
+
+-spec start_record_call(kz_term:proplist(), kz_term:api_binary() | pos_integer(), kapps_call:call()) -> 'ok'.
 start_record_call(Media, TimeLimit, Call) ->
     record_call(Media, <<"start">>, TimeLimit, Call).
+
+-spec start_record_call(kz_term:proplist(), kz_term:api_binary() | pos_integer(), kz_term:ne_binaries(), kapps_call:call()) -> 'ok'.
 start_record_call(Media, TimeLimit, Terminators, Call) ->
     record_call(Media, <<"start">>, TimeLimit, Terminators, Call).
 
--spec stop_record_call(kz_proplist(), kapps_call:call()) -> 'ok'.
+-spec stop_record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
 stop_record_call(Media, Call) ->
     record_call(Media, <<"stop">>, Call).
 
--spec record_call(kz_proplist(), kapps_call:call()) -> 'ok'.
--spec record_call(kz_proplist(), ne_binary(), kapps_call:call()) -> 'ok'.
--spec record_call(kz_proplist(), ne_binary(),  api_binary() | pos_integer(), kapps_call:call()) -> 'ok'.
--spec record_call(kz_proplist(), ne_binary(),  api_binary() | pos_integer(), list(), kapps_call:call()) -> 'ok'.
+-spec record_call(kz_term:proplist(), kapps_call:call()) -> 'ok'.
 record_call(Media, Call) ->
     record_call(Media, <<"start">>, Call).
+
+-spec record_call(kz_term:proplist(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 record_call(Media, Action, Call) ->
     record_call(Media, Action, 600, Call).
+
+-spec record_call(kz_term:proplist(), kz_term:ne_binary(),  kz_term:api_binary() | pos_integer(), kapps_call:call()) -> 'ok'.
 record_call(Media, Action, TimeLimit, Call) ->
     record_call(Media, Action, TimeLimit, ?ANY_DIGIT, Call).
+
+-spec record_call(kz_term:proplist(), kz_term:ne_binary(),  kz_term:api_binary() | pos_integer(), list(), kapps_call:call()) -> 'ok'.
 record_call(Media, Action, TimeLimit, Terminators, Call) ->
     Limit = props:get_value(<<"Time-Limit">>, Media, kz_term:to_binary(TimeLimit)),
     Command = props:filter_undefined(
@@ -1630,22 +1735,25 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
                 ]),
     send_command(Command, Call).
 
--spec b_record_call(kz_proplist(), kapps_call:call()) ->
-                           wait_for_headless_application_return().
--spec b_record_call(kz_proplist(), ne_binary(), kapps_call:call()) ->
-                           wait_for_headless_application_return().
--spec b_record_call(kz_proplist(), ne_binary(), api_binary() | pos_integer(), kapps_call:call()) ->
-                           wait_for_headless_application_return().
--spec b_record_call(kz_proplist(), ne_binary(), api_binary() | pos_integer(), list(), kapps_call:call()) ->
+-spec b_record_call(kz_term:proplist(), kapps_call:call()) ->
                            wait_for_headless_application_return().
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
+
+-spec b_record_call(kz_term:proplist(), kz_term:ne_binary(), kapps_call:call()) ->
+                           wait_for_headless_application_return().
 b_record_call(MediaName, Action, Call) ->
     record_call(MediaName, Action, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
+
+-spec b_record_call(kz_term:proplist(), kz_term:ne_binary(), kz_term:api_binary() | pos_integer(), kapps_call:call()) ->
+                           wait_for_headless_application_return().
 b_record_call(MediaName, Action, TimeLimit, Call) ->
     b_record_call(MediaName, Action, TimeLimit, ?ANY_DIGIT, Call).
+
+-spec b_record_call(kz_term:proplist(), kz_term:ne_binary(), kz_term:api_binary() | pos_integer(), list(), kapps_call:call()) ->
+                           wait_for_headless_application_return().
 b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
     record_call(MediaName, Action, TimeLimit, Terminators, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
@@ -1659,22 +1767,21 @@ b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
 -type b_store_return() :: {'error', 'timeout' | kz_json:object()} |
                           {'ok', kz_json:object()}.
 
--spec store(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
--spec store(ne_binary(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
--spec store(ne_binary(), api_binary(), api_binary(), kz_json:objects(), kapps_call:call()) -> 'ok'.
--spec store(ne_binary(), api_binary(), api_binary(), kz_json:objects(), boolean(), kapps_call:call()) -> 'ok'.
 
--spec b_store(ne_binary(), ne_binary(), kapps_call:call()) -> b_store_return().
--spec b_store(ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> b_store_return().
--spec b_store(ne_binary(), ne_binary(), ne_binary(), kz_json:objects(), kapps_call:call()) -> b_store_return().
--spec b_store(ne_binary(), ne_binary(), ne_binary(), kz_json:objects(), boolean(), kapps_call:call()) -> b_store_return().
 
+-spec store(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
+
+-spec store(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 store(MediaName, Transfer, Method, Call) ->
     store(MediaName, Transfer, Method, [kz_json:new()], Call).
+
+-spec store(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_json:objects(), kapps_call:call()) -> 'ok'.
 store(MediaName, Transfer, Method, Headers, Call) ->
     store(MediaName, Transfer, Method, Headers, 'false', Call).
+
+-spec store(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_json:objects(), boolean(), kapps_call:call()) -> 'ok'.
 store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     Command = [{<<"Application-Name">>, <<"store">>}
               ,{<<"Media-Name">>, MediaName}
@@ -1686,17 +1793,24 @@ store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
               ],
     send_command(Command, Call).
 
+-spec b_store(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> b_store_return().
 b_store(MediaName, Transfer, Call) ->
     b_store(MediaName, Transfer, <<"put">>, Call).
+
+-spec b_store(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> b_store_return().
 b_store(MediaName, Transfer, Method, Call) ->
     b_store(MediaName, Transfer, Method, [kz_json:new()], Call).
+
+-spec b_store(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), kapps_call:call()) -> b_store_return().
 b_store(MediaName, Transfer, Method, Headers, Call) ->
     b_store(MediaName, Transfer, Method, Headers, 'false', Call).
+
+-spec b_store(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), boolean(), kapps_call:call()) -> b_store_return().
 b_store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     store(MediaName, Transfer, Method, Headers, SuppressReport, Call),
     wait_for_headless_application(<<"store">>).
 
--spec b_store_vm(ne_binary(), ne_binary(), ne_binary(), kz_json:objects(), boolean(), kapps_call:call()) ->
+-spec b_store_vm(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), boolean(), kapps_call:call()) ->
                         wait_for_headless_application_return().
 b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     Command = [{<<"Application-Name">>, <<"store_vm">>}
@@ -1710,8 +1824,8 @@ b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     send_command(Command, Call),
     wait_for_headless_application(<<"store_vm">>).
 
--spec audio_level_command(kapps_call:call(), ne_binary(), ne_binary(), ne_binary() | integer()) ->
-                                 kz_proplist().
+-spec audio_level_command(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | integer()) ->
+                                 kz_term:proplist().
 audio_level_command(_Call, Mode, Action, Level) ->
     [{<<"Application-Name">>, <<"audio_level">>}
     ,{<<"Action">>, Action}
@@ -1720,7 +1834,7 @@ audio_level_command(_Call, Mode, Action, Level) ->
     ,{<<"Insert-At">>, <<"now">>}
     ].
 
--spec audio_level(kapps_call:call(), ne_binary(), ne_binary(), ne_binary() | integer()) -> 'ok'.
+-spec audio_level(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | integer()) -> 'ok'.
 audio_level(Call, Mode, Action, Level) ->
     Command = audio_level_command(Call, Mode, Action, Level),
     send_command(Command, Call).
@@ -1732,10 +1846,10 @@ audio_level(Call, Mode, Action, Level) ->
 %% caller
 %% @end
 %%--------------------------------------------------------------------
--spec store_fax(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec store_fax(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 store_fax(URL, Call) ->
     store_fax(URL, 'undefined', Call).
--spec store_fax(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec store_fax(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 store_fax(URL, LocalFile, Call) ->
 
     Command = props:filter_undefined([{<<"Application-Name">>, <<"store_fax">>}
@@ -1746,7 +1860,7 @@ store_fax(URL, LocalFile, Call) ->
                                      ]),
     send_command(Command, Call).
 
--spec b_store_fax(ne_binary(), kapps_call:call()) -> b_store_return().
+-spec b_store_fax(kz_term:ne_binary(), kapps_call:call()) -> b_store_return().
 b_store_fax(URL, Call) ->
     store_fax(URL, Call),
     wait_for_headless_application(<<"store_fax">>).
@@ -1780,82 +1894,92 @@ tones_command(Tones, Call) ->
 %% caller, and collect a number of DTMF events.
 %% @end
 %%--------------------------------------------------------------------
--spec prompt_and_collect_digit(ne_binary(), kapps_call:call()) -> 'ok'.
--spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                               ,kapps_call:call()) ->
-                                       'ok'.
--spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), kapps_call:call()) ->
-                                       'ok'.
--spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), kapps_call:call()) ->
-                                       'ok'.
--spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), api_binary()
-                               ,kapps_call:call()) ->
-                                       'ok'.
--spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), api_binary()
-                               ,ne_binary(), kapps_call:call()) ->
-                                       'ok'.
--spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), api_binary()
-                               ,ne_binary(), ne_binaries(), kapps_call:call()) ->
-                                       'ok'.
 
--spec b_prompt_and_collect_digit(ne_binary(), kapps_call:call()) ->
-                                        b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                 ,kapps_call:call()) ->
-                                         b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                 ,integer(), kapps_call:call()) ->
-                                         b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                 ,integer(), integer(), kapps_call:call()) ->
-                                         b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                 ,integer(), integer(), api_binary()
-                                 ,kapps_call:call()) ->
-                                         b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                 ,integer(), integer(), api_binary()
-                                 ,ne_binary(), kapps_call:call()) ->
-                                         b_play_and_collect_digits_return().
--spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                 ,integer(), integer(), api_binary()
-                                 ,ne_binary(), ne_binaries(), kapps_call:call()) ->
-                                         b_play_and_collect_digits_return().
 
+-spec prompt_and_collect_digit(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 prompt_and_collect_digit(Prompt, Call) ->
     prompt_and_collect_digits(1, 1, Prompt, Call).
 
+-spec prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,kapps_call:call()) ->
+                                       'ok'.
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, 1,  Call).
+
+-spec prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), kapps_call:call()) ->
+                                       'ok'.
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, 3 * ?MILLISECONDS_IN_SECOND, Call).
+
+-spec prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kapps_call:call()) ->
+                                       'ok'.
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, 'undefined', Call).
+
+-spec prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kz_term:api_binary()
+                               ,kapps_call:call()) ->
+                                       'ok'.
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, <<"\\d+">>, Call).
+
+-spec prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kz_term:api_binary()
+                               ,kz_term:ne_binary(), kapps_call:call()) ->
+                                       'ok'.
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, [<<"#">>], Call).
+
+-spec prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kz_term:api_binary()
+                               ,kz_term:ne_binary(), kz_term:ne_binaries(), kapps_call:call()) ->
+                                       'ok'.
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, kapps_call:get_prompt(Call, Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
+-spec b_prompt_and_collect_digit(kz_term:ne_binary(), kapps_call:call()) ->
+                                        b_play_and_collect_digits_return().
 b_prompt_and_collect_digit(Prompt, Call) ->
     b_prompt_and_collect_digits(1, 1, Prompt, Call).
+
+-spec b_prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                                 ,kapps_call:call()) ->
+                                         b_play_and_collect_digits_return().
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, 3,  Call).
+
+-spec b_prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                                 ,integer(), kapps_call:call()) ->
+                                         b_play_and_collect_digits_return().
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, ?DEFAULT_COLLECT_TIMEOUT, Call).
+
+-spec b_prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                                 ,integer(), integer(), kapps_call:call()) ->
+                                         b_play_and_collect_digits_return().
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, 'undefined', Call).
+
+-spec b_prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                                 ,integer(), integer(), kz_term:api_binary()
+                                 ,kapps_call:call()) ->
+                                         b_play_and_collect_digits_return().
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, <<"\\d+">>, Call).
+
+-spec b_prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                                 ,integer(), integer(), kz_term:api_binary()
+                                 ,kz_term:ne_binary(), kapps_call:call()) ->
+                                         b_play_and_collect_digits_return().
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, ?ANY_DIGIT, Call).
 
+-spec b_prompt_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                                 ,integer(), integer(), kz_term:api_binary()
+                                 ,kz_term:ne_binary(), kz_term:ne_binaries(), kapps_call:call()) ->
+                                         b_play_and_collect_digits_return().
 b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, 0, _Timeout, 'undefined', _Regex, _Terminators, _Call) ->
     {'ok', <<>>};
 b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, 0, _Timeout, InvalidPrompt, _Regex, _Terminators, Call) ->
@@ -1884,66 +2008,48 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
         {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
         {'ok', binary()}.
 
--spec play_and_collect_digit(ne_binary(), kapps_call:call()) -> 'ok'.
--spec play_and_collect_digits(integer(), integer(), ne_binary()
-                             ,kapps_call:call()) ->
-                                     'ok'.
--spec play_and_collect_digits(integer(), integer(), ne_binary()
-                             ,integer(), kapps_call:call()) ->
-                                     'ok'.
--spec play_and_collect_digits(integer(), integer(), ne_binary()
-                             ,integer(), integer(), kapps_call:call()) ->
-                                     'ok'.
--spec play_and_collect_digits(integer(), integer(), ne_binary()
-                             ,integer(), integer(), api_binary()
-                             ,kapps_call:call()) ->
-                                     'ok'.
--spec play_and_collect_digits(integer(), integer(), ne_binary()
-                             ,integer(), integer(), api_binary()
-                             ,ne_binary(), kapps_call:call()) ->
-                                     'ok'.
--spec play_and_collect_digits(integer(), integer(), ne_binary()
-                             ,integer(), integer(), api_binary()
-                             ,ne_binary(), ne_binaries(), kapps_call:call()) ->
-                                     'ok'.
 
--spec b_play_and_collect_digit(ne_binary(), kapps_call:call()) ->
-                                      b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                               ,kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), api_binary()
-                               ,kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), api_binary()
-                               ,ne_binary(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
--spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                               ,integer(), integer(), api_binary()
-                               ,ne_binary(), ne_binaries(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
 
+-spec play_and_collect_digit(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(1, 1, Media, Call).
 
+-spec play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                             ,kapps_call:call()) ->
+                                     'ok'.
 play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, 1,  Call).
+
+-spec play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                             ,integer(), kapps_call:call()) ->
+                                     'ok'.
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, 3 * ?MILLISECONDS_IN_SECOND, Call).
+
+-spec play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                             ,integer(), integer(), kapps_call:call()) ->
+                                     'ok'.
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, 'undefined', Call).
+
+-spec play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                             ,integer(), integer(), kz_term:api_binary()
+                             ,kapps_call:call()) ->
+                                     'ok'.
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, <<"\\d+">>, Call).
+
+-spec play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                             ,integer(), integer(), kz_term:api_binary()
+                             ,kz_term:ne_binary(), kapps_call:call()) ->
+                                     'ok'.
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, [<<"#">>], Call).
+
+-spec play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                             ,integer(), integer(), kz_term:api_binary()
+                             ,kz_term:ne_binary(), kz_term:ne_binaries(), kapps_call:call()) ->
+                                     'ok'.
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"play_and_collect_digits">>}
               ,{<<"Minimum-Digits">>, MinDigits}
@@ -1957,19 +2063,47 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
               ],
     send_command(Command, Call).
 
+-spec b_play_and_collect_digit(kz_term:ne_binary(), kapps_call:call()) ->
+                                      b_play_and_collect_digits_return().
 b_play_and_collect_digit(Media, Call) ->
     b_play_and_collect_digits(1, 1, Media, Call).
+
+-spec b_play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,kapps_call:call()) ->
+                                       b_play_and_collect_digits_return().
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, 3,  Call).
+
+-spec b_play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), kapps_call:call()) ->
+                                       b_play_and_collect_digits_return().
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, ?DEFAULT_COLLECT_TIMEOUT, Call).
+
+-spec b_play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kapps_call:call()) ->
+                                       b_play_and_collect_digits_return().
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, 'undefined', Call).
+
+-spec b_play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kz_term:api_binary()
+                               ,kapps_call:call()) ->
+                                       b_play_and_collect_digits_return().
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, <<"[\\d\\*\\#]+">>, Call).
+
+-spec b_play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kz_term:api_binary()
+                               ,kz_term:ne_binary(), kapps_call:call()) ->
+                                       b_play_and_collect_digits_return().
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, ?ANY_DIGIT, Call).
 
+-spec b_play_and_collect_digits(integer(), integer(), kz_term:ne_binary()
+                               ,integer(), integer(), kz_term:api_binary()
+                               ,kz_term:ne_binary(), kz_term:ne_binaries(), kapps_call:call()) ->
+                                       b_play_and_collect_digits_return().
 b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, 0, _Timeout, 'undefined', _Regex, _Terminators, _Call) ->
     {'ok', <<>>};
 b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, 0, _Timeout, MediaInvalid, _Regex, _Terminators, Call) ->
@@ -1999,45 +2133,47 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %% Produces the low level kz_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
--spec say(ne_binary(), kapps_call:call()) -> 'ok'.
--spec say(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
--spec say(ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
--spec say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
--spec say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
 
--spec b_say(ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_say(ne_binary(), ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_say(ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), kapps_call:call()) -> kapps_api_std_return().
 
+-spec say(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
+
+-spec say(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Type, Call) ->
     say(Say, Type, <<"pronounced">>, Call).
+
+-spec say(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Type, Method, Call) ->
     say(Say, Type, Method, kapps_call:language(Call), Call).
+
+-spec say(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Type, Method, Language, Call) ->
     say(Say, Type, Method, Language, 'undefined', Call).
+
+-spec say(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Type, Method, Language, Gender, Call) ->
     Command = say_command(Say, Type, Method, Language, Gender, Call),
     send_command(Command, Call).
 
--spec say_command(ne_binary(), kapps_call:call()) -> kz_json:object().
--spec say_command(ne_binary(), ne_binary(), kapps_call:call()) -> kz_json:object().
--spec say_command(ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> kz_json:object().
--spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kapps_call:call()) -> kz_json:object().
--spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), kapps_call:call()) -> kz_json:object().
 
+-spec say_command(kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Call) ->
     say_command(Say, <<"name_spelled">>, Call).
+
+-spec say_command(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Type, Call) ->
     say_command(Say, Type, <<"pronounced">>, Call).
+
+-spec say_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Type, Method, Call) ->
     say_command(Say, Type, Method, kapps_call:language(Call), Call).
+
+-spec say_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Type, Method, Language, Call) ->
     say_command(Say, Type, Method, Language, 'undefined', Call).
 
+-spec say_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Type, Method, Language, Gender, Call) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"say">>}
@@ -2058,28 +2194,37 @@ say_method(M) -> M.
 say_language('undefined', Call) -> kapps_call:language(Call);
 say_language(L, _Call) -> L.
 
--spec say_gender(api_binary()) -> api_binary().
+-spec say_gender(kz_term:api_binary()) -> kz_term:api_binary().
 say_gender('undefined') -> 'undefined';
 say_gender(Gender) ->
     say_gender_validate(kz_term:to_lower_binary(Gender)).
 
--spec say_gender_validate(ne_binary()) -> ne_binary().
+-spec say_gender_validate(kz_term:ne_binary()) -> kz_term:ne_binary().
 say_gender_validate(<<"masculine">> = G) -> G;
 say_gender_validate(<<"feminine">> = G) -> G;
 say_gender_validate(<<"neuter">> = G) -> G.
 
+-spec b_say(kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_say(Say, Call) ->
     say(Say, Call),
     wait_for_say(Call).
+
+-spec b_say(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_say(Say, Type, Call) ->
     say(Say, Type, Call),
     wait_for_say(Call).
+
+-spec b_say(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_say(Say, Type, Method, Call) ->
     say(Say, Type, Method, Call),
     wait_for_say(Call).
+
+-spec b_say(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_say(Say, Type, Method, Language, Call) ->
     say(Say, Type, Method, Language, Call),
     wait_for_say(Call).
+
+-spec b_say(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_say(Say, Type, Method, Language, Gender, Call) ->
     say(Say, Type, Method, Language, Gender, Call),
     wait_for_say(Call).
@@ -2095,30 +2240,29 @@ wait_for_say(Call) ->
 %% with a conference, with optional entry flags
 %% @end
 %%--------------------------------------------------------------------
--spec conference(ne_binary(), kapps_call:call()) -> 'ok'.
--spec conference(ne_binary(), boolean(), kapps_call:call()) -> 'ok'.
--spec conference(ne_binary(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
--spec conference(ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
--spec conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), kapps_call:call()) -> 'ok'.
--spec conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), boolean(), kapps_call:call()) -> 'ok'.
 
--spec b_conference(ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_conference(ne_binary(), boolean(), kapps_call:call()) -> kapps_api_std_return().
--spec b_conference(ne_binary(), boolean(), boolean(), kapps_call:call()) -> kapps_api_std_return().
--spec b_conference(ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kapps_api_std_return().
--spec b_conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), kapps_call:call()) -> kapps_api_std_return().
--spec b_conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), boolean(), kapps_call:call()) -> kapps_api_std_return().
 
+-spec conference(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 conference(ConfId, Call) ->
     conference(ConfId, 'false', Call).
+
+-spec conference(kz_term:ne_binary(), boolean(), kapps_call:call()) -> 'ok'.
 conference(ConfId, Mute, Call) ->
     conference(ConfId, Mute, 'false', Call).
+
+-spec conference(kz_term:ne_binary(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 conference(ConfId, Mute, Deaf, Call) ->
     conference(ConfId, Mute, Deaf, 'false', Call).
+
+-spec conference(kz_term:ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> 'ok'.
 conference(ConfId, Mute, Deaf, Moderator, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, <<"undefined">>, Call).
+
+-spec conference(kz_term:ne_binary(), boolean(), boolean(), boolean(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 conference(ConfId, Mute, Deaf, Moderator, ProfileName, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, ProfileName, 'false', Call).
+
+-spec conference(kz_term:ne_binary(), boolean(), boolean(), boolean(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> 'ok'.
 conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->
     Command = [{<<"Application-Name">>, <<"conference">>}
               ,{<<"Conference-ID">>, ConfId}
@@ -2130,16 +2274,27 @@ conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->
               ],
     send_command(Command, Call).
 
+-spec b_conference(kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_conference(ConfId, Call) ->
     b_conference(ConfId, 'false', Call).
+
+-spec b_conference(kz_term:ne_binary(), boolean(), kapps_call:call()) -> kapps_api_std_return().
 b_conference(ConfId, Mute, Call) ->
     b_conference(ConfId, Mute, 'false', Call).
+
+-spec b_conference(kz_term:ne_binary(), boolean(), boolean(), kapps_call:call()) -> kapps_api_std_return().
 b_conference(ConfId, Mute, Deaf, Call) ->
     b_conference(ConfId, Mute, Deaf, 'false', Call).
+
+-spec b_conference(kz_term:ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kapps_api_std_return().
 b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
     b_conference(ConfId, Mute, Deaf, Moderator, <<"default">>, Call).
+
+-spec b_conference(kz_term:ne_binary(), boolean(), boolean(), boolean(), kz_term:ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_conference(ConfId, Mute, Deaf, Moderator, Profile, Call) ->
     b_conference(ConfId, Mute, Deaf, Moderator, Profile, 'false', Call).
+
+-spec b_conference(kz_term:ne_binary(), boolean(), boolean(), boolean(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> kapps_api_std_return().
 b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call),
     wait_for_message(Call, <<"conference">>, <<"CHANNEL_EXECUTE">>).
@@ -2150,9 +2305,8 @@ b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
 %% Produces the low level kz_api request to preform a noop
 %% @end
 %%--------------------------------------------------------------------
--spec noop(kapps_call:call()) -> ne_binary().
--spec b_noop(kapps_call:call()) -> kapps_api_std_return().
 
+-spec noop(kapps_call:call()) -> kz_term:ne_binary().
 noop(Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
@@ -2161,6 +2315,7 @@ noop(Call) ->
     send_command(Command, Call),
     NoopId.
 
+-spec b_noop(kapps_call:call()) -> kapps_api_std_return().
 b_noop(Call) -> wait_for_noop(Call, noop(Call)).
 
 %%--------------------------------------------------------------------
@@ -2170,9 +2325,8 @@ b_noop(Call) -> wait_for_noop(Call, noop(Call)).
 %% queue
 %% @end
 %%--------------------------------------------------------------------
--spec flush(kapps_call:call()) -> binary().
--spec b_flush(kapps_call:call()) -> kapps_api_std_return().
 
+-spec flush(kapps_call:call()) -> binary().
 flush(Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
@@ -2182,6 +2336,7 @@ flush(Call) ->
     send_command(Command, Call),
     NoopId.
 
+-spec b_flush(kapps_call:call()) -> kapps_api_std_return().
 b_flush(Call) -> wait_for_noop(Call, flush(Call)).
 
 %%--------------------------------------------------------------------
@@ -2190,17 +2345,12 @@ b_flush(Call) -> wait_for_noop(Call, flush(Call)).
 %%
 %% @end
 %%--------------------------------------------------------------------
+
+
 -spec privacy(kapps_call:call()) -> 'ok'.
--spec privacy(api_ne_binary(), kapps_call:call()) -> 'ok'.
-
--spec b_privacy(kapps_call:call()) ->
-                       kapps_api_error() |
-                       {'ok', kz_json:object()}.
--spec b_privacy(api_ne_binary(), kapps_call:call()) ->
-                       kapps_api_error() |
-                       {'ok', kz_json:object()}.
-
 privacy(Call) -> privacy(<<"full">>, Call).
+
+-spec privacy(kz_term:api_ne_binary(), kapps_call:call()) -> 'ok'.
 privacy('undefined', Call) -> privacy(Call);
 privacy(Mode, Call) ->
     Command = [{<<"Application-Name">>, <<"privacy">>}
@@ -2208,7 +2358,14 @@ privacy(Mode, Call) ->
               ],
     send_command(Command, Call).
 
+-spec b_privacy(kapps_call:call()) ->
+                       kapps_api_error() |
+                       {'ok', kz_json:object()}.
 b_privacy(Call) -> b_privacy(<<"full">>, Call).
+
+-spec b_privacy(kz_term:api_ne_binary(), kapps_call:call()) ->
+                       kapps_api_error() |
+                       {'ok', kz_json:object()}.
 b_privacy('undefined', Call) -> b_privacy(Call);
 b_privacy(Mode, Call) ->
     privacy(Mode, Call),
@@ -2236,32 +2393,26 @@ b_privacy(Mode, Call) ->
 %%--------------------------------------------------------------------
 -type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | kz_json:object()} |
                                  {'ok', binary()}.
--spec collect_digits(integer() | ne_binary(), kapps_call:call()) -> collect_digits_return().
--spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), kapps_call:call()) -> collect_digits_return().
--spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), kapps_call:call()) ->
-                            collect_digits_return().
--spec collect_digits(integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), api_binary(), kapps_call:call()) ->
-                            collect_digits_return().
--spec collect_digits(integer(), integer(), integer(), api_binary(), list(), kapps_call:call()) ->
-                            collect_digits_return().
 
 -record(wcc_collect_digits, {max_digits :: pos_integer()
-                            ,timeout = ?DEFAULT_DIGIT_TIMEOUT :: kz_timeout()
+                            ,timeout = ?DEFAULT_DIGIT_TIMEOUT :: timeout()
                             ,interdigit = ?DEFAULT_INTERDIGIT_TIMEOUT :: pos_integer()
-                            ,noop_id :: api_binary()
-                            ,terminators = [<<"#">>] :: ne_binaries()
+                            ,noop_id :: kz_term:api_binary()
+                            ,terminators = [<<"#">>] :: kz_term:ne_binaries()
                             ,call :: kapps_call:call()
                             ,digits_collected = <<>> :: binary()
                             ,after_timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
                             }).
 -type wcc_collect_digits() :: #wcc_collect_digits{}.
 
+-spec collect_digits(integer() | kz_term:ne_binary(), kapps_call:call()) -> collect_digits_return().
 collect_digits(MaxDigits, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,call=Call
                                          ,after_timeout=?DEFAULT_DIGIT_TIMEOUT
                                          }).
 
+-spec collect_digits(integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), kapps_call:call()) -> collect_digits_return().
 collect_digits(MaxDigits, Timeout, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
@@ -2269,6 +2420,8 @@ collect_digits(MaxDigits, Timeout, Call) ->
                                          ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
+-spec collect_digits(integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), kapps_call:call()) ->
+                            collect_digits_return().
 collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
@@ -2277,6 +2430,8 @@ collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
                                          ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
+-spec collect_digits(integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) ->
+                            collect_digits_return().
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
@@ -2285,6 +2440,8 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
                                          ,call=Call
                                          }).
 
+-spec collect_digits(integer(), integer(), integer(), kz_term:api_binary(), list(), kapps_call:call()) ->
+                            collect_digits_return().
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
@@ -2344,14 +2501,8 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
         {'error', 'timeout'} -> {'ok', Digits}
     end.
 
--spec handle_collect_digit_event(kz_json:object(), api_binary()) ->
-                                        {'dtmf', ne_binary()} |
-                                        {'noop_complete'} |
-                                        {'continue'} |
-                                        {'decrement'} |
-                                        {'error', any()}.
--spec handle_collect_digit_event(kz_json:object(), api_binary(), {ne_binary(), ne_binary(), ne_binary()}) ->
-                                        {'dtmf', ne_binary()} |
+-spec handle_collect_digit_event(kz_json:object(), kz_term:api_binary()) ->
+                                        {'dtmf', kz_term:ne_binary()} |
                                         {'noop_complete'} |
                                         {'continue'} |
                                         {'decrement'} |
@@ -2359,6 +2510,12 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
 handle_collect_digit_event(JObj, NoopId) ->
     handle_collect_digit_event(JObj, NoopId, get_event_type(JObj)).
 
+-spec handle_collect_digit_event(kz_json:object(), kz_term:api_binary(), {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}) ->
+                                        {'dtmf', kz_term:ne_binary()} |
+                                        {'noop_complete'} |
+                                        {'continue'} |
+                                        {'decrement'} |
+                                        {'error', any()}.
 handle_collect_digit_event(_JObj, _NoopId, {<<"call_event">>, <<"CHANNEL_DESTROY">>, _}) ->
     lager:debug("channel was hungup while collecting digits"),
     {'error', 'channel_hungup'};
@@ -2400,22 +2557,24 @@ handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec wait_for_message(kapps_call:call(), binary()) ->
                               kapps_api_std_return().
--spec wait_for_message(kapps_call:call(), binary(), ne_binary()) ->
-                              kapps_api_std_return().
--spec wait_for_message(kapps_call:call(), binary(), ne_binary(), ne_binary()) ->
-                              kapps_api_std_return().
--spec wait_for_message(kapps_call:call(), binary(), ne_binary(), ne_binary(), kz_timeout()) ->
-                              kapps_api_std_return().
-
 wait_for_message(Call, Application) ->
     wait_for_message(Call, Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
+
+-spec wait_for_message(kapps_call:call(), binary(), kz_term:ne_binary()) ->
+                              kapps_api_std_return().
 wait_for_message(Call, Application, Event) ->
     wait_for_message(Call, Application, Event, <<"call_event">>).
+
+-spec wait_for_message(kapps_call:call(), binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                              kapps_api_std_return().
 wait_for_message(Call, Application, Event, Type) ->
     wait_for_message(Call, Application, Event, Type, ?DEFAULT_MESSAGE_TIMEOUT).
 
+-spec wait_for_message(kapps_call:call(), binary(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
+                              kapps_api_std_return().
 wait_for_message(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
@@ -2444,22 +2603,24 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
 %%--------------------------------------------------------------------
 -type wait_for_application_return() :: {'error', 'timeout' | kz_json:object()} |
                                        {'ok', kz_json:object()}.
--spec wait_for_application(kapps_call:call(), ne_binary()) ->
-                                  wait_for_application_return().
--spec wait_for_application(kapps_call:call(), ne_binary(), ne_binary()) ->
-                                  wait_for_application_return().
--spec wait_for_application(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
-                                  wait_for_application_return().
--spec wait_for_application(kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), kz_timeout()) ->
-                                  wait_for_application_return().
 
+-spec wait_for_application(kapps_call:call(), kz_term:ne_binary()) ->
+                                  wait_for_application_return().
 wait_for_application(Call, Application) ->
     wait_for_application(Call, Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
+
+-spec wait_for_application(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                  wait_for_application_return().
 wait_for_application(Call, Application, Event) ->
     wait_for_application(Call, Application, Event, <<"call_event">>).
+
+-spec wait_for_application(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                  wait_for_application_return().
 wait_for_application(Call, Application, Event, Type) ->
     wait_for_application(Call, Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
 
+-spec wait_for_application(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
+                                  wait_for_application_return().
 wait_for_application(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
@@ -2486,40 +2647,43 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
 %% is only interested in events for the application.
 %% @end
 %%--------------------------------------------------------------------
--type headless_event() :: ne_binary() | %% STOP EVENT
-                          {ne_binary(), ne_binary()}. %% {START, STOP}
+-type headless_event() :: kz_term:ne_binary() | %% STOP EVENT
+                          {kz_term:ne_binary(), kz_term:ne_binary()}. %% {START, STOP}
 
 -type wait_for_headless_application_return() :: {'error', 'timeout' | kz_json:object()} |
                                                 {'ok', kz_json:object()}.
--spec wait_for_headless_application(ne_binary()) ->
-                                           wait_for_headless_application_return().
--spec wait_for_headless_application(ne_binary(), headless_event()) ->
-                                           wait_for_headless_application_return().
--spec wait_for_headless_application(ne_binary(), headless_event(), ne_binary()) ->
-                                           wait_for_headless_application_return().
--spec wait_for_headless_application(ne_binary()
-                                   ,headless_event()
-                                   ,ne_binary()
-                                   ,kz_timeout()
-                                   ) ->
-                                           wait_for_headless_application_return().
--spec wait_for_headless_application(ne_binary()
-                                   ,headless_event()
-                                   ,ne_binary()
-                                   ,fun((kz_json:object()) -> boolean())
-                                   ,kz_timeout()
-                                   ) ->
-                                           wait_for_headless_application_return().
 
+-spec wait_for_headless_application(kz_term:ne_binary()) ->
+                                           wait_for_headless_application_return().
 wait_for_headless_application(Application) ->
     wait_for_headless_application(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
+
+-spec wait_for_headless_application(kz_term:ne_binary(), headless_event()) ->
+                                           wait_for_headless_application_return().
 wait_for_headless_application(Application, Event) ->
     wait_for_headless_application(Application, Event, <<"call_event">>).
+
+-spec wait_for_headless_application(kz_term:ne_binary(), headless_event(), kz_term:ne_binary()) ->
+                                           wait_for_headless_application_return().
 wait_for_headless_application(Application, Event, Type) ->
     wait_for_headless_application(Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
+
+-spec wait_for_headless_application(kz_term:ne_binary()
+                                   ,headless_event()
+                                   ,kz_term:ne_binary()
+                                   ,timeout()
+                                   ) ->
+                                           wait_for_headless_application_return().
 wait_for_headless_application(Application, Event, Type, Timeout) ->
     wait_for_headless_application(Application, Event, Type, fun(_) -> 'true' end, Timeout).
 
+-spec wait_for_headless_application(kz_term:ne_binary()
+                                   ,headless_event()
+                                   ,kz_term:ne_binary()
+                                   ,fun((kz_json:object()) -> boolean())
+                                   ,timeout()
+                                   ) ->
+                                           wait_for_headless_application_return().
 wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
@@ -2576,7 +2740,7 @@ wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
 %% Wait for a DTMF event and extract the digits when it comes
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_dtmf(kz_timeout()) ->
+-spec wait_for_dtmf(timeout()) ->
                            {'error', 'channel_hungup' | 'timeout' | kz_json:object()} |
                            {'ok', binary()}.
 wait_for_dtmf(Timeout) ->
@@ -2606,15 +2770,16 @@ wait_for_dtmf(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge(kz_timeout(), kapps_call:call()) ->
-                             kapps_api_bridge_return().
--spec wait_for_bridge(kz_timeout(), 'undefined' | fun((kz_json:object()) -> any()), kapps_call:call()) ->
+
+-spec wait_for_bridge(timeout(), kapps_call:call()) ->
                              kapps_api_bridge_return().
 wait_for_bridge(0, Call) ->
     wait_for_bridge(?BRIDGE_DEFAULT_TIMEOUT, 'undefined', Call);
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, 'undefined', Call).
 
+-spec wait_for_bridge(timeout(), 'undefined' | fun((kz_json:object()) -> any()), kapps_call:call()) ->
+                             kapps_api_bridge_return().
 wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
@@ -2668,7 +2833,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
 %% Wait for a noop or a specific noop to occur
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_noop(kapps_call:call(), api_binary()) -> kapps_api_std_return().
+-spec wait_for_noop(kapps_call:call(), kz_term:api_binary()) -> kapps_api_std_return().
 wait_for_noop(Call, NoopId) ->
     case wait_for_message(Call, <<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity') of
         {'ok', JObj}=OK ->
@@ -2722,14 +2887,15 @@ wait_for_channel_bridge() ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
+
 -spec wait_for_hangup() -> {'ok', 'channel_hungup'} |
                            {'error', 'timeout'}.
--spec wait_for_hangup(kz_timeout()) ->
-                             {'ok', 'channel_hungup'} |
-                             {'error', 'timeout'}.
 wait_for_hangup() ->
     wait_for_hangup('infinity').
 
+-spec wait_for_hangup(timeout()) ->
+                             {'ok', 'channel_hungup'} |
+                             {'error', 'timeout'}.
 wait_for_hangup(Timeout) ->
     Start = os:timestamp(),
     receive
@@ -2753,14 +2919,15 @@ wait_for_hangup(Timeout) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
+
 -spec wait_for_unbridge() ->   {'ok', 'leg_hungup'} |
-                               {'error', 'timeout'}.
--spec wait_for_unbridge(kz_timeout()) ->
-                               {'ok', 'leg_hungup'} |
                                {'error', 'timeout'}.
 wait_for_unbridge() ->
     wait_for_unbridge('infinity').
 
+-spec wait_for_unbridge(timeout()) ->
+                               {'ok', 'leg_hungup'} |
+                               {'error', 'timeout'}.
 wait_for_unbridge(Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
@@ -2778,7 +2945,7 @@ wait_for_unbridge(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_application_or_dtmf(ne_binary(), kz_timeout()) ->
+-spec wait_for_application_or_dtmf(kz_term:ne_binary(), timeout()) ->
                                           kapps_api_std_return() |
                                           {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
@@ -2806,8 +2973,9 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 -define(WAIT_FOR_FAX_TIMEOUT, kapps_config:get_integer(<<"fax">>, <<"wait_for_fax_timeout_ms">>, ?MILLISECONDS_IN_HOUR)).
 
 -spec wait_for_fax() -> wait_for_fax_ret().
--spec wait_for_fax(kz_timeout()) -> wait_for_fax_ret().
 wait_for_fax() -> wait_for_fax(?WAIT_FOR_FAX_TIMEOUT).
+
+-spec wait_for_fax(timeout()) -> wait_for_fax_ret().
 wait_for_fax(Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
@@ -2835,12 +3003,12 @@ wait_for_fax(Timeout) ->
 %% retrieves event category, type, application from amqp payload
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type(kz_json:object()) -> {api_binary(), api_binary(), api_binary()}.
+-spec get_event_type(kz_json:object()) -> {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_event_type(JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
     {C, N, get_app(JObj)}.
 
--spec get_app(kz_json:object()) -> api_binary().
+-spec get_app(kz_json:object()) -> kz_term:api_binary().
 get_app(JObj) ->
     kz_json:get_first_defined([<<"Application-Name">>
                               ,[<<"Request">>, <<"Application-Name">>]
@@ -2852,7 +3020,7 @@ get_app(JObj) ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec send_command(api_terms(), kapps_call:call()) -> 'ok'.
+-spec send_command(kz_term:api_terms(), kapps_call:call()) -> 'ok'.
 send_command(Command, Call) when is_list(Command) ->
     'true' = kapps_call:is_call(Call),
 
@@ -2883,8 +3051,8 @@ send_command(JObj, Call) -> send_command(kz_json:to_proplist(JObj), Call).
 %% Get the t38 settings for an endpoint based on carrier and device
 %% @end
 %%--------------------------------------------------------------------
--spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) ->
-                                       kz_proplist().
+-spec get_outbound_t38_settings(boolean(), kz_term:api_binary() | boolean()) ->
+                                       kz_term:proplist().
 get_outbound_t38_settings(CarrierFlag, <<"auto">>) ->
     get_outbound_t38_settings(CarrierFlag, 'true');
 get_outbound_t38_settings(CarrierFlag, 'undefined') ->
@@ -2916,7 +3084,7 @@ get_outbound_t38_settings('false','true') ->
     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ].
 
--spec get_outbound_t38_settings(boolean()) -> kz_proplist().
+-spec get_outbound_t38_settings(boolean()) -> kz_term:proplist().
 get_outbound_t38_settings('true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'true'}
@@ -2936,8 +3104,8 @@ get_outbound_t38_settings('false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_inbound_t38_settings(boolean(), api_binary() | boolean()) ->
-                                      kz_proplist().
+-spec get_inbound_t38_settings(boolean(), kz_term:api_binary() | boolean()) ->
+                                      kz_term:proplist().
 get_inbound_t38_settings(CarrierFlag, <<"auto">>) ->
     get_inbound_t38_settings(CarrierFlag, 'true');
 get_inbound_t38_settings(CarrierFlag, 'undefined') ->
@@ -2996,7 +3164,7 @@ get_inbound_t38_settings(_Carrier, _CallerFlag) ->
     ,{<<"Enable-T38-Passthrough">>, 'false'}
     ].
 
--spec get_inbound_t38_settings(boolean()) -> kz_proplist().
+-spec get_inbound_t38_settings(boolean()) -> kz_term:proplist().
 get_inbound_t38_settings('true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
     ,{<<"Enable-T38-Fax-Request">>, 'true'}
@@ -3016,7 +3184,7 @@ get_inbound_t38_settings('undefined') ->
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ].
 
--spec start_fax_detection(ne_binary(), integer(), kapps_call:call()) -> 'ok'.
+-spec start_fax_detection(kz_term:ne_binary(), integer(), kapps_call:call()) -> 'ok'.
 start_fax_detection(Direction, Duration, Call) ->
     CallId = kapps_call:call_id(Call),
     Command = [{<<"Application-Name">>, <<"fax_detection">>}
@@ -3038,7 +3206,7 @@ stop_fax_detection(Call) ->
               ],
     send_command(Command, Call).
 
--spec fax_detection(ne_binary(), integer(), kapps_call:call()) -> 'true' | 'false'.
+-spec fax_detection(kz_term:ne_binary(), integer(), kapps_call:call()) -> 'true' | 'false'.
 fax_detection(Direction, Duration, Call) ->
     start_fax_detection(Direction, Duration, Call),
     Result = case wait_for_fax_detection((Duration + 2) * ?MILLISECONDS_IN_SECOND, Call) of
@@ -3071,13 +3239,14 @@ wait_for_fax_detection(Timeout, Call) ->
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec wait_for_unparked_call(kapps_call:call()) ->
                                     kapps_api_std_return().
--spec wait_for_unparked_call(kapps_call:call(), kz_timeout()) ->
-                                    kapps_api_std_return().
-
 wait_for_unparked_call(Call) ->
     wait_for_unparked_call(Call, ?DEFAULT_MESSAGE_TIMEOUT).
+
+-spec wait_for_unparked_call(kapps_call:call(), timeout()) ->
+                                    kapps_api_std_return().
 wait_for_unparked_call(Call, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
@@ -3103,30 +3272,30 @@ wait_for_unparked_call(Call, Timeout) ->
             end
     end.
 
--spec store_file_args(ne_binary(), store_fun()) -> kz_proplist().
+-spec store_file_args(kz_term:ne_binary(), store_fun()) -> kz_term:proplist().
 store_file_args(Filename, URLFun) ->
     [{<<"File-Name">>, Filename}
     ,{<<"Url">>, maybe_call_store_fun(URLFun)}
     ,{<<"Http-Method">>, <<"put">>}
     ].
 
--spec maybe_call_store_fun(store_fun()) -> ne_binary().
+-spec maybe_call_store_fun(store_fun()) -> kz_term:ne_binary().
 maybe_call_store_fun(URLFun) when is_function(URLFun, 0) ->
     URLFun();
 maybe_call_store_fun(URL) -> URL.
 
--spec store_file(ne_binary(), store_fun(), kapps_call:call()) -> 'ok' | {'error', any()}.
+-spec store_file(kz_term:ne_binary(), store_fun(), kapps_call:call()) -> 'ok' | {'error', any()}.
 store_file(Filename, URLFun, Call) ->
     App = kz_util:calling_app(),
     store_file(Filename, URLFun, storage_retries(App), storage_timeout(App), Call).
 
--spec store_file(ne_binary(), store_fun(), pos_integer(), kapps_call:call()) ->
+-spec store_file(kz_term:ne_binary(), store_fun(), pos_integer(), kapps_call:call()) ->
                         'ok' | {'error', any()}.
 store_file(Filename, URLFun, Tries, Call) ->
     App = kz_util:calling_app(),
     store_file(Filename, URLFun, Tries, storage_timeout(App), Call).
 
--spec store_file(ne_binary(), store_fun(), pos_integer(), kz_timeout(), kapps_call:call()) ->
+-spec store_file(kz_term:ne_binary(), store_fun(), pos_integer(), timeout(), kapps_call:call()) ->
                         'ok' | {'error', any()}.
 store_file(Filename, URLFun, Tries, Timeout, Call) ->
     Msg = case kapps_call:kvs_fetch('alert_msg', Call) of
@@ -3145,8 +3314,8 @@ store_file(Filename, URLFun, Tries, Timeout, Call) ->
           end,
     do_store_file(Tries, Timeout, API, Msg, Call).
 
--spec do_store_file(pos_integer(), kz_timeout(), function()
-                   ,ne_binary(), kapps_call:call()) ->
+-spec do_store_file(pos_integer(), timeout(), function()
+                   ,kz_term:ne_binary(), kapps_call:call()) ->
                            'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, Call) ->
     Payload = API(),
@@ -3179,8 +3348,8 @@ do_store_file(Tries, Timeout, API, Msg, Call) ->
             retry_store_file(Tries - 1, Timeout, API, Msg, kz_term:to_binary(Error), Call)
     end.
 
--spec retry_store_file(integer(), kz_timeout(), kz_proplist() | function()
-                      ,ne_binary(), ne_binary(), kapps_call:call()) ->
+-spec retry_store_file(integer(), timeout(), kz_term:proplist() | function()
+                      ,kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
                               'ok' | {'error', any()}.
 retry_store_file(0, _Timeout, _API, Msg, Error, Call) ->
     lager:critical("~s : ~s", [Msg, Error]),
@@ -3204,34 +3373,38 @@ maybe_add_debug_data(JObj, Call) ->
         Data -> kapps_call:kvs_store('error_details', Data, Call)
     end.
 
--spec attended_transfer(ne_binary(), kapps_call:call()) -> 'ok'.
--spec attended_transfer(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec attended_transfer(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 attended_transfer(To, Call) ->
     attended_transfer(To, 'undefined', Call).
+
+-spec attended_transfer(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 attended_transfer(To, TransferLeg, Call) ->
     Command = transfer_command(<<"attended">>, To, TransferLeg, Call),
     send_command(Command, Call).
 
--spec blind_transfer(ne_binary(), kapps_call:call()) -> 'ok'.
--spec blind_transfer(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec blind_transfer(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 blind_transfer(To, Call) ->
     blind_transfer(To, 'undefined', Call).
+
+-spec blind_transfer(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 blind_transfer(To, TransferLeg, Call) ->
     Command = transfer_command(<<"blind">>, To, TransferLeg, Call),
     send_command(Command, Call).
 
--spec transfer(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
--spec transfer(ne_binary(), ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+-spec transfer(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 transfer(TransferType, To, Call) ->
     transfer(TransferType, To, 'undefined', Call).
+
+-spec transfer(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 transfer(TransferType, To, TransferLeg, Call) ->
     Command = transfer_command(TransferType, To, TransferLeg, Call),
     send_command(Command, Call).
 
--spec transfer_command(ne_binary(), ne_binary(), kapps_call:call()) -> api_terms().
--spec transfer_command(ne_binary(), ne_binary(), api_binary(), kapps_call:call()) -> api_terms().
+-spec transfer_command(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_terms().
 transfer_command(TransferType, TransferTo, Call) ->
     transfer_command(TransferType, TransferTo, 'undefined', Call).
+
+-spec transfer_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:api_terms().
 transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"transfer">>}
@@ -3245,7 +3418,7 @@ transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
       ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
       ]).
 
--spec play_macro_command(ne_binaries(), kapps_call:call()) -> api_terms().
+-spec play_macro_command(kz_term:ne_binaries(), kapps_call:call()) -> kz_term:api_terms().
 play_macro_command(Media, Call) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"play_macro">>}
@@ -3254,11 +3427,11 @@ play_macro_command(Media, Call) ->
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
--spec b_play_macro(ne_binaries(), kapps_call:call()) -> kapps_api_std_return().
+-spec b_play_macro(kz_term:ne_binaries(), kapps_call:call()) -> kapps_api_std_return().
 b_play_macro(Media, Call) ->
     wait_for_noop(Call, play_macro(Media, Call)).
 
--spec play_macro(ne_binaries(), kapps_call:call()) -> ne_binary().
+-spec play_macro(kz_term:ne_binaries(), kapps_call:call()) -> kz_term:ne_binary().
 play_macro(Media, Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
@@ -3273,9 +3446,9 @@ play_macro(Media, Call) ->
     send_command(Command, Call),
     NoopId.
 
--type media_macro() :: {ne_binary(), ne_binaries()}.
+-type media_macro() :: {kz_term:ne_binary(), kz_term:ne_binaries()}.
 -type media_macros() :: [media_macro()].
--spec media_macro_command(media_macros(), kapps_call:call()) ->api_terms().
+-spec media_macro_command(media_macros(), kapps_call:call()) ->kz_term:api_terms().
 media_macro_command(Media, Call) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"media_macro">>}
@@ -3289,7 +3462,7 @@ media_macro(Media, Call) ->
     Command = media_macro_command(Media, Call),
     send_command(Command, Call).
 
--spec sound_touch_command(kz_proplist(), kapps_call:call()) ->api_terms().
+-spec sound_touch_command(kz_term:proplist(), kapps_call:call()) ->kz_term:api_terms().
 sound_touch_command(Options, Call) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"sound_touch">>}
@@ -3298,7 +3471,7 @@ sound_touch_command(Options, Call) ->
        | Options
       ]).
 
--spec start_sound_touch(kz_proplist(), kapps_call:call()) -> 'ok'.
+-spec start_sound_touch(kz_term:proplist(), kapps_call:call()) -> 'ok'.
 start_sound_touch(Options, Call) ->
     Command = sound_touch_command([{<<"Action">>, <<"start">>} | Options], Call),
     send_command(Command, Call).

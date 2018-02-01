@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handle a host's connection/channels
 %%% @end
@@ -39,7 +39,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(kz_amqp_connection()) -> startlink_ret().
+-spec start_link(kz_amqp_connection()) -> kz_types:startlink_ret().
 start_link(#kz_amqp_connection{}=Connection) ->
     gen_server:start_link(?SERVER, [Connection], []).
 
@@ -94,7 +94,7 @@ init([#kz_amqp_connection{}=Connection]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('get_connection', _, Connection) ->
     {'reply', Connection, Connection};
 handle_call('stop', _, Connection) ->
@@ -121,7 +121,7 @@ handle_call(_Msg, _From, Connection) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('disconnect'
            ,#kz_amqp_connection{available='false'}=Connection) ->
     {'noreply', Connection, 'hibernate'};
@@ -160,7 +160,7 @@ handle_cast(_Msg, Connection) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='false'}=Connection
            ) ->
@@ -203,9 +203,13 @@ handle_info(_Info, Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), kz_amqp_connection()) -> any().
+terminate('shutdown', #kz_amqp_connection{broker=_Broker}=Connection) ->
+    shutdown(Connection),
+    lager:debug("connection to amqp broker '~s' shutdown", [_Broker]);
 terminate(_Reason, #kz_amqp_connection{broker=_Broker}=Connection) ->
     lager:debug("connection to amqp broker '~s' terminated: ~p"
-               ,[_Broker, _Reason]),
+               ,[_Broker, _Reason]
+               ),
     disconnected(Connection).
 
 %%--------------------------------------------------------------------
@@ -274,23 +278,23 @@ disconnected(#kz_amqp_connection{manager=Manager}=State) ->
 
 -spec disconnected(kz_amqp_connection(), ?START_TIMEOUT..?MAX_TIMEOUT) -> kz_amqp_connection().
 disconnected(#kz_amqp_connection{available='true'}=Connection, Timeout) ->
-    _ = kz_amqp_connections:unavailable(self()),
+    shutdown_available('true'),
     disconnected(Connection#kz_amqp_connection{available='false'}, Timeout);
 disconnected(#kz_amqp_connection{channel_ref=Ref}=Connection, Timeout)
   when is_reference(Ref) ->
-    erlang:demonitor(Ref, ['flush']),
+    demonitor_refs([Ref]),
     disconnected(Connection#kz_amqp_connection{channel_ref='undefined'}, Timeout);
 disconnected(#kz_amqp_connection{channel=Pid}=Connection, Timeout)
   when is_pid(Pid) ->
-    _ = (catch kz_amqp_channel:close(Pid)),
+    shutdown_channel(Pid),
     disconnected(Connection#kz_amqp_connection{channel='undefined'}, Timeout);
 disconnected(#kz_amqp_connection{connection_ref=Ref}=Connection, Timeout)
   when is_reference(Ref) ->
-    erlang:demonitor(Ref, ['flush']),
+    demonitor_refs([Ref]),
     disconnected(Connection#kz_amqp_connection{connection_ref='undefined'}, Timeout);
 disconnected(#kz_amqp_connection{connection=Pid}=Connection, Timeout)
   when is_pid(Pid) ->
-    _ = (catch amqp_connection:close(Pid, 5000)),
+    shutdown_connection(Pid),
     disconnected(Connection#kz_amqp_connection{connection='undefined'}, Timeout);
 disconnected(#kz_amqp_connection{prechannels_initialized='true'}=Connection, Timeout) ->
     disconnected(Connection#kz_amqp_connection{prechannels_initialized='false'}, Timeout);
@@ -302,6 +306,38 @@ disconnected(#kz_amqp_connection{}=Connection, Timeout) ->
 
     Ref = erlang:send_after(Timeout, self(), {'connect', NextTimeout}),
     Connection#kz_amqp_connection{reconnect_ref=Ref}.
+
+shutdown(#kz_amqp_connection{available=Available
+                            ,channel_ref=ChannelRef
+                            ,channel=ChannelPid
+                            ,connection_ref=ConnectionRef
+                            ,connection=ConnectionPid
+                            }
+        ) ->
+    shutdown_available(Available),
+    demonitor_refs([ChannelRef, ConnectionRef]),
+    shutdown_channel(ChannelPid),
+    shutdown_connection(ConnectionPid).
+
+shutdown_available('true') -> kz_amqp_connections:unavailable(self());
+shutdown_available('false') -> 'ok'.
+
+demonitor_refs([]) -> 'ok';
+demonitor_refs([Ref|Refs]) when is_reference(Ref) ->
+    erlang:demonitor(Ref, ['flush']),
+    demonitor_refs(Refs);
+demonitor_refs([_|Refs]) ->
+    demonitor_refs(Refs).
+
+shutdown_channel(ChannelPid) when is_pid(ChannelPid) ->
+    _ = (catch kz_amqp_channel:close(ChannelPid)),
+    'ok';
+shutdown_channel(_ChannelPid) -> 'ok'.
+
+shutdown_connection(ConnectionPid) when is_pid(ConnectionPid) ->
+    _ = (catch amqp_connection:close(ConnectionPid, 5000)),
+    'ok';
+shutdown_connection(_ConnectionPid) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

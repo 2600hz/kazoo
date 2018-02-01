@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,7 +13,7 @@
 
 -include("acdc.hrl").
 
--spec handle_route_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_route_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_route_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -80,12 +80,13 @@ update_agent(Call) ->
     end.
 
 -spec update_acdc_actor(kapps_call:call()) -> any().
--spec update_acdc_actor(kapps_call:call(), api_binary(), api_binary()) -> any().
 update_acdc_actor(Call) ->
     update_acdc_actor(Call
                      ,kapps_call:custom_channel_var(<<"ACDc-ID">>, Call)
                      ,kapps_call:custom_channel_var(<<"ACDc-Type">>, Call)
                      ).
+
+-spec update_acdc_actor(kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) -> any().
 update_acdc_actor(_Call, 'undefined', _) -> 'ok';
 update_acdc_actor(_Call, _, 'undefined') -> 'ok';
 update_acdc_actor(Call, QueueId, <<"queue">>) ->
@@ -106,7 +107,7 @@ update_acdc_actor(Call, AgentId, <<"user">>) ->
             update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun kapi_acdc_agent:publish_logout/1)
     end.
 
--spec update_acdc_agent(kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), fun()) -> ne_binary().
+-spec update_acdc_agent(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), fun()) -> kz_term:ne_binary().
 update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
     lager:debug("agent ~s going to new status ~s", [AgentId, Status]),
 
@@ -123,7 +124,7 @@ update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
             play_failed_update(Call)
     end.
 
--spec save_status(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+-spec save_status(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 save_status(Call, AgentId, Status) ->
     acdc_agent_util:update_status(kapps_call:account_id(Call)
                                  ,AgentId
@@ -151,7 +152,7 @@ update_agent_device(Call, AgentId, <<"logout">>) ->
     end;
 update_agent_device(_, _, _) -> {'ok', 'ok'}.
 
--spec move_agent_device(kapps_call:call(), ne_binary(), kz_json:object()) ->
+-spec move_agent_device(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) ->
                                {'ok', kz_json:object()}.
 move_agent_device(Call, AgentId, Device) ->
     DeviceId = kz_doc:id(Device),
@@ -166,7 +167,7 @@ move_agent_device(Call, AgentId, Device) ->
         end,
     {'ok', _} = kz_datamgr:save_doc(kapps_call:account_db(Call), kz_json:set_value(<<"owner_id">>, AgentId, Device)).
 
--spec send_new_status(ne_binary(), ne_binary(), kz_amqp_worker:publish_fun()) -> 'ok'.
+-spec send_new_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_amqp_worker:publish_fun()) -> 'ok'.
 send_new_status(AcctId, AgentId, PubFun) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
@@ -175,7 +176,7 @@ send_new_status(AcctId, AgentId, PubFun) ->
                ]),
     PubFun(Update).
 
--spec play_status_prompt(kapps_call:call(), ne_binary()) -> ne_binary().
+-spec play_status_prompt(kapps_call:call(), kz_term:ne_binary()) -> kz_term:ne_binary().
 play_status_prompt(Call, <<"login">>) ->
     kapps_call_command:prompt(<<"agent-logged_in">>, Call);
 play_status_prompt(Call, <<"logout">>) ->
@@ -183,6 +184,6 @@ play_status_prompt(Call, <<"logout">>) ->
 play_status_prompt(Call, <<"resume">>) ->
     kapps_call_command:prompt(<<"agent-resume">>, Call).
 
--spec play_failed_update(kapps_call:call()) -> ne_binary().
+-spec play_failed_update(kapps_call:call()) -> kz_term:ne_binary().
 play_failed_update(Call) ->
     kapps_call_command:prompt(<<"agent-invalid_choice">>, Call).

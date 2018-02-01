@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -26,18 +26,18 @@
 
 -define(SERVER, ?MODULE).
 
--type created_uuid() :: {'fs' | 'api', ne_binary()}.
+-type created_uuid() :: {'fs' | 'api', kz_term:ne_binary()}.
 -record(state, {node :: atom()
-               ,server_id :: api_binary()
-               ,controller_q :: api_binary()
+               ,server_id :: kz_term:api_binary()
+               ,controller_q :: kz_term:api_binary()
                ,originate_req = kz_json:new() :: kz_json:object()
                ,uuid :: created_uuid() | 'undefined'
-               ,action :: api_binary()
-               ,app :: api_binary()
-               ,dialstrings :: api_binary()
-               ,queue :: api_binary()
-               ,control_pid :: api_pid()
-               ,tref :: api_reference()
+               ,action :: kz_term:api_binary()
+               ,app :: kz_term:api_binary()
+               ,dialstrings :: kz_term:api_binary()
+               ,queue :: kz_term:api_binary()
+               ,control_pid :: kz_term:api_pid()
+               ,tref :: kz_term:api_reference()
                ,fetch_id = kz_binary:rand_hex(16)
                }).
 -type state() :: #state{}.
@@ -66,7 +66,7 @@
 %% @public
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom(), kz_json:object()) -> startlink_ret().
+-spec start_link(atom(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Node, JObj) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
@@ -83,7 +83,7 @@ start_link(Node, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_events(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_call_events(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value('server', Props),
     case props:get_value('uuid', Props) =:=  kz_json:get_binary_value(<<"Call-ID">>, JObj)
@@ -106,7 +106,7 @@ handle_call_events(JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_originate_execute(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_originate_execute(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_originate_execute(JObj, Props) ->
     'true' = kapi_dialplan:originate_execute_v(JObj),
     Srv = props:get_value('server', Props),
@@ -148,7 +148,7 @@ init([Node, JObj]) ->
                          }}
     end.
 
--spec bind_to_events({'ok', ne_binary()}, atom()) -> 'ok'.
+-spec bind_to_events({'ok', kz_term:ne_binary()}, atom()) -> 'ok'.
 bind_to_events({'ok', <<"mod_kazoo", _/binary>>}, Node) ->
     'ok' = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
 bind_to_events(_, Node) ->
@@ -168,7 +168,7 @@ bind_to_events(_, Node) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -182,7 +182,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     lager:debug("starting originate request"),
     gen_listener:cast(self(), {'get_originate_action'}),
@@ -347,7 +347,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'event', [_|Props]}, #state{uuid=UUID}=State) ->
     {'noreply', State#state{uuid=handle_fs_event(Props, UUID)}};
 handle_info({'tcp', _, Data}, State) ->
@@ -425,7 +425,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_originate_action(ne_binary(), kz_json:object()) -> ne_binary().
+-spec get_originate_action(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
     lager:debug("got originate with action fax"),
     Data = kz_json:get_value(<<"Application-Data">>, JObj),
@@ -451,7 +451,7 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
--spec get_transfer_action(kz_json:object(), api_binary()) -> ne_binary().
+-spec get_transfer_action(kz_json:object(), kz_term:api_binary()) -> kz_term:ne_binary().
 get_transfer_action(_JObj, 'undefined') -> <<"error">>;
 get_transfer_action(JObj, Route) ->
     Context = ?DEFAULT_FREESWITCH_CONTEXT,
@@ -460,7 +460,7 @@ get_transfer_action(JObj, Route) ->
                    ," XML ", Context, "' inline"
                    ]).
 
--spec intercept_unbridged_only(ne_binary() | 'undefined', kz_json:object()) -> ne_binary().
+-spec intercept_unbridged_only(kz_term:ne_binary() | 'undefined', kz_json:object()) -> kz_term:ne_binary().
 intercept_unbridged_only('undefined', JObj) ->
     get_bridge_action(JObj);
 intercept_unbridged_only(ExistingCallId, JObj) ->
@@ -471,7 +471,7 @@ intercept_unbridged_only(ExistingCallId, JObj) ->
             <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline ">>
     end.
 
--spec get_bridge_action(kz_json:object()) -> ne_binary().
+-spec get_bridge_action(kz_json:object()) -> kz_term:ne_binary().
 get_bridge_action(JObj) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj),
     case ecallmgr_util:build_channel(Data) of
@@ -491,7 +491,7 @@ maybe_update_node(JObj, Node) ->
             end
     end.
 
--spec get_eavesdrop_action(kz_json:object()) -> ne_binary().
+-spec get_eavesdrop_action(kz_json:object()) -> kz_term:ne_binary().
 get_eavesdrop_action(JObj) ->
     {CallId, Group} = case kz_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
                           'undefined' -> {kz_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
@@ -504,7 +504,7 @@ get_eavesdrop_action(JObj) ->
         'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args(ne_binary(), state(), kz_json:object(), ne_binary()) -> api_binary().
+-spec build_originate_args(kz_term:ne_binary(), state(), kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
 build_originate_args(Action, State, JObj, FetchId) ->
     case kz_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
@@ -519,8 +519,8 @@ build_originate_args(Action, State, JObj, FetchId) ->
             build_originate_args_from_endpoints(Action, UpdatedEndpoints, JObj, FetchId)
     end.
 
--spec build_originate_args_from_endpoints(ne_binary(), kz_json:objects(), kz_json:object(), ne_binary()) ->
-                                                 ne_binary().
+-spec build_originate_args_from_endpoints(kz_term:ne_binary(), kz_json:objects(), kz_json:object(), kz_term:ne_binary()) ->
+                                                 kz_term:ne_binary().
 build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
     DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
@@ -531,7 +531,7 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
 
     list_to_binary([ChannelVars, DialStrings, " ", Action]).
 
--spec get_channel_vars(kz_json:object(), ne_binary()) -> iolist().
+-spec get_channel_vars(kz_json:object(), kz_term:ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
     CCVs = [{<<"Fetch-ID">>, FetchId}
            ,{<<"Ecallmgr-Node">>, kz_term:to_binary(node())}
@@ -540,28 +540,28 @@ get_channel_vars(JObj, FetchId) ->
     J = kz_json:from_list_recursive([{<<"Custom-Channel-Vars">>, add_ccvs(JObj, CCVs)}]),
     ecallmgr_fs_xml:get_channel_vars(kz_json:merge(JObj, J)).
 
--spec add_ccvs(kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec add_ccvs(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 add_ccvs(JObj, Props) ->
     Routines = [fun maybe_add_loopback/2
                ,fun maybe_add_origination_uuid/2
                ],
     lists:foldl(fun(Fun, Acc) -> Fun(JObj, Acc) end, Props, Routines).
 
--spec maybe_add_origination_uuid(kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec maybe_add_origination_uuid(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 maybe_add_origination_uuid(JObj, Props) ->
     case kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' -> Props;
         CallId -> [{<<"Origination-Call-ID">>, CallId} | Props]
     end.
 
--spec maybe_add_loopback(kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec maybe_add_loopback(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 maybe_add_loopback(JObj, Props) ->
     case kz_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
         'undefined' -> Props;
         SimpliFly -> add_loopback(kz_term:is_true(SimpliFly)) ++ Props
     end.
 
--spec add_loopback(boolean()) -> kz_proplist().
+-spec add_loopback(boolean()) -> kz_term:proplist().
 add_loopback('true') ->
     [{<<"Simplify-Loopback">>, 'true'}
     ,{<<"Loopback-Bowout">>, 'true'}
@@ -571,9 +571,9 @@ add_loopback('false') ->
     ,{<<"Loopback-Bowout">>, 'false'}
     ].
 
--spec originate_execute(atom(), ne_binary(), pos_integer()) ->
-                               {'ok', ne_binary()} |
-                               {'error', ne_binary() | 'timeout' | 'crash'}.
+-spec originate_execute(atom(), kz_term:ne_binary(), pos_integer()) ->
+                               {'ok', kz_term:ne_binary()} |
+                               {'error', kz_term:ne_binary() | 'timeout' | 'crash'}.
 originate_execute(Node, Dialstrings, Timeout) ->
     lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
     case freeswitch:api(Node
@@ -598,13 +598,13 @@ originate_execute(Node, Dialstrings, Timeout) ->
             {'error', <<"unspecified">>}
     end.
 
--spec set_music_on_hold(atom(), ne_binary(), api_binary()) -> 'ok'.
+-spec set_music_on_hold(atom(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 set_music_on_hold(_, _, 'undefined') -> 'ok';
 set_music_on_hold(Node, UUID, Media) ->
     Resp = ecallmgr_fs_command:set(Node, UUID, [{<<"Hold-Media">>, Media}]),
     lager:debug("setting Hold-Media resp: ~p", [Resp]).
 
--spec bind_to_call_events(ne_binary()) -> 'ok'.
+-spec bind_to_call_events(kz_term:ne_binary()) -> 'ok'.
 bind_to_call_events(CallId) ->
     lager:debug("binding to call events for ~s", [CallId]),
     Options = [{'callid', CallId}
@@ -617,7 +617,7 @@ unbind_from_call_events() ->
     lager:debug("unbind from call events"),
     gen_listener:rm_binding(self(), 'call', []).
 
--spec update_uuid(api_binary(), ne_binary()) -> 'ok'.
+-spec update_uuid(kz_term:api_binary(), kz_term:ne_binary()) -> 'ok'.
 update_uuid(OldUUID, NewUUID) ->
     kz_util:put_callid(NewUUID),
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
@@ -625,18 +625,18 @@ update_uuid(OldUUID, NewUUID) ->
     bind_to_call_events(NewUUID),
     'ok'.
 
--spec create_uuid(atom()) -> created_uuid().
--spec create_uuid(kz_json:object(), atom()) -> created_uuid().
--spec create_uuid(kz_json:object(), kz_json:object(), atom()) -> created_uuid().
 
+-spec create_uuid(atom()) -> created_uuid().
 create_uuid(_Node) -> {'fs', kz_binary:rand_hex(18)}.
 
+-spec create_uuid(kz_json:object(), atom()) -> created_uuid().
 create_uuid(JObj, Node) ->
     case kz_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' -> create_uuid(Node);
         CallId -> {'api', CallId}
     end.
 
+-spec create_uuid(kz_json:object(), kz_json:object(), atom()) -> created_uuid().
 create_uuid(Endpoint, _JObj, Node) ->
     case kz_json:get_binary_value(<<"Outbound-Call-ID">>, Endpoint) of
         'undefined' -> create_uuid(Node);
@@ -668,21 +668,21 @@ get_unset_vars(JObj) ->
             ]
     end.
 
--spec maybe_fix_ignore_early_media(strings()) -> string().
+-spec maybe_fix_ignore_early_media(kz_term:strings()) -> string().
 maybe_fix_ignore_early_media(Export) ->
     case lists:member("ignore_early_media", Export) of
         'true' -> "";
         'false' -> "^unset:ignore_early_media"
     end.
 
--spec maybe_fix_group_confirm(strings()) -> string().
+-spec maybe_fix_group_confirm(kz_term:strings()) -> string().
 maybe_fix_group_confirm(Export) ->
     case lists:member("group_confirm_key", Export) of
         'true' -> "";
         'false' -> "^unset:group_confirm_key^unset:group_confirm_cancel_timeout^unset:group_confirm_file"
     end.
 
--spec maybe_fix_fs_auto_answer_bug(strings()) -> string().
+-spec maybe_fix_fs_auto_answer_bug(kz_term:strings()) -> string().
 maybe_fix_fs_auto_answer_bug(Export) ->
     case lists:member("sip_auto_answer", Export) of
         'true' -> "";
@@ -690,7 +690,7 @@ maybe_fix_fs_auto_answer_bug(Export) ->
             "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false"
     end.
 
--spec maybe_fix_caller_id(strings(), kz_json:object()) -> string().
+-spec maybe_fix_caller_id(kz_term:strings(), kz_json:object()) -> string().
 maybe_fix_caller_id(Export, JObj) ->
     Fix = [
            {lists:member("origination_callee_id_name", Export), kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj), "effective_caller_id_name"}
@@ -698,7 +698,7 @@ maybe_fix_caller_id(Export, JObj) ->
           ],
     string:join([ "^set:" ++ Key ++ "=" ++ erlang:binary_to_list(Value) || {IsTrue, Value, Key} <- Fix, IsTrue ], ":").
 
--spec publish_error(ne_binary(), created_uuid() | api_binary(), kz_json:object(), api_binary()) -> 'ok'.
+-spec publish_error(kz_term:ne_binary(), created_uuid() | kz_term:api_binary(), kz_json:object(), kz_term:api_binary()) -> 'ok'.
 publish_error(_, _, _, 'undefined') -> 'ok';
 publish_error(Error, {_, UUID}, Request, ServerId) ->
     publish_error(Error, UUID, Request, ServerId);
@@ -712,11 +712,11 @@ publish_error(Error, UUID, Request, ServerId) ->
         ],
     kz_api:publish_error(ServerId, props:filter_undefined(E)).
 
--spec cleanup_error(ne_binary()) -> ne_binary().
+-spec cleanup_error(kz_term:ne_binary()) -> kz_term:ne_binary().
 cleanup_error(<<"-ERR ", E/binary>>) -> E;
 cleanup_error(E) -> E.
 
--spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), kz_json:object(), api_binary(), api_binary()) -> 'ok'.
+-spec publish_originate_ready(kz_term:ne_binary(), created_uuid() | kz_term:ne_binary(), kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 publish_originate_ready(CtrlQ, {_, UUID}, Request, Q, ServerId) ->
     publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId);
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
@@ -728,7 +728,7 @@ publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
             ],
     kapi_dialplan:publish_originate_ready(ServerId, Props).
 
--spec publish_originate_resp(api_binary(), kz_json:object()) -> 'ok'.
+-spec publish_originate_resp(kz_term:api_binary(), kz_json:object()) -> 'ok'.
 publish_originate_resp('undefined', _) -> 'ok';
 publish_originate_resp(ServerId, JObj) ->
     Resp = kz_json:set_values([{<<"Event-Category">>, <<"resource">>}
@@ -736,7 +736,7 @@ publish_originate_resp(ServerId, JObj) ->
                               ], JObj),
     kapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_resp(api_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_resp(kz_term:api_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_resp('undefined', _JObj, _UUID) -> 'ok';
 publish_originate_resp(ServerId, JObj, UUID) ->
     Resp = kz_json:set_values([{<<"Event-Category">>, <<"resource">>}
@@ -746,7 +746,7 @@ publish_originate_resp(ServerId, JObj, UUID) ->
                               ], JObj),
     kapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started(api_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_started(kz_term:api_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = kz_json:from_list(
@@ -757,7 +757,7 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
              ]),
     kapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec publish_originate_uuid(kz_term:api_binary(), created_uuid() | kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 publish_originate_uuid('undefined', _, _, _) -> 'ok';
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
@@ -872,7 +872,7 @@ fix_hold_media(Endpoint) ->
     put('hold_media', kz_json:get_value(<<"Hold-Media">>, Endpoint)),
     kz_json:delete_key(<<"Hold-Media">>, Endpoint).
 
--spec should_update_uuid(api_binary(), kz_proplist()) -> boolean().
+-spec should_update_uuid(kz_term:api_binary(), kz_term:proplist()) -> boolean().
 should_update_uuid(OldUUID, Props) ->
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"loopback::bowout">> ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -47,10 +47,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?DEBUG_PATH_TOKEN) ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
     [?HTTP_GET].
 
@@ -63,9 +65,11 @@ allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
 %%    /pivot/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -112,7 +116,7 @@ debug_summary(Context) ->
 %% both documents.
 %% @end
 %%--------------------------------------------------------------------
--spec limit_by_page_size(cb_context:context()) -> api_pos_integer().
+-spec limit_by_page_size(cb_context:context()) -> kz_term:api_pos_integer().
 limit_by_page_size(Context) ->
     case cb_context:pagination_page_size(Context) of
         Size when is_integer(Size), Size > 0 ->
@@ -126,7 +130,7 @@ limit_by_page_size(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec debug_read(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec debug_read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 debug_read(Context, ?MATCH_MODB_PREFIX(Year, Month, CallId)) ->
     AccountModb = kazoo_modb:get_modb(cb_context:account_id(Context), Year, Month),
     Context1 =
@@ -260,7 +264,7 @@ leak_pvt_node(JObj, Acc) ->
 set_debug_id(JObj, Acc) ->
     kz_json:set_value(<<"debug_id">>, debug_id(JObj), Acc).
 
--spec debug_id(kz_json:object()) -> ne_binary().
+-spec debug_id(kz_json:object()) -> kz_term:ne_binary().
 debug_id(JObj) ->
     Created = kz_json:get_first_defined([<<"created">>, <<"pvt_created">>], JObj),
     CallId = kz_json:get_value(<<"call_id">>, JObj),

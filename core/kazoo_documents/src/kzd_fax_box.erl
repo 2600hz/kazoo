@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Device document manipulation
 %%% @end
@@ -30,21 +30,22 @@
 new() ->
     kz_json:from_list([{<<"pvt_type">>, type()}]).
 
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
--spec owner_id(doc()) -> api_binary().
--spec owner_id(doc(), Default) -> ne_binary() | Default.
+-spec owner_id(doc()) -> kz_term:api_binary().
 owner_id(Box) ->
     owner_id(Box, 'undefined').
+
+-spec owner_id(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_id(Box, Default) ->
     kz_json:get_value(?KEY_OWNER_ID, Box, Default).
 
--spec timezone(doc()) -> ne_binary().
+-spec timezone(doc()) -> kz_term:ne_binary().
 timezone(Box) ->
     timezone(Box, 'undefined').
 
--spec timezone(doc(), Default) -> ne_binary() | Default.
+-spec timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 timezone(Box, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
@@ -52,16 +53,17 @@ timezone(Box, Default) ->
         TZ -> TZ
     end.
 
--spec owner_timezone(doc(), Default) -> ne_binary() | Default.
+-spec owner_timezone(doc(), Default) -> kz_term:ne_binary() | Default.
 owner_timezone(Box, Default) ->
     case kzd_user:fetch(kz_doc:account_db(Box), owner_id(Box)) of
         {'ok', OwnerJObj} -> kzd_user:timezone(OwnerJObj, Default);
         {'error', _} -> kz_account:timezone(kz_doc:account_id(Box), Default)
     end.
 
--spec retries(doc()) -> api_integer().
--spec retries(doc(), Default) -> integer() | Default.
+-spec retries(doc()) -> kz_term:api_integer().
 retries(Box) ->
     retries(Box, 'undefined').
+
+-spec retries(doc(), Default) -> integer() | Default.
 retries(Box, Default) ->
     kz_json:get_integer_value(?KEY_RETRIES, Box, Default).

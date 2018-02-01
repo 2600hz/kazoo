@@ -34,7 +34,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> sup_startchild_ret().
+-spec start_link() -> kz_types:sup_startchild_ret().
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
@@ -45,7 +45,7 @@ start_link() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_start_announcements(pid(), kapps_call:call(), kz_proplist()) -> supervisor:startchild_ret() | 'false'.
+-spec maybe_start_announcements(pid(), kapps_call:call(), kz_term:proplist()) -> supervisor:startchild_ret() | 'false'.
 maybe_start_announcements(Manager, Call, Props) ->
     Enabled = props:get_is_true(<<"position_announcements_enabled">>, Props, 'false')
         orelse props:get_is_true(<<"wait_time_announcements_enabled">>, Props, 'false'),
@@ -76,7 +76,7 @@ stop_announcements(Pid) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init([]) ->
 
     SupFlags = #{strategy => simple_one_for_one,

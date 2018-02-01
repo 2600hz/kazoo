@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Media requests, responses, and errors
 %%% @end
@@ -67,7 +67,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api_terms()) ->
+-spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 req(Prop) when is_list(Prop) ->
@@ -77,7 +77,7 @@ req(Prop) when is_list(Prop) ->
     end;
 req(JObj) -> req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(kz_term:api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
@@ -87,7 +87,7 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(kz_json:object() | kz_proplist()) ->
+-spec resp(kz_json:object() | kz_term:proplist()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
 resp(Prop) when is_list(Prop) ->
@@ -97,7 +97,7 @@ resp(Prop) when is_list(Prop) ->
     end;
 resp(JObj) -> resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(kz_proplist() | kz_json:object()) -> boolean().
+-spec resp_v(kz_term:proplist() | kz_json:object()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES);
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
@@ -107,7 +107,7 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error(kz_proplist() | kz_json:object()) ->
+-spec error(kz_term:proplist() | kz_json:object()) ->
                    {'ok', iolist()} |
                    {'error', string()}.
 error(Prop) when is_list(Prop) ->
@@ -117,16 +117,16 @@ error(Prop) when is_list(Prop) ->
     end;
 error(JObj) -> error(kz_json:to_proplist(JObj)).
 
--spec error_v(kz_proplist() | kz_json:object()) -> boolean().
+-spec error_v(kz_term:proplist() | kz_json:object()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEDIA_ERROR_HEADERS, ?MEDIA_ERROR_VALUES, ?MEDIA_ERROR_TYPES);
 error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_kapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_kapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
 
@@ -139,26 +139,29 @@ unbind_q(Queue, _Props) ->
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MEDIA_REQ_VALUES, fun req/1),
     amqp_util:kapps_publish(?MEDIA_REQ_ROUTING_KEY, Payload, ContentType).
 
--spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?MEDIA_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_error(ne_binary(), api_terms()) -> 'ok'.
--spec publish_error(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(Queue, Error, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Error, ?MEDIA_ERROR_VALUES, fun error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

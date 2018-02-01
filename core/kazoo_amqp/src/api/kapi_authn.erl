@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Handles authentication requests, responses, queue bindings
 %%% @end
@@ -87,7 +87,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> kz_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
@@ -96,13 +96,13 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(kz_term:api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AUTHN_REQ_HEADERS, ?AUTHN_REQ_VALUES, ?AUTHN_REQ_TYPES);
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
--spec req_event_type() -> {ne_binary(), ne_binary()}.
+-spec req_event_type() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 req_event_type() ->
     {?EVENT_CATEGORY, ?AUTHN_REQ_EVENT_NAME}.
 
@@ -111,7 +111,7 @@ req_event_type() ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         true -> kz_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
@@ -120,7 +120,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(api_terms()) -> boolean().
+-spec resp_v(kz_term:api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AUTHN_RESP_HEADERS, ?AUTHN_RESP_VALUES, ?AUTHN_RESP_TYPES);
 resp_v(JObj) ->
@@ -131,7 +131,7 @@ resp_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec error(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?AUTHN_ERR_HEADERS, ?OPTIONAL_AUTHN_ERR_HEADERS);
@@ -139,7 +139,7 @@ error(Prop) when is_list(Prop) ->
     end;
 error(JObj) -> error(kz_json:to_proplist(JObj)).
 
--spec error_v(api_terms()) -> boolean().
+-spec error_v(kz_term:api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AUTHN_ERR_HEADERS, ?AUTHN_ERR_VALUES, ?AUTHN_ERR_TYPES);
 error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
@@ -148,12 +148,12 @@ error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 %% @doc Setup and tear down bindings for authn gen_listeners
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)).
@@ -171,26 +171,30 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_req(api_terms()) -> 'ok'.
--spec publish_req(api_terms(), binary()) -> 'ok'.
+
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_authn_req_routing(Req)).
 
--spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Resp, ?AUTHN_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_error(ne_binary(), api_terms()) -> 'ok'.
--spec publish_error(ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_error(Queue, Resp, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Resp, ?AUTHN_ERR_VALUES, fun error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
@@ -201,7 +205,7 @@ publish_error(Queue, Resp, ContentType) ->
 %% creating the routing key for either binding queues or publishing messages
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_authn_req_routing(ne_binary() | api_terms()) -> ne_binary().
+-spec get_authn_req_routing(kz_term:ne_binary() | kz_term:api_terms()) -> kz_term:ne_binary().
 get_authn_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_AUTHN_REQ, ".", amqp_util:encode(Realm)]);
 get_authn_req_routing(Req) ->
@@ -216,7 +220,7 @@ get_authn_req_routing(Req) ->
 %% extract the auth user from the API request
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_user(kz_json:object()) -> api_binary().
+-spec get_auth_user(kz_json:object()) -> kz_term:api_binary().
 get_auth_user(ApiJObj) ->
     AuthUser = case kz_json:get_value(<<"Auth-User">>, ApiJObj, <<"unknown">>) of
                    <<"unknown">> ->
@@ -234,7 +238,7 @@ get_auth_user(ApiJObj) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm(kz_json:object() | kz_proplist()) -> ne_binary().
+-spec get_auth_realm(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
     Realm = case kz_network_utils:is_ipv4(AuthRealm)

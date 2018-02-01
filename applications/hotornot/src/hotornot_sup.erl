@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -22,14 +22,13 @@
 
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
                   ,?WORKER('hotornot_listener')
-                  ,?WORKER('hotornot_maint_listener')
                   ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -53,7 +52,7 @@ upgrade() ->
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
 

@@ -24,7 +24,7 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--spec start_link(backend()) -> startlink_ret().
+-spec start_link(backend()) -> kz_types:startlink_ret().
 start_link(Args) ->
     gen_edr_backend:start_link(?MODULE, Args).
 

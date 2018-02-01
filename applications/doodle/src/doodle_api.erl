@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handle sms api docs
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("doodle.hrl").
 
--spec handle_api_sms(ne_binary(), ne_binary()) -> 'ok'.
+-spec handle_api_sms(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 handle_api_sms(Db, Id) ->
     {'ok', Doc} = kz_datamgr:open_doc(Db, Id),
     Status = kz_json:get_value(<<"pvt_status">>, Doc),
@@ -20,12 +20,12 @@ handle_api_sms(Db, Id) ->
     FetchId = kz_binary:rand_hex(16),
     maybe_handle_sms_document(Status, Origin, FetchId, Id, Doc).
 
--spec maybe_handle_sms_document(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_handle_sms_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_handle_sms_document(<<"queued">>, <<"api">>, FetchId, Id, JObj) ->
     process_sms_api_document(FetchId, Id, JObj);
 maybe_handle_sms_document(_Status, _Origin, _FetchId, _Id, _JObj) -> 'ok'.
 
--spec process_sms_api_document(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec process_sms_api_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 process_sms_api_document(FetchId, <<_:7/binary, CallId/binary>> = _Id, APIJObj) ->
     ReqResp = kz_amqp_worker:call(route_req(FetchId, CallId, APIJObj)
                                  ,fun kapi_route:publish_req/1
@@ -39,7 +39,7 @@ process_sms_api_document(FetchId, <<_:7/binary, CallId/binary>> = _Id, APIJObj) 
             send_route_win(FetchId, CallId, RespJObj)
     end.
 
--spec send_route_win(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec send_route_win(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_route_win(FetchId, CallId, JObj) ->
     ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
@@ -52,7 +52,7 @@ send_route_win(FetchId, CallId, JObj) ->
     lager:debug("sms api handler sending route_win to ~s", [ServerQ]),
     kz_amqp_worker:cast(Win, fun(Payload) -> kapi_route:publish_win(ServerQ, Payload) end).
 
--spec route_req(ne_binary(), ne_binary(), kz_json:object()) -> kz_proplist().
+-spec route_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 route_req(FetchId, CallId, JObj) ->
     [{<<"Msg-ID">>, FetchId}
     ,{<<"Call-ID">>, CallId}
@@ -69,7 +69,7 @@ route_req(FetchId, CallId, JObj) ->
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec route_req_ccvs(ne_binary(), kz_json:object()) -> kz_proplist().
+-spec route_req_ccvs(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 route_req_ccvs(FetchId, JObj) ->
     props:filter_undefined(
       [{<<"Fetch-ID">>, FetchId}

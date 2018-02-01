@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,8 +29,8 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {subs_pid :: api_pid()
-               ,subs_ref :: api_reference()
+-record(state, {subs_pid :: kz_term:api_pid()
+               ,subs_ref :: kz_term:api_reference()
                }).
 -type state() :: #state{}.
 
@@ -55,7 +55,7 @@
 %%% API
 %%%===================================================================
 
--spec handle_push(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_push(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push(JObj, _Props) ->
     Token = kz_json:get_value(<<"Token-ID">>, JObj),
     TokenType = kz_json:get_value(<<"Token-Type">>, JObj),
@@ -70,15 +70,14 @@ handle_push(JObj, _Props) ->
                         ),
     gen_server:cast(Module, {'push', JObj}).
 
--spec handle_reg_success(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_reg_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_reg_success(JObj, _Props) ->
     UserAgent = kz_json:get_value(<<"User-Agent">>, JObj),
     UserAgentProperties = pusher_util:user_agent_push_properties(UserAgent),
 
     maybe_process_reg_success(UserAgentProperties, JObj).
 
--spec maybe_process_reg_success(api_object(), kz_json:object()) -> 'ok'.
--spec maybe_process_reg_success(api_binary(), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
+-spec maybe_process_reg_success(kz_term:api_object(), kz_json:object()) -> 'ok'.
 maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->
     Contact = kz_json:get_value(<<"Contact">>, JObj),
@@ -90,6 +89,7 @@ maybe_process_reg_success(UA, JObj) ->
     Token = props:get_value(TokenKey, Params),
     maybe_process_reg_success(Token, kz_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA) , JObj, Params).
 
+-spec maybe_process_reg_success(kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_process_reg_success('undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_process_reg_success(Token, UA, JObj, Params) ->
     case kz_cache:fetch_local(?CACHE_NAME, Token) of
@@ -97,8 +97,7 @@ maybe_process_reg_success(Token, UA, JObj, Params) ->
         {'ok', TokenJObj} -> send_reply(Token, TokenJObj)
     end.
 
--spec maybe_update_push_token(kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
--spec maybe_update_push_token(api_binary(), api_binary(), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
+-spec maybe_update_push_token(kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_update_push_token(UA, JObj, Params) ->
     AccountId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                                           ,<<"Account-ID">>
@@ -109,6 +108,7 @@ maybe_update_push_token(UA, JObj, Params) ->
 
     maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params).
 
+-spec maybe_update_push_token(kz_term:api_binary(), kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(_AccountId, 'undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
@@ -125,7 +125,7 @@ maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
         {'error', _} -> lager:debug("failed to open ~s in ~s", [AuthorizingId, AccountId])
     end.
 
--spec build_push(kz_json:object(), kz_json:object(), kz_proplist(), kz_json:object()) ->
+-spec build_push(kz_json:object(), kz_json:object(), kz_term:proplist(), kz_json:object()) ->
                         kz_json:object().
 build_push(UA, JObj, Params, InitialAcc) ->
     kz_json:foldl(
@@ -133,7 +133,7 @@ build_push(UA, JObj, Params, InitialAcc) ->
               build_push_fold(K, V, Acc, JObj, Params)
       end, InitialAcc, UA).
 
--spec build_push_fold(kz_json:path(), kz_json:json_term(), kz_json:object(), kz_json:object(), kz_proplist()) -> kz_json:object().
+-spec build_push_fold(kz_json:path(), kz_json:json_term(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> kz_json:object().
 build_push_fold(K, V, Acc, JObj, Params) ->
     case props:get_value(V, Params) of
         'undefined' ->
@@ -144,7 +144,7 @@ build_push_fold(K, V, Acc, JObj, Params) ->
         V2 -> kz_json:set_value(K, V2, Acc)
     end.
 
--spec send_reply(ne_binary(), kz_json:object()) -> 'ok'.
+-spec send_reply(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_reply(Token, JObj) ->
     kz_cache:erase_local(?CACHE_NAME, Token),
     Queue = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -158,7 +158,7 @@ send_reply(Token, JObj) ->
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                      ,{'responders', ?RESPONDERS}
@@ -202,7 +202,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -216,7 +216,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'kz_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
@@ -243,7 +243,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', _Pid, _R}, State) ->
     {'noreply', State};
 handle_info(_Info, State) ->

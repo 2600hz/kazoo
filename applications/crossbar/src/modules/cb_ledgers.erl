@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -56,12 +56,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?AVAILABLE) ->
     [?HTTP_GET];
 allowed_methods(?CREDIT) ->
@@ -71,6 +71,7 @@ allowed_methods(?DEBIT) ->
 allowed_methods(_LedgerId) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_LedgerId, _LedgerEntryId) ->
     [?HTTP_GET].
 
@@ -83,11 +84,14 @@ allowed_methods(_LedgerId, _LedgerEntryId) ->
 %%    /ledgers/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -99,7 +103,7 @@ resource_exists(_, _) -> 'true'.
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) -> cb_simple_authz:authorize(Context).
 
--spec authorize(cb_context:context(), path_token()) -> boolean() | {'halt', cb_context:context()}.
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context, Path) ->
     authorize_request(Context, Path, cb_context:req_verb(Context)).
 
@@ -109,7 +113,7 @@ authorize(Context, _Path, _Id) ->
 
 -spec authorize_request(cb_context:context(), path_token(), http_method()) ->
                                boolean() |
-                               {'halt', cb_context:context()}.
+                               {'stop', cb_context:context()}.
 authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
@@ -117,12 +121,12 @@ authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
 authorize_request(_Context, ?AVAILABLE, ?HTTP_GET) ->
     'true';
 authorize_request(Context, _, ?HTTP_PUT) ->
-    {'halt', cb_context:add_system_error('forbidden', Context)};
+    {'stop', cb_context:add_system_error('forbidden', Context)};
 authorize_request(Context, _, ?HTTP_GET) ->
     cb_simple_authz:authorize(Context).
 
 -spec authorize_create(cb_context:context()) -> boolean() |
-                                                {'halt', cb_context:context()}.
+                                                {'stop', cb_context:context()}.
 authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
     IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),
@@ -133,7 +137,7 @@ authorize_create(Context) ->
                 )
     of
         'true' -> 'true';
-        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
     end.
 
 %%--------------------------------------------------------------------
@@ -146,12 +150,12 @@ authorize_create(Context) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_ledgers(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?CREDIT) ->
     ReqData = cb_context:req_data(Context),
     JObj = kz_json:set_value([<<"usage">>, <<"type">>], ?CREDIT, ReqData),
@@ -174,6 +178,7 @@ validate(Context, Id) ->
                   ],
     crossbar_view:load_modb(Context, ?LEDGER_VIEW, ViewOptions).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Ledger, Id) ->
     validate_ledger_doc(Context, Ledger, Id, cb_context:req_verb(Context)).
 
@@ -214,7 +219,7 @@ validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec credit_or_debit(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec credit_or_debit(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 credit_or_debit(Context, Action) ->
     ReqData = cb_context:req_data(Context),
 
@@ -245,8 +250,8 @@ credit_or_debit(Context, Action) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_action(ne_binary(), ne_binary(), ne_binary()
-                    ,ne_binary(), kz_proplist(), kz_proplist()) ->
+-spec process_action(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+                    ,kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 process_action(?CREDIT, SrcService, SrcId, AccountId, Usage, Props) ->
@@ -267,7 +272,7 @@ maybe_impact_reseller(Context, Ledger) ->
         andalso ResellerId =/= cb_context:account_id(Context),
     maybe_impact_reseller(Context, Ledger, ImpactReseller, ResellerId).
 
--spec maybe_impact_reseller(cb_context:context(), kz_json:object(), boolean(), api_binary()) -> cb_context:context().
+-spec maybe_impact_reseller(cb_context:context(), kz_json:object(), boolean(), kz_term:api_binary()) -> cb_context:context().
 maybe_impact_reseller(Context, Ledger, 'false', _ResellerId) ->
     crossbar_util:response(kz_doc:public_fields(Ledger), Context);
 maybe_impact_reseller(Context, Ledger, 'true', 'undefined') ->
@@ -308,7 +313,7 @@ summary_to_dollars(LedgersJObj) ->
          || {Path, Value} <- kz_json:to_proplist(kz_json:flatten(LedgersJObj))
         ])).
 
--spec maybe_convert_units(ne_binary(), kz_transaction:units() | T) -> kz_transaction:dollars() | T when T::any().
+-spec maybe_convert_units(kz_term:ne_binary(), kz_transaction:units() | T) -> kz_transaction:dollars() | T when T::any().
 maybe_convert_units(<<"amount">>, 'undefined') -> 0;
 maybe_convert_units(<<"amount">>, Units) -> wht_util:units_to_dollars(Units);
 maybe_convert_units(_, Value) -> Value.
@@ -328,7 +333,7 @@ normalize_view_results(Context, JObj, Acc) ->
 normalize_view_result(Context, JObj) ->
     normalize_view_result(Context, kz_doc:type(JObj), JObj).
 
--spec normalize_view_result(cb_context:context(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec normalize_view_result(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 normalize_view_result(_Context, <<"ledger">>, JObj) ->
     Value = wht_util:units_to_dollars(kazoo_ledger:amount(JObj)),
     Ledger = kazoo_ledger:set_amount(JObj, Value),
@@ -364,7 +369,7 @@ normalize_view_result(Context, _DocType, JObj) ->
       ,{<<"id">>, maybe_set_doc_modb_prefix(kz_doc:id(JObj), kz_doc:created(JObj))}
       ]).
 
--spec maybe_set_doc_modb_prefix(ne_binary(), api_integer()) -> ne_binary().
+-spec maybe_set_doc_modb_prefix(kz_term:ne_binary(), kz_term:api_integer()) -> kz_term:ne_binary().
 maybe_set_doc_modb_prefix(?MATCH_MODB_PREFIX(_,_,_)=Id, _) -> Id;
 maybe_set_doc_modb_prefix(Id, Created) ->
     {Year, Month, _} = kz_term:to_date(Created),
@@ -376,7 +381,7 @@ maybe_set_doc_modb_prefix(Id, Created) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec read_ledger_doc(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec read_ledger_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
     Year  = kz_term:to_integer(YYYY),
     Month = kz_term:to_integer(MM),
@@ -399,7 +404,7 @@ read_ledger_doc(Context, Ledger, Id) ->
         Ctx1 -> Ctx1
     end.
 
--spec validate_returned_ledger_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_returned_ledger_doc(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_returned_ledger_doc(Ledger, Context) ->
     JObj = cb_context:doc(Context),
     TransactionTypes = [?DEBIT, ?CREDIT],

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -21,28 +21,29 @@
 -define(METER_PREFIX_LIST, "hangups").
 -define(METER_PREFIX, <<?METER_PREFIX_LIST>>).
 
--spec meter_name(ne_binary()) -> ne_binary().
--spec meter_name(ne_binary(), api_binary()) -> ne_binary().
+-spec meter_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 meter_name(<<"*">>) -> <<"*">>;
 meter_name(HangupCause) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
+
+-spec meter_name(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binary().
 meter_name(HangupCause, 'undefined') ->
     meter_name(HangupCause);
 meter_name(HangupCause, AccountId) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary, ".", AccountId/binary>>.
 
--spec meter_prefix() -> ne_binary().
+-spec meter_prefix() -> kz_term:ne_binary().
 meter_prefix() ->
     ?METER_PREFIX.
 
--spec meter_account_id(ne_binary()) -> api_binary().
+-spec meter_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
 meter_account_id(Name) ->
     case binary:split(Name, <<".">>, ['global']) of
         [?METER_PREFIX, _HC, AccountId] -> AccountId;
         _ -> 'undefined'
     end.
 
--spec meter_hangup_cause(ne_binary()) -> api_binary().
+-spec meter_hangup_cause(kz_term:ne_binary()) -> kz_term:api_binary().
 meter_hangup_cause(Name) ->
     case binary:split(Name, <<".">>, ['global']) of
         [?METER_PREFIX, HangupCause, _AccountId] -> HangupCause;
@@ -50,11 +51,11 @@ meter_hangup_cause(Name) ->
         _ -> 'undefined'
     end.
 
--spec is_hangup_meter(ne_binary()) -> boolean().
+-spec is_hangup_meter(kz_term:ne_binary()) -> boolean().
 is_hangup_meter(<<?METER_PREFIX_LIST, ".", _/binary>>) -> 'true';
 is_hangup_meter(_) -> 'false'.
 
--spec is_hangup_meter(ne_binary(), ne_binary()) -> boolean().
+-spec is_hangup_meter(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_hangup_meter(Name, HangupCause) ->
     Size = byte_size(HangupCause),
     case Name of
@@ -63,7 +64,7 @@ is_hangup_meter(Name, HangupCause) ->
         _ -> 'false'
     end.
 
--spec is_hangup_meter(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_hangup_meter(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_hangup_meter(Name, <<"*">>, AccountId) ->
     case binary:split(Name, <<".">>, ['global']) of
         [?METER_PREFIX, _HC, AccountId] -> 'true';

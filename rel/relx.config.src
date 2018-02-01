@@ -6,6 +6,7 @@ Deps = [list_to_atom(App)  ||         "deps/"++App = Dir <- filelib:wildcard(   
 
 ToFilterOut = [rabbitmq_codegen
               ,'.erlang.mk'
+              ,'ci.erlang.mk'
               ,'.settings'
               ,skel
               ,parse_trans

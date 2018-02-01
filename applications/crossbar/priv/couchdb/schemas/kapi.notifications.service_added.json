@@ -51,7 +51,7 @@
         "Text": {
             "type": "string"
         },
-        "Time-Stamp": {
+        "Timestamp": {
             "type": "string"
         },
         "To": {
@@ -61,7 +61,7 @@
     "required": [
         "Account-ID",
         "Audit-Log",
-        "Time-Stamp"
+        "Timestamp"
     ],
     "type": "object"
 }

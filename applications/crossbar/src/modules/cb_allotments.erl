@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -44,10 +44,12 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?CONSUMED) ->
     [?HTTP_GET].
 
@@ -59,9 +61,11 @@ allowed_methods(?CONSUMED) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?CONSUMED) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -133,9 +137,9 @@ load_consumed(Context, 'success') ->
     end;
 load_consumed(Context, _) -> Context.
 
--type mode() :: {ne_binary(), gregorian_seconds(), gregorian_seconds()}.
+-type mode() :: {kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}.
 
--spec foldl_consumed(ne_binary(), kz_json:object(), CMA) -> CMA when CMA :: {cb_context:context(), mode(), kz_json:objects()}.
+-spec foldl_consumed(kz_term:ne_binary(), kz_json:object(), CMA) -> CMA when CMA :: {cb_context:context(), mode(), kz_json:objects()}.
 foldl_consumed(Classification, ValueJObj, {Context, {CycleMode, From0, To0}=Mode, Acc}) ->
     {Cycle, From, To} = case CycleMode =:= <<"cycle">>
                             andalso kz_json:get_ne_binary_value(<<"cycle">>, ValueJObj)
@@ -157,7 +161,7 @@ foldl_consumed(Classification, ValueJObj, {Context, {CycleMode, From0, To0}=Mode
     end.
 
 
--spec normalize_result(api_ne_binary(), gregorian_seconds(), gregorian_seconds(), kz_json:object(), kz_json:objects())
+-spec normalize_result(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_json:object(), kz_json:objects())
                       -> kz_json:object().
 normalize_result(_Cycle, _From, _To, Acc, []) -> Acc;
 normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
@@ -193,7 +197,7 @@ get_consumed_mode(Context) ->
         {From, To} -> {<<"manual">>, From, To}
     end.
 
--spec maybe_req_seconds(cb_context:context(), api_binary()) -> api_seconds().
+-spec maybe_req_seconds(cb_context:context(), kz_term:api_binary()) -> kz_time:api_seconds().
 maybe_req_seconds(Context, Key) ->
     Val = cb_context:req_value(Context, Key),
     case kz_term:safe_cast(Val, 'undefined', fun kz_term:to_integer/1) of
@@ -245,11 +249,12 @@ is_allowed(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_create_limits_doc(cb_context:context()) -> cb_context:context().
--spec maybe_create_limits_doc(cb_context:context(), pos_integer()) -> cb_context:context().
 maybe_create_limits_doc(Context) ->
     maybe_create_limits_doc(Context, cb_context:resp_error_code(Context)).
 
+-spec maybe_create_limits_doc(cb_context:context(), pos_integer()) -> cb_context:context().
 maybe_create_limits_doc(Context, 404) ->
     Data = cb_context:req_data(Context),
     NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}, {<<"_id">>, ?PVT_TYPE}]),
@@ -275,7 +280,7 @@ update_allotments(Context) ->
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     cb_context:set_resp_data(Context1, Allotments).
 
--spec cycle_start(api_ne_binary(), kz_datetime() | gregorian_seconds()) -> gregorian_seconds().
+-spec cycle_start(kz_term:api_ne_binary(), kz_time:datetime() | kz_time:gregorian_seconds()) -> kz_time:gregorian_seconds().
 cycle_start(Cycle, Seconds) when is_integer(Seconds) ->
     cycle_start(Cycle, calendar:gregorian_seconds_to_datetime(Seconds));
 cycle_start(<<"monthly">>, {{Year, Month, _}, _}) ->
@@ -292,7 +297,7 @@ cycle_start(<<"minutely">>, {{Year, Month, Day}, {Hour, Min, _}}) ->
 cycle_start(_, {{Year, Month, Day}, {Hour, _, _}}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, 0, 0}}).
 
--spec cycle_end(api_ne_binary(), kz_datetime() | gregorian_seconds()) -> gregorian_seconds().
+-spec cycle_end(kz_term:api_ne_binary(), kz_time:datetime() | kz_time:gregorian_seconds()) -> kz_time:gregorian_seconds().
 cycle_end(Cycle, Seconds) when is_integer(Seconds) ->
     cycle_end(Cycle, calendar:gregorian_seconds_to_datetime(Seconds));
 cycle_end(<<"monthly">>, {{Year, Month, _}, _}) ->

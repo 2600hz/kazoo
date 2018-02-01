@@ -13,6 +13,14 @@
             "description": "services master account bookkeeper",
             "type": "string"
         },
+        "merge_strategy_priority": {
+            "default": {
+                "cumulative": 20,
+                "simple": 10
+            },
+            "description": "the object keys map to merge strategies and the values are expected to be an integer defining the merge priority between strategies",
+            "type": "object"
+        },
         "modules": {
             "description": "services modules",
             "items": {
@@ -25,6 +33,11 @@
             "description": "allow resellers configure bookkeeper for children billing",
             "type": "boolean"
         },
+        "scan_rate": {
+            "default": 20000,
+            "description": "services scan rate",
+            "type": "integer"
+        },
         "should_save_master_audit_logs": {
             "default": false,
             "description": "services should save master audit logs",
@@ -33,6 +46,16 @@
         "support_billing_id": {
             "default": true,
             "description": "services support billing id",
+            "type": "boolean"
+        },
+        "sync_buffer_period": {
+            "default": 600,
+            "description": "services sync buffer period",
+            "type": "integer"
+        },
+        "sync_services": {
+            "default": false,
+            "description": "services sync services",
             "type": "boolean"
         }
     },

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,20 +29,19 @@
                   ,?WORKER('acdc_agent_manager')
                   ,?WORKER('acdc_init')
                   ,?WORKER('acdc_listener')
-                  ,?WORKER('acdc_maint_listener')
                   ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

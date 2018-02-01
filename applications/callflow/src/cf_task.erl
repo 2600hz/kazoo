@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -28,9 +28,9 @@
 -record(state, {call :: kapps_call:call()
                ,callback :: fun()
                ,args :: list()
-               ,pid :: api_pid()
-               ,ref :: api_reference()
-               ,queue :: api_binary()
+               ,pid :: kz_term:api_pid()
+               ,ref :: kz_term:api_reference()
+               ,queue :: kz_term:api_binary()
                }).
 -type state() :: #state{}.
 
@@ -49,7 +49,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
--spec start_link(kapps_call:call(), fun(), list()) -> startlink_ret().
+-spec start_link(kapps_call:call(), fun(), list()) -> kz_types:startlink_ret().
 start_link(Call, Fun, Args) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
@@ -68,7 +68,7 @@ start_link(Call, Fun, Args) ->
 %% CHANNEL_DESTROY.
 %% @end
 %%--------------------------------------------------------------------
--spec relay_amqp(kz_json:object(), kz_proplist()) -> any().
+-spec relay_amqp(kz_json:object(), kz_term:proplist()) -> any().
 relay_amqp(JObj, Props) ->
     Pid = props:get_value('cf_task_pid', Props),
     kapps_call_command:relay_event(Pid, JObj).
@@ -146,7 +146,7 @@ handle_info(Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> {'reply', kz_proplist()}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', kz_term:proplist()}.
 handle_event(_JObj, #state{pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{pid=Pid}) ->
     {'reply', [{'cf_task_pid', Pid}]}.
@@ -185,7 +185,7 @@ launch_task(#state{queue=Q
     State#state{pid=Pid, ref=Ref}.
 
 %% @private
--spec task_launched(api_binary(), kapps_call:call(), fun(), list(), pid()) -> any().
+-spec task_launched(kz_term:api_binary(), kapps_call:call(), fun(), list(), pid()) -> any().
 task_launched(Q, Call, Callback, Args, Parent) ->
     kapps_call:put_callid(Call),
     kz_amqp_channel:consumer_pid(Parent),

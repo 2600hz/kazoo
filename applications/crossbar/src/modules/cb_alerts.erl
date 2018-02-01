@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -48,10 +48,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_AlertId) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
@@ -64,9 +66,11 @@ allowed_methods(_AlertId) ->
 %%    /alerts/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -79,10 +83,12 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_alerts(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_alert(Context, Id, cb_context:req_verb(Context)).
 
@@ -174,7 +180,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"alert">>)).
@@ -307,7 +313,7 @@ view_keys(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_descendants(ne_binary(), boolean(), list()) -> list().
+-spec add_descendants(kz_term:ne_binary(), boolean(), list()) -> list().
 add_descendants(Descendant, 'false', Keys) ->
     [[<<"descendants">>, [Descendant, <<"all">>]]
     ,[<<"descendants">>, [Descendant, <<"users">>]]

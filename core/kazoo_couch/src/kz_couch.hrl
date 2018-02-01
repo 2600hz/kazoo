@@ -39,7 +39,7 @@
 -record(design_data, {db_name = <<>> :: binary() %% the actual DB name, encoded (/ -> %2f)
                      ,design_name = <<>> :: binary()
                      ,node :: atom()
-                     ,shards = [] :: ne_binaries()
+                     ,shards = [] :: kz_term:ne_binaries()
                      ,disk_size = 0 :: non_neg_integer()
                      ,data_size = 0 :: non_neg_integer()
                      ,conn = #server{} :: server()
@@ -60,7 +60,7 @@
                              ,port = ?DEFAULT_PORT
                              ,username = ""
                              ,password = ""
-                             ,options = [] :: kz_proplist()
+                             ,options = [] :: kz_term:proplist()
                              ,connected = 'false'
                              ,ready = 'false'
                              ,admin = 'false'
@@ -71,10 +71,10 @@
 
 -type couchbeam_db() :: #db{}.
 
--record(kz_copy_doc, {source_dbname  :: ne_binary()
-                     ,source_doc_id  :: ne_binary()
-                     ,dest_dbname = 'undefined' :: api_binary()
-                     ,dest_doc_id = 'undefined' :: api_binary()
+-record(kz_copy_doc, {source_dbname  :: kz_term:ne_binary()
+                     ,source_doc_id  :: kz_term:ne_binary()
+                     ,dest_dbname = 'undefined' :: kz_term:api_binary()
+                     ,dest_doc_id = 'undefined' :: kz_term:api_binary()
                      }).
 -type copy_doc() :: #kz_copy_doc{}.
 

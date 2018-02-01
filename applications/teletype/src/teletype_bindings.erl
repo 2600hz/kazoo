@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -18,16 +18,17 @@
 -define(SERVER, ?MODULE).
 -define(ROUTING_KEY(Category, Name), <<"teletype.", Category/binary, ".", Name/binary>>).
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     start_modules(),
     garbage_collect(self()),
     'ignore'.
 
--spec bind(ne_binary(), module(), atom()) -> 'ok'.
--spec bind(api_binary(), api_binary(), module(), atom()) -> 'ok'.
+-spec bind(kz_term:ne_binary(), module(), atom()) -> 'ok'.
 bind(EventName, Module, Fun) ->
     bind(<<"notification">>, EventName, Module, Fun).
+
+-spec bind(kz_term:api_binary(), kz_term:api_binary(), module(), atom()) -> 'ok'.
 bind(EventCategory, EventName, Module, Fun) ->
     Binding = ?ROUTING_KEY(EventCategory, EventName),
     case kazoo_bindings:bind(Binding, Module, Fun) of
@@ -66,7 +67,7 @@ notification(JObj) ->
             maybe_send_update(JObj, RoutingKey, Map)
     end.
 
--spec maybe_send_update(kz_json:object(), ne_binary(), map()) -> 'ok'.
+-spec maybe_send_update(kz_json:object(), kz_term:ne_binary(), map()) -> 'ok'.
 maybe_send_update(JObj, RoutingKey, #{'completed' := _Completed}=Map) ->
     %% for now we just only care about at least one success
     print_result(RoutingKey, Map),
@@ -82,7 +83,7 @@ maybe_send_update(JObj, RoutingKey, Map) ->
     Metadata = kz_json:from_list_recursive(maps:to_list(Map)),
     teletype_util:send_update(JObj, <<"completed">>, 'undefined', Metadata).
 
--spec print_result(ne_binary(), map()) -> 'ok'.
+-spec print_result(kz_term:ne_binary(), map()) -> 'ok'.
 print_result(RoutingKey, Map) ->
     Completed = erlang:length(maps:get('completed', Map, [])),
     Disabled = erlang:length(maps:get('disabled', Map, [])),
@@ -92,7 +93,7 @@ print_result(RoutingKey, Map) ->
               ,[RoutingKey, Completed, Failed, Ignored, Disabled, maps:to_list(Map)]
               ).
 
--spec check_result(any(), {ne_binary(), map()}) -> {ne_binary(), map()}.
+-spec check_result(any(), {kz_term:ne_binary(), map()}) -> {kz_term:ne_binary(), map()}.
 
 check_result('ok', {RoutingKey, Map}) ->
     {RoutingKey, maps:update_with('completed', update_with(RoutingKey), [RoutingKey], Map)};

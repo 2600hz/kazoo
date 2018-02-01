@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% storage
@@ -35,11 +35,11 @@
 
 -type scope() :: 'system'
                | 'system_plans'
-               | {'system_plan', ne_binary()}
-               | {'user', ne_binary(), ne_binary()}
-               | {'account', ne_binary()}
-               | {'reseller_plans', ne_binary()}
-               | {'reseller_plan', ne_binary(), ne_binary()}
+               | {'system_plan', kz_term:ne_binary()}
+               | {'user', kz_term:ne_binary(), kz_term:ne_binary()}
+               | {'account', kz_term:ne_binary()}
+               | {'reseller_plans', kz_term:ne_binary()}
+               | {'reseller_plan', kz_term:ne_binary(), kz_term:ne_binary()}
                | 'invalid'.
 
 %%%===================================================================
@@ -191,7 +191,7 @@ validate_storage_plans(Context, ?HTTP_GET) ->
 validate_storage_plans(Context, ?HTTP_PUT) ->
     create(Context).
 
--spec validate_storage_plan(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
+-spec validate_storage_plan(cb_context:context(), kz_term:ne_binary(), http_method()) -> cb_context:context().
 validate_storage_plan(Context, PlanId, ?HTTP_GET) ->
     read(Context, PlanId);
 validate_storage_plan(Context, PlanId, ?HTTP_POST) ->
@@ -332,11 +332,11 @@ summary(Context, {'reseller_plans', AccountId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation(Id, Context) ->
     on_successful_validation(Id, cb_context:req_verb(Context), Context).
 
--spec on_successful_validation(api_binary(), http_method(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), http_method(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', ?HTTP_PUT, Context) ->
     IsSystemPlan = scope(Context) =:= 'system_plans',
     JObj = cb_context:doc(Context),
@@ -403,7 +403,7 @@ set_scope(Context, [{<<"storage">>, []}
 set_scope(Context, _Nouns) ->
     cb_context:store(Context, 'scope', 'invalid').
 
--spec doc_id(cb_context:context() | scope()) -> api_binary().
+-spec doc_id(cb_context:context() | scope()) -> kz_term:api_binary().
 doc_id('system') -> <<"system">>;
 doc_id('system_plans') -> 'undefined';
 doc_id({'system_plan', PlanId}) -> PlanId;

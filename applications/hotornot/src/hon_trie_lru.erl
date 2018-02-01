@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix
 %%% (1127494 * 8) div 78009 = 115
@@ -38,20 +38,20 @@
 
 -define(CHECK_MSG(ExpiresS), {'check_trie', ExpiresS}).
 
--type state() :: ?STATE_READY(trie:trie(), ne_binary(), reference()).
--type rate_entry() :: {ne_binary(), gregorian_seconds()}.
+-type state() :: ?STATE_READY(trie:trie(), kz_term:ne_binary(), reference()).
+-type rate_entry() :: {kz_term:ne_binary(), kz_time:gregorian_seconds()}.
 -type rate_entries() :: [rate_entry()].
 
--spec start_link(ne_binary()) -> {'ok', pid()}.
--spec start_link(ne_binary(), pos_integer()) -> {'ok', pid()}.
+-spec start_link(kz_term:ne_binary()) -> {'ok', pid()}.
 start_link(RatedeckDb) ->
     start_link(RatedeckDb, hotornot_config:lru_expires_s()).
 
+-spec start_link(kz_term:ne_binary(), pos_integer()) -> {'ok', pid()}.
 start_link(RatedeckDb, ExpiresS) ->
     ProcName = hon_trie:trie_proc_name(RatedeckDb),
     gen_server:start_link({'local', ProcName}, ?MODULE, [RatedeckDb, ExpiresS], []).
 
--spec stop(ne_binary()) -> 'ok'.
+-spec stop(kz_term:ne_binary()) -> 'ok'.
 stop(<<_/binary>>=RatedeckId) ->
     ProcName = hon_trie:trie_proc_name(RatedeckId),
     case whereis(ProcName) of
@@ -59,12 +59,12 @@ stop(<<_/binary>>=RatedeckId) ->
         Pid -> catch gen_server:call(Pid, 'stop')
     end.
 
--spec cache_rates(ne_binary(), kzd_rate:docs()) -> 'ok'.
+-spec cache_rates(kz_term:ne_binary(), kzd_rate:docs()) -> 'ok'.
 cache_rates(RatedeckId, Rates) ->
     ProcName = hon_trie:trie_proc_name(RatedeckId),
     gen_server:call(ProcName, {'cache_rates', Rates}).
 
--spec init([ne_binary() | pos_integer()]) -> {'ok', state()}.
+-spec init([kz_term:ne_binary() | pos_integer()]) -> {'ok', state()}.
 init([RatedeckDb, ExpiresS]) ->
     kz_util:put_callid(hon_trie:trie_proc_name(RatedeckDb)),
     lager:info("starting LRU for ~s", [RatedeckDb]),
@@ -80,7 +80,7 @@ start_expires_check_timer(ExpiresS) ->
     erlang:start_timer(Check, self(), ?CHECK_MSG(ExpiresS)).
 -endif.
 
--spec handle_call(any(), pid_ref(), state()) ->
+-spec handle_call(any(), kz_term:pid_ref(), state()) ->
                          {'noreply', state()} |
                          {'reply', match_return(), state()}.
 handle_call({'match_did', DID}, _From, ?STATE_READY(Trie, RatedeckDb, CheckRef)) ->
@@ -120,7 +120,7 @@ check_expired_entries(Trie, ExpiresS) ->
                   ),
     UpdatedTrie.
 
--spec check_if_expired(prefix(), [{ne_binary(), pos_integer()}], {pid(), pos_integer()}) ->
+-spec check_if_expired(prefix(), [{kz_term:ne_binary(), pos_integer()}], {pid(), pos_integer()}) ->
                               {pid(), pos_integer()}.
 check_if_expired(Prefix, Rates, {Trie, OldestTimestamp}=Acc) ->
     case expired_rates(Rates, OldestTimestamp) of
@@ -129,8 +129,8 @@ check_if_expired(Prefix, Rates, {Trie, OldestTimestamp}=Acc) ->
             {trie:erase(Prefix, Trie), OldestTimestamp}
     end.
 
--spec expired_rates([{ne_binary(), pos_integer()}], pos_integer()) ->
-                           [] | [{ne_binary(), pos_integer()}].
+-spec expired_rates([{kz_term:ne_binary(), pos_integer()}], pos_integer()) ->
+                           [] | [{kz_term:ne_binary(), pos_integer()}].
 expired_rates(Rates, OldestTimestamp) ->
     [RateId
      || {RateId, LastUsed} <- Rates,

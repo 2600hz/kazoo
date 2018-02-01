@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Init to be done
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("reg.hrl").
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     kz_util:spawn(fun init/0),
     'ignore'.

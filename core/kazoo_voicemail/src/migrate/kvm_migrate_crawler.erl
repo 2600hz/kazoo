@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -39,16 +39,16 @@
 -type workers() :: [worker()].
 -record(state, {max_worker = ?MAX_PROCESS :: integer()
                ,workers = [] :: workers()
-               ,account_ids = [] :: ne_binaries()
+               ,account_ids = [] :: kz_term:ne_binaries()
                ,retention_passed = 'false' :: boolean()
                ,total_account = 0 :: non_neg_integer()
                ,total_processed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
                ,total_failed = 0 :: non_neg_integer()
                ,total_account_failed = 0 :: non_neg_integer()
-               ,failed_accounts = [] :: ne_binaries()
-               ,calling_process = 'undefined' :: api_pid()
-               ,timer_ref :: api_reference()
+               ,failed_accounts = [] :: kz_term:proplist()
+               ,calling_process = 'undefined' :: kz_term:api_pid()
+               ,timer_ref :: kz_term:api_reference()
                ,account_queue :: queue:queue() | 'undefined'
                }).
 -type state() :: #state{}.
@@ -56,28 +56,7 @@
 -type next_account_ret() :: {next_account() | 'account_hit_retention', queue:queue()} |
                             'empty' |
                             'retention_passed' |
-                            'continue'.
-
--define(DEBUG(Format, Args),
-        begin
-            lager:debug(Format, Args),
-            io:format(Format ++ "\n", Args)
-        end
-       ).
-
--define(WARNING(Format, Args),
-        begin
-            lager:warning(Format, Args),
-            io:format(Format ++ "\n", Args)
-        end
-       ).
-
--define(ERROR(Format, Args),
-        begin
-            lager:error(Format, Args),
-            io:format(Format ++ "\n", Args)
-        end
-       ).
+                            {'continue', queue:queue()}.
 
 %%%===================================================================
 %%% API
@@ -88,11 +67,11 @@
 %% Starts the server
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> startlink_ret().
+-spec start() -> kz_types:startlink_ret().
 start() ->
     gen_server:start(?SERVER, [], []).
 
--spec start(pid()) -> startlink_ret().
+-spec start(pid()) -> kz_types:startlink_ret().
 start(Pid) ->
     gen_server:start(?SERVER, [Pid], []).
 
@@ -101,17 +80,17 @@ stop(Server) ->
     gen_server:call(Server, 'stop').
 
 %% Workers API
--spec account_is_done(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
+-spec account_is_done(pid(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> 'ok'.
 account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth) ->
     gen_server:call(Server, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, 'normal'}}).
 
--spec account_maybe_failed(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds(), any()) -> 'ok'.
+-spec account_maybe_failed(pid(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), any()) -> 'ok'.
 account_maybe_failed(_Server, _AccountId, _FirstOfMonth, _LastOfMonth, 'timeout') ->
     ?SUP_LOG_WARNING("ignoring 'timeout' error for worker of account ~s", [_AccountId]);
 account_maybe_failed(Server, AccountId, FirstOfMonth, LastOfMonth, Reason) ->
     gen_server:call(Server, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}).
 
--spec update_stats(pid(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec update_stats(pid(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 update_stats(Server, AccountId, Stats) ->
     gen_server:call(Server, {'update_stats', {AccountId, Stats}}).
 
@@ -133,10 +112,10 @@ init(Pid) ->
     lager:debug("started ~s", [?SERVER]),
     case kapps_util:get_all_accounts('raw') of
         [] ->
-            ?SUP_LOG_ERROR("********** no account found, going down **********", []),
+            ?SUP_LOG_ERROR(":: no account found, going down", []),
             {'stop', #state{}};
         Ids ->
-            ?SUP_LOG_WARNING("################### BEGINNING MIGRATING VOICEMAIL FOR ~b ACCOUNTS ###################~n~n", [length(Ids)]),
+            ?SUP_LOG_WARNING(":: BEGINNING MIGRATING VOICEMAIL FOR ~b ACCOUNTS", [length(Ids)]),
             AccountIds = kz_term:shuffle_list(Ids),
             %% first start migrating messages in retention durations
             Queue = populate_queue(AccountIds, kz_time:now_s()),
@@ -154,17 +133,17 @@ init(Pid) ->
 %% Handling call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
-handle_call({'account_is_done', MaybeDone}, _From, #state{account_queue = Queue
-                                                         ,total_account_failed = TotalAccFailed
-                                                         ,failed_accounts = FailedAccounts
-                                                         }=State) ->
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
+handle_call({'account_is_done', {_ ,_ ,_ ,Reason}=MaybeDone}, _From, #state{account_queue = Queue
+                                                                           ,total_account_failed = TotalAccFailed
+                                                                           ,failed_accounts = FailedAccounts
+                                                                           }=State) ->
     {IsFailed, AccountId, NewQueue} = maybe_remove_account_from_queue(MaybeDone, Queue),
     NewState = case IsFailed of
                    'true' ->
                        State#state{account_queue = NewQueue
                                   ,total_account_failed = TotalAccFailed + 1
-                                  ,failed_accounts = [AccountId | FailedAccounts]
+                                  ,failed_accounts = [{AccountId, Reason} | FailedAccounts]
                                   };
                    'false' ->
                        State#state{account_queue = NewQueue}
@@ -199,7 +178,7 @@ handle_call(_Request, _From, State) ->
 %% Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -210,13 +189,13 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
                                            ,workers = []
                                            ,retention_passed = 'true'
                                            ,calling_process = Pid
                                            }=State) ->
-    ?SUP_LOG_WARNING("~n~n########## voicemail migration is finished", []),
+    ?SUP_LOG_WARNING(":: voicemail migration is finished", []),
     print_summary(State),
     case is_pid(Pid) of
         'false' -> 'ok';
@@ -228,7 +207,7 @@ handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
                                            ,workers = Workers
                                            ,retention_passed = 'true'
                                            }=State) ->
-    lager:warning("########## migration is almost done, waiting for ~b workers to done", [length(Workers)]),
+    lager:debug(":: migration is almost done, waiting for ~b workers to done", [length(Workers)]),
     {'noreply', State};
 handle_info({'timeout', _Ref, _Msg}, #state{max_worker = Limit
                                            ,workers = Workers
@@ -284,8 +263,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec spawn_worker(state()) -> state().
--spec maybe_spawn_worker(state(), next_account_ret()) -> state().
 spawn_worker(#state{account_queue = Queue
                    ,retention_passed = IsRetPassed
                    ,workers = Workers
@@ -293,9 +272,10 @@ spawn_worker(#state{account_queue = Queue
     NextAccount = get_next_account(Queue, Workers, IsRetPassed),
     maybe_spawn_worker(State, NextAccount).
 
+-spec maybe_spawn_worker(state(), next_account_ret()) -> state().
 maybe_spawn_worker(#state{account_ids = AccountIds
                          }=State, 'retention_passed') ->
-    ?SUP_LOG_WARNING("~n########## all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails ##########~n", []),
+    ?SUP_LOG_WARNING(":: all voicemails in retention duration are migrated, beginning a migrating older voicemails", []),
     State#state{retention_passed = 'true'
                ,account_queue = populate_queue(AccountIds)
                };
@@ -304,9 +284,9 @@ maybe_spawn_worker(State, 'empty') ->
     State#state{account_ids = []
                ,retention_passed = 'true'
                };
-maybe_spawn_worker(State, 'continue') ->
-    %% next account is in front of the queue, wait for another cycle
-    State;
+maybe_spawn_worker(State, {'continue', NewQ}) ->
+    %% there is a worker for this account, adding this account to the end of the queue
+    State#state{account_queue = NewQ};
 maybe_spawn_worker(State, {'account_hit_retention', NewQ}) ->
     State#state{account_queue = NewQ};
 maybe_spawn_worker(#state{workers = Workers
@@ -321,7 +301,7 @@ maybe_spawn_worker(#state{workers = Workers
                                     _ = kz_util:put_callid(CallId),
                                     kvm_migrate_account:start_worker(NextAccount, Self)
                             end),
-    lager:debug("########## started ~p (~b/~b) to process account ~s"
+    lager:debug(":: started ~p (~b/~b) to process account ~s"
                ,[Pid, length(Workers) + 1, _Limit, AccountId]),
     State#state{workers = [{Pid, NextAccount} | Workers]
                ,account_queue = NewQ
@@ -332,12 +312,12 @@ maybe_spawn_worker(#state{workers = Workers
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec make_callid(reference(), ne_binary()) -> ne_binary().
+-spec make_callid(reference(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_callid(Ref, AccountId) ->
     Id = ref_to_id(Ref),
     <<"task_", AccountId/binary, "_", Id/binary>>.
 
--spec ref_to_id(reference()) -> ne_binary().
+-spec ref_to_id(reference()) -> kz_term:ne_binary().
 ref_to_id(Ref) ->
     Bin = list_to_binary(io_lib:format("~p", [Ref])),
     Start = <<"#Ref<">>,
@@ -389,22 +369,23 @@ get_next(_, [], {AccountId, FirstOfMonth, _LastOfMonth}, Q, 'false') ->
     end;
 get_next(_, [], NextAccount, Q, 'true') ->
     {NextAccount, queue:in(NextAccount, Q)};
-get_next(_Queue, _WorkerNextAccount, _NextAccount, _Q, _IsRetPassed) ->
-    'continue'.
+get_next(_Queue, _WorkerNextAccount, NextAccount, Q, _IsRetPassed) ->
+    %% there is a worker for this account, adding this account to the end of the queue
+    {'continue', queue:in(NextAccount, Q)}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec populate_queue(ne_binaries()) -> queue:queue().
+-spec populate_queue(kz_term:ne_binaries()) -> queue:queue().
 populate_queue(AccountIds) ->
     Props = [{AccountId, 'undefined', 'undefined'}
              || AccountId <- AccountIds
             ],
     queue:from_list(Props).
 
--spec populate_queue(ne_binaries(), gregorian_seconds()) -> queue:queue().
+-spec populate_queue(kz_term:ne_binaries(), kz_time:gregorian_seconds()) -> queue:queue().
 populate_queue(AccountIds, LastOfMonth) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(LastOfMonth),
     FirstOfMonth = calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}),
@@ -414,11 +395,11 @@ populate_queue(AccountIds, LastOfMonth) ->
     queue:from_list(Props).
 
 maybe_remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth, 'normal'}, Queue) ->
-    ?SUP_LOG_WARNING("########## account ~s is migrated"
+    ?SUP_LOG_WARNING(":: account ~s is migrated"
                     ,[AccountId]),
     {'false', AccountId, remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue)};
 maybe_remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth, _Reason}, Queue) ->
-    ?SUP_LOG_ERROR("********** account ~s migration failed: ~p **********", [AccountId, _Reason]),
+    ?SUP_LOG_ERROR(":: account ~s migration failed: ~p", [AccountId, _Reason]),
     {'true', AccountId, remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue)}.
 
 -spec remove_account_from_queue(next_account(), queue:queue()) -> queue:queue().
@@ -433,7 +414,7 @@ remove_account_from_queue(Key, Queue) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec previous_month_timestamp(gregorian_seconds()) -> gregorian_seconds().
+-spec previous_month_timestamp(kz_time:gregorian_seconds()) -> kz_time:gregorian_seconds().
 previous_month_timestamp(TimeStamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(TimeStamp),
     {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(Year, Month),
@@ -453,10 +434,12 @@ print_summary(#state{total_account = TotalAccount
                     ,total_failed = TotalFailed
                     }) ->
 
-    io:format("~n~n~n~n################### VOICEMAIL MIGRATION SUMMARY ################### ~n~n"),
-    io:format("                    Total Account processed: ~b~n", [TotalAccount]),
-    io:format("                  Total voicemail processed: ~b~n", [TotalMsgsProcessed]),
-    io:format("           Total voicemail migration failed: ~b~n", [TotalFailed]),
-    io:format("        Total voicemail migration succeeded: ~b~n", [TotalSucceeded]),
-    io:format("Total Account with failed migrated messages: ~b~n~n~n", [TotalAccFailed]),
-    io:format("Accounts with failed migrated messages: ~p~n~n", [FailedAccounts]).
+    io:format("~n~n:: VOICEMAIL MIGRATION SUMMARY :: ~n~n"),
+    io:format("Total Account processed: ~b~n", [TotalAccount]),
+    io:format("Total voicemail processed: ~b~n", [TotalMsgsProcessed]),
+    io:format("Total succeeded: ~b~n", [TotalSucceeded]),
+    io:format("Total failed: ~b~n", [TotalFailed]),
+    io:format("Total Account with failed migrated messages: ~b~n~n", [TotalAccFailed]),
+    io:format("Accounts with failed migrated messages:~n~n"),
+    _ = [io:format(" ~s: ~s~n", [AccountId, Reason]) || {AccountId, Reason} <- FailedAccounts],
+    'ok'.

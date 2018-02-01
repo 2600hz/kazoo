@@ -44,9 +44,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
--spec start_link(pos_integer()) -> startlink_ret().
+
+-spec start_link() -> kz_types:startlink_ret().
 start_link() -> start_link(?SEND_INTERVAL).
+
+-spec start_link(pos_integer()) -> kz_types:startlink_ret().
 start_link(Send_stats) ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [Send_stats], []).
 
@@ -59,9 +61,9 @@ getdb() ->
     gen_server:call(?SERVER, 'get_db').
 
 -spec increment_counter(any()) -> 'ok'.
--spec increment_counter(any(), any()) -> 'ok'.
 increment_counter(Item) -> send_counter(Item, 1).
 
+-spec increment_counter(any(), any()) -> 'ok'.
 increment_counter(Realm, Item) ->
     gen_server:cast(?SERVER, {'add', Realm, Item, 1}).
 
@@ -107,7 +109,7 @@ init([Send_stats]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('get_db', _From, State) ->
     {'reply', State, State};
 handle_call(Other,_From,State) ->
@@ -125,7 +127,7 @@ handle_call(Other,_From,State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('stop', State) ->
     {'stop', 'ok', State};
 handle_cast({Operation, Key, Val}, State) when Operation == 'add';
@@ -147,7 +149,7 @@ handle_cast(_,State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'send_stats', SendStats}=Info,State) ->
     send_stats(State#state.variables, State#state.sip),
     erlang:send_after(SendStats, self(), Info),

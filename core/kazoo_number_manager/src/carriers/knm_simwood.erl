@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz INC
+%%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number at Simwood (UK based provider)
@@ -64,8 +64,8 @@ is_local() -> 'false'.
 %% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
-                                      {error, any()}.
+-spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
+                                              {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
@@ -74,7 +74,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% Query Simwood.com for available numbers
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Prefix, Quantity, Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
@@ -140,7 +140,7 @@ should_lookup_cnam() -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_simwood(knm_number:knm_number()) -> ne_binary().
+-spec to_simwood(knm_number:knm_number()) -> kz_term:ne_binary().
 to_simwood(Number) ->
     case knm_phone_number:number(knm_number:phone_number(Number)) of
         <<$+, N/binary>> -> N;
@@ -152,7 +152,7 @@ to_simwood(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec query_simwood(ne_binary(), 'get' | 'put' | 'delete') ->
+-spec query_simwood(kz_term:ne_binary(), 'get' | 'put' | 'delete') ->
                            {'ok', iolist()} |
                            {'error', 'not_available'}.
 query_simwood(URL, Verb) ->
@@ -177,7 +177,7 @@ query_simwood(URL, Verb) ->
 %%  Simwood number query supports only 1|10|100 search amount
 %% @end
 %%--------------------------------------------------------------------
--spec sw_quantity(pos_integer()) -> ne_binary().
+-spec sw_quantity(pos_integer()) -> kz_term:ne_binary().
 sw_quantity(Quantity) when Quantity == 1 -> <<"1">>;
 sw_quantity(Quantity) when Quantity > 1, Quantity =< 10 -> <<"10">>;
 sw_quantity(_Quantity) -> <<"100">>.

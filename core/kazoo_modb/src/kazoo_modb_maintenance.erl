@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -26,6 +26,8 @@
         ]).
 -export([dump_transactions/3]).
 
+-export([register_views/0]).
+
 -include("kazoo_modb.hrl").
 
 -define(HEADER_MAP, [{<<"_id">>, <<"ID">>}
@@ -42,12 +44,11 @@
                     ,{<<"pvt_vsn">>, <<"Version">>}
                     ]).
 
--spec delete_modbs(ne_binary()) -> 'ok' | 'no_return'.
--spec delete_modbs(ne_binary(), boolean() | ne_binary()) -> 'ok' | 'no_return'.
--spec delete_modbs(ne_binary() | kz_year(), ne_binary() | kz_month(), boolean()) -> 'ok' | 'no_return'.
+-spec delete_modbs(kz_term:ne_binary()) -> 'ok' | 'no_return'.
 delete_modbs(Period) ->
     delete_modbs(Period, 'true').
 
+-spec delete_modbs(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok' | 'no_return'.
 delete_modbs(Period, ShouldArchive) ->
     Regex = <<"(2[0-9]{3})(0[1-9]|1[0-2])">>,
     case re:run(Period, Regex, [{'capture', 'all', 'binary'}]) of
@@ -57,6 +58,7 @@ delete_modbs(Period, ShouldArchive) ->
             io:format("period '~s' does not match YYYYMM format~n", [Period])
     end.
 
+-spec delete_modbs(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month(), boolean()) -> 'ok' | 'no_return'.
 delete_modbs(<<_/binary>> = Year, Month, ShouldArchive) ->
     delete_modbs(kz_term:to_integer(Year), Month, ShouldArchive);
 delete_modbs(Year, <<_/binary>> = Month, ShouldArchive) ->
@@ -77,18 +79,18 @@ delete_modbs(Year, Month, ShouldArchive) when is_integer(Year),
             io:format("request to delete future MODBs (~p~p) denied~n", [Year, Month])
     end.
 
--spec delete_older_modbs(kz_year(), kz_month(), ne_binaries(), boolean()) -> 'no_return'.
+-spec delete_older_modbs(kz_time:year(), kz_time:month(), kz_term:ne_binaries(), boolean()) -> 'no_return'.
 delete_older_modbs(Year, Month, AccountModbs, ShouldArchive) ->
     Months = (Year * 12) + Month,
     _ = [delete_modb(AccountModb, ShouldArchive) || AccountModb <- AccountModbs, should_delete(AccountModb, Months)],
     'no_return'.
 
--spec should_delete(ne_binary(), pos_integer()) -> boolean().
+-spec should_delete(kz_term:ne_binary(), pos_integer()) -> boolean().
 should_delete(AccountModb, Months) ->
     {_AccountId, ModYear, ModMonth} = kazoo_modb_util:split_account_mod(AccountModb),
     ((ModYear * 12) + ModMonth) =< Months.
 
--spec delete_modb(ne_binary(), boolean()) -> 'ok'.
+-spec delete_modb(kz_term:ne_binary(), boolean()) -> 'ok'.
 delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb, ShouldArchive) ->
     delete_modb(kz_util:format_account_db(AccountModb), ShouldArchive);
 delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb, ShouldArchive) ->
@@ -101,13 +103,14 @@ delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb, ShouldArchive) ->
     timer:sleep(5 * ?MILLISECONDS_IN_SECOND).
 
 -spec archive_modbs() -> 'no_return'.
--spec archive_modbs(text()) -> 'no_return'.
 archive_modbs() ->
     do_archive_modbs(kapps_util:get_all_account_mods(), 'undefined').
+
+-spec archive_modbs(kz_term:text()) -> 'no_return'.
 archive_modbs(AccountId) ->
     do_archive_modbs(kapps_util:get_account_mods(AccountId), kz_term:to_binary(AccountId)).
 
--spec do_archive_modbs(ne_binaries(), api_binary()) -> 'no_return'.
+-spec do_archive_modbs(kz_term:ne_binaries(), kz_term:api_binary()) -> 'no_return'.
 do_archive_modbs(MODbs, AccountId) ->
     kz_util:put_callid(?MODULE),
     lists:foreach(fun kazoo_modb:maybe_archive_modb/1, MODbs),
@@ -121,7 +124,7 @@ current_rollups() ->
     Accounts = kapps_util:get_all_accounts(),
     current_rollups(Accounts).
 
--spec current_rollups(ne_binaries()) -> 'ok'.
+-spec current_rollups(kz_term:ne_binaries()) -> 'ok'.
 current_rollups([]) -> 'ok';
 current_rollups([Account|Accounts]) ->
     {Year, Month, _} = erlang:date(),
@@ -154,24 +157,24 @@ verify_all_rollups() ->
     _ = lists:foldr(fun verify_db_rollup/2, {1, Total, [{'all_rollups', 'true'}]}, Accounts),
     'ok'.
 
--spec verify_db_rollup(ne_binary(), {pos_integer(), pos_integer(), kz_proplist()}) ->
-                              {pos_integer(), pos_integer(), kz_proplist()}.
+-spec verify_db_rollup(kz_term:ne_binary(), {pos_integer(), pos_integer(), kz_term:proplist()}) ->
+                              {pos_integer(), pos_integer(), kz_term:proplist()}.
 verify_db_rollup(AccountDb, {Current, Total, Options}) ->
     io:format("verify rollup accounts (~p/~p) '~s'~n"
              ,[Current, Total, AccountDb]),
     verify_rollups(AccountDb, Options),
     {Current+1, Total, Options}.
 
--spec verify_rollups(ne_binary()) -> 'ok'.
+-spec verify_rollups(kz_term:ne_binary()) -> 'ok'.
 verify_rollups(Account) ->
     verify_rollups(Account, [{'all_rollups', 'true'}]).
 
--spec verify_rollups(ne_binary(), kz_proplist()) -> 'ok'.
+-spec verify_rollups(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 verify_rollups(Account, Options) ->
     {Year, Month, _} = erlang:date(),
     verify_rollups(Account, Year, Month, Options).
 
--spec verify_rollups(ne_binary(), kz_year(), kz_month(), kz_proplist() | kz_json:object()) -> 'ok'.
+-spec verify_rollups(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_term:proplist() | kz_json:object()) -> 'ok'.
 verify_rollups(AccountDb, Year, Month, Options) when is_list(Options) ->
     AllRollups = props:get_value('all_rollups', Options),
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
@@ -193,7 +196,7 @@ verify_rollups(AccountDb, Year, Month, JObj) ->
     PrevBalance = wht_util:previous_balance(AccountDb, PYear, PMonth),
     verify_rollups(AccountDb, Year, Month, JObj, PrevBalance).
 
--spec verify_rollups(ne_binary(), kz_year(), kz_month(), kz_json:object(), kz_std_return()) -> 'ok'.
+-spec verify_rollups(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_json:object(), kz_term:std_return()) -> 'ok'.
 verify_rollups(AccountDb, Year, Month, JObj, {'ok', Balance}) ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     case rollup_balance(JObj) of
@@ -210,12 +213,12 @@ verify_rollups(AccountDb, Year, Month, _JObj, {'error', _R}) ->
              ,[AccountId, Year, Month, _R]
              ).
 
--spec fix_rollup(ne_binary()) -> 'ok'.
+-spec fix_rollup(kz_term:ne_binary()) -> 'ok'.
 fix_rollup(Account) ->
     {Year, Month, _} = erlang:date(),
     fix_rollup(Account, Year, Month).
 
--spec fix_rollup(ne_binary(), kz_year(), kz_month()) -> 'ok'.
+-spec fix_rollup(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'ok'.
 fix_rollup(Account, Year, Month) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Y = kz_term:to_integer(Year),
@@ -238,14 +241,14 @@ rollup_accounts() ->
     _ = lists:foldr(fun rollup_account_fold/2, {1, Total}, Accounts),
     'ok'.
 
--spec rollup_account_fold(ne_binary(), {pos_integer(), pos_integer()}) ->
+-spec rollup_account_fold(kz_term:ne_binary(), {pos_integer(), pos_integer()}) ->
                                  {pos_integer(), pos_integer()}.
 rollup_account_fold(AccountDb, {Current, Total}) ->
     io:format("rollup accounts (~p/~p) '~s'~n", [Current, Total, AccountDb]),
     _ = rollup_account(AccountDb),
     {Current + 1, Total}.
 
--spec rollup_account(ne_binary()) -> 'ok'.
+-spec rollup_account(kz_term:ne_binary()) -> 'ok'.
 rollup_account(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     case wht_util:current_balance(AccountId) of
@@ -254,7 +257,7 @@ rollup_account(Account) ->
             io:format("failed to get current balance for ~s: ~p~n", [AccountId, _R])
     end.
 
--spec rollup_account(ne_binary(), integer()) -> 'ok'.
+-spec rollup_account(kz_term:ne_binary(), integer()) -> 'ok'.
 rollup_account(AccountId, Balance) ->
     AccountMODb = kazoo_modb:get_modb(AccountId),
     io:format("rolling up ~p credits to ~s~n", [Balance, AccountMODb]),
@@ -268,7 +271,7 @@ rollup_balance(JObj) ->
         <<"debit">> -> Balance * -1
     end.
 
--spec dump_transactions(ne_binary(), ne_binary(), ne_binary()) -> 'no_return' | 'ok'.
+-spec dump_transactions(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return' | 'ok'.
 dump_transactions(Account, Year, Month) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     View = <<"transactions/by_timestamp">>,
@@ -288,8 +291,12 @@ dump_transactions(Account, Year, Month) ->
             io:format("unable to get transactions for ~s (~p-~p): ~p", [AccountId, Month, Year, _R])
     end.
 
--spec fix_value_map(ne_binary(), kz_json:term()) -> kz_json:term().
+-spec fix_value_map(kz_term:ne_binary(), kz_json:term()) -> kz_json:term().
 fix_value_map(<<"pvt_amount">> = Key, Value) -> {Key, wht_util:units_to_dollars(Value)};
 fix_value_map(<<"pvt_modified">> = Key, Value) -> {Key, kz_time:rfc1036(Value)};
 fix_value_map(<<"pvt_created">> = Key, Value) -> {Key, kz_time:rfc1036(Value)};
 fix_value_map(Key, Value) -> {Key, Value}.
+
+-spec register_views() -> 'ok'.
+register_views() ->
+    kz_datamgr:register_views_from_folder('modb', 'kazoo_modb').

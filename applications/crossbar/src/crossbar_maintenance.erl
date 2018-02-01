@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -47,10 +47,12 @@
 
 -export([does_schema_exist/1]).
 
+-export([db_init/0]).
+
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
 
--type input_term() :: atom() | string() | ne_binary().
+-type input_term() :: atom() | string() | kz_term:ne_binary().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -62,7 +64,7 @@
 migrate() ->
     migrate(kapps_util:get_all_accounts()).
 
--spec migrate(ne_binaries()) -> 'no_return'.
+-spec migrate(kz_term:ne_binaries()) -> 'no_return'.
 migrate(Accounts) ->
     _ = migrate_accounts_data(Accounts),
 
@@ -79,7 +81,7 @@ migrate(Accounts) ->
                             (not lists:member(Module, CurrentModules))
                         ]).
 
--spec remove_deprecated_modules(atoms(), atoms()) -> atoms().
+-spec remove_deprecated_modules(kz_term:atoms(), kz_term:atoms()) -> kz_term:atoms().
 remove_deprecated_modules(Modules, Deprecated) ->
     case lists:foldl(fun lists:delete/2, Modules, Deprecated) of
         Modules -> Modules;
@@ -93,13 +95,13 @@ remove_deprecated_modules(Modules, Deprecated) ->
 migrate_accounts_data() ->
     migrate_accounts_data(kapps_util:get_all_accounts()).
 
--spec migrate_accounts_data(ne_binaries()) -> 'no_return'.
+-spec migrate_accounts_data(kz_term:ne_binaries()) -> 'no_return'.
 migrate_accounts_data([]) -> 'no_return';
 migrate_accounts_data([Account|Accounts]) ->
     _ = migrate_account_data(Account),
     migrate_accounts_data(Accounts).
 
--spec migrate_account_data(ne_binary()) -> 'no_return'.
+-spec migrate_account_data(kz_term:ne_binary()) -> 'no_return'.
 migrate_account_data(Account) ->
     _ = cb_clicktocall:maybe_migrate_history(Account),
     _ = migrate_ring_group_callflow(Account),
@@ -108,7 +110,7 @@ migrate_account_data(Account) ->
     _ = cb_apps_maintenance:migrate(Account),
     'no_return'.
 
--spec add_missing_modules(atoms(), atoms()) -> 'no_return'.
+-spec add_missing_modules(kz_term:atoms(), kz_term:atoms()) -> 'no_return'.
 add_missing_modules(_, []) -> 'no_return';
 add_missing_modules(Modules, MissingModules) ->
     io:format("  saving autoload_modules with missing modules added: ~p~n", [MissingModules]),
@@ -121,12 +123,12 @@ add_missing_modules(Modules, MissingModules) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec refresh() -> 'ok'.
--spec refresh(input_term()) -> 'ok'.
 
+-spec refresh() -> 'ok'.
 refresh() ->
     io:format("please use kapps_maintenance:refresh().").
 
+-spec refresh(input_term()) -> 'ok'.
 refresh(Value) ->
     io:format("please use kapps_maintenance:refresh(~p).", [Value]).
 
@@ -141,14 +143,14 @@ flush() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_module(text()) -> 'ok'.
+-spec start_module(kz_term:text()) -> 'ok'.
 start_module(Module) ->
     case crossbar_init:start_mod(Module) of
         'ok' -> maybe_autoload_module(kz_term:to_binary(Module));
         {'error', Error} -> io:format("failed to start ~s: ~p~n", [Module, Error])
     end.
 
--spec maybe_autoload_module(ne_binary()) -> 'ok'.
+-spec maybe_autoload_module(kz_term:ne_binary()) -> 'ok'.
 maybe_autoload_module(Module) ->
     Mods = crossbar_config:autoload_modules(),
     case lists:member(Module, Mods) of
@@ -159,7 +161,7 @@ maybe_autoload_module(Module) ->
             io:format("started and added ~s to autoloaded modules~n", [Module])
     end.
 
--spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
+-spec persist_module(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 persist_module(Module, Mods) ->
     {'ok', _} = crossbar_config:set_default_autoload_modules(
                   [kz_term:to_binary(Module)
@@ -173,7 +175,7 @@ persist_module(Module, Mods) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec stop_module(text()) -> 'ok'.
+-spec stop_module(kz_term:text()) -> 'ok'.
 stop_module(Module) ->
     'ok' = crossbar_init:stop_mod(Module),
     Mods = crossbar_config:autoload_modules(),
@@ -186,7 +188,7 @@ stop_module(Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec running_modules() -> atoms().
+-spec running_modules() -> kz_term:atoms().
 running_modules() -> crossbar_bindings:modules_loaded().
 
 %%--------------------------------------------------------------------
@@ -195,7 +197,7 @@ running_modules() -> crossbar_bindings:modules_loaded().
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_number(input_term()) -> {'ok', ne_binary()} |
+-spec find_account_by_number(input_term()) -> {'ok', kz_term:ne_binary()} |
                                               {'error', any()}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(kz_term:to_binary(Number));
@@ -222,8 +224,8 @@ find_account_by_number(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_account_by_name(input_term()) ->
-                                  {'ok', ne_binary()} |
-                                  {'multiples', [ne_binary(),...]} |
+                                  {'ok', kz_term:ne_binary()} |
+                                  {'multiples', [kz_term:ne_binary(),...]} |
                                   {'error', any()}.
 find_account_by_name(Name) when not is_binary(Name) ->
     find_account_by_name(kz_term:to_binary(Name));
@@ -250,8 +252,8 @@ find_account_by_name(Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_account_by_realm(input_term()) ->
-                                   {'ok', ne_binary()} |
-                                   {'multiples', [ne_binary(),...]} |
+                                   {'ok', kz_term:ne_binary()} |
+                                   {'multiples', [kz_term:ne_binary(),...]} |
                                    {'error', any()}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
     find_account_by_realm(kz_term:to_binary(Realm));
@@ -278,7 +280,7 @@ find_account_by_realm(Realm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_account_by_id(input_term()) ->
-                                {'ok', ne_binary()} |
+                                {'ok', kz_term:ne_binary()} |
                                 {'error', any()}.
 find_account_by_id(Id) when is_binary(Id) ->
     print_account_info(kz_util:format_account_id(Id, 'encoded'));
@@ -442,7 +444,7 @@ create_account_and_user(Account, User) ->
 create_fold({F, V}, {'ok', C}) -> F(V, C);
 create_fold(F, {'ok', C}) -> F(C).
 
--spec update_system_config(ne_binary()) -> 'ok'.
+-spec update_system_config(kz_term:ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
     kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, AccountId),
     io:format("updated master account id in system_config.~s~n", [?KZ_SYSTEM_CONFIG_ACCOUNT]).
@@ -486,11 +488,11 @@ db_system_config_exists() ->
 db_system_schemas_exists() ->
     db_exists(?KZ_SCHEMA_DB).
 
--spec db_exists(ne_binary()) -> 'true'.
--spec db_exists(ne_binary(), boolean()) -> 'true'.
+-spec db_exists(kz_term:ne_binary()) -> 'true'.
 db_exists(Database) ->
     db_exists(Database, 'true').
 
+-spec db_exists(kz_term:ne_binary(), boolean()) -> 'true'.
 db_exists(Database, ShouldRetry) ->
     case kz_datamgr:db_exists(Database) of
         'true' -> 'true';
@@ -513,14 +515,14 @@ do_schemas_exist() ->
               ],
     lists:all(fun does_schema_exist/1, Schemas).
 
--spec does_schema_exist(ne_binary()) -> boolean().
+-spec does_schema_exist(kz_term:ne_binary()) -> boolean().
 does_schema_exist(Schema) ->
     case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> maybe_load_refs(SchemaJObj);
         {'error', 'not_found'} -> maybe_fload(Schema)
     end.
 
--spec maybe_fload(ne_binary()) -> boolean().
+-spec maybe_fload(kz_term:ne_binary()) -> boolean().
 maybe_fload(Schema) ->
     case kz_json_schema:fload(Schema) of
         {'ok', SchemaJObj} ->
@@ -649,11 +651,12 @@ create_user(Context) ->
             throw(Errors)
     end.
 
--spec print_account_info(ne_binary()) -> {'ok', ne_binary()}.
--spec print_account_info(ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
+-spec print_account_info(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 print_account_info(AccountDb) ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     print_account_info(AccountDb, AccountId).
+
+-spec print_account_info(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 print_account_info(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
@@ -675,13 +678,13 @@ print_account_info(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec move_account(ne_binary(), ne_binary()) -> 'ok'.
+-spec move_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 move_account(Account, ToAccount) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ToAccountId = kz_util:format_account_id(ToAccount, 'raw'),
     maybe_move_account(AccountId, ToAccountId).
 
--spec maybe_move_account(ne_binary(), ne_binary()) -> 'ok'.
+-spec maybe_move_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_move_account(AccountId, AccountId) ->
     io:format("can not move to the same account~n");
 maybe_move_account(AccountId, ToAccountId) ->
@@ -697,21 +700,22 @@ maybe_move_account(AccountId, ToAccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec descendants_count() -> 'ok'.
--spec descendants_count(ne_binary()) -> 'ok'.
 descendants_count() ->
     crossbar_util:descendants_count().
 
+-spec descendants_count(kz_term:ne_binary()) -> 'ok'.
 descendants_count(AccountId) ->
     crossbar_util:descendants_count(AccountId).
 
--spec migrate_ring_group_callflow(ne_binary()) -> 'ok'.
+-spec migrate_ring_group_callflow(kz_term:ne_binary()) -> 'ok'.
 migrate_ring_group_callflow(Account) ->
     lists:foreach(fun create_new_ring_group_callflow/1
                  ,get_migrateable_ring_group_callflows(Account)
                  ).
 
--spec get_migrateable_ring_group_callflows(ne_binary()) -> kz_json:objects().
+-spec get_migrateable_ring_group_callflows(kz_term:ne_binary()) -> kz_json:objects().
 get_migrateable_ring_group_callflows(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case kz_datamgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
@@ -722,14 +726,14 @@ get_migrateable_ring_group_callflows(Account) ->
             get_migrateable_ring_group_callflows(AccountDb, JObjs)
     end.
 
--spec get_migrateable_ring_group_callflows(ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec get_migrateable_ring_group_callflows(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 get_migrateable_ring_group_callflows(AccountDb, JObjs) ->
     lists:foldl(fun(JObj, Acc) -> get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) end
                ,[]
                ,JObjs
                ).
 
--spec get_migrateable_ring_group_callflow(kz_json:object(), kz_json:objects(), ne_binary()) ->
+-spec get_migrateable_ring_group_callflow(kz_json:object(), kz_json:objects(), kz_term:ne_binary()) ->
                                                  kz_json:objects().
 get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) ->
     case {kz_json:get_ne_binary_value([<<"value">>, <<"group_id">>], JObj)
@@ -833,7 +837,7 @@ save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
             update_old_ring_group_callflow(JObj, NewJObj)
     end.
 
--spec check_if_callflow_exist(ne_binary(), ne_binary()) -> boolean().
+-spec check_if_callflow_exist(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 check_if_callflow_exist(AccountDb, Name) ->
     case kz_datamgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
         {'error', _M} ->
@@ -900,7 +904,7 @@ save_old_ring_group(JObj, NewCallflow) ->
 init_apps(AppsPath) ->
     init_apps(AppsPath, 'undefined').
 
--spec init_apps(file:name(), api_binary()) -> 'ok'.
+-spec init_apps(file:name(), kz_term:api_binary()) -> 'ok'.
 init_apps(AppsPath, AppUrl) ->
     Apps = find_apps(AppsPath),
     InitApp = fun(App) -> init_app(App, AppUrl) end,
@@ -920,7 +924,7 @@ find_apps(AppsPath) ->
 init_app(AppPath) ->
     init_app(AppPath, 'undefined').
 
--spec init_app(file:filename_all(), api_binary()) -> 'ok'.
+-spec init_app(file:filename_all(), kz_term:api_binary()) -> 'ok'.
 init_app(AppPath, AppUrl) ->
     io:format("trying to init app from ~s~n", [AppPath]),
     try find_metadata(AppPath) of
@@ -936,18 +940,18 @@ init_app(AppPath, AppUrl) ->
             io:format("  failed to find metadata in ~s: ~p~n", [AppPath, _E])
     end.
 
--spec maybe_set_api_url(api_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_set_api_url(kz_term:api_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_api_url('undefined', MetaData) ->
     kz_json:delete_key(<<"api_url">>, MetaData);
 maybe_set_api_url(AppUrl, MetaData) ->
     kz_json:set_value(<<"api_url">>, AppUrl, MetaData).
 
 -spec maybe_create_app(file:filename_all(), kz_json:object()) -> 'ok'.
--spec maybe_create_app(file:filename_all(), kz_json:object(), ne_binary()) -> 'ok'.
 maybe_create_app(AppPath, MetaData) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     maybe_create_app(AppPath, MetaData, MasterAccountDb).
 
+-spec maybe_create_app(file:filename_all(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
     AppName = kzd_app:name(MetaData),
     case find_app(MasterAccountDb, AppName) of
@@ -958,7 +962,7 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
         {'error', _E} -> io:format(" failed to find app ~s: ~p", [AppName, _E])
     end.
 
--spec maybe_update_app(file:filename_all(), kz_json:object(), ne_binary(), kz_json:object()) -> no_return.
+-spec maybe_update_app(file:filename_all(), kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> no_return.
 maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     ApiUrlKey = <<"api_url">>,
     CurrentDocId = kzd_app:id(AppJObj),
@@ -976,13 +980,13 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
     maybe_add_images(AppPath, CurrentDocId, MetaData, MasterAccountDb).
 
--spec find_app(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                            {'error', any()}.
+-spec find_app(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                                            {'error', any()}.
 find_app(Db, Name) ->
     ViewOptions = [{'key', Name}],
     kz_datamgr:get_single_result(Db, ?CB_APPS_STORE_LIST, ViewOptions).
 
--spec create_app(file:filename_all(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec create_app(file:filename_all(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->
     Doc0 = kz_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}]),
     Doc = kz_json:delete_key(<<"source_url">>, Doc0),
@@ -996,13 +1000,13 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
                      ,[kzd_app:name(MetaData), MasterAccountDb, _E])
     end.
 
--spec delete_old_images(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec delete_old_images(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 delete_old_images(AppId, MetaData, MasterAccountDb) ->
     F = fun (X) -> safe_delete_image(MasterAccountDb, AppId, X) end,
     lists:foreach(F, [kzd_app:icon(MetaData)]),
     lists:foreach(F, kzd_app:screenshots(MetaData)).
 
--spec safe_delete_image(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec safe_delete_image(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
 safe_delete_image(AccountDb, AppId, Image) ->
     case kz_datamgr:fetch_attachment(AccountDb, AppId, Image) of
@@ -1011,7 +1015,7 @@ safe_delete_image(AccountDb, AppId, Image) ->
             kz_datamgr:delete_attachment(AccountDb, AppId, Image)
     end.
 
--spec maybe_add_images(file:filename_all(), ne_binary(), kz_json:object(), ne_binary()) -> no_return.
+-spec maybe_add_images(file:filename_all(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> no_return.
 maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     Icon = kzd_app:icon(MetaData),
     Screenshots = kzd_app:screenshots(MetaData),
@@ -1033,7 +1037,7 @@ update_screenshots(AppId, MA, SShotPaths) ->
 -type image_path() :: {file:filename_all(), file:filename_all()}.
 -type image_paths() :: [image_path()].
 
--spec update_images(ne_binary(), ne_binary(), image_paths(), ne_binary()) -> 'ok'.
+-spec update_images(kz_term:ne_binary(), kz_term:ne_binary(), image_paths(), kz_term:ne_binary()) -> 'ok'.
 update_images(AppId, MasterAccountDb, ImagePaths, Type) ->
     try read_images(ImagePaths) of
         {'ok', Images} -> add_images(AppId, MasterAccountDb, Images)
@@ -1044,14 +1048,14 @@ update_images(AppId, MasterAccountDb, ImagePaths, Type) ->
             io:format("  failed to load ~s in ~s: ~p~n", [Type, AppId, _E])
     end.
 
--spec add_images(ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec add_images(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 add_images(AppId, MasterAccountDb, Images) ->
     _ = [add_image(AppId, MasterAccountDb, ImageId, ImageData)
          || {ImageId, ImageData} <- Images
         ],
     'ok'.
 
--spec add_image(ne_binary(), ne_binary(), file:filename_all(), binary()) -> 'ok'.
+-spec add_image(kz_term:ne_binary(), kz_term:ne_binary(), file:filename_all(), binary()) -> 'ok'.
 add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
     case kz_datamgr:put_attachment(MasterAccountDb, AppId, ImageId, ImageData) of
         {'ok', _} ->     io:format("   saved ~s to ~s~n", [ImageId, AppId]);
@@ -1072,7 +1076,7 @@ read_image(File) ->
 
 -spec find_metadata(file:filename_all()) ->
                            {'ok', kz_json:object()} |
-                           {'invalid_data', kz_proplist()}.
+                           {'invalid_data', kz_term:proplist()}.
 find_metadata(AppPath) ->
     {'ok', JSON} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
     {'ok', Schema} = kz_json_schema:load(<<"app">>),
@@ -1091,7 +1095,7 @@ apps() ->
     end,
     no_return.
 
--spec app(ne_binary()) -> no_return.
+-spec app(kz_term:ne_binary()) -> no_return.
 app(AppNameOrId) ->
     {ok, MA} = kapps_util:get_master_account_db(),
     case find_app(MA, AppNameOrId) of
@@ -1147,34 +1151,37 @@ update_app(AppId, Path, Value) ->
     end,
     no_return.
 
--spec set_app_field(ne_binary(), ne_binary(), ne_binary()) -> no_return.
+-spec set_app_field(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_field(AppId, Field, Value) ->
     update_app(AppId, [Field], Value).
 
--spec set_app_label(ne_binary(), ne_binary()) -> no_return.
--spec set_app_description(ne_binary(), ne_binary()) -> no_return.
--spec set_app_extended_description(ne_binary(), ne_binary()) -> no_return.
--spec set_app_features(ne_binary(), ne_binary()) -> no_return.
+-spec set_app_label(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_label(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"label">>], Value).
+
+-spec set_app_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_description(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"description">>], Value).
+
+-spec set_app_extended_description(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_extended_description(AppId, Value) ->
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"extended_description">>], Value).
+
+-spec set_app_features(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_features(AppId, Value) ->
     Values = [V || V <- binary:split(Value, <<$@>>, [global]),
                    V =/= <<>>
              ],
     update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"features">>], Values).
 
--spec set_app_icon(ne_binary(), ne_binary()) -> no_return.
+-spec set_app_icon(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_icon(AppId, PathToPNGIcon) ->
     {ok, MA} = kapps_util:get_master_account_db(),
     io:format("Processing...\n"),
     Icon = {filename:basename(PathToPNGIcon), PathToPNGIcon},
     update_icon(AppId, MA, Icon).
 
--spec set_app_screenshots(ne_binary(), ne_binary()) -> no_return.
+-spec set_app_screenshots(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 set_app_screenshots(AppId, PathToScreenshotsFolder) ->
     {ok, MA} = kapps_util:get_master_account_db(),
     io:format("Processing...\n"),
@@ -1182,3 +1189,34 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
               || SShot <- filelib:wildcard(kz_term:to_list(PathToScreenshotsFolder) ++ "/*.png")
              ],
     update_screenshots(AppId, MA, SShots).
+
+-spec update_schemas() -> 'ok'.
+update_schemas() ->
+    kz_datamgr:suppress_change_notice(),
+    lager:notice("starting system schemas update"),
+    kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
+    lager:notice("finished system schemas update"),
+    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
+         || {Config, Error} <- kapps_maintenance:validate_system_configs()
+        ],
+    'ok'.
+
+-spec db_init() -> 'ok'.
+db_init() ->
+    kz_datamgr:suppress_change_notice(),
+    _ = kz_util:spawn(fun update_schemas/0),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, ?APP, <<"views/system_configs.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_MEDIA_DB, ?APP, <<"account/media.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, ?APP, <<"views/rates.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, <<"views/resources.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, ?APP, <<"views/port_requests.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, ?APP, <<"views/acdc.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, ?APP, <<"views/cccps.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, ?APP, <<"views/token_auth.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, ?APP, <<"views/alerts.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, ?APP, <<"views/pending_notify.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, ?APP, <<"views/webhooks.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, ?APP, <<"views/resources.json">>),
+    _ = kz_datamgr:register_view('ratedeck', 'crossbar', <<"views/rates.json">>),
+    kz_datamgr:enable_change_notice(),
+    lager:debug("database views updated").

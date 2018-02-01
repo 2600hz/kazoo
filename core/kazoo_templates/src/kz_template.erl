@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -21,7 +21,7 @@
          | Options
         ]).
 
--type template() :: nonempty_string() | ne_binary().
+-type template() :: nonempty_string() | kz_term:ne_binary().
 
 -type template_result() :: {'ok', iolist() | atom()} |
                            {'error', any()}.
@@ -45,15 +45,16 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec render(atom(), kz_proplist()) -> template_result().
--spec render(template(), atom(), kz_proplist()) -> template_result().
--spec render(template(), atom(), kz_proplist(), kz_proplist()) -> template_result().
+
+-spec render(atom(), kz_term:proplist()) -> template_result().
 render(Module, TemplateData) ->
     render_template(Module, TemplateData).
 
+-spec render(template(), atom(), kz_term:proplist()) -> template_result().
 render(Template, Module, TemplateData) ->
     render(Template, Module, TemplateData, []).
 
+-spec render(template(), atom(), kz_term:proplist(), kz_term:proplist()) -> template_result().
 render(Template, Module, TemplateData, CompileOpts) ->
     case compile(Template, Module, CompileOpts) of
         {'ok', Module} -> render_template(Module, TemplateData);
@@ -62,10 +63,10 @@ render(Template, Module, TemplateData, CompileOpts) ->
 
 
 -spec compile(template(), atom()) -> template_result().
--spec compile(template(), atom(), kz_proplist()) -> template_result().
 compile(Template, Module) ->
     compile(Template, Module, []).
 
+-spec compile(template(), atom(), kz_term:proplist()) -> template_result().
 compile(Template, Module, CompileOpts) when is_binary(Template) ->
     try erlydtl:compile_template(Template, Module, ?COMPILE_OPTS(CompileOpts)) of
         Result ->
@@ -94,7 +95,7 @@ compile(Path, Module, CompileOpts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec render_template(atom(), kz_proplist()) -> template_result().
+-spec render_template(atom(), kz_term:proplist()) -> template_result().
 render_template(Module, TemplateData) ->
     lager:debug("rendering using ~s", [Module]),
     try Module:render(props:filter_empty(TemplateData)) of

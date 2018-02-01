@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -31,7 +31,7 @@
 -record('state', {'requests' = dict:new() :: dict:dict()
                  ,'requestor_queues' = dict:new() :: dict:dict()
                  ,'sipnames' = dict:new() :: dict:dict()
-                 ,'account_db' :: api_ne_binary()
+                 ,'account_db' :: kz_term:api_ne_binary()
                  }).
 -type state() :: #state{}.
 
@@ -47,7 +47,7 @@ get_requestor_queues(#state{'requestor_queues' = Val}) ->
 get_sipnames(#state{'sipnames' = Val}) ->
     Val.
 
--spec get_account_db(state()) -> ne_binary().
+-spec get_account_db(state()) -> kz_term:ne_binary().
 get_account_db(#state{'account_db' = Val}) ->
     Val.
 
@@ -63,7 +63,7 @@ set_requestor_queues(S, Val) ->
 add_request(JObj) ->
     gen_server:cast(?SERVER, {'add_request', JObj}).
 
--spec available_device(ne_binary(), ne_binary()) -> 'ok'.
+-spec available_device(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 available_device(AccountId, SIPName) ->
     gen_server:cast(?SERVER, {'available_device', AccountId, SIPName}).
 
@@ -71,7 +71,7 @@ available_device(AccountId, SIPName) ->
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -95,7 +95,7 @@ init([]) ->
 %% Handling call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -105,7 +105,7 @@ handle_call(_Request, _From, State) ->
 %% Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_request', JObj}, GlobalState) ->
     AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
@@ -151,7 +151,7 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
--spec with_state(ne_binary(), dict:dict(), fun((state()) -> state())) -> dict:dict().
+-spec with_state(kz_term:ne_binary(), dict:dict(), fun((state()) -> state())) -> dict:dict().
 with_state(AccountId, Global, F) ->
     Local = case dict:find(AccountId, Global) of
                 {'ok', #state{}=S} -> S;
@@ -162,7 +162,7 @@ with_state(AccountId, Global, F) ->
             end,
     dict:store(AccountId, F(Local), Global).
 
--spec maybe_handle_request(ne_binary(), queue:queue(), state()) -> state().
+-spec maybe_handle_request(kz_term:ne_binary(), queue:queue(), state()) -> state().
 maybe_handle_request(SIPName, Q, Local) ->
     case queue:out(Q) of
         {{'value', Requestor}, NewQ} ->
@@ -174,7 +174,7 @@ maybe_handle_request(SIPName, Q, Local) ->
             Local
     end.
 
--spec handle_request(ne_binary(), {ne_binary(), ne_binary()}, state()) -> state().
+-spec handle_request(kz_term:ne_binary(), {kz_term:ne_binary(), kz_term:ne_binary()}, state()) -> state().
 handle_request(SIPName, Requestor, Local) ->
     Reqs = get_requests(Local),
     case dict:find({SIPName, Requestor}, Reqs) of
@@ -194,7 +194,7 @@ handle_request(SIPName, Requestor, Local) ->
             Local
     end.
 
--spec originate_call({ne_binary(), ne_binary()}, ne_binary(), ne_binary()) -> 'ok'.
+-spec originate_call({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 originate_call({Id, Type}, Exten, AccountDb) ->
     Routines = [fun(C) -> kapps_call:set_account_db(AccountDb, C) end
                ,fun(C) -> kapps_call:set_account_id(kz_util:format_account_id(AccountDb, 'raw'), C) end
@@ -209,7 +209,7 @@ originate_call({Id, Type}, Exten, AccountDb) ->
             originate_quickcall(Endpoints, Exten, Call)
     end.
 
--spec originate_quickcall(kz_json:objects(), ne_binary(), kapps_call:call()) -> 'ok'.
+-spec originate_quickcall(kz_json:objects(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 originate_quickcall(Endpoints, Exten, Call) ->
     CCVs = [{<<"Account-ID">>, kapps_call:account_id(Call)}
            ,{<<"Retain-CID">>, <<"true">>}
@@ -235,7 +235,7 @@ originate_quickcall(Endpoints, Exten, Call) ->
     kapi_resource:publish_originate_req(props:filter_undefined(Request)),
     lager:debug("Originate request published").
 
--spec get_endpoints(kapps_call:call(), ne_binary(), ne_binary()) -> kz_json:objects().
+-spec get_endpoints(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_endpoints(Call, EndpointId, Type) when Type =:= <<"device">>;
                                            Type =:= <<"mobile">> ->
     Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
@@ -261,7 +261,7 @@ get_endpoints(Call, UserId, <<"user">>) ->
 get_endpoints(_, _, _) ->
     [].
 
--spec clear_request(ne_binary(), ne_binary(), state()) -> state().
+-spec clear_request(kz_term:ne_binary(), kz_term:ne_binary(), state()) -> state().
 clear_request(Requestor, Exten, Local) ->
     {'ok', SIPNames} = dict:find(Exten, get_sipnames(Local)),
     lists:foldl(fun(SIPName, Acc) ->
@@ -276,7 +276,7 @@ clear_request(Requestor, Exten, Local) ->
                ,SIPNames
                ).
 
--spec make_requests(ne_binaries(), {ne_binary(), ne_binary()}, ne_binary(), non_neg_integer()) -> dict:dict().
+-spec make_requests(kz_term:ne_binaries(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary(), non_neg_integer()) -> dict:dict().
 make_requests(SIPNames, Requestor, Exten, Timeout) ->
     R = [{SIPName, Requestor} || SIPName <- SIPNames],
     {_, Seconds, _} = os:timestamp(),
@@ -287,7 +287,7 @@ make_requests(SIPNames, Requestor, Exten, Timeout) ->
                ,R
                ).
 
--spec maybe_update_queues(ne_binaries(), {ne_binary(), ne_binary()}, dict:dict()) -> dict:dict().
+-spec maybe_update_queues(kz_term:ne_binaries(), {kz_term:ne_binary(), kz_term:ne_binary()}, dict:dict()) -> dict:dict().
 maybe_update_queues(SIPNames, Requestor, Queues) ->
     lists:foldl(fun(SIPName, Acc) ->
                         Q = case dict:find(SIPName, Acc) of
@@ -313,7 +313,7 @@ maybe_update_queues(SIPNames, Requestor, Queues) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(?HOOK_EVT(_AccountId, _, JObj), State) ->
     AcctId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     SIPName = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),

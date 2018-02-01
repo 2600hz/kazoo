@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -134,7 +134,7 @@ request(Method, Path, Body) ->
             braintree_util:error_io_fault()
     end.
 
--spec build_url(text()) -> text().
+-spec build_url(kz_term:text()) -> kz_term:text().
 build_url(Path) ->
     lists:flatten(["https://"
                   ,braintree_server_url(?BT_DEFAULT_ENVIRONMENT)
@@ -150,7 +150,7 @@ request_headers() ->
     ,{"Content-Type", "application/xml"}
     ].
 
--type ssl_option() :: {'ssl', kz_proplist()}.
+-type ssl_option() :: {'ssl', kz_term:proplist()}.
 -type basic_auth_option() :: {'basic_auth', {string(), string()}}.
 
 -spec http_options() -> [ssl_option() | basic_auth_option()].

@@ -268,6 +268,33 @@ Checks JSON schemas for empty "description" properties and exit(1) if any are fo
 Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
 
 
+## `evil_specs_remover.escript`
+
+A script to find repeated `spec` one after another (evil specs) and move them above their corresponding functions (the way which EDoc prefers). It search evil specs using `ag` (A code-searching tool similar to ack [and grep to some degrees], but faster) which has multi-line feature continued by combination of parsing AST of each file, remove the evil specs and add to above their functions.
+
+> **Note:** This script needs [`ag`](https://github.com/ggreer/the_silver_searcher) command line to run!
+
+You can pass path to directories or files. By using `--create-backup` or `-b` option, it first create a backup of the file (`{FILE_NAME}.bak`) before replacing. For searching Kazoo default directories (`applications/*`, `core/*`) use the option `--use-kazoo-dirs` or `-k`.
+
+
+
+```shell
+evil_specs_remover.escript [--create-backup|-b] [--use-kazoo-dirs|-k] <paths_to_files_or_dir>+
+```
+
+### Example
+
+In this example, the `cb_context.erl` has 115 evil specs, 119 lines were removed (some spec was multi-lines) and 200 lines were added (the script will add an empty line above the `spec` line if there isn't one to make it separate from the line above since it is more easy to read).
+
+```shell
+$ scripts/evil_specs_remover.escript -k
+Searching for evil sepcspecs...
+processing 1 file(s) with evil specspec:
+  file /home/hesaam/work/2600hz/kazoo/scripts/../applications/crossbar/src/cb_context.erl (115 specs): -119 +200
+
+🍺 finished
+```
+
 ## format-json.sh
 
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
@@ -307,6 +334,40 @@ Script for updating Erlang code to account for functions that have moved modules
 
 -   kz\_util to alternative modules
 -   kz\_json to kz\_doc for public/private fields
+
+
+## `list-ext-deps.escript`
+
+This escript gathers information from all `.beam` files in the filesystem tree specified by a list of directories provided to it on the command line, determines which external calls these files collectively make, and compares these calls with the applications provided by the Erlang runtime under which the script is running.
+
+The end result is a list of OTP applications that this set of `.beam` files collectively make calls to (i.e. depend on).
+
+* NOTE: The `.beam` files *must* be compiled with debug information for this script to be useful.
+
+### Example
+
+In this example, we find the names of all the Erlang applications which the `.beam` files in `applications/`, `core/`, and `deps` depend on.
+
+```
+$ scripts/list-ext-deps.escript core applications deps 2> /tmp/errors.log
+common_test
+compiler
+crypto
+erts
+eunit
+inets
+kernel
+mnesia
+observer
+public_key
+runtime_tools
+sasl
+ssl
+stdlib
+syntax_tools
+tools
+xmerl
+```
 
 
 ## `no_raw_json.escript`

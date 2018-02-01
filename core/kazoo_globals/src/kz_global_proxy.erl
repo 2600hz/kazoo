@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -26,15 +26,15 @@
 
 -type state() :: any().
 
--spec start_link(any()) -> startlink_ret().
+-spec start_link(any()) -> kz_types:startlink_ret().
 start_link(Global) ->
     gen_server:start_link(?MODULE, [Global], []).
 
 -spec stop(pid()) -> 'ok'.
--spec stop(pid(), any()) -> 'ok'.
 stop(Pid) ->
     stop(Pid, 'normal').
 
+-spec stop(pid(), any()) -> 'ok'.
 stop(Pid, Reason) ->
     gen_server:cast(Pid, {'$proxy_stop', Reason}).
 
@@ -46,11 +46,11 @@ send(Pid, Message) ->
 init([Global]) ->
     {'ok', Global}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(Request, _From, Global) ->
     {'reply', amqp_call(Global, Request), Global}.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'$proxy_stop', Reason}, Global) ->
     gen_server:call('kz_globals', {'delete_remote', self()}),
     {'stop', Reason, Global};
@@ -59,7 +59,7 @@ handle_cast(Message, Global) ->
     amqp_send(Global, {'$gen_cast', Message}),
     {'noreply', Global}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(Message, Global) ->
     lager:debug("relaying msg: ~p", [Message]),
     amqp_send(Global, Message),

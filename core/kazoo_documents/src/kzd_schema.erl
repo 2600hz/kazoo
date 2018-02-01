@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% General schema manipulation
 %%% @end
@@ -18,7 +18,7 @@
 -define(SCHEMA_KEYWORDS_MAXLENGTH, <<"maxLength">>).
 
 %%% Load schema
--spec find_schema(ne_binary()) -> api_object().
+-spec find_schema(kz_term:ne_binary()) -> kz_term:api_object().
 find_schema(<<_/binary>> = Schema) ->
     case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;
@@ -29,7 +29,7 @@ find_schema(<<_/binary>> = Schema) ->
 
 %%% Meta keywords
 %%% ===================
--spec properties(kz_json:path(), ne_binary()) -> kz_json:object().
+-spec properties(kz_json:path(), kz_term:ne_binary()) -> kz_json:object().
 properties(Key, Schema) ->
     case find_schema(Schema) of
         'undefined' ->
@@ -41,7 +41,7 @@ properties(Key, Schema) ->
 %%% Keywords
 %%% ==================================
 %% String
--spec max_length(kz_json:path(), ne_binary()) -> api_integer().
+-spec max_length(kz_json:path(), kz_term:ne_binary()) -> kz_term:api_integer().
 max_length(Key, Schema) ->
     Properties = properties(Key, Schema),
     kz_json:get_integer_value(?SCHEMA_KEYWORDS_MAXLENGTH, Properties).

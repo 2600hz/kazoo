@@ -25,7 +25,7 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec get_running_backends() -> [{Id :: ne_binary(), pid(), [module()]}].
+-spec get_running_backends() -> [{Id :: kz_term:ne_binary(), pid(), [module()]}].
 get_running_backends() ->
     [{Id, Pid, Module} || {Id, Pid, _Type, Module} <- supervisor:which_children(?SERVER), Pid =/= 'undefined'].
 
@@ -33,7 +33,7 @@ get_running_backends() ->
 registered_backends() ->
     [edr_util:backend_from_json(Backend) || Backend <- edr_maintenance:registered_backends()].
 
--spec start_backend(ne_binary() | backend()) -> {'error', 'not_registered'} | sup_startchild_ret().
+-spec start_backend(kz_term:ne_binary() | backend()) -> {'error', 'not_registered'} | kz_types:sup_startchild_ret().
 start_backend(Name) when is_binary(Name) ->
     case [B || B <- registered_backends(), B#backend.name =:= Name] of
         [] -> {'error', 'not_registered'};
@@ -43,7 +43,7 @@ start_backend(#backend{name=Name}=Backend) ->
     lager:info("starting backend ~s", [Name]),
     supervisor:start_child(?SERVER, startup_child(Backend)).
 
--spec stop_backend(ne_binary()) -> 'ok' | {'error', any()}.
+-spec stop_backend(kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 stop_backend(Name)->
     _ = supervisor:terminate_child(?SERVER, Name),
     supervisor:delete_child(?SERVER, Name).
@@ -63,7 +63,7 @@ startup_child(#backend{type=Type, name=Name}=Backend) ->
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -80,7 +80,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init([]) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

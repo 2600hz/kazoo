@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Intercept a call in the specified device/user/extension
 %%%
@@ -70,7 +70,7 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec maybe_intercept(kz_json:object(), kapps_call:call(), kz_proplist()) -> 'ok'.
+-spec maybe_intercept(kz_json:object(), kapps_call:call(), kz_term:proplist()) -> 'ok'.
 maybe_intercept(Data, Call, Params) ->
     case intercept_restrictions(Data) of
         [] -> maybe_intercept(Call, Params);
@@ -78,7 +78,7 @@ maybe_intercept(Data, Call, Params) ->
             cf_intercept:handle(kz_json:from_list(SParams ++ Params), Call)
     end.
 
--spec maybe_intercept(kapps_call:call(), kz_proplist()) -> 'ok'.
+-spec maybe_intercept(kapps_call:call(), kz_term:proplist()) -> 'ok'.
 maybe_intercept(Call, Params) ->
     case maybe_allowed_to_intercept(Call, Params) of
         'true' ->
@@ -88,7 +88,7 @@ maybe_intercept(Call, Params) ->
             cf_exe:stop(Call)
     end.
 
--spec intercept_restrictions(kz_json:object()) -> kz_proplist().
+-spec intercept_restrictions(kz_json:object()) -> kz_term:proplist().
 intercept_restrictions(Data) ->
     props:filter_undefined(
       [{<<"approved_device_id">>, kz_json:get_ne_binary_value(<<"approved_device_id">>, Data)}
@@ -96,7 +96,7 @@ intercept_restrictions(Data) ->
       ,{<<"approved_group_id">>, kz_json:get_ne_binary_value(<<"approved_group_id">>, Data)}
       ]).
 
--spec maybe_allowed_to_intercept(kapps_call:call(), kz_proplist()) -> boolean().
+-spec maybe_allowed_to_intercept(kapps_call:call(), kz_term:proplist()) -> boolean().
 maybe_allowed_to_intercept(Call, Props) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), kapps_call:authorizing_id(Call)) of
         {'ok', DeviceDoc} ->
@@ -106,7 +106,7 @@ maybe_allowed_to_intercept(Call, Props) ->
             'false'
     end.
 
--spec maybe_allowed_to_intercept(kapps_call:call(), kz_proplist(), kz_json:object()) -> boolean().
+-spec maybe_allowed_to_intercept(kapps_call:call(), kz_term:proplist(), kz_json:object()) -> boolean().
 maybe_allowed_to_intercept(Call, Props, DeviceDoc) ->
     case props:get_value(<<"user_id">>, Props) of
         'undefined' ->
@@ -114,11 +114,11 @@ maybe_allowed_to_intercept(Call, Props, DeviceDoc) ->
         UserId -> UserId =:= kz_json:get_value(<<"owner_id">>, DeviceDoc)
     end.
 
--spec can_device_intercept(kapps_call:call(), kz_proplist(), kz_json:object()) -> boolean().
+-spec can_device_intercept(kapps_call:call(), kz_term:proplist(), kz_json:object()) -> boolean().
 can_device_intercept(Call, Props, DeviceDoc) ->
     device_has_same_owner(Call, DeviceDoc, props:get_value(<<"device_id">>, Props)).
 
--spec device_has_same_owner(kapps_call:call(), kz_json:object(), api_binary()) -> boolean().
+-spec device_has_same_owner(kapps_call:call(), kz_json:object(), kz_term:api_binary()) -> boolean().
 device_has_same_owner(_Call, _Device, 'undefined') -> 'false';
 device_has_same_owner(Call, DeviceDoc, TargetDeviceId) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), TargetDeviceId) of
@@ -130,9 +130,9 @@ device_has_same_owner(Call, DeviceDoc, TargetDeviceId) ->
             'false'
     end.
 
--spec build_intercept_params(ne_binary(), ne_binary(), kapps_call:call()) ->
-                                    {'ok', kz_proplist()} |
-                                    {'error', ne_binary()}.
+-spec build_intercept_params(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
+                                    {'ok', kz_term:proplist()} |
+                                    {'error', kz_term:ne_binary()}.
 build_intercept_params(Number, <<"device">>, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of
@@ -153,9 +153,9 @@ build_intercept_params(_ ,'undefined', _) ->
 build_intercept_params(_, Other, _) ->
     {'error', <<Other/binary," not implemented">>}.
 
--spec params_from_data(ne_binary(), kz_json:object(), kapps_call:call()) ->
-                              {'ok', kz_proplist()} |
-                              {'error', ne_binary()}.
+-spec params_from_data(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
+                              {'ok', kz_term:proplist()} |
+                              {'error', kz_term:ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
     EndpointId = kz_doc:id(Data),
     {'ok', [{<<"user_id">>, EndpointId}]};

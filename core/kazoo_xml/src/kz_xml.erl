@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,13 +19,13 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--spec elements(list()) -> xml_els().
--spec elements(list(), atom()) -> xml_els().
+-spec elements(list()) -> kz_types:xml_els().
 elements(Els) -> [El || #xmlElement{}=El <- Els].
+
+-spec elements(list(), atom()) -> kz_types:xml_els().
 elements(Els, Name) -> [El || #xmlElement{name=N}=El <- Els, N =:= Name].
 
--spec texts_to_binary(xml_texts()) -> binary().
--spec texts_to_binary(xml_texts(), pos_integer()) -> binary().
+-spec texts_to_binary(kz_types:xml_texts()) -> binary().
 texts_to_binary([]) -> <<>>;
 texts_to_binary([_|_]=Vs) ->
     lists:foldl(fun(C, B) ->
@@ -35,6 +35,7 @@ texts_to_binary([_|_]=Vs) ->
                ,[$\n, $\s, $\n, $\s]
                ).
 
+-spec texts_to_binary(kz_types:xml_texts(), pos_integer()) -> binary().
 texts_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
     B = texts_to_binary(Vs),
     case byte_size(B) > Size of
@@ -42,17 +43,17 @@ texts_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
         'false' -> B
     end.
 
--spec attributes_to_proplist(xml_attribs()) -> kz_proplist().
+-spec attributes_to_proplist(kz_types:xml_attribs()) -> kz_term:proplist().
 attributes_to_proplist(L) ->
     [{K, V} || #xmlAttribute{name=K, value=V} <- L].
 
--spec filter_empty_text(xml_els() | xml_texts()) -> xml_els() | xml_texts().
+-spec filter_empty_text(kz_types:xml_els() | kz_types:xml_texts()) -> kz_types:xml_els() | kz_types:xml_texts().
 filter_empty_text([_|_]=Els) ->
     [El || El <- Els,
            not is_empty_text(El)
     ].
 
--spec is_empty_text(xml_text() | xml_el()) -> boolean().
+-spec is_empty_text(kz_types:xml_text() | kz_types:xml_el()) -> boolean().
 is_empty_text(#xmlText{value=" "}) -> 'true';
 is_empty_text(_El) -> 'false'.
 
@@ -62,7 +63,7 @@ is_empty_text(_El) -> 'false'.
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_value(kz_deeplist(), xml_el() | string()) -> api_binary().
+-spec get_value(kz_term:deeplist(), kz_types:xml_el() | string()) -> kz_term:api_binary().
 get_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
@@ -76,7 +77,7 @@ get_value(Paths, Xml) ->
 
 
 %% @private
--spec extract_values(xml_els()) -> api_ne_binary().
+-spec extract_values(kz_types:xml_els()) -> kz_term:api_binary().
 extract_values([]) -> 'undefined';
 extract_values(Elements) ->
     Values = [case Element of

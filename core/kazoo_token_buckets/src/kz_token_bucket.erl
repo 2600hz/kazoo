@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Implementation of a token bucket as gen_server
 %%%   https://en.wikipedia.org/wiki/Token_bucket#The_token_bucket_algorithm
@@ -72,12 +72,15 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(pos_integer(), pos_integer()) -> startlink_ret().
--spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
--spec start_link(pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> startlink_ret().
+
+-spec start_link(pos_integer(), pos_integer()) -> kz_types:startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
+
+-spec start_link(pos_integer(), pos_integer(), boolean()) -> kz_types:startlink_ret().
 start_link(Max, FillRate, FillAsBlock) ->
     start_link(Max, FillRate, FillAsBlock, default_fill_time()).
+
+-spec start_link(pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> kz_types:startlink_ret().
 start_link(Max, FillRate, FillAsBlock, FillTime)
   when is_integer(FillRate), FillRate > 0,
        is_integer(Max), Max > 0,
@@ -90,7 +93,7 @@ start_link(Max, FillRate, FillAsBlock, FillTime)
        ->
     gen_server:start_link(?SERVER, [Max, FillRate, FillAsBlock, FillTime], []).
 
--spec start_link(atom(), pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> startlink_ret().
+-spec start_link(atom(), pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> kz_types:startlink_ret().
 start_link(Name, Max, FillRate, FillAsBlock, FillTime)
   when is_integer(FillRate), FillRate > 0,
        is_integer(Max), Max > 0,
@@ -135,17 +138,18 @@ credit(Srv, Tokens) when is_integer(Tokens)
 -spec tokens(pid()) -> non_neg_integer().
 tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 
--spec set_name(pid(), {ne_binary(), ne_binary()}) -> 'ok'.
+-spec set_name(pid(), {kz_term:ne_binary(), kz_term:ne_binary()}) -> 'ok'.
 set_name(Srv, Name) -> gen_server:cast(Srv, {'name', Name}).
 
 -spec default_fill_time() -> fill_rate_time().
--spec default_fill_time(ne_binary()) -> fill_rate_time().
 default_fill_time() ->
     default_fill_time(?DEFAULT_APP).
+
+-spec default_fill_time(kz_term:ne_binary()) -> fill_rate_time().
 default_fill_time(App) ->
     normalize_fill_time(?FILL_TIME(App)).
 
--spec normalize_fill_time(ne_binary()) -> fill_rate_time().
+-spec normalize_fill_time(kz_term:ne_binary()) -> fill_rate_time().
 normalize_fill_time(<<"day">>) -> 'day';
 normalize_fill_time(<<"hour">>) -> 'hour';
 normalize_fill_time(<<"minute">>) -> 'minute';
@@ -195,7 +199,7 @@ init([Max, FillRate, FillAsBlock, FillTime]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
         N when N >= 0 ->
@@ -230,7 +234,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'credit', Req}, #state{tokens=Current
                                    ,max_tokens=Max
                                    }=State) ->
@@ -263,7 +267,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
                                                       ,tokens=Current
                                                       ,fill_rate=FillRate

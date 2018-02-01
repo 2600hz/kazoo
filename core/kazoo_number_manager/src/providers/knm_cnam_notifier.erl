@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -22,12 +22,13 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
+-spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     handle(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -136,12 +137,13 @@ support_depreciated_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec publish_cnam_update(knm_number:knm_number()) -> 'ok'.
--spec publish_cnam_update(knm_number:knm_number(), boolean()) -> 'ok'.
 publish_cnam_update(Number) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     publish_cnam_update(Number, DryRun).
 
+-spec publish_cnam_update(knm_number:knm_number(), boolean()) -> 'ok'.
 publish_cnam_update(_Number, 'true') -> 'ok';
 publish_cnam_update(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),

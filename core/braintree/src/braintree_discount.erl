@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @doc
 %%%
@@ -28,12 +28,12 @@
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record(bt_xml()) -> bt_discount().
--spec xml_to_record(bt_xml(), kz_deeplist()) -> bt_discount().
 
+-spec xml_to_record(bt_xml()) -> bt_discount().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/discount").
 
+-spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_discount().
 xml_to_record(Xml, Base) ->
     #bt_discount{id = kz_xml:get_value([Base, "/id/text()"], Xml)
                 ,amount = kz_xml:get_value([Base, "/amount/text()"], Xml)
@@ -49,12 +49,12 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_discount()) -> kz_proplist() | bt_xml().
--spec record_to_xml(bt_discount(), boolean()) -> kz_proplist() | bt_xml().
 
+-spec record_to_xml(bt_discount()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Discount) ->
     record_to_xml(Discount, false).
 
+-spec record_to_xml(bt_discount(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Discount, ToString) ->
     Props = [{'id', Discount#bt_discount.id}
             ,{'amount', Discount#bt_discount.amount}
@@ -89,7 +89,7 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
 %% Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(api_object()) -> bt_discount() | 'undefined'.
+-spec json_to_record(kz_term:api_object()) -> bt_discount() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_discount{id = kz_doc:id(JObj)

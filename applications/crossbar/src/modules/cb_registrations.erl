@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Registration viewer / creator
 %%%
@@ -64,10 +64,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?COUNT_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_Username) ->
@@ -79,9 +81,11 @@ allowed_methods(_Username) ->
 %% Does the path point to a valid resource
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(?COUNT_PATH_TOKEN) -> 'true';
 resource_exists(_Username) -> 'true'.
 
@@ -109,8 +113,8 @@ authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_registrations(Context, cb_context:req_verb(Context)).
 
@@ -120,6 +124,7 @@ validate_registrations(Context, ?HTTP_GET) ->
 validate_registrations(Context, ?HTTP_DELETE) ->
     crossbar_util:response(<<"ok">>, Context).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?COUNT_PATH_TOKEN) ->
     validate_count(Context);
 validate(Context, Username) ->
@@ -132,7 +137,7 @@ validate_count(Context) ->
                           ,Context
      ).
 
--spec validate_sip_username(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_sip_username(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_sip_username(Context, Username) ->
     case sip_username_exists(Context, Username) of
         'true' ->
@@ -141,7 +146,7 @@ validate_sip_username(Context, Username) ->
             crossbar_util:response_bad_identifier(Username, Context)
     end.
 
--spec sip_username_exists(cb_context:context(), ne_binary()) -> boolean().
+-spec sip_username_exists(cb_context:context(), kz_term:ne_binary()) -> boolean().
 sip_username_exists(Context, Username) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
     case kz_datamgr:get_results(cb_context:account_db(Context)
@@ -154,11 +159,11 @@ sip_username_exists(Context, Username) ->
     end.
 
 -spec delete(cb_context:context()) -> cb_context:context().
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context) ->
     crossbar_util:flush_registrations(Context),
     crossbar_util:response(<<"ok">>, Context).
 
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Username) ->
     crossbar_util:flush_registration(Username, Context),
     crossbar_util:response(<<"ok">>, Context).
@@ -201,7 +206,7 @@ merge_response(JObj, Regs) ->
                         end
                 end, Regs, kz_json:get_value(<<"Fields">>, JObj, [])).
 
--spec maybe_default_port(integer(), nklib:scheme(), api_binary()) -> integer().
+-spec maybe_default_port(integer(), nklib:scheme(), kz_term:api_binary()) -> integer().
 maybe_default_port(0, 'sips', _) -> 5061;
 maybe_default_port(0, 'sip', <<"TLS">>) -> 5061;
 maybe_default_port(0, 'sip', <<"tls">>) -> 5061;
@@ -240,7 +245,7 @@ count_registrations(Context) ->
         {'timeout', _} -> lager:debug("timed out query for counting regs"), 0
     end.
 
--spec get_realm(cb_context:context()) -> ne_binary().
+-spec get_realm(cb_context:context()) -> kz_term:ne_binary().
 get_realm(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> <<"all">>;

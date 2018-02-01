@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -75,7 +75,7 @@
                            ,{<<"Member-Priority">>, fun is_integer/1}
                            ]).
 
--spec member_call(api_terms()) ->
+-spec member_call(kz_term:api_terms()) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 member_call(Props) when is_list(Props) ->
@@ -86,14 +86,13 @@ member_call(Props) when is_list(Props) ->
 member_call(JObj) ->
     member_call(kz_json:to_proplist(JObj)).
 
--spec member_call_v(api_terms()) -> boolean().
+-spec member_call_v(kz_term:api_terms()) -> boolean().
 member_call_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CALL_HEADERS, ?MEMBER_CALL_VALUES, ?MEMBER_CALL_TYPES);
 member_call_v(JObj) ->
     member_call_v(kz_json:to_proplist(JObj)).
 
--spec member_call_routing_key(api_terms()) -> ne_binary().
--spec member_call_routing_key(ne_binary(), ne_binary()) -> ne_binary().
+-spec member_call_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
 member_call_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -103,6 +102,7 @@ member_call_routing_key(JObj) ->
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     member_call_routing_key(AcctId, Id).
 
+-spec member_call_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_call_routing_key(AcctId, QueueId) ->
     <<"acdc.member.call.", AcctId/binary, ".", QueueId/binary>>.
 
@@ -117,7 +117,7 @@ member_call_routing_key(AcctId, QueueId) ->
                                  ]).
 -define(MEMBER_CALL_FAIL_TYPES, []).
 
--spec member_call_failure(api_terms()) ->
+-spec member_call_failure(kz_term:api_terms()) ->
                                  {'ok', iolist()} |
                                  {'error', string()}.
 member_call_failure(Props) when is_list(Props) ->
@@ -128,7 +128,7 @@ member_call_failure(Props) when is_list(Props) ->
 member_call_failure(JObj) ->
     member_call_failure(kz_json:to_proplist(JObj)).
 
--spec member_call_failure_v(api_terms()) -> boolean().
+-spec member_call_failure_v(kz_term:api_terms()) -> boolean().
 member_call_failure_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CALL_FAIL_HEADERS, ?MEMBER_CALL_FAIL_VALUES, ?MEMBER_CALL_FAIL_TYPES);
 member_call_failure_v(JObj) ->
@@ -144,7 +144,7 @@ member_call_failure_v(JObj) ->
                                     ]).
 -define(MEMBER_CALL_SUCCESS_TYPES, []).
 
--spec member_call_success(api_terms()) ->
+-spec member_call_success(kz_term:api_terms()) ->
                                  {'ok', iolist()} |
                                  {'error', string()}.
 member_call_success(Props) when is_list(Props) ->
@@ -155,7 +155,7 @@ member_call_success(Props) when is_list(Props) ->
 member_call_success(JObj) ->
     member_call_success(kz_json:to_proplist(JObj)).
 
--spec member_call_success_v(api_terms()) -> boolean().
+-spec member_call_success_v(kz_term:api_terms()) -> boolean().
 member_call_success_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CALL_SUCCESS_HEADERS, ?MEMBER_CALL_SUCCESS_VALUES, ?MEMBER_CALL_SUCCESS_TYPES);
 member_call_success_v(JObj) ->
@@ -172,7 +172,7 @@ member_call_success_v(JObj) ->
                                    ]).
 -define(MEMBER_CALL_CANCEL_TYPES, []).
 
--spec member_call_cancel(api_terms()) ->
+-spec member_call_cancel(kz_term:api_terms()) ->
                                 {'ok', iolist()} |
                                 {'error', string()}.
 member_call_cancel(Props) when is_list(Props) ->
@@ -183,14 +183,13 @@ member_call_cancel(Props) when is_list(Props) ->
 member_call_cancel(JObj) ->
     member_call_cancel(kz_json:to_proplist(JObj)).
 
--spec member_call_cancel_v(api_terms()) -> boolean().
+-spec member_call_cancel_v(kz_term:api_terms()) -> boolean().
 member_call_cancel_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CALL_CANCEL_HEADERS, ?MEMBER_CALL_CANCEL_VALUES, ?MEMBER_CALL_CANCEL_TYPES);
 member_call_cancel_v(JObj) ->
     member_call_cancel_v(kz_json:to_proplist(JObj)).
 
--spec member_call_result_routing_key(api_terms()) -> ne_binary().
--spec member_call_result_routing_key(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec member_call_result_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
 member_call_result_routing_key(Props) when is_list(Props) ->
     AcctId = props:get_value(<<"Account-ID">>, Props),
     QueueId = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
@@ -202,6 +201,7 @@ member_call_result_routing_key(JObj) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj, <<"#">>),
     member_call_result_routing_key(AcctId, QueueId, CallId).
 
+-spec member_call_result_routing_key(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_call_result_routing_key(AcctId, QueueId, CallId) ->
     <<"acdc.member.call_result.", AcctId/binary, ".", QueueId/binary, ".", CallId/binary>>.
 
@@ -215,7 +215,7 @@ member_call_result_routing_key(AcctId, QueueId, CallId) ->
                                    ]).
 -define(MEMBER_CONNECT_REQ_TYPES, []).
 
--spec member_connect_req(api_terms()) ->
+-spec member_connect_req(kz_term:api_terms()) ->
                                 {'ok', iolist()} |
                                 {'error', string()}.
 member_connect_req(Props) when is_list(Props) ->
@@ -226,14 +226,13 @@ member_connect_req(Props) when is_list(Props) ->
 member_connect_req(JObj) ->
     member_connect_req(kz_json:to_proplist(JObj)).
 
--spec member_connect_req_v(api_terms()) -> boolean().
+-spec member_connect_req_v(kz_term:api_terms()) -> boolean().
 member_connect_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CONNECT_REQ_HEADERS, ?MEMBER_CONNECT_REQ_VALUES, ?MEMBER_CONNECT_REQ_TYPES);
 member_connect_req_v(JObj) ->
     member_connect_req_v(kz_json:to_proplist(JObj)).
 
--spec member_connect_req_routing_key(api_terms()) -> ne_binary().
--spec member_connect_req_routing_key(ne_binary(), ne_binary()) -> ne_binary().
+-spec member_connect_req_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
 member_connect_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -242,6 +241,8 @@ member_connect_req_routing_key(JObj) ->
     Id = kz_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     member_connect_req_routing_key(AcctId, Id).
+
+-spec member_connect_req_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 member_connect_req_routing_key(AcctId, QID) ->
     <<"acdc.member.connect_req.", AcctId/binary, ".", QID/binary>>.
 
@@ -255,7 +256,7 @@ member_connect_req_routing_key(AcctId, QID) ->
                                     ]).
 -define(MEMBER_CONNECT_RESP_TYPES, []).
 
--spec member_connect_resp(api_terms()) ->
+-spec member_connect_resp(kz_term:api_terms()) ->
                                  {'ok', iolist()} |
                                  {'error', string()}.
 member_connect_resp(Props) when is_list(Props) ->
@@ -266,7 +267,7 @@ member_connect_resp(Props) when is_list(Props) ->
 member_connect_resp(JObj) ->
     member_connect_resp(kz_json:to_proplist(JObj)).
 
--spec member_connect_resp_v(api_terms()) -> boolean().
+-spec member_connect_resp_v(kz_term:api_terms()) -> boolean().
 member_connect_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CONNECT_RESP_HEADERS, ?MEMBER_CONNECT_RESP_VALUES, ?MEMBER_CONNECT_RESP_TYPES);
 member_connect_resp_v(JObj) ->
@@ -287,7 +288,7 @@ member_connect_resp_v(JObj) ->
                                    ]).
 -define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun kz_term:is_boolean/1}]).
 
--spec member_connect_win(api_terms()) ->
+-spec member_connect_win(kz_term:api_terms()) ->
                                 {'ok', iolist()} |
                                 {'error', string()}.
 member_connect_win(Props) when is_list(Props) ->
@@ -298,7 +299,7 @@ member_connect_win(Props) when is_list(Props) ->
 member_connect_win(JObj) ->
     member_connect_win(kz_json:to_proplist(JObj)).
 
--spec member_connect_win_v(api_terms()) -> boolean().
+-spec member_connect_win_v(kz_term:api_terms()) -> boolean().
 member_connect_win_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CONNECT_WIN_HEADERS, ?MEMBER_CONNECT_WIN_VALUES, ?MEMBER_CONNECT_WIN_TYPES);
 member_connect_win_v(JObj) ->
@@ -314,7 +315,7 @@ member_connect_win_v(JObj) ->
                               ]).
 -define(AGENT_TIMEOUT_TYPES, []).
 
--spec agent_timeout(api_terms()) ->
+-spec agent_timeout(kz_term:api_terms()) ->
                            {'ok', iolist()} |
                            {'error', string()}.
 agent_timeout(Props) when is_list(Props) ->
@@ -324,7 +325,7 @@ agent_timeout(Props) when is_list(Props) ->
     end;
 agent_timeout(JObj) -> agent_timeout(kz_json:to_proplist(JObj)).
 
--spec agent_timeout_v(api_terms()) -> boolean().
+-spec agent_timeout_v(kz_term:api_terms()) -> boolean().
 agent_timeout_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_TIMEOUT_HEADERS, ?AGENT_TIMEOUT_VALUES, ?AGENT_TIMEOUT_TYPES);
 agent_timeout_v(JObj) ->
@@ -340,7 +341,7 @@ agent_timeout_v(JObj) ->
                                         ]).
 -define(MEMBER_CONNECT_ACCEPTED_TYPES, []).
 
--spec member_connect_accepted(api_terms()) ->
+-spec member_connect_accepted(kz_term:api_terms()) ->
                                      {'ok', iolist()} |
                                      {'error', string()}.
 member_connect_accepted(Props) when is_list(Props) ->
@@ -351,7 +352,7 @@ member_connect_accepted(Props) when is_list(Props) ->
 member_connect_accepted(JObj) ->
     member_connect_accepted(kz_json:to_proplist(JObj)).
 
--spec member_connect_accepted_v(api_terms()) -> boolean().
+-spec member_connect_accepted_v(kz_term:api_terms()) -> boolean().
 member_connect_accepted_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CONNECT_ACCEPTED_HEADERS, ?MEMBER_CONNECT_ACCEPTED_VALUES, ?MEMBER_CONNECT_ACCEPTED_TYPES);
 member_connect_accepted_v(JObj) ->
@@ -369,7 +370,7 @@ member_connect_accepted_v(JObj) ->
                                      ]).
 -define(MEMBER_CONNECT_RETRY_TYPES, []).
 
--spec member_connect_retry(api_terms()) ->
+-spec member_connect_retry(kz_term:api_terms()) ->
                                   {'ok', iolist()} |
                                   {'error', string()}.
 member_connect_retry(Props) when is_list(Props) ->
@@ -380,7 +381,7 @@ member_connect_retry(Props) when is_list(Props) ->
 member_connect_retry(JObj) ->
     member_connect_retry(kz_json:to_proplist(JObj)).
 
--spec member_connect_retry_v(api_terms()) -> boolean().
+-spec member_connect_retry_v(kz_term:api_terms()) -> boolean().
 member_connect_retry_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CONNECT_RETRY_HEADERS, ?MEMBER_CONNECT_RETRY_VALUES, ?MEMBER_CONNECT_RETRY_TYPES);
 member_connect_retry_v(JObj) ->
@@ -399,7 +400,7 @@ member_connect_retry_v(JObj) ->
                               ]).
 -define(MEMBER_HUNGUP_TYPES, []).
 
--spec member_hungup(api_terms()) ->
+-spec member_hungup(kz_term:api_terms()) ->
                            {'ok', iolist()} |
                            {'error', string()}.
 member_hungup(Props) when is_list(Props) ->
@@ -410,7 +411,7 @@ member_hungup(Props) when is_list(Props) ->
 member_hungup(JObj) ->
     member_hungup(kz_json:to_proplist(JObj)).
 
--spec member_hungup_v(api_terms()) -> boolean().
+-spec member_hungup_v(kz_term:api_terms()) -> boolean().
 member_hungup_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_HUNGUP_HEADERS, ?MEMBER_HUNGUP_VALUES, ?MEMBER_HUNGUP_TYPES);
 member_hungup_v(JObj) ->
@@ -420,8 +421,8 @@ member_hungup_v(JObj) ->
 %% Sync Req/Resp
 %%   Depending on the queue strategy, get the other queue's strategy state
 %%------------------------------------------------------------------------------
--spec sync_req_routing_key(api_terms()) -> ne_binary().
--spec sync_req_routing_key(ne_binary(), ne_binary()) -> ne_binary().
+
+-spec sync_req_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
 sync_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -431,6 +432,7 @@ sync_req_routing_key(JObj) ->
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     sync_req_routing_key(AcctId, Id).
 
+-spec sync_req_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 sync_req_routing_key(AcctId, QID) ->
     <<"acdc.queue.sync_req.", AcctId/binary, ".", QID/binary>>.
 
@@ -441,7 +443,7 @@ sync_req_routing_key(AcctId, QID) ->
                          ]).
 -define(SYNC_REQ_TYPES, []).
 
--spec sync_req(api_terms()) ->
+-spec sync_req(kz_term:api_terms()) ->
                       {'ok', iolist()} |
                       {'error', string()}.
 sync_req(Props) when is_list(Props) ->
@@ -452,7 +454,7 @@ sync_req(Props) when is_list(Props) ->
 sync_req(JObj) ->
     sync_req(kz_json:to_proplist(JObj)).
 
--spec sync_req_v(api_terms()) -> boolean().
+-spec sync_req_v(kz_term:api_terms()) -> boolean().
 sync_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYNC_REQ_HEADERS, ?SYNC_REQ_VALUES, ?SYNC_REQ_TYPES);
 sync_req_v(JObj) ->
@@ -467,7 +469,7 @@ sync_req_v(JObj) ->
                           ]).
 -define(SYNC_RESP_TYPES, []).
 
--spec sync_resp(api_terms()) ->
+-spec sync_resp(kz_term:api_terms()) ->
                        {'ok', iolist()} |
                        {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
@@ -478,7 +480,7 @@ sync_resp(Props) when is_list(Props) ->
 sync_resp(JObj) ->
     sync_resp(kz_json:to_proplist(JObj)).
 
--spec sync_resp_v(api_terms()) -> boolean().
+-spec sync_resp_v(kz_term:api_terms()) -> boolean().
 sync_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_VALUES, ?SYNC_RESP_TYPES);
 sync_resp_v(JObj) ->
@@ -511,13 +513,16 @@ agent_change_routing_key(AcctId, QueueId) ->
                        ,?AGENT_CHANGE_UNAVAILABLE
                        ]).
 
--spec agent_change_available() -> ne_binary().
--spec agent_change_ringing() -> ne_binary().
--spec agent_change_busy() -> ne_binary().
--spec agent_change_unavailable() -> ne_binary().
+-spec agent_change_available() -> kz_term:ne_binary().
 agent_change_available() -> ?AGENT_CHANGE_AVAILABLE.
+
+-spec agent_change_ringing() -> kz_term:ne_binary().
 agent_change_ringing() -> ?AGENT_CHANGE_RINGING.
+
+-spec agent_change_busy() -> kz_term:ne_binary().
 agent_change_busy() -> ?AGENT_CHANGE_BUSY.
+
+-spec agent_change_unavailable() -> kz_term:ne_binary().
 agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE.
 
 -define(AGENT_CHANGE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>, <<"Change">>]).
@@ -528,7 +533,7 @@ agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE.
                              ]).
 -define(AGENT_CHANGE_TYPES, []).
 
--spec agent_change(api_terms()) ->
+-spec agent_change(kz_term:api_terms()) ->
                           {'ok', iolist()} |
                           {'error', string()}.
 agent_change(Prop) when is_list(Prop) ->
@@ -538,7 +543,7 @@ agent_change(Prop) when is_list(Prop) ->
     end;
 agent_change(JObj) -> agent_change(kz_json:to_proplist(JObj)).
 
--spec agent_change_v(api_terms()) -> boolean().
+-spec agent_change_v(kz_term:api_terms()) -> boolean().
 agent_change_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_CHANGE_HEADERS, ?AGENT_CHANGE_VALUES, ?AGENT_CHANGE_TYPES);
 agent_change_v(JObj) -> agent_change_v(kz_json:to_proplist(JObj)).
@@ -548,8 +553,8 @@ agent_change_v(JObj) -> agent_change_v(kz_json:to_proplist(JObj)).
 %%------------------------------------------------------------------------------
 %% Queue Position tracking
 %%------------------------------------------------------------------------------
--spec queue_member_routing_key(api_terms()) -> ne_binary().
--spec queue_member_routing_key(ne_binary(), ne_binary()) -> ne_binary().
+
+-spec queue_member_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
 queue_member_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -559,6 +564,7 @@ queue_member_routing_key(JObj) ->
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     queue_member_routing_key(AcctId, Id).
 
+-spec queue_member_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 queue_member_routing_key(AcctId, QID) ->
     <<"acdc.queue.position.", AcctId/binary, ".", QID/binary>>.
 
@@ -569,7 +575,7 @@ queue_member_routing_key(AcctId, QID) ->
                                  ]).
 -define(QUEUE_MEMBER_ADD_TYPES, []).
 
--spec queue_member_add(api_terms()) ->
+-spec queue_member_add(kz_term:api_terms()) ->
                               {'ok', iolist()} |
                               {'error', string()}.
 queue_member_add(Prop) when is_list(Prop) ->
@@ -579,7 +585,7 @@ queue_member_add(Prop) when is_list(Prop) ->
     end;
 queue_member_add(JObj) -> queue_member_add(kz_json:to_proplist(JObj)).
 
--spec queue_member_add_v(api_terms()) -> boolean().
+-spec queue_member_add_v(kz_term:api_terms()) -> boolean().
 queue_member_add_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUEUE_MEMBER_ADD_HEADERS, ?QUEUE_MEMBER_ADD_VALUES, ?QUEUE_MEMBER_ADD_TYPES);
 queue_member_add_v(JObj) -> queue_member_add_v(kz_json:to_proplist(JObj)).
@@ -591,7 +597,7 @@ queue_member_add_v(JObj) -> queue_member_add_v(kz_json:to_proplist(JObj)).
                                     ]).
 -define(QUEUE_MEMBER_REMOVE_TYPES, []).
 
--spec queue_member_remove(api_terms()) ->
+-spec queue_member_remove(kz_term:api_terms()) ->
                                  {'ok', iolist()} |
                                  {'error', string()}.
 queue_member_remove(Prop) when is_list(Prop) ->
@@ -601,17 +607,17 @@ queue_member_remove(Prop) when is_list(Prop) ->
     end;
 queue_member_remove(JObj) -> queue_member_remove(kz_json:to_proplist(JObj)).
 
--spec queue_member_remove_v(api_terms()) -> boolean().
+-spec queue_member_remove_v(kz_term:api_terms()) -> boolean().
 queue_member_remove_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUEUE_MEMBER_REMOVE_HEADERS, ?QUEUE_MEMBER_REMOVE_VALUES, ?QUEUE_MEMBER_REMOVE_TYPES);
 queue_member_remove_v(JObj) -> queue_member_remove_v(kz_json:to_proplist(JObj)).
 %% Bind/Unbind the queue as appropriate
 %%------------------------------------------------------------------------------
--spec shared_queue_name(ne_binary(), ne_binary()) -> ne_binary().
+-spec shared_queue_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 shared_queue_name(AcctId, QueueId) ->
     <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
 
--spec queue_size(ne_binary(), ne_binary()) -> integer() | 'undefined'.
+-spec queue_size(kz_term:ne_binary(), kz_term:ne_binary()) -> integer() | 'undefined'.
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
     try amqp_util:new_queue(Q, [{'return_field', 'all'}
@@ -636,7 +642,7 @@ queue_size(AcctId, QueueId) ->
             'undefined'
     end.
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props),
@@ -671,7 +677,7 @@ bind_q(Q, AcctId, QID, CallId, ['member_addremove'|T]) ->
 bind_q(Q, AcctId, QID, CallId, [_|T]) -> bind_q(Q, AcctId, QID, CallId, T);
 bind_q(_, _, _, _, []) -> 'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props),
@@ -721,10 +727,12 @@ declare_exchanges() ->
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------
--spec publish_member_call(api_terms()) -> 'ok'.
--spec publish_member_call(api_terms(), ne_binary()) -> 'ok'.
+
+-spec publish_member_call(kz_term:api_terms()) -> 'ok'.
 publish_member_call(JObj) ->
     publish_member_call(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call(Props, ContentType) when is_list(Props) ->
     publish_member_call(kz_json:from_list(Props), ContentType);
 publish_member_call(API, ContentType) ->
@@ -733,24 +741,27 @@ publish_member_call(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API), Props).
 
--spec publish_member_call_cancel(api_terms()) -> 'ok'.
--spec publish_member_call_cancel(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_call_cancel(kz_term:api_terms()) -> 'ok'.
 publish_member_call_cancel(JObj) ->
     publish_member_call_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call_cancel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_cancel(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_shared_member_call(kz_json:object()) -> 'ok'.
--spec publish_shared_member_call(ne_binary(), ne_binary(), api_terms()) -> 'ok'.
--spec publish_shared_member_call(ne_binary(), ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_shared_member_call(JObj) ->
     publish_shared_member_call(kz_json:get_value(<<"Account-ID">>, JObj)
                               ,kz_json:get_value(<<"Queue-ID">>, JObj)
                               ,JObj
                               ).
+
+-spec publish_shared_member_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_shared_member_call(AcctId, QueueId, JObj) ->
     publish_shared_member_call(AcctId, QueueId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_shared_member_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_shared_member_call(AcctId, QueueId, Props, ContentType) when is_list(Props) ->
     publish_shared_member_call(AcctId, QueueId, kz_json:from_list(Props), ContentType);
 publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
@@ -761,116 +772,130 @@ publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, Props).
 
--spec publish_member_call_failure(ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_call_failure(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_call_failure(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_call_failure(Q, JObj) ->
     publish_member_call_failure(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call_failure(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_failure(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_FAIL_VALUES, fun member_call_failure/1),
     amqp_util:targeted_publish(Q, Payload, ContentType),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
--spec publish_member_call_success(ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_call_success(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_call_success(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_call_success(Q, JObj) ->
     publish_member_call_success(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_call_success(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_call_success(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_SUCCESS_VALUES, fun member_call_success/1),
     amqp_util:targeted_publish(Q, Payload, ContentType),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
--spec publish_member_connect_req(api_terms()) -> 'ok'.
--spec publish_member_connect_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_connect_req(kz_term:api_terms()) -> 'ok'.
 publish_member_connect_req(JObj) ->
     publish_member_connect_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_REQ_VALUES, fun member_connect_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_connect_req_routing_key(API)).
 
--spec publish_member_connect_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_connect_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_resp(Q, JObj) ->
     publish_member_connect_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_RESP_VALUES, fun member_connect_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_member_connect_win(ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_connect_win(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_win(Q, JObj) ->
     publish_member_connect_win(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_win(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_WIN_VALUES, fun member_connect_win/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_agent_timeout(ne_binary(), api_terms()) -> 'ok'.
--spec publish_agent_timeout(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_agent_timeout(Q, JObj) ->
     publish_agent_timeout(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_timeout(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_TIMEOUT_VALUES, fun agent_timeout/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_member_connect_accepted(ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_connect_accepted(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_connect_accepted(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_accepted(Q, JObj) ->
     publish_member_connect_accepted(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_accepted(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_accepted(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_ACCEPTED_VALUES, fun member_connect_accepted/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_member_connect_retry(ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_connect_retry(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_connect_retry(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_connect_retry(Q, JObj) ->
     publish_member_connect_retry(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_retry(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_retry(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_RETRY_VALUES, fun member_connect_retry/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_member_hungup(ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_hungup(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_member_hungup(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_member_hungup(Q, JObj) ->
     publish_member_hungup(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_hungup(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_hungup(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_HUNGUP_VALUES, fun member_hungup/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_sync_req(api_terms()) -> 'ok'.
--spec publish_sync_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_sync_req(kz_term:api_terms()) -> 'ok'.
 publish_sync_req(JObj) ->
     publish_sync_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_sync_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_REQ_VALUES, fun sync_req/1),
     amqp_util:kapps_publish(sync_req_routing_key(API), Payload, ContentType).
 
--spec publish_sync_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_sync_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_sync_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_sync_resp(Q, JObj) ->
     publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_sync_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_agent_change(api_terms()) -> 'ok'.
--spec publish_agent_change(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_agent_change(kz_term:api_terms()) -> 'ok'.
 publish_agent_change(JObj) ->
     publish_agent_change(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_agent_change(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_agent_change(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_CHANGE_VALUES, fun agent_change/1),
     amqp_util:kapps_publish(agent_change_publish_key(API), Payload, ContentType).
 
--spec publish_queue_member_add(api_terms()) -> 'ok'.
--spec publish_queue_member_add(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_queue_member_add(kz_term:api_terms()) -> 'ok'.
 publish_queue_member_add(JObj) ->
     publish_queue_member_add(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_queue_member_add(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_add(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_ADD_VALUES, fun queue_member_add/1),
     amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).
 
--spec publish_queue_member_remove(api_terms()) -> 'ok'.
--spec publish_queue_member_remove(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_queue_member_remove(kz_term:api_terms()) -> 'ok'.
 publish_queue_member_remove(JObj) ->
     publish_queue_member_remove(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_queue_member_remove(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_queue_member_remove(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_REMOVE_VALUES, fun queue_member_remove/1),
     amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).

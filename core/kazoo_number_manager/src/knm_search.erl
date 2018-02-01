@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -38,14 +38,14 @@
 -include("knm.hrl").
 
 -type option() :: {'quantity', pos_integer()} |
-                  {'prefix', ne_binary()} |
-                  {'dialcode', ne_binary()} |
+                  {'prefix', kz_term:ne_binary()} |
+                  {'dialcode', kz_term:ne_binary()} |
                   {'country', knm_util:country_iso3166a2()} |
                   {'offset', non_neg_integer()} |
                   {'blocks', boolean()} |
-                  {'account_id', ne_binary()} |
-                  {'query_id', ne_binary()} |
-                  {'reseller_id', ne_binary()}.
+                  {'account_id', kz_term:ne_binary()} |
+                  {'query_id', kz_term:ne_binary()} |
+                  {'reseller_id', kz_term:ne_binary()}.
 -type options() :: [option()].
 -export_type([option/0, options/0]).
 
@@ -58,7 +58,7 @@
 
 -define(EOT, '$end_of_table').
 
--type state() :: #{node => ne_binary()
+-type state() :: #{node => kz_term:ne_binary()
                   ,cache => ets:tid() | atom()
                   }.
 
@@ -76,7 +76,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 -ifdef(TEST).
 start_link() ->
     gen_listener:start_link({'local', ?MODULE}
@@ -110,7 +110,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', state(), kz_timeout()}.
+-spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
     State = #{node => kz_term:to_binary(node())
              ,cache => ets:new(?ETS_DISCOVERY_CACHE, ?ETS_DISCOVERY_CACHE_OPTIONS)
@@ -131,7 +131,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'first', Options}, _From, State) ->
     QueryId = query_id(Options),
     flush(QueryId),
@@ -149,7 +149,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#{queue => Queue}, ?POLLING_INTERVAL};
 handle_cast({'reset_search',QID}, #{cache := Cache} = State) ->
@@ -173,7 +173,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State, ?POLLING_INTERVAL}.
 
@@ -222,7 +222,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec flush(ne_binary()) -> 'ok'.
+-spec flush(kz_term:ne_binary()) -> 'ok'.
 -ifdef(TEST).
 flush(_QID) -> 'ok'.
 -else.
@@ -279,12 +279,12 @@ first(Options) ->
     wait_for_search(length(Carriers)),
     gen_listener:call(?MODULE, {'first', Options}).
 
--spec search_spawn(pid(), atom(), kz_proplist()) -> any().
+-spec search_spawn(pid(), atom(), kz_term:proplist()) -> any().
 search_spawn(Pid, Carrier, Options) ->
     F = fun() -> Pid ! {Carrier, search_carrier(Carrier, Options)} end,
     kz_util:spawn(F).
 
--spec search_carrier(atom(), kz_proplist()) -> any().
+-spec search_carrier(atom(), kz_term:proplist()) -> any().
 search_carrier(Carrier, Options) ->
     Prefix = normalized_prefix(Options),
     Quantity = quantity(Options),
@@ -343,7 +343,7 @@ next(Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -ifndef(TEST).
--spec create_discovery(ne_binary(), module(), kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
+-spec create_discovery(kz_term:ne_binary(), module(), kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
               ,{'module_name', kz_term:to_binary(Carrier)}
@@ -366,32 +366,34 @@ quantity(Options) ->
     Quantity = props:get_integer_value('quantity', Options, 1),
     min(Quantity, ?MAX_SEARCH).
 
--spec prefix(options()) -> ne_binary().
--spec prefix(options(), ne_binary()) -> ne_binary().
+-spec prefix(options()) -> kz_term:ne_binary().
 prefix(Options) ->
     props:get_ne_binary_value('prefix', Options).
+
+-spec prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 prefix(Options, Default) ->
     props:get_ne_binary_value('prefix', Options, Default).
 
--spec query_options(options()) -> api_object().
--spec query_options(options(), api_object()) -> api_object().
+-spec query_options(options()) -> kz_term:api_object().
 query_options(Options) ->
     props:get_value('query_options', Options).
+
+-spec query_options(options(), kz_term:api_object()) -> kz_term:api_object().
 query_options(Options, Default) ->
     props:get_value('query_options', Options, Default).
 
--spec normalized_prefix(options()) -> ne_binary().
--spec normalized_prefix(options(), ne_binary()) -> ne_binary().
+-spec normalized_prefix(options()) -> kz_term:ne_binary().
 normalized_prefix(Options) ->
     JObj = query_options(Options, kz_json:new()),
     Dialcode = dialcode(Options),
     Prefix = kz_json:get_ne_binary_value(<<"Prefix">>, JObj, prefix(Options)),
     normalized_prefix(Options, <<Dialcode/binary, Prefix/binary>>).
 
+-spec normalized_prefix(options(), kz_term:ne_binary()) -> kz_term:ne_binary().
 normalized_prefix(Options, Default) ->
     props:get_ne_binary_value('normalized_prefix', Options, Default).
 
--spec dialcode(options()) -> ne_binary().
+-spec dialcode(options()) -> kz_term:ne_binary().
 dialcode(Options) ->
     Default = knm_util:prefix_for_country(country(Options)),
     props:get_ne_binary_value('dialcode', Options, Default).
@@ -405,7 +407,7 @@ country(Options) ->
             ?KNM_DEFAULT_COUNTRY
     end.
 
--spec query_id(options()) -> api_binary().
+-spec query_id(options()) -> kz_term:api_binary().
 query_id(Options) ->
     props:get_ne_binary_value('query_id', Options).
 
@@ -413,30 +415,30 @@ query_id(Options) ->
 offset(Options) ->
     props:get_integer_value('offset', Options, 0).
 
--spec account_id(options()) -> api_ne_binary().
+-spec account_id(options()) -> kz_term:api_ne_binary().
 account_id(Options) ->
     props:get_value('account_id', Options).
 
--spec reseller_id(options()) -> ne_binary().
+-spec reseller_id(options()) -> kz_term:ne_binary().
 reseller_id(Options) ->
     props:get_value('reseller_id', Options).
 
--spec is_local(ne_binary()) -> boolean().
+-spec is_local(kz_term:ne_binary()) -> boolean().
 is_local(QID) ->
     ets:match_object(?ETS_DISCOVERY_CACHE, {QID, '_'}) =/= [].
 
--spec discovery(ne_binary()) -> knm_number:knm_number_return().
+-spec discovery(kz_term:ne_binary()) -> knm_number:knm_number_return().
 discovery(Num) ->
     discovery(Num, []).
 
--spec discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
 discovery(Num, Options) ->
     case local_discovery(Num, Options) of
         {'ok', _}=OK -> OK;
         {'error', 'not_found'} -> remote_discovery(Num, Options)
     end.
 
--spec local_discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec local_discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
 local_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
@@ -448,7 +450,7 @@ local_discovery(Num, Options) ->
     end.
 -endif.
 
--spec remote_discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-spec remote_discovery(kz_term:ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
 remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.

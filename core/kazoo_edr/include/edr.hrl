@@ -14,23 +14,23 @@
 -type edr_severity() :: 'ok' | 'warning' | 'critical'.
 -type edr_severities() :: [edr_severity()].
 
--record(edr_event, {account_id     :: api_ne_binary()
-                   ,account_tree   :: api_ne_binaries()
-                   ,app_name       :: ne_binary()
-                   ,app_version    :: ne_binary()
+-record(edr_event, {account_id     :: kz_term:api_ne_binary()
+                   ,account_tree   :: kz_term:api_ne_binaries()
+                   ,app_name       :: kz_term:ne_binary()
+                   ,app_version    :: kz_term:ne_binary()
                    ,body           :: kz_json:object()
-                   ,id             :: ne_binary()
-                   ,node           :: ne_binary()
+                   ,id             :: kz_term:ne_binary()
+                   ,node           :: kz_term:ne_binary()
                    ,severity       :: edr_severity()
-                   ,timestamp      :: ne_binary()
+                   ,timestamp      :: kz_term:ne_binary()
                    ,gregorian_time :: pos_integer()
                    ,verbosity      :: edr_verbosity()
                    }).
 -type edr_event() :: #edr_event{}.
 
--record(edr_binding, {account_id          = <<"*">> :: ne_binary() | ne_binaries()
+-record(edr_binding, {account_id          = <<"*">> :: kz_term:ne_binary() | kz_term:ne_binaries()
                      ,include_descendants = 'false' :: boolean()
-                     ,app_name            = <<"*">> :: ne_binary() | ne_binaries()
+                     ,app_name            = <<"*">> :: kz_term:ne_binary() | kz_term:ne_binaries()
                      ,severity            = 'ok'    :: edr_severity() | edr_severities()
                      ,exact_severity      = 'false' :: boolean()
                      ,verbosity           = 'info'  :: edr_verbosity() | edr_verbosities()

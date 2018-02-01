@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% General schema manipulation
 %%% @end
@@ -16,6 +16,6 @@
 -define(SCHEMA_PATH_PATTERN(K1, K2), [<<"properties">>, K1, <<"properties">>, K2]).
 -define(SCHEMA_EXTERNAL_NAME, ?SCHEMA_PATH_PATTERN(<<"external">>, <<"name">>)).
 
--spec external_name_max_length() -> api_integer().
+-spec external_name_max_length() -> kz_term:api_integer().
 external_name_max_length() ->
     kzd_schema:max_length(?SCHEMA_EXTERNAL_NAME, ?SCHEMA_NAME).

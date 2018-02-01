@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -16,7 +16,7 @@
         ,update_system_default/2
         ]).
 
--spec lookup_acls(ne_binary()) -> 'ok'.
+-spec lookup_acls(kz_term:ne_binary()) -> 'ok'.
 lookup_acls(Entity) ->
     io:format("looking for ACL records for ~s:~n", [Entity]),
     lists:foreach(fun print_acl_record/1, frontier_handle_acl:lookup_acl_records(Entity)).
@@ -30,14 +30,14 @@ print_acl_record(Record) ->
     io:format("~s ~s use policy ~s for cidrs:~n",[Type, Name, Policy]),
     lists:foreach(fun(CIDR) -> io:format(" ~s~n", [CIDR]) end, CIDRs).
 
--spec lookup_rate_limits(ne_binary()) -> 'ok'.
+-spec lookup_rate_limits(kz_term:ne_binary()) -> 'ok'.
 lookup_rate_limits(Entity) ->
     Limits = frontier_handle_rate:lookup_rate_limit_records(Entity),
     lists:foreach(fun(S) -> print_limits(S, kz_json:get_value(S, Limits)) end
                  ,[<<"Device">>, <<"Realm">>]
                  ).
 
--spec print_limits(ne_binary(), kz_json:object()) -> 'ok'.
+-spec print_limits(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 print_limits(Section, Rates) ->
     Name = kz_json:get_value(<<"Name">>, Rates),
     Min = kz_json:get_value(<<"Minute">>, Rates, kz_json:new()),
@@ -51,7 +51,7 @@ print_limits(Section, Rates) ->
                                    )
                   end, Keys).
 
--spec update_system_default(ne_binary(), ne_binary()) -> 'ok'.
+-spec update_system_default(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_system_default(Path, Value) ->
     Keys = binary:split(Path, <<".">>, ['global']),
     NewRate = kz_term:to_integer(Value),

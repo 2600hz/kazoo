@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -21,7 +21,7 @@
 -type country_iso3166a2() :: <<_:(8*2)>>.
 -export_type([country_iso3166a2/0]).
 
--spec get_all_number_dbs() -> ne_binaries().
+-spec get_all_number_dbs() -> kz_term:ne_binaries().
 get_all_number_dbs() ->
     ViewOptions = [{'startkey', <<?KNM_DB_PREFIX>>}
                   ,{'endkey', <<?KNM_DB_PREFIX "\ufff0">>}
@@ -29,7 +29,7 @@ get_all_number_dbs() ->
     {'ok', Dbs} = kz_datamgr:db_list(ViewOptions),
     [kz_http_util:urlencode(Db) || Db <- Dbs].
 
--spec pretty_print(api_binary()) -> ne_binary().
+-spec pretty_print(kz_term:api_binary()) -> kz_term:ne_binary().
 pretty_print('undefined') -> <<"unknown">>;
 pretty_print(Number) ->
     case pretty_print_format(Number) of
@@ -38,7 +38,7 @@ pretty_print(Number) ->
             pretty_print(Format, Number)
     end.
 
--spec pretty_print(ne_binary(), ne_binary()) -> ne_binary().
+-spec pretty_print(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 pretty_print(Format, Number) ->
     Num = knm_converters:normalize(Number),
     pretty_print(Format, Num, <<>>).
@@ -69,11 +69,11 @@ pretty_print(<<"*", Format/binary>>, Number, Acc) ->
 pretty_print(<<Char, Format/binary>>, Number, Acc) ->
     pretty_print(Format, Number, <<Acc/binary, Char/integer>>).
 
--spec binary_tail(ne_binary()) -> ne_binary().
+-spec binary_tail(kz_term:ne_binary()) -> kz_term:ne_binary().
 binary_tail(Binary) ->
     binary:part(Binary, 1, byte_size(Binary) - 1).
 
--spec binary_head(ne_binary()) -> ne_binary().
+-spec binary_head(kz_term:ne_binary()) -> kz_term:ne_binary().
 binary_head(Binary) ->
     binary:part(Binary, 0, 1).
 
@@ -83,13 +83,13 @@ binary_head(Binary) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_format(ne_binary()) -> api_binary().
+-spec pretty_print_format(kz_term:ne_binary()) -> kz_term:api_binary().
 pretty_print_format(Number) ->
     Classifiers = knm_converters:available_classifiers(),
     Num = knm_converters:normalize(Number),
     pretty_print_format(Num, kz_json:to_proplist(Classifiers)).
 
--spec pretty_print_format(ne_binary(), kz_proplist()) -> api_binary().
+-spec pretty_print_format(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:api_binary().
 pretty_print_format(Num, []) ->
     lager:debug("unable to get pretty print format for number ~s", [Num]),
     maybe_use_us_default(Num);
@@ -106,15 +106,15 @@ pretty_print_format(Num, [{Classification, Classifier}|Classifiers]) ->
             end
     end.
 
--spec maybe_use_us_default(ne_binary()) -> api_binary().
+-spec maybe_use_us_default(kz_term:ne_binary()) -> kz_term:api_binary().
 maybe_use_us_default(<<"+1", _/binary>>) ->
     lager:debug("using US number default pretty print", []),
     <<"SS(###) ### - ####">>;
 maybe_use_us_default(_) ->
     'undefined'.
 
--spec get_classifier_regex(ne_binary() | kz_json:object()) ->
-                                  ne_binary().
+-spec get_classifier_regex(kz_term:ne_binary() | kz_json:object()) ->
+                                  kz_term:ne_binary().
 get_classifier_regex(Classifier) when is_binary(Classifier) ->
     Classifier;
 get_classifier_regex(JObj) ->
@@ -134,6 +134,6 @@ read_fixture({'error', 'enoent'}, F) ->
 %% TODO
 %% This should be replaced with a call to elibphonenumber
 %% when/if we integrate that lib or do it ourselves
--spec prefix_for_country(country_iso3166a2()) -> ne_binary().
+-spec prefix_for_country(country_iso3166a2()) -> kz_term:ne_binary().
 prefix_for_country(Country) ->
     knm_iso3166a2_itu:to_itu(kz_term:to_upper_binary(Country)).

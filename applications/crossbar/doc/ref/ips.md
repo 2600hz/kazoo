@@ -8,10 +8,10 @@ IP addresses assigned to the account
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`ips.[]` |   | `string()` |   | `false`
-`ips` | List of IP addresses | `array(string())` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`ips.[]` |   | `string()` |   | `false` |  
+`ips` | List of IP addresses | `array(string())` |   | `false` |  
 
 
 

@@ -17,12 +17,6 @@
 -record(state, {key :: nonempty_string()
                }).
 
--spec init(any()) -> {ok, #state{}} | {ok, #state{}, non_neg_integer()} | {ok, #state{}, hibernate} | {stop, any()} | ignore.
--spec handle_call(any(), {pid(),any()}, #state{}) -> {reply, any(), #state{}} | {reply, any(), #state{}, non_neg_integer()} | {reply, any(), #state{}, hibernate} | {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), any(), #state{}} | {stop, any(), #state{}}.
--spec handle_cast(any(), #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), #state{}}.
--spec handle_info(any(), #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), #state{}}.
--spec terminate(any(), #state{}) -> any().
--spec code_change(any(), #state{}, any()) -> {ok, any()} | {error, any()}.
 
 
 -spec start(atom(), any()) -> {ok, undefined | pid()} | {error, any()}.
@@ -35,11 +29,11 @@ start(Name, Key) ->
 stop(Name) ->
     gen_server:call(Name, stop).
 
--spec push(server_ref(), list(), any()) -> ok.
+-spec push(kz_types:server_ref(), list(), any()) -> ok.
 push(Name, RegIds, Message) ->
     push(Name, RegIds, Message, ?RETRY).
 
--spec push(server_ref(), list(), any(), non_neg_integer()) -> ok.
+-spec push(kz_types:server_ref(), list(), any(), non_neg_integer()) -> ok.
 push(Name, RegIds, Message, Retry) ->
     gen_server:cast(Name, {send, RegIds, Message, Retry}).
 
@@ -57,11 +51,13 @@ sync_push(Name, RegIds, Message, Retry) ->
 start_link(Name, Key) ->
     gen_server:start_link({local, Name}, ?MODULE, [Key], []).
 
+-spec init(any()) -> {ok, #state{}} | {ok, #state{}, non_neg_integer()} | {ok, #state{}, hibernate} | {stop, any()} | ignore.
 init([Key]) ->
     kz_util:put_callid(?MODULE),
     lager:debug("starting with key ~s", [Key]),
     {ok, #state{key=Key}}.
 
+-spec handle_call(any(), {pid(),any()}, #state{}) -> {reply, any(), #state{}} | {reply, any(), #state{}, non_neg_integer()} | {reply, any(), #state{}, hibernate} | {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), any(), #state{}} | {stop, any(), #state{}}.
 handle_call(stop, _From, State) ->
     {stop, normal, stopped, State};
 
@@ -73,6 +69,7 @@ handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
+-spec handle_cast(any(), #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), #state{}}.
 handle_cast({send, RegIds, Message, Retry}, #state{key=Key} = State) ->
     do_push(RegIds, Message, Key, Retry),
     {noreply, State};
@@ -80,12 +77,15 @@ handle_cast({send, RegIds, Message, Retry}, #state{key=Key} = State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+-spec handle_info(any(), #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), #state{}}.
 handle_info(_Info, State) ->
     {noreply, State}.
 
+-spec terminate(any(), #state{}) -> any().
 terminate(_Reason, _State) ->
     ok.
 
+-spec code_change(any(), #state{}, any()) -> {ok, any()} | {error, any()}.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 

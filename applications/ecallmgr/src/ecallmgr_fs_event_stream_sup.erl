@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -30,7 +30,7 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     supervisor:start_link({'local', sup_name(Node)}, ?MODULE, [Node, Options]).
 
@@ -41,7 +41,7 @@ sup_name(Node) ->
                             ]),
     kz_term:to_atom(Name, 'true').
 
--spec add_child(atom(), {'CUSTOM', atom()} | atom()) -> sup_startchild_ret().
+-spec add_child(atom(), {'CUSTOM', atom()} | atom()) -> kz_types:sup_startchild_ret().
 add_child(Node, {'CUSTOM', Subclass}) ->
     supervisor:start_child(sup_name(Node), custom_child(Node, Subclass));
 add_child(Node, Event) ->
@@ -60,7 +60,7 @@ add_child(Node, Event) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init([Node, _Props]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
@@ -71,11 +71,11 @@ init([Node, _Props]) ->
     {'ok', {SupFlags, ?CHILDREN}}.
 
 
--spec event_child(atom(), atom()) -> sup_child_spec().
+-spec event_child(atom(), atom()) -> kz_types:sup_child_spec().
 event_child(Node, Event) ->
     ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, 'undefined'], 'transient').
 
--spec custom_child(atom(), atom()) -> sup_child_spec().
+-spec custom_child(atom(), atom()) -> kz_types:sup_child_spec().
 custom_child(Node, Subclass) ->
     ?WORKER_NAME_ARGS_TYPE(Subclass, 'ecallmgr_fs_event_stream', [Node, 'CUSTOM', Subclass], 'transient').
 

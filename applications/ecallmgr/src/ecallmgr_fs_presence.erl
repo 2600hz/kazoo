@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Receives PRESENCE_IN event
 %%% @end
@@ -24,8 +24,8 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-               ,event :: ne_binary()
-               ,options = [] :: kz_proplist()
+               ,event :: kz_term:ne_binary()
+               ,options = [] :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -36,9 +36,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+
+-spec start_link(atom()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -57,7 +59,7 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     kz_util:put_callid(Node),
     Event = application:get_env(?APP, 'presence_event', <<"PRESENCE_IN">>),
@@ -78,7 +80,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -92,7 +94,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind_to_record', #state{node=Node, event=Event}=State) ->
     case gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_OPTION_MSG(Node)}) =:= 'true'
@@ -114,7 +116,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'event', [UUID | Props]}, #state{node=Node
                                              ,options=Options
                                              ,event=Event
@@ -158,7 +160,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec init_props(kz_proplist(), kz_proplist()) -> kz_proplist().
+-spec init_props(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 init_props(Props, Options) ->
     case props:get_is_true(<<"Publish-Channel-State">>, Props) of
         'undefined' ->
@@ -169,18 +171,18 @@ init_props(Props, Options) ->
         _Value -> Props
     end.
 
--spec handle_presence_event(ne_binary(), api_binary(), kz_proplist(), atom(), kz_proplist()) -> any().
+-spec handle_presence_event(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), atom(), kz_term:proplist()) -> any().
 handle_presence_event(BindingEvent, UUID, FSProps, Node, Options) ->
     kz_util:put_callid(UUID),
     Props = init_props(FSProps, Options),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     process_specific_event(BindingEvent, EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec process_specific_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), atom()) -> any().
 process_specific_event(Event, Event, UUID, Props, Node) ->
     maybe_build_presence_event(Node, UUID, Props).
 
--spec maybe_build_presence_event(atom(), api_binary(), kz_proplist()) -> any().
+-spec maybe_build_presence_event(atom(), kz_term:api_binary(), kz_term:proplist()) -> any().
 maybe_build_presence_event(Node, UUID, Props) ->
     Routines = [fun check_proto/3
                ,fun check_publish_state/3
@@ -190,23 +192,23 @@ maybe_build_presence_event(Node, UUID, Props) ->
         'false' -> 'ok'
     end.
 
--spec check_proto(atom(), api_binary(), kz_proplist()) -> boolean().
+-spec check_proto(atom(), kz_term:api_binary(), kz_term:proplist()) -> boolean().
 check_proto(_Node, _UUID, Props) ->
     Proto = props:get_value(<<"proto">>, Props),
     check_proto(Proto).
 
--spec check_proto(api_binary()) -> boolean().
+-spec check_proto(kz_term:api_binary()) -> boolean().
 check_proto(<<"any">>) -> 'true';
 check_proto(_Proto) ->
     lager:debug("presence proto ~p not handled", [_Proto]),
     'false'.
 
--spec check_publish_state(atom(), api_binary(), kz_proplist()) -> boolean().
+-spec check_publish_state(atom(), kz_term:api_binary(), kz_term:proplist()) -> boolean().
 check_publish_state(_Node, _UUID, Props) ->
     props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
         orelse props:is_true(<<"Publish-Channel-State">>, Props, 'true').
 
--spec realm(kz_proplist()) -> ne_binary().
+-spec realm(kz_term:proplist()) -> kz_term:ne_binary().
 realm(Props) ->
     props:get_first_defined([?GET_CCV(<<"Realm">>)
                             ,<<"variable_sip_invite_domain">>
@@ -214,21 +216,21 @@ realm(Props) ->
                             ,<<"variable_sip_to_host">>
                             ], Props, ?DEFAULT_REALM).
 
--spec get_user_realm(kz_proplist()) -> {ne_binary(), ne_binary()}.
+-spec get_user_realm(kz_term:proplist()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_user_realm(Props) ->
     case binary:split(from(Props), <<"@">>, ['global']) of
         [Username, Realm | _] -> {Username, Realm};
         [From] -> {From, realm(Props)}
     end.
 
--spec from(kz_proplist()) -> ne_binary().
+-spec from(kz_term:proplist()) -> kz_term:ne_binary().
 from(Props) ->
     props:get_first_defined([<<"from">>
                             ,<<"variable_presence_id">>
                             ,<<"Channel-Presence-ID">>
                             ], Props).
 
--spec to_user(kz_proplist()) -> ne_binary().
+-spec to_user(kz_term:proplist()) -> kz_term:ne_binary().
 to_user(Props) ->
     to_user(direction(Props), Props).
 
@@ -241,12 +243,12 @@ to_user(<<"recipient">>, Props) ->
                             ,<<"variable_sip_from_user">>
                             ], Props).
 
--spec expires(ne_binary()) -> integer().
+-spec expires(kz_term:ne_binary()) -> integer().
 expires(<<"early">>) -> 0;
 expires(<<"confirmed">>) -> 0;
 expires(<<"terminated">>) -> 20.
 
--spec build_presence_event(atom(), api_binary(), kz_proplist()) -> any().
+-spec build_presence_event(atom(), kz_term:api_binary(), kz_term:proplist()) -> any().
 build_presence_event(_Node, UUID, Props) ->
     ToTag = kzd_freeswitch:to_tag(Props),
     FromTag = kzd_freeswitch:from_tag(Props),
@@ -288,29 +290,29 @@ build_presence_event(_Node, UUID, Props) ->
     lager:debug("sending presence ~s to ~s/~s in realm ~s", [State, FromUser, ToUser, Realm]),
     kz_amqp_worker:cast(Payload, fun kapi_presence:publish_dialog/1).
 
--spec direction(kz_proplist()) -> ne_binary().
+-spec direction(kz_term:proplist()) -> kz_term:ne_binary().
 direction(Props) ->
     case props:get_value(<<"Presence-Call-Direction">>, Props) of
         <<"inbound">> -> <<"initiator">>;
         <<"outbound">> -> <<"recipient">>
     end.
 
--spec status(kz_proplist()) -> ne_binary().
+-spec status(kz_term:proplist()) -> kz_term:ne_binary().
 status(Props) ->
     kz_term:to_lower_binary(props:get_binary_value(<<"status">>, Props)).
 
--spec answer_state(kz_proplist()) -> ne_binary().
+-spec answer_state(kz_term:proplist()) -> kz_term:ne_binary().
 answer_state(Props) ->
     kz_term:to_lower_binary(props:get_value(<<"Answer-State">>, Props)).
 
--spec presence_status(kz_proplist()) -> ne_binary().
+-spec presence_status(kz_term:proplist()) -> kz_term:ne_binary().
 presence_status(Props) ->
     Status = status(Props),
     AnswerState = answer_state(Props),
     Direction = direction(Props),
     presence_status(Direction, Status, AnswerState).
 
--spec presence_status(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec presence_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 presence_status(_, _, <<"answered">>) -> <<"confirmed">>;
 presence_status(_, _, <<"hangup">>) -> <<"terminated">>;
 presence_status(_, <<"hangup">>, _) -> <<"terminated">>;

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -12,7 +12,7 @@
 
 -include("doodle.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_registration:success_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -23,7 +23,7 @@ handle_req(JObj, _Props) ->
         {'error', 'not_found'} -> handle_no_account_req(Realm, Username)
     end.
 
--spec handle_account_req(ne_binary(), ne_binary()) -> 'ok'.
+-spec handle_account_req(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 handle_account_req(AccountDb, Username) ->
     AccountId = kz_util:format_account_id(AccountDb),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Username) of
@@ -42,7 +42,7 @@ handle_account_req(AccountDb, Username) ->
                        ,[Username, AccountDb, _E])
     end.
 
--spec handle_no_account_req(ne_binary(), ne_binary()) -> 'ok'.
+-spec handle_no_account_req(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 handle_no_account_req(Realm, Username) ->
     case doodle_util:endpoint_from_sipdb(Realm, Username) of
         {'ok', Endpoint} ->

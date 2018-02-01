@@ -11,10 +11,7 @@
 %% ====================================================================
 
 -spec authenticate(kz_json:object()) -> {'ok', kz_json:object()} |
-                                        {'error', ne_binary()}.
--spec authenticate(ne_binary(), ne_binary(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', ne_binary()}.
+                                        {'error', kz_term:ne_binary()}.
 authenticate(JObj) ->
     case {kz_json:get_value(<<"access_token">>, JObj)
          ,kz_json:get_value(<<"provider">>, JObj)
@@ -29,6 +26,9 @@ authenticate(JObj) ->
         {AccessToken, ProviderId} -> authenticate(AccessToken, ProviderId, JObj)
     end.
 
+-spec authenticate(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                          {'ok', kz_json:object()} |
+                          {'error', kz_term:ne_binary()}.
 authenticate(AccessToken, ProviderId, JObj) ->
     case kazoo_oauth_util:verify_token(ProviderId, AccessToken) of
         {'ok', Token} -> maybe_add_oauth_user(JObj, Token);
@@ -65,8 +65,8 @@ maybe_save_oauth_doc(DocId, JObj, TokenObj, App) ->
     save_oauth_doc(App, DocId, JObj, TokenObj, RefreshTokenObj).
 
 
--spec get_refresh_token(ne_binary(), ne_binary() | oauth_app()
-                       ,ne_binary(), ne_binary()) -> kz_json:object().
+-spec get_refresh_token(kz_term:ne_binary(), kz_term:ne_binary() | oauth_app()
+                       ,kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 get_refresh_token(<<"offline">>, App, Scope, AuthorizationCode) ->
     case kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, []) of
         {'ok', Token} -> Token;

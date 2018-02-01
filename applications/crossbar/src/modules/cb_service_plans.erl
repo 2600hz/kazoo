@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -55,11 +55,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?SYNCHRONIZATION) ->
     [?HTTP_POST];
 allowed_methods(?RECONCILIATION) ->
@@ -72,6 +73,8 @@ allowed_methods(?AVAILABLE) ->
     [?HTTP_GET];
 allowed_methods(_PlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?AVAILABLE, _PlanId) ->
     [?HTTP_GET].
 
@@ -84,11 +87,14 @@ allowed_methods(?AVAILABLE, _PlanId) ->
 %%    /service_plans/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -101,12 +107,12 @@ resource_exists(_, _) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_service_plan(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?CURRENT) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
@@ -155,7 +161,6 @@ validate(Context, ?AVAILABLE, PlanId) ->
     crossbar_doc:load(PlanId, Context1, ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
 
 -spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
--spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, ?HTTP_GET) ->
     crossbar_doc:load_view(?CB_LIST
                           ,[]
@@ -165,6 +170,7 @@ validate_service_plan(Context, ?HTTP_GET) ->
 validate_service_plan(Context, ?HTTP_POST) ->
     maybe_allow_change(Context).
 
+-spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, PlanId, ?HTTP_GET) ->
     crossbar_doc:load(PlanId, Context);
 validate_service_plan(Context, PlanId, ?HTTP_POST) ->
@@ -179,10 +185,8 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(cb_context:context()) -> cb_context:context().
--spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
+-spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
     Services = pipe_services(cb_context:account_id(Context)
                             ,[fun(Services) -> add_plans(Context, Services) end
@@ -194,6 +198,7 @@ post(Context) ->
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ]).
 
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?SYNCHRONIZATION) ->
     _ = kz_services:sync(cb_context:account_id(Context)),
     cb_context:set_resp_status(Context, 'success');
@@ -234,6 +239,7 @@ post(Context, PlanId) ->
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ]).
 
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, PlanId, ?OVERRIDE) ->
     Doc = cb_context:doc(Context),
 
@@ -297,7 +303,7 @@ delete_plans(Context, Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -type services_pipe() :: fun((kz_services:services()) -> kz_services:services()).
--spec pipe_services(ne_binary(), [services_pipe()]) -> kz_services:services().
+-spec pipe_services(kz_term:ne_binary(), [services_pipe()]) -> kz_services:services().
 pipe_services(AccountId, Routines) ->
     Services = kz_services:fetch(AccountId),
     lists:foldl(fun (F, S) -> F(S) end, Services, Routines).
@@ -309,21 +315,22 @@ pipe_services(AccountId, Routines) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), ne_binary()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 content_types_provided(Context) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
                                           ]).
 
+-spec content_types_provided(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 content_types_provided(Context, _) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
                                           ]).
 
+-spec content_types_provided(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 content_types_provided(Context, ?AVAILABLE, _) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
@@ -347,7 +354,7 @@ normalize_view_results(JObj, Acc) ->
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
--spec is_allowed(cb_context:context()) -> {'ok', ne_binary()} | 'false'.
+-spec is_allowed(cb_context:context()) -> {'ok', kz_term:ne_binary()} | 'false'.
 is_allowed(Context) ->
     ResellerId = kz_services:find_reseller_id(cb_context:account_id(Context)),
     AuthAccountId = cb_context:auth_account_id(Context),
@@ -363,8 +370,8 @@ is_allowed(Context) ->
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_allow_change(cb_context:context()) -> cb_context:context().
--spec maybe_allow_change(cb_context:context(), path_token()) -> cb_context:context().
 maybe_allow_change(Context) ->
     case is_allowed(Context) of
         {'ok', ResellerId} ->
@@ -373,6 +380,7 @@ maybe_allow_change(Context) ->
             cb_context:add_system_error('forbidden', Context)
     end.
 
+-spec maybe_allow_change(cb_context:context(), path_token()) -> cb_context:context().
 maybe_allow_change(Context, PlanId) ->
     case is_allowed(Context) of
         {'ok', ResellerId} ->
@@ -387,13 +395,14 @@ maybe_allow_change(Context, PlanId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_plan_ids(cb_context:context(), ne_binary()) -> cb_context:context().
--spec check_plan_ids(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+
+-spec check_plan_ids(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 check_plan_ids(Context, ResellerId) ->
     ReqData = cb_context:req_data(Context),
     AddPlanIds = kz_json:get_value(<<"add">>, ReqData, []),
     check_plan_ids(maybe_forbid_delete(Context), ResellerId, AddPlanIds).
 
+-spec check_plan_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 check_plan_ids(Context, _ResellerId, []) ->
     Context;
 check_plan_ids(Context, ResellerId, PlanIds) ->
@@ -415,7 +424,7 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_plan_id(cb_context:context(), path_token(), ne_binary()) ->
+-spec check_plan_id(cb_context:context(), path_token(), kz_term:ne_binary()) ->
                            cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
@@ -429,7 +438,7 @@ maybe_forbid_delete(Context) ->
             maybe_forbid_delete(DeletePlansIds, Context)
     end.
 
--spec maybe_forbid_delete(ne_binaries(), cb_context:context()) -> cb_context:context().
+-spec maybe_forbid_delete(kz_term:ne_binaries(), cb_context:context()) -> cb_context:context().
 maybe_forbid_delete(DeletePlansIds, Context) ->
     case kz_services:fetch_services_doc(cb_context:account_id(Context)) of
         {'error', 'not_found'} -> Context;

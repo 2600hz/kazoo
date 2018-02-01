@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for local resource documents
@@ -30,7 +30,6 @@
 
 -spec init() -> ok.
 init() ->
-    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, ?APP, "views/resources.json"),
     _ = crossbar_maintenance:start_module('cb_resources'),
     ok.
 
@@ -40,11 +39,11 @@ init() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
     check_for_registering_gateways(ResourceId, Context).
 
--spec check_for_registering_gateways(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_for_registering_gateways(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_for_registering_gateways(ResourceId, Context) ->
     case lists:any(fun is_registering_gateway/1
                   ,cb_context:req_value(Context, <<"gateways">>, [])
@@ -61,7 +60,7 @@ is_registering_gateway(Gateway) ->
     kz_json:is_true(<<"register">>, Gateway)
         andalso kz_json:is_true(<<"enabled">>, Gateway).
 
--spec check_if_peer(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_if_peer(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_if_peer(ResourceId, Context) ->
     case {kz_term:is_true(cb_context:req_value(Context, <<"peer">>))
          ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
@@ -83,7 +82,7 @@ check_if_peer(ResourceId, Context) ->
             check_resource_schema(ResourceId, Context)
     end.
 
--spec check_if_gateways_have_ip(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_if_gateways_have_ip(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_if_gateways_have_ip(ResourceId, Context) ->
     Gateways = cb_context:req_value(Context, <<"gateways">>, []),
     IPs = extract_gateway_ips(Gateways, 0, []),
@@ -91,7 +90,7 @@ check_if_gateways_have_ip(ResourceId, Context) ->
     ACLs = get_all_acl_ips(),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context)).
 
--spec validate_gateway_ips(gateway_ips(), sip_auth_ips(), acl_ips(), api_binary(), cb_context:context(), crossbar_status()) -> cb_context:context().
+-spec validate_gateway_ips(gateway_ips(), sip_auth_ips(), acl_ips(), kz_term:api_binary(), cb_context:context(), crossbar_status()) -> cb_context:context().
 validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
     check_resource_schema(ResourceId, Context);
 validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
@@ -150,12 +149,12 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
             validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context))
     end.
 
--spec check_resource_schema(api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_resource_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_resource_schema(ResourceId, Context) ->
     %% This has been validated in cb_resources already!
     on_successful_validation(ResourceId, Context).
 
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
@@ -167,11 +166,12 @@ on_successful_validation(Id, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec maybe_aggregate_resource(cb_context:context()) -> boolean().
--spec maybe_aggregate_resource(cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_resource(Context) ->
     maybe_aggregate_resource(Context, cb_context:resp_status(Context)).
 
+-spec maybe_aggregate_resource(cb_context:context(), crossbar_status()) -> boolean().
 maybe_aggregate_resource(Context, 'success') ->
     case kz_term:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
@@ -186,12 +186,12 @@ maybe_aggregate_resource(Context, 'success') ->
     end;
 maybe_aggregate_resource(_Context, _Status) -> 'false'.
 
--spec maybe_remove_aggregate(ne_binary(), cb_context:context()) -> boolean().
--spec maybe_remove_aggregate(ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
 
+-spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context()) -> boolean().
 maybe_remove_aggregate(ResourceId, Context) ->
     maybe_remove_aggregate(ResourceId, Context, cb_context:resp_status(Context)).
 
+-spec maybe_remove_aggregate(kz_term:ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
 maybe_remove_aggregate(ResourceId, _Context, 'success') ->
     case kz_datamgr:open_doc(?KZ_SIP_DB, ResourceId) of
         {'ok', JObj} ->
@@ -209,7 +209,7 @@ maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--type sip_auth_ip() :: {ne_binary(), ne_binary()}.
+-type sip_auth_ip() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
 -type sip_auth_ips() :: [sip_auth_ip()].
 
 -spec get_all_sip_auth_ips() -> sip_auth_ips().
@@ -224,7 +224,7 @@ get_all_sip_auth_ips() ->
 get_sip_auth_ip(JObj, IPs) ->
     [{kz_json:get_value(<<"key">>, JObj), kz_doc:id(JObj)} | IPs].
 
--type acl_ips() :: ne_binaries().
+-type acl_ips() :: kz_term:ne_binaries().
 -spec get_all_acl_ips() -> acl_ips().
 get_all_acl_ips() ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
@@ -258,7 +258,7 @@ extract_ips_fold(_K, JObj, IPs) ->
             [{CIDR, AuthorizingId} | IPs]
     end.
 
--type gateway_ip() :: {non_neg_integer(), api_binary(), api_binary()}.
+-type gateway_ip() :: {non_neg_integer(), kz_term:api_binary(), kz_term:api_binary()}.
 -type gateway_ips() :: [gateway_ip()].
 -spec extract_gateway_ips(kz_json:objects(), non_neg_integer(), gateway_ips()) -> gateway_ips().
 extract_gateway_ips([], _, IPs) -> IPs;
@@ -269,7 +269,7 @@ extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->
          },
     extract_gateway_ips(Gateways, Idx + 1, [IP|IPs]).
 
--spec validate_ip(api_binary(), sip_auth_ips(), acl_ips(), api_binary()) -> boolean().
+-spec validate_ip(kz_term:api_binary(), sip_auth_ips(), acl_ips(), kz_term:api_binary()) -> boolean().
 validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
     lists:all(fun({CIDR, AuthId}) ->
                       AuthId =:= ResourceId

@@ -38,8 +38,8 @@
                ,restarted = 0          :: integer()
                ,callback_module        :: atom()
                ,callback_state         :: any()
-               ,down = []              :: atoms()
-               ,candidates = [node()]  :: atoms()
+               ,down = []              :: kz_term:atoms()
+               ,candidates = [node()]  :: kz_term:atoms()
                }).
 
 -record(sign, {elected                  :: integer()
@@ -65,7 +65,7 @@
                     | {state(), atom()}
                     | {atom(), sign()}
                     | sign()
-                    | ne_binary().
+                    | kz_term:ne_binary().
 -type from() :: any().
 
 -include("amqp_leader.hrl").
@@ -81,15 +81,15 @@
 %%%===================================================================
 %%% API functions
 %%%===================================================================
--spec start(atom(), atoms(), list(), atom(), list(), list()) -> startlink_ret().
+-spec start(atom(), kz_term:atoms(), list(), atom(), list(), list()) -> kz_types:startlink_ret().
 start(Name, CandidateNodes, OptArgs, Mod, Arg, Options) ->
     start_it('start', Name, CandidateNodes, OptArgs, Mod, Arg, Options).
 
--spec start_link(atom(), atoms(), list(), atom(), list(), list()) -> startlink_ret().
+-spec start_link(atom(), kz_term:atoms(), list(), atom(), list(), list()) -> kz_types:startlink_ret().
 start_link(Name, CandidateNodes, OptArgs, Mod, Arg, Options) ->
     start_it('start_link', Name, CandidateNodes, OptArgs, Mod, Arg, Options).
 
--spec start_it(atom(), atom(), atoms(), list(), atom(), list(), list()) -> startlink_ret().
+-spec start_it(atom(), atom(), kz_term:atoms(), list(), atom(), list(), list()) -> kz_types:startlink_ret().
 start_it(StartFun, Name, CandidateNodes, OptArgs, Mod, Arg, Options) ->
     gen_server:StartFun({'local', Name}, ?MODULE, [Name, CandidateNodes, OptArgs, Mod, Arg, Options], []).
 
@@ -124,23 +124,23 @@ reply({Pid, _} = From, Reply) when is_pid(Pid)
 reply({From, Tag}, Reply) ->
     send(From, {Tag, Reply}).
 
--spec alive(sign()) -> atoms().
+-spec alive(sign()) -> kz_term:atoms().
 alive(_) -> [node()].
 %alive(#sign{candidates = Candidates}) ->
 %    Candidates.
 
--spec down(sign()) -> atoms().
+-spec down(sign()) -> kz_term:atoms().
 down(_) -> [].
 
--spec workers(sign()) -> atoms().
+-spec workers(sign()) -> kz_term:atoms().
 workers(_) -> [].
 
--spec candidates(sign()) -> atoms().
+-spec candidates(sign()) -> kz_term:atoms().
 candidates(_) -> [node()].
 
 -type msg() :: {'from_leader', any()}.
 
--spec broadcast(msg(), atoms(), sign()) -> sign().
+-spec broadcast(msg(), kz_term:atoms(), sign()) -> sign().
 broadcast(Msg, _Nodes, #sign{name = Name} = Sign) ->
     send({Name, 'broadcast'}, Msg),
     Sign.
@@ -190,7 +190,7 @@ init([Name, _CandidateNodes, _OptArgs, Mod, Arg, _Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), {pid(), any()}, state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), {pid(), any()}, state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(s, _, State) ->
     {reply, {self(), State}, State};
 handle_call({'leader_call', Msg}, From, State) when ?is_leader ->
@@ -215,7 +215,7 @@ handle_call(Call, From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'init', Arg}, State) ->
     init(State, Arg);
 handle_cast({'leader_cast', Msg}, State) when ?is_leader ->
@@ -240,7 +240,7 @@ handle_cast(Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(#?MODULE{from = From, msg = 'join'} = Msg, State) when ?is_leader ->
     lager:debug("message ~p", [Msg]),
     Routines = [{fun announce_leader/2, {From, 'me'}}
@@ -554,7 +554,7 @@ noreply(#state{} = State, [{Fun, Data} | Rest]) when is_function(Fun, 2) ->
 increase_elected(#state{elected = Elected} = State, []) ->
     State#state{elected = Elected + 1}.
 
--spec add_candidates(state(), sign() | atoms()) -> state().
+-spec add_candidates(state(), sign() | kz_term:atoms()) -> state().
 add_candidates(#state{} = State, #sign{node = Node}) ->
     add_candidates(State, [Node]);
 add_candidates(#state{candidates = MyCandidates} = State, Candidates) ->

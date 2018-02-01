@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz
+%%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,7 +30,7 @@
 
 -define(EXPIRY_MSG, 'failure_check').
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link(?SERVER, [], []).
 
@@ -39,15 +39,15 @@ init(_) ->
     kz_util:put_callid(?MODULE),
     {'ok', start_check_timer()}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'noreply', State}.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRY_MSG}, Ref) ->
     _ = kz_util:spawn(fun check_failed_attempts/0),
     {'noreply', start_check_timer()};
@@ -77,11 +77,10 @@ check_failed_attempts() ->
     Failures = find_failures(),
     check_failures(Failures).
 
--type failure() :: {{ne_binary(), ne_binary()}, integer()}.
+-type failure() :: {{kz_term:ne_binary(), kz_term:ne_binary()}, integer()}.
 -type failures() :: [failure()].
 
 -spec find_failures() -> failures().
--spec find_failures([tuple()]) -> failures().
 find_failures() ->
     Keys = kz_cache:fetch_keys_local(?CACHE_NAME),
     find_failures(Keys).
@@ -97,10 +96,11 @@ flush_hooks(HookJObjs) ->
       ]
      ).
 
--spec flush_failures(ne_binary()) -> non_neg_integer().
--spec flush_failures(ne_binary(), api_binary()) -> non_neg_integer().
+-spec flush_failures(kz_term:ne_binary()) -> non_neg_integer().
 flush_failures(AccountId) ->
     flush_failures(AccountId, 'undefined').
+
+-spec flush_failures(kz_term:ne_binary(), kz_term:api_binary()) -> non_neg_integer().
 flush_failures(AccountId, HookId) ->
     FilterFun = fun(K, _V) ->
                         maybe_remove_failure(K, AccountId, HookId)
@@ -109,7 +109,7 @@ flush_failures(AccountId, HookId) ->
                                ,FilterFun
                                ).
 
--spec maybe_remove_failure(tuple(), ne_binary(), api_binary()) -> boolean().
+-spec maybe_remove_failure(tuple(), kz_term:ne_binary(), kz_term:api_binary()) -> boolean().
 maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
                     ,AccountId
                     ,HookId
@@ -123,6 +123,7 @@ maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, _HookId, _Timestamp)
 maybe_remove_failure(_K, _AccountId, _HookId) ->
     'false'.
 
+-spec find_failures([tuple()]) -> failures().
 find_failures(Keys) ->
     dict:to_list(lists:foldl(fun process_failed_key/2, dict:new(), Keys)).
 
@@ -141,7 +142,7 @@ check_failures(Failures) ->
         ],
     'ok'.
 
--spec check_failure(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
+-spec check_failure(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) -> 'ok'.
 check_failure(AccountId, HookId, Count) ->
     try kz_term:to_integer(kapps_account_config:get_global(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, 6)) of
         N when N =< Count ->
@@ -157,7 +158,7 @@ check_failure(AccountId, HookId, Count) ->
             end
     end.
 
--spec disable_hook(ne_binary(), ne_binary()) -> 'ok'.
+-spec disable_hook(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 disable_hook(AccountId, HookId) ->
     case kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId) of
         {'ok', HookJObj} ->
@@ -170,7 +171,7 @@ disable_hook(AccountId, HookId) ->
             lager:debug("failed to find ~s/~s to disable: ~p", [AccountId, HookId, _E])
     end.
 
--spec filter_cache(ne_binary(), ne_binary()) -> non_neg_integer().
+-spec filter_cache(kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
 filter_cache(AccountId, HookId) ->
     kz_cache:filter_erase_local(?CACHE_NAME
                                ,fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
@@ -181,7 +182,7 @@ filter_cache(AccountId, HookId) ->
                                 end
                                ).
 
--spec send_notification(ne_binary(), ne_binary()) -> 'ok'.
+-spec send_notification(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_notification(AccountId, HookId) ->
     API = [{<<"Account-ID">>, AccountId}
           ,{<<"Hook-ID">>, HookId}

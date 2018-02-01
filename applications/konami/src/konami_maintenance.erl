@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -15,7 +15,7 @@
 -include("konami.hrl").
 
 -record(builder_action, {module_fun_name :: atom()
-                        ,metaflow_key :: ne_binary()
+                        ,metaflow_key :: kz_term:ne_binary()
                         ,builders = [] :: [{pos_integer(), atom()}]
                         }).
 -type builder_action() :: #builder_action{}.
@@ -36,7 +36,7 @@ add_default_metaflow() ->
                                    kapps_config:set_default(<<"metaflows">>, <<"default_metaflow">>, JObj)
                            end).
 
--spec add_default_account_metaflow(ne_binary()) -> 'ok'.
+-spec add_default_account_metaflow(kz_term:ne_binary()) -> 'ok'.
 add_default_account_metaflow(AccountId) ->
     Default = kapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, kz_json:new()),
     io:format("Welcome to the Default Account Metaflow builder for ~s~n", [AccountId]),
@@ -125,11 +125,11 @@ pattern_builder(Default, SaveFun) ->
                                 }
                 ).
 
--spec print_builders(kz_proplist()) -> ['ok'].
+-spec print_builders(kz_term:proplist()) -> ['ok'].
 print_builders(Builders) ->
     [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 
--spec builder_name(ne_binary() | atom()) -> ne_binary().
+-spec builder_name(kz_term:ne_binary() | atom()) -> kz_term:ne_binary().
 builder_name(<<"konami_", Name/binary>>) -> kz_binary:ucfirst(Name);
 builder_name(<<_/binary>> = Name) -> kz_binary:ucfirst(Name);
 builder_name(M) -> builder_name(kz_term:to_binary(M)).
@@ -183,7 +183,7 @@ invalid_action(Default, SaveFun, BA) ->
     io:format("invalid option selected~n", []),
     builder_menu(Default, SaveFun, BA).
 
--spec builder_modules(atom()) -> atoms().
+-spec builder_modules(atom()) -> kz_term:atoms().
 builder_modules(F) ->
     {'ok', Modules} = application:get_key('konami', 'modules'),
     [M || M <- Modules, is_builder_module(M, F)].

@@ -30,7 +30,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(pid(), kapps_call:call(), kz_proplist()) -> startlink_ret().
+-spec start_link(pid(), kapps_call:call(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Manager, Call, Props) ->
     {'ok', kz_util:spawn_link(fun ?MODULE:init/3, [Manager, Call, Props])}.
 
@@ -40,8 +40,9 @@ start_link(Manager, Call, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init(pid(), kapps_call:call(), kz_proplist()) -> 'no_return'.
+-spec init(pid(), kapps_call:call(), kz_term:proplist()) -> 'no_return'.
 init(Manager, Call, Props) ->
+    kapps_call:put_callid(Call),
     Config = get_config(Props),
     State = init_state(Manager, Call, Config),
     loop(State).
@@ -56,7 +57,7 @@ init(Manager, Call, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_config(kz_proplist()) -> map().
+-spec get_config(kz_term:proplist()) -> map().
 get_config(Props) ->
     #{position_announcements_enabled => props:get_is_true(<<"position_announcements_enabled">>, Props, 'false')
      ,wait_time_announcements_enabled => props:get_is_true(<<"wait_time_announcements_enabled">>, Props, 'false')
@@ -70,7 +71,7 @@ get_config(Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec announcements_media(kz_proplist()) -> kz_proplist().
+-spec announcements_media(kz_term:proplist()) -> kz_term:proplist().
 announcements_media(Props) ->
     case props:get_value(<<"media">>, Props) of
         'undefined' ->
@@ -177,7 +178,7 @@ play_announcements(Prompts, #{call := Call
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_average_wait_time(kapps_call:call()) -> api_pos_integer().
+-spec get_average_wait_time(kapps_call:call()) -> kz_term:api_pos_integer().
 get_average_wait_time(Call) ->
     AccountId = kapps_call:account_id(Call),
     QueueId = kapps_call:custom_channel_var(<<"Queue-ID">>, Call),
@@ -237,7 +238,7 @@ calculate_average_wait_time(Abandoned, Total, TotalWait) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec time_prompt(pos_integer(), binary()) -> {'prompt', ne_binary(), binary(), ne_binary()}.
+-spec time_prompt(pos_integer(), binary()) -> {'prompt', kz_term:ne_binary(), binary(), kz_term:ne_binary()}.
 time_prompt(Time, Language) ->
     {'prompt', time_prompt2(Time), Language, <<"A">>}.
 
@@ -247,7 +248,7 @@ time_prompt(Time, Language) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec time_prompt2(pos_integer()) -> ne_binary().
+-spec time_prompt2(pos_integer()) -> kz_term:ne_binary().
 time_prompt2(Time) when Time < ?SECONDS_IN_MINUTE ->
     <<"queue-less_than_1_minute">>;
 time_prompt2(Time) when Time =< 5 * ?SECONDS_IN_MINUTE ->
@@ -281,6 +282,6 @@ announcements_interval(#{announcements_interval := Interval}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec announcements_media_file(ne_binary(), map()) -> api_ne_binary().
+-spec announcements_media_file(kz_term:ne_binary(), map()) -> kz_term:api_ne_binary().
 announcements_media_file(Name, #{announcements_media := Media}) ->
     props:get_binary_value(Name, Media).

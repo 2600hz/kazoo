@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -58,10 +58,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?PATH_PLAN) ->
     [?HTTP_GET];
 allowed_methods(?PATH_AUDIT) ->
@@ -78,9 +80,11 @@ allowed_methods(?PATH_STATUS) ->
 %%    /services/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> boolean().
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> boolean().
 resource_exists(?PATH_PLAN) -> 'true';
 resource_exists(?PATH_AUDIT) -> 'true';
 resource_exists(?PATH_STATUS) -> 'true';
@@ -103,9 +107,8 @@ content_types_provided(Context, ?PATH_AUDIT) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_services(Context, cb_context:req_verb(Context)).
 
@@ -130,6 +133,7 @@ validate_services(Context, ?HTTP_POST) ->
             crossbar_util:response('error', kz_term:to_binary(Error), 400, R, Context)
     end.
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_PLAN) ->
     crossbar_util:response(kz_services:service_plan_json(cb_context:account_id(Context)), Context);
 validate(Context, ?PATH_AUDIT) ->
@@ -149,12 +153,12 @@ validate(Context0, ?PATH_STATUS) ->
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get(cb_context:context()) -> cb_context:context().
--spec get(cb_context:context(), path_token()) -> cb_context:context().
 
+-spec get(cb_context:context()) -> cb_context:context().
 get(Context) ->
     Context.
 
+-spec get(cb_context:context(), path_token()) -> cb_context:context().
 get(Context, ?PATH_PLAN) ->
     Context;
 get(Context, ?PATH_AUDIT) ->

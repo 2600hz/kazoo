@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%% Pickup a call in the specified group
 %%%
@@ -66,15 +66,15 @@ maybe_allowed_to_intercept(Data, Call) ->
             DeviceId == kapps_call:authorizing_id(Call)
     end.
 
--spec maybe_belongs_to_user(ne_binary(), kapps_call:call()) -> boolean().
+-spec maybe_belongs_to_user(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 maybe_belongs_to_user(UserId, Call) ->
     lists:member(kapps_call:authorizing_id(Call), find_user_endpoints([UserId],[],Call)).
 
--spec maybe_belongs_to_group(ne_binary(), kapps_call:call()) -> boolean().
+-spec maybe_belongs_to_group(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 maybe_belongs_to_group(GroupId, Call) ->
     lists:member(kapps_call:authorizing_id(Call), find_group_endpoints(GroupId, Call)).
 
--spec connect_to_ringing_channel(ne_binaries(), kapps_call:call()) -> 'ok'.
+-spec connect_to_ringing_channel(kz_term:ne_binaries(), kapps_call:call()) -> 'ok'.
 connect_to_ringing_channel(DeviceIds, Call) ->
     case find_channels(DeviceIds) of
         [] -> no_channels_ringing(Call);
@@ -101,12 +101,13 @@ connect_to_a_channel(Channels, Call) ->
             intercept_call(LocalUUID, Call)
     end.
 
--spec sort_channels(kz_json:objects(), ne_binary(), ne_binary()) ->
-                           {ne_binaries(), ne_binaries()}.
--spec sort_channels(kz_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}) ->
-                           {ne_binaries(), ne_binaries()}.
+-spec sort_channels(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 sort_channels(Channels, MyUUID, MyMediaServer) ->
     sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
+
+-spec sort_channels(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary(), {kz_term:ne_binaries(), kz_term:ne_binaries()}) ->
+                           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 sort_channels([], _MyUUID, _MyMediaServer, Acc) -> Acc;
 sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_ne_binary_value(<<"uuid">>, Channel)
@@ -121,8 +122,8 @@ sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
             maybe_add_unanswered_leg(Channels, MyUUID, MyMediaServer, Acc, Channel)
     end.
 
--spec maybe_add_unanswered_leg(kz_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}, kz_json:object()) ->
-                                      {ne_binaries(), ne_binaries()}.
+-spec maybe_add_unanswered_leg(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary(), {kz_term:ne_binaries(), kz_term:ne_binaries()}, kz_json:object()) ->
+                                      {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 maybe_add_unanswered_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
     case kz_json:get_ne_binary_value(<<"node">>, Channel) of
         MyMediaServer ->
@@ -136,14 +137,14 @@ maybe_add_unanswered_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, C
             sort_channels(Channels, MyUUID, MyMediaServer, {Local, maybe_add_other_leg(Channel, Remote)})
     end.
 
--spec maybe_add_other_leg(kz_json:object(), ne_binaries()) -> ne_binaries().
+-spec maybe_add_other_leg(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 maybe_add_other_leg(Channel, Legs) ->
     case kz_json:get_ne_binary_value(<<"other_leg">>, Channel) of
         'undefined' -> Legs;
         Leg -> [Leg | Legs]
     end.
 
--spec intercept_call(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec intercept_call(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 intercept_call(UUID, Call) ->
     _ = kapps_call_command:send_command(pickup_cmd(UUID), Call),
     case wait_for_pickup(Call) of
@@ -155,7 +156,7 @@ intercept_call(UUID, Call) ->
             lager:debug("hangup recv")
     end.
 
--spec pickup_cmd(ne_binary()) -> kz_proplist().
+-spec pickup_cmd(kz_term:ne_binary()) -> kz_term:proplist().
 pickup_cmd(TargetCallId) ->
     [{<<"Application-Name">>, <<"call_pickup">>}
     ,{<<"Target-Call-ID">>, TargetCallId}
@@ -175,7 +176,7 @@ wait_for_pickup(Call) ->
             E
     end.
 
--spec pickup_event(kapps_call:call(), {ne_binary(), ne_binary()}, kz_json:object()) ->
+-spec pickup_event(kapps_call:call(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_json:object()) ->
                           {'error', 'failed' | 'timeout'} |
                           'ok'.
 pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
@@ -187,7 +188,7 @@ pickup_event(Call, _Type, _Evt) ->
     lager:debug("unhandled evt ~p", [_Type]),
     wait_for_pickup(Call).
 
--spec find_channels(ne_binaries()) -> kz_json:objects().
+-spec find_channels(kz_term:ne_binaries()) -> kz_json:objects().
 find_channels(DeviceIds) ->
     lager:debug("finding channels for devices ids ~p", [DeviceIds]),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
@@ -210,7 +211,7 @@ find_channels(DeviceIds) ->
     end.
 
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->
-                                ne_binaries().
+                                kz_term:ne_binaries().
 find_sip_endpoints(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"device_id">>, Data) of
         'undefined' ->
@@ -222,11 +223,11 @@ find_sip_endpoints(Data, Call) ->
         DeviceId -> [DeviceId]
     end.
 
--spec find_sip_users(api_binary(), kapps_call:call()) -> ne_binaries().
+-spec find_sip_users(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 find_sip_users(GroupId, Call) when is_binary(GroupId) ->
     find_group_endpoints(GroupId, Call).
 
--spec find_group_endpoints(ne_binary(), kapps_call:call()) -> ne_binaries().
+-spec find_group_endpoints(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 find_group_endpoints(GroupId, Call) ->
     GroupsJObj = kz_attributes:groups(Call),
     case [kz_json:get_value(<<"value">>, JObj)
@@ -240,8 +241,8 @@ find_group_endpoints(GroupId, Call) ->
             find_endpoints(Ids, GroupEndpoints, Call)
     end.
 
--spec find_endpoints(ne_binaries(), kz_json:object(), kapps_call:call()) ->
-                            ne_binaries().
+-spec find_endpoints(kz_term:ne_binaries(), kz_json:object(), kapps_call:call()) ->
+                            kz_term:ne_binaries().
 find_endpoints(Ids, GroupEndpoints, Call) ->
     {DeviceIds, UserIds} =
         lists:partition(fun(Id) ->
@@ -249,8 +250,8 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
                         end, Ids),
     find_user_endpoints(UserIds, lists:sort(DeviceIds), Call).
 
--spec find_user_endpoints(ne_binaries(), ne_binaries(), kapps_call:call()) ->
-                                 ne_binaries().
+-spec find_user_endpoints(kz_term:ne_binaries(), kz_term:ne_binaries(), kapps_call:call()) ->
+                                 kz_term:ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
 find_user_endpoints(UserIds, DeviceIds, Call) ->
     UserDeviceIds = kz_attributes:owned_by(UserIds, <<"device">>, Call),

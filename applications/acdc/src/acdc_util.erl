@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -33,7 +33,7 @@
                                  ,'usurp_control'
                                  ]).
 
--spec queue_presence_update(ne_binary(), ne_binary()) -> 'ok'.
+-spec queue_presence_update(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 queue_presence_update(AcctId, QueueId) ->
     case kapi_acdc_queue:queue_size(AcctId, QueueId) of
         0 -> presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
@@ -41,17 +41,18 @@ queue_presence_update(AcctId, QueueId) ->
         _N -> lager:debug("queue size for ~s(~s): ~p", [QueueId, AcctId, _N])
     end.
 
--spec agent_presence_update(ne_binary(), ne_binary()) -> 'ok'.
+-spec agent_presence_update(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_presence_update(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID);
         P when is_pid(P) -> presence_update(AcctId, AgentId, ?PRESENCE_GREEN)
     end.
 
--spec presence_update(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
--spec presence_update(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec presence_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 presence_update(AcctId, PresenceId, State) ->
     presence_update(AcctId, PresenceId, State, kz_term:to_hex_binary(crypto:hash('md5', PresenceId))).
+
+-spec presence_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 presence_update(AcctId, PresenceId, State, CallId) ->
     {'ok', AcctDoc} = kz_account:fetch(AcctId),
     To = <<PresenceId/binary, "@", (kz_json:get_value(<<"realm">>, AcctDoc))/binary>>,
@@ -59,7 +60,7 @@ presence_update(AcctId, PresenceId, State, CallId) ->
     lager:debug("sending presence update '~s' to '~s'", [State, To]),
     kapps_call_command:presence(State, To, CallId).
 
--spec send_cdr(ne_binary(), kz_json:object()) -> 'ok'.
+-spec send_cdr(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_cdr(Url, JObj) ->
     send_cdr(Url, JObj, 3).
 send_cdr('undefined', _JObj, _Retries) ->
@@ -80,7 +81,7 @@ send_cdr(Url, JObj, Retries) ->
     end.
 
 %% Returns the list of agents configured for the queue
--spec agents_in_queue(ne_binary(), ne_binary()) -> kz_json:path().
+-spec agents_in_queue(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
 agents_in_queue(AcctDb, QueueId) ->
     case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
         {'ok', []} -> [];
@@ -88,7 +89,7 @@ agents_in_queue(AcctDb, QueueId) ->
         {'ok', As} -> [kz_json:get_value(<<"value">>, A) || A <- As]
     end.
 
--spec agent_devices(ne_binary(), ne_binary()) -> kz_json:objects().
+-spec agent_devices(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 agent_devices(AcctDb, AgentId) ->
     case kz_datamgr:get_results(AcctDb, <<"attributes/owned">>, [{'key', [AgentId, <<"device">>]}
                                                                 ,'include_docs'
@@ -98,38 +99,40 @@ agent_devices(AcctDb, AgentId) ->
         {'error', _} -> []
     end.
 
--spec get_endpoints(kapps_call:call(), ne_binary() | kazoo_data:get_results_return()) ->
+-spec get_endpoints(kapps_call:call(), kz_term:ne_binary() | kazoo_data:get_results_return()) ->
                            kz_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     Params = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     kz_endpoints:by_owner_id(AgentId, Params, Call).
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(api_binary() | {api_binary(), any()} | kapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(kz_term:api_binary() | {kz_term:api_binary(), any()} | kapps_call:call()) -> 'ok'.
 bind_to_call_events(Call) ->
     bind_to_call_events(Call, self()).
 
--spec bind_to_call_events(api_binary() | {api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
+-spec bind_to_call_events(kz_term:api_binary() | {kz_term:api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(kapps_call:call_id(Call), Pid).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), any()} | kapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(kz_term:api_binary() | {kz_term:api_binary(), any()} | kapps_call:call()) -> 'ok'.
 unbind_from_call_events(Call) ->
     unbind_from_call_events(Call, self()).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
+-spec unbind_from_call_events(kz_term:api_binary() | {kz_term:api_binary(), any()} | kapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);
 unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid);
 unbind_from_call_events(Call, Pid) -> unbind_from_call_events(kapps_call:call_id(Call), Pid).
 
--spec proc_id() -> ne_binary().
--spec proc_id(pid()) -> ne_binary().
--spec proc_id(pid(), atom() | ne_binary()) -> ne_binary().
+-spec proc_id() -> kz_term:ne_binary().
 proc_id() -> proc_id(self()).
+
+-spec proc_id(pid()) -> kz_term:ne_binary().
 proc_id(Pid) -> proc_id(Pid, node()).
+
+-spec proc_id(pid(), atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
 proc_id(Pid, Node) -> list_to_binary([kz_term:to_binary(Node), "-", pid_to_list(Pid)]).

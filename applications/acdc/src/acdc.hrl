@@ -36,7 +36,7 @@
 
 -type deliveries() :: [gen_listener:basic_deliver()].
 
--type announcements_pids() :: #{ne_binary() => pid()}.
+-type announcements_pids() :: #{kz_term:ne_binary() => pid()}.
 
 -type fsm_state_name() :: 'wait' | 'sync' | 'ready' | 'ringing' |
                           'ringing_callback' | 'awaiting_callback' |

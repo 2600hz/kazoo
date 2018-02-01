@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handle various migrations that can be performed on accounts
 %%%
@@ -32,30 +32,32 @@ init() ->
     ok.
 
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_MigrationId) ->
     [?HTTP_GET, ?HTTP_POST].
 
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate(Context) ->
     maybe_create_migration_doc(cb_context:account_db(Context)),
     validate(Context, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     load_migration_list(Context);
 
 validate(Context, MigId) ->
     validate(Context, MigId, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate(Context, DocId, ?HTTP_GET) ->
     load_migration_summary(DocId, Context);
 
@@ -248,7 +250,7 @@ mark_migration_complete(MigId, AccountId, Context) ->
     {'ok', _} = kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"migrations_performed">>, NewMigs, Doc)),
     lager:debug("migrating ~s in ~s complete", [MigId, AccountId]).
 
--spec get_user_name(ne_binary(), ne_binary()) -> api_ne_binary().
+-spec get_user_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_user_name(AccountId, UserId) ->
     case kzd_user:fetch(AccountId, UserId) of
         {'ok', UserDoc} -> kzd_user:name(UserDoc);

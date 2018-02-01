@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -52,10 +52,12 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_UUID) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
@@ -68,9 +70,11 @@ allowed_methods(_UUID) ->
 %%    /channels/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_UUID) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -98,10 +102,12 @@ content_types_provided(Context) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_channels(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_channel(Context, Id, cb_context:req_verb(Context)).
 
@@ -151,7 +157,7 @@ put(Context, UUID) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, CallId) ->
     case channels_query(CallId) of
         {'ok', []} ->
@@ -177,7 +183,7 @@ read(Context, CallId) ->
             crossbar_util:response_datastore_timeout(Context)
     end.
 
--spec channels_query(ne_binary()) -> kz_amqp_worker:request_return().
+-spec channels_query(kz_term:ne_binary()) -> kz_amqp_worker:request_return().
 channels_query(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
           ,{<<"Fields">>, <<"all">>}
@@ -190,7 +196,7 @@ channels_query(CallId) ->
                                ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
                                ).
 
--spec find_channel(ne_binary(), ne_binary(), kz_json:objects()) -> api_object().
+-spec find_channel(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> kz_term:api_object().
 find_channel(_AccountId, _CallId, []) -> 'undefined';
 find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
     Channel = kz_json:get_value([<<"Channels">>, CallId], StatusJObj),
@@ -206,7 +212,7 @@ find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 update(Context, CallId) ->
     Context1 = read(Context, CallId),
 
@@ -215,11 +221,11 @@ update(Context, CallId) ->
         'false' -> maybe_execute_command(Context1, CallId)
     end.
 
--spec maybe_execute_command(cb_context:context(), ne_binary()) -> cb_context:context().
--spec maybe_execute_command(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
+-spec maybe_execute_command(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_execute_command(Context, CallId) ->
     maybe_execute_command(Context, CallId, cb_context:req_value(Context, <<"action">>)).
 
+-spec maybe_execute_command(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 maybe_execute_command(Context, Transferor, <<"transfer">>) ->
     maybe_transfer(Context, Transferor);
 maybe_execute_command(Context, CallId, <<"hangup">>) ->
@@ -234,8 +240,7 @@ maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
 
--spec validate_action(cb_context:context(), ne_binary()) -> cb_context:context().
--spec validate_action(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
+-spec validate_action(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_action(Context, CallId) ->
     Ctx = read(Context, CallId),
     case cb_context:has_errors(Ctx) of
@@ -244,6 +249,7 @@ validate_action(Context, CallId) ->
             validate_action(Ctx, CallId, cb_modules_util:get_request_action(Context))
     end.
 
+-spec validate_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 validate_action(Context, _UUID, <<"metaflow">>) ->
     cb_context:validate_request_data(<<"metaflow">>, Context);
 validate_action(Context, _UUID, _Action) ->
@@ -277,11 +283,11 @@ summary(Context) ->
             crossbar_util:response_faulty_request(Context)
     end.
 
--spec device_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec device_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 device_summary(Context, DeviceId) ->
     get_channels(Context, [cb_context:doc(crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION_ANY))], fun kapi_call:publish_query_user_channels_req/1).
 
--spec user_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec user_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 user_summary(Context, UserId) ->
     {Endpoints, Context1} = user_endpoints(Context, UserId),
     case cb_context:has_errors(Context1) of
@@ -300,7 +306,7 @@ maybe_get_user_channels(Context, Endpoints) ->
                         )
     end.
 
--spec user_endpoints(cb_context:context(), ne_binary()) ->
+-spec user_endpoints(cb_context:context(), kz_term:ne_binary()) ->
                             endpoints_return().
 user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
@@ -309,7 +315,7 @@ user_endpoints(Context, UserId) ->
     Context1 = crossbar_doc:load_view(<<"attributes/owned">>, Options, Context),
     {cb_context:doc(Context1), Context1}.
 
--spec group_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec group_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 group_summary(Context, GroupId) ->
     {GroupEndpoints, Context1} = group_endpoints(Context, GroupId),
     case cb_context:has_errors(Context1) of
@@ -321,14 +327,14 @@ group_summary(Context, GroupId) ->
                         )
     end.
 
--spec group_endpoints(cb_context:context(), ne_binary()) -> endpoints_return().
+-spec group_endpoints(cb_context:context(), kz_term:ne_binary()) -> endpoints_return().
 group_endpoints(Context, _GroupId) ->
     kz_json:foldl(fun group_endpoints_fold/3
                  ,{[], Context}
                  ,kz_json:get_value(<<"endpoints">>, cb_context:doc(Context), kz_json:new())
                  ).
 
--spec group_endpoints_fold(ne_binary(), kz_json:object(), endpoints_return()) ->
+-spec group_endpoints_fold(kz_term:ne_binary(), kz_json:object(), endpoints_return()) ->
                                   endpoints_return().
 group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
     case kz_json:get_value(<<"type">>, EndpointData) of
@@ -436,8 +442,7 @@ normalize_channel(JObj) ->
       kz_json:normalize(JObj)
      ).
 
--spec maybe_transfer(cb_context:context(), ne_binary()) -> cb_context:context().
--spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec maybe_transfer(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
     case kz_json:get_value(<<"other_leg_call_id">>, Channel) of
@@ -452,6 +457,7 @@ maybe_transfer(Context, Transferor) ->
             maybe_transfer(Context, Transferor, Transferee)
     end.
 
+-spec maybe_transfer(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor, Transferee) ->
     case cb_context:req_value(Context, <<"target">>) of
         'undefined' ->
@@ -465,7 +471,7 @@ maybe_transfer(Context, Transferor, Transferee) ->
             transfer(Context, Transferor, Transferee, Target)
     end.
 
--spec transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec transfer(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 transfer(Context, Transferor, _Transferee, Target) ->
     TransferType = cb_context:req_value(Context, <<"transfer-type">>, <<"blind">>),
     API = [{<<"Call-ID">>, Transferor}
@@ -483,7 +489,7 @@ transfer(Context, Transferor, _Transferee, Target) ->
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
 
--spec maybe_hangup(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_hangup(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_hangup(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
           ,{<<"Action">>, <<"hangup">>}
@@ -494,7 +500,7 @@ maybe_hangup(Context, CallId) ->
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"hangup initiated">>, Context).
 
--spec maybe_break(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_break(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_break(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
           ,{<<"Action">>, <<"break">>}
@@ -505,7 +511,7 @@ maybe_break(Context, CallId) ->
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"break initiated">>, Context).
 
--spec maybe_callflow(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_callflow(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_callflow(Context, CallId) ->
     CallflowId = cb_context:req_value(Context, <<"id">>),
     API = [{<<"Call-ID">>, CallId}
@@ -523,13 +529,13 @@ maybe_callflow(Context, CallId) ->
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"callflow initiated">>, Context).
 
--spec maybe_intercept(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_intercept(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_intercept(Context, CallId) ->
     TargetType = cb_context:req_value(Context, <<"target_type">>),
     TargetId = cb_context:req_value(Context, <<"target_id">>),
     maybe_intercept(Context, CallId, TargetType, TargetId).
 
--spec maybe_intercept(cb_context:context(), ne_binary(), api_binary(), api_binary()) -> cb_context:context().
+-spec maybe_intercept(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) -> cb_context:context().
 maybe_intercept(Context, _CallId, 'undefined', _TargetId) ->
     cb_context:add_validation_error(<<"target_type">>
                                    ,<<"required">>
@@ -557,7 +563,7 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"intercept initiated">>, Context).
 
--spec get_account_id(cb_context:context()) -> ne_binary().
+-spec get_account_id(cb_context:context()) -> kz_term:ne_binary().
 get_account_id(Context) ->
     case cb_context:account_id(Context) of
         'undefined' ->

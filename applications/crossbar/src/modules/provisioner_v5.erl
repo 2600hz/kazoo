@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules
@@ -26,7 +26,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_device(kz_json:object(), ne_binary()) -> 'ok'.
+-spec update_device(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 update_device(JObj, AuthToken) ->
     AccountId = kz_doc:account_id(JObj),
     Request = device_settings(set_owner(JObj)),
@@ -38,7 +38,7 @@ update_device(JObj, AuthToken) ->
             ,kz_device:mac_address(JObj)
             ).
 
--spec delete_device(kz_json:object(), ne_binary()) -> 'ok'.
+-spec delete_device(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 delete_device(JObj, AuthToken) ->
     send_req('devices_delete'
             ,'undefined'
@@ -89,7 +89,7 @@ get_family(JObj) ->
         Family -> Family
     end.
 
--spec get_model(kz_json:object()) -> ne_binary().
+-spec get_model(kz_json:object()) -> kz_term:ne_binary().
 get_model(JObj) ->
     Family = kz_json:get_binary_value([<<"provision">>, <<"endpoint_model">>], JObj, <<>>),
     case kz_term:to_lower_binary(Family) of
@@ -116,7 +116,7 @@ get_model(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_account(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec update_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 update_account(AccountId, JObj, AuthToken) ->
     send_req('accounts_update'
             ,account_settings(JObj)
@@ -125,7 +125,7 @@ update_account(AccountId, JObj, AuthToken) ->
             ,'undefined'
             ).
 
--spec delete_account(ne_binary(), ne_binary()) -> 'ok'.
+-spec delete_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 delete_account(AccountId, AuthToken) ->
     send_req('accounts_delete'
             ,'undefined'
@@ -133,7 +133,7 @@ delete_account(AccountId, AuthToken) ->
             ,AccountId
             ,'undefined'
             ).
--spec update_account(ne_binary(), ne_binary()) -> 'ok'.
+-spec update_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     case kz_account:fetch(AccountId) of
@@ -154,14 +154,14 @@ account_settings(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_user(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec update_user(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 update_user(AccountId, JObj, AuthToken) ->
     case kz_doc:type(JObj) of
         <<"user">> -> save_user(AccountId, JObj, AuthToken);
         _ -> 'ok' %% Gets rid of VMbox
     end.
 
--spec save_user(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec save_user(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -172,7 +172,7 @@ save_user(AccountId, JObj, AuthToken) ->
               maybe_save_device(Device, Settings, AccountId, AuthToken)
       end, Devices).
 
--spec maybe_save_device(kz_json:object(), kz_json:object(), ne_binary(), ne_binary()) ->
+-spec maybe_save_device(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                'ok' | {'EXIT', _}.
 maybe_save_device(Device, Settings, AccountId, AuthToken) ->
     Request = kz_json:from_list(
@@ -184,7 +184,7 @@ maybe_save_device(Device, Settings, AccountId, AuthToken) ->
                 ]),
     catch save_device(AccountId, Device, Request, AuthToken).
 
--spec save_device(ne_binary(), kz_json:object(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec save_device(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 save_device(AccountId, Device, Request, AuthToken) ->
     case kz_device:mac_address(Device) of
         'undefined' -> 'ok';
@@ -199,7 +199,7 @@ save_device(AccountId, Device, Request, AuthToken) ->
 %% Return the account id a MAC address belongs to, `false' otherwise.
 %% @end
 %%--------------------------------------------------------------------
--spec check_MAC(ne_binary(), ne_binary()) -> ne_binary() | 'false'.
+-spec check_MAC(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary() | 'false'.
 check_MAC(MacAddress, AuthToken) ->
     Headers = req_headers(AuthToken),
     UrlString = req_uri('devices', MacAddress),
@@ -228,7 +228,7 @@ set_owner(JObj) ->
         {'error', _R} -> JObj
     end.
 
--spec get_owner(api_binary(), ne_binary()) ->
+-spec get_owner(kz_term:api_binary(), kz_term:ne_binary()) ->
                        {'ok', kz_json:object()} |
                        {'error', any()}.
 get_owner('undefined', _) -> {'error', 'undefined'};
@@ -258,7 +258,7 @@ settings(JObj) ->
 settings_line_keys(JObj) ->
     settings_line_keys(get_brand(JObj), get_family(JObj)).
 
--spec settings_line_keys(ne_binary(), ne_binary()) -> kz_json:object().
+-spec settings_line_keys(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 settings_line_keys(<<"yealink">>, _) ->
     Props = props:filter_empty(
               [{<<"account">>, <<"1">>}
@@ -327,7 +327,7 @@ settings_feature_keys(JObj) ->
 settings_combo_keys(JObj) ->
     settings_keys(?COMBO_KEYS, <<"combo_keys">>, JObj).
 
--spec settings_keys(kz_json:object(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec settings_keys(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 settings_keys(Assoc, KeyKind, JObj) ->
     FeatureKeys = kz_json:get_value([<<"provision">>, KeyKind], JObj, kz_json:new()),
     Brand = get_brand(JObj),
@@ -372,7 +372,7 @@ get_label(Doc) ->
             <<First/binary, " ", Last/binary>>
     end.
 
--spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary(), kz_json:object()) -> api_object().
+-spec get_feature_key(kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
 get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
@@ -420,11 +420,11 @@ get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
       ,{<<"account">>, get_line_key(Brand, Family)}
       ]).
 
--spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
+-spec get_line_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 get_line_key(<<"yealink">>, _) -> <<"1">>;
 get_line_key(_, _) -> 'undefined'.
 
--spec get_feature_key_type(kz_json:object(), ne_binary(), binary(), binary()) -> api_object().
+-spec get_feature_key_type(kz_json:object(), kz_term:ne_binary(), binary(), binary()) -> kz_term:api_object().
 get_feature_key_type(Assoc, Type, Brand, Family) ->
     kz_json:get_first_defined([[Brand, Family, Type]
                               ,[Brand, <<"_">>, Type]
@@ -432,13 +432,13 @@ get_feature_key_type(Assoc, Type, Brand, Family) ->
                              ,Assoc
                              ).
 
--spec get_user(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                            {'error', any()}.
+-spec get_user(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                                            {'error', any()}.
 get_user(AccountId, UserId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, UserId).
 
--spec maybe_add_feature_key(ne_binary(), api_object(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_feature_key(kz_term:ne_binary(), kz_term:api_object(), kz_json:object()) -> kz_json:object().
 maybe_add_feature_key(_Key, 'undefined', JObj) -> JObj;
 maybe_add_feature_key(Key, FeatureKey, JObj) ->
     kz_json:set_value(Key
@@ -473,7 +473,7 @@ settings_audio(JObj) ->
            ],
     settings_audio(Codecs, Keys, kz_json:new()).
 
--spec settings_audio(ne_binaries(), ne_binaries(), kz_json:object()) -> kz_json:object().
+-spec settings_audio(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
 settings_audio([], _, JObj) -> JObj;
 settings_audio(_, [], JObj) -> JObj;
 settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
@@ -485,7 +485,7 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 %% Send provisioning request
 %% @end
 %%--------------------------------------------------------------------
--spec send_req(atom(), api_object(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_req(atom(), kz_term:api_object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = kz_json:encode(device_payload(JObj)),
     Headers = req_headers(AuthToken),
@@ -513,13 +513,13 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     Resp = kz_http:post(UrlString, Headers, Data),
     handle_resp(Resp, AccountId, AuthToken).
 
--spec req_uri('accounts' | 'devices', ne_binary()) -> iolist().
+-spec req_uri('accounts' | 'devices', kz_term:ne_binary()) -> iolist().
 req_uri('accounts', AccountId) ->
     provisioning_uri([<<"accounts">>, AccountId]);
 req_uri('devices', MacAddress) ->
     provisioning_uri([<<"devices">>, <<"search">>, MacAddress]).
 
--spec req_uri('devices', ne_binary(), ne_binary()) -> iolist().
+-spec req_uri('devices', kz_term:ne_binary(), kz_term:ne_binary()) -> iolist().
 req_uri('devices', AccountId, MACAddress) ->
     EncodedAddress = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
     provisioning_uri([<<"devices">>, AccountId, EncodedAddress]).
@@ -530,7 +530,7 @@ provisioning_uri(ExplodedPath) ->
     Uri = kz_util:uri(Url, ExplodedPath),
     binary:bin_to_list(Uri).
 
--spec account_payload(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec account_payload(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 account_payload(JObj, AccountId) ->
     ResellerId = kz_services:find_reseller_id(AccountId),
     kz_json:from_list(
@@ -549,7 +549,7 @@ device_payload(JObj) ->
       ,{<<"data">>, JObj}
       ]).
 
--spec handle_resp(kz_http:ret(), ne_binary(), ne_binary()) -> 'ok'.
+-spec handle_resp(kz_http:ret(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 handle_resp({'ok', 200, _, Resp}, _, _) ->
     lager:debug("provisioning success ~s", [Resp]);
 handle_resp({'ok', Code, _, Resp}, AccountId, AuthToken) ->
@@ -591,7 +591,7 @@ create_alert(JObj, AccountId, AuthToken) ->
     {ok, _} = kapps_alert:save(AlertJObj),
     ok.
 
--spec req_headers(ne_binary()) -> kz_proplist().
+-spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(Token) ->
     props:filter_undefined(
       [{"Content-Type", "application/json"}

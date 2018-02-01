@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz, INC
+%%% @copyright (C) 2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -33,13 +33,16 @@
         ,grouping_category/1, grouping_category/2
 
         ,all_items_key/0
+
+        ,merge_strategy/1
+        ,merge_priority/1
         ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -type docs() :: [doc()].
--type api_doc() :: api_object().
+-type api_doc() :: kz_term:api_object().
 -export_type([doc/0
              ,api_doc/0
              ,docs/0
@@ -49,28 +52,35 @@
 -define(ACTIVATION_CHARGE, <<"activation_charge">>).
 -define(ALL, <<"_all">>).
 -define(BOOKKEEPERS, <<"bookkeepers">>).
+-define(MERGE, <<"merge">>).
+-define(MERGE_STRATEGY, [?MERGE, <<"strategy">>]).
+-define(MERGE_PRIORITY, [?MERGE, <<"priority">>]).
+
+-define(DEFAULT_MERGE_PRIORITY, 0).
 
 -spec new() -> doc().
 new() ->
     kz_doc:set_type(kz_json:new(), type()).
 
--spec type() -> ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> <<"service_plan">>.
 
--spec all_items_key() -> ne_binary().
+-spec all_items_key() -> kz_term:ne_binary().
 all_items_key() -> ?ALL.
 
--spec account_id(doc()) -> api_binary().
--spec account_id(doc(), Default) -> ne_binary() | Default.
+-spec account_id(doc()) -> kz_term:api_binary().
 account_id(Plan) ->
     account_id(Plan, 'undefined').
+
+-spec account_id(doc(), Default) -> kz_term:ne_binary() | Default.
 account_id(Plan, Default) ->
     kz_json:get_value(<<"account_id">>, Plan, Default).
 
 -spec overrides(doc()) -> kz_json:object().
--spec overrides(doc(), Default) -> kz_json:object() | Default.
 overrides(Plan) ->
     overrides(Plan, kz_json:new()).
+
+-spec overrides(doc(), Default) -> kz_json:object() | Default.
 overrides(Plan, Default) ->
     kz_json:get_json_value(<<"overrides">>, Plan, Default).
 
@@ -78,38 +88,41 @@ overrides(Plan, Default) ->
 merge_overrides(Plan, Overrides) ->
     kz_json:merge(Plan, kz_json:from_list([{?PLAN, Overrides}])).
 
--spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> float().
--spec item_activation_charge(doc(), ne_binary(), ne_binary(), Default) -> float() | Default.
+-spec item_activation_charge(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> float().
 item_activation_charge(Plan, Category, Item) ->
     item_activation_charge(Plan, Category, Item, 0.0).
+
+-spec item_activation_charge(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> float() | Default.
 item_activation_charge(Plan, Category, Item, Default) ->
     Path = [?PLAN, Category, Item],
     ItemConfig = kz_json:get_json_value(Path, Plan, kz_json:new()),
     kzd_item_plan:activation_charge(ItemConfig, Default).
 
--spec category_activation_charge(doc(), ne_binary()) -> float().
--spec category_activation_charge(doc(), ne_binary(), Default) -> float() | Default.
+-spec category_activation_charge(doc(), kz_term:ne_binary()) -> float().
 category_activation_charge(Plan, Category) ->
     category_activation_charge(Plan, Category, 0.0).
+
+-spec category_activation_charge(doc(), kz_term:ne_binary(), Default) -> float() | Default.
 category_activation_charge(Plan, Category, Default) ->
     item_activation_charge(Plan, Category, ?ALL, Default).
 
--spec categories(doc()) -> ne_binaries().
+-spec categories(doc()) -> kz_term:ne_binaries().
 categories(Plan) ->
     kz_json:get_keys(?PLAN, Plan).
 
--spec category(doc(), ne_binary()) -> api_object().
--spec category(doc(), ne_binary(), Default) -> api_object() | Default.
+-spec category(doc(), kz_term:ne_binary()) -> kz_term:api_object().
 category(Plan, CategoryId) ->
     category(Plan, CategoryId, 'undefined').
+
+-spec category(doc(), kz_term:ne_binary(), Default) -> kz_term:api_object() | Default.
 category(Plan, CategoryId, Default) ->
     kz_json:get_json_value([?PLAN, CategoryId], Plan, Default).
 
--spec items(doc(), ne_binary()) -> ne_binaries().
+-spec items(doc(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 items(Plan, Category) ->
     kz_json:get_keys([?PLAN, Category], Plan).
 
--spec item(doc(), ne_binary(), ne_binary()) -> api_object().
+-spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 item(Plan, CategoryId, ItemId) ->
     kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan).
 
@@ -117,18 +130,19 @@ item(Plan, CategoryId, ItemId) ->
 bookkeepers(Plan) ->
     kz_json:get_json_value(?BOOKKEEPERS, Plan, kz_json:new()).
 
--spec bookkeeper_ids(doc()) -> ne_binaries().
+-spec bookkeeper_ids(doc()) -> kz_term:ne_binaries().
 bookkeeper_ids(Plan) ->
     kz_json:get_keys(?BOOKKEEPERS, Plan).
 
--spec bookkeeper(doc(), ne_binary()) -> kz_json:object().
+-spec bookkeeper(doc(), kz_term:ne_binary()) -> kz_json:object().
 bookkeeper(Plan, BookkeeperId) ->
     kz_json:get_json_value(BookkeeperId, bookkeepers(Plan), kz_json:new()).
 
--spec item_minimum(doc(), ne_binary(), ne_binary()) -> integer().
--spec item_minimum(doc(), ne_binary(), ne_binary(), Default) -> integer() | Default.
+-spec item_minimum(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
 item_minimum(Plan, CategoryId, ItemId) ->
     item_minimum(Plan, CategoryId, ItemId, 0).
+
+-spec item_minimum(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> integer() | Default.
 item_minimum(Plan, CategoryId, ItemId, Default) ->
     kzd_item_plan:minimum(
       kz_json:get_json_value([?PLAN, CategoryId, ItemId]
@@ -138,7 +152,7 @@ item_minimum(Plan, CategoryId, ItemId, Default) ->
                          ,Default
      ).
 
--spec item_name(doc(), ne_binary(), ne_binary()) -> ne_binary().
+-spec item_name(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 item_name(Plan, CategoryId, ItemId) ->
     kzd_item_plan:name(
       kz_json:get_json_value(
@@ -148,12 +162,13 @@ item_name(Plan, CategoryId, ItemId) ->
        )
      ).
 
--spec item_exceptions(doc(), ne_binary(), ne_binary()) ->
-                             ne_binaries().
--spec item_exceptions(doc(), ne_binary(), ne_binary(), ne_binaries()) ->
-                             ne_binaries().
+-spec item_exceptions(doc(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                             kz_term:ne_binaries().
 item_exceptions(Plan, CategoryId, ItemId) ->
     item_exceptions(Plan, CategoryId, ItemId, []).
+
+-spec item_exceptions(doc(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
+                             kz_term:ne_binaries().
 item_exceptions(Plan, CategoryId, ItemId, Default) ->
     Item = kz_json:get_json_value([?PLAN, CategoryId, ItemId]
                                  ,Plan
@@ -161,24 +176,27 @@ item_exceptions(Plan, CategoryId, ItemId, Default) ->
                                  ),
     kzd_item_plan:exceptions(Item, Default).
 
--spec item_plan(doc(), ne_binary(), ne_binary()) -> kz_json:object().
--spec item_plan(doc(), ne_binary(), ne_binary(), Default) -> kz_json:object() | Default.
+-spec item_plan(doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 item_plan(Plan, CategoryId, ItemId) ->
     item_plan(Plan, CategoryId, ItemId, kz_json:new()).
+
+-spec item_plan(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 item_plan(Plan, CategoryId, ItemId, Default) ->
     kz_json:get_json_value([?PLAN, CategoryId, ItemId], Plan, Default).
 
--spec category_plan(doc(), ne_binary()) -> kz_json:object().
--spec category_plan(doc(), ne_binary(), Default) -> kz_json:object() | Default.
+-spec category_plan(doc(), kz_term:ne_binary()) -> kz_json:object().
 category_plan(Plan, CategoryId) ->
     category_plan(Plan, CategoryId, kz_json:new()).
+
+-spec category_plan(doc(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 category_plan(Plan, CategoryId, Default) ->
     item_plan(Plan, CategoryId, ?ALL, Default).
 
 -spec plan(doc()) -> kz_json:object().
--spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Plan) ->
     plan(Plan, kz_json:new()).
+
+-spec plan(doc(), Default) -> kz_json:object() | Default.
 plan(Plan, Default) ->
     kz_json:get_json_value(?PLAN, Plan, Default).
 
@@ -186,9 +204,18 @@ plan(Plan, Default) ->
 set_plan(Plan, P) ->
     kz_json:set_value(?PLAN, P, Plan).
 
--spec grouping_category(doc()) -> api_ne_binary().
--spec grouping_category(doc(), Default) -> ne_binary() | Default.
+-spec grouping_category(doc()) -> kz_term:api_ne_binary().
 grouping_category(ServicePlan) ->
     grouping_category(ServicePlan, 'undefined').
+
+-spec grouping_category(doc(), Default) -> kz_term:ne_binary() | Default.
 grouping_category(ServicePlan, Default) ->
     kz_json:get_ne_binary_value(<<"category">>, ServicePlan, Default).
+
+-spec merge_strategy(doc()) -> kz_term:ne_binary().
+merge_strategy(ServicePlan) ->
+    kz_json:get_ne_binary_value(?MERGE_STRATEGY, ServicePlan).
+
+-spec merge_priority(doc()) -> kz_term:ne_binary().
+merge_priority(ServicePlan) ->
+    kz_json:get_integer_value(?MERGE_PRIORITY, ServicePlan, ?DEFAULT_MERGE_PRIORITY).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Transfers caller to the extension extracted in the regex
 %%% Data = {
@@ -57,21 +57,21 @@
 -define(WSD_STOP(), ?WSD_ENABLED
         andalso webseq:stop(?WSD_ID)).
 
--record(state, {transferor :: api_ne_binary()
-               ,transferee :: api_ne_binary()
-               ,target :: api_ne_binary() %% this is the real b-leg, if any
-               ,target_a_leg :: api_ne_binary() %% loopback-a
-               ,target_b_leg :: api_ne_binary() %% loopback-b
-               ,target_legs = [] :: ne_binaries()
+-record(state, {transferor :: kz_term:api_ne_binary()
+               ,transferee :: kz_term:api_ne_binary()
+               ,target :: kz_term:api_ne_binary() %% this is the real b-leg, if any
+               ,target_a_leg :: kz_term:api_ne_binary() %% loopback-a
+               ,target_b_leg :: kz_term:api_ne_binary() %% loopback-b
+               ,target_legs = [] :: kz_term:ne_binaries()
                ,call :: kapps_call:call() | 'undefined'
                ,target_call = kapps_call:new() :: kapps_call:call()
-               ,takeback_dtmf :: api_ne_binary()
+               ,takeback_dtmf :: kz_term:api_ne_binary()
                ,transferor_dtmf = <<>> :: binary()
-               ,ringback :: api_ne_binary()
-               ,moh :: api_ne_binary()
-               ,extension :: api_ne_binary()
-               ,purgatory_ref :: api_reference()
-               ,event_node :: api_ne_binary()
+               ,ringback :: kz_term:api_ne_binary()
+               ,moh :: kz_term:api_ne_binary()
+               ,extension :: kz_term:api_ne_binary()
+               ,purgatory_ref :: kz_term:api_reference()
+               ,event_node :: kz_term:api_ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -144,11 +144,11 @@ handle(Data, Call) ->
             kz_util:log_stacktrace(ST)
     end.
 
--spec get_extension(ne_binaries() | ne_binary()) -> ne_binary().
+-spec get_extension(kz_term:ne_binaries() | kz_term:ne_binary()) -> kz_term:ne_binary().
 get_extension([Ext|_]) -> Ext;
 get_extension(<<_/binary>> = Ext) -> Ext.
 
--spec pre_originate(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec pre_originate(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 pre_originate('cast', ?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
              ,#state{call=Call
                     ,moh=MOH
@@ -185,7 +185,7 @@ pre_originate('cast', ?EVENT(_CallId, _EventName, _Evt), State) ->
 pre_originate('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec attended_wait(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec attended_wait(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 attended_wait('cast', ?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_wait', State);
 attended_wait('cast', ?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
@@ -451,7 +451,7 @@ attended_wait('cast', Msg, State) ->
 attended_wait('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec partial_wait(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec partial_wait(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 partial_wait('cast', ?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
             ,#state{transferee=Transferee
                    ,target=Target
@@ -603,7 +603,7 @@ partial_wait('cast', Msg, State) ->
 partial_wait('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec attended_answer(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec attended_answer(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 attended_answer('cast', ?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_answer', State);
 attended_answer('cast', ?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
@@ -717,7 +717,7 @@ attended_answer('cast', Msg, State) ->
 attended_answer('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec finished(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec finished(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 finished('cast', ?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
         ,#state{transferee=_Transferee
                ,target=Target
@@ -815,7 +815,7 @@ finished('cast', _Msg, State) ->
 finished('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec takeback(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec takeback(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 takeback('cast', ?EVENT(Transferor, <<"CHANNEL_UNBRIDGE">>, _Evt)
         ,#state{transferor=Transferor
                ,call=Call
@@ -934,7 +934,7 @@ takeback('cast', _Msg, State) ->
 takeback('info', Evt, State) ->
     handle_info(Evt, ?FUNCTION_NAME, State).
 
--spec handle_info(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec handle_info(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_info({'amqp_msg', JObj}, StateName, #state{event_node='undefined'}=State) ->
     send_event(JObj),
     {'next_state', StateName, State};
@@ -1017,15 +1017,15 @@ init(_) -> {'ok', 'attended_wait', #state{}}.
 callback_mode() ->
     'state_functions'.
 
--spec add_transferor_bindings(ne_binary()) -> 'ok'.
+-spec add_transferor_bindings(kz_term:ne_binary()) -> 'ok'.
 add_transferor_bindings(CallId) ->
     konami_event_listener:add_call_binding(CallId, ?TRANSFEROR_CALL_EVENTS).
 
--spec add_transferee_bindings(ne_binary()) -> 'ok'.
+-spec add_transferee_bindings(kz_term:ne_binary()) -> 'ok'.
 add_transferee_bindings(CallId) ->
     konami_event_listener:add_call_binding(CallId, ?TRANSFEREE_CALL_EVENTS).
 
--spec originate_to_extension(ne_binary(), ne_binary(), kapps_call:call()) -> ne_binary().
+-spec originate_to_extension(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 originate_to_extension(Extension, TransferorLeg, Call) ->
     MsgId = kz_binary:rand_hex(4),
     CallerIdNumber = caller_id_number(Call, TransferorLeg),
@@ -1085,31 +1085,31 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
     konami_event_listener:originate(Request),
     TargetCallId.
 
--spec create_call_id() -> ne_binary().
+-spec create_call_id() -> kz_term:ne_binary().
 create_call_id() ->
     TargetCallId = <<"konami-transfer-", (kz_binary:rand_hex(4))/binary>>,
     bind_target_call_events(TargetCallId),
     TargetCallId.
 
--spec bind_target_call_events(ne_binary()) -> 'ok'.
+-spec bind_target_call_events(kz_term:ne_binary()) -> 'ok'.
 bind_target_call_events(CallId) ->
     konami_event_listener:add_call_binding(CallId, ?TARGET_CALL_EVENTS).
 
--spec caller_id_name(kapps_call:call(), ne_binary()) -> ne_binary().
+-spec caller_id_name(kapps_call:call(), kz_term:ne_binary()) -> kz_term:ne_binary().
 caller_id_name(Call, CallerLeg) ->
     case kapps_call:call_id(Call) of
         CallerLeg -> kapps_call:caller_id_name(Call);
         _CalleeLeg -> kapps_call:callee_id_name(Call)
     end.
 
--spec caller_id_number(kapps_call:call(), ne_binary()) -> ne_binary().
+-spec caller_id_number(kapps_call:call(), kz_term:ne_binary()) -> kz_term:ne_binary().
 caller_id_number(Call, CallerLeg) ->
     case kapps_call:call_id_direct(Call) of
         CallerLeg -> kapps_call:caller_id_number(Call);
         _CalleeLeg -> kapps_call:callee_id_number(Call)
     end.
 
--spec connect_transferee_to_target(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec connect_transferee_to_target(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 connect_transferee_to_target(Target, Call) ->
     issue_transferee_event(Target, Call),
     Flags = [{<<"Target-Call-ID">>, Target}
@@ -1123,7 +1123,7 @@ connect_transferee_to_target(Target, Call) ->
     konami_util:listen_on_other_leg(Call, ?TARGET_CALL_EVENTS),
     connect(Flags, Call).
 
--spec connect_transferor_to_target(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec connect_transferor_to_target(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 connect_transferor_to_target(Transferor, TargetCall) ->
     Flags = [{<<"Target-Call-ID">>, Transferor}
             ,{<<"Continue-On-Fail">>, 'true'}
@@ -1153,7 +1153,7 @@ connect_to_transferee(Call) ->
                 ]),
     connect(Flags, Call).
 
--spec connect(kz_proplist(), kapps_call:call()) -> 'ok'.
+-spec connect(kz_term:proplist(), kapps_call:call()) -> 'ok'.
 connect(Flags, Call) ->
     Command = [{<<"Application-Name">>, <<"connect_leg">>}
               ,{<<"Call-ID">>, kapps_call:call_id(Call)}
@@ -1196,9 +1196,10 @@ handle_transferor_dtmf(Evt
     end.
 
 -spec unbridge(kapps_call:call()) -> 'ok'.
--spec unbridge(kapps_call:call(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
     unbridge(Call, kapps_call:call_id(Call)).
+
+-spec unbridge(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 unbridge(Call, CallId) ->
     Command = [{<<"Application-Name">>, <<"unbridge">>}
               ,{<<"Insert-At">>, <<"now">>}
@@ -1229,7 +1230,7 @@ pattern_builder_regex(DefaultJObj) ->
             pattern_builder_regex(DefaultJObj)
     end.
 
--spec pattern_builder_check(api_object()) -> api_object().
+-spec pattern_builder_check(kz_term:api_object()) -> kz_term:api_object().
 pattern_builder_check('undefined') ->
     builder_takeback_dtmf(kz_json:new(), 'undefined');
 pattern_builder_check(PatternJObj) ->
@@ -1257,7 +1258,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
--spec number_builder_check(api_object()) -> api_object().
+-spec number_builder_check(kz_term:api_object()) -> kz_term:api_object().
 number_builder_check('undefined') ->
     builder_target(kz_json:new());
 number_builder_check(NumberJObj) ->
@@ -1271,10 +1272,10 @@ number_builder_check(NumberJObj) ->
                         ,fun builder_target/1
                         ).
 
--type check_fun() :: fun((api_object()) -> api_object()).
+-type check_fun() :: fun((kz_term:api_object()) -> kz_term:api_object()).
 -type build_fun() :: fun((kz_json:object()) -> kz_json:object()).
 
--spec builder_check_option(kz_json:object(), string(), check_fun(), build_fun()) -> api_object().
+-spec builder_check_option(kz_json:object(), string(), check_fun(), build_fun()) -> kz_term:api_object().
 builder_check_option(JObj, "e", _CheckFun, BuilderFun) ->
     BuilderFun(JObj);
 builder_check_option(_JObj, "d", _CheckFun, _BuilderFun) ->
@@ -1288,17 +1289,17 @@ builder_target(JObj) ->
     {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
     builder_takeback_dtmf(JObj, kz_term:to_binary(Target)).
 
--spec builder_takeback_dtmf(kz_json:object(), api_binary()) -> kz_json:object().
+-spec builder_takeback_dtmf(kz_json:object(), kz_term:api_binary()) -> kz_json:object().
 builder_takeback_dtmf(JObj, Target) ->
     {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
     builder_moh(JObj, Target, kz_term:to_binary(Takeback)).
 
--spec builder_moh(kz_json:object(), api_binary(), ne_binary()) -> kz_json:object().
+-spec builder_moh(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
 builder_moh(JObj, Target, Takeback) ->
     {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
     metaflow_jobj(JObj, Target, Takeback, kz_term:to_binary(MOH)).
 
--spec metaflow_jobj(kz_json:object(), api_binary(), api_binary(), api_binary()) -> kz_json:object().
+-spec metaflow_jobj(kz_json:object(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> kz_json:object().
 metaflow_jobj(JObj, Target, Takeback, <<"h">>) ->
     io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
     io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
@@ -1309,7 +1310,7 @@ metaflow_jobj(JObj, Target, Takeback, MOH) ->
                        ,{<<"data">>, transfer_data(Target, Takeback, MOH)}
                        ], JObj).
 
--spec transfer_data(api_binary(), api_binary(), api_binary()) -> kz_json:object().
+-spec transfer_data(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> kz_json:object().
 transfer_data(Target, Takeback, <<"n">>) ->
     transfer_data(Target, Takeback, 'undefined');
 transfer_data(Target, <<"n">>, MOH) ->
@@ -1321,18 +1322,19 @@ transfer_data(Target, Takeback, MOH) ->
       ,{<<"moh">>, MOH}
       ]).
 
--spec find_moh(kz_json:object(), kapps_call:call()) -> api_binary().
--spec find_moh(kapps_call:call()) -> api_binary().
+-spec find_moh(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
 find_moh(Data, Call) ->
     case kz_json:get_value(<<"moh">>, Data) of
         'undefined' -> find_moh(Call);
         MOH -> MOH
     end.
+
+-spec find_moh(kapps_call:call()) -> kz_term:api_binary().
 find_moh(Call) ->
     {'ok', JObj} = kz_account:fetch(kapps_call:account_id(Call)),
     kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj).
 
--spec issue_transferee_event(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec issue_transferee_event(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 issue_transferee_event(Target, Call) ->
     kapi_call:publish_event(
       [{<<"Event-Name">>, <<"CHANNEL_TRANSFEREE">>}
@@ -1353,8 +1355,8 @@ issue_transferee_event(Target, Call) ->
 %% We need to figure out which kapps call to issue the connect_leg against
 %% When the A-leg is the transferor, its ecallmgr control will be down at this
 %% point so use Target's call record; otherwise use the A-leg's.
--spec how_to_transfer(kapps_call:call(), kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
-                             {ne_binary(), kapps_call:call()}.
+-spec how_to_transfer(kapps_call:call(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                             {kz_term:ne_binary(), kapps_call:call()}.
 how_to_transfer(OriginalCall, TargetCall, Transferor, Target, Transferee) ->
     case kapps_call:call_id(OriginalCall) of
         Transferor ->
@@ -1371,23 +1373,23 @@ hangup_target(Call) ->
     ?WSD_NOTE(kapps_call:call_id(Call), 'right', <<"hangup sent">>),
     kapps_call_command:hangup(Call).
 
--spec to_tonestream(api_binary()) -> api_binary().
+-spec to_tonestream(kz_term:api_binary()) -> kz_term:api_binary().
 to_tonestream('undefined') -> 'undefined';
 to_tonestream(<<"tone_stream://", _/binary>> = TS) -> <<TS/binary, ";loops=-1">>;
 to_tonestream(Ringback) -> <<"tone_stream://", Ringback/binary, ";loops=-1">>.
 
--spec maybe_start_transferor_ringback(kapps_call:call(), ne_binary(), api_binary()) -> 'ok'.
+-spec maybe_start_transferor_ringback(kapps_call:call(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 maybe_start_transferor_ringback(_Call, _Transferor, 'undefined') -> 'ok';
 maybe_start_transferor_ringback(Call, Transferor, Ringback) ->
     Command = kapps_call_command:play_command(Ringback, Transferor),
     lager:debug("playing ringback on ~s to ~s", [Transferor, Ringback]),
     kapps_call_command:send_command(kz_json:set_values([{<<"Insert-At">>, <<"now">>}], Command), Call).
 
--spec maybe_cancel_timer(api_reference()) -> 'ok'.
+-spec maybe_cancel_timer(kz_term:api_reference()) -> 'ok'.
 maybe_cancel_timer('undefined') -> 'ok';
 maybe_cancel_timer(Ref) -> erlang:cancel_timer(Ref).
 
--spec suppress_event(kz_json:object(), api_binary(), ne_binary()) -> 'ok'.
+-spec suppress_event(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary()) -> 'ok'.
 suppress_event(JObj, _EventNode, _OtherNode) ->
     lager:debug("supressing event ~s from ~s (we want events from ~s): ~s"
                ,[kz_call_event:event_name(JObj)
@@ -1397,11 +1399,12 @@ suppress_event(JObj, _EventNode, _OtherNode) ->
                 ]).
 
 -type connect_to() :: 'transferee' | 'transferor'.
--spec handle_real_target(state(), ne_binary()) -> state().
--spec handle_real_target(state(), ne_binary(), connect_to()) -> state().
+
+-spec handle_real_target(state(), kz_term:ne_binary()) -> state().
 handle_real_target(State, ReplacementId) ->
     handle_real_target(State, ReplacementId, 'transferor').
 
+-spec handle_real_target(state(), kz_term:ne_binary(), connect_to()) -> state().
 handle_real_target(#state{target_a_leg=TargetA
                          ,target_call=TargetCall
                          ,purgatory_ref=Ref

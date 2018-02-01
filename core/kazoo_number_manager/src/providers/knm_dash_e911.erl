@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle e911 provisioning
@@ -41,14 +41,15 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
+
 -spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
--spec save(knm_number:knm_number(), api_binary()) ->
                   knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
+-spec save(knm_number:knm_number(), kz_term:api_binary()) ->
+                  knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -152,12 +153,13 @@ maybe_update_e911(Number, Address) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
--spec update_e911(knm_number:knm_number(), kz_json:object(), boolean()) -> kz_json:object().
 update_e911(Number, Address) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     update_e911(Number, Address, DryRun).
 
+-spec update_e911(knm_number:knm_number(), kz_json:object(), boolean()) -> kz_json:object().
 update_e911(_Number, Address, 'true') -> Address;
 update_e911(Number, Address, 'false') ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
@@ -205,12 +207,13 @@ is_valid_location(Location) ->
     end.
 
 %% @private
--spec parse_response(xml_el()) -> location_response().
--spec parse_response(ne_binary(), xml_el()) -> location_response().
+
+-spec parse_response(kz_types:xml_el()) -> location_response().
 parse_response(Response) ->
     StatusCode = kz_xml:get_value("//Location/status/code/text()", Response),
     parse_response(StatusCode, Response).
 
+-spec parse_response(kz_term:ne_binary(), kz_types:xml_el()) -> location_response().
 parse_response(<<"GEOCODED">>, Response) ->
     {'geocoded',    location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
 parse_response(<<"PROVISIONED">>, Response) ->
@@ -228,7 +231,7 @@ parse_response(Else, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location(ne_binary(), [xml_location()], ne_binary()) ->
+-spec add_location(kz_term:ne_binary(), [xml_location()], kz_term:ne_binary()) ->
                           {'geocoded', kz_json:object()} |
                           {'provisioned', kz_json:object()} |
                           {'error', binary()}.
@@ -250,7 +253,7 @@ add_location(Number, Location, CallerName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec provision_location(ne_binary()) -> api_binary().
+-spec provision_location(kz_term:ne_binary()) -> kz_term:api_binary().
 provision_location(LocationId) ->
     Props = [{'locationid', [kz_term:to_list(LocationId)]}],
     case emergency_provisioning_request('provisionLocation', Props) of
@@ -265,7 +268,7 @@ provision_location(LocationId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number(knm_number:knm_number()) -> api_binary().
+-spec remove_number(knm_number:knm_number()) -> kz_term:api_binary().
 remove_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("removing from upstream '~s'", [Num]),
@@ -308,7 +311,7 @@ remove_number(Number) ->
 -type request_props() :: [request_prop()].
 
 -spec emergency_provisioning_request(atom(), request_props()) ->
-                                            {'ok', xml_el()} |
+                                            {'ok', kz_types:xml_el()} |
                                             {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?EMERG_URL, "/", kz_term:to_lower_binary(Verb)]),
@@ -396,7 +399,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address(xml_el() | xml_els()) -> kz_json:object() | kz_json:objects().
+-spec location_xml_to_json_address(kz_types:xml_el() | kz_types:xml_els()) -> kz_json:object() | kz_json:objects().
 location_xml_to_json_address([]) ->
     kz_json:new();
 location_xml_to_json_address([Xml]) ->

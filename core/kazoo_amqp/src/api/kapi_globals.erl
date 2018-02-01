@@ -1,5 +1,5 @@
 %%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Globals API
 %%% @end
@@ -47,11 +47,11 @@
 -type state() :: 'none' | 'local' | 'pending' | 'remote' | 'registered'.
 -export_type([state/0]).
 
--spec encode(any()) -> ne_binary().
+-spec encode(any()) -> kz_term:ne_binary().
 encode(Term) ->
     base64:encode(term_to_binary(Term)).
 
--spec decode(api_binary()) -> any().
+-spec decode(kz_term:api_binary()) -> any().
 decode('undefined') -> 'undefined';
 decode(Bin) ->
     binary_to_term(base64:decode(Bin)).
@@ -75,18 +75,18 @@ maybe_decode(MaybeEncoded) ->
         'error':{'badarg', _} -> MaybeEncoded
     end.
 
--spec encode_req(kz_json:object() | kz_proplist()) -> any().
+-spec encode_req(kz_json:object() | kz_term:proplist()) -> any().
 encode_req(Req) ->
     set_name(Req, name(Req)).
 
--spec name(kz_json:object() | kz_proplist()) -> any().
+-spec name(kz_json:object() | kz_term:proplist()) -> any().
 name(Props)
   when is_list(Props) ->
     maybe_decode(props:get_value(<<"Name">>, Props));
 name(JObj) ->
     maybe_decode(kz_json:get_value(<<"Name">>, JObj)).
 
--spec set_name(api_terms(), any()) -> api_terms().
+-spec set_name(kz_term:api_terms(), any()) -> kz_term:api_terms().
 set_name(Req, 'undefined') -> Req;
 set_name(Props, Name)
   when is_list(Props) ->
@@ -94,11 +94,11 @@ set_name(Props, Name)
 set_name(JObj, Name) ->
     kz_json:set_value(<<"Name">>, maybe_encode(Name), JObj).
 
--spec message(kz_json:object()) -> ne_binary().
+-spec message(kz_json:object()) -> kz_term:ne_binary().
 message(JObj) ->
     maybe_decode(kz_json:get_value(<<"Message">>, JObj)).
 
--spec reply(kz_json:object()) -> ne_binary().
+-spec reply(kz_json:object()) -> kz_term:ne_binary().
 reply(JObj) ->
     maybe_decode(kz_json:get_value(<<"Reply">>, JObj)).
 
@@ -203,7 +203,7 @@ routing_key(Event, Name) ->
                           ]).
 -define(REPLY_REQ_TYPES, []).
 
--spec register(api_terms()) -> api_formatter_return().
+-spec register(kz_term:api_terms()) -> api_formatter_return().
 register(Prop) when is_list(Prop) ->
     case register_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REGISTER_REQ_HEADERS, ?OPTIONAL_REGISTER_REQ_HEADERS);
@@ -212,13 +212,13 @@ register(Prop) when is_list(Prop) ->
 register(JObj) ->
     register(kz_json:to_proplist(JObj)).
 
--spec register_v(api_terms()) -> boolean().
+-spec register_v(kz_term:api_terms()) -> boolean().
 register_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REGISTER_REQ_HEADERS, ?REGISTER_REQ_VALUES, ?REGISTER_REQ_TYPES);
 register_v(JObj) ->
     register_v(kz_json:to_proplist(JObj)).
 
--spec register_resp(api_terms()) -> api_formatter_return().
+-spec register_resp(kz_term:api_terms()) -> api_formatter_return().
 register_resp(Prop) when is_list(Prop) ->
     case register_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REGISTER_RESP_HEADERS, ?OPTIONAL_REGISTER_RESP_HEADERS);
@@ -227,13 +227,13 @@ register_resp(Prop) when is_list(Prop) ->
 register_resp(JObj) ->
     register_resp(kz_json:to_proplist(JObj)).
 
--spec register_resp_v(api_terms()) -> boolean().
+-spec register_resp_v(kz_term:api_terms()) -> boolean().
 register_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REGISTER_RESP_HEADERS, ?REGISTER_RESP_VALUES, ?REGISTER_RESP_TYPES);
 register_resp_v(JObj) ->
     register_resp_v(kz_json:to_proplist(JObj)).
 
--spec unregister(api_terms()) -> api_formatter_return().
+-spec unregister(kz_term:api_terms()) -> api_formatter_return().
 unregister(Prop) when is_list(Prop) ->
     case unregister_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?UNREGISTER_REQ_HEADERS, ?OPTIONAL_UNREGISTER_REQ_HEADERS);
@@ -242,13 +242,13 @@ unregister(Prop) when is_list(Prop) ->
 unregister(JObj) ->
     unregister(kz_json:to_proplist(JObj)).
 
--spec unregister_v(api_terms()) -> boolean().
+-spec unregister_v(kz_term:api_terms()) -> boolean().
 unregister_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UNREGISTER_REQ_HEADERS, ?UNREGISTER_REQ_VALUES, ?UNREGISTER_REQ_TYPES);
 unregister_v(JObj) ->
     unregister_v(kz_json:to_proplist(JObj)).
 
--spec call(api_terms()) -> api_formatter_return().
+-spec call(kz_term:api_terms()) -> api_formatter_return().
 call(Prop) when is_list(Prop) ->
     case call_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CALL_REQ_HEADERS, ?OPTIONAL_CALL_REQ_HEADERS);
@@ -257,13 +257,13 @@ call(Prop) when is_list(Prop) ->
 call(JObj) ->
     call(kz_json:to_proplist(JObj)).
 
--spec call_v(api_terms()) -> boolean().
+-spec call_v(kz_term:api_terms()) -> boolean().
 call_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CALL_REQ_HEADERS, ?CALL_REQ_VALUES, ?CALL_REQ_TYPES);
 call_v(JObj) ->
     call_v(kz_json:to_proplist(JObj)).
 
--spec send(api_terms()) -> api_formatter_return().
+-spec send(kz_term:api_terms()) -> api_formatter_return().
 send(Prop) when is_list(Prop) ->
     case send_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SEND_REQ_HEADERS, ?OPTIONAL_SEND_REQ_HEADERS);
@@ -272,13 +272,13 @@ send(Prop) when is_list(Prop) ->
 send(JObj) ->
     send(kz_json:to_proplist(JObj)).
 
--spec send_v(api_terms()) -> boolean().
+-spec send_v(kz_term:api_terms()) -> boolean().
 send_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SEND_REQ_HEADERS, ?SEND_REQ_VALUES, ?SEND_REQ_TYPES);
 send_v(JObj) ->
     send_v(kz_json:to_proplist(JObj)).
 
--spec reply_msg(api_terms()) -> api_formatter_return().
+-spec reply_msg(kz_term:api_terms()) -> api_formatter_return().
 reply_msg(Prop) when is_list(Prop) ->
     case reply_msg_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REPLY_REQ_HEADERS, ?OPTIONAL_REPLY_REQ_HEADERS);
@@ -287,13 +287,13 @@ reply_msg(Prop) when is_list(Prop) ->
 reply_msg(JObj) ->
     reply_msg(kz_json:to_proplist(JObj)).
 
--spec reply_msg_v(api_terms()) -> boolean().
+-spec reply_msg_v(kz_term:api_terms()) -> boolean().
 reply_msg_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REPLY_REQ_HEADERS, ?REPLY_REQ_VALUES, ?REPLY_REQ_TYPES);
 reply_msg_v(JObj) ->
     reply_msg_v(kz_json:to_proplist(JObj)).
 
--spec query(api_terms()) -> api_formatter_return().
+-spec query(kz_term:api_terms()) -> api_formatter_return().
 query(Prop) when is_list(Prop) ->
     case query_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?QUERY_REQ_HEADERS, ?OPTIONAL_QUERY_REQ_HEADERS);
@@ -302,13 +302,13 @@ query(Prop) when is_list(Prop) ->
 query(JObj) ->
     query(kz_json:to_proplist(JObj)).
 
--spec query_v(api_terms()) -> boolean().
+-spec query_v(kz_term:api_terms()) -> boolean().
 query_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUERY_REQ_HEADERS, ?QUERY_REQ_VALUES, ?QUERY_REQ_TYPES);
 query_v(JObj) ->
     query_v(kz_json:to_proplist(JObj)).
 
--spec query_resp(api_terms()) -> api_formatter_return().
+-spec query_resp(kz_term:api_terms()) -> api_formatter_return().
 query_resp(Prop) when is_list(Prop) ->
     case query_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?QUERY_RESP_HEADERS, ?OPTIONAL_QUERY_RESP_HEADERS);
@@ -317,7 +317,7 @@ query_resp(Prop) when is_list(Prop) ->
 query_resp(JObj) ->
     query_resp(kz_json:to_proplist(JObj)).
 
--spec query_resp_v(api_terms()) -> boolean().
+-spec query_resp_v(kz_term:api_terms()) -> boolean().
 query_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUERY_RESP_HEADERS, ?QUERY_RESP_VALUES, ?QUERY_RESP_TYPES);
 query_resp_v(JObj) ->
@@ -332,95 +332,105 @@ query_resp_v(JObj) ->
 declare_exchanges() ->
     amqp_util:new_exchange(?GLOBALS_EXCHANGE, ?GLOBALS_EXCHANGE_TYPE).
 
--spec publish_targeted_call(ne_binary(), api_terms()) -> 'ok'.
--spec publish_targeted_call(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_targeted_call(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_targeted_call(ServerId, JObj) ->
     publish_targeted_call(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_targeted_call(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_call(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?CALL_REQ_VALUES, fun call/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_call(api_terms()) -> 'ok'.
--spec publish_call(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_call(kz_term:api_terms()) -> 'ok'.
 publish_call(JObj) ->
     publish_call(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_call(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?CALL_REQ_VALUES, fun call/1),
     Name = name(Req),
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"call">>, Name),
     publish(RoutingKey, Payload, ContentType).
 
--spec publish_targeted_send(ne_binary(), api_terms()) -> 'ok'.
--spec publish_targeted_send(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_targeted_send(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_targeted_send(ServerId, JObj) ->
     publish_targeted_send(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_targeted_send(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_targeted_send(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?SEND_REQ_VALUES, fun send/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_send(api_terms()) -> 'ok'.
--spec publish_send(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_send(kz_term:api_terms()) -> 'ok'.
 publish_send(JObj) ->
     publish_send(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_send(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_send(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?SEND_REQ_VALUES, fun send/1),
     Name = name(Req),
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"send">>, Name),
     publish(RoutingKey, Payload, ContentType).
 
--spec publish_reply(ne_binary(), api_terms()) -> 'ok'.
--spec publish_reply(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_reply(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_reply(ServerId, JObj) ->
     publish_reply(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_reply(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_reply(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REPLY_REQ_VALUES, fun reply_msg/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_register(api_terms()) -> 'ok'.
--spec publish_register(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_register(kz_term:api_terms()) -> 'ok'.
 publish_register(Req) ->
     publish_register(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_register(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REGISTER_REQ_VALUES, fun register/1),
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"register">>, name(Req)),
     publish(RoutingKey, Payload, ContentType).
 
--spec publish_register_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_register_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_register_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_register_resp(ServerId, JObj) ->
     publish_register_resp(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_register_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register_resp(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?REGISTER_RESP_VALUES, fun register_resp/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_unregister(api_terms()) -> 'ok'.
--spec publish_unregister(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_unregister(kz_term:api_terms()) -> 'ok'.
 publish_unregister(Req) ->
     publish_unregister(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_unregister(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_unregister(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?UNREGISTER_REQ_VALUES, fun unregister/1),
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"unregister">>, name(Req)),
     publish(RoutingKey, Payload, ContentType).
 
--spec publish_query_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_query_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_query_resp(ServerId, JObj) ->
     publish_query_resp(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(ServerId, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?QUERY_RESP_VALUES, fun query_resp/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_query(api_terms()) -> 'ok'.
--spec publish_query(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_query(kz_term:api_terms()) -> 'ok'.
 publish_query(JObj) ->
     publish_query(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(encode_req(Req), ?QUERY_REQ_VALUES, fun query/1),
     Name = name(Req),
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"query">>, Name),
     publish(RoutingKey, Payload, ContentType).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Name = props:get_value('name', Props, <<"*">>),
     Events = props:get_value('restrict_to', Props, [<<"*">>]),
@@ -431,7 +441,7 @@ bind_q(Q, [Event|T], Name) ->
     bind_q(Q, T, Name);
 bind_q(_Q, [], _Name) -> 'ok'.
 
--spec unbind_q(ne_binary(), any()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), any()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Name = props:get_value('name', Props, <<"*">>),
     Events = props:get_value('restrict_to', Props, [<<"*">>]),

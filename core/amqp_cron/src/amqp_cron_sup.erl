@@ -51,7 +51,7 @@
 %% @end
 %%--------------------------------------------------------------------
 
--spec start_link([node()]) -> startlink_ret().
+-spec start_link([node()]) -> kz_types:startlink_ret().
 
 start_link(Nodes) ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, [Nodes]).
@@ -67,7 +67,7 @@ start_link(Nodes) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec init([node()]) -> sup_init_ret().
+-spec init([node()]) -> kz_types:sup_init_ret().
 
 init([]) ->
     {error, no_node_list};

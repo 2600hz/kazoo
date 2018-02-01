@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handle the emulation of the Dial verb
 %%% @end
@@ -16,7 +16,7 @@
 
 -include("kzt.hrl").
 
--spec exec(kapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
+-spec exec(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
                   {'ok' | 'stop', kapps_call:call()}.
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     kapps_call_command:answer(Call),
@@ -172,7 +172,7 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
         ],
     kapps_call_command:send_command(B, Call).
 
--spec setup_call_for_dial(kapps_call:call(), kz_proplist()) -> kapps_call:call().
+-spec setup_call_for_dial(kapps_call:call(), kz_term:proplist()) -> kapps_call:call().
 setup_call_for_dial(Call, Props) ->
     Setters = [{fun kapps_call:set_caller_id_number/2, caller_id(Props, Call)}
               ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
@@ -182,7 +182,7 @@ setup_call_for_dial(Call, Props) ->
               ],
     kapps_call:exec(Setters, Call).
 
--spec maybe_end_dial(kapps_call:call(), kz_proplist()) ->
+-spec maybe_end_dial(kapps_call:call(), kz_term:proplist()) ->
                             {'ok' | 'stop' | 'request', kapps_call:call()}.
 maybe_end_dial(Call, Props) ->
     maybe_end_dial(Call, Props, kzt_twiml_util:action_url(Props)).
@@ -216,13 +216,13 @@ is_numeric_or_plus(_) -> 'false'.
 %% capture the failed B-leg and continue processing the TwiML (if any).
 force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
 
--spec xml_elements_to_endpoints(kapps_call:call(), xml_els()) ->
-                                       kz_json:objects().
--spec xml_elements_to_endpoints(kapps_call:call(), xml_els(), kz_json:objects()) ->
+-spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els()) ->
                                        kz_json:objects().
 xml_elements_to_endpoints(Call, EPs) ->
     xml_elements_to_endpoints(Call, EPs, []).
 
+-spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els(), kz_json:objects()) ->
+                                       kz_json:objects().
 xml_elements_to_endpoints(_, [], Acc) -> Acc;
 xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
                                             ,content=DeviceIdTxt
@@ -312,11 +312,11 @@ sip_device(URI) ->
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, kapps_call:from_realm(Call)]).
 
--spec media_processing(kapps_call:call()) -> ne_binary().
--spec media_processing(boolean(), api_binary()) -> ne_binary().
+-spec media_processing(kapps_call:call()) -> kz_term:ne_binary().
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
 
+-spec media_processing(boolean(), kz_term:api_binary()) -> kz_term:ne_binary().
 media_processing('false', 'undefined') -> <<"bypass">>;
 media_processing('true', _HangupDTMF) -> <<"process">>.
 
@@ -324,7 +324,7 @@ get_max_participants(Props) when is_list(Props) ->
     get_max_participants(props:get_integer_value('maxParticipants', Props, 40));
 get_max_participants(N) when is_integer(N), N =< 40, N > 0 -> N.
 
--spec dial_timeout(kz_proplist() | pos_integer()) -> pos_integer().
+-spec dial_timeout(kz_term:proplist() | pos_integer()) -> pos_integer().
 dial_timeout(Props) when is_list(Props) ->
     dial_timeout(props:get_integer_value('timeout', Props, 20));
 dial_timeout(T) when is_integer(T), T > 0 -> T.
@@ -336,13 +336,13 @@ dial_strategy(Props) ->
         <<"single">> -> <<"single">>
     end.
 
--spec caller_id(kz_proplist(), kapps_call:call()) -> ne_binary().
+-spec caller_id(kz_term:proplist(), kapps_call:call()) -> kz_term:ne_binary().
 caller_id(Props, Call) ->
     kz_term:to_binary(
       props:get_value('callerId', Props, kapps_call:caller_id_number(Call))
      ).
 
--spec hangup_dtmf(kz_proplist() | api_binary()) -> api_binary().
+-spec hangup_dtmf(kz_term:proplist() | kz_term:api_binary()) -> kz_term:api_binary().
 hangup_dtmf(Props) when is_list(Props) ->
     case props:get_value('hangupOnStar', Props) of
         'true' -> <<"*">>;
@@ -358,7 +358,7 @@ should_record_call(Props) -> kz_term:is_true(props:get_value('record', Props, 'f
 timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
 
 
--spec build_conference_doc(ne_binary(), kz_proplist()) -> kz_json:object().
+-spec build_conference_doc(kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
 build_conference_doc(ConfId, ConfProps) ->
     StartOnEnter = props:is_true('startConferenceOnEnter', ConfProps),
 
@@ -400,7 +400,7 @@ conference_id(Txts) ->
     MD5.
 
 
--spec add_conference_profile(kapps_call:call(), kz_proplist()) -> kapps_call:call().
+-spec add_conference_profile(kapps_call:call(), kz_term:proplist()) -> kapps_call:call().
 add_conference_profile(Call, ConfProps) ->
     AccountId = kapps_call:account_id(Call),
     Profile = kz_json:from_list(

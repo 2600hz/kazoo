@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -48,7 +48,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec query_req(api_terms()) ->
+-spec query_req(kz_term:api_terms()) ->
                        {'ok', iolist()} |
                        {'error', string()}.
 query_req(Prop) when is_list(Prop) ->
@@ -58,7 +58,7 @@ query_req(Prop) when is_list(Prop) ->
     end;
 query_req(JObj) -> query_req(kz_json:to_proplist(JObj)).
 
--spec query_req_v(api_terms()) -> boolean().
+-spec query_req_v(kz_term:api_terms()) -> boolean().
 query_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUERY_REQ_HEADERS, ?QUERY_REQ_VALUES, ?QUERY_REQ_TYPES);
 query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
@@ -68,7 +68,7 @@ query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec query_resp(api_terms()) ->
+-spec query_resp(kz_term:api_terms()) ->
                         {'ok', iolist()} |
                         {'error', string()}.
 query_resp(Prop) when is_list(Prop) ->
@@ -78,16 +78,16 @@ query_resp(Prop) when is_list(Prop) ->
     end;
 query_resp(JObj) -> query_resp(kz_json:to_proplist(JObj)).
 
--spec query_resp_v(api_terms()) -> boolean().
+-spec query_resp_v(kz_term:api_terms()) -> boolean().
 query_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUERY_RESP_HEADERS, ?QUERY_RESP_VALUES, ?QUERY_RESP_TYPES);
 query_resp_v(JObj) -> query_resp_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     'ok' = amqp_util:bind_q_to_kapps(Queue, ?QUERY_REQ_ROUTING_KEY).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
     'ok' = amqp_util:unbind_q_from_kapps(Queue, ?QUERY_REQ_ROUTING_KEY).
 
@@ -95,18 +95,20 @@ unbind_q(Queue, _Props) ->
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
--spec publish_query_req(api_terms()) -> 'ok'.
--spec publish_query_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_query_req(kz_term:api_terms()) -> 'ok'.
 publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUERY_REQ_VALUES, fun query_req/1),
     amqp_util:kapps_publish(?QUERY_REQ_ROUTING_KEY, Payload, ContentType).
 
--spec publish_query_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_query_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_query_resp(RespQ, JObj) ->
     publish_query_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUERY_RESP_VALUES, fun query_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

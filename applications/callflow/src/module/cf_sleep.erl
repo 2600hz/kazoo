@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
 %%% data:{
@@ -42,7 +42,7 @@ get_duration_ms(Data) ->
     Unit = kz_json:get_ne_binary_value(<<"unit">>, Data, <<"s">>),
     duration_to_ms(Duration, Unit).
 
--spec duration_to_ms(integer(), ne_binary()) -> non_neg_integer().
+-spec duration_to_ms(integer(), kz_term:ne_binary()) -> non_neg_integer().
 duration_to_ms(Duration, <<"ms">>) ->
     constrain_duration(Duration);
 duration_to_ms(Duration, <<"s">>) ->

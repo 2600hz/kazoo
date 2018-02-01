@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% "data":{
@@ -20,7 +20,7 @@
 
 -export([handle/2]).
 
--spec name_mapping() -> kz_proplist().
+-spec name_mapping() -> kz_term:proplist().
 name_mapping() ->
     [{<<"call_priority">>, <<"Call-Priority">>}].
 
@@ -40,7 +40,7 @@ handle(Data, Call) ->
     cf_exe:set_call(Call1),
     cf_exe:continue(Call1).
 
--spec set_variable(api_binary(), api_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
+-spec set_variable(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 set_variable('undefined', _Value, _Channel, _Call) ->
     lager:warning("can not set variable without name!");
 set_variable(_Name, 'undefined', _Channel, _Call) ->
@@ -50,7 +50,7 @@ set_variable(Name, Value, Channel, Call) ->
     Var = kz_json:from_list([{Name, Value}]),
     execute_set_var(Var, Channel, Call).
 
--spec execute_set_var(kz_json:object(), ne_binary(), kapps_call:call()) -> 'ok'.
+-spec execute_set_var(kz_json:object(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 execute_set_var(Var, <<"a">>, Call) ->
     kapps_call_command:set(Var, 'undefined', Call);
 execute_set_var(Var, <<"both">>, Call) ->

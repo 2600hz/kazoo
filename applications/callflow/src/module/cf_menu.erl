@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "id":"menu_id"
@@ -19,14 +19,14 @@
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".menu">>).
 
--record(menu_keys, {save = <<"1">> :: ne_binary() %% Record Review
-                   ,listen = <<"2">> :: ne_binary()
-                   ,record = <<"3">> :: ne_binary()
+-record(menu_keys, {save = <<"1">> :: kz_term:ne_binary() %% Record Review
+                   ,listen = <<"2">> :: kz_term:ne_binary()
+                   ,record = <<"3">> :: kz_term:ne_binary()
                    }).
 -type menu_keys() :: #menu_keys{}.
 -define(MENU_KEY_LENGTH, 1).
 
--record(cf_menu_data, {menu_id :: api_ne_binary()
+-record(cf_menu_data, {menu_id :: kz_term:api_ne_binary()
                       ,name = <<>> :: binary()
                       ,retries = 3 :: pos_integer()
                       ,timeout = 10000 :: pos_integer()
@@ -36,10 +36,10 @@
                       ,hunt_allow = <<>> :: binary()
                       ,record_pin = <<>> :: binary()
                       ,record_from_offnet = 'false' :: boolean()
-                      ,greeting_id :: api_ne_binary()
-                      ,exit_media = 'true' :: boolean() | ne_binary()
-                      ,transfer_media = 'true' :: boolean() | ne_binary()
-                      ,invalid_media = 'true' :: boolean() | ne_binary()
+                      ,greeting_id :: kz_term:api_ne_binary()
+                      ,exit_media = 'true' :: boolean() | kz_term:ne_binary()
+                      ,transfer_media = 'true' :: boolean() | kz_term:ne_binary()
+                      ,invalid_media = 'true' :: boolean() | kz_term:ne_binary()
                       ,keys = #menu_keys{} :: menu_keys()
                       ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
                       }).
@@ -147,7 +147,7 @@ menu_handle_no_digits(#cf_menu_data{retries=Retries}=Menu, Call) ->
 %% The primary sequence logic to route the collected digits
 %% @end
 %%--------------------------------------------------------------------
--spec try_match_digits(ne_binary(), menu(), kapps_call:call()) -> boolean().
+-spec try_match_digits(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 try_match_digits(Digits, Menu, Call) ->
     lager:info("trying to match digits ~s", [Digits]),
     is_callflow_child(Digits, Menu, Call)
@@ -163,7 +163,7 @@ try_match_digits(Digits, Menu, Call) ->
 %% Check if the digits are a exact match for the auto-attendant children
 %% @end
 %%--------------------------------------------------------------------
--spec is_callflow_child(ne_binary(), menu(), kapps_call:call()) -> boolean().
+-spec is_callflow_child(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_callflow_child(Digits, _, Call) ->
     case cf_exe:attempt(Digits, Call) of
         {'attempt_resp', 'ok'} ->
@@ -178,7 +178,7 @@ is_callflow_child(Digits, _, Call) ->
 %% Check if hunting is enabled
 %% @end
 %%--------------------------------------------------------------------
--spec is_hunt_enabled(ne_binary(), menu(), kapps_call:call()) -> boolean().
+-spec is_hunt_enabled(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
     Hunt.
 
@@ -188,7 +188,7 @@ is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
 %% Check whitelist hunt digit patterns
 %% @end
 %%--------------------------------------------------------------------
--spec is_hunt_allowed(ne_binary(), menu(), kapps_call:call()) -> boolean().
+-spec is_hunt_allowed(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_hunt_allowed(_, #cf_menu_data{hunt_allow = <<>>}, _) ->
     lager:info("hunt_allow implicitly accepted digits"),
     'true';
@@ -212,7 +212,7 @@ is_hunt_allowed(Digits, #cf_menu_data{hunt_allow=RegEx}, _) ->
 %% Check blacklisted hunt digit patterns
 %% @end
 %%--------------------------------------------------------------------
--spec is_hunt_denied(ne_binary(), menu(), kapps_call:call()) -> boolean().
+-spec is_hunt_denied(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 is_hunt_denied(_, #cf_menu_data{hunt_deny = <<>>}, _) ->
     lager:info("hunt_deny implicitly accepted digits"),
     'false';
@@ -236,7 +236,7 @@ is_hunt_denied(Digits, #cf_menu_data{hunt_deny=RegEx}, _) ->
 %% Hunt for a callflow with these numbers
 %% @end
 %%--------------------------------------------------------------------
--spec hunt_for_callflow(ne_binary(), menu(), kapps_call:call()) -> boolean().
+-spec hunt_for_callflow(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
 hunt_for_callflow(Digits, Menu, Call) ->
     AccountId = kapps_call:account_id(Call),
     lager:info("hunting for ~s in account ~s", [Digits, AccountId]),
@@ -355,7 +355,7 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_prompt(menu(), kapps_call:call()) -> ne_binary().
+-spec get_prompt(menu(), kapps_call:call()) -> kz_term:ne_binary().
 get_prompt(#cf_menu_data{greeting_id='undefined'}, Call) ->
     kapps_call:get_prompt(Call, <<"menu-no_prompt">>);
 get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
@@ -368,7 +368,7 @@ get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), kapps_call:call()) ->
+-spec store_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
                              {'ok', kz_json:object()} |
                              {'error', kz_json:object()}.
 store_recording(AttachmentName, MediaId, Call) ->
@@ -387,7 +387,7 @@ store_recording(AttachmentName, MediaId, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_new_attachment_url(binary(), binary(), kapps_call:call()) -> ne_binary().
+-spec get_new_attachment_url(binary(), binary(), kapps_call:call()) -> kz_term:ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     _ = case kz_datamgr:open_cache_doc(AccountDb, MediaId) of
@@ -397,7 +397,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
         end,
     kz_media_url:store(AccountDb, MediaId, AttachmentName).
 
--spec maybe_delete_attachments(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_delete_attachments(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
     case kz_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
@@ -411,7 +411,7 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file() -> ne_binary().
+-spec tmp_file() -> kz_term:ne_binary().
 tmp_file() ->
     <<(kz_term:to_hex_binary(crypto:strong_rand_bytes(16)))/binary, ".mp3">>.
 
@@ -421,7 +421,7 @@ tmp_file() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec review_recording(ne_binary(), menu(), kapps_call:call()) ->
+-spec review_recording(kz_term:ne_binary(), menu(), kapps_call:call()) ->
                               {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
                                                          ,record=RecordKey
@@ -450,7 +450,7 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec recording_media_doc(ne_binary(), menu(), kapps_call:call()) -> ne_binary().
+-spec recording_media_doc(kz_term:ne_binary(), menu(), kapps_call:call()) -> kz_term:ne_binary().
 recording_media_doc(Type, #cf_menu_data{name=MenuName
                                        ,menu_id=Id
                                        }, Call) ->
@@ -472,9 +472,8 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(text(), kz_json:json_term(), menu() | ne_binary(),  kapps_call:call() | ne_binary()) ->
-                        'ok' | {'error', atom()}.
--spec update_doc(kz_proplist(), ne_binary(), kapps_call:call() | ne_binary()) ->
+
+-spec update_doc(kz_term:text(), kz_json:json_term(), menu() | kz_term:ne_binary(),  kapps_call:call() | kz_term:ne_binary()) ->
                         'ok' | {'error', atom()}.
 update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
@@ -491,6 +490,8 @@ update_doc(Key, Value, Id, <<_/binary>> = Db) ->
 update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, kapps_call:account_db(Call)).
 
+-spec update_doc(kz_term:proplist(), kz_term:ne_binary(), kapps_call:call() | kz_term:ne_binary()) ->
+                        'ok' | {'error', atom()}.
 update_doc(Updates, Id, <<_/binary>> = Db) ->
     case kz_datamgr:open_doc(Db, Id) of
         {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);

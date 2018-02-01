@@ -30,7 +30,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec event(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec event(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
     case event_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?EVENT_HEADERS, ?OPTIONAL_EVENT_HEADERS);
@@ -38,13 +38,13 @@ event(Prop) when is_list(Prop) ->
     end;
 event(JObj) -> event(kz_json:to_proplist(JObj)).
 
--spec event_v(api_terms()) -> boolean().
+-spec event_v(kz_term:api_terms()) -> boolean().
 event_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?EVENT_HEADERS, ?EVENT_VALUES, ?EVENT_TYPES);
 event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec bind_q(ne_binary(), kz_proplist(), ne_binaries()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 bind_q(Q, Props) ->
     bind_q(Q, Props, binding_keys_from_props(Props)).
 bind_q(Q, _Props, [Key | RemainingKeys]) ->
@@ -53,8 +53,8 @@ bind_q(Q, _Props, [Key | RemainingKeys]) ->
 bind_q(_Q, _Props, []) ->
     'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
--spec unbind_q(ne_binary(), kz_proplist(), ne_binaries()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 unbind_q(Q, Props) ->
     unbind_q(Q, Props, binding_keys_from_props(Props)).
 unbind_q(Q, _Props, [Key | RemainingKeys]) ->
@@ -63,7 +63,7 @@ unbind_q(Q, _Props, [Key | RemainingKeys]) ->
 unbind_q(_Q, _Props, []) ->
     'ok'.
 
--spec binding_keys_from_props(kz_proplist()) -> ne_binaries().
+-spec binding_keys_from_props(kz_term:proplist()) -> kz_term:ne_binaries().
 binding_keys_from_props(Props) ->
     %% We don't support filtering that can't be done with a routing key,
     %% so we can't use include descendants

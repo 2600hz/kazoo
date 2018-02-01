@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -24,7 +24,7 @@
 -define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
 -define(ROUTE_WIN_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
@@ -90,7 +90,7 @@ tone_or_echo(Call) ->
             maybe_echo_maybe_tone(Echo, Tone, To, From)
     end.
 
--spec maybe_echo(kz_json:object(), ne_binary(), ne_binary()) ->
+-spec maybe_echo(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                         'undefined' | 'echo'.
 maybe_echo(Echo, To, From) ->
     case rule_exist(Echo, To, From) of
@@ -98,7 +98,7 @@ maybe_echo(Echo, To, From) ->
         'false' -> 'undefined'
     end.
 
--spec maybe_tone(kz_json:object(), ne_binary(), ne_binary()) ->
+-spec maybe_tone(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                         'undefined' | 'tone'.
 maybe_tone(Tone, To, From) ->
     case rule_exist(Tone, To, From) of
@@ -106,7 +106,7 @@ maybe_tone(Tone, To, From) ->
         'false' -> 'undefined'
     end.
 
--spec maybe_echo_maybe_tone(kz_json:object(), kz_json:object(), ne_binary(), ne_binary()) ->
+-spec maybe_echo_maybe_tone(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    'undefined' | 'tone' | 'echo'.
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
@@ -121,7 +121,7 @@ maybe_echo_maybe_tone(Echo, Tone, To, From) ->
         _ -> 'undefined'
     end.
 
--spec rule_exist(kz_json:object(), ne_binary(), ne_binary()) -> boolean().
+-spec rule_exist(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 rule_exist(JObj, To, From) ->
     CallerIds = kz_json:get_ne_value(<<"caller_id">>, JObj, []),
     Numbers = kz_json:get_ne_value(<<"number">>, JObj, []),

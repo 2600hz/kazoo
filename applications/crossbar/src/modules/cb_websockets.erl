@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -93,10 +93,12 @@ authorize(Context) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_SocketId) ->
     [?HTTP_GET].
 
@@ -109,9 +111,11 @@ allowed_methods(_SocketId) ->
 %%    /websockets/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -124,10 +128,12 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_websockets(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
     validate_websocket(Context, Id, cb_context:req_verb(Context)).
 
@@ -211,7 +217,7 @@ summary(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     websockets_req(Context, [{<<"Socket-ID">>, Id}]).
 
@@ -220,7 +226,7 @@ read(Id, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec websockets_req(cb_context:context(), kz_proplist()) -> cb_context:context().
+-spec websockets_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 websockets_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -243,11 +249,12 @@ websockets_req(Context, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec websockets_resp(cb_context:context(), kz_json:objects()) -> cb_context:context().
--spec websockets_resp(cb_context:context(), kz_json:objects(), any()) -> cb_context:context().
 websockets_resp(Context, JObjs) ->
     websockets_resp(Context, JObjs, []).
 
+-spec websockets_resp(cb_context:context(), kz_json:objects(), any()) -> cb_context:context().
 websockets_resp(Context, [], RespData) ->
     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                 ,{fun cb_context:set_resp_data/2, RespData}

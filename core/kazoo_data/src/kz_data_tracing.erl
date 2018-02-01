@@ -48,7 +48,7 @@
              ]).
 
 -type trace_result() :: {{'lager_file_backend', file:filename_all()}, filters(), lager:log_level()}.
--type trace_results() :: [{ne_binary(), file:filename_all(), trace_result()}].
+-type trace_results() :: [{kz_term:ne_binary(), file:filename_all(), trace_result()}].
 
 -type trace_options() :: #{'filters' => filters()
                           ,'filename' => file:filename_all()
@@ -63,30 +63,30 @@
 -spec trace_file() ->
                         {'ok', trace_ref()} |
                         {'error', trace_error()}.
--spec trace_file(filters()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
--spec trace_file(filters(), file:filename_all()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
--spec trace_file(filters(), file:filename_all(), list()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
--spec trace_file(filters(), file:filename_all(), list(), atom()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
 trace_file() ->
     trace_file([{'function', '*'}]).
 
+-spec trace_file(filters()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters) ->
     trace_file(Filters, <<"/tmp/", (kz_binary:rand_hex(16))/binary, ".log">>).
 
+-spec trace_file(filters(), file:filename_all()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters, Filename) ->
     trace_file(Filters, Filename, ?DEFAULT_TRACE_PROPS(?DEFAULT_TRACE_OUTPUT_FORMAT)).
 
+-spec trace_file(filters(), file:filename_all(), list()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters, Filename, Format) ->
     trace_file(Filters, Filename, Format, 'debug').
 
+-spec trace_file(filters(), file:filename_all(), list(), atom()) ->
+                        {'ok', trace_ref()} |
+                        {'error', trace_error()}.
 trace_file(Filters, Filename, Format, LogLevel) ->
     gen_server:call(?MODULE
                    ,{'trace_file'
@@ -116,7 +116,7 @@ clear_all_traces() ->
 stop_trace(TraceRef) ->
     gen_server:call(?MODULE, {'stop_trace', TraceRef}).
 
--spec start_link() -> sup_startchild_ret().
+-spec start_link() -> kz_types:sup_startchild_ret().
 start_link() ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
@@ -124,7 +124,7 @@ start_link() ->
 init([]) ->
     {'ok', #state{}}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'trace_file', TraceOptions}, _From, #state{traces=Traces}=State) ->
     case start_trace(TraceOptions) of
         {'ok', TraceResult} ->
@@ -162,11 +162,11 @@ handle_call({'stop_trace', TraceRef}
             end
     end.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Req, State) ->
     {'noreply', State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Msg, State) ->
     {'noreply', State}.
 

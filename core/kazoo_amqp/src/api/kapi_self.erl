@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% For gen_listeners that bind to targeted for direct messaging
 %%% @end
@@ -14,11 +14,11 @@
 
 -include_lib("amqp_util.hrl").
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, _Props) ->
     amqp_util:bind_q_to_targeted(Q).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, _Props) ->
     amqp_util:unbind_q_from_targeted(Q).
 
@@ -31,15 +31,16 @@ unbind_q(Q, _Props) ->
 declare_exchanges() ->
     amqp_util:targeted_exchange().
 
--spec publish_message(ne_binary(), kz_json:object()) -> 'ok'.
--spec publish_message(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_message(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 publish_message(ServerId, JObj) ->
     publish_message(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_message(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_message(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [], fun build/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec build(api_terms()) -> {'ok', iolist()}.
+-spec build(kz_term:api_terms()) -> {'ok', iolist()}.
 build(Prop) when is_list(Prop) ->
     kz_api:build_message(Prop, [], []);
 build(JObj) ->

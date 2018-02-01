@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -50,7 +50,7 @@ validate(Context) ->
     _ = cb_context:put_reqid(Context),
     validate(Context, cb_context:req_verb(Context)).
 
--spec validate(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     JObj = crossbar_util:response_auth(
              kz_doc:public_fields(cb_context:auth_doc(Context))
@@ -105,16 +105,17 @@ authorize(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec authenticate(cb_context:context()) ->
                           boolean() |
-                          {'true' | 'halt', cb_context:context()}.
--spec authenticate(cb_context:context(), api_ne_binary(), atom()) ->
-                          boolean() |
-                          {'true' | 'halt', cb_context:context()}.
+                          {'true' | 'stop', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     authenticate(Context, cb_context:auth_account_id(Context), cb_context:auth_token_type(Context)).
 
+-spec authenticate(cb_context:context(), kz_term:api_ne_binary(), atom()) ->
+                          boolean() |
+                          {'true' | 'stop', cb_context:context()}.
 authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
 authenticate(Context, 'undefined', 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
@@ -131,32 +132,32 @@ authenticate(Context, 'undefined', 'x-auth-token') ->
                             );
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
-            {'halt', cb_context:add_system_error('too_many_requests', Context)}
+            {'stop', cb_context:add_system_error('too_many_requests', Context)}
     end;
 authenticate(_Context, _AccountId, _TokenType) -> 'false'.
 
 -spec early_authenticate(cb_context:context()) ->
                                 boolean() |
                                 {'true', cb_context:context()}.
--spec early_authenticate(cb_context:context(), atom() | api_binary()) ->
-                                boolean() |
-                                {'true', cb_context:context()}.
 early_authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     early_authenticate(Context, cb_context:auth_token_type(Context)).
 
+-spec early_authenticate(cb_context:context(), atom() | kz_term:api_binary()) ->
+                                boolean() |
+                                {'true', cb_context:context()}.
 early_authenticate(Context, 'x-auth-token') ->
     early_authenticate_token(Context, cb_context:auth_token(Context));
 early_authenticate(_Context, _TokenType) -> 'false'.
 
--spec early_authenticate_token(cb_context:context(), api_binary()) ->
+-spec early_authenticate_token(cb_context:context(), kz_term:api_binary()) ->
                                       boolean() |
                                       {'true', cb_context:context()}.
 early_authenticate_token(Context, AuthToken) when is_binary(AuthToken) ->
     validate_auth_token(Context, AuthToken);
 early_authenticate_token(_Context, 'undefined') -> 'true'.
 
--spec check_auth_token(cb_context:context(), api_binary(), boolean()) ->
+-spec check_auth_token(cb_context:context(), kz_term:api_binary(), boolean()) ->
                               boolean() |
                               {'true', cb_context:context()}.
 check_auth_token(_Context, <<>>, MagicPathed) ->
@@ -168,7 +169,7 @@ check_auth_token(_Context, 'undefined', MagicPathed) ->
 check_auth_token(Context, AuthToken, _MagicPathed) ->
     validate_auth_token(Context, AuthToken).
 
--spec validate_auth_token(cb_context:context(), ne_binary()) ->
+-spec validate_auth_token(cb_context:context(), kz_term:ne_binary()) ->
                                  boolean() |
                                  {'true', cb_context:context()}.
 validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
@@ -180,10 +181,10 @@ validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
         {'error', <<"token expired">>} ->
             lager:info("provided auth token has expired"),
 
-            {'halt', crossbar_util:response_401(Context)};
+            {'stop', crossbar_util:response_401(Context)};
         {'error', 'not_found'} ->
             lager:info("provided auth token was not found"),
-            {'halt', crossbar_util:response_401(Context)};
+            {'stop', crossbar_util:response_401(Context)};
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'
@@ -191,7 +192,7 @@ validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
 
 -spec is_account_expired(cb_context:context(), kz_json:object()) ->
                                 boolean() |
-                                {'halt', cb_context:context()}.
+                                {'stop', cb_context:context()}.
 is_account_expired(Context, JObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, JObj),
     case kz_util:is_account_expired(AccountId) of
@@ -205,7 +206,7 @@ is_account_expired(Context, JObj) ->
                   ]
                  ),
             Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
-            {'halt', Context1}
+            {'stop', Context1}
     end.
 
 -spec check_as(cb_context:context(), kz_json:object()) ->
@@ -217,7 +218,7 @@ check_as(Context, JObj) ->
         AccountId -> check_as_payload(Context, JObj, AccountId)
     end.
 
--spec check_as_payload(cb_context:context(), kz_json:object(), ne_binary()) ->
+-spec check_as_payload(cb_context:context(), kz_json:object(), kz_term:ne_binary()) ->
                               boolean() |
                               {'true', cb_context:context()}.
 check_as_payload(Context, JObj, AccountId) ->
@@ -230,7 +231,7 @@ check_as_payload(Context, JObj, AccountId) ->
         {AsAccountId, AsOwnerId} -> check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId)
     end.
 
--spec check_descendants(cb_context:context(), kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec check_descendants(cb_context:context(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                boolean() |
                                {'true', cb_context:context()}.
 check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->

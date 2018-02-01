@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -55,21 +55,24 @@ default_application_timeout() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
+
 -spec send_sms(kz_json:objects(), kapps_call:call()) -> 'ok'.
--spec send_sms(kz_json:objects(), binary(), kapps_call:call()) -> 'ok'.
-
--spec b_send_sms(kz_json:objects(), kapps_call:call()) -> kapps_api_sms_return().
--spec b_send_sms(kz_json:objects(), binary(), kapps_call:call()) -> kapps_api_sms_return().
--spec b_send_sms(kz_json:objects(), binary(), integer(), kapps_call:call()) -> kapps_api_sms_return().
-
 send_sms(Endpoints, Call) -> send_sms(Endpoints, ?DEFAULT_STRATEGY, Call).
+
+-spec send_sms(kz_json:objects(), binary(), kapps_call:call()) -> 'ok'.
 send_sms(EndpointList, Strategy, Call) ->
     Endpoints = create_sms_endpoints(EndpointList, []),
     API = create_sms(Call),
     send(Strategy, API, Endpoints).
 
+-spec b_send_sms(kz_json:objects(), kapps_call:call()) -> kapps_api_sms_return().
 b_send_sms(Endpoints, Call) -> b_send_sms(Endpoints, ?DEFAULT_STRATEGY, Call).
+
+-spec b_send_sms(kz_json:objects(), binary(), kapps_call:call()) -> kapps_api_sms_return().
 b_send_sms(Endpoints, Strategy, Call) -> b_send_sms(Endpoints, Strategy, ?DEFAULT_MESSAGE_TIMEOUT, Call).
+
+-spec b_send_sms(kz_json:objects(), binary(), integer(), kapps_call:call()) -> kapps_api_sms_return().
 b_send_sms(EndpointList, Strategy, Timeout, Call) ->
     Endpoints = create_sms_endpoints(EndpointList, []),
     API = create_sms(Call),
@@ -181,14 +184,14 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
             send(<<"amqp">>, API, FailOver, _Timeout)
     end.
 
--spec amqp_exchange_options(api_object()) -> kz_proplist().
+-spec amqp_exchange_options(kz_term:api_object()) -> kz_term:proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
     [{kz_term:to_atom(K, 'true'), V}
      || {K, V} <- kz_json:to_proplist(JObj)
     ].
 
--spec send_amqp_sms(kz_proplist(), atom()) -> 'ok' | {'error', any()}.
+-spec send_amqp_sms(kz_term:proplist(), atom()) -> 'ok' | {'error', any()}.
 send_amqp_sms(Payload, Pool) ->
     case kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1, Pool) of
         'ok' -> 'ok';
@@ -197,19 +200,19 @@ send_amqp_sms(Payload, Pool) ->
             {'error', kz_json:get_value(<<"message">>, Deliver, <<"unknown">>)}
     end.
 
--spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.
--spec maybe_add_broker(api_binary(), api_binary(), api_binary(), ne_binary(), kz_proplist(), ne_binary(), api_pid()) -> 'ok'.
+-spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName) ->
     PoolPid = kz_amqp_sup:pool_pid(?SMS_POOL(Exchange, RouteId, BrokerName)),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, PoolPid).
 
+-spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary(), kz_term:api_pid()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, 'undefined') ->
     Exchanges = [{Exchange, ExchangeType, ExchangeOptions}],
     kz_amqp_sup:add_amqp_pool(?SMS_POOL(Exchange, RouteId, BrokerName), Broker, 5, 5, [], Exchanges, 'true'),
     'ok';
 maybe_add_broker(_Broker, _Exchange, _RouteId, _ExchangeType, _ExchangeOptions, _BrokerName, _Pid) -> 'ok'.
 
--spec create_sms(kapps_call:call()) -> kz_proplist().
+-spec create_sms(kapps_call:call()) -> kz_term:proplist().
 create_sms(Call) ->
     AccountId = kapps_call:account_id(Call),
     AccountRealm = kapps_call:to_realm(Call),
@@ -243,7 +246,7 @@ create_sms_endpoints([Endpoint | Others], Endpoints) ->
         NewEndpoint -> create_sms_endpoints(Others, [NewEndpoint | Endpoints])
     end.
 
--spec create_sms_endpoint(kz_json:object(), binary()) -> api_object().
+-spec create_sms_endpoint(kz_json:object(), binary()) -> kz_term:api_object().
 create_sms_endpoint(Endpoint, <<"amqp">>) -> Endpoint;
 create_sms_endpoint(Endpoint, <<"sip">>) ->
     Realm = kz_json:get_value(<<"To-Realm">>, Endpoint),
@@ -258,8 +261,8 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
         {'error', _E} -> 'undefined'
     end.
 
--spec lookup_reg(ne_binary(), ne_binary()) -> {'error', any()} |
-                                              {'ok', ne_binary()}.
+-spec lookup_reg(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', any()} |
+                                                              {'ok', kz_term:ne_binary()}.
 lookup_reg(Username, Realm) ->
     Req = [{<<"Realm">>, Realm}
           ,{<<"Username">>, Username}
@@ -281,7 +284,7 @@ lookup_reg(Username, Realm) ->
             end
     end.
 
--spec extract_device_registrations(kz_json:objects()) -> ne_binaries().
+-spec extract_device_registrations(kz_json:objects()) -> kz_term:ne_binaries().
 extract_device_registrations(JObjs) ->
     sets:to_list(extract_device_registrations(JObjs, sets:new())).
 
@@ -300,16 +303,17 @@ extract_device_registrar_fold(JObj, Set) ->
     end.
 
 -spec get_correlated_msg_type(kz_json:object()) ->
-                                     {api_binary(), api_binary(), api_binary()}.
--spec get_correlated_msg_type(ne_binary(), kz_json:object()) ->
-                                     {api_binary(), api_binary(), api_binary()}.
+                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(JObj) ->
     get_correlated_msg_type(<<"Call-ID">>, JObj).
+
+-spec get_correlated_msg_type(kz_term:ne_binary(), kz_json:object()) ->
+                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(Key, JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
     {C, N, kz_json:get_value(Key, JObj)}.
 
--spec wait_for_correlated_message(ne_binary() | kapps_call:call(), ne_binary(), ne_binary(), kz_timeout()) ->
+-spec wait_for_correlated_message(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
                                          kapps_api_std_return().
 wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId) ->
     Start = os:timestamp(),

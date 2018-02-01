@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -34,25 +34,25 @@
 
 -type listen_on() :: 'a' | 'b' | 'ab'.
 
--record(state, {numbers :: api_object()
-               ,patterns :: api_object()
-               ,binding_digit = konami_config:binding_digit() :: ne_binary()
+-record(state, {numbers :: kz_term:api_object()
+               ,patterns :: kz_term:api_object()
+               ,binding_digit = konami_config:binding_digit() :: kz_term:ne_binary()
                ,digit_timeout = konami_config:timeout() :: pos_integer()
                ,call :: kapps_call:call() | 'undefined'
 
                ,listen_on = 'a' :: listen_on()
 
-               ,a_digit_timeout_ref :: api_reference()
+               ,a_digit_timeout_ref :: kz_term:api_reference()
                ,a_collected_dtmf = <<>> :: binary()
                ,a_leg_armed = 'false' :: boolean()
 
-               ,b_digit_timeout_ref :: api_reference()
+               ,b_digit_timeout_ref :: kz_term:api_reference()
                ,b_collected_dtmf = <<>> :: binary()
-               ,b_endpoint_id :: api_binary()
+               ,b_endpoint_id :: kz_term:api_binary()
                ,b_leg_armed = 'false' :: boolean()
 
-               ,call_id :: api_ne_binary()
-               ,other_leg :: api_binary()
+               ,call_id :: kz_term:api_ne_binary()
+               ,other_leg :: kz_term:api_binary()
                }).
 -type state() :: #state{}.
 
@@ -87,7 +87,7 @@
 start(Call, JObj) ->
     gen_statem:start_link(?MODULE, {Call, JObj}, []).
 
--spec event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec event(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 event(ServerRef, CallId, <<"DTMF">>, JObj) ->
     gen_statem:cast(ServerRef, {'dtmf'
                                ,CallId
@@ -142,7 +142,7 @@ init({Call, JObj}) ->
 callback_mode() ->
     'state_functions'.
 
--spec unarmed(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec unarmed(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 unarmed('cast', {'dtmf', CallId, BindingDigit}, #state{call_id=CallId
                                                       ,listen_on='a'
                                                       ,binding_digit=BindingDigit
@@ -185,7 +185,7 @@ unarmed('cast', Evt, State) ->
 unarmed('info', _, State) ->
     {'next_state', ?FUNCTION_NAME, State}.
 
--spec armed(gen_statem:event_type(), any(), state()) -> handle_fsm_ret(state()).
+-spec armed(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 armed('cast', {'dtmf', CallId, DTMF}, #state{call_id=CallId
                                             ,a_leg_armed='true'
                                             }=State) ->
@@ -211,7 +211,7 @@ armed('info', {'timeout', Ref, 'digit_timeout'}, #state{b_digit_timeout_ref = Re
     ?WSD_NOTE(_OtherLeg, 'right', <<"disarming">>),
     {'next_state', 'unarmed', disarm_state(State), 'hibernate'}.
 
--spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec handle_event(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
     lager:debug("recv metaflow exe request for ~s, processing in ~p", [CallId, _Pid]),
@@ -288,7 +288,7 @@ format_status(_, [_Dict, #state{call_id=CallId
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec binding_digit(kapps_call:call(), kz_json:object()) -> ne_binary().
+-spec binding_digit(kapps_call:call(), kz_json:object()) -> kz_term:ne_binary().
 binding_digit(Call, JObj) ->
     case kz_json:get_value(<<"Binding-Digit">>, JObj) of
         'undefined' ->
@@ -325,7 +325,7 @@ digit_timeout(Call, JObj) ->
         Timeout -> Timeout
     end.
 
--spec is_a_leg(kapps_call:call(), api_object() | ne_binary()) -> boolean().
+-spec is_a_leg(kapps_call:call(), kz_term:api_object() | kz_term:ne_binary()) -> boolean().
 is_a_leg(_Call, 'undefined') -> 'true';
 is_a_leg(Call, <<_/binary>> = EndpointId) ->
     EndpointId =:= kapps_call:authorizing_id(Call);
@@ -359,7 +359,7 @@ listen_on(Call, JObj) ->
             'b'
     end.
 
--spec has_metaflow(ne_binary(), kz_json:object(), kz_json:object()) ->
+-spec has_metaflow(kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
                           'false' |
                           {'number', kz_json:object()} |
                           {'patterm', kz_json:object()}.
@@ -369,7 +369,7 @@ has_metaflow(Collected, Ns, Ps) ->
         N -> N
     end.
 
--spec has_number(ne_binary(), kz_json:object()) ->
+-spec has_number(kz_term:ne_binary(), kz_json:object()) ->
                         'false' |
                         {'number', kz_json:object()}.
 has_number(Collected, Ns) ->
@@ -378,7 +378,7 @@ has_number(Collected, Ns) ->
         N -> {'number', N}
     end.
 
--spec has_pattern(ne_binary(), kz_json:object()) ->
+-spec has_pattern(kz_term:ne_binary(), kz_json:object()) ->
                          'false' |
                          {'pattern', kz_json:object()}.
 has_pattern(Collected, Ps) ->
@@ -447,14 +447,14 @@ maybe_handle_bleg_code(#state{numbers=Ns
         {'pattern', P} -> handle_pattern_metaflow(Call, P, OtherLeg)
     end.
 
--spec handle_number_metaflow(kapps_call:call(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec handle_number_metaflow(kapps_call:call(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_number_metaflow(Call, N, DTMFLeg) ->
     Metaflow = kz_json:set_values([{[<<"data">>, <<"dtmf_leg">>], DTMFLeg}], N),
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
     ?WSD_NOTE(DTMFLeg, 'right', <<"executing number metaflow">>),
     lager:debug("number exe in ~p: ~p", [_Pid, Metaflow]).
 
--spec handle_pattern_metaflow(kapps_call:call(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec handle_pattern_metaflow(kapps_call:call(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_pattern_metaflow(Call, P, DTMFLeg) ->
     Metaflow = kz_json:set_values([{[<<"data">>, <<"dtmf_leg">>], DTMFLeg}], P),
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
@@ -475,20 +475,20 @@ arm_bleg(#state{digit_timeout=Timeout}=State) ->
                ,b_leg_armed='true'
                }.
 
--spec maybe_fast_rearm(ne_binary(), ne_binary(), binary()) -> binary().
--spec maybe_fast_rearm(ne_binary(), ne_binary(), binary(), boolean()) -> binary().
 
+-spec maybe_fast_rearm(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> binary().
 maybe_fast_rearm(DTMF, BindingDigit, Collected) ->
     maybe_fast_rearm(DTMF, BindingDigit, Collected
                     ,kapps_config:get_is_true(?CONFIG_CAT, <<"use_fast_rearm">>, 'false')
                     ).
 
+-spec maybe_fast_rearm(kz_term:ne_binary(), kz_term:ne_binary(), binary(), boolean()) -> binary().
 maybe_fast_rearm(DTMF, _BindingDigit, Collected, 'false') -> <<Collected/binary, DTMF/binary>>;
 maybe_fast_rearm(DoubleBindingDigit, DoubleBindingDigit, <<>>, 'true') -> DoubleBindingDigit;
 maybe_fast_rearm(DTMFisBindingDigit, DTMFisBindingDigit, _Collected, 'true') -> <<>>;
 maybe_fast_rearm(DTMF, _BindingDigit, Collected, 'true') -> <<Collected/binary, DTMF/binary>>.
 
--spec add_aleg_dtmf(state(), ne_binary()) -> state().
+-spec add_aleg_dtmf(state(), kz_term:ne_binary()) -> state().
 add_aleg_dtmf(#state{a_collected_dtmf=Collected
                     ,a_digit_timeout_ref=OldRef
                     ,digit_timeout=Timeout
@@ -500,7 +500,7 @@ add_aleg_dtmf(#state{a_collected_dtmf=Collected
                ,a_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
--spec add_bleg_dtmf(state(), ne_binary()) -> state().
+-spec add_bleg_dtmf(state(), kz_term:ne_binary()) -> state().
 add_bleg_dtmf(#state{b_collected_dtmf=Collected
                     ,b_digit_timeout_ref=OldRef
                     ,digit_timeout=Timeout
@@ -512,12 +512,12 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                ,b_collected_dtmf = maybe_fast_rearm(DTMF, BindingDigit, Collected)
                }.
 
--spec maybe_add_call_event_bindings(api_ne_binary() | kapps_call:call()) -> 'ok'.
--spec maybe_add_call_event_bindings(kapps_call:call(), listen_on()) -> 'ok'.
+-spec maybe_add_call_event_bindings(kz_term:api_ne_binary() | kapps_call:call()) -> 'ok'.
 maybe_add_call_event_bindings('undefined') -> 'ok';
 maybe_add_call_event_bindings(<<_/binary>> = Leg) -> konami_event_listener:add_call_binding(Leg);
 maybe_add_call_event_bindings(Call) -> konami_event_listener:add_call_binding(Call).
 
+-spec maybe_add_call_event_bindings(kapps_call:call(), listen_on()) -> 'ok'.
 maybe_add_call_event_bindings(Call, 'a') ->
     konami_event_listener:add_konami_binding(kapps_call:call_id(Call)),
     maybe_add_call_event_bindings(Call);
@@ -529,11 +529,11 @@ maybe_add_call_event_bindings(Call, 'ab') ->
     konami_event_listener:add_konami_binding(kapps_call:other_leg_call_id(Call)),
     maybe_add_call_event_bindings(Call).
 
--spec b_endpoint_id(kz_json:object(), listen_on()) -> api_binary().
+-spec b_endpoint_id(kz_json:object(), listen_on()) -> kz_term:api_binary().
 b_endpoint_id(_JObj, 'a') -> 'undefined';
 b_endpoint_id(JObj, _ListenOn) -> kz_json:get_value(<<"Endpoint-ID">>, JObj).
 
--spec handle_channel_answer(state(), ne_binary(), kz_json:object()) -> state().
+-spec handle_channel_answer(state(), kz_term:ne_binary(), kz_json:object()) -> state().
 handle_channel_answer(#state{call_id=CallId}=State, CallId, _Evt) ->
     lager:debug("'a' leg ~s answered", [CallId]),
     State;
@@ -557,7 +557,7 @@ handle_channel_answer(#state{call_id=_CallId
     lager:debug("channel ~s answered while on ~s and ~s", [_AnsweredId, _CallId, _OtherLeg]),
     State.
 
--spec maybe_other_leg_answered(state(), ne_binary(), ne_binary()) -> state().
+-spec maybe_other_leg_answered(state(), kz_term:ne_binary(), kz_term:ne_binary()) -> state().
 maybe_other_leg_answered(#state{b_endpoint_id=EndpointId
                                ,call=Call
                                }=State
@@ -573,7 +573,7 @@ maybe_other_leg_answered(State, _CallId, _EndpointId) ->
     lager:debug("ignoring channel ~s answering for endpoint ~s", [_CallId, _EndpointId]),
     State.
 
--spec handle_channel_bridge(state(), ne_binary(), ne_binary()) -> state().
+-spec handle_channel_bridge(state(), kz_term:ne_binary(), kz_term:ne_binary()) -> state().
 handle_channel_bridge(#state{call_id=CallId
                             ,other_leg=OtherLeg
                             }=State, CallId, OtherLeg) ->
@@ -615,7 +615,7 @@ handle_channel_bridge(#state{call_id=_CallId
                ,call=kapps_call:set_call_id(UUID, Call)
                }.
 
--spec handle_channel_destroy(state(), ne_binary()) -> state().
+-spec handle_channel_destroy(state(), kz_term:ne_binary()) -> state().
 handle_channel_destroy(#state{call_id=CallId
                              ,listen_on='a'
                              }

@@ -70,37 +70,37 @@ format_error(Error) ->
     kz_couch_util:format_error(Error).
 
 %% Connection operations
--spec get_db(kz_data:connection(), ne_binary()) -> any().
+-spec get_db(kz_data:connection(), kz_term:ne_binary()) -> any().
 get_db(Server, DbName) ->
     kz_couch_util:get_db(Server, DbName).
 
--spec get_admin_dbs() -> ne_binary().
--spec get_admin_dbs(couch_version() | kz_data:connection()) -> ne_binary().
+-spec get_admin_dbs() -> kz_term:ne_binary().
 get_admin_dbs() ->
     #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
     get_admin_dbs(Conn).
 
+-spec get_admin_dbs(couch_version() | kz_data:connection()) -> kz_term:ne_binary().
 get_admin_dbs(#server{}=Server) ->
     get_admin_dbs(server_version(Server));
 get_admin_dbs('bigcouch') -> <<"dbs">>;
 get_admin_dbs(_Driver) -> <<"_dbs">>.
 
--spec get_admin_nodes() -> ne_binary().
--spec get_admin_nodes(couch_version() | kz_data:connection()) -> ne_binary().
+-spec get_admin_nodes() -> kz_term:ne_binary().
 get_admin_nodes() ->
     #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
     get_admin_nodes(Conn).
 
+-spec get_admin_nodes(couch_version() | kz_data:connection()) -> kz_term:ne_binary().
 get_admin_nodes(#server{}=Server) ->
     get_admin_nodes(server_version(Server));
 get_admin_nodes('bigcouch') -> <<"nodes">>;
 get_admin_nodes(_Driver) -> <<"_nodes">>.
 
--spec server_url(kz_data:connection()) -> ne_binary().
+-spec server_url(kz_data:connection()) -> kz_term:ne_binary().
 server_url(Server) ->
     kz_couch_util:server_url(Server).
 
--spec db_url(kz_data:connection(), ne_binary()) -> ne_binary().
+-spec db_url(kz_data:connection(), kz_term:ne_binary()) -> kz_term:ne_binary().
 db_url(Server, DbName) ->
     kz_couch_util:db_url(Server, DbName).
 
@@ -109,15 +109,15 @@ server_info(Server) ->
     kz_couch_util:server_info(Server).
 
 %% DB operations
--spec db_create(kz_data:connection(), ne_binary(), kz_data:options()) -> any().
+-spec db_create(kz_data:connection(), kz_term:ne_binary(), kz_data:options()) -> any().
 db_create(Server, DbName, Options) ->
     kz_couch_db:db_create(Server, DbName, Options).
 
--spec db_delete(kz_data:connection(), ne_binary()) -> any().
+-spec db_delete(kz_data:connection(), kz_term:ne_binary()) -> any().
 db_delete(Server, DbName) ->
     kz_couch_db:db_delete(Server, DbName).
 
--spec db_view_cleanup(kz_data:connection(), ne_binary()) -> boolean().
+-spec db_view_cleanup(kz_data:connection(), kz_term:ne_binary()) -> boolean().
 db_view_cleanup(Server, DbName) ->
     kz_couch_db:db_view_cleanup(Server, DbName).
 
@@ -125,19 +125,19 @@ db_view_cleanup(Server, DbName) ->
 db_info(Server) ->
     kz_couch_db:db_info(Server).
 
--spec db_info(kz_data:connection(), ne_binary()) -> any().
+-spec db_info(kz_data:connection(), kz_term:ne_binary()) -> any().
 db_info(Server, DbName) ->
     kz_couch_db:db_info(Server, DbName).
 
--spec db_exists(kz_data:connection(), ne_binary()) -> boolean().
+-spec db_exists(kz_data:connection(), kz_term:ne_binary()) -> boolean().
 db_exists(Server, DbName) ->
     kz_couch_db:db_exists(Server, DbName).
 
--spec db_archive(kz_data:connection(), ne_binary(), ne_binary()) -> any().
+-spec db_archive(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 db_archive(Server, DbName, Filename) ->
     kz_couch_db:db_archive(Server, DbName, Filename).
 
--spec db_import(kz_data:connection(), ne_binary(), ne_binary()) -> any().
+-spec db_import(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 db_import(Server, DbName, Filename) ->
     kz_couch_db:db_import(Server, DbName, Filename).
 
@@ -158,31 +158,31 @@ db_list('couchdb_1_6', Server, Options) ->
     {'ok', db_local_filter(List, Options)}.
 
 %% Document operations
--spec open_doc(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec open_doc(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 open_doc(Server, DbName, DocId, Options) ->
     kz_couch_doc:open_doc(Server, DbName, DocId, Options).
 
--spec lookup_doc_rev(kz_data:connection(), ne_binary(), ne_binary()) -> any().
+-spec lookup_doc_rev(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 lookup_doc_rev(Server, DbName, DocId) ->
     kz_couch_doc:lookup_doc_rev(Server, DbName, DocId).
 
--spec save_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> any().
+-spec save_doc(kz_data:connection(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> any().
 save_doc(Server, DbName, Doc, Options) ->
     kz_couch_doc:save_doc(Server, DbName, Doc, Options).
 
--spec save_docs(kz_data:connection(), ne_binary(), kz_data:documents(), kz_data:options()) -> any().
+-spec save_docs(kz_data:connection(), kz_term:ne_binary(), kz_data:documents(), kz_data:options()) -> any().
 save_docs(Server, DbName, Docs, Options) ->
     kz_couch_doc:save_docs(Server, DbName, Docs, Options).
 
--spec del_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> any().
+-spec del_doc(kz_data:connection(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> any().
 del_doc(Server, DbName, Doc, Options) ->
     kz_couch_doc:del_doc(Server, DbName, Doc, Options).
 
--spec del_docs(kz_data:connection(), ne_binary(), kz_data:documents(), kz_data:options()) -> any().
+-spec del_docs(kz_data:connection(), kz_term:ne_binary(), kz_data:documents(), kz_data:options()) -> any().
 del_docs(Server, DbName, Docs, Options) ->
     kz_couch_doc:del_docs(Server, DbName, Docs, Options).
 
--spec ensure_saved(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> any().
+-spec ensure_saved(kz_data:connection(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> any().
 ensure_saved(Server, DbName, DocId, Options) ->
     kz_couch_doc:ensure_saved(Server, DbName, DocId, Options).
 
@@ -195,50 +195,50 @@ move_doc(Server, CopySpec, Options) ->
     kz_couch_doc:move_doc(Server, CopySpec, Options).
 
 %% Attachment-related
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 fetch_attachment(Server, DbName, DocId, AName) ->
     kz_couch_attachments:fetch_attachment(Server, DbName, DocId, AName).
 
--spec stream_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
+-spec stream_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) ->
                                {'ok', doc()} |
                                {'error', any()}.
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
     kz_couch_attachments:stream_attachment(Server, DbName, DocId, AName, Caller).
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 put_attachment(Server, DbName, DocId, AName, Contents, Options) ->
     kz_couch_attachments:put_attachment(Server, DbName, DocId, AName, Contents, Options).
 
--spec delete_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec delete_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 delete_attachment(Server, DbName, DocId, AName, Options) ->
     kz_couch_attachments:delete_attachment(Server, DbName, DocId, AName, Options).
 
--spec attachment_url(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec attachment_url(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 attachment_url(Server, DbName, DocId, AName, Options) ->
     kz_couch_attachments:attachment_url(Server, DbName, DocId, AName, Options).
 
 %% View-related
--spec design_info(kz_data:connection(), ne_binary(), ne_binary()) -> any().
+-spec design_info(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 design_info(Server, DBName, Design) ->
     kz_couch_view:design_info(Server, DBName, Design).
 
--spec design_compact(kz_data:connection(), ne_binary(), ne_binary()) -> any().
+-spec design_compact(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 design_compact(Server, DbName, Design) ->
     kz_couch_view:design_compact(Server, DbName, Design).
 
--spec all_design_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> any().
+-spec all_design_docs(kz_data:connection(), kz_term:ne_binary(), kz_data:options()) -> any().
 all_design_docs(#server{}=Server, ?NE_BINARY = DBName, Options) ->
     kz_couch_view:all_design_docs(Server, DBName, Options).
 
--spec get_results(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec get_results(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 get_results(Server, DbName, DesignDoc, ViewOptions) ->
     kz_couch_view:get_results(Server, DbName, DesignDoc, ViewOptions).
 
--spec get_results_count(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> any().
+-spec get_results_count(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
 get_results_count(Server, DbName, DesignDoc, ViewOptions) ->
     kz_couch_view:get_results_count(Server, DbName, DesignDoc, ViewOptions).
 
--spec all_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> any().
+-spec all_docs(kz_data:connection(), kz_term:ne_binary(), kz_data:options()) -> any().
 all_docs(Server, DbName, Options) ->
     kz_couch_view:all_docs(Server, DbName, Options).
 
@@ -246,13 +246,13 @@ all_docs(Server, DbName, Options) ->
 server_version(#server{options=Options}) ->
     props:get_value('driver_version', Options).
 
--spec db_local_filter(ne_binaries(), kz_data:options()) -> ne_binaries().
+-spec db_local_filter(kz_term:ne_binaries(), kz_data:options()) -> kz_term:ne_binaries().
 db_local_filter(List, Options) ->
     [DB || DB <- List,
            all_valid_options(Options, DB)
     ].
 
--spec all_valid_options(kz_data:options(), ne_binary()) -> boolean().
+-spec all_valid_options(kz_data:options(), kz_term:ne_binary()) -> boolean().
 all_valid_options(Options, DB) ->
     lists:all(fun(Option) ->
                       db_local_filter_option(Option, DB)
@@ -260,7 +260,7 @@ all_valid_options(Options, DB) ->
              ,Options
              ).
 
--spec db_local_filter_option(kz_data:option(), ne_binary()) -> boolean().
+-spec db_local_filter_option(kz_data:option(), kz_term:ne_binary()) -> boolean().
 db_local_filter_option({'start_key', Value}, DB) ->
     DB >= Value;
 db_local_filter_option({'startkey', Value}, DB) ->

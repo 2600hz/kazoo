@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,13 +30,12 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?WORKER('knm_search')
-                  ,?WORKER('knm_maint_listener')
                   ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -44,7 +43,7 @@ start_link() ->
 %% Supervisor callbacks
 %% ===================================================================
 
--spec init([]) -> sup_init_ret().
+-spec init([]) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

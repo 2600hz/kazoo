@@ -29,7 +29,7 @@
 
 -record(state, {module_state :: any()
                ,module :: module()
-               ,name :: ne_binary()
+               ,name :: kz_term:ne_binary()
                }).
 -type state() :: #state{}.
 
@@ -43,7 +43,7 @@
 %%-------------------------------------------------------------------
 %%
 %%-------------------------------------------------------------------
--spec start_link(module(), backend()) -> startlink_ret().
+-spec start_link(module(), backend()) -> kz_types:startlink_ret().
 start_link(Module, #backend{}=Backend)->
     gen_server:start_link(?MODULE, {Module, Backend}, []);
 start_link(_Module, _Other) ->
@@ -75,7 +75,7 @@ stop(Pid)->
 %% Func: handle_call/3
 %% Returns: {reply, Reply, State}
 %%--------------------------------------------------------------------
--spec handle_call(any(), any(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), any(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, _State) ->
     lager:debug("unhandled call ~p", [_Request]),
     {'stop', {'error', 'not implemented'}, _State}.

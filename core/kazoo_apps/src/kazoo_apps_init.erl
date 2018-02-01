@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Init to be done
 %%% @end
@@ -15,7 +15,7 @@
 
 -include("kazoo_apps.hrl").
 
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     _ = sanity_checks(), %% one day make this true
     _ = kz_util:spawn(fun init/0),
@@ -96,10 +96,10 @@ log_slow_resolution(Min, Max, Mean, Median) ->
 -type resolutions() :: {Min :: pos_integer(), Max :: pos_integer(), Total:: pos_integer(), Timings :: [pos_integer()]}.
 
 -spec time_hostname_resolutions(pos_integer()) -> resolutions().
--spec time_hostname_resolutions(pos_integer(), pos_integer()) -> resolutions().
 time_hostname_resolutions(HowManyTests) ->
     time_hostname_resolutions(HowManyTests, time_hostname_resolution()).
 
+-spec time_hostname_resolutions(pos_integer(), pos_integer()) -> resolutions().
 time_hostname_resolutions(HowManyTests, InitTime) ->
     lists:foldl(fun time_hostname_resolution/2
                ,{InitTime, InitTime, InitTime, []}

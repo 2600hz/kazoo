@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2017, 2600Hz INC
+%%% @copyright (C) 2016-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -32,7 +32,7 @@ to_options_state(T=#{options := Options}) ->
     ?LOG_DEBUG("attempting to change to state ~s", [TargetState]),
     change_state(T, TargetState).
 
--spec change_state(t(), ne_binary()) -> t().
+-spec change_state(t(), kz_term:ne_binary()) -> t().
 change_state(T, ?NUMBER_STATE_RESERVED) ->
     knm_numbers:pipe(T
                     ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_RESERVED) end
@@ -220,8 +220,8 @@ move_to_reserved_state(T) ->
 move_to_in_service_state(T) ->
     move_number_to_state(T, ?NUMBER_STATE_IN_SERVICE).
 
--spec move_number_to_state(kn(), ne_binary()) -> kn();
-                          (t(), ne_binary()) -> t().
+-spec move_number_to_state(kn(), kz_term:ne_binary()) -> kn();
+                          (t(), kz_term:ne_binary()) -> t().
 move_number_to_state(T=#{todo := Ns}, ToState) ->
     NewNs = [move_number_to_state(N, ToState) || N <- Ns],
     knm_numbers:ok(NewNs, T);
@@ -230,7 +230,7 @@ move_number_to_state(Number, ToState) ->
     {'ok', PN} = move_phone_number_to_state(PhoneNumber, ToState),
     knm_number:set_phone_number(Number, PN).
 
--spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary()) ->
+-spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), kz_term:ne_binary()) ->
                                         knm_phone_number_return().
 move_phone_number_to_state(PN, ToState=?NUMBER_STATE_AVAILABLE) ->
     knm_phone_number:setters(PN, [{fun knm_phone_number:set_state/2, ToState}]);
@@ -238,7 +238,7 @@ move_phone_number_to_state(PN, ToState) ->
     AssignedTo = knm_phone_number:assigned_to(PN),
     move_phone_number_to_state(PN, ToState, AssignedTo).
 
--spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
+-spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                         knm_phone_number_return().
 move_phone_number_to_state(PhoneNumber, ToState, 'undefined') ->
     Setters =
@@ -262,7 +262,7 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
 
 
 %% @private
--spec invalid_state_transition(t(), api_ne_binary(), ne_binary()) -> t().
+-spec invalid_state_transition(t(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> t().
 invalid_state_transition(T=#{todo := Ns}, FromState, ToState) ->
     {error,A,B,C} = (catch knm_errors:invalid_state_transition(undefined, FromState, ToState)),
     Reason = knm_errors:to_json(A, B, C),
@@ -298,7 +298,7 @@ is_assigned_to_assignto(N) ->
         =:= knm_phone_number:assigned_to(PN).
 
 %% @private
--spec group_by_state(t()) -> [{ne_binary(), knm_numbers:oks()}].
+-spec group_by_state(t()) -> [{kz_term:ne_binary(), knm_numbers:oks()}].
 group_by_state(#{todo := Ns}) ->
     F = fun (N, M) ->
                 State = knm_phone_number:state(knm_number:phone_number(N)),

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz, INC
+%%% @copyright (C) 2018, 2600Hz, INC
 %%% @doc
 %%% Jonny5 module (worker) for disconnect calls when account
 %%% balance drops below zero
@@ -28,7 +28,7 @@ start() ->
             exit('work_done')
     end.
 
--spec send_req(ne_binaries()) -> ne_binaries().
+-spec send_req(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 send_req(Accounts) ->
     ReqResp = kz_amqp_worker:call(balance_check_req(Accounts)
                                  ,fun kapi_authz:publish_balance_check_req/1
@@ -43,14 +43,14 @@ send_req(Accounts) ->
             balance_check_response(JObj)
     end.
 
--spec balance_check_req(ne_binaries()) -> kz_proplist().
+-spec balance_check_req(kz_term:ne_binaries()) -> kz_term:proplist().
 balance_check_req(Accounts) ->
     props:filter_undefined(
       [{<<"Accounts">>, Accounts}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
--spec balance_check_response(kz_json:object()) -> ne_binaries().
+-spec balance_check_response(kz_json:object()) -> kz_term:ne_binaries().
 balance_check_response(JObj) ->
     Balances = kz_json:get_json_value(<<"Balances">>, JObj),
     kz_json:foldl(
@@ -64,14 +64,14 @@ balance_check_response(JObj) ->
                  ,Balances
      ).
 
--spec disconnect_accounts(ne_binaries()) -> 'ok'.
+-spec disconnect_accounts(kz_term:ne_binaries()) -> 'ok'.
 disconnect_accounts([]) -> 'ok';
 disconnect_accounts([Account|Accounts]) ->
     disconnect_account(Account),
     timer:sleep(?INTERACCOUNT_DELAY_MS),
     disconnect_accounts(Accounts).
 
--spec disconnect_account(ne_binary()) -> 'ok'.
+-spec disconnect_account(kz_term:ne_binary()) -> 'ok'.
 disconnect_account(AccountId) ->
     case ecallmgr_fs_channels:per_minute_channels(AccountId) of
         [] ->
@@ -81,13 +81,13 @@ disconnect_account(AccountId) ->
             disconnect_channels(Channels)
     end.
 
--spec disconnect_channels(kz_proplist()) -> 'ok'.
+-spec disconnect_channels(kz_term:proplist()) -> 'ok'.
 disconnect_channels([]) -> 'ok';
 disconnect_channels([Channel|Channels]) ->
     try_disconnect_channel(Channel),
     disconnect_channels(Channels).
 
--spec try_disconnect_channel({atom(), ne_binary()}) -> 'ok'.
+-spec try_disconnect_channel({atom(), kz_term:ne_binary()}) -> 'ok'.
 try_disconnect_channel({Node, UUID}) ->
     lager:debug("disconnect channel ~p",[UUID]),
     _ = ecallmgr_util:send_cmd(Node, UUID, "hangup", ""),

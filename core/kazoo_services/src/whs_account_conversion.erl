@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -26,7 +26,7 @@
 %% sub accounts
 %% @end
 %%--------------------------------------------------------------------
--spec promote(ne_binary()) -> {'error', _} | 'ok'.
+-spec promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 promote(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     case kapps_util:is_master_account(AccountId) of
@@ -38,12 +38,12 @@ promote(Account) ->
             end
     end.
 
--spec force_promote(ne_binary()) -> {'error', _} | 'ok'.
+-spec force_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 force_promote(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     do_promote(AccountId).
 
--spec do_promote(ne_binary()) -> {'error', _} | 'ok'.
+-spec do_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_promote(AccountId) ->
     _ = kz_util:account_update(AccountId, fun kz_account:promote/1),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'true'),
@@ -57,7 +57,7 @@ do_promote(AccountId) ->
 %% to the next higher reseller
 %% @end
 %%--------------------------------------------------------------------
--spec demote(ne_binary()) -> {'error', _} | 'ok'.
+-spec demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 demote(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     case kapps_util:is_master_account(AccountId) of
@@ -69,12 +69,12 @@ demote(Account) ->
             end
     end.
 
--spec force_demote(ne_binary()) -> {'error', _} | 'ok'.
+-spec force_demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 force_demote(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     do_demote(AccountId).
 
--spec do_demote(ne_binary()) -> {'error', _} | 'ok'.
+-spec do_demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 do_demote(AccountId) ->
     _ = kz_util:account_update(AccountId, fun kz_account:demote/1),
     _ = maybe_update_services(AccountId, ?SERVICES_PVT_IS_RESELLER, 'false'),
@@ -89,7 +89,7 @@ do_demote(AccountId) ->
 %% of the provided account
 %% @end
 %%--------------------------------------------------------------------
--spec cascade_reseller_id(ne_binary(), ne_binary()) -> {'error', _} | 'ok'.
+-spec cascade_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.
 cascade_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ResellerId = kz_util:format_account_id(Reseller, 'raw'),
@@ -114,7 +114,7 @@ cascade_reseller_id(Reseller, Account) ->
 %% Set teh reseller_id to the provided value on the provided account
 %% @end
 %%--------------------------------------------------------------------
--spec set_reseller_id(ne_binary(), ne_binary()) -> {'error', _} | 'ok'.
+-spec set_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.
 set_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ResellerId = kz_util:format_account_id(Reseller, 'raw'),
@@ -128,7 +128,7 @@ set_reseller_id(Reseller, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_services(ne_binary(), ne_binary(), any()) -> {'error', _} | 'ok'.
+-spec maybe_update_services(kz_term:ne_binary(), kz_term:ne_binary(), any()) -> {'error', _} | 'ok'.
 maybe_update_services(AccountId, Key, Value) ->
     case kz_services:fetch_services_doc(AccountId, true) of
         {'error', _R}=Error ->
@@ -143,7 +143,7 @@ maybe_update_services(AccountId, Key, Value) ->
             end
     end.
 
--spec has_reseller_descendants(ne_binary()) -> boolean().
+-spec has_reseller_descendants(kz_term:ne_binary()) -> boolean().
 has_reseller_descendants(AccountId) ->
     %% its very important that this check not operate against stale data!
     _ = kz_datamgr:flush_cache_docs(?KZ_SERVICES_DB),

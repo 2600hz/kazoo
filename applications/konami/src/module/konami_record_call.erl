@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Record something
 %%% "data":{
@@ -22,12 +22,12 @@
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
                     {'continue', kapps_call:call()}.
--spec handle(kz_json:object(), kapps_call:call(), ne_binary()) ->
-                    kapps_call:call().
 handle(Data, Call) ->
     Call1 = handle(Data, Call, get_action(kz_json:get_ne_binary_value(<<"action">>, Data))),
     {'continue', Call1}.
 
+-spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
+                    kapps_call:call().
 handle(Data, Call, <<"start">>) ->
     lager:debug("starting recording, see you on the other side"),
     kapps_call:start_recording(Data, Call);
@@ -39,7 +39,7 @@ handle(Data, Call, <<"stop">> = Action) ->
     lager:debug("sent command to stop recording"),
     Call.
 
--spec get_action(api_ne_binary()) -> ne_binary().
+-spec get_action(kz_term:api_ne_binary()) -> kz_term:ne_binary().
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
@@ -57,7 +57,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> kz_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
--spec number_builder_check(api_object()) -> api_object().
+-spec number_builder_check(kz_term:api_object()) -> kz_term:api_object().
 number_builder_check('undefined') ->
     number_builder_action(kz_json:new());
 number_builder_check(NumberJObj) ->
@@ -67,7 +67,7 @@ number_builder_check(NumberJObj) ->
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
     number_builder_check_option(NumberJObj, Option).
 
--spec number_builder_check_option(kz_json:object(), string()) -> api_object().
+-spec number_builder_check_option(kz_json:object(), string()) -> kz_term:api_object().
 number_builder_check_option(NumberJObj, "e") ->
     number_builder_action(NumberJObj);
 number_builder_check_option(_NumberJObj, "d") ->
@@ -81,28 +81,28 @@ number_builder_action(NumberJObj) ->
     {'ok', [Action]} = io:fread("What action: 'start' or 'stop': ", "~s"),
     number_builder_time_limit(NumberJObj, kz_term:to_binary(Action)).
 
--spec number_builder_time_limit(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec number_builder_time_limit(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 number_builder_time_limit(NumberJObj, Action) ->
     {'ok', [TimeLimit]} = io:fread("How many seconds to limit the recording to: ", "~d"),
     number_builder_format(NumberJObj, Action, TimeLimit).
 
--spec number_builder_format(kz_json:object(), ne_binary(), pos_integer()) -> kz_json:object().
+-spec number_builder_format(kz_json:object(), kz_term:ne_binary(), pos_integer()) -> kz_json:object().
 number_builder_format(NumberJObj, Action, TimeLimit) ->
     {'ok', [Format]} = io:fread("What format would you like the recording? ('wav' or 'mp3'): ", "~3s"),
     number_builder_url(NumberJObj, Action, TimeLimit, kz_term:to_binary(Format)).
 
--spec number_builder_url(kz_json:object(), ne_binary(), pos_integer(), ne_binary()) -> kz_json:object().
+-spec number_builder_url(kz_json:object(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary()) -> kz_json:object().
 number_builder_url(NumberJObj, Action, TimeLimit, Format) ->
     {'ok', [URL]} = io:fread("What URL to send the recording to at the end: ", "~s"),
     metaflow_jobj(NumberJObj, Action, TimeLimit, Format, kz_term:to_binary(URL)).
 
--spec metaflow_jobj(kz_json:object(), ne_binary(), pos_integer(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec metaflow_jobj(kz_json:object(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 metaflow_jobj(NumberJObj, Action, TimeLimit, Format, URL) ->
     kz_json:set_values([{<<"module">>, <<"record_call">>}
                        ,{<<"data">>, data(Action, TimeLimit, Format, URL)}
                        ], NumberJObj).
 
--spec data(ne_binary(), pos_integer(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec data(kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 data(Action, TimeLimit, Format, URL) ->
     kz_json:from_list([{<<"action">>, Action}
                       ,{<<"time_limit">>, TimeLimit}

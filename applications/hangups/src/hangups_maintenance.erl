@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -25,10 +25,8 @@
 
 -include("hangups.hrl").
 
--spec hangups_summary() -> 'ok'.
--spec hangup_summary(ne_binary()) -> 'ok'.
--spec hangup_summary(ne_binary(), ne_binary()) -> 'ok'.
 
+-spec hangups_summary() -> 'ok'.
 hangups_summary() ->
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
                || Name <- folsom_metrics:get_metrics(),
@@ -36,6 +34,7 @@ hangups_summary() ->
               ],
     print_stats(Hangups).
 
+-spec hangup_summary(kz_term:ne_binary()) -> 'ok'.
 hangup_summary(HangupCause) ->
     HC = kz_term:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s~n", [HC]),
@@ -45,6 +44,7 @@ hangup_summary(HangupCause) ->
               ],
     print_stats(Hangups).
 
+-spec hangup_summary(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 hangup_summary(HangupCause, AccountId) ->
     HC = kz_term:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s.~s~n", [HC, AccountId]),
@@ -54,7 +54,7 @@ hangup_summary(HangupCause, AccountId) ->
               ],
     print_stats(Hangups).
 
--spec account_summary(ne_binary()) -> 'ok'.
+-spec account_summary(kz_term:ne_binary()) -> 'ok'.
 account_summary(AccountId) ->
     io:format("checking hangups summary for account ~s~n", [AccountId]),
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
@@ -67,7 +67,7 @@ account_summary(AccountId) ->
        ," ~-30s | ~-32s | ~-10s | ~-10s | ~-10s | ~-10s |~n"
        ).
 
--spec print_stats(kz_proplist()) -> 'ok'.
+-spec print_stats(kz_term:proplist()) -> 'ok'.
 print_stats([]) -> io:format("No data found for request\n");
 print_stats(Stats) ->
     io:format(?STAT_SUMMARY_FORMAT
@@ -75,7 +75,7 @@ print_stats(Stats) ->
              ),
     lists:foreach(fun print_stat/1, lists:keysort(1, Stats)).
 
--spec print_stat({ne_binary(), kz_proplist()}) -> 'ok'.
+-spec print_stat({kz_term:ne_binary(), kz_term:proplist()}) -> 'ok'.
 print_stat({Name, Stats}) ->
     AccountId = case hangups_util:meter_account_id(Name) of
                     'undefined' -> <<>>;
@@ -95,13 +95,13 @@ print_stat({Name, Stats}) ->
               ]).
 
 %% @public
--spec activate_monitor(ne_binary(), ne_binary()) -> 'ok'.
+-spec activate_monitor(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 activate_monitor(AccountId, HangupCause) ->
     hangups_channel_destroy:start_meters(HangupCause),
     hangups_channel_destroy:start_meters(AccountId, HangupCause).
 
 %% @public
--spec activate_monitors(ne_binary(), ne_binary()) -> 'ok'.
+-spec activate_monitors(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 activate_monitors(AccountId, ThresholdOneMinute) ->
     F = fun(HangupCause) ->
                 ConfigName = hangups_util:meter_name(HangupCause),
@@ -113,7 +113,7 @@ activate_monitors(AccountId, ThresholdOneMinute) ->
         end,
     lists:foreach(F, hangups_config:monitored_hangup_causes()).
 
--spec set_metric(ne_binary(), ne_binary()) -> 'ok'.
+-spec set_metric(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_metric(Metric, LoadAvg) ->
     case is_valid_request(Metric, LoadAvg) of
         'false' -> 'ok';
@@ -125,7 +125,7 @@ set_metric(Metric, LoadAvg) ->
                          )
     end.
 
--spec set_metric(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec set_metric(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_metric(AccountId, Metric, LoadAvg) ->
     case is_valid_request(Metric, LoadAvg) of
         'false' -> 'ok';
@@ -138,7 +138,7 @@ set_metric(AccountId, Metric, LoadAvg) ->
                          )
     end.
 
--spec set_threshold(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec set_threshold(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_threshold(HangupCause, Metric, LoadAvg) ->
     case is_valid_request(HangupCause, Metric, LoadAvg) of
         'false' -> 'ok';
@@ -146,7 +146,7 @@ set_threshold(HangupCause, Metric, LoadAvg) ->
             save_threshold(HangupCause, Metric, LoadAvg, fun kapps_config:set_default/3)
     end.
 
--spec set_threshold(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec set_threshold(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_threshold(AccountId, HangupCause, Metric, LoadAvg) ->
     case is_valid_request(HangupCause, Metric, LoadAvg) of
         'false' -> 'ok';
@@ -155,20 +155,20 @@ set_threshold(AccountId, HangupCause, Metric, LoadAvg) ->
             save_threshold(HangupCause, Metric, LoadAvg, SaveFun)
     end.
 
--type save_fun() :: fun((ne_binary(), kz_json:path(), kz_json:json_term()) -> any()).
--spec account_save_fun(ne_binary()) -> save_fun().
+-type save_fun() :: fun((kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) -> any()).
+-spec account_save_fun(kz_term:ne_binary()) -> save_fun().
 account_save_fun(AccountId) ->
     fun(Cfg, K, V) ->
             kapps_account_config:set(AccountId, Cfg, K, V)
     end.
 
--spec save_threshold(ne_binary(), ne_binary(), ne_binary(), save_fun()) -> 'ok'.
+-spec save_threshold(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), save_fun()) -> 'ok'.
 save_threshold(HangupCause, Metric, LoadAvg, SaveFun) ->
     ConfigName = hangups_util:meter_name(HangupCause),
     SaveFun(ConfigName, Metric, LoadAvg),
     io:format("set ~s for ~s to ~p~n", [Metric, ConfigName, LoadAvg]).
 
--spec is_valid_request(ne_binary(), ne_binary()) -> boolean().
+-spec is_valid_request(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_valid_request(Metric, LoadAvg) ->
     lists:all(fun is_valid_request_param/1
              ,[{fun is_valid_threshold_name/1, Metric}
@@ -176,7 +176,7 @@ is_valid_request(Metric, LoadAvg) ->
               ]
              ).
 
--spec is_valid_request(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+-spec is_valid_request(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_valid_request(HangupCause, Metric, LoadAvg) ->
     lists:all(fun is_valid_request_param/1
              ,[{fun is_valid_threshold_name/1, Metric}
@@ -189,7 +189,7 @@ is_valid_request(HangupCause, Metric, LoadAvg) ->
 is_valid_request_param({F, V}) ->
     F(V).
 
--spec is_valid_hangup_cause(ne_binary()) -> 'true'.
+-spec is_valid_hangup_cause(kz_term:ne_binary()) -> 'true'.
 is_valid_hangup_cause(HangupCause) ->
     HangupCauses = hangups_config:monitored_hangup_causes(),
     case lists:member(HangupCause, HangupCauses) of
@@ -204,13 +204,13 @@ is_valid_hangup_cause(HangupCause) ->
     end.
 
 %% @public
--spec set_monitor_threshold(text(), text()) -> boolean().
+-spec set_monitor_threshold(kz_term:text(), kz_term:text()) -> boolean().
 set_monitor_threshold(HangupCause, TOM) ->
     ThresholdOnMinute = kz_term:to_float(TOM),
     update_monitor_thresholds(HangupCause, ThresholdOnMinute)
         andalso set_monitor_threshold(HangupCause, <<"one">>, ThresholdOnMinute).
 
--spec update_monitor_thresholds(ne_binary(), float()) -> boolean().
+-spec update_monitor_thresholds(kz_term:ne_binary(), float()) -> boolean().
 update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
     Scales = [{<<"five">>, 5}
              ,{<<"fifteen">>, 15}
@@ -227,8 +227,8 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
                ).
 
 %% @public
--spec set_monitor_threshold(ne_binary(), ne_binary(), float()) -> boolean().
--spec set_monitor_threshold(ne_binary(), ne_binary(), float(), boolean()) -> boolean().
+
+-spec set_monitor_threshold(kz_term:ne_binary(), kz_term:ne_binary(), float()) -> boolean().
 set_monitor_threshold(HangupCause, ThresholdName, T) ->
     Threshold = kz_term:to_float(T),
     set_monitor_threshold(kz_term:to_upper_binary(HangupCause)
@@ -237,6 +237,7 @@ set_monitor_threshold(HangupCause, ThresholdName, T) ->
                          ,is_valid_threshold_name(ThresholdName)
                          ).
 
+-spec set_monitor_threshold(kz_term:ne_binary(), kz_term:ne_binary(), float(), boolean()) -> boolean().
 set_monitor_threshold(_HangupCause, ThresholdName, _Threshold, 'false') ->
     io:format("Invalid threshold name (~s), not setting~n", [ThresholdName]),
     'false';
@@ -252,7 +253,7 @@ set_monitor_threshold(HangupCause, ThresholdName, Threshold, 'true') ->
     end,
     'true'.
 
--spec is_valid_threshold_name(ne_binary()) -> boolean().
+-spec is_valid_threshold_name(kz_term:ne_binary()) -> boolean().
 is_valid_threshold_name(<<"one">>) -> 'true';
 is_valid_threshold_name(<<"five">>) -> 'true';
 is_valid_threshold_name(<<"fifteen">>) -> 'true';
@@ -262,7 +263,7 @@ is_valid_threshold_name(_Metric) ->
     io:format("metric '~s' is invalid~n", [_Metric]),
     'false'.
 
--spec is_valid_load_avg(ne_binary() | number()) -> boolean().
+-spec is_valid_load_avg(kz_term:ne_binary() | number()) -> boolean().
 is_valid_load_avg(V) ->
     try kz_term:to_float(V) of
         F when F >= 0.0 -> 'true';

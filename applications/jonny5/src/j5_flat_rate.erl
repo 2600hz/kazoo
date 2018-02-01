@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -73,12 +73,12 @@ eligible_for_flat_rate(Request) ->
        ).
 
 -spec maybe_get_resource_flat_rate(j5_request:request()) ->
-                                          {ne_binary(), ne_binary()}.
--spec maybe_get_resource_flat_rate(j5_request:request(), boolean()) ->
-                                          {ne_binary(), ne_binary()}.
+                                          {kz_term:ne_binary(), kz_term:ne_binary()}.
 maybe_get_resource_flat_rate(Request) ->
     maybe_get_resource_flat_rate(Request, ?SHOULD_LOOKUP_FLAT_RATE).
 
+-spec maybe_get_resource_flat_rate(j5_request:request(), boolean()) ->
+                                          {kz_term:ne_binary(), kz_term:ne_binary()}.
 maybe_get_resource_flat_rate(_Request, 'false') ->
     {?WHITELIST, ?BLACKLIST};
 maybe_get_resource_flat_rate(Request, 'true') ->
@@ -174,7 +174,7 @@ consume_twoway_limits(Used, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec consume_limit(integer(), integer(), ne_binary()) -> integer().
+-spec consume_limit(integer(), integer(), kz_term:ne_binary()) -> integer().
 consume_limit(-1, _, Type) ->
     lager:debug("account has unlimited ~s trunks", [Type]),
     0;

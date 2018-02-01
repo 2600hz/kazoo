@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%% utility functions for Trunkstore
 %%%
@@ -47,7 +47,7 @@
 -define(VALIDATE_CALLER_ID, kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false')).
 -define(HONOR_DIVERSION, kapps_config:get_is_true(?CONFIG_CAT, <<"honor_diversions_by_cid_validation">>, 'false')).
 
--spec find_ip(ne_binary() | nonempty_string()) -> nonempty_string().
+-spec find_ip(kz_term:ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
     find_ip(binary_to_list(Domain));
 find_ip(Domain) when is_list(Domain) ->
@@ -65,7 +65,7 @@ find_ip(Domain) when is_list(Domain) ->
 
 %% FilterOn: CallID | flat_rate | per_min
 %% Remove active call entries based on what Filter criteria is passed in
--spec filter_active_calls(ne_binary() | 'flat_rate' | 'per_min', active_calls()) -> active_calls().
+-spec filter_active_calls(kz_term:ne_binary() | 'flat_rate' | 'per_min', active_calls()) -> active_calls().
 filter_active_calls('flat_rate', ActiveCalls) ->
     lists:filter(fun({_,'flat_rate'}) -> 'false';
                     (_) -> 'true'
@@ -80,21 +80,21 @@ filter_active_calls(CallID, ActiveCalls) ->
                     (_) -> 'true'
                  end, ActiveCalls).
 
--spec get_media_handling(kz_json:objects() | api_binaries()) -> ne_binary().
+-spec get_media_handling(kz_json:objects() | kz_term:api_binaries()) -> kz_term:ne_binary().
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
         _ -> <<"bypass">>
     end.
 
--spec constrain_weight(ne_binary() | integer()) -> integer().
+-spec constrain_weight(kz_term:ne_binary() | integer()) -> integer().
 constrain_weight(W) when not is_integer(W) ->
     constrain_weight(kz_term:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
 
--spec lookup_did(ne_binary(), ne_binary()) ->
+-spec lookup_did(kz_term:ne_binary(), kz_term:ne_binary()) ->
                         {'ok', kz_json:object()} |
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
@@ -140,13 +140,13 @@ lookup_did(DID, AccountId) ->
             end
     end.
 
--spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary()) ->
+-spec lookup_user_flags(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                {'ok', kz_json:object()} |
                                {'error', atom()}.
 lookup_user_flags(Name, Realm, AccountId) ->
     lookup_user_flags(Name, Realm, AccountId, 'undefined').
 
--spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
+-spec lookup_user_flags(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                {'ok', kz_json:object()} |
                                {'error', atom()}.
 lookup_user_flags('undefined', _, _, 'undefined') ->
@@ -216,7 +216,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
             end
     end.
 
--spec merge_account_attributes(ne_binary() | kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec merge_account_attributes(kz_term:ne_binary() | kz_json:object(), kz_json:object()) -> kz_json:object().
 merge_account_attributes(?NE_BINARY=AccountId, JObj) ->
     case kz_account:fetch(AccountId) of
         {'ok', Account} -> merge_account_attributes(Account, JObj);
@@ -234,7 +234,7 @@ merge_account_attributes(Account, JObj) ->
 get_call_duration(JObj) ->
     kz_term:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj)).
 
--spec invite_format(ne_binary(), ne_binary()) -> kz_proplist().
+-spec invite_format(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
     ,{<<"To-DID">>, knm_converters:normalize(To)}
@@ -274,7 +274,7 @@ invite_format(<<"npan">>, To) ->
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].
 
--spec caller_id(api_objects()) -> {api_binary(), api_binary()}.
+-spec caller_id(kz_term:api_objects()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 caller_id([]) -> {'undefined', 'undefined'};
 caller_id(['undefined'|T]) -> caller_id(T);
 caller_id([CID|T]) ->
@@ -286,7 +286,7 @@ caller_id([CID|T]) ->
         CallerID -> CallerID
     end.
 
--spec sip_headers(api_objects()) -> api_object().
+-spec sip_headers(kz_term:api_objects()) -> kz_term:api_object().
 sip_headers([]) -> 'undefined';
 sip_headers(L) when is_list(L) ->
     case [Headers || Headers <- L,
@@ -298,8 +298,8 @@ sip_headers(L) when is_list(L) ->
         _ -> 'undefined'
     end.
 
--spec failover(kz_json:objects() | api_binaries()) ->
-                      api_object().
+-spec failover(kz_json:objects() | kz_term:api_binaries()) ->
+                      kz_term:api_object().
 %% cascade from DID to Srv to Account
 failover(L) ->
     case simple_extract(L) of
@@ -307,27 +307,27 @@ failover(L) ->
         Other -> Other
     end.
 
--spec progress_timeout(kz_json:objects() | api_binaries()) ->
-                              kz_json:object() | api_binary().
+-spec progress_timeout(kz_json:objects() | kz_term:api_binaries()) ->
+                              kz_json:object() | kz_term:api_binary().
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media(kz_json:objects() | api_binaries()) -> ne_binary().
+-spec bypass_media(kz_json:objects() | kz_term:api_binaries()) -> kz_term:ne_binary().
 bypass_media(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"false">>;
         _ -> <<"true">>
     end.
 
--spec delay(kz_json:objects() | api_binaries()) ->
-                   kz_json:object() | api_binary().
+-spec delay(kz_json:objects() | kz_term:api_binaries()) ->
+                   kz_json:object() | kz_term:api_binary().
 delay(L) -> simple_extract(L).
 
--spec ignore_early_media(kz_json:objects() | api_binaries()) ->
-                                kz_json:object() | api_binary().
+-spec ignore_early_media(kz_json:objects() | kz_term:api_binaries()) ->
+                                kz_json:object() | kz_term:api_binary().
 ignore_early_media(L) -> simple_extract(L).
 
--spec ep_timeout(kz_json:objects() | api_binaries()) ->
-                        kz_json:object() | api_binary().
+-spec ep_timeout(kz_json:objects() | kz_term:api_binaries()) ->
+                        kz_json:object() | kz_term:api_binary().
 ep_timeout(L) -> simple_extract(L).
 
 -spec offnet_flags(list()) -> 'undefined' | list().
@@ -335,8 +335,8 @@ offnet_flags([]) -> 'undefined';
 offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
--spec simple_extract(kz_json:objects() | api_binaries()) ->
-                            kz_json:object() | api_binary().
+-spec simple_extract(kz_json:objects() | kz_term:api_binaries()) ->
+                            kz_json:object() | kz_term:api_binary().
 simple_extract([]) -> 'undefined';
 simple_extract(['undefined'|T]) -> simple_extract(T);
 simple_extract([<<>> | T]) -> simple_extract(T);
@@ -351,8 +351,8 @@ simple_extract([JObj | T]) ->
 
 -type cid_type() :: 'external' | 'emergency'.
 
--spec maybe_ensure_cid_valid(cid_type(), api_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
-                                    ne_binary().
+-spec maybe_ensure_cid_valid(cid_type(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+                                    kz_term:ne_binary().
 maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
     case ?VALIDATE_CALLER_ID of
         'true' -> maybe_honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders);
@@ -382,7 +382,7 @@ honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
             validate_external_cid(CIDNum, FromUser, AccountId)
     end.
 
--spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec validate_external_cid(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
     case knm_number:lookup_account(CIDNum) of
@@ -390,7 +390,7 @@ validate_external_cid(CIDNum, FromUser, AccountId) ->
         _Else -> validate_from_user(FromUser, AccountId)
     end.
 
--spec validate_from_user(ne_binary(), ne_binary()) -> ne_binary().
+-spec validate_from_user(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 validate_from_user(FromUser, AccountId) ->
     NormalizedFromUser = knm_converters:normalize(FromUser),
     case knm_number:lookup_account(NormalizedFromUser) of
@@ -403,7 +403,7 @@ validate_from_user(FromUser, AccountId) ->
             DefaultCID
     end.
 
--spec maybe_restrict_call(ts_callflow:state(), kz_proplist()) -> boolean().
+-spec maybe_restrict_call(ts_callflow:state(), kz_term:proplist()) -> boolean().
 maybe_restrict_call(#ts_callflow_state{acctid=AccountId
                                       ,route_req_jobj=RRObj
                                       }

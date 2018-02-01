@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Receives HOLD/UNHOLD CHANNEL event
 %%% @end
@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-               ,options = [] :: kz_proplist()
+               ,options = [] :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -37,9 +37,11 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+
+-spec start_link(atom()) -> kz_types:startlink_ret().
 start_link(Node) -> start_link(Node, []).
+
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -58,7 +60,7 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     kz_util:put_callid(Node),
     gen_server:cast(self(), 'bind_to_record'),
@@ -78,7 +80,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -92,7 +94,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind_to_record', #state{node=Node}=State) ->
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_HOLD">>)}),
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_UNHOLD">>)}),
@@ -111,7 +113,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun process_event/3, [UUID, Props, Node]),
     {'noreply', State};
@@ -150,13 +152,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec process_event(api_binary(), kz_proplist(), atom()) -> any().
+-spec process_event(kz_term:api_binary(), kz_term:proplist(), atom()) -> any().
 process_event(UUID, Props, Node) ->
     kz_util:put_callid(UUID),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     process_specific_event(EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+-spec process_specific_event(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), atom()) -> any().
 process_specific_event(<<"CHANNEL_HOLD">>, UUID, Props, _Node) ->
     ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'true'),
     ecallmgr_call_events:process_channel_event([UUID | Props]);

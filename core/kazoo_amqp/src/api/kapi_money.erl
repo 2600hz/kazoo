@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% APIs for events concerning money (like credits, debits, and others)
 %%%
@@ -60,10 +60,10 @@
 
 %%--------------------------------------------------------------------
 %% @doc Credit Update - see wiki
-%% Takes kz_proplist(), creates JSON iolist or error
+%% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec credit(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec credit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 credit(Prop) when is_list(Prop) ->
     case credit_v(Prop) of
         true -> kz_api:build_message(Prop, ?CREDIT_HEADERS, ?OPTIONAL_CREDIT_HEADERS);
@@ -72,7 +72,7 @@ credit(Prop) when is_list(Prop) ->
 credit(JObj) ->
     credit(kz_json:to_proplist(JObj)).
 
--spec credit_v(api_terms()) -> boolean().
+-spec credit_v(kz_term:api_terms()) -> boolean().
 credit_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CREDIT_HEADERS, ?CREDIT_VALUES, ?CREDIT_TYPES);
 credit_v(JObj) ->
@@ -80,10 +80,10 @@ credit_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Debit Update - see wiki
-%% Takes kz_proplist(), creates JSON iolist or error
+%% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec debit(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec debit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 debit(Prop) when is_list(Prop) ->
     case debit_v(Prop) of
         true -> kz_api:build_message(Prop, ?DEBIT_HEADERS, ?OPTIONAL_DEBIT_HEADERS);
@@ -92,7 +92,7 @@ debit(Prop) when is_list(Prop) ->
 debit(JObj) ->
     debit(kz_json:to_proplist(JObj)).
 
--spec debit_v(api_terms()) -> boolean().
+-spec debit_v(kz_term:api_terms()) -> boolean().
 debit_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DEBIT_HEADERS, ?DEBIT_VALUES, ?DEBIT_TYPES);
 debit_v(JObj) ->
@@ -100,10 +100,10 @@ debit_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Balance Request - see wiki
-%% Takes kz_proplist(), creates JSON iolist or error
+%% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec balance_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec balance_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 balance_req(Prop) when is_list(Prop) ->
     case balance_req_v(Prop) of
         true -> kz_api:build_message(Prop, ?BALANCE_REQ_HEADERS, ?OPTIONAL_BALANCE_REQ_HEADERS);
@@ -112,7 +112,7 @@ balance_req(Prop) when is_list(Prop) ->
 balance_req(JObj) ->
     balance_req(kz_json:to_proplist(JObj)).
 
--spec balance_req_v(api_terms()) -> boolean().
+-spec balance_req_v(kz_term:api_terms()) -> boolean().
 balance_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BALANCE_REQ_HEADERS, ?BALANCE_REQ_VALUES, ?BALANCE_REQ_TYPES);
 balance_req_v(JObj) ->
@@ -120,10 +120,10 @@ balance_req_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Balance Response - see wiki
-%% Takes kz_proplist(), creates JSON iolist or error
+%% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec balance_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec balance_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 balance_resp(Prop) when is_list(Prop) ->
     case balance_resp_v(Prop) of
         true -> kz_api:build_message(Prop, ?BALANCE_RESP_HEADERS, ?OPTIONAL_BALANCE_RESP_HEADERS);
@@ -132,18 +132,18 @@ balance_resp(Prop) when is_list(Prop) ->
 balance_resp(JObj) ->
     balance_resp(kz_json:to_proplist(JObj)).
 
--spec balance_resp_v(api_terms()) -> boolean().
+-spec balance_resp_v(kz_term:api_terms()) -> boolean().
 balance_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?BALANCE_RESP_HEADERS, ?BALANCE_RESP_VALUES, ?BALANCE_RESP_TYPES);
 balance_resp_v(JObj) ->
     balance_resp_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:bind_q_to_configuration(Queue, Routing).
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:unbind_q_from_configuration(Queue, Routing).
@@ -164,37 +164,41 @@ routing_key(Props) ->
                    ,props:get_value('account_id', Props, <<"*">>)
                    ]).
 
--spec publish_credit(api_terms()) -> 'ok'.
--spec publish_credit(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_credit(kz_term:api_terms()) -> 'ok'.
 publish_credit(Req) ->
     publish_credit(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_credit(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_credit(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.credit.">>, props:get_value(<<"Account-ID">>, Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CREDIT_VALUES, fun credit/1),
     amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
--spec publish_debit(api_terms()) -> 'ok'.
--spec publish_debit(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_debit(kz_term:api_terms()) -> 'ok'.
 publish_debit(Req) ->
     publish_debit(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_debit(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_debit(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.debit.">>, props:get_value(<<"Account-ID">>, Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DEBIT_VALUES, fun debit/1),
     amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
--spec publish_balance_req(api_terms()) -> 'ok'.
--spec publish_balance_req(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_balance_req(kz_term:api_terms()) -> 'ok'.
 publish_balance_req(Req) ->
     publish_balance_req(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_balance_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_balance_req(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.balance.">>, props:get_value(<<"Account-ID">>, Req)]),
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_REQ_VALUES, fun balance_req/1),
     amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
--spec publish_balance_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_balance_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_balance_resp(Queue, Req) ->
     publish_balance_resp(Queue, Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_balance_resp(Queue, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_RESP_VALUES, fun balance_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

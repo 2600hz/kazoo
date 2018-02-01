@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2017, 2600Hz
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -50,9 +50,9 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--record(media_map, {id :: ne_binary() %% account/prompt-id
-                   ,account_id :: ne_binary()
-                   ,prompt_id :: ne_binary()
+-record(media_map, {id :: kz_term:ne_binary() %% account/prompt-id
+                   ,account_id :: kz_term:ne_binary()
+                   ,prompt_id :: kz_term:ne_binary()
                    ,languages = kz_json:new() :: kz_json:object() %% {"lang1":"path1", "lang2":"path2"}
                    }).
 -type media_map() :: #media_map{}.
@@ -64,7 +64,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -81,7 +81,7 @@ start_link() ->
 flush() ->
     gen_listener:cast(?MODULE, 'flush').
 
--spec prompt_path(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+-spec prompt_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 prompt_path(AccountId, PromptId, L) ->
     Language = kz_term:to_lower_binary(L),
     #media_map{languages=Langs} = get_map(AccountId, PromptId),
@@ -100,19 +100,19 @@ prompt_path(AccountId, PromptId, L) ->
         Path -> Path
     end.
 
--spec default_prompt_path(ne_binary(), ne_binary()) -> api_binary().
+-spec default_prompt_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 default_prompt_path(PromptId, Language) ->
     #media_map{languages=Langs} = get_map(PromptId),
     lager:debug("checking default langs ~p", [default_language_keys(Language)]),
     kz_json:get_first_defined(default_language_keys(Language), Langs).
 
--spec handle_media_doc(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_media_doc(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_media_doc(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
 
     handle_media_doc_change(JObj, kz_json:get_value(<<"Event-Name">>, JObj)).
 
--spec handle_media_doc_change(kz_json:object(), ne_binary()) -> 'ok'.
+-spec handle_media_doc_change(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_media_doc_change(JObj, ?DOC_DELETED) ->
     MediaId = kz_json:get_value(<<"ID">>, JObj),
     PromptId = extract_prompt_id(MediaId),
@@ -123,7 +123,7 @@ handle_media_doc_change(JObj, _Change) ->
     {'ok', Doc} = kz_datamgr:open_doc(Db, kz_json:get_value(<<"ID">>, JObj)),
     gen_listener:cast(?MODULE, {'add_mapping', Db, Doc}).
 
--spec extract_prompt_id(ne_binary()) -> ne_binary().
+-spec extract_prompt_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 extract_prompt_id(<<_Lang:5/binary, "%2F", PromptId/binary>>) ->
     PromptId;
 extract_prompt_id(<<_Lang:2/binary, "%2F", PromptId/binary>>) ->
@@ -134,7 +134,7 @@ extract_prompt_id(MediaId) ->
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE.
 
--spec table_options() -> kz_proplist().
+-spec table_options() -> kz_term:proplist().
 table_options() ->
     ['set'
     ,'protected'
@@ -142,7 +142,7 @@ table_options() ->
     ,'named_table'
     ].
 
--spec find_me_function() -> api_pid().
+-spec find_me_function() -> kz_term:api_pid().
 find_me_function() -> whereis(?SERVER).
 
 -spec gift_data() -> 'ok'.
@@ -181,7 +181,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'add_mapping', ?KZ_MEDIA_DB, JObj}, _From, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
     {'reply', 'ok', State};
@@ -213,7 +213,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('flush', State) ->
     ets:delete_all_objects(table_id()),
     lager:debug("flushed all media mappings"),
@@ -252,7 +252,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv control of ~p from ~p", [_TableId, _From]),
     _ = kz_util:spawn(fun init_map/0),
@@ -268,7 +268,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -302,16 +302,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec init_map() -> 'ok'.
--spec init_map(ne_binary()) -> 'ok'.
--spec init_map(ne_binary(), ne_binary(), binary(), pos_integer(), fun()) -> 'ok'.
--spec init_map(ne_binary(), ne_binary(), binary(), pos_integer(), fun(), kz_json:objects()) -> 'ok'.
 init_map() ->
     init_map(?KZ_MEDIA_DB).
 
+-spec init_map(kz_term:ne_binary()) -> 'ok'.
 init_map(Db) ->
     init_map(Db, <<"media/crossbar_listing">>, <<>>, 50, fun gen_listener:cast/2).
 
+-spec init_map(kz_term:ne_binary(), kz_term:ne_binary(), binary(), pos_integer(), fun()) -> 'ok'.
 init_map(Db, View, StartKey, Limit, SendFun) ->
     Options = [{'startkey', StartKey}
               ,{'limit', Limit+1}
@@ -323,6 +323,7 @@ init_map(Db, View, StartKey, Limit, SendFun) ->
         {'error', _E} -> lager:debug("error loading ~s in ~s: ~p", [View, Db, _E])
     end.
 
+-spec init_map(kz_term:ne_binary(), kz_term:ne_binary(), binary(), pos_integer(), fun(), kz_json:objects()) -> 'ok'.
 init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
     try lists:split(Limit, ViewResults) of
         {Results, []} ->
@@ -339,11 +340,11 @@ init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
             lager:debug("added the last of the view results from ~s", [View])
     end.
 
--spec add_mapping(ne_binary(), fun(), kz_json:objects()) -> 'ok'.
--spec add_mapping(ne_binary(), fun(), kz_json:objects(), pid()) -> 'ok'.
+-spec add_mapping(kz_term:ne_binary(), fun(), kz_json:objects()) -> 'ok'.
 add_mapping(Db, SendFun, JObjs) ->
     add_mapping(Db, SendFun, JObjs, whereis(?MODULE)).
 
+-spec add_mapping(kz_term:ne_binary(), fun(), kz_json:objects(), pid()) -> 'ok'.
 add_mapping(Db, _SendFun, JObjs, Srv) when Srv =:= self() ->
     AccountId = kz_util:format_account_id(Db, 'raw'),
     _ = [maybe_add_prompt(AccountId, kz_json:get_value(<<"doc">>, JObj))
@@ -355,8 +356,7 @@ add_mapping(Db, SendFun, JObjs, Srv) ->
     _ = [SendFun(Srv, {'add_mapping', AccountId, kz_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs],
     'ok'.
 
--spec maybe_add_prompt(ne_binary(), kz_json:object()) -> 'ok'.
--spec maybe_add_prompt(ne_binary(), kz_json:object(), api_binary()) -> 'ok'.
+-spec maybe_add_prompt(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_add_prompt(AccountId, JObj) ->
     maybe_add_prompt(AccountId
                     ,JObj
@@ -367,6 +367,7 @@ maybe_add_prompt(AccountId, JObj) ->
                                               )
                     ).
 
+-spec maybe_add_prompt(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) -> 'ok'.
 maybe_add_prompt(?KZ_MEDIA_DB, JObj, 'undefined') ->
     Id = kz_doc:id(JObj),
     MapId = mapping_id(?KZ_MEDIA_DB, Id),
@@ -403,19 +404,20 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
     insert_map(UpdatedMap).
 
 -spec insert_map(media_map()) -> 'ok' | 'true'.
--spec insert_map(media_map(), pid()) -> 'ok' | 'true'.
 insert_map(Map) ->
     insert_map(Map, whereis(?MODULE)).
+
+-spec insert_map(media_map(), pid()) -> 'ok' | 'true'.
 insert_map(Map, Srv) when Srv =:= self() ->
     ets:insert(table_id(), Map);
 insert_map(Map, Srv) ->
     gen_listener:call(Srv, {'insert_map', Map}).
 
--spec get_map(ne_binary()) -> media_map().
--spec get_map(ne_binary(), ne_binary()) -> media_map().
+-spec get_map(kz_term:ne_binary()) -> media_map().
 get_map(PromptId) ->
     get_map(?KZ_MEDIA_DB, PromptId).
 
+-spec get_map(kz_term:ne_binary(), kz_term:ne_binary()) -> media_map().
 get_map(?KZ_MEDIA_DB = Db, PromptId) ->
     MapId = mapping_id(Db, PromptId),
     case ets:lookup(table_id(), MapId) of
@@ -437,7 +439,7 @@ get_map(AccountId, PromptId) ->
         [Map] -> Map
     end.
 
--spec init_account_map(ne_binary(), ne_binary()) -> 'true'.
+-spec init_account_map(kz_term:ne_binary(), kz_term:ne_binary()) -> 'true'.
 init_account_map(AccountId, PromptId) ->
     SystemMap = get_map(PromptId),
     MapId = mapping_id(AccountId, PromptId),
@@ -448,16 +450,16 @@ init_account_map(AccountId, PromptId) ->
     new_map(AccountMap).
 
 -spec new_map(media_map()) -> 'true'.
--spec new_map(media_map(), pid()) -> 'true'.
 new_map(Map) ->
     new_map(Map, whereis(?MODULE)).
 
+-spec new_map(media_map(), pid()) -> 'true'.
 new_map(Map, Srv) when Srv =:= self() ->
     ets:insert_new(table_id(), Map);
 new_map(Map, Srv) ->
     'true' = gen_listener:call(Srv, {'new_map', Map}).
 
--spec load_account_map(ne_binary(), ne_binary()) -> media_map().
+-spec load_account_map(kz_term:ne_binary(), kz_term:ne_binary()) -> media_map().
 load_account_map(AccountId, PromptId) ->
     lager:debug("attempting to load account map for ~s/~s", [AccountId, PromptId]),
 
@@ -480,16 +482,16 @@ load_account_map(AccountId, PromptId) ->
     end,
     get_map(AccountId, PromptId).
 
--spec default_language_keys(ne_binary()) -> ne_binaries().
--spec language_keys(ne_binary()) -> ne_binaries().
--spec language_keys(ne_binary(), ne_binaries()) -> ne_binaries().
+-spec default_language_keys(kz_term:ne_binary()) -> kz_term:ne_binaries().
 default_language_keys(Language) ->
     DefaultLanguage = kz_media_util:default_prompt_language(),
     language_keys(Language) ++ [DefaultLanguage].
 
+-spec language_keys(kz_term:ne_binary()) -> kz_term:ne_binaries().
 language_keys(Language) ->
     language_keys(Language, []).
 
+-spec language_keys(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 language_keys(<<Primary:2/binary>>, Acc) ->
     lists:reverse([Primary | Acc]);
 language_keys(<<Primary:2/binary, "-", _Secondary:2/binary>> = Lang, Acc) ->
@@ -499,7 +501,7 @@ language_keys(<<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, Acc) ->
 language_keys(Lang, Acc) ->
     lists:reverse([Lang | Acc]).
 
--spec mapping_id(ne_binary(), ne_binary()) -> ne_binary().
+-spec mapping_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 mapping_id(AccountId, PromptId) ->
     list_to_binary([AccountId, "/", PromptId]).
 

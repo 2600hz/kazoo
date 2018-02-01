@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% When connecting to a FreeSWITCH node, we create three processes: one to
@@ -27,7 +27,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-               ,options = [] :: kz_proplist()
+               ,options = [] :: kz_term:proplist()
                ,timeout = 2 * ?MILLISECONDS_IN_SECOND
                }).
 -type state() :: #state{}.
@@ -35,7 +35,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link(atom(), kz_proplist()) -> startlink_ret().
+-spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -54,7 +54,7 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([atom() | kz_proplist()]) -> {'ok', state()}.
+-spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Props]) ->
     kz_util:put_callid(Node),
     self() ! 'initialize_pinger',
@@ -76,7 +76,7 @@ init([Node, Props]) ->
 %% @end
 %% #state{nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
     {'reply', {'error', 'not_implemented'}, State, Timeout}.
 
@@ -90,7 +90,7 @@ handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast(_Msg, #state{timeout=Timeout}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, Timeout}.
@@ -105,7 +105,7 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
     kz_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
     _ = case props:get_value('cookie', Props) of

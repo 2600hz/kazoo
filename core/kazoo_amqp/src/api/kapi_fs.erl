@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017 2600Hz
+%%% @copyright (C) 2018 2600Hz
 %%% @doc
 %%% FS passthrough API
 %%% @end
@@ -30,7 +30,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> kz_api:build_message(Prop, ?FS_REQ_HEADERS, ?OPTIONAL_FS_REQ_HEADERS);
@@ -39,7 +39,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).
 
--spec req_v(api_terms()) -> boolean().
+-spec req_v(kz_term:api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FS_REQ_HEADERS, ?FS_REQ_VALUES, ?FS_REQ_TYPES);
 req_v(JObj) ->
@@ -54,10 +54,11 @@ req_v(JObj) ->
 declare_exchanges() ->
     amqp_util:callctl_exchange().
 
--spec publish_req(ne_binary(), api_terms()) -> 'ok'.
--spec publish_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_req(Queue, JObj) ->
     publish_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Queue, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?FS_REQ_VALUES, fun req/1),
     amqp_util:callctl_publish(Queue, Payload, ContentType).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -14,7 +14,7 @@
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 
--spec handle_eavesdrop_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_eavesdrop_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_eavesdrop_req(JObj, _Props) ->
     'true' = kapi_resource:eavesdrop_req_v(JObj),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
@@ -27,13 +27,13 @@ handle_eavesdrop_req(JObj, _Props) ->
         {'error', E} -> respond_error(JObj, kz_term:to_binary(E))
     end.
 
--spec get_endpoints(ne_binary(), ne_binary()) ->
+-spec get_endpoints(kz_term:ne_binary(), kz_term:ne_binary()) ->
                            {'ok', kz_json:objects()} |
                            {'error', any()}.
 get_endpoints(AccountId, EndpointId) ->
     kz_endpoint:build(EndpointId, new_call(AccountId)).
 
--spec new_call(ne_binary()) -> kapps_call:call().
+-spec new_call(kz_term:ne_binary()) -> kapps_call:call().
 new_call(AccountId) ->
     kapps_call:from_json(
       kz_json:from_list(
@@ -44,14 +44,14 @@ new_call(AccountId) ->
        )
      ).
 
--spec get_group_and_call_id(kz_json:object()) -> {api_binary(), api_binary()}.
+-spec get_group_and_call_id(kz_json:object()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 get_group_and_call_id(JObj) ->
     case kz_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
         'undefined' -> {'undefined', kz_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)};
         GroupId -> {GroupId, kz_json:get_value(<<"Eavesdrop-Call-ID">>, JObj, <<"all">>)}
     end.
 
--spec send_eavesdrop(kz_json:object(), kz_json:objects(), ne_binary()) -> 'ok'.
+-spec send_eavesdrop(kz_json:object(), kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
 send_eavesdrop(JObj, EPs, AccountId) ->
     {GroupId, CallId} = get_group_and_call_id(JObj),
 
@@ -120,7 +120,7 @@ respond_success(JObj, OrigJObj) ->
                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
 
--spec respond_error(kz_json:object(), ne_binary()) -> 'ok'.
+-spec respond_error(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 respond_error(JObj, E) ->
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     respond(ServerId, [{<<"Status">>, <<"error">>}
@@ -128,12 +128,12 @@ respond_error(JObj, E) ->
                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
 
--spec respond(ne_binary(), kz_proplist()) -> 'ok'.
+-spec respond(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 respond(ServerId, Props) ->
     lager:debug("respond to ~s: ~p", [ServerId, Props]),
     kapi_resource:publish_eavesdrop_resp(ServerId, Props).
 
--spec send_originate_execute(kz_json:object(), ne_binary()) -> 'ok'.
+-spec send_originate_execute(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_originate_execute(JObj, Q) ->
     Prop = [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
@@ -142,14 +142,14 @@ send_originate_execute(JObj, Q) ->
     kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
 
 -spec find_caller_id(kz_json:object()) ->
-                            {ne_binary(), api_binary()}.
--spec find_caller_id(kz_json:object(), kz_proplist()) ->
-                            {ne_binary(), api_binary()}.
+                            {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(JObj) ->
     find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
                          ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
                          ]).
 
+-spec find_caller_id(kz_json:object(), kz_term:proplist()) ->
+                            {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(_JObj, []) -> {<<"SpyVsSpy">>, <<"01010101">>};
 find_caller_id(JObj, [{KName, KNum}|Ks]) ->
     case kz_json:get_value(KName, JObj) of

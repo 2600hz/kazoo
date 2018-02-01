@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -13,7 +13,7 @@
 -include("doodle.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
     Id = kz_json:get_value(<<"ID">>, JObj),
@@ -22,7 +22,7 @@ handle_req(JObj, _Props) ->
     Action = kz_json:get_value(<<"Event-Name">>, JObj),
     handle_doc(Action, Type, Db, Id).
 
--spec handle_doc(api_binary(), api_binary(), api_binary(), api_binary()) -> 'ok'.
+-spec handle_doc(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 handle_doc(?DOC_CREATED, <<"sms">>, Db, Id) ->
     doodle_api:handle_api_sms(Db, Id);
 handle_doc(_, <<"device">>, ?MATCH_ACCOUNT_RAW(AccountId), Id) ->

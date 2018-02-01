@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Utils shared by the various proxy servers
 %%% @end
@@ -8,57 +8,64 @@
 %%%-------------------------------------------------------------------
 -module(kz_media_proxy_util).
 
--export([stream/6
+-export([stream_body/5
         ,get_shout_header/2
 
-        ,set_resp_headers/2, set_resp_headers/5
+        ,resp_headers/1, resp_headers/4
+        ,fold_resp_headers/2
         ]).
 
 -include("kazoo_media.hrl").
 
--type shout_header() :: {0, ne_binary()}.
+-type shout_header() :: {non_neg_integer(), kz_term:ne_binary()}.
 -export_type([shout_header/0]).
 
--spec stream(inet:socket(), atom(), pos_integer(), binary(), shout_header() | 'undefined', boolean()) -> any().
-stream(Socket, Transport, ChunkSize, Bin, Header, ToPad) ->
+-spec stream_body(cowboy_req:req(), pos_integer(), binary(), shout_header() | 'undefined', boolean()) -> 'ok'.
+stream_body(Req, ChunkSize, Bin, Header, ToPad) ->
     lager:debug("let's stream the binary"),
-    send_chunks(Socket, Transport, ChunkSize, Bin, Header, ToPad).
+    send_chunks(Req, ChunkSize, Bin, Header, ToPad).
 
-send_chunks(_S, _T, _, <<>>, _, _) ->
-    lager:debug("nothing to send");
-send_chunks(Socket, Transport, ChunkSize, Bin, Header, ToPad) ->
+-spec send_chunks(cowboy_req:req(), pos_integer(), binary(), shout_header() | 'undefined', boolean()) -> 'ok'.
+send_chunks(Req, _ChunkSize, <<>>, _ShoutHeader, _ToPad) ->
+    lager:debug("nothing left to send"),
+    cowboy_req:stream_body(<<>>, 'fin', Req);
+send_chunks(Req, ChunkSize, Bin, Header, ToPad) ->
     try
         <<Send:ChunkSize/binary, Rest/binary>> = Bin,
-        write_chunk(Socket, Transport, Send, Header),
-        send_chunks(Socket, Transport, ChunkSize, Rest, bump(Header), ToPad)
+        'ok' = write_chunk(Req, Send, Header),
+        send_chunks(Req, ChunkSize, Rest, bump(Header), ToPad)
     catch
         'error':{'badmatch',_} ->
             lager:debug("sending last chunk"),
-            write_data(Socket, Transport, ChunkSize, Bin, Header, ToPad)
+            write_data(Req, ChunkSize, Bin, Header, ToPad)
     end.
 
+-spec bump(shout_header() | 'undefined') -> shout_header() | 'undefined'.
 bump('undefined') -> 'undefined';
 bump({K, H}) -> {K+1, H}.
 
 %% When we know we have the whole chunk, just send it + header
-write_chunk(Socket, Transport, Bin, 'undefined') ->
-    Transport:send(Socket, Bin);
-write_chunk(Socket, Transport, Bin, Header) ->
-    Transport:send(Socket, [Bin, the_header(Header)]).
+-spec write_chunk(cowboy_req:req(), binary(), shout_header() | 'undefined') -> 'ok'.
+write_chunk(Req, Bin, 'undefined') ->
+    cowboy_req:stream_body(Bin, 'nofin', Req);
+write_chunk(Req, Bin, Header) ->
+    cowboy_req:stream_body([Bin, the_header(Header)], 'nofin', Req).
 
 %% when we have less than the chunk size to send, possibly pad it
-write_data(Socket, Transport, ChunkSize, Bin, Header, 'true') ->
+-spec write_data(cowboy_req:req(), pos_integer(), binary(), shout_header() | 'undefined', boolean()) -> 'ok'.
+write_data(Req, ChunkSize, Bin, Header, 'true') ->
     Size = byte_size(Bin),
     H = the_header(Header),
 
     Padding = binary:copy(<<0>>, ChunkSize-Size-byte_size(H)),
 
-    Transport:send(Socket, [Bin, H, Padding]);
-write_data(Socket, Transport, _, Bin, 'undefined', _) ->
-    Transport:send(Socket, Bin);
-write_data(Socket, Transport, _, Bin, Header, 'false') ->
-    Transport:send(Socket, [Bin, the_header(Header)]).
+    cowboy_req:stream_body([Bin, H, Padding], 'fin', Req);
+write_data(Req, _ChunkSize, Bin, 'undefined', _) ->
+    cowboy_req:stream_body(Bin, 'fin', Req);
+write_data(Req, _ChunkSide, Bin, Header, 'false') ->
+    cowboy_req:stream_body([Bin, the_header(Header)], 'fin', Req).
 
+-spec the_header(shout_header() | 'undefined') -> binary().
 the_header('undefined') -> <<>>;
 the_header({K, H}) ->
     case K rem 5 of
@@ -66,7 +73,7 @@ the_header({K, H}) ->
         _ -> <<0>>
     end.
 
--spec get_shout_header(ne_binary(), ne_binary()) -> shout_header().
+-spec get_shout_header(kz_term:ne_binary(), kz_term:ne_binary()) -> shout_header().
 get_shout_header(MediaName, Url) ->
     Bin = list_to_binary(["StreamTitle='",MediaName
                          ,"';StreamUrl='",Url,"';"
@@ -76,38 +83,30 @@ get_shout_header(MediaName, Url) ->
     Extra = lists:duplicate(NPad, 0),
     {0, list_to_binary([Nblocks, Bin, Extra])}.
 
+-spec resp_headers(kz_term:ne_binary()) -> cowboy:http_headers().
+resp_headers(ContentType) ->
+    #{<<"content-type">> => ContentType
+     ,<<"server">> => list_to_binary([?APP_NAME, "/", ?APP_VERSION])
+     }.
 
+-spec resp_headers(pos_integer(), kz_term:ne_binary(), binary(), binary()) -> cowboy:http_headers().
+resp_headers(ChunkSize, ContentType, MediaName, Url) ->
+    #{<<"content-type">> => ContentType
+     ,<<"icy-br">> => <<"8">>
+     ,<<"icy-genre">> => <<"Kazoo Media">>
+     ,<<"icy-metaint">> => kz_term:to_binary(ChunkSize)
+     ,<<"icy-name">> => MediaName
+     ,<<"icy-notice1">> => <<"MediaMgr">>
+     ,<<"icy-pub">> => <<"1">>
+     ,<<"icy-url">> => Url
+     ,<<"server">> => list_to_binary([?APP_NAME, "/", ?APP_VERSION])
+     }.
 
--spec set_resp_headers(cowboy_req:req(), ne_binary()) -> cowboy_req:req().
-set_resp_headers(Req, ContentType) ->
-    fold_resp_headers(Req
-                     ,[{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
-                      ,{<<"Content-Type">>, ContentType}
-                      ]
-                     ).
-
--spec set_resp_headers(cowboy_req:req(), pos_integer(), ne_binary(), binary(), binary()) ->
-                              cowboy_req:req().
-set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
-    fold_resp_headers(Req
-                     ,[{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
-                      ,{<<"Content-Type">>, ContentType}
-                      ,{<<"icy-notice1">>, <<"MediaMgr">>}
-                      ,{<<"icy-name">>, MediaName}
-                      ,{<<"icy-genre">>, <<"Kazoo Media">>}
-                      ,{<<"icy-url">>, Url}
-                      ,{<<"content-type">>, ContentType}
-                      ,{<<"icy-pub">>, <<"1">>}
-                      ,{<<"icy-metaint">>, kz_term:to_binary(ChunkSize)}
-                      ,{<<"icy-br">>, <<"8">>}
-                      ]
-                     ).
-
--spec fold_resp_headers(cowboy_req:req(), kz_proplist()) -> cowboy_req:req().
-fold_resp_headers(Req, Headers) when is_list(Headers) ->
-    lists:foldl(fun({K, V}, ReqAcc) ->
-                        cowboy_req:set_resp_header(K, V, ReqAcc)
-                end
-               ,Req
-               ,Headers
-               ).
+-spec fold_resp_headers(cowboy_req:req(), cowboy:http_headers()) -> cowboy_req:req().
+fold_resp_headers(Req, #{}=Headers) ->
+    maps:fold(fun(K, V, ReqAcc) ->
+                      cowboy_req:set_resp_header(K, V, ReqAcc)
+              end
+             ,Req
+             ,Headers
+             ).

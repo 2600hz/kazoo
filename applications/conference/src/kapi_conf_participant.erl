@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -24,7 +24,7 @@
                              ]).
 -define(DIALPLAN_REQ_TYPES, []).
 
--spec dialplan_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec dialplan_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 dialplan_req(Prop) when is_list(Prop) ->
     case dialplan_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DIALPLAN_REQ_HEADERS, ?OPTIONAL_DIALPLAN_REQ_HEADERS);
@@ -58,10 +58,12 @@ declare_exchanges() ->
 %% Publish to the participant
 %% @end
 %%--------------------------------------------------------------------
--spec publish_dialplan_req(ne_binary(), api_terms()) -> 'ok'.
--spec publish_dialplan_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+
+-spec publish_dialplan_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_dialplan_req(Queue, JObj) ->
     publish_dialplan_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_dialplan_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_dialplan_req(Queue, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIALPLAN_REQ_VALUES, fun dialplan_req/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

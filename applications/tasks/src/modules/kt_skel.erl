@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2017, 2600Hz
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -46,22 +46,22 @@ init() ->
     _ = tasks_bindings:bind(?TRIGGER_MINUTELY, ?MODULE, 'my_minute_job'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(ne_binary()) -> kz_tasks:output_header().
+-spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
 output_header(<<"id2">>) ->
     [<<"Col1">>, <<"Col2">>].
 
 -spec help(kz_json:object()) -> kz_json:object().
 help(JObj) -> help(JObj, <<?CATEGORY>>).
 
--spec help(kz_json:object(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category) ->
     lists:foldl(fun(Action, J) -> help(J, Category, Action) end, JObj, ?ACTIONS).
 
--spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec help(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category, Action) ->
     kz_json:set_value([Category, Action], kz_json:from_list(action(Action)), JObj).
 
--spec action(ne_binary()) -> kz_proplist().
+-spec action(kz_term:ne_binary()) -> kz_term:proplist().
 action(<<"id1">>) ->
     [{<<"description">>, <<"The identity task">>}
     ,{<<"doc">>, <<"Takes 1 column as input and return it as is.">>}
@@ -76,7 +76,7 @@ action(<<"id2">>) ->
     ].
 
 %%% Verifiers
--spec col2(ne_binary()) -> boolean().
+-spec col2(kz_term:ne_binary()) -> boolean().
 col2(?NE_BINARY) -> 'true'.
 
 %%% Appliers

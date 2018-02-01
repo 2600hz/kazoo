@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2017, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -14,7 +14,7 @@
 
 -include("frontier.hrl").
 
--spec handle_acl_req(kz_json:object(), kz_proplist()) -> any().
+-spec handle_acl_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_acl_req(Reqest, _Props) ->
     'true' = kapi_frontier:acls_req_v(Reqest),
     Entity = kz_json:get_value(<<"Entity">>, Reqest),
@@ -35,8 +35,7 @@ send_response(Reqest, Responses) ->
     lager:debug("publishing response"),
     kapi_frontier:publish_acls_resp(ServerID, Resp).
 
--spec make_section(kz_json:objects(), ne_binary()) -> kz_json:object().
--spec make_section(ne_binary(), api_binary(), api_binaries(), api_binary()) -> kz_json:object().
+-spec make_section(kz_json:objects(), kz_term:ne_binary()) -> kz_json:object().
 make_section([], _) ->
     kz_json:new();
 make_section([JObj], Section) ->
@@ -44,6 +43,8 @@ make_section([JObj], Section) ->
     CIDRs = kz_json:get_value([<<"value">>, <<"acls">>, <<"cidrs">>], JObj),
     UserAgent = kz_json:get_value([<<"value">>, <<"acls">>, <<"user_agent">>], JObj),
     make_section(Section, Order, CIDRs, UserAgent).
+
+-spec make_section(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary()) -> kz_json:object().
 make_section(_, Order, CIDRs, _) when Order =:= 'undefined'
                                       orelse CIDRs =:= 'undefined' ->
     kz_json:new();
@@ -54,7 +55,7 @@ make_section(Section, Order, CIDRs, UserAgent) ->
                                    ]),
     kz_json:from_list([{Section, kz_json:from_list(Props)}]).
 
--spec lookup_acl_records(ne_binary(), boolean()) -> kz_json:objects().
+-spec lookup_acl_records(kz_term:ne_binary(), boolean()) -> kz_json:objects().
 lookup_acl_records(Entity, IncludeRealm) ->
     lager:debug("Handle acl request for ~s", [Entity]),
     Realm = frontier_utils:extract_realm(Entity),
@@ -67,11 +68,11 @@ lookup_acl_records(Entity, IncludeRealm) ->
             make_deny_acl(Entity, IncludeRealm)
     end.
 
--spec lookup_acl_records(ne_binary()) -> kz_json:objects().
+-spec lookup_acl_records(kz_term:ne_binary()) -> kz_json:objects().
 lookup_acl_records(Entity) ->
     lookup_acl_records(Entity, 'true').
 
--spec run_acl_query(ne_binary(), boolean()) -> kz_json:objects().
+-spec run_acl_query(kz_term:ne_binary(), boolean()) -> kz_json:objects().
 run_acl_query(Entity, IncludeRealm) ->
     ViewOpts = build_view_options(Entity, IncludeRealm),
     {'ok', UserDb} = kapps_util:get_account_by_realm(frontier_utils:extract_realm(Entity)),
@@ -85,7 +86,7 @@ run_acl_query(Entity, IncludeRealm) ->
             []
     end.
 
--spec build_view_options(ne_binary(), boolean()) -> kz_proplist().
+-spec build_view_options(kz_term:ne_binary(), boolean()) -> kz_term:proplist().
 build_view_options(Entity, IncludeRealm) ->
     case binary:split(Entity, <<"@">>) of
         [User, _OnRealm] = Keys ->
@@ -96,7 +97,7 @@ build_view_options(Entity, IncludeRealm) ->
         [JustRealm] -> [{'key', JustRealm}]
     end.
 
--spec make_deny_acl(ne_binary(), boolean()) -> kz_json:objects().
+-spec make_deny_acl(kz_term:ne_binary(), boolean()) -> kz_json:objects().
 make_deny_acl(Entity, IncludeRealm) ->
     Realm = frontier_utils:extract_realm(Entity),
     IsDevice = Realm =/= Entity,
@@ -121,6 +122,6 @@ make_deny_acl(Entity, IncludeRealm) ->
         _ -> [Record]
     end.
 
--spec make_deny_acl(ne_binary()) -> kz_json:objects().
+-spec make_deny_acl(kz_term:ne_binary()) -> kz_json:objects().
 make_deny_acl(Entity) ->
     make_deny_acl(Entity, 'true').

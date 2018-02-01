@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
 %%% @end
@@ -24,7 +24,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec fetch(kz_term:api_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
@@ -36,7 +36,7 @@ fetch(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary()) -> kz_json:object().
+-spec new(kz_term:ne_binary()) -> kz_json:object().
 new(Account) ->
     Routines = [
                 fun(JObj) -> kz_doc:set_id(JObj, ?ID) end
@@ -60,7 +60,7 @@ new(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id() -> ne_binary().
+-spec id() -> kz_term:ne_binary().
 id() -> ?ID.
 
 %%--------------------------------------------------------------------
@@ -68,11 +68,12 @@ id() -> ?ID.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec apps(kz_json:object()) -> kz_json:object().
--spec apps(kz_json:object(), any()) -> kz_json:object().
 apps(JObj) ->
     kz_json:get_value(?APPS, JObj, kz_json:new()).
 
+-spec apps(kz_json:object(), any()) -> kz_json:object().
 apps(JObj, Default) ->
     kz_json:get_value(?APPS, JObj, Default).
 
@@ -86,11 +87,12 @@ set_apps(JObj, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec blacklist(kz_json:object()) -> ne_binaries().
--spec blacklist(kz_json:object(), Default) -> ne_binaries() | Default.
+
+-spec blacklist(kz_json:object()) -> kz_term:ne_binaries().
 blacklist(JObj) ->
     kz_json:get_value(?BLACKLIST, JObj, []).
 
+-spec blacklist(kz_json:object(), Default) -> kz_term:ne_binaries() | Default.
 blacklist(JObj, Default) ->
     kz_json:get_value(?BLACKLIST, JObj, Default).
 

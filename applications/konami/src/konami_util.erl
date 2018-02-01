@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -14,7 +14,7 @@
 
 -include("konami.hrl").
 
--spec listen_on_other_leg(kapps_call:call(), ne_binaries()) -> 'ok'.
+-spec listen_on_other_leg(kapps_call:call(), kz_term:ne_binaries()) -> 'ok'.
 listen_on_other_leg(Call, Events) ->
     API = [{<<"Application-Name">>, <<"noop">>}
           ,{<<"B-Leg-Events">>, Events}
@@ -24,7 +24,7 @@ listen_on_other_leg(Call, Events) ->
     lager:debug("sending noop for b leg events"),
     kapps_call_command:send_command(API, Call).
 
--spec send_hangup_req(ne_binary()) -> 'ok'.
+-spec send_hangup_req(kz_term:ne_binary()) -> 'ok'.
 send_hangup_req(CallId) ->
     API = [{<<"Call-ID">>, CallId}
           ,{<<"Action">>, <<"hangup">>}
@@ -34,7 +34,7 @@ send_hangup_req(CallId) ->
     lager:debug("attempting to hangup ~s", [CallId]),
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1).
 
--spec send_break_req(ne_binary()) -> 'ok'.
+-spec send_break_req(kz_term:ne_binary()) -> 'ok'.
 send_break_req(CallId) ->
     API = [{<<"Call-ID">>, CallId}
           ,{<<"Action">>, <<"break">>}

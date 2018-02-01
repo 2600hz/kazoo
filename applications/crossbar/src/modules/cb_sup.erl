@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
 %%% Provides a similar interface to the SUP command-line utility. Maps to SUP
@@ -48,7 +48,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     proc_lib:start_link(?SERVER, 'init_io', [self()]).
 
@@ -137,20 +137,20 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'false'.
--spec authorize(cb_context:context(), path_token()) -> boolean().
--spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
--spec authorize(cb_context:context(), path_token(), path_token(), path_token()) -> boolean().
 
+-spec authorize(cb_context:context()) -> 'false'.
 authorize(_Context) ->
     'false'.
 
+-spec authorize(cb_context:context(), path_token()) -> boolean().
 authorize(Context, _Module) ->
     cb_context:is_superduper_admin(Context).
 
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
 authorize(Context, _Module, _Function) ->
     cb_context:is_superduper_admin(Context).
 
+-spec authorize(cb_context:context(), path_token(), path_token(), path_token()) -> boolean().
 authorize(Context, _Module, _Function, _Args) ->
     cb_context:is_superduper_admin(Context).
 
@@ -161,15 +161,16 @@ authorize(Context, _Module, _Function, _Args) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_Module) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(_Module, _Function) ->
     [?HTTP_GET].
 
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods(_Module, _Function, _Args) ->
     [?HTTP_GET].
 
@@ -182,18 +183,19 @@ allowed_methods(_Module, _Function, _Args) ->
 %%    /sup/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+
 -spec resource_exists() -> 'false'.
--spec resource_exists(path_token()) -> boolean().
--spec resource_exists(path_token(), path_token()) -> boolean().
--spec resource_exists(path_token(), path_token(), ne_binaries()) -> boolean().
 resource_exists() -> 'false'.
 
+-spec resource_exists(path_token()) -> boolean().
 resource_exists(ModuleBin) ->
     does_resource_exist(ModuleBin, 'status', []).
 
+-spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists(ModuleBin, FunctionBin) ->
     does_resource_exist(ModuleBin, FunctionBin, []).
 
+-spec resource_exists(path_token(), path_token(), kz_term:ne_binaries()) -> boolean().
 resource_exists(ModuleBin, FunctionBin, Args) ->
     does_resource_exist(ModuleBin, FunctionBin, Args).
 
@@ -230,16 +232,19 @@ module_name(ModuleBin) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) -> Context.
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin) ->
     validate_sup(Context, module_name(ModuleBin), 'status', []).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin, FunctionBin) ->
     validate_sup(Context, module_name(ModuleBin), kz_term:to_atom(FunctionBin), []).
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ModuleBin, FunctionBin, Args) ->
     validate_sup(Context, module_name(ModuleBin), kz_term:to_atom(FunctionBin), Args).
 
