@@ -1,8 +1,5 @@
 {
     "_id": "_design/vmboxes",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'vmbox' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

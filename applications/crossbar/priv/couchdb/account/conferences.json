@@ -1,8 +1,5 @@
 {
     "_id": "_design/conferences",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'conference' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

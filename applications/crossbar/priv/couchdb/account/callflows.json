@@ -1,8 +1,5 @@
 {
     "_id": "_design/callflows",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'callflow' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

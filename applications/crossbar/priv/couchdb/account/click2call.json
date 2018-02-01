@@ -1,8 +1,5 @@
 {
     "_id": "_design/click2call",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'click2call' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

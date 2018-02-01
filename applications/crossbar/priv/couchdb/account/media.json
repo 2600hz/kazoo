@@ -1,8 +1,5 @@
 {
     "_id": "_design/media",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'media' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

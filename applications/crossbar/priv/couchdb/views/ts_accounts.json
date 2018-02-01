@@ -1,8 +1,5 @@
 {
     "_id": "_design/ts_accounts",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.type != 'sys_info' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

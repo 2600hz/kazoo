@@ -1,8 +1,5 @@
 {
     "_id": "_design/users",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'user' ); }"
-    },
     "language": "javascript",
     "views": {
         "creds_by_md5": {
