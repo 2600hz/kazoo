@@ -78,6 +78,7 @@
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
         ,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
+        ,tts_terminators/1, tts_voice/1, tts_language/2, tts_engine/2
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -224,6 +225,7 @@
 -export_type([audio_macro_prompt/0
              ,audio_macro_prompts/0
              ,store_fun/0
+             ,collect_digits_return/0
              ]).
 
 -type store_fun() :: kz_term:ne_binary() | fun(() -> kz_term:ne_binary()).
@@ -1594,16 +1596,17 @@ tts_terminators('undefined') -> ?ANY_DIGIT;
 tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
 
+-spec tts_voice(kz_term:api_ne_binaries()) -> kz_term:ne_binary().
 tts_voice('undefined') -> kazoo_tts:default_voice();
 tts_voice(Voice) -> Voice.
 
+-spec tts_language(kz_term:api_ne_binaries(), kapps_call:call()) -> kz_term:ne_binary().
 tts_language('undefined', Call) -> kapps_call:language(Call);
 tts_language(Language, _Call) -> Language.
 
 -spec tts_engine(kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts_engine('undefined', Call) -> kazoo_tts:default_provider(Call);
 tts_engine(Engine, _Call) -> Engine.
-
 
 -spec b_tts(kz_term:api_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_tts(SayMe, Call) ->

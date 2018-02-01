@@ -63,6 +63,7 @@ Validator for the TTS (Text-to-speech) callflow action
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`endless_playback` | Loop the media until cancelled | `boolean()` |   | `false` |  
 `engine` | What TTS engine to use | `string('flite' | 'ispeech' | 'voicefabric')` |   | `false` |  
 `language` | The language of the speaker | `string()` |   | `false` |  
 `terminators.[]` |   | `string()` |   | `false` |  

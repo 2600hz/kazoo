@@ -16,6 +16,9 @@
         "Conference-ID": {
             "type": "string"
         },
+        "Endless-Playback": {
+            "type": "boolean"
+        },
         "Engine": {
             "type": "string"
         },
