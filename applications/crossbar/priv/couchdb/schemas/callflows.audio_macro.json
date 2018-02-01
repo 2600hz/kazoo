@@ -26,6 +26,18 @@
                         }
                     },
                     {
+                        "$ref": "callflows.audio_macro.tone",
+                        "description": "tone to play",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "tone"
+                                ],
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
                         "$ref": "callflows.audio_macro.prompt",
                         "description": "prompt to play",
                         "properties": {
@@ -69,7 +81,8 @@
                             "play",
                             "prompt",
                             "say",
-                            "tts"
+                            "tts",
+                            "tone"
                         ],
                         "type": "string"
                     }

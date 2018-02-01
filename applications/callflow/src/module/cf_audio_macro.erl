@@ -96,7 +96,10 @@ get_macro_entry(Macro, {Macros, Data, AccountId}=Acc, <<"tts">>) ->
         'undefined' -> Acc;
         TTSMacro ->
             {[TTSMacro | Macros], Data, AccountId}
-    end.
+    end;
+get_macro_entry(Macro, {Macros, Data, AccountId}, <<"tone">>) ->
+    Tone = kz_json:delete_key(<<"macro">>, Macro),
+    {[{'tones', [Tone]} | Macros], Data, AccountId}.
 
 -spec say_macro(kz_term:api_ne_binaries()) ->
                        kapps_call_command:audio_macro_prompt() | 'undefined'.
@@ -123,22 +126,28 @@ schema_test_() ->
     Data = kz_json:decode(
              <<"{\"macros\":[
                {\"macro\":\"play\"
-               ,\"id\":\"play_me\"
+                ,\"id\":\"play_me\"
                }
                ,{\"macro\":\"tts\"
-               ,\"text\":\"this can be said\"
-               ,\"language\":\"en-us\"
+                ,\"text\":\"this can be said\"
+                ,\"language\":\"en-us\"
                }
                ,{\"macro\":\"prompt\"
-               ,\"id\":\"vm-enter_pin\"
+                ,\"id\":\"vm-enter_pin\"
                }
                ,{\"macro\":\"say\"
-               ,\"text\":\"123\"
-               ,\"method\":\"pronounced\"
-               ,\"type\":\"number\"
+                ,\"text\":\"123\"
+                ,\"method\":\"pronounced\"
+                ,\"type\":\"number\"
+               }
+               ,{\"macro\":\"tone\"
+                ,\"frequencies\":[400,450]
+                ,\"duration_on\":400
+                ,\"duration_off\":200
                }
                ]
-    }">>),
+              }">>
+            ),
     Validated = kz_json_schema:validate(<<"callflows.audio_macro">>, Data),
     ?LOG_DEBUG("validated: ~p", [Validated]),
     ?_assertMatch({'ok', _}, Validated).

@@ -11,7 +11,7 @@ Validator for the audio_macro callflow's data object
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `language` | The language of the speaker | `string()` |   | `false` |  
-`macros.[].macro` | the macro type to process | `string('play' | 'prompt' | 'say' | 'tts')` |   | `false` |  
+`macros.[].macro` | the macro type to process | `string('play' | 'prompt' | 'say' | 'tts' | 'tone')` |   | `false` |  
 `macros` | The audio macro data | `array(object())` | `[]` | `false` |  
 `terminators.[]` |   | `string()` |   | `false` |  
 `terminators` | What DTMF can terminate playback of the audio | `array(string())` | `["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]` | `false` |  
@@ -42,6 +42,19 @@ Key | Description | Type | Default | Required | Support Level
 `terminators` | What DTMF can terminate playback of the audio | `array(string())` | `["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]` | `false` |  
 `text` | Text to say | `string()` |   | `false` |  
 `type` | The type to use when saying the text | `string('number' | 'items' | 'persons' | 'messages' | 'currency' | 'time_measurement' | 'current_date' | 'current_time' | 'current_date_time' | 'telephone_number' | 'telephone_extension' | 'url' | 'ip_address' | 'e-mail_address' | 'postal_address' | 'account_number' | 'name_spelled' | 'name_phonetic' | 'short_date_time')` |   | `false` |  
+
+##### callflows.audio_macro.tone
+
+Validator for playing a tone - TGML
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`duration_off` | time, in milliseconds, for turning the tone off | `integer()` |   | `false` |  
+`duration_on` | time, in milliseconds, for turning the tone on | `integer()` |   | `false` |  
+`frequencies` | The tone frequencies to play | `array(integer())` |   | `false` |  
+`repeat` | how many times to repeat the tone | `integer()` |   | `false` |  
+`volume` | Volume of the tone being played | `integer()` |   | `false` |  
 
 ##### callflows.play
 

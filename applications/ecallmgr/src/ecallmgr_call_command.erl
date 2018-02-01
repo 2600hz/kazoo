@@ -1642,12 +1642,10 @@ tone_repeat(Tone) ->
 
 -spec tone_frequencies(kz_json:object()) -> kz_term:ne_binary().
 tone_frequencies(Tone) ->
-    kz_binary:join(
-      [kz_term:to_binary(V)
-       || V <- kz_json:get_value(<<"Frequencies">>, Tone, [])
-      ]
-                  ,<<",">>
-     ).
+    Freqs = [kz_term:to_binary(V)
+             || V <- kz_json:get_value(<<"Frequencies">>, Tone, [])
+            ],
+    kz_binary:join(Freqs, <<",">>).
 
 -spec tone_duration_on(kz_json:object()) -> kz_term:ne_binary().
 tone_duration_on(Tone) ->
