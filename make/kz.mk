@@ -60,6 +60,7 @@ space := $(empty) $(empty)
 SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
 MODULE_NAMES := $(sort $(foreach module,$(SOURCES),$(shell basename $(module) .erl)))
 MODULES := $(shell echo $(MODULE_NAMES) | sed 's/ /,/g')
+BEAMS := $(sort $(foreach module,$(SOURCES),ebin/$(shell basename $(module) .erl).beam))
 
 TEST_SOURCES := $(SOURCES) $(wildcard test/*.erl)
 TEST_MODULE_NAMES := $(sort $(foreach module,$(TEST_SOURCES),$(shell basename $(module) .erl)))
@@ -70,11 +71,11 @@ include $(DEPS_RULES)
 endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 
-ebin/$(PROJECT).app: $(SOURCES)
+ebin/$(PROJECT).app:
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
 	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src > $@
 
 ebin/%.beam: src/%.erl
