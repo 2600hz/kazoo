@@ -1,0 +1,170 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.edr",
+    "description": "Schema for edr system_config",
+    "properties": {
+        "backends": {
+            "default": [],
+            "description": "Registered edr backends",
+            "items": {
+                "properties": {
+                    "bindings": {
+                        "description": "The types of events the backend should be notified about",
+                        "items": {
+                            "description": "An edr binding",
+                            "properties": {
+                                "account_id": {
+                                    "anyOf": [
+                                        {
+                                            "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "items": {
+                                                "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "default": "*"
+                                },
+                                "app_name": {
+                                    "default": "*",
+                                    "description": "Which apps should we receive events from? If not specified or * then events for all apps will be received",
+                                    "type": "string"
+                                },
+                                "exact_severity": {
+                                    "default": false,
+                                    "description": "If true, then only events with severity exactly matching the severity field will be received. If false then more severe events will also be received",
+                                    "type": "boolean"
+                                },
+                                "exact_verbosity": {
+                                    "default": false,
+                                    "description": "If true, then only events with verbosity exactly matching the verbosity field will be received. If false then less verbose events will also be received",
+                                    "type": "boolean"
+                                },
+                                "include_descendants": {
+                                    "default": false,
+                                    "description": "Should we receive events relating to descendant accounts if an account is specified?",
+                                    "type": "boolean"
+                                },
+                                "severity": {
+                                    "anyOf": [
+                                        {
+                                            "description": "What severity are we interested in events for?",
+                                            "enum": [
+                                                "ok",
+                                                "warning",
+                                                "critical"
+                                            ],
+                                            "type": "string"
+                                        },
+                                        {
+                                            "items": {
+                                                "description": "What severity are we interested in events for?",
+                                                "enum": [
+                                                    "ok",
+                                                    "warning",
+                                                    "critical"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "default": "ok"
+                                },
+                                "verbosity": {
+                                    "anyOf": [
+                                        {
+                                            "description": "What verbosity are we interested in events for?",
+                                            "enum": [
+                                                "trace",
+                                                "debug",
+                                                "info",
+                                                "warn",
+                                                "error",
+                                                "fatal"
+                                            ],
+                                            "type": "string"
+                                        },
+                                        {
+                                            "items": {
+                                                "description": "What verbosity are we interested in events for?",
+                                                "enum": [
+                                                    "trace",
+                                                    "debug",
+                                                    "info",
+                                                    "warn",
+                                                    "error",
+                                                    "fatal"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "default": "info"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "type": "array"
+                    },
+                    "enabled": {
+                        "default": true,
+                        "description": "Should the backend be started on edr app start?",
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "description": "A unique identifier for the backend",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "options": {
+                        "description": "Options passed on to the backend module. These vary by module",
+                        "properties": {
+                            "formatter": {
+                                "description": "Output format configuration which is used by some (but not all) backends",
+                                "properties": {
+                                    "options": {
+                                        "description": "Options passed on to the formatter module. These vary by module",
+                                        "type": "object"
+                                    },
+                                    "type": {
+                                        "description": "The formatter module to be used (eg. json refers to edr_fmt_json.erl)",
+                                        "enum": [
+                                            "json"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": {
+                        "description": "The backend module to be used (eg. amqp refers to edr_be_amqp.erl)",
+                        "enum": [
+                            "amqp",
+                            "file",
+                            "http"
+                        ],
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "type",
+                    "bindings",
+                    "enabled"
+                ],
+                "type": "object"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}
