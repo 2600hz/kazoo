@@ -35,9 +35,10 @@
 -type bind_resp() :: ['ok' | {'error', 'exists'}].
 
 -spec bind(edr_binding() | edr_bindings(), module(), atom()) -> bind_resp().
--spec bind(edr_binding() | edr_bindings(), module(), atom(), any()) -> bind_resp().
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
+
+-spec bind(edr_binding() | edr_bindings(), module(), atom(), any()) -> bind_resp().
 bind(Bindings, Module, Fun, Payload) when is_list(Bindings) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) ->

@@ -21,14 +21,16 @@ format_event(Opts, Event) ->
     encode(Opts, to_jobj(Opts, Event)).
 
 -spec to_jobj(kz_json:object(), edr_event()) -> kz_json:object().
--spec to_jobj(kz_json:object(), edr_event(), boolean()) -> kz_json:object().
--spec to_jobj(kz_json:object(), edr_event(), boolean(), boolean()) -> kz_json:object().
 to_jobj(Opts, Event) ->
     to_jobj(Opts, Event, kz_json:is_true(<<"include_metadata">>, Opts, 'true')).
+
+-spec to_jobj(kz_json:object(), edr_event(), boolean()) -> kz_json:object().
 to_jobj(_Opts, #edr_event{body=JObj}, 'false') ->
     JObj;
 to_jobj(Opts, Event, 'true') ->
     to_jobj(Opts, Event, 'true', kz_json:get_value(<<"normalize">>, Opts, 'true')).
+
+-spec to_jobj(kz_json:object(), edr_event(), boolean(), boolean()) -> kz_json:object().
 to_jobj(_Opts, Event, _IncludeMeta, 'false') ->
     Props = [{<<"Account-ID">>, Event#edr_event.account_id}
             ,{<<"Account-Tree">>, Event#edr_event.account_tree}
