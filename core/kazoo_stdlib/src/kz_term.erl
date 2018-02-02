@@ -40,6 +40,7 @@
         ,is_ne_binaries/1
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1, is_ne_list/1
+        ,is_pos_integer/1
         ,identity/1
         ,always_true/1, always_false/1
         ]).
@@ -319,7 +320,6 @@ is_true("true") -> 'true';
 is_true('true') -> 'true';
 is_true(_) -> 'false'.
 
-
 -type caster() :: fun((any()) -> any()).
 -spec safe_cast(any(), any(), caster()) -> any().
 safe_cast(Value, Default, CastFun) ->
@@ -403,6 +403,11 @@ is_proplist(_) -> 'false'.
 is_ne_list([_|_]) -> 'true';
 is_ne_list(_) -> 'false'.
 
+-spec is_pos_integer(any()) -> boolean().
+is_pos_integer(X) ->
+    is_integer(X)
+        andalso X > 0.
+
 -spec identity(X) -> X.
 identity(X) -> X.
 
@@ -417,7 +422,6 @@ to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
 to_lower_string(Else) ->
     to_lower_string(to_list(Else)).
-
 
 -spec to_upper_binary(any()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';

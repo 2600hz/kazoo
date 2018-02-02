@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @yright (C) 2011-2015 2600Hz INC
+%%% @yright (C) 2011-2018 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -541,6 +541,7 @@
                           ,<<"Media-Name">>
                           ]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Endless-Playback">>
+                                   ,<<"Loop-Count">>
                                    ,<<"Format">>
                                    ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
                                    ,<<"Insert-At">>
@@ -557,6 +558,7 @@
                          ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}
                         ,{<<"Endless-Playback">>, fun kz_term:is_boolean/1}
+                        ,{<<"Loop-Count">>, fun kz_term:is_pos_integer/1}
                         ]).
 
 %% Break Request
@@ -667,6 +669,7 @@
 -define(TTS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Text">>]).
 -define(OPTIONAL_TTS_REQ_HEADERS, [<<"Conference-ID">>
                                   ,<<"Endless-Playback">>
+                                  ,<<"Loop-Count">>
                                   ,<<"Engine">>
                                   ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
                                   ,<<"Insert-At">>
@@ -683,6 +686,7 @@
                         ]).
 -define(TTS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}
                        ,{<<"Endless-Playback">>, fun kz_term:is_boolean/1}
+                       ,{<<"Loop-Count">>, fun kz_term:is_pos_integer/1}
                        ]).
 
 %% Respond
