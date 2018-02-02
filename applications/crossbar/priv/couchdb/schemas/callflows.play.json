@@ -16,6 +16,11 @@
             "description": "Media ID or URL of the media to play",
             "type": "string"
         },
+        "loop_count": {
+            "description": "How many times to loop the media",
+            "minimum": 1,
+            "type": "integer"
+        },
         "terminators": {
             "default": [
                 "1",
