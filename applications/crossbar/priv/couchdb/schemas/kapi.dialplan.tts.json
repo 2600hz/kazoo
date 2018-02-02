@@ -51,6 +51,10 @@
         "Leg": {
             "type": "string"
         },
+        "Loop-Count": {
+            "minimum": 1,
+            "type": "integer"
+        },
         "Terminators": {
             "items": {
                 "enum": [
