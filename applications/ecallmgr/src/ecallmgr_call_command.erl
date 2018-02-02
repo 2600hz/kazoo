@@ -1425,9 +1425,13 @@ play_app(UUID, JObj) ->
 
 -spec playback_app(kz_json:object()) -> kz_term:ne_binary().
 playback_app(JObj) ->
-    case kz_json:is_true(<<"Endless-Playback">>, JObj, 'false') of
+    case kz_json:is_true(<<"Endless-Playback">>, JObj, 'false')
+        orelse kz_json:get_integer_value(<<"Loop-Count">>, JObj)
+    of
         'true' -> <<"endless_playback">>;
-        'false' -> <<"playback">>
+        Count when is_integer(Count), Count > 0 ->
+            <<"loop_playback +", (kz_term:to_binary(Count))/binary>>;
+        _ -> <<"playback">>
     end.
 
 -spec play_bridged(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> fs_app().
