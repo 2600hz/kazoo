@@ -1,11 +1,10 @@
-
-# Overview
+# TwiML Format
 
 Pivot supports a subset of TwiML to help ease you into Pivot with an existing TwiML-based application.
 
-#### Core Supported
+## Core Supported
 
-Default Request Data included:
+### Default Request Data included
 
 | Request Parameter | Kazoo Name     | Description                                                                      |
 | ----------------- | -------------- | -------------------------------------------------------------------------------- |
@@ -18,7 +17,7 @@ Default Request Data included:
 | AccountSid        | Account-ID     | Account ID processing the call                                                   |
 | CallSid           | Call-ID        | Unique identifier of the call leg                                                |
 
-Optional/Conditional Request Data included:
+### Optional/Conditional Request Data
 
 | Request Parameter | Kazoo Name          | Description                                           |
 | ----------------- | ------------------- | ----------------------------------------------------- |
@@ -32,7 +31,7 @@ Optional/Conditional Request Data included:
 
 Other optional data includes user-defined key/value pairs stored using the <Set> verb below.
 
-TwiML Verbs
+### TwiML Verbs
 
 | Verb     | Description                                              | Nestable Verbs and Nouns                                          |
 | -------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -46,13 +45,13 @@ TwiML Verbs
 | Hangup   | Hangup the caller                                        |                                                                   |
 | Reject   | Reject (and don't answer - won't start billing) the call |                                                                   |
 
-Custom Verbs
+### Custom Verbs
 
 | Verb  | Description | Nestable Nouns |
 | ----  | ----------- | -------------- |
 | <Set> | Key value pair(s) to store along-side the call||
 
-Core TwiML Nouns
+### Core TwiML Nouns
 
 | Noun         | Description                                                        |
 | ------------ | ------------------------------------------------------------------ |
@@ -63,16 +62,16 @@ Core TwiML Nouns
 | <Device>     | ID of an existing Kazoo Device                                     |
 | <Sip>        | SIP URI to dial                                                    |
 
-Custom Nouns
+### Custom Nouns
 
 | Noun       | Description                                                                   |
 | ---------- | ----------------------------------------------------------------------------- |
 | <Variable> | Includes 'key' and 'value' attributes; values will be put subsequent requests |
 
-** Using Pivot
+## Using Pivot
 
-1) Create a Pivot callflow to point to your webserver URL
-2) When a call is placed to the Pivot callflow, your webserver will receive a request
-3) Generate a response, using your language of choice, in a supported format
-  3a) see pivot/priv/samples for some example PHP scripts
-4) Marvel at how easy that was
+1. Create a Pivot callflow to point to your webserver URL
+2. When a call is placed to the Pivot callflow, your webserver will receive a request
+3. Generate a response, using your language of choice, in a supported format
+    1. See [sample](https://github.com/2600hz/kazoo/tree/master/applications/pivot/priv/samples) for some example PHP scripts
+4. Marvel at how easy that was

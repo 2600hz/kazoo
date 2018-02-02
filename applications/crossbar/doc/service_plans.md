@@ -1,10 +1,10 @@
-### Service Plans
+# Service Plans
 
-#### About Service Plans
+## About Service Plans
 
 Handle the service plans you can subscribe to.
 
-#### Service Plan Schema
+## Service Plan Schema
 
 Describes services offered to sub-accounts
 
@@ -23,7 +23,7 @@ Key | Description | Type | Default | Required
 `plan./.+/` | Category name | `object()` |   | `false`
 `plan` | Outlines the service plan for various services | `object()` |   | `true`
 
-##### bookkeepers
+### bookkeepers
 
 The bookkeeper modules provided by Kazoo
 
@@ -33,7 +33,7 @@ Key | Description | Type | Default | Required
 `braintree` |   | `object()` |   | `false`
 `local` |   | `object()` |   | `false`
 
-##### service_plan.category
+### service_plan.category
 
 Describes a service plan category
 
@@ -45,7 +45,7 @@ Key | Description | Type | Default | Required
 `_all.exceptions` | Items that are not included in this item plan | `array(string())` |   | `false`
 `_all` | Applies item rules to any item in this category | `object()` |   | `false`
 
-##### service_plan.item
+### service_plan.item
 
 Describes a service plan item
 
@@ -73,7 +73,7 @@ Key | Description | Type | Default | Required
 
 
 
-#### Available Fields To Customize
+## Available Fields To Customize
 
 Get a list of fields that can be customize for each service plan.
 
@@ -85,7 +85,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/service_plans/editable
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -230,7 +230,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans
 
@@ -257,7 +257,7 @@ curl -v -X GET \
 }
 ```
 
-#### Adding/Removing multiple service plans on an account
+## Adding/Removing multiple service plans on an account
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans
 
@@ -275,12 +275,12 @@ curl -v -X POST \
 
 ```json
 {
-    "data": {} //  Merge of the Service plans if any left
+    "data": {}, //  Merge of the Service plans if any left
     "status": "success"
 }
 ```
 
-#### Removing service plan from an account
+## Removing service plan from an account
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
@@ -292,7 +292,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```
 
-#### Retrieving one of your service plans.
+## Retrieving one of your service plans.
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
@@ -433,7 +433,7 @@ curl -v -X GET \
 }
 ```
 
-#### Adding service plan to an account.
+## Adding service plan to an account.
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
@@ -446,16 +446,17 @@ curl -v -X POST \
 
 ```json
 {
-    "data": {...}
+    "data": {...},
     "status": "success"
 }
 ```
 
-#### Override a plan
+## Override a plan
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/override
 
-**Must be super duper admin**
+!!! note
+    Must be super duper admin
 
 Note: `_all` override payload.
 
@@ -494,7 +495,7 @@ curl -v -X POST \
 }
 ```
 
-#### Retrieving your current plan
+## Retrieving your current plan
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/current
 
@@ -658,7 +659,7 @@ curl -v -X GET \
 }
 ```
 
-#### Listing Service Plans available to you
+## Listing Service Plans available to you
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/available
 
@@ -686,7 +687,7 @@ curl -v -X GET \
 ```
 
 
-#### Retrieving a plan
+## Retrieving a plan
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}
 

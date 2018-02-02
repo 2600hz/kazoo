@@ -1,6 +1,6 @@
-### Tasks
+# Tasks
 
-#### About Tasks
+## About Tasks
 
 #### Schema
 
@@ -15,7 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks
 
@@ -25,7 +25,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/tasks
 
@@ -35,7 +35,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -45,7 +45,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -55,7 +55,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
@@ -65,7 +65,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 
@@ -75,7 +75,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
 
@@ -85,7 +85,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/stop
 

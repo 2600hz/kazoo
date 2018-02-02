@@ -1,12 +1,12 @@
-### Token Authentication
+# Token Authentication
 
-#### About Token Authentication
+## About Token Authentication
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/token_auth
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/token_auth
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/token_auth
 

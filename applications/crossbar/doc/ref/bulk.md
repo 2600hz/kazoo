@@ -1,12 +1,12 @@
-### Bulk
+# Bulk
 
-#### About Bulk
+## About Bulk
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/bulk
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/bulk
 
@@ -26,7 +26,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/bulk
 

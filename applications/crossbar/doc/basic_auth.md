@@ -1,20 +1,20 @@
+# Basic Auth
 
+As an alternative for generated Tokens, you can make request with HTTP Basic Auth using your account ID and user name and password.
 
-As an alternative for generated Tokens.
-
-#### Username
+**Basic Auth Username**
 
 Should be set to `account_id` of the authorizing account.
 
-#### Password
+**Basic Password Password**
 
-Should be set to md5sum of username:password
+Should be set to MD5 hash of your `username:password`
 
 ```shell
 PASSWORD=`echo -n username:password | md5sum | awk '{print $1}'`
 ```
 
-#### Sample cURL Requests
+## Sample cURL Requests
 
 ```shell
 curl -v \
@@ -22,4 +22,4 @@ curl -v \
     http://server.com:8000/v2/accounts/{ACCOUNT_ID}/devices
 ```
 
-This will still allow a reseller to execute requests against a sub-account.
+This is useful for reseller to execute requests against a their sub-account quickly.

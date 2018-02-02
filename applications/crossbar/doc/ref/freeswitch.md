@@ -1,12 +1,12 @@
-### Freeswitch
+# Freeswitch
 
-#### About Freeswitch
+## About Freeswitch
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/freeswitch
 

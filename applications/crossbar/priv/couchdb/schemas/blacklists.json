@@ -7,16 +7,19 @@
             "description": "A friendly name for the temporal rule set",
             "maxLength": 128,
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "numbers": {
             "default": {},
             "description": "Map of caller id number to block",
             "properties": {},
+            "support_level": "supported",
             "type": "object"
         },
         "should_block_anonymous": {
             "description": "Should block Anonymous call",
+            "support_level": "supported",
             "type": "boolean"
         }
     },

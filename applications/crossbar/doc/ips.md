@@ -1,12 +1,12 @@
-### IPs
+# IPs
 
-#### About IPs
+## About IPs
 
 The IPs API allows users to manage the IP addresses assigned to their accounts. In the future they will be able to fully manage dedicated IPs.
 
 The common use case is adding proxy IPs that must be used when routing calls to upstream resources. If the upstream requires traffic to come from a specific set of IPs, adding those IPs here will cause outbound calls to carriers to be routed through the IP(s) supplied.
 
-#### Schema
+## Schema
 
 IP addresses assigned to the account
 
@@ -14,12 +14,12 @@ IP addresses assigned to the account
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`ips.[]` |   | `string()` |   | `false` |  
-`ips` | List of IP addresses | `array(string())` |   | `false` |  
+`ips.[]` |   | `string()` |   | `false` |
+`ips` | List of IP addresses | `array(string())` |   | `false` |
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips
 
@@ -46,7 +46,7 @@ curl -v -X GET \
 }
 ```
 
-#### Assign IPs to the account
+## Assign IPs to the account
 
 > POST /v2/accounts/{ACCOUNT_ID}/ips
 
@@ -77,7 +77,7 @@ curl -v -X POST \
 }
 ```
 
-#### Remove an IP assignment
+## Remove an IP assignment
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
 
@@ -104,7 +104,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch details of the assignment
+## Fetch details of the assignment
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
 
@@ -132,7 +132,7 @@ curl -v -X GET \
 }
 ```
 
-#### Assign a single IP to the account
+## Assign a single IP to the account
 
 > POST /v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
 
@@ -161,7 +161,7 @@ curl -v -X POST \
 }
 ```
 
-#### Fetch hosts
+## Fetch hosts
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/hosts
 
@@ -183,7 +183,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch zone listings
+## Fetch zone listings
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/zones
 
@@ -205,7 +205,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch IPs assigned to this account
+## Fetch IPs assigned to this account
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/assigned
 
@@ -233,7 +233,7 @@ curl -v -X GET \
 
 ### Adding IPs to the system
 
-#### Via SUP
+## Via SUP
 
 IPs can be configured by the system admin using the `sup kazoo_ips_maintenance add {IP} {ZONE} {HOST}` command:
 
@@ -250,9 +250,10 @@ Key | Description | Type | Default | Required
 
 Once you've added IPs to the system, you can assign those to different customer accounts to proxy their calls through using the below Crossbar APIs.
 
-#### Via API
+## Via API
 
-This requires a superduper admin auth token:
+!!! note
+    This requires a super duper admin access:
 
 > PUT /v2/ips
 

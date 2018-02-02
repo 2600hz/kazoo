@@ -1,24 +1,25 @@
-### Multi Factor Authentication
+# Multi Factor Authentication Configuration
 
-#### About Multi Factor
+## About Multi Factor
 
 API endpoint to configure Crossbar Multi Factor Authentication (MFA) providers.
 
 See [Kazoo Auth multi factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to learn more about available providers and their required settings.
 
-##### Enable MFA for a Crossbar auth module
+## Enable MFA for a Crossbar auth module
 
 If you want to use multi factor authentication for a module, set the `multi_factor.enabled` to `true` for that authentication module. You can control if the multi factor settings can be applied to the account's children by `multi_factor.include_subaccounts`. See [Crossbar Security API documentation](./security.md).
 
-> **Note:** You can specify the `id` of multi factor provider settings. If you miss this value, system's default MFA provider will be used!
+!!! note
+    You can specify the `id` of multi factor provider settings. If you miss this value, system's default MFA provider will be used!
 
-#### Multi Factor Authentication (MFA) flow summary
+## Multi Factor Authentication (MFA) flow summary
 
 The MFA process in Kazoo is straight forward. You configured the Kazoo integrated MFA service provider, and enabling the multi factor for an authentication endpoint. User will authenticate as usual by its own Kazoo credential. If the first factor authentication passed, second-factor provider information (usually a signed token) would be returned to client with HTTP `401 Unauthorized` status.
 
 User's client performs the second-factor authentication with the provider and sends provider response to Kazoo. If the provider validates user will be authenticated successful and a Kazoo token will be generated as usual otherwise if the second-factor provider response is not validated a HTTP `401 Unauthorized` will be returned.
 
-#### Provider Configuration Schema
+## Provider Configuration Schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -28,7 +29,7 @@ Key | Description | Type | Default | Required
 `settings` | provider configuration | `object` |   | `false`
 
 
-#### List Account Configuration and Available System Providers
+## List Account Configuration and Available System Providers
 
 List configured multi factor providers and available system multi factor provider.
 
@@ -40,7 +41,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -73,7 +74,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create a Provider Configuration for an Account
+## Create a Provider Configuration for an Account
 
 Create configuration for a MFA provider. Provider config should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
 
@@ -86,7 +87,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -114,7 +115,7 @@ curl -v -X PUT \
 }
 ```
 
-#### Fetch an Account's Provider Configuration
+## Fetch an Account's Provider Configuration
 
 Get account's configuration of a provider.
 
@@ -126,7 +127,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/c757665dca55edba2395df3ca6423f4f
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -154,7 +155,7 @@ curl -v -X GET \
 }
 ```
 
-#### Change an Account's Provider Configuration
+## Change an Account's Provider Configuration
 
 > POST /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -165,7 +166,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/c757665dca55edba2395df3ca6423f4f
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -193,7 +194,7 @@ curl -v -X POST \
 }
 ```
 
-#### Patch Fields in an Account's Provider Configuration
+## Patch Fields in an Account's Provider Configuration
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -204,7 +205,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/c757665dca55edba2395df3ca6423f4f
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -232,7 +233,7 @@ curl -v -X PATCH \
 }
 ```
 
-#### Remove an Account's Provider Configuration
+## Remove an Account's Provider Configuration
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -242,7 +243,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/c757665dca55edba2395df3ca6423f4f
 ```
 
-#### Get a Summary of Multi Factor Login Attempts
+## Get a Summary of Multi Factor Login Attempts
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/attempts
 
@@ -252,7 +253,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/attempts
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -277,7 +278,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch Details of a Multi Factor Login Attempts
+## Fetch Details of a Multi Factor Login Attempts
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/attempts/{ATTEMPT_ID}
 
@@ -287,7 +288,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/attempts/201702-09a979346eff06746e445a8cc1e574c4
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -329,7 +330,7 @@ curl -v -X GET \
 }
 ```
 
-#### List System Multi Factor Providers
+## List System Multi Factor Providers
 
 List system multi factor providers
 
@@ -341,7 +342,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/multi_factor
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -367,11 +368,12 @@ curl -v -X GET \
 }
 ```
 
-#### Create a System Provider Configuration
+## Create a System Provider Configuration
 
 Provider config should be in `"settings"`. See [Kazoo Auth Multi-Factor](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
 
-> **Note:** Only super duper admin can create system providers configuration!
+!!! note
+    Only super duper admin can create system providers configuration!
 
 > PUT /v2/multi_factor
 
@@ -382,7 +384,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/multi_factor
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -410,9 +412,10 @@ curl -v -X PUT \
 }
 ```
 
-#### Fetch a System Provider Configuration
+## Fetch a System Provider Configuration
 
-> **Note:** Only super duper admin can get system providers configuration!
+!!! note
+    Only super duper admin can get system providers configuration!
 
 > GET /v2/multi_factor/{CONFIG_ID}
 
@@ -422,7 +425,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/multi_factor/c757665dca55edba2395df3ca6423f4f
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -443,9 +446,10 @@ curl -v -X GET \
 }
 ```
 
-#### Change a System Provider Configuration
+## Change a System Provider Configuration
 
-> **Note:** Only super duper admin can change system providers configuration!
+!!! note
+    Only super duper admin can change system providers configuration!
 
 > POST /v2/multi_factor/{CONFIG_ID}
 
@@ -456,7 +460,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/multi_factor/duo
 ```
 
-##### Response
+**Responses**
 
 ```json
 {
@@ -484,9 +488,10 @@ curl -v -X POST \
 }
 ```
 
-#### Patch fields in a System provider configuration
+## Patch fields in a System provider configuration
 
-> **Note:** Only super duper admin can change system providers configuration!
+!!! note
+    Only super duper admin can change system providers configuration!
 
 > PATCH /v2/multi_factor/{CONFIG_ID}
 
@@ -497,7 +502,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/multi_factor/duo
 ```
 
-##### Response
+**Responses**
 
 ```json
 {

@@ -1,6 +1,6 @@
-### Conferences
+# Conferences
 
-#### About Conferences
+## About Conferences
 
 #### Schema
 
@@ -21,8 +21,8 @@ Key | Description | Type | Default | Required | Support Level
 `language` | Prompt language to play in the conference | `string()` |   | `false` |  
 `max_members_media` | Media to play when the conference is full | `string()` |   | `false` |  
 `max_participants` | The maximum number of participants that can join | `integer()` |   | `false` |  
-`member.join_deaf` | Determines if a member will join deaf | `boolean()` | `false` | `false` |  
-`member.join_muted` | Determines if a member will join muted | `boolean()` | `true` | `false` |  
+`member.join_deaf` | Determines if a member will join deaf | `boolean()` | `false` | `false` | `supported`
+`member.join_muted` | Determines if a member will join muted | `boolean()` | `true` | `false` | `supported`
 `member.numbers.[]` |   | `string()` |   | `false` |  
 `member.numbers` | Defines the conference (call in) number(s) for members | `array(string())` | `[]` | `false` |  
 `member.pins.[]` |   | `string()` |   | `false` |  
@@ -37,10 +37,10 @@ Key | Description | Type | Default | Required | Support Level
 `moderator.pins` | Defines the pin number(s) for moderators | `array(string())` | `[]` | `false` |  
 `moderator` | Defines the discovery (call in) properties for a moderator | `object()` | `{}` | `false` |  
 `moderator_controls` | profile on the switch for controlling the conference as a moderator | `string()` |   | `false` |  
-`name` | A friendly name for the conference | `string(1..128)` |   | `false` |  
-`owner_id` | The user ID who manages this conference | `string(32)` |   | `false` |  
-`play_entry_tone` | Whether to play an entry tone, or the entry tone to play | `boolean() | string()` |   | `false` |  
-`play_exit_tone` | Whether to play an exit tone, or the exit tone to play | `boolean() | string()` |   | `false` |  
+`name` | A friendly name for the conference | `string(1..128)` |   | `false` | `supported`
+`owner_id` | The user ID who manages this conference | `string(32)` |   | `false` | `supported`
+`play_entry_tone` | Whether to play an entry tone, or the entry tone to play | `boolean() | string()` |   | `false` | `supported`
+`play_exit_tone` | Whether to play an exit tone, or the exit tone to play | `boolean() | string()` |   | `false` | `supported`
 `play_name` | Do we need to announce new conference members? | `boolean()` | `false` | `false` |  
 `play_welcome` | Whether to play the welcome prompt | `boolean()` |   | `false` |  
 `profile` | Profile configuration | `object()` |   | `false` |  
@@ -50,7 +50,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/conferences
 
@@ -60,7 +60,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences
 
@@ -70,7 +70,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
@@ -80,7 +80,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
@@ -90,7 +90,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
@@ -100,7 +100,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
@@ -110,7 +110,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
@@ -120,7 +120,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
 
@@ -130,7 +130,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
 
@@ -140,7 +140,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
 
@@ -150,7 +150,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
 

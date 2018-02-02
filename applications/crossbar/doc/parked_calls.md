@@ -1,9 +1,4 @@
-### Parked Calls
-
-#### About Parked Calls
-
-#### Schema
-
+### Parked Calls Slots
 
 
 #### Fetch

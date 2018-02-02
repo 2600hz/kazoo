@@ -1,5 +1,4 @@
-
-# Overview
+# Kazoo JSON Overview
 
 Sometimes Kazoo's callflow builder doesn't match your needs, integrate with your applications, or provide the experience for your caller that you desire. Fortunately, the building blocks are available for you to play with as you see fit!
 

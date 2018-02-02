@@ -1,12 +1,12 @@
-### Pivot
+# Pivot
 
-#### About Pivot
+## About Pivot
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/pivot/debug
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}
 

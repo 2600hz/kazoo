@@ -1,12 +1,10 @@
-### Services
+# Services
 
-#### About Services
+## About Services
 
-#### Schema
+Fetch and inspect account's service.
 
-
-
-#### Fetch
+## Get Account Service
 
 > GET /v2/accounts/{ACCOUNT_ID}/services
 
@@ -16,7 +14,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services
 ```
 
-#### Update the billing ID
+## Update the Account Billing ID
 
 > POST /v2/accounts/{ACCOUNT_ID}/services
 
@@ -29,7 +27,27 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services
 ```
 
-#### Fetch the audit logs for the account
+## Get Account Service Plan
+
+> GET /v2/accounts/{ACCOUNT_ID}/services/plan
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/plan
+```
+
+## Get Account Service Status
+
+> GET /v2/accounts/{ACCOUNT_ID}/services/status
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status
+```
+
+#### Fetch Service Audit Logs
 
 > GET /v2/accounts/{ACCOUNT_ID}/services/audit
 

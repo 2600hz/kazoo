@@ -1,299 +1,214 @@
-site_name: Commercial Reference
+############ Doc Status Key #################
+# | ##  : Incomplete
+# | ### : Entirely Missing
+
+site_name: Kazoo API Reference
+site_description: 'REST API Reference for Kazoo Crossbar API'
 
 pages:
-- 'index.md'
-- 'The Basics':
-  - 'Quick Start':
-    - 'applications/crossbar/doc/basics.md'
-    - 'applications/crossbar/doc/api_authentication.md'
-  - 'API Basics':
-    - 'applications/crossbar/doc/filters.md'
-    - 'applications/crossbar/doc/multipart.md'
-    - 'applications/crossbar/doc/schemas.md'
-    - 'applications/crossbar/doc/402.md' ##
-  - 'Common Tasks':
-    - 'Account Management' : 'applications/crossbar/doc/accounts.md'
-#    - 'Billing Users, Devices and DIDs' : 'tutorial/count_devices.md'
-#    - 'Processing CDRs' : 'tutorial/count_devices.md'
-#    - 'Generating Stats' : 'tutorial/call_stats.md'
-#    - 'Bulk Provisioning' : 'tutorial/bulk_provision.md'
-#    - 'Event Notification' : 'tutorial/webhooks.md'
-#    - 'Streaming Live Activity' : 'tutorial/stream_events.md'
-#    - 'Controlling Calls' : 'tutorial/call_control.md'
+- 'Introduction': 'index.md'
 
-  - 'Authentication':
-#    - 'applications/crossbar/doc/auth.md'
-    - 'applications/crossbar/doc/basic_auth.md'
+- 'Using API':
+  - 'API Basics': 'applications/crossbar/doc/basics.md'
+  - 'Authenticating REST request': 'applications/crossbar/doc/how_to_authenticate.md'
+  - 'Query String Filters': 'applications/crossbar/doc/filters.md'
+  - 'Multi-part Request': 'applications/crossbar/doc/multipart.md'
+  - 'JSON Schema': 'applications/crossbar/doc/schemas.md'
+  - '402 Payment Required': 'applications/crossbar/doc/402.md'
+
+- 'Account Management' :
+  - 'Accounts': 'applications/crossbar/doc/accounts.md'
+  - 'Users': 'applications/crossbar/doc/users.md'
+  - 'Devices': 'applications/crossbar/doc/devices.md'
+  - 'Services': 'applications/crossbar/doc/services.md' ## Maybe explain more about services
+  - 'Service Plans': 'applications/crossbar/doc/service_plans.md' ## Maybe explain more about service plans
+
+- 'Authentication':
+  - 'Security Configuration': 'applications/crossbar/doc/security.md'
+  - 'User Authentication': 'applications/crossbar/doc/user_authentication.md'
+  - 'Authentication Token Operations': 'applications/crossbar/doc/auth.md'
+  - 'Account API Authentication': 'applications/crossbar/doc/api_authentication.md'
+  - 'Basic Auth': 'applications/crossbar/doc/basic_auth.md'
+  - 'Multi Factor Authentication Configuration': 'applications/crossbar/doc/multi_factor.md'
 #    - 'applications/crossbar/doc/ip_auth.md' ##
-#    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
-#    - 'applications/crossbar/doc/security.md'
 #    - 'applications/crossbar/doc/shared_auth.md' ##
 #    - 'applications/crossbar/doc/token_auth.md'
 #    - 'applications/crossbar/doc/ubiquiti_auth.md'
-#    - 'applications/crossbar/doc/user_authentication.md'
 
-- 'System Preparation':
-  - 'Branding':
-    - 'applications/crossbar/doc/whitelabeling.md'
-# Email notifications? Macros? Templates?
+- 'Branding':
+    - 'Whitelabeling': 'applications/crossbar/doc/whitelabeling.md' ## needs more explaining
+    - 'Email Notifications Template': 'applications/crossbar/doc/notifications.md'
 
-  - 'Limits and Rating':
-    - 'applications/crossbar/doc/allotments.md'
-    - 'applications/crossbar/doc/limits.md'
+- 'Features':
+  - 'Configuring Conferences': 'applications/crossbar/doc/conference.md'
+  - 'Menus': 'applications/crossbar/doc/menus.md' ##
+  - 'Voicemail': 'applications/crossbar/doc/voicemail.md'
+  - 'Faxing':
+    - 'Faxboxes': 'applications/crossbar/doc/faxboxes.md' ##
+    - 'Faxes': 'applications/crossbar/doc/faxes.md'
+  - 'Group Object' : 'applications/crossbar/doc/groups.md' ##
+  # - 'HotDesks': 'applications/crossbar/doc/hotdesks.md' ##
+  - 'Directories': 'applications/crossbar/doc/directories.md'
+  - 'Call Recordings': 'applications/crossbar/doc/recordings.md'
+  # - 'SMS':
+  #   - 'applications/crossbar/doc/sms.md'
 
-#BUILD  - 'Common Tasks':
-#BUILD    - 'applications/crossbar/doc/your_first_subaccount.md'
-#BUILD    - 'Billing Users, Devices and DIDs' : 'tutorial/count_devices.md'
-#BUILD    - 'Processing CDRs' : 'tutorial/count_devices.md'
-#BUILD    - 'Generating Stats' : 'tutorial/call_stats.md'
-#BUILD    - 'Bulk Provisioning' : 'tutorial/bulk_provision.md'
-#BUILD    - 'Building a User Portal' : 'tutorial/user_portal.md'
-#BUILD    - 'Event Notification' : 'tutorial/webhooks.md'
-#BUILD    - 'Streaming Live Activity' : 'tutorial/stream_events.md'
-#BUILD    - 'Controlling Calls' : 'tutorial/call_control.md'
-#BUILD    - 'Integrating Mobile Services' : 'tutorial/mobile_services.md'
+- 'Integrations':
+  - 'Click To Call': 'applications/crossbar/doc/clicktocall.md' ##
+  - 'Webhooks': 'applications/crossbar/doc/webhooks.md'
+  - 'Pivot':
+    - 'Pivot Intro': 'applications/pivot/doc/README.md'
+    - 'Pivot API': 'applications/crossbar/doc/pivot.md' ##
+    - 'Request Payload': 'applications/pivot/doc/requests.md'
+    - 'Response Formats':
+      - 'Kazoo JSON':
+        - 'Kazoo JSON Overview': 'applications/pivot/doc/kazoo/README.md'
+        - 'Bridging': 'applications/pivot/doc/kazoo/bridging.md'
+        - 'applications/pivot/doc/kazoo/collect.md'
+        - 'Conferencing': 'applications/pivot/doc/kazoo/conferencing.md'
+        - 'DTMF': 'applications/pivot/doc/kazoo/dtmf.md'
+        - 'Hang Ups': 'applications/pivot/doc/kazoo/hangups.md'
+        - 'Play': 'applications/pivot/doc/kazoo/play.md'
+        - 'Presence': 'applications/pivot/doc/kazoo/presence.md'
+        - 'Recording': 'applications/pivot/doc/kazoo/recording.md'
+        - 'Say': 'applications/pivot/doc/kazoo/say.md'
+      - 'TwiML Format': 'applications/pivot/doc/twiml/README.md'
+    # - 'Known Issues': 'applications/pivot/doc/issues.md'
+  - 'Websockets':
+    - 'Websocket Access API': 'applications/crossbar/doc/websockets.md'
+    - 'Blackhole - Realtime HTTP Websocket Events': 'applications/blackhole/doc/README.md'
+    - 'Websocket Bindings': 'applications/blackhole/doc/bindings.md'
+    - 'Blackhole HAproxy Configuration': 'applications/blackhole/doc/haproxy.md'
+    # - 'Troubleshooting': 'applications/blackhole/doc/troubleshooting.md' ###
+    # - 'doc/kazoocon/realtime_events2016.md'
+  - 'Call Status':
+    - 'Call Channels': 'applications/crossbar/doc/channels.md'
+    # - 'Parked Calls Slots': 'applications/crossbar/doc/parked_calls.md' ##
+    - 'Presence': 'applications/crossbar/doc/presence.md' ###
+    - 'Registrations': 'applications/crossbar/doc/registrations.md' ##
 
-- 'Configuration APIs':
-  - 'Users and Devices':
-    - 'applications/crossbar/doc/devices.md'
-    - 'applications/crossbar/doc/users.md'
+- 'Number Management':
+  - 'Phone Numbers API': 'applications/crossbar/doc/phone_numbers.md'
+  - 'Number Port Requests': 'applications/crossbar/doc/port_requests.md' # need reformatting
+  # - 'applications/crossbar/doc/comments.md' ##
+
+- 'CDRs, Billing, Transactions':
+    - 'Call Detail Records (CDRs)': 'applications/crossbar/doc/cdrs.md'
+    - 'Ledgers': 'applications/crossbar/doc/ledgers.md' ##
+    - 'Transactions': 'applications/crossbar/doc/transactions.md'
+
+- 'Call Limits and Rating':
+  - 'Call Rates': 'applications/crossbar/doc/rates.md'
+  - 'Call Rate Limits': 'applications/crossbar/doc/rate_limits.md'
+  - 'Allotments': 'applications/crossbar/doc/allotments.md' ##
+  - 'Limits': 'applications/crossbar/doc/limits.md' ##
+
+- 'Advanced Call Routing':
+  - 'Advanced Callflows':
+    - 'Callflows': 'applications/crossbar/doc/callflows.md'
+    - 'Metaflows': 'applications/crossbar/doc/metaflows.md'
+    - 'Callflow Actions':
+      - 'Routing to Conferences': 'applications/callflow/doc/conference.md'
+      - 'Routing to Menu': 'applications/callflow/doc/menu.md' ##
+      - 'Voicemail Routing': 'applications/callflow/doc/voicemail.md'
+      - 'Fax Routing': 'applications/callflow/doc/faxbox.md' ##
+      - 'Receive Fax': 'applications/callflow/doc/faxbox.md' ##'
+      - 'Ring Group': 'applications/callflow/doc/ring_group.md'
+      - 'Ring Group Toggle': 'applications/callflow/doc/ring_group_toggle.md'
+      - 'Page Group': 'applications/callflow/doc/page_group.md' ##
+      - 'Hotdesk Routing': 'applications/callflow/doc/hotdesk.md' ##
+      - 'Directory Search': 'applications/callflow/doc/directory.md' ##
+      - 'Record Call': 'applications/callflow/doc/record_call.md'
+      - 'Record Caller': 'applications/callflow/doc/record_caller.md' ##
+      - 'Dynamic Caller ID': 'applications/callflow/doc/dynamic_cid.md'
+      - 'Lookup Caller ID': 'applications/callflow/doc/lookupcidname.md'
+      - 'Prepend Caller ID': 'applications/callflow/doc/prepend_cid.md'
+      - 'Privacy': 'applications/callflow/doc/privacy.md'
+      - 'Match CID': 'applications/callflow/doc/cidlistmatch.md'
+      - 'Set CID': 'applications/callflow/doc/set_cid.md' ##
+      - 'Check CID': 'applications/callflow/doc/check_cid.md'
+      - 'Intercom': 'applications/callflow/doc/intercom.md' ##
+      - 'Call Forwarding': 'applications/callflow/doc/call_forward.md'
+      - 'Group Pickup': 'applications/callflow/doc/group_pickup.md' ##
+      - 'Feature Code': 'applications/callflow/doc/group_pickup_feature.md' ##
+      - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md' ##
+      - 'Play Media To Caller': 'applications/callflow/doc/play.md' ##
+      - 'Webhooks': 'applications/callflow/doc/webhooks.md'
+      - 'Custom Webhook': 'applications/callflow/doc/webhook.md' ##
+      - 'applications/callflow/doc/resources.md'
+      - 'Branching to Another Callflow': 'applications/callflow/doc/callflow.md'
+      - 'Call Parking': 'applications/callflow/doc/park.md'
+      - 'Set Call Variable': 'applications/callflow/doc/set_variable.md' ##
+      - 'Text-to-speech (TTS)': 'applications/callflow/doc/tts.md' ##
+      - 'Sleep': 'applications/callflow/doc/sleep.md' ##
+      - 'Hangup': 'applications/callflow/doc/hangup.md' ###
+  - 'Time of Day Routing':
+    - 'Temporal Rules': 'applications/crossbar/doc/temporal_rules.md' ##
+    - 'Temporal Rules Sets': 'applications/crossbar/doc/temporal_rules_sets.md'
+  - 'Lists': 'applications/crossbar/doc/lists.md'
+  - 'Blacklists': 'applications/crossbar/doc/blacklists.md' ##
+  - 'Connectivity':
+    - 'Access Lists': 'applications/crossbar/doc/access_lists.md'
+    # - 'Connectivity': 'applications/crossbar/doc/connectivity.md' ##
+    - 'IPs': 'applications/crossbar/doc/ips.md'
+    - 'Resources': 'applications/crossbar/doc/resources.md'
+    - 'Resource Selectors': 'applications/crossbar/doc/resource_selectors.md'
+    # - 'applications/crossbar/doc/resource_templates.md' ##
+
+- 'Storage Configuration':
+  - 'Storage': 'applications/crossbar/doc/storage.md'
+  - 'Media': 'applications/crossbar/doc/media.md'
+
+- 'Internationalization':
+  - 'International Phone Numbers':
+    - 'Overview': 'doc/internationalization/numbers.md'
+    - 'Examples':
+      - 'European Union': 'doc/internationalization/examples/number_manager/european_union.md'
+      - 'Indonesia': 'doc/internationalization/numbers/indonesia.md'
+  - 'International Dialplans':
+    - 'Dialplans': 'applications/crossbar/doc/dialplans.md'
+    - 'Example Dialplan Configurations':
+      - 'Ireland': 'doc/internationalization/examples/dialplan/IE_Local-National-Mobile.md'
+      - 'Netherlands (Amsterdam)': 'doc/internationalization/examples/dialplan/NL_Amsterdam.md'
+      - 'Netherlands (Rotterdam)': 'doc/internationalization/examples/dialplan/NL_Rotterdam.md'
+  - 'System Prompts': 'doc/internationalization/prompts.md'
+
+- '2600Hz App Exchange':
+  - 'doc/appexchange/intro.md'
+  - 'Build Your App':
+    - 'Getting Started': 'doc/appexchange/getting_started.md'
+    - 'Planning Your App': 'doc/appexchange/planning.md'
+    - 'App Guidelines': 'doc/appexchange/guidelines.md'
+    - 'Style & Asset Guide': 'doc/appexchange/style_guide.md'
+    - 'Whitelabeling': 'doc/appexchange/whitelabeling.md'
+    - 'FAQ' : 'doc/appexchange/build_faq.md'
+  - 'List Your App':
+    - 'Submit Your App': 'doc/appexchange/submit_app.md'
+    - 'Approval Process': 'doc/appexchange/approval_process.md'
+    - 'FAQ' : 'doc/appexchange/list_faq.md'
+  - 'Sell Your App':
+    - 'How to Sell Your App': 'doc/appexchange/how_to_sell.md'
+    - 'Pricing': 'doc/appexchange/pricing.md'
+    - 'Financial Terms': 'doc/appexchange/financial_terms.md'
+    - 'Payments': 'doc/appexchange/payments.md'
+    - 'Support & Liability': 'doc/appexchange/support.md'
+    - 'FAQ' : 'doc/appexchange/sell_faq.md'
+
+
+#### STARTS "STILL NEEDS SORTING" SECTION - please pair with configuration APIs as applicable, in the right section
+
+# NO IDEA:
+#    - 'applications/crossbar/doc/contact_list.md' ##
 
 #BUILD  - 'Basic Phone Number Setup':
 #BUILD    - 'Buying a Number': 'applications/crossbar/doc/phone_numbers_buy.md'
 #BUILD    - 'Routing a Number to a Callflow': 'applications/crossbar/doc/callflows_basic.md'  # (Basic callflow)
 
-  - 'Features':
-    - 'Conference Bridges':
-      - 'Configuring Conference Rooms': 'applications/crossbar/doc/conference.md'
-      - 'Routing to Conferences': 'applications/callflow/doc/conference.md'
-    - 'applications/crossbar/doc/groups.md'
-    - 'applications/crossbar/doc/menus.md'
-    - 'applications/crossbar/doc/voicemail.md'
-    - 'applications/crossbar/doc/faxboxes.md' ###
-    - 'applications/crossbar/doc/faxes.md'
-    - 'applications/crossbar/doc/hotdesks.md' ###
-    - 'applications/crossbar/doc/directories.md'
-    - 'applications/crossbar/doc/contact_list.md'
-    - 'Call Recording':
-      - 'applications/crossbar/doc/recordings.md'
-
-#  - 'SMS':
-#    - 'applications/crossbar/doc/sms.md'
-
-  - 'Time of Day Routing':
-    - 'applications/crossbar/doc/temporal_rules.md'
-    - 'applications/crossbar/doc/temporal_rules_sets.md'
-
-  - 'Media Management':
-    - 'applications/crossbar/doc/media.md'
-
-  - 'Storage':
-    - 'applications/crossbar/doc/storage.md'
-
-  - 'Call Queues':
-    - 'applications/crossbar/doc/agents.md'
-    - 'applications/crossbar/doc/queues.md'
-
-
-- 'Integrations':
-  - 'System Status':
-    - 'applications/crossbar/doc/acls.md'
-    - 'applications/crossbar/doc/channels.md'
-    - 'applications/crossbar/doc/parked_calls.md'
-    - 'applications/crossbar/doc/presence.md' ###
-    - 'applications/crossbar/doc/registrations.md'
-
-  - 'Call Actions':
-    - 'applications/crossbar/doc/clicktocall.md'
-
-  - 'HTTP Event Notifications':
-    - 'Administration': 'applications/webhooks/doc/maintenance.md'
-    - 'API': 'applications/crossbar/doc/webhooks.md'
-
-- 'Billing, Reporting and Notifications':
-  - 'Billing':
-    - 'applications/crossbar/doc/cdrs.md'
-    - 'applications/crossbar/doc/ledgers.md'
-  - 'Notifications':
-    - 'applications/crossbar/doc/notifications.md'
-
-
-
-#### STARTS "STILL NEEDS SORTING" SECTION - please pair with configuration APIs as applicable, in the right section
-
-- 'Call Processing':
-  - 'Callflows':
-    - 'applications/callflow/doc/README.md' ###
-    - 'Endpoints':
-        - 'Device': 'applications/callflow/doc/device.md' ##
-        - 'User': 'applications/callflow/doc/user.md' ##
-        - 'Group': 'applications/callflow/doc/group.md'
-        - 'Ring Group': 'applications/callflow/doc/ring_group.md'
-#        - 'Ring Group Toggle': 'applications/callflow/doc/ring_group_toggle.md'
-        - 'Page Group': 'applications/callflow/doc/page_group.md'
-    - 'Call Parking': 'applications/callflow/doc/park.md'
-    - 'Call Recording':
-        - 'Record Call': 'applications/callflow/doc/record_call.md'
-        - 'Record Caller': 'applications/callflow/doc/record_caller.md' ##
-#    - 'Call Priorities': 'applications/callflow/doc/call_priorities.md'
-#    - 'Custom SIP Headers': 'applications/callflow/doc/custom_sip_headers.md'
-#    - 'Incoming Fax Detection': 'applications/callflow/doc/fax_detect.md'
-#    - 'Change Language': 'applications/callflow/doc/language.md'
-    - 'Caller ID':
-#      - 'Dynamic Caller ID': 'applications/callflow/doc/dynamic_cid.md'
-#      - 'Lookup Caller ID': 'applications/callflow/doc/lookupcidname.md'
-      - 'Prepend Caller ID': 'applications/callflow/doc/prepend_cid.md'
-      - 'Privacy': 'applications/callflow/doc/privacy.md'
-#      - 'Match CID': 'applications/callflow/doc/cidlistmatch.md'
-      - 'Set CID': 'applications/callflow/doc/set_cid.md'
-#      - 'Check CID': 'applications/callflow/doc/check_cid.md'
-    - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md' ##
-    - 'Webhooks': 'applications/callflow/doc/webhooks.md'
-#    - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
-#    - 'Preflows': 'applications/callflow/doc/preflow.md'
-    - 'Resources': 'applications/callflow/doc/resources.md'
-    - 'Manual Presence': 'applications/callflow/doc/manual_presence.md'
-    - 'Directory Search': 'applications/callflow/doc/directory.md'
-#    - 'Eavesdrop':
-#        - 'Action': 'applications/callflow/doc/eavesdrop.md'
-#        - 'Feature Code': 'applications/callflow/doc/eavesdrop_feature.md'
-#    - 'Do Not Disturb (DND)': 'applications/callflow/doc/do_not_disturb.md'
-#    - 'Missed Call Alert': 'applications/callflow/doc/missed_call_alert.md'
-#    - 'Setup Call Waiting': 'applications/callflow/doc/call_waiting.md'
-    - 'Voicemail': 'applications/callflow/doc/voicemail.md'
-    - 'Hotdesk': 'applications/callflow/doc/hotdesk.md'
-#    - 'Pivot': 'applications/callflow/doc/pivot.md'
-    - 'Group Pickup':
-        - 'Action': 'applications/callflow/doc/group_pickup.md'
-        - 'Feature Code': 'applications/callflow/doc/group_pickup_feature.md'
-    - 'Faxbox': 'applications/callflow/doc/faxbox.md'
-    - 'Callflow Branching': 'applications/callflow/doc/callflow.md'
-#    - 'DTMF':
-#        - 'Collect DTMF': 'applications/callflow/doc/collect_dtmf.md'
-#        - 'Send DTMF': 'applications/callflow/doc/send_dtmf.md'
-#        - 'Flush DTMF': 'applications/callflow/doc/flush_dtmf.md'
-    - 'Intercom': 'applications/callflow/doc/intercom.md'
-    - 'Set Call Variable': 'applications/callflow/doc/set_variable.md'
-#    - 'Intercept':
-#        - 'Action': 'applications/callflow/doc/intercept.md'
-#        - 'Feature Code': 'applications/callflow/doc/intercept_feature.md'
-    - 'SIP Response': 'applications/callflow/doc/response.md'
-    - 'Text-to-speech (TTS)': 'applications/callflow/doc/tts.md'
-#    - 'Variable Branch': 'applications/callflow/doc/branch_variable.md'
-    - 'Hangup': 'applications/callflow/doc/hangup.md'
-#    - 'Nomorobo': 'applications/callflow/doc/nomorobo.md'
-    - 'Call Forwarding': 'applications/callflow/doc/call_forward.md'
-    - 'Receive Fax': 'applications/callflow/doc/receive_fax.md'
-#    - 'Dead Air': 'applications/callflow/doc/dead_air.md'
-    - 'Play Media': 'applications/callflow/doc/play.md'
-    - 'Menu (IVR)': 'applications/callflow/doc/menu.md'
-    - 'Custom Webhook': 'applications/callflow/doc/webhook.md'
-#    - 'Channel Move': 'applications/callflow/doc/move.md'
-    - 'Sleep': 'applications/callflow/doc/sleep.md'
-#    - 'After Bridge': 'applications/callflow/doc/after_bridge.md'
-#    - 'Set': 'applications/callflow/doc/set.md'
-#    - 'Branch BNumber': 'applications/callflow/doc/branch_bnumber.md'
-    - 'Deprecated':
-        - 'Offnet': 'applications/callflow/doc/offnet.md'
-
-#### ENDS "STILL NEEDS SORTING" SECTION
-
-
-- 'Advanced API Usage':
-  - 'Global API Features':
-    - 'applications/crossbar/doc/filters.md'
-    - 'applications/crossbar/doc/multipart.md'
-    - 'applications/crossbar/doc/schemas.md'
-    - 'applications/crossbar/doc/402.md' ##
-
-  - 'Authentication Methods':
-#    - 'applications/crossbar/doc/auth.md'
-    - 'applications/crossbar/doc/basic_auth.md'
-#    - 'applications/crossbar/doc/ip_auth.md' ##
-#    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
-#    - 'applications/crossbar/doc/security.md'
-#    - 'applications/crossbar/doc/shared_auth.md' ##
-#    - 'applications/crossbar/doc/token_auth.md'
-#    - 'applications/crossbar/doc/ubiquiti_auth.md'
-#    - 'applications/crossbar/doc/user_authentication.md'
-
-- 'Advanced System Configuration':
-  - 'Connectivity':
-    - 'applications/crossbar/doc/access_lists.md'
-    - 'applications/crossbar/doc/connectivity.md'
-    - 'applications/crossbar/doc/ips.md'
-    - 'applications/crossbar/doc/rate_limits.md'
-    - 'applications/crossbar/doc/rates.md'
-    - 'applications/crossbar/doc/resource_selectors.md'
-    - 'applications/crossbar/doc/resource_templates.md'
-    - 'applications/crossbar/doc/resources.md'
-  - 'Number Inventory, Porting and International Dialplans':
-    - 'applications/crossbar/doc/phone_numbers.md'
-    - 'applications/crossbar/doc/port_requests.md'
-  - 'Misc':
-    - 'applications/crossbar/doc/comments.md'
-    - 'applications/crossbar/doc/lists.md'
-
-- 'Advanced Call Routing':
-  - 'Nuisance Call Handling':
-    - 'applications/crossbar/doc/blacklists.md'
-  - 'Advanced Callflows':
-    - 'applications/crossbar/doc/callflows.md'
-
-- 'Automated Customer Onboarding':
-  - 'Account Management':
-    - 'Accounts API' : 'applications/crossbar/doc/accounts.md'
-  - 'Branding':
-    - 'applications/crossbar/doc/whitelabeling.md'
-# Email notifications? Macros? Templates?
-  - 'Limits and Rating':
-    - 'applications/crossbar/doc/allotments.md'
-    - 'applications/crossbar/doc/limits.md'
-
-- 'Internationalization':
-  - 'Numbers': 'doc/internationalization/numbers.md'
-  - 'Example Number Manager Configurations':
-    - 'European Union': 'doc/internationalization/examples/number_manager/european_union.md'
-    - 'Indonesia': 'doc/internationalization/numbers/indonesia.md'
-  - 'Example Dialplan Configurations':
-    - 'Ireland': 'doc/internationalization/examples/dialplan/IE_Local-National-Mobile.md'
-    - 'Netherlands - Amsterdam': 'doc/internationalization/examples/dialplan/NL_Amsterdam.md'
-    - 'Netherlands - Rotterdam': 'doc/internationalization/examples/dialplan/NL_Rotterdam.md'
-  - 'Dialplans': 'applications/crossbar/doc/dialplans.md'
-  - 'System Prompts': 'doc/internationalization/prompts.md'
-
-#- 'Advanced Integrations':
-#  - 'Call Actions':
-#    - 'applications/crossbar/doc/metaflows.md'
-#  - 'Pivot':
-#    - 'Intro': 'applications/pivot/doc/README.md'
-#    - 'API': 'applications/crossbar/doc/pivot.md'
-#    - 'The Request': 'applications/pivot/doc/requests.md'
-#    - 'The Response':
-#        - 'Kazoo JSON': 'applications/pivot/doc/kazoo/README.md'
-#        - 'applications/pivot/doc/kazoo/bridging.md'
-#        - 'applications/pivot/doc/kazoo/collect.md'
-#        - 'applications/pivot/doc/kazoo/conferencing.md'
-#        - 'applications/pivot/doc/kazoo/dtmf.md'
-#        - 'applications/pivot/doc/kazoo/hangups.md'
-#        - 'applications/pivot/doc/kazoo/play.md'
-#        - 'applications/pivot/doc/kazoo/presence.md'
-#        - 'applications/pivot/doc/kazoo/recording.md'
-#        - 'applications/pivot/doc/kazoo/say.md'
-#        - 'applications/pivot/doc/twiml/README.md'
-#    - 'Known_Issues':
-#      - 'applications/pivot/doc/issues.md'
-#  - 'Websockets':
-#    - 'applications/blackhole/doc/README.md'
-#    - 'Bindings': 'applications/blackhole/doc/bindings.md'
-#    - 'API': 'applications/crossbar/doc/websockets.md'
-#    - 'HAProxy configuration': 'applications/blackhole/doc/haproxy.md' ###
-#    - 'Troubleshooting': 'applications/blackhole/doc/troubleshooting.md' ###
-#    - 'Presentations':
-#      - 'doc/kazoocon/realtime_events2016.md'
-
 # ADD PUSHER DOCS TOO
 
+# - 'Call Queues':
+#   - 'applications/crossbar/doc/agents.md'
+#   - 'applications/crossbar/doc/queues.md'
 
 #  - 'System Management':
 #    - 'applications/crossbar/doc/alerts.md'
@@ -306,7 +221,6 @@ pages:
 #    - 'applications/crossbar/doc/securing_crossbar.md'
 #    - 'applications/crossbar/doc/system_configs.md'
 #    - 'applications/crossbar/doc/tasks.md'
-#    - 'applications/crossbar/doc/token_restrictions.md'
 #  - 'Deprecated':
 #    - 'applications/crossbar/doc/bulk.md'
 #    - 'applications/crossbar/doc/global_provisioner_templates.md'
@@ -316,14 +230,9 @@ pages:
 #    - 'applications/crossbar/doc/signup.md'
 #    - 'applications/crossbar/doc/templates.md'
 
-  - 'System Status':
+#  - 'System Status':
 #    - 'applications/crossbar/doc/about.md'
-    - 'applications/crossbar/doc/acls.md'
-
-
-
-
-
+#    - 'applications/crossbar/doc/acls.md' ##
 
 #- 'Articles':
 #  - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
@@ -331,6 +240,4 @@ pages:
 #  - 'Introduction to Rating and Limits': 'doc/reference/routing.md'
 #  - 'Call Recording': 'doc/user_guides/call_recording.md'
 
-############ Doc Status Key #################
-# | ##  : Incomplete
-# | ### : Entirely Missing
+#### ENDS "STILL NEEDS SORTING" SECTION

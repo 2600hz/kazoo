@@ -1,5 +1,4 @@
-
-# Overview
+# Bridging
 
 Kazoo JSON offers a plethora of ways to call out to various endpoints! Below are some minimalist examples to whet your appetite. Most take more options, are nestable as children of other callflow actions, and are generally quite useful in accomplishing most peoples' needs.
 
@@ -7,25 +6,44 @@ Kazoo JSON offers a plethora of ways to call out to various endpoints! Below are
 
 Dial a single Kazoo device
 
-    {"module":"device"
-     ,"data":{"id":"device_id"}
-    }
+```json
+{
+    "module":"device",
+    "data":{"id":"device_id"}
+}
+```
 
 ## Users
 
 Dial a Kazoo user (any devices owned by the user)
 
-    {"module":"user"
-     ,"data":{"id":"user_id"}
+```json
+{
+    "module": "user",
+    "data": {
+        "id": "user_id"
     }
+}
+```
 
 ## Ring Group
 
 Ring groups are ultra-flexible in what types of endpoints you can combine: devices, users, or groups! You need only include the IDs you want to ring and Kazoo will build the appropriate list of endpoints.
 
-    {"module":"ring_group"
-     ,"data":{"endpoints":["device_1_id", "device_2_id", "user_1_id, "user_2_id", "group_1_id", "group_2_id"]}
+```json
+{
+    "module":"ring_group",
+    "data":{
+        "endpoints": ["device_1_id",
+                      "device_2_id",
+                      "user_1_id",
+                      "user_2_id",
+                      "group_1_id",
+                      "group_2_id"
+                     ]
     }
+}
+```
 
 You are free to mix/match devices, users, and groups based on the needs of this particular call.
 
@@ -39,18 +57,24 @@ The only real difference is the `use_local_resources` flag.
 
 ### Using Global resources
 
-    {"module":"resources"
-     ,"data":{
-       "to_did":"+14155550000"
-       ,"use_local_resources":false
-     }
+```json
+{
+    "module": "resources",
+    "data": {
+        "to_did": "+14155550000",
+        "use_local_resources": false
     }
+}
+```
 
 ### Using Local resources
 
-    {"module":"resources"
-     ,"data":{
-       "to_did":"+14155550000"
-       ,"use_local_resources":true
-     }
+```json
+{
+    "module": "resources",
+    "data": {
+        "to_did": "+14155550000",
+        "use_local_resources": true
     }
+}
+```

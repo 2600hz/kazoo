@@ -58,14 +58,14 @@ to_ref_doc(CBModule) ->
        ,[kz_binary:join([Filter, OperatesOn, Description], <<" | ">>), $\n]
        ).
 -define(FILTER_HEADER
-       ,["#### Available Filters\n\n"
+       ,["## Available Filters\n\n"
         ,?FILTER_ROW(<<"Filter">>, <<"Operates On">>, <<"Description">>)
         ,?FILTER_ROW(<<"------">>, <<"-----------">>, <<"-----------">>)
         ]
        ).
 -define(FILTER_DOC
-       ,["### Query String Filters\n\n"
-         "#### About Filters\n\n"
+       ,["# Query String Filters\n\n"
+         "## About Filters\n\n"
         ]).
 
 -spec filters_to_ref_doc(kz_json:object()) -> 'ok'.
@@ -106,7 +106,7 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 %%------------------------------------------------------------------------------
 %% @doc Creates a Markdown section for each API methods.
 %% ```
-%% #### Fetch/Create/Change
+%% ## Fetch/Create/Change
 %% > Verb Path
 %% ```shell
 %% curl -v http://{SERVER}:8000/Path
@@ -145,7 +145,7 @@ sort_methods(Methods, [Method | Ordering], Acc) ->
     end.
 
 method_to_section(Method, Acc, APIPath) ->
-    [[ "#### ", method_as_action(Method), "\n\n"
+    [[ "## ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
      , "```shell\ncurl -v -X ", Method, " \\\n"
        "    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n"
@@ -166,8 +166,8 @@ method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 ref_doc_header(BaseName) ->
     CleanedUpName = kz_ast_util:smash_snake(BaseName),
     [[maybe_add_schema(BaseName)]
-    ,["#### About ", CleanedUpName, "\n\n"]
-    ,["### ", CleanedUpName, "\n\n"]
+    ,["## About ", CleanedUpName, "\n\n"]
+    ,["# ", CleanedUpName, "\n\n"]
     ].
 
 -spec maybe_add_schema(kz_term:ne_binary()) -> iolist().
@@ -178,7 +178,7 @@ maybe_add_schema(BaseName) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc This looks for `#### Schema' in the doc file and adds the JSON schema
+%% @doc This looks for `## Schema' in the doc file and adds the JSON schema
 %% formatted as the markdown table.
 %% ```
 %% Schema = "vmboxes" or "devices"
@@ -188,10 +188,12 @@ maybe_add_schema(BaseName) ->
 %%------------------------------------------------------------------------------
 -spec schema_to_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 schema_to_doc(Schema, Doc) ->
-    {'ok', SchemaJObj} = kz_json_schema:load(Schema),
+    SchemaJObj = kz_ast_util:load_ref_schema(Schema),
     DocFile = filename:join([code:lib_dir('crossbar'), "doc", Doc]),
     {'ok', DocContents} = file:read_file(DocFile),
-    case binary:split(DocContents, <<?SCHEMA_SECTION/binary, "\n">>) of
+    case SchemaJObj =/= 'undefined'
+        andalso binary:split(DocContents, <<?SCHEMA_SECTION/binary, "\n">>)
+    of
         [Before, After] ->
             Data = [Before, kz_ast_util:schema_to_table(SchemaJObj), After],
             ok = file:write_file(DocFile, Data);

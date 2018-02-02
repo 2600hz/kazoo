@@ -6,23 +6,27 @@
         "confirm_match": {
             "default": true,
             "description": "When one match is found, require caller to confirm the match before connecting",
+            "support_level": "supported",
             "type": "boolean"
         },
         "max_dtmf": {
             "default": 0,
             "description": "Cap the number of DTMF characters collected from a caller, 0 for unlimited",
             "minimum": 0,
+            "support_level": "supported",
             "type": "integer"
         },
         "min_dtmf": {
             "default": 3,
             "description": "How many DTMF characters to collect from a caller before processing the directory",
             "minimum": 1,
+            "support_level": "supported",
             "type": "integer"
         },
         "name": {
             "description": "The name of the directory",
             "minLength": 1,
+            "support_level": "supported",
             "type": "string"
         },
         "sort_by": {
@@ -32,6 +36,7 @@
                 "first_name",
                 "last_name"
             ],
+            "support_level": "supported",
             "type": "string"
         },
         "users": {
@@ -41,6 +46,7 @@
                 "description": "UserId to include in the directory",
                 "type": "string"
             },
+            "support_level": "supported",
             "type": "array"
         }
     },

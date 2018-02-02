@@ -1,6 +1,6 @@
-### Metaflows
+# Metaflows
 
-#### About Metaflows
+## About Metaflows
 
 #### Schema
 
@@ -18,7 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `patterns` | A list of patterns with their flows | `object()` |   | `false` |  
 
-##### metaflow
+### metaflow
 
 A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
 
@@ -32,7 +32,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/metaflows
 
@@ -42,7 +42,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/metaflows
 
@@ -52,7 +52,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/metaflows
 

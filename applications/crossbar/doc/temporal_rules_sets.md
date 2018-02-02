@@ -1,10 +1,10 @@
-### Temporal Rules Sets
+# Temporal Rules Sets
 
-#### About Temporal Rules Sets
+## About Temporal Rules Sets
 
 A temporal rule set is a collection of temporal rules that can be used in a callflow to match more that one rule. And can also be re-used.
 
-#### Schema
+## Schema
 
 Schema for a temporal rules sets
 
@@ -12,13 +12,13 @@ Schema for a temporal rules sets
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` |  
-`temporal_rules.[]` |   | `string()` |   | `false` |  
-`temporal_rules` | Temporal Rules | `array(string())` |   | `false` |  
+`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` | `supported`
+`temporal_rules.[]` |   | `string()` |   | `false` | `supported`
+`temporal_rules` | Temporal Rules | `array(string())` |   | `false` | `supported`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
@@ -28,7 +28,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 ```
 
-#### Create a new rule set
+## Create a new rule set
 
 > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
@@ -40,7 +40,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 ```
 
-#### Fetch a rule set
+## Fetch a rule set
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
@@ -50,7 +50,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
-#### Change a rule set
+## Change a rule set
 
 > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
@@ -62,7 +62,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
-#### Patch a rule set
+## Patch a rule set
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
@@ -72,7 +72,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
-#### Remove a rule set
+## Remove a rule set
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 

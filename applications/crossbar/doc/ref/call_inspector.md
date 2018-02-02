@@ -1,12 +1,12 @@
-### Call Inspector
+# Call Inspector
 
-#### About Call Inspector
+## About Call Inspector
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/call_inspector
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/call_inspector
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/call_inspector/{CALL_ID}
 

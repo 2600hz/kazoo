@@ -1,14 +1,12 @@
-### Websockets
+# Websockets
 
-#### About Websockets
+## About Websockets
 
 Fetch information about what bindings can be subscribed to, what sockets are active, and the active bindings of a socket.
 
-#### Schema
+## Available Websocket Bindings
 
-
-
-#### Fetch
+Lists all available Websocket bindings.
 
 > GET /v2/websockets
 
@@ -16,6 +14,8 @@ Fetch information about what bindings can be subscribed to, what sockets are act
 curl -v -X GET \
     http://{SERVER}:8000/v2/websockets
 ```
+
+**Response**
 
 ```json
 {
@@ -102,7 +102,7 @@ curl -v -X GET \
 ```
 
 
-#### Fetch Socket Bindings
+#### Fetch Socket's Bindings
 
 > GET /v2/accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}
 

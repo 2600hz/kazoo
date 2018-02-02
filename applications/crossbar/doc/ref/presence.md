@@ -1,12 +1,12 @@
-### Presence
+# Presence
 
-#### About Presence
+## About Presence
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/presence
 
@@ -26,7 +26,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 
@@ -36,7 +36,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 
@@ -46,7 +46,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}
 

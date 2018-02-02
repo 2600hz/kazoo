@@ -1,12 +1,12 @@
-### Authentication
+# Authentication
 
-#### About Authentication
+## About Authentication
 
-#### Schema
+## Schema
 
 
 
-#### Create
+## Create
 
 > PUT /v2/auth
 
@@ -16,7 +16,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/tokeninfo
 
@@ -26,7 +26,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/tokeninfo
 ```
 
-#### Change
+## Change
 
 > POST /v2/auth/tokeninfo
 
@@ -36,7 +36,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/auth/tokeninfo
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/providers
 
@@ -46,7 +46,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/providers
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/links
 
@@ -56,7 +56,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/links
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/keys
 
@@ -66,7 +66,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/keys
 ```
 
-#### Create
+## Create
 
 > PUT /v2/auth/callback
 
@@ -76,7 +76,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/callback
 ```
 
-#### Create
+## Create
 
 > PUT /v2/auth/authorize
 
@@ -86,7 +86,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/authorize
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/apps
 
@@ -96,7 +96,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/apps
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/providers/{PROVIDER_ID}
 
@@ -106,7 +106,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/providers/{PROVIDER_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/auth/providers/{PROVIDER_ID}
 
@@ -116,7 +116,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/auth/providers/{PROVIDER_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/auth/providers/{PROVIDER_ID}
 
@@ -126,7 +126,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/auth/providers/{PROVIDER_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/links/{LINK_ID}
 
@@ -136,7 +136,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/links/{LINK_ID}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/auth/links/{LINK_ID}
 
@@ -146,7 +146,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/links/{LINK_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/auth/links/{LINK_ID}
 
@@ -156,7 +156,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/auth/links/{LINK_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/keys/{KEY_ID}
 
@@ -166,7 +166,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/auth/keys/{KEY_ID}
 
@@ -176,7 +176,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/auth/keys/{KEY_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/auth/apps/{APP_ID}
 
@@ -186,7 +186,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/auth/apps/{APP_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/auth/apps/{APP_ID}
 
@@ -196,7 +196,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/auth/apps/{APP_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/auth/apps/{APP_ID}
 

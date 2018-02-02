@@ -1,12 +1,12 @@
-### Schemas
+# Schemas
 
-#### About Schemas
+## About Schemas
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/schemas
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/schemas
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/schemas/{SCHEMA_NAME}
 
@@ -26,7 +26,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/schemas/{SCHEMA_NAME}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/schemas/{SCHEMA_NAME}/validation
 

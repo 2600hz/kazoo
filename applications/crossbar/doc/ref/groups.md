@@ -1,6 +1,6 @@
-### Groups
+# Groups
 
-#### About Groups
+## About Groups
 
 #### Schema
 
@@ -10,14 +10,14 @@ Validator for the group
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`endpoints` | Endpoints included into group | `object()` | `{}` | `true` |  
+`endpoints` | Endpoints included into group | `object()` | `{}` | `true` | `supported`
 `music_on_hold.media_id` | The ID of a media object that should be used as music on hold | `string(0..128)` |   | `false` |  
-`music_on_hold` | The music on hold parameters | `object()` | `{}` | `false` |  
-`name` | A friendly name for the group | `string(1..128)` |   | `true` |  
+`music_on_hold` | The music on hold parameters | `object()` | `{}` | `false` | `beta`
+`name` | A friendly name for the group | `string(1..128)` |   | `true` | `supported`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/groups
 
@@ -27,7 +27,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/groups
 
@@ -37,7 +37,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
@@ -47,7 +47,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
@@ -57,7 +57,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
@@ -67,7 +67,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 

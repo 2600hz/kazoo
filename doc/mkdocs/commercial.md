@@ -8,7 +8,7 @@ Crossbar APIs provide access to resources via URL paths. To use a REST API, your
 
 Almost most of the time requests and responses for Crossbar endpoint are in JSON format, unless other format are expected for specific endpoint which you can find in the documentation.
 
-Crossbar REST API is based on open standards like [JSON-Schema](json-schema.org/) (for data validation), you can use any web develope language to work with the API. Although for quick access to API tools like cURL (to work with HTTP protocol from terminal) and Postman (A GUI application to work with HTTP APIs) are come in handy.
+Crossbar REST API is based on open standards like [JSON-Schema](htt://json-schema.org/) (for data validation), you can use any web develope language to work with the API. Although for quick access to API tools like cURL (to work with HTTP protocol from terminal) and Postman (A GUI application to work with HTTP APIs) are come in handy.
 
 A non-exhaustive list of all the things you can do with REST API:
 
@@ -24,7 +24,7 @@ After on-boarding is completed an account with default setting is setup and read
 
 ### Prerequisites
 
-Before you begin you need to know the main URL path to the APU which is usually provided to you by e-mail during on-boarding process. If you don't have this URL you can ask a your reseller salesperson to give you the URL.
+Before you begin you need to know the main URL path to the API which is usually provided to you by e-mail during on-boarding process. If you don't have this URL you can ask a your reseller salesperson to give you the URL.
 
 Crossbar API requires the request to be authenticated, so you have to first get an authentication token before making any HTTP request to the API. The are various way to get this authentication token, you can learn more about them in [Authenticate your REST requests](applications/crossbar/doc/how_to_authenticate.md).
 
@@ -36,12 +36,14 @@ API resources are available at below location:
 /{VERSION}/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
-To learn about URL structure read [REST API Basics](applications/crossbar/doc/basics.md).
+To learn about URL structure read [REST API Basics](applications/crossbar/doc/basics.md#basic-uri-structure).
 
 But for now we assume we want to get out own account settings. For doing this we can simply use this cURL command:
 
 ```shell
-$ curl -x GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://crossbar_server.com:8000/v2/accounts/{ACCOUNT_ID}'
+$ curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     'http://crossbar_server.com:8000/v2/accounts/{ACCOUNT_ID}'
 ```
 
 Here the explanation of the command:
@@ -77,7 +79,6 @@ Running the command above will give us a response like this:
       "emergency": {
         "name": "My Awesome Office"
       }
-    }
     },
     "blacklists": [],
     "available_apps": [],

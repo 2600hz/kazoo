@@ -1,12 +1,12 @@
-### Apps Link
+# Apps Link
 
-#### About Apps Link
+## About Apps Link
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/apps_link/authorize
 

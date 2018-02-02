@@ -23395,6 +23395,11 @@
                     "minimum": 1,
                     "type": "integer"
                 },
+                "suppress_media": {
+                    "default": false,
+                    "description": "Determines if the playing of 'Invalid Entry' is suppressed.",
+                    "type": "boolean"
+                },
                 "timeout": {
                     "description": "The amount of time (in milliseconds) to wait for the caller to beging entering digits",
                     "maximum": 60000,
@@ -33268,7 +33273,7 @@
                 },
                 "hide_credits": {
                     "default": false,
-                    "description": "When checkef this hides the credits",
+                    "description": "When checked this hides the credits",
                     "type": "boolean"
                 },
                 "hide_powered": {

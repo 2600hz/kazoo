@@ -1,14 +1,10 @@
-### Registrations
+# Registrations
 
-#### About Registrations
+## About Registrations
 
 The Registrations API provides an easy way to see and manage current registrations.
 
-#### Schema
-
-
-
-#### Fetch
+## Flush All Account's Registrations
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/registrations
 
@@ -28,7 +24,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch account registrations
+## List Account's Registrations
 
 > GET /v2/accounts/{ACCOUNT_ID}/registrations
 
@@ -67,15 +63,15 @@ curl -v -X GET \
           "user_agent": "Yealink SIP-T38G 38.0.0.115",
           "username": "{SIP_USERNAME}"
           }
-          ,...
       ],
+      "page_size": 1,
       "request_id": "{REQUEST_ID}",
       "revision": "{REVISION}",
       "status": "success"
 }
 ```
 
-#### Flush a specific device's registration
+#### Flush A Specific Device's Registration
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/registrations/{USERNAME}
 
@@ -95,7 +91,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch account registration count
+#### Fetch Account Registration Count
 
 > GET /v2/accounts/{ACCOUNT_ID}/registrations/count
 

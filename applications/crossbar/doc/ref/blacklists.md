@@ -1,6 +1,6 @@
-### Blacklists
+# Blacklists
 
-#### About Blacklists
+## About Blacklists
 
 #### Schema
 
@@ -10,13 +10,13 @@ Schema for a blacklists
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` |  
-`numbers` | Map of caller id number to block | `object()` | `{}` | `false` |  
-`should_block_anonymous` | Should block Anonymous call | `boolean()` |   | `false` |  
+`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` | `supported`
+`numbers` | Map of caller id number to block | `object()` | `{}` | `false` | `supported`
+`should_block_anonymous` | Should block Anonymous call | `boolean()` |   | `false` | `supported`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/blacklists
 
@@ -26,7 +26,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/blacklists
 
@@ -36,7 +36,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 
@@ -46,7 +46,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 
@@ -56,7 +56,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 
@@ -66,7 +66,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 

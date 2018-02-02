@@ -1,12 +1,12 @@
-### Configs
+# Configs
 
-#### About Configs
+## About Configs
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 
@@ -26,7 +26,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 
@@ -36,7 +36,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 
@@ -46,7 +46,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 

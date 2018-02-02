@@ -1,6 +1,6 @@
-### Resources
+# Resources
 
-#### About Resources
+## About Resources
 
 #### Schema
 
@@ -65,7 +65,7 @@ Key | Description | Type | Default | Required | Support Level
 `rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string())` | `[]` | `false` |  
 `weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false` |  
 
-##### custom_sip_headers
+### custom_sip_headers
 
 Custom SIP headers applied to an INVITE
 
@@ -74,7 +74,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |  
 
-##### endpoint.media
+### endpoint.media
 
 Schema for endpoint media options
 
@@ -96,7 +96,7 @@ Key | Description | Type | Default | Required | Support Level
 `video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false` |  
 `video` | The video media parameters | `object()` | `{}` | `false` |  
 
-##### formatters
+### formatters
 
 Schema for request formatters
 
@@ -105,7 +105,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `^[[:alnum:]_]+$` | Key to match in the route request JSON | `array([#/definitions/formatters.format_options](#formattersformat_options)) | [#/definitions/formatters.format_options](#formattersformat_options)` |   | `false` |  
 
-##### formatters.format_options
+### formatters.format_options
 
 Schema for formatter options
 
@@ -122,7 +122,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources
 
@@ -132,7 +132,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources
 
@@ -142,7 +142,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -152,7 +152,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -162,7 +162,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -172,7 +172,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
@@ -182,7 +182,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs
 
@@ -192,7 +192,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/jobs
 
@@ -202,7 +202,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 ```
 
-#### Create
+## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
 
@@ -212,7 +212,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/resources/collection
 
@@ -222,7 +222,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}
 

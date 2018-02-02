@@ -1,12 +1,12 @@
-### Sup
+# Sup
 
-#### About Sup
+## About Sup
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/sup/{MODULE}
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/sup/{MODULE}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/sup/{MODULE}/{FUNCTION}
 
@@ -26,7 +26,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/sup/{MODULE}/{FUNCTION}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/sup/{MODULE}/{FUNCTION}/{ARGS}
 

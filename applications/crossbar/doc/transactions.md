@@ -1,14 +1,10 @@
-### Transactions
+# Transactions
 
-#### About
+## About
 
 The transactions endpoint allows you to list debits and credits made to a specified account.
 
-#### Schema
-
-
-
-#### Fetch
+## List Transactions
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions
 
@@ -47,7 +43,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get current balance
+## Get current balance
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
@@ -68,13 +64,13 @@ curl -v -X GET \
 }
 ```
 
-#### Get monthly recurring transactions
+## Get monthly recurring transactions
 
-Querystring options:
+Useful query string options:
 
-- `created_from` {TIMESTAMP}
-- `created_to` {TIMESTAMP}
-- `reason` `only_calls`
+- `created_from={TIMESTAMP}`
+- `created_to={TIMESTAMP}`
+- `reason=only_calls`
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
 
@@ -94,7 +90,7 @@ curl -v -X GET \
 }
 ```
 
-#### Get subscriptions
+## Get subscriptions
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 
@@ -104,11 +100,11 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 ```
 
-#### Credit an account
+## Credit an account
 
 > PUT /v2/accounts/{ACCOUNT_ID}/transactions/credit
 
-Only for super duper admins and resellers.
+Only for super duper administrators and resellers.
 
 Super admin can add `"credit_type": "free"` field and change`"reason": "admin discretion"`to avoid bookkeeper and add credit "for free".
 
@@ -124,9 +120,9 @@ http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/credit
 ```
 
 
-#### Debit an account
+## Debit an account
 
-Only for super duper admins and resellers.
+Only for super duper administrators and resellers.
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 

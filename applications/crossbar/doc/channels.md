@@ -1,14 +1,13 @@
+# Call Channels
 
-### Channels
-
-#### About Channels
+## About Call Channels
 
 The Channels API allows queries to find active channels for an account, a user, or a device. Given a call-id for a channel, a limited set of commands are allowed to be executed against that channel (such as hangup, transfer, or play media).
 
-#### Fetch active channels system wide.
+## Fetch active channels system wide.
 
-For superduper admin only.
-Be sure to set `system_config`->`crossbar.channels`->`system_wide_channels_list` flag to `true`.
+!!! note
+    For super duper admin only. Be sure to set `system_config`->`crossbar.channels`->`system_wide_channels_list` flag to `true`.
 
 > GET /v2/channels
 
@@ -19,7 +18,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/channels
 ```
 
-#### Fetch active channels for an account
+## Fetch active channels for an account
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels
 
@@ -54,9 +53,11 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch channels for a user or device
+## Fetch channels for a user or device
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/channels
+
+For user with `{USER_ID}`:
 
 ```shell
 curl -v -X GET \
@@ -64,6 +65,8 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/channels
 ```
+
+For device with `{DEVICE_ID}`:
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
 
@@ -74,7 +77,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
 ```
 
-#### Fetch a channel's details
+## Fetch a channel's details
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -85,13 +88,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-#### Execute an application against a Channel
-
-##### Schema
-
-
-
-#### Fetch
+## Execute an application against a Channel
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -103,7 +100,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-#### Put a feature (metaflow) on a channel
+## Put a feature (metaflow) on a channel
 
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
@@ -117,11 +114,11 @@ curl -v -X PUT \
 
 The Metaflow feature is a `metaflow` object which validates with its json schema.
 
-##### Reasoning
+## Reasoning
 
-The `POST` action required that every metaflow action would have to be coded into the module.
+The `POST` action required that every MetaFlow action would have to be coded into the module.
 
-##### Benefits
+### Benefits
 
-The metaflow feature allows adding new types of metaflows without changing the code.
-It also allows full metaflows and not only single actions, ie, the `children` node is also processed.
+The MetaFlow feature allows adding new types of MetaFlows without changing the code.
+It also allows full MetaFlows and not only single actions, i.e., the `children` node is also processed.

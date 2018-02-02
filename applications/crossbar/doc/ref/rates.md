@@ -1,6 +1,6 @@
-### Rates
+# Rates
 
-#### About Rates
+## About Rates
 
 #### Schema
 
@@ -36,7 +36,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/rates
 
@@ -46,7 +46,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/rates
 ```
 
-#### Create
+## Create
 
 > PUT /v2/rates
 
@@ -56,7 +56,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/rates
 ```
 
-#### Change
+## Change
 
 > POST /v2/rates
 
@@ -66,7 +66,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/rates
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/rates/{RATE_ID}
 
@@ -76,7 +76,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
-#### Change
+## Change
 
 > POST /v2/rates/{RATE_ID}
 
@@ -86,7 +86,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
-#### Patch
+## Patch
 
 > PATCH /v2/rates/{RATE_ID}
 
@@ -96,7 +96,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/rates/{RATE_ID}
 
@@ -106,7 +106,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/rates/number/{PHONE_NUMBER}
 

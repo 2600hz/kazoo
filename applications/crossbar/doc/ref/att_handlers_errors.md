@@ -1,12 +1,12 @@
-### Att Handlers Errors
+# Att Handlers Errors
 
-#### About Att Handlers Errors
+## About Att Handlers Errors
 
-#### Schema
+## Schema
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/att_handlers_errors
 
@@ -16,7 +16,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/att_handlers_errors
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/att_handlers_errors/{ERROR_ID}
 
@@ -26,7 +26,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/att_handlers_errors/{ERROR_ID}
 ```
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/att_handlers_errors/handler/{HANDLER_ID}
 

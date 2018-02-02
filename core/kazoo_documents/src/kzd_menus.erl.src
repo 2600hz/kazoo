@@ -20,6 +20,7 @@
 -export([name/1, name/2, set_name/2]).
 -export([record_pin/1, record_pin/2, set_record_pin/2]).
 -export([retries/1, retries/2, set_retries/2]).
+-export([suppress_media/1, suppress_media/2, set_suppress_media/2]).
 -export([timeout/1, timeout/2, set_timeout/2]).
 
 
@@ -201,6 +202,18 @@ retries(Doc, Default) ->
 -spec set_retries(doc(), integer()) -> doc().
 set_retries(Doc, Retries) ->
     kz_json:set_value([<<"retries">>], Retries, Doc).
+
+-spec suppress_media(doc()) -> boolean().
+suppress_media(Doc) ->
+    suppress_media(Doc, false).
+
+-spec suppress_media(doc(), Default) -> boolean() | Default.
+suppress_media(Doc, Default) ->
+    kz_json:get_boolean_value([<<"suppress_media">>], Doc, Default).
+
+-spec set_suppress_media(doc(), boolean()) -> doc().
+set_suppress_media(Doc, SuppressMedia) ->
+    kz_json:set_value([<<"suppress_media">>], SuppressMedia, Doc).
 
 -spec timeout(doc()) -> kz_term:api_integer().
 timeout(Doc) ->

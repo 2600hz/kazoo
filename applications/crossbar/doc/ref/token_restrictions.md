@@ -1,6 +1,6 @@
-### Token Restrictions
+# Token Restrictions
 
-#### About Token Restrictions
+## About Token Restrictions
 
 #### Schema
 
@@ -22,7 +22,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
@@ -32,7 +32,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
-#### Change
+## Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
@@ -42,7 +42,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
-#### Remove
+## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
 

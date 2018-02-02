@@ -1,6 +1,6 @@
-### Presence
+# Presence
 
-#### About Presence
+## About Presence
 
 Kazoo tracks presence subscriptions and those states can be accessed/manipulated via this API.
 
@@ -10,12 +10,7 @@ There are three main ways to access presence information:
 * Users
 * Arbitrary extensions
 
-
-#### Schema
-
-
-
-#### Fetch
+## List Subscriptions
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence
 
@@ -72,7 +67,7 @@ curl -v -X GET \
 }
 ```
 
-#### Reset presence state
+## Reset presence state
 
 Sometimes folks subscribe for parking slots or other values that are not represented in the Kazoo REST API.
 
@@ -87,26 +82,47 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 ```
 
-#### Devices
+## Devices
 
-This API will use the `presence_id' of the device, if present; otherwise it will use the SIP username of the device.
+This API will use the `presence_id` of the device, if present; otherwise it will use the SIP user name of the device.
 
-##### POST to reset presence state
+### Post To Reset Presence State
 
-    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence -d '{"data":{"action":"reset"}}'
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"action":"reset"}} \
+    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence'
+```
 
-##### POST to update presence state
+### Post To Update Presence State
 
-    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence -d '{"data":{"action":"set","state":"{PRESENCE_STATE}"}}'
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"action":"set","state":"{PRESENCE_STATE}"}}' \
+    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence'
+```
 
-#### Users
+## Users
 
-This API will use the `presence_id` of the user is applicable; otherwise it will use all the user's devices' states
+This API will use the `presence_id` of the user is applicable; otherwise it will use all the user's devices' states.
 
-##### POST to reset presence state
+### Post To Reset Presence State
 
-    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence -d '{"data":{"action":"reset"}}'
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"action":"reset"}}' \
+    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence'
+```
 
-##### POST to update presence state
+### Post To Update Presence State
 
-    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence -d '{"data":{"action":"reset","state":"{PRESENCE_STATE}"}}'
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"action":"reset","state":"{PRESENCE_STATE}"}}' \
+    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence'
+```

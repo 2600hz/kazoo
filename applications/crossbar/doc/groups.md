@@ -1,8 +1,8 @@
-### Groups
+# Groups
 
-#### About Groups
+## About Groups
 
-#### Schema
+## Schema
 
 Validator for the group
 
@@ -10,14 +10,14 @@ Validator for the group
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`endpoints` | Endpoints included into group | `object()` | `{}` | `true` |  
-`music_on_hold.media_id` | The ID of a media object that should be used as music on hold | `string(0..128)` |   | `false` |  
-`music_on_hold` | The music on hold parameters | `object()` | `{}` | `false` |  
-`name` | A friendly name for the group | `string(1..128)` |   | `true` |  
+`endpoints` | Endpoints included into group | `object()` | `{}` | `true` | `supported`
+`music_on_hold.media_id` | The ID of a media object that should be used as music on hold | `string(0..128)` |   | `false` |
+`music_on_hold` | The music on hold parameters | `object()` | `{}` | `false` | `beta`
+`name` | A friendly name for the group | `string(1..128)` |   | `true` | `supported`
 
 
 
-#### Fetch
+## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/groups
 
@@ -41,7 +41,7 @@ curl -v -X GET \
 }
 ```
 
-#### Fetch all groups containing a user
+## Fetch all groups containing a user
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/groups
 
@@ -65,7 +65,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create a group for a given account
+## Create a group for a given account
 
 > PUT /v2/accounts/{ACCOUNT_ID}/groups
 
@@ -114,7 +114,7 @@ curl -v -X PUT \
 ```
 
 
-#### Remove a group
+## Remove a group
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
@@ -146,7 +146,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Get a group for a given account
+## Get a group for a given account
 
 > GET /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
@@ -181,7 +181,7 @@ curl -v -X GET \
 ```
 
 
-#### Update a group for a given account
+## Update a group for a given account
 
 > POST /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 

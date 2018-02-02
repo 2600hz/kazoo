@@ -1,6 +1,6 @@
-### Ubiquiti Authentication
+# Ubiquiti Authentication
 
-#### About Ubiquiti Authentication
+## About Ubiquiti Authentication
 
 #### Schema
 
@@ -15,7 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-#### Create
+## Create
 
 > PUT /v2/ubiquiti_auth
 
