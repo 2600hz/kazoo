@@ -17,9 +17,10 @@
 -export([send_event/1]).
 
 -spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object()) -> 'ok'.
--spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object(), kz_term:api_ne_binary()) -> 'ok'.
 event(AppName, AppVersion, Severity, Verbosity, Body) ->
     event(AppName, AppVersion, Severity, Verbosity, Body, 'undefined').
+
+-spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object(), kz_term:api_ne_binary()) -> 'ok'.
 event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->
     GregorianTime = kz_time:now_s(kz_time:now()),
     Event = #edr_event{account_id=AccountId
@@ -40,4 +41,5 @@ event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->
 
 -spec send_event(edr_event()) -> any().
 send_event(#edr_event{account_id=AccountId}=Event) ->
-    edr_bindings:distribute(Event#edr_event{account_tree=kzd_accounts:fetch_tree(AccountId)}).
+    {'ok', Account} = kzd_accounts:fetch(AccountId),
+    edr_bindings:distribute(Event#edr_event{account_tree=kzd_accounts:tree(Account)}).

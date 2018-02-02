@@ -44,9 +44,10 @@ event_v(Prop) when is_list(Prop) ->
 event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
--spec bind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 bind_q(Q, Props) ->
     bind_q(Q, Props, binding_keys_from_props(Props)).
+
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 bind_q(Q, _Props, [Key | RemainingKeys]) ->
     'ok' = amqp_util:bind_q_to_kapps(Q, Key),
     bind_q(Q, _Props, RemainingKeys);
@@ -54,9 +55,10 @@ bind_q(_Q, _Props, []) ->
     'ok'.
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
--spec unbind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 unbind_q(Q, Props) ->
     unbind_q(Q, Props, binding_keys_from_props(Props)).
+
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
 unbind_q(Q, _Props, [Key | RemainingKeys]) ->
     'ok' = amqp_util:unbind_q_from_kapps(Q, Key),
     unbind_q(Q, _Props, RemainingKeys);

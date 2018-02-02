@@ -54,7 +54,7 @@ start_link(_Module, _Other) ->
 init({Mod, #backend{name=Name, bindings=Bindings}=Backend})->
     case Mod:init(Backend) of
         {'ok', ModState} ->
-            edr_bindings:bind(Bindings, ?MODULE, 'push', self()),
+            _ = edr_bindings:bind(Bindings, ?MODULE, 'push', self()),
             {'ok', #state{module_state=ModState, module=Mod, name=Name}};
         _ ->
             'ignore'

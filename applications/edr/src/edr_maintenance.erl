@@ -20,18 +20,22 @@
         ]).
 
 -spec register_backend(kz_term:ne_binary())-> 'ok' | {'error', 'already_registered'}.
--spec register_backend(kz_term:ne_binary(), kz_term:ne_binary())-> 'ok' | {'error', 'already_registered'}.
--spec register_backend(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object())-> 'ok' | {'error', 'already_registered'}.
--spec register_backend(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:ne_binary() | kz_json:objects())-> 'ok' | {'error', 'already_registered'}.
--spec register_backend(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:ne_binary() | kz_json:objects(), kz_term:ne_binary() | boolean())-> 'ok' | {'error', 'already_registered'}.
 register_backend(Name) ->
     register_backend(Name, Name).
+
+-spec register_backend(kz_term:ne_binary(), kz_term:ne_binary())-> 'ok' | {'error', 'already_registered'}.
 register_backend(Name, Type) ->
     register_backend(Name, Type, kz_json:new()).
+
+-spec register_backend(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object())-> 'ok' | {'error', 'already_registered'}.
 register_backend(Name, Type, Opts) ->
     register_backend(Name, Type, Opts, edr_bindings:bindings_to_json([#edr_binding{}])).
+
+-spec register_backend(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:ne_binary() | kz_json:objects())-> 'ok' | {'error', 'already_registered'}.
 register_backend(Name, Type, Opts, Bindings) ->
     register_backend(Name, Type, Opts, Bindings, 'true').
+
+-spec register_backend(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:ne_binary() | kz_json:objects(), kz_term:ne_binary() | boolean())-> 'ok' | {'error', 'already_registered'}.
 register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Opts) ->
     register_backend(Name, Type, kz_json:decode(Opts), Bindings, Enabled);
 register_backend(Name, Type, Opts, Bindings, Enabled) when is_binary(Bindings) ->
@@ -51,7 +55,7 @@ register_backend(Name, Type, Opts, Bindings, Enabled) ->
             set_registered_backends([Backend | Backends]),
             case kz_term:is_true(Enabled) of
                 'true' ->
-                    edr_backend_sup:start_backend(Name),
+                    {'ok', _} = edr_backend_sup:start_backend(Name),
                     'ok';
                 'false' ->
                     'ok'
@@ -67,18 +71,18 @@ delete_backend(Name) ->
         [] ->
             {'error', 'not_registered'};
         _ ->
-            edr_backend_sup:stop_backend(Name),
+            'ok' = edr_backend_sup:stop_backend(Name),
             set_registered_backends([J || J <- Backends, not match_backend(Name, J)])
     end.
 
 -spec enable_backend(kz_term:ne_binary())-> 'ok' | {'error', 'not_registered'}.
 enable_backend(Name) ->
-    edr_backend_sup:start_backend(Name),
+    {'ok', _} = edr_backend_sup:start_backend(Name),
     modify_backend(Name, fun(Backend) -> kz_json:set_value(<<"enabled">>, 'true', Backend) end).
 
 -spec disable_backend(kz_term:ne_binary()) -> 'ok'.
 disable_backend(Name)->
-    edr_backend_sup:stop_backend(Name),
+    'ok' = edr_backend_sup:stop_backend(Name),
     modify_backend(Name, fun(Backend) -> kz_json:set_value(<<"enabled">>, 'false', Backend) end).
 
 -spec modify_backend(kz_term:ne_binary(), fun((kz_json:object()) -> kz_json:object())) -> 'ok' | {'error', 'not_registered'}.
@@ -104,7 +108,7 @@ registered_backends() ->
 
 -spec restart_backend(kz_term:ne_binary()) -> any().
 restart_backend(Name) ->
-    edr_backend_sup:stop_backend(Name),
+    _ = edr_backend_sup:stop_backend(Name),
     edr_backend_sup:start_backend(Name).
 
 -spec match_backend(kz_term:ne_binary(), kz_json:object()) -> boolean().
