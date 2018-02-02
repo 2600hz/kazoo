@@ -24,6 +24,7 @@
         ,sync_req/2, sync_resp/2
         ,pause/2
         ,resume/1
+        ,end_wrapup/1
 
         ,add_acdc_queue/2, rm_acdc_queue/2
         ,update_presence/3
@@ -269,6 +270,14 @@ resume(ServerRef) ->
 
 %%--------------------------------------------------------------------
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec end_wrapup(kz_types:server_ref()) -> 'ok'.
+end_wrapup(ServerRef) ->
+    gen_statem:cast(ServerRef, {'end_wrapup'}).
+
+%%--------------------------------------------------------------------
+%% @doc
 %% Request the agent listener bind to queue and conditionally send an
 %% availability update depending on agent state
 %% @end
@@ -411,7 +420,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
 
 -spec max_failures(kz_term:ne_binary() | kz_json:object()) -> non_neg_integer().
 max_failures(Account) when is_binary(Account) ->
-    case kz_account:fetch(Account) of
+    case kzd_accounts:fetch(Account) of
         {'ok', AccountJObj} -> max_failures(AccountJObj);
         {'error', _} -> ?MAX_FAILURES
     end;
@@ -1370,6 +1379,11 @@ handle_event({'pause', _}=Event, StateName, #state{agent_state_updates=Queue}=St
     lager:debug("recv pause during ~p, delaying", [StateName]),
     NewQueue = [Event | Queue],
     {'next_state', StateName, State#state{agent_state_updates=NewQueue}};
+handle_event({'end_wrapup'}=Event, 'wrapup', #state{agent_state_updates=Queue}=State) ->
+    NewQueue = [Event | Queue],
+    apply_state_updates(State#state{agent_state_updates=NewQueue});
+handle_event({'end_wrapup'}, StateName, State) ->
+    {'next_state', StateName, State};
 handle_event({'add_acdc_queue', QueueId}, StateName, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:add_acdc_queue(AgentListener, QueueId, StateName),
     {'next_state', StateName, State};
@@ -1690,7 +1704,7 @@ missed_reason(Reason) -> Reason.
 
 -spec find_username(kz_json:object()) -> kz_term:api_binary().
 find_username(EP) ->
-    find_sip_username(EP, kz_device:sip_username(EP)).
+    find_sip_username(EP, kzd_devices:sip_username(EP)).
 
 -spec find_sip_username(kz_json:object(), kz_term:api_binary()) -> kz_term:api_binary().
 find_sip_username(EP, 'undefined') -> kz_json:get_value(<<"To-User">>, EP);
@@ -1931,6 +1945,10 @@ apply_state_updates_fold({_, _, State}, [{'pause', Timeout}|Updates]) ->
     apply_state_updates_fold(handle_pause(Timeout, State), Updates);
 apply_state_updates_fold({_, _, State}, [{'resume'}|Updates]) ->
     apply_state_updates_fold(handle_resume(State), Updates);
+apply_state_updates_fold({_, 'wrapup', State}, [{'end_wrapup'}|Updates]) ->
+    apply_state_updates_fold(handle_end_wrapup('ready', State), Updates);
+apply_state_updates_fold({_, StateName, State}, [{'end_wrapup'}|Updates]) ->
+    apply_state_updates_fold(handle_end_wrapup(StateName, State), Updates);
 apply_state_updates_fold({_, _, State}, [{'agent_logout'}|_]) ->
     lager:debug("agent logging out"),
     %% Do not continue fold, stop statem
@@ -1980,3 +1998,9 @@ handle_pause(Timeout, #state{agent_listener=AgentListener}=State) ->
     Ref = start_pause_timer(Timeout),
     State1 = State#state{pause_ref=Ref},
     {'next_state', 'paused', State1}.
+
+-spec handle_end_wrapup(atom(), state()) -> kz_types:handle_fsm_ret(state()).
+handle_end_wrapup(NextState, #state{wrapup_ref=Ref}=State) ->
+    lager:debug("end_wrapup received, cancelling wrapup timers"),
+    maybe_stop_timer(Ref),
+    {'next_state', NextState, State#state{wrapup_ref='undefined'}}.

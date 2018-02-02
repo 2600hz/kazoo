@@ -19,7 +19,7 @@
 %%--------------------------------------------------------------------
 -spec migrate(kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 migrate(Account) when is_binary(Account) ->
-    case kz_account:fetch(Account) of
+    case kzd_accounts:fetch(Account) of
         {'error', _R}=Error -> Error;
         {'ok', JObj} ->
             CurrentApps = kzd_apps_store:apps(JObj),

@@ -326,7 +326,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 -spec save(cb_context:context()) -> cb_context:context().
 save(Context) ->
     NewDoc1 = maybe_set_scheduled_date_from_schedule_on(cb_context:doc(Context)),
-    NewDoc = kz_account:set_tree(NewDoc1, kz_account:tree(cb_context:account_doc(Context))),
+    NewDoc = kzd_accounts:set_tree(NewDoc1, kzd_accounts:tree(cb_context:account_doc(Context))),
     Context1 = cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
                                   ,{fun cb_context:set_doc/2, NewDoc}
@@ -588,10 +588,10 @@ read(Context, Id) ->
 
 -spec authority(kz_term:ne_binary()) -> kz_term:api_binary().
 authority(AccountId) ->
-    case kz_whitelabel:fetch(AccountId) of
+    case kzd_whitelabel:fetch(AccountId) of
         {'error', _R} -> 'undefined';
         {'ok', JObj} ->
-            kz_whitelabel:port_authority(JObj)
+            kzd_whitelabel:port_authority(JObj)
     end.
 
 %%--------------------------------------------------------------------

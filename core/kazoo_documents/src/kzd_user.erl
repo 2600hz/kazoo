@@ -228,8 +228,8 @@ timezone(JObj) ->
 -spec timezone(kz_json:object(), Default) -> kz_term:ne_binary() | Default.
 timezone(JObj, Default) ->
     case kz_json:get_value(?KEY_TIMEZONE, JObj, Default) of
-        'undefined' -> kz_account:timezone(kz_doc:account_id(JObj));
-        <<"inherit">> -> kz_account:timezone(kz_doc:account_id(JObj)); %% UI-1808
+        'undefined' -> kzd_accounts:timezone(kz_doc:account_id(JObj));
+        <<"inherit">> -> kzd_accounts:timezone(kz_doc:account_id(JObj)); %% UI-1808
         TZ -> TZ
     end.
 
@@ -267,7 +267,7 @@ disable(JObj) ->
 -spec type() -> kz_term:ne_binary().
 type() -> <<"user">>.
 
--spec devices(doc()) -> kz_device:docs().
+-spec devices(doc()) -> kzd_devices:docs().
 devices(UserJObj) ->
     AccountDb = kz_doc:account_db(UserJObj),
     UserId = kz_doc:id(UserJObj),
@@ -307,7 +307,7 @@ fax_settings(JObj) ->
                           'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
                           _ -> FaxSettings
                       end,
-    AccountFaxSettings = kz_account:fax_settings(kz_doc:account_id(JObj)),
+    AccountFaxSettings = kzd_accounts:fax_settings(kz_doc:account_id(JObj)),
     kz_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).
 
 -spec name(doc()) -> kz_term:ne_binary().

@@ -88,7 +88,7 @@ init([JObj]) ->
 
     {'ok', StopTimerRef} = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
 
-    Moh = case kz_account:fetch(kapps_call:account_id(Call)) of
+    Moh = case kzd_accounts:fetch(kapps_call:account_id(Call)) of
               {'ok', JObj} ->
                   kz_media_util:media_path(
                     kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)

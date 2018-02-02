@@ -250,6 +250,29 @@ kz_media_recording_to_kzc_recording() {
     done
 }
 
+kzd_accessors() {
+    echo "  * kz_device->kzd_devices"
+    kz_device_to_kzd_devices
+    echo "  * kz_account->kzd_accounts"
+    kz_account_to_kzd_accounts
+}
+
+kz_device_to_kzd_devices() {
+    FROM=kz_device
+    TO=kzd_devices
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+        replace_call $FROM $TO '' '' "$FILE"
+    done
+}
+
+kz_account_to_kzd_accounts() {
+    FROM=kz_account
+    TO=kzd_accounts
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+        replace_call $FROM $TO '' '' "$FILE"
+    done
+}
+
 kz_includes() {
     INCLUDES=(kz_databases.hrl
               kz_log.hrl
@@ -298,13 +321,6 @@ change_to_module_type() {
     local REPLACE_TO="\1$MODULE:\4\5"
 
     replace_types "$MODULE" "$GREP_PATTERN" "$SED_PATTERN" "$REPLACE_TO"
-}
-
-change_kz_node_to_module_type() {
-    local GREP_PATTERN="(:{0}(:{2})|([ ,([{>]))(kz_node kz_nodes) *\\("
-    local SED_PATTERN="(:{0}(:{2})|([ ,([{>]))(kz_node kz_nodes)\s*(\(\))"
-
-    replace_types "kz_types" "$GREP_PATTERN" "$SED_PATTERN" "\1kz_types:\4\5"
 }
 
 change_kz_timeout() {
@@ -368,7 +384,7 @@ kz_type_modules() {
                     xml_things
                     whapp_info
                     kapps_info
-                    media_server
+#                    media_server
                     media_serve
                     )
     local kz_term=(text
@@ -432,14 +448,17 @@ kz_type_modules() {
                    unix_seconds
                    api_seconds
                    )
+    local kz_node=(kz_node
+                   kz_nodes
+                  )
     echo "  * ensuring core types migration"
     change_to_module_type "kz_types" kz_types[@]
     echo "  * ensuring term types migration"
     change_to_module_type "kz_term" kz_term[@]
     echo "  * ensuring time types migration"
     change_to_module_type "kz_time" kz_time[@]
-    echo "  * manually checking kz_node types"
-    change_kz_node_to_module_type
+    echo "  * ensuring kz_node/kz_nodes migration"
+    change_to_module_type "kz_types" kz_node[@]
     echo "  * using built in kz_timeout type"
     change_kz_timeout
     echo "  * removing kz_ prefix from kz_types"
@@ -474,5 +493,7 @@ echo 'ensuring utility calls are not duplicated all over the place'
 dedupe
 echo "ensuring kz_types migration to module is performed"
 kz_type_modules
+echo "updating kazoo document accessors"
+kzd_accessors
 
 popd >/dev/null

@@ -661,10 +661,10 @@ print_account_info(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
-            io:format("  Name: ~s~n", [kz_account:name(JObj)]),
-            io:format("  Realm: ~s~n", [kz_account:realm(JObj)]),
-            io:format("  Enabled: ~s~n", [kz_account:is_enabled(JObj)]),
-            io:format("  System Admin: ~s~n", [kz_account:is_superduper_admin(JObj)]);
+            io:format("  Name: ~s~n", [kzd_accounts:name(JObj)]),
+            io:format("  Realm: ~s~n", [kzd_accounts:realm(JObj)]),
+            io:format("  Enabled: ~s~n", [kzd_accounts:is_enabled(JObj)]),
+            io:format("  System Admin: ~s~n", [kzd_accounts:is_superduper_admin(JObj)]);
         {'error', 'not_found'} ->
             io:format("Account ID: ~s (~s) does not exist~n", [AccountId, AccountDb]);
         {'error', _} ->
@@ -965,7 +965,7 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
 -spec maybe_update_app(file:filename_all(), kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> no_return.
 maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     ApiUrlKey = <<"api_url">>,
-    CurrentDocId = kzd_app:id(AppJObj),
+    CurrentDocId = kz_doc:id(AppJObj),
     CurrentApiUrl = kzd_app:api_url(kz_json:get_value(<<"value">>, AppJObj)),
     case kzd_app:api_url(MetaData) of
         'undefined'   -> io:format(" not updating ~s, it is undefined~n", [ApiUrlKey]);
@@ -992,7 +992,7 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
     Doc = kz_json:delete_key(<<"source_url">>, Doc0),
     case kz_datamgr:save_doc(MasterAccountDb, Doc) of
         {'ok', AppJObj} ->
-            AppId = kzd_app:id(AppJObj),
+            AppId = kz_doc:id(AppJObj),
             io:format(" saved app ~s as doc ~s~n", [kzd_app:name(AppJObj), AppId]),
             maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb);
         {'error', _E} ->

@@ -109,7 +109,7 @@ account_is_descendant('false', Context, AuthAccountId) ->
             %% with a complex key (whose alternate value is useful to use on retrieval)
             lager:debug("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
             case ReqAccountId =:= AuthAccountId
-                orelse kz_account:fetch(ReqAccountId)
+                orelse kzd_accounts:fetch(ReqAccountId)
             of
                 'true' ->
                     lager:debug("authorizing, requested account is the same as the auth token account"),
@@ -117,7 +117,7 @@ account_is_descendant('false', Context, AuthAccountId) ->
                 %% if the requested account exists, the second component of the key
                 %% is the parent tree, make sure the authorized account id is in that tree
                 {'ok', JObj} ->
-                    Tree = kz_account:tree(JObj),
+                    Tree = kzd_accounts:tree(JObj),
                     case lists:member(AuthAccountId, Tree) of
                         'true' ->
                             lager:debug("authorizing requested account is a descendant of the auth token"),

@@ -248,7 +248,7 @@ ensure_can_create(Num, Options) ->
        ).
 -else.
 -define(LOAD_ACCOUNT(_Options, AccountId)
-       ,kz_account:fetch(AccountId)
+       ,kzd_accounts:fetch(AccountId)
        ).
 -endif.
 
@@ -257,7 +257,7 @@ allow_number_additions(_Options, ?KNM_DEFAULT_AUTH_BY) ->
     'true';
 allow_number_additions(_Options, _AccountId) ->
     {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
-    kz_account:allow_number_additions(JObj).
+    kzd_accounts:allow_number_additions(JObj).
 
 ensure_account_can_create(_, ?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),

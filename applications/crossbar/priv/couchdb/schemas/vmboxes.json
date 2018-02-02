@@ -97,6 +97,11 @@
             "description": "Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify)",
             "type": "boolean"
         },
+        "skip_envelope": {
+            "default": false,
+            "description": "Determines if the envelope should be skipped",
+            "type": "boolean"
+        },
         "skip_greeting": {
             "default": false,
             "description": "Determines if the greeting should be skipped",

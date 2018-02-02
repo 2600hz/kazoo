@@ -13,7 +13,6 @@
             "type": "string"
         },
         "language": {
-            "default": "en",
             "description": "The language of the speaker",
             "type": "string"
         },

@@ -335,8 +335,8 @@ routing_data(ToDID, AccountId, Settings) ->
         try ts_util:lookup_user_flags(AuthU, AuthR, AccountId, ToDID) of
             {'ok', AccountSettings} ->
                 lager:info("got account settings"),
-                {kz_json:get_value(<<"server">>, AccountSettings, kz_json:new())
-                ,kz_json:get_value(<<"account">>, AccountSettings, kz_json:new())
+                {kz_json:get_json_value(<<"server">>, AccountSettings, kz_json:new())
+                ,kz_json:get_json_value(<<"account">>, AccountSettings, kz_json:new())
                 }
         catch
             _E:_R ->
@@ -354,8 +354,8 @@ routing_data(ToDID, AccountId, Settings) ->
         'true' -> 'ok'
     end,
 
-    AcctCidOptions = kz_json:get_ne_value(<<"caller_id_options">>, AcctStuff),
-    CidOptions = kz_json:get_ne_value(<<"caller_id_options">>, SrvOptions, AcctCidOptions),
+    AcctCidOptions = kz_json:get_json_value(<<"caller_id_options">>, AcctStuff, kz_json:new()),
+    CidOptions = kz_json:get_json_value(<<"caller_id_options">>, SrvOptions, AcctCidOptions),
 
     InboundFormat = kz_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
     {CalleeName, CalleeNumber} = callee_id([kz_json:get_value(<<"caller_id">>, DIDOptions)

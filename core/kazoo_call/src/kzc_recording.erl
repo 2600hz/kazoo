@@ -497,7 +497,7 @@ store_recording_meta(#state{call=Call
                      ]
                     ),
 
-    MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', kzd_call_recording:type()}]),
+    MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', kzd_call_recordings:type()}]),
     case kazoo_modb:save_doc(Db, MediaDoc, [{'ensure_saved', 'true'}]) of
         {'ok', Doc} -> {'ok', Doc};
         {'error', _}= Err -> Err
@@ -508,7 +508,7 @@ store_recording_meta(#state{call=Call
 maybe_store_recording_meta(#state{doc_db=Db
                                  ,doc_id=DocId
                                  }=State) ->
-    case kz_datamgr:open_cache_doc(Db, {kzd_call_recording:type(), DocId}) of
+    case kz_datamgr:open_cache_doc(Db, {kzd_call_recordings:type(), DocId}) of
         {'ok', Doc} -> {'ok', Doc};
         {'error', _E} ->
             lager:debug("failed to find recording meta ~s in ~s: ~p", [DocId, Db, _E]),
@@ -522,14 +522,14 @@ get_media_name(Name, Ext) ->
         _ -> <<Name/binary, ".", Ext/binary>>
     end.
 
--spec store_url(state(), kzd_call_recording:doc()) -> kz_term:ne_binary().
+-spec store_url(state(), kzd_call_recordings:doc()) -> kz_term:ne_binary().
 store_url(#state{doc_db=Db
                 ,doc_id=MediaId
                 ,media={_,MediaName}
                 ,format=_Ext
                 ,should_store={'true', 'local'}
                 }, _MediaDoc) ->
-    kz_media_url:store(Db, {kzd_call_recording:type(), MediaId}, MediaName, []);
+    kz_media_url:store(Db, {kzd_call_recordings:type(), MediaId}, MediaName, []);
 store_url(#state{doc_db=Db
                 ,doc_id=MediaId
                 ,media={_,MediaName}
@@ -547,7 +547,7 @@ store_url(#state{doc_db=Db
                ,att_handler => {AttHandler, HandlerOpts}
                },
     Options = [{'plan_override', Handler}],
-    kz_media_url:store(Db, {kzd_call_recording:type(), MediaId}, MediaName, Options).
+    kz_media_url:store(Db, {kzd_call_recordings:type(), MediaId}, MediaName, Options).
 
 -spec handler_fields(kz_term:ne_binary(), state()) ->
                             kz_att_util:format_fields().

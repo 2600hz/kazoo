@@ -135,7 +135,7 @@ create(LedgerId, Type, Ledger) ->
 set_account(Ledger, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Routines = [{fun kazoo_ledger:set_account_id/2, AccountId}
-               ,{fun kazoo_ledger:set_account_name/2, kz_account:fetch_name(AccountId)}
+               ,{fun kazoo_ledger:set_account_name/2, kzd_accounts:fetch_name(AccountId)}
                ],
     lists:foldl(fun apply_routine/2, Ledger, Routines).
 

@@ -259,7 +259,7 @@ get_account_external_cid(Call) ->
 
 -spec maybe_get_account_cid(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> cid().
 maybe_get_account_cid(Number, Name, Call) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
+    case kzd_accounts:fetch(kapps_call:account_id(Call)) of
         {'error', _} -> maybe_get_assigned_number(Number, Name, Call);
         {'ok', JObj} -> maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
@@ -479,12 +479,12 @@ presence_id(EndpointId, Call) when is_binary(EndpointId) ->
         {'error', _} -> 'undefined'
     end;
 presence_id(Endpoint, Call) ->
-    Username = kz_device:sip_username(Endpoint, kapps_call:request_user(Call)),
+    Username = kzd_devices:sip_username(Endpoint, kapps_call:request_user(Call)),
     presence_id(Endpoint, Call, Username).
 
 -spec presence_id(kz_json:object(), kapps_call:call(), Default) -> kz_term:ne_binary() | Default.
 presence_id(Endpoint, Call, Default) ->
-    PresenceId = kz_device:presence_id(Endpoint, Default),
+    PresenceId = kzd_devices:presence_id(Endpoint, Default),
     case kz_term:is_empty(PresenceId) of
         'true' -> maybe_fix_presence_id_realm(Default, Endpoint, Call);
         'false' -> maybe_fix_presence_id_realm(PresenceId, Endpoint, Call)
@@ -598,14 +598,14 @@ maybe_get_endpoint_static_flags(_, Call, Flags) ->
 -spec get_endpoint_static_flags(kz_term:ne_binaries(), kz_json:object()) ->
                                        kz_term:ne_binaries().
 get_endpoint_static_flags(Flags, Endpoint) ->
-    kz_device:outbound_static_flags(Endpoint) ++ Flags.
+    kzd_devices:outbound_static_flags(Endpoint) ++ Flags.
 
 -spec get_account_static_flags(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binaries()) ->
                                       kz_term:ne_binaries().
 get_account_static_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
-        {'ok', AccountJObj} -> kz_device:outbound_static_flags(AccountJObj) ++ Flags;
+    case kzd_accounts:fetch(AccountId) of
+        {'ok', AccountJObj} -> kzd_devices:outbound_static_flags(AccountJObj) ++ Flags;
         {'error', _E} ->
             lager:error("not applying account outbound flags for ~s: ~p", [AccountId, _E]),
             Flags
@@ -632,7 +632,7 @@ maybe_get_endpoint_dynamic_flags(_, Call, Flags) ->
 -spec get_endpoint_dynamic_flags(kapps_call:call(), kz_term:ne_binaries(), kz_json:object()) ->
                                         kz_term:ne_binaries().
 get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
-    case kz_device:outbound_dynamic_flags(Endpoint) of
+    case kzd_devices:outbound_dynamic_flags(Endpoint) of
         [] -> Flags;
         DynamicFlags -> process_dynamic_flags(DynamicFlags, Flags, Call)
     end.
@@ -641,9 +641,9 @@ get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
                                        kz_term:ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountJObj} ->
-            process_dynamic_flags(kz_device:outbound_dynamic_flags(AccountJObj), Flags, Call);
+            process_dynamic_flags(kzd_devices:outbound_dynamic_flags(AccountJObj), Flags, Call);
         {'error', _E} ->
             lager:error("not applying account dynamic flags for ~s: ~p", [AccountId, _E]),
             Flags

@@ -141,7 +141,7 @@ maybe_process_req(DataJObj) ->
 
 -spec maybe_process_req(kz_json:object(), boolean()) -> template_response().
 maybe_process_req(DataJObj, false) ->
-    Msg = io_lib:format("request or box ~s has no emails or owner doesn't want emails"
+    Msg = io_lib:format("requestor or box ~s has no emails or owner doesn't want emails"
                        ,[kz_json:get_value(<<"voicemail_box">>, DataJObj)]
                        ),
     lager:debug(Msg),

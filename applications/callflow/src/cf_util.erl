@@ -574,7 +574,7 @@ find_user_endpoints(UserIds, DeviceIds, Call) ->
 
 -spec find_channels(kz_term:ne_binaries(), kapps_call:call()) -> kz_json:objects().
 find_channels(Usernames, Call) ->
-    Realm = kz_account:fetch_realm(kapps_call:account_id(Call)),
+    Realm = kzd_accounts:fetch_realm(kapps_call:account_id(Call)),
     lager:debug("finding channels for realm ~p, usernames ~p", [Realm, Usernames]),
     Req = [{<<"Realm">>, Realm}
           ,{<<"Usernames">>, Usernames}
@@ -624,7 +624,7 @@ sip_user_from_device_id(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
-            kz_device:sip_username(Endpoint)
+            kzd_devices:sip_username(Endpoint)
     end.
 
 -spec wait_for_noop(kapps_call:call(), kz_term:ne_binary()) ->
@@ -675,8 +675,8 @@ process_event(Call, NoopId, JObj) ->
 -spec get_timezone(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
 get_timezone(JObj, Call) ->
     case kz_json:get_ne_binary_value(<<"timezone">>, JObj) of
-        'undefined'   -> kz_account:timezone(kapps_call:account_id(Call));
-        <<"inherit">> -> kz_account:timezone(kapps_call:account_id(Call)); %% UI-1808
+        'undefined'   -> kzd_accounts:timezone(kapps_call:account_id(Call));
+        <<"inherit">> -> kzd_accounts:timezone(kapps_call:account_id(Call)); %% UI-1808
         TZ -> TZ
     end.
 

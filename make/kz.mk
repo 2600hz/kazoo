@@ -1,6 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src
+.PHONY: compile json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES)
 
 ## Platform detection.
 ifeq ($(PLATFORM),)
@@ -39,29 +39,55 @@ else
 endif
 ERLC_OPTS += -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}'
 ## Use pedantic flags when compiling apps from applications/ & core/
-ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec
+ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec +deterministic
 #ERLC_OPTS += +warn_untyped_record
 
-ELIBS = $(ERL_LIBS):$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
+ELIBS ?= $(if $(ERL_LIBS), $(ERL_LIBS):)$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
 
-EBINS += $(ROOT)/core/kazoo/ebin \
-	$(ROOT)/deps/lager/ebin
+EBINS += $(ROOT)/deps/lager/ebin
 
 TEST_EBINS += $(EBINS) $(ROOT)/deps/proper/ebin
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
+DEPS_RULES = .deps.mk
+
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
 ## SOURCES provides a way to specify compilation order (left to right)
-SOURCES     ?= src/*.erl $(if $(wildcard src/*/*.erl), src/*/*.erl)
-TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
+SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
+MODULE_NAMES := $(sort $(foreach module,$(SOURCES),$(shell basename $(module) .erl)))
+MODULES := $(shell echo $(MODULE_NAMES) | sed 's/ /,/g')
+
+TEST_SOURCES := $(SOURCES) $(wildcard test/*.erl)
+TEST_MODULE_NAMES := $(sort $(foreach module,$(TEST_SOURCES),$(shell basename $(module) .erl)))
+TEST_MODULES := $(shell echo $(TEST_MODULE_NAMES) | sed 's/ /,/g')
+
+ifneq ($(wildcard $(DEPS_RULES)),)
+include $(DEPS_RULES)
+endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
+compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend
 
 ebin/$(PROJECT).app: $(SOURCES)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src > $@
+
+ebin/%.beam: src/%.erl
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
+
+ebin/%.beam: src/*/%.erl
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
+
+depend: $(DEPS_RULES)
+
+$(DEPS_RULES):
+	@rm -f $(DEPS_RULES)
+	ERL_LIBS=$(ELIBS) erlc -v +makedep +'{makedep_output, standard_io}' $(PA) -o ebin/ $(SOURCES) > $(DEPS_RULES)
 
 app_src:
 	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find $(ROOT) -name $(PROJECT).app.src)
@@ -79,14 +105,15 @@ test/$(PROJECT).app: $(TEST_SOURCES)
 	@mkdir -p test/
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(TEST_PA) -o ebin/ $?
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
-	@sed "s/{modules,\s*\[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > ebin/$(PROJECT).app
 
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > $@
+	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > ebin/$(PROJECT).app
 
 clean: clean-test
-	$(if $(wildcard cover/*), rm -r cover)
-	$(if $(wildcard ebin/*), rm ebin/*)
-	$(if $(wildcard *crash.dump), rm *crash.dump)
+	@$(if $(wildcard cover/*), rm -r cover)
+	@$(if $(wildcard ebin/*), rm ebin/*)
+	@$(if $(wildcard *crash.dump), rm *crash.dump)
+	@$(if $(wildcard $(DEPS_RULES)), rm $(DEPS_RULES))
 
 clean-test: $(CLEAN_MOAR)
 	$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)
@@ -95,7 +122,7 @@ TEST_CONFIG=$(ROOT)/rel/config-test.ini
 
 ## Use this one when debugging
 test: compile-test
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 test.%: compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([$*], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
@@ -107,7 +134,7 @@ eunit: compile-test eunit-run
 
 eunit-run:
 	@mkdir -p $(COVER_REPORT_DIR)
-	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
+	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> cover:export(\"$(COVERDATA)\"), cover:analyse_to_file([html, {outdir, \"$(COVER_REPORT_DIR)\"}]), init:stop(); _ -> init:stop(1) end."
 
 cover: $(ROOT)/make/cover.mk
 	COVER=1 $(MAKE) eunit

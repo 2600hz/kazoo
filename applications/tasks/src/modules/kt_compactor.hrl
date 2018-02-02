@@ -9,9 +9,11 @@
 -type heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
 -define(MIN_RATIO
-       ,kapps_config:get_float(?SYSCONFIG_COUCH, <<"min_ratio">>, 1.2)).
+       ,kapps_config:get_float(?SYSCONFIG_COUCH, <<"min_ratio">>, 1.2)
+       ).
 -define(MIN_DATA
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"min_data_size">>, 131072)). %% 128Kb
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"min_data_size">>, 131072)  %% 128Kb
+       ).
 -define(MAX_WAIT_FOR_COMPACTION_PIDS
        ,case kapps_config:get(?SYSCONFIG_COUCH, <<"max_wait_for_compaction_pids">>, 360 * ?MILLISECONDS_IN_SECOND) of
             <<"infinity">> -> 'infinity';
@@ -19,24 +21,33 @@
         end
        ).
 -define(MAX_COMPACTING_SHARDS
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"max_compacting_shards">>, 2)).
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"max_compacting_shards">>, 2)
+       ).
 -define(MAX_COMPACTING_VIEWS
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"max_compacting_views">>, 2)).
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"max_compacting_views">>, 2)
+       ).
 -define(SLEEP_BETWEEN_POLL
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)
+       ).
 
 -define(COMPACT_AUTOMATICALLY
-       ,kapps_config:get_is_true(?SYSCONFIG_COUCH, <<"compact_automatically">>, 'false')).
+       ,kapps_config:get_is_true(?SYSCONFIG_COUCH, <<"compact_automatically">>, 'false')
+       ).
 
 -define(ADMIN_PORT
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"admin_port">>, 5986)).
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"admin_port">>, 5986)
+       ).
 -define(NODE_ADMIN_PORT(Node)
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"admin_port">>, 5986, Node)).
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"admin_port">>, 5986, Node)
+       ).
 
 -define(API_PORT
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"api_port">>, 5984)).
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"api_port">>, 5984)
+       ).
 -define(NODE_API_PORT(Node)
-       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"api_port">>, 5984, Node)).
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"api_port">>, 5984, Node)
+       ).
 
 -define(KT_COMPACTOR_HRL, 'true').
+
 -endif.

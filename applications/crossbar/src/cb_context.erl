@@ -210,12 +210,12 @@ account_modb(Context, Year, Month) ->
 
 -spec account_realm(context()) -> kz_term:api_ne_binary().
 account_realm(Context) ->
-    kz_account:realm(account_doc(Context)).
+    kzd_accounts:realm(account_doc(Context)).
 
 -spec account_doc(context()) -> kz_term:api_object().
 account_doc(#cb_context{account_id = undefined}) -> undefined;
 account_doc(#cb_context{account_id = AccountId}) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {ok, AccountJObj} -> AccountJObj;
         {error, _R} ->
             lager:warning("error fetching account doc for ~p: ~p", [AccountId,_R]),
@@ -276,7 +276,7 @@ auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
 -spec auth_account_doc(context()) -> kz_term:api_object().
 auth_account_doc(#cb_context{auth_account_id = undefined}) -> undefined;
 auth_account_doc(#cb_context{auth_account_id = AccountId}) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {ok, AuthAccountJObj} -> AuthAccountJObj;
         {error, _R} ->
             lager:warning("error fetching auth account doc for ~p: ~p", [AccountId,_R]),

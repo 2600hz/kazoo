@@ -219,9 +219,9 @@ set_pvt_fields(Context) ->
 
 -spec query_name(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 query_name(<<"account">>, JObj) ->
-    kz_account:realm(JObj);
+    kzd_accounts:realm(JObj);
 query_name(<<"device">>, JObj) ->
-    kz_device:sip_username(JObj).
+    kzd_devices:sip_username(JObj).
 
 %%--------------------------------------------------------------------
 %% @public

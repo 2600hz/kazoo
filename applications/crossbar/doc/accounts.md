@@ -34,6 +34,15 @@ Key | Description | Type | Default | Required | Support Level
 `music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..2048)` |   | `false` |  
 `music_on_hold` | The default music on hold parameters | `object()` | `{}` | `false` |  
 `name` | A friendly name for the account | `string(1..128)` |   | `true` |  
+`notifications.first_occurrence.sent_initial_call` | has the account made their first call | `boolean()` | `false` | `false` |  
+`notifications.first_occurrence.sent_initial_registration` | has the account registered their first device | `boolean()` | `false` | `false` |  
+`notifications.first_occurrence` | send emails on these account-firsts | `object()` |   | `false` |  
+`notifications.low_balance.enabled` | should the account be checked for this alert | `boolean()` | `true` | `false` |  
+`notifications.low_balance.last_notification` | Timestamp, in gregorian seconds, of when the last low_balance alert was sent | `integer()` |   | `false` |  
+`notifications.low_balance.sent_low_balance` | has the alert been sent (avoids duplication/spamming) | `boolean()` |   | `false` |  
+`notifications.low_balance.threshold` | account balance to send alert on | `number()` |   | `false` |  
+`notifications.low_balance` | Low balance settings | `object()` |   | `false` |  
+`notifications` | account notification settings | `object()` |   | `false` |  
 `org` | Full legal name of the organization | `string()` |   | `false` |  
 `preflow.always` | The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request | `string()` |   | `false` |  
 `preflow` | Each property provides functionality that can be applied to calls using the callflow application | `object()` | `{}` | `false` |  
@@ -42,9 +51,13 @@ Key | Description | Type | Default | Required | Support Level
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false` |  
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false` |  
 `timezone` | The default timezone | `string(5..32)` |   | `false` |  
+`topup.threshold` | The account balance when topup occurs | `number()` |   | `false` |  
+`topup` | Topup settings for the account | `object()` |   | `false` |  
 `voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
 `voicemail.notify` |   | `object()` |   | `false` |  
 `voicemail` |   | `object()` |   | `false` |  
+`zones.home` | Which zone is considered the account's home zone | `string()` |   | `false` |  
+`zones` | The zone(s) of an account | `object()` |   | `false` |  
 
 ##### call_recording
 

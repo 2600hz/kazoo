@@ -27,6 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 `pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` |  
 `require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` |  
 `save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` |  
+`skip_envelope` | Determines if the envelope should be skipped | `boolean()` | `false` | `false` |  
 `skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` |  
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` |  
 `timezone` | The default timezone | `string(5..32)` |   | `false` |  

@@ -322,19 +322,19 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                           end
                   end
                  ,fun(J) ->
-                          case kz_device:sip_username(J) of
+                          case kzd_devices:sip_username(J) of
                               'undefined' ->
                                   Strength = kapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
-                                  kz_device:set_sip_username(J, list_to_binary(["user_", kz_binary:rand_hex(Strength)]));
+                                  kzd_devices:set_sip_username(J, list_to_binary(["user_", kz_binary:rand_hex(Strength)]));
                               _ ->
                                   J
                           end
                   end
                  ,fun(J) ->
-                          case kz_device:sip_password(J) of
+                          case kzd_devices:sip_password(J) of
                               'undefined' ->
                                   Strength = kapps_config:get_integer(?OB_CONFIG_CAT, <<"device_pwd_strength">>, 6),
-                                  kz_device:set_sip_password(J, kz_binary:rand_hex(Strength));
+                                  kzd_devices:set_sip_password(J, kz_binary:rand_hex(Strength));
                               _ ->
                                   J
                           end
@@ -602,9 +602,9 @@ create_response(Context) ->
 %%--------------------------------------------------------------------
 -spec notfy_new_account(kz_json:object()) -> 'ok'.
 notfy_new_account(JObj) ->
-    Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
-             ,{<<"Account-Realm">>, kz_account:realm(JObj)}
-             ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
+    Notify = [{<<"Account-Name">>, kzd_accounts:name(JObj)}
+             ,{<<"Account-Realm">>, kzd_accounts:realm(JObj)}
+             ,{<<"Account-API-Key">>, kzd_accounts:api_key(JObj)}
              ,{<<"Account-ID">>, kz_doc:account_id(JObj)}
              ,{<<"Account-DB">>, kz_doc:account_db(JObj)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)

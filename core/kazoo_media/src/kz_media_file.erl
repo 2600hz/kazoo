@@ -24,7 +24,7 @@ get_uri(#media_store_path{}=Store, JObj) ->
     maybe_proxy(JObj, Store);
 get_uri(Media, JObj) when is_binary(Media) ->
     kz_util:put_callid(JObj),
-    Paths = [Path
+    Paths = [kz_http_util:urldecode(Path)
              || Path <- binary:split(Media, <<"/">>, ['global', 'trim']),
                 not kz_term:is_empty(Path)
             ],

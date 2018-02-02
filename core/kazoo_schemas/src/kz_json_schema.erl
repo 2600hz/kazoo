@@ -56,6 +56,9 @@
                                                 ]}
                          ]).
 
+-ifdef(TEST).
+load(Schema) -> fload(Schema).
+-else.
 -spec load(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
 load(<<"./", Schema/binary>>) -> load(Schema);
@@ -66,6 +69,7 @@ load(<<_/binary>> = Schema) ->
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
     end;
 load(Schema) -> load(kz_term:to_binary(Schema)).
+-endif.
 
 -spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
                                        {'error', 'not_found'}.
@@ -865,7 +869,9 @@ flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
     end;
 flatten_prop(Path, V) -> [{Path, V}].
 
--spec default_object(kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+-spec default_object(string() | kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+default_object([_|_]=SchemaId) ->
+    default_object(list_to_binary(SchemaId));
 default_object(?NE_BINARY=SchemaId) ->
     {'ok', Schema} = load(SchemaId),
     default_object(Schema);
@@ -881,7 +887,7 @@ default_properties(Flat) ->
                               <<"default">> =:= lists:last(Keys)
                                   andalso {'true', {lists:droplast(Keys), Value}}
                       end
-                      ,Flat
+                     ,Flat
                      ).
 
 -spec filtering_list(kz_json:object()) -> list(kz_json:keys() | []).

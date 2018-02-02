@@ -59,7 +59,7 @@ process_req(FaxDoc, JObj, _Props) ->
     Emails = kz_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
 
-    {'ok', AcctObj} = kz_account:fetch(AccountId),
+    {'ok', AcctObj} = kzd_accounts:fetch(AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 

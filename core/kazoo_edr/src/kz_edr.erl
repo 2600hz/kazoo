@@ -40,4 +40,4 @@ event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->
 
 -spec send_event(edr_event()) -> any().
 send_event(#edr_event{account_id=AccountId}=Event) ->
-    edr_bindings:distribute(Event#edr_event{account_tree=kz_account:fetch_tree(AccountId)}).
+    edr_bindings:distribute(Event#edr_event{account_tree=kzd_accounts:fetch_tree(AccountId)}).

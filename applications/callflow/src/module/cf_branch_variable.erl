@@ -40,7 +40,7 @@ handle(Data, Call) ->
     ChildName = find_child_in_scope(Scope, Variable, Call),
     maybe_branch_to_named_child(ChildName, Call).
 
--spec maybe_branch_to_named_child(variable_key(), kapps_call:call()) -> kapps_call:call().
+-spec maybe_branch_to_named_child(variable_key(), kapps_call:call()) -> 'ok'.
 maybe_branch_to_named_child('undefined', Call) ->
     lager:info("trying '_'"),
     cf_exe:continue(Call);
@@ -150,7 +150,7 @@ find_child_in_branch(ChildName, Call, Keys) ->
 device_owner(Call) ->
     DeviceId = kapps_call:authorizing_id(Call),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of
-        {'ok', JObj} -> kz_device:owner_id(JObj);
+        {'ok', JObj} -> kzd_devices:owner_id(JObj);
         _Else ->
             lager:debug("failed to open device doc ~s in account ~s", [DeviceId, kapps_call:account_id(Call)]),
             'undefined'

@@ -413,7 +413,7 @@ normalize_apps_result([App|Apps], Acc) ->
         'true' ->
             JObj =
                 kz_json:from_list(
-                  [{<<"id">>, kzd_app:id(App)}
+                  [{<<"id">>, kz_doc:id(App)}
                   ,{<<"name">>, kzd_app:name(App)}
                   ,{<<"i18n">>, kzd_app:i18n(App)}
                   ,{<<"tags">>, kzd_app:tags(App)}

@@ -167,7 +167,7 @@ validate_request(Context, ?HTTP_GET, JObj) ->
     lager:debug("valid shared auth request received, creating response"),
     AccountId = kz_json:get_value(<<"account_id">>, JObj),
     UserId = kz_json:get_value(<<"owner_id">>, JObj),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', Account} ->
             Db = kz_util:format_account_id(AccountId, 'encoded'),
             case kz_datamgr:open_doc(Db, UserId) of
@@ -294,7 +294,7 @@ import_missing_account(AccountId, Account) ->
             lager:debug("remote account db ~s already exists locally", [AccountId]),
             %% make sure the account definition is in the account, if not
             %% use the one we got from shared auth
-            case kz_account:fetch(AccountId) of
+            case kzd_accounts:fetch(AccountId) of
                 {'error', 'not_found'} ->
                     lager:debug("missing local account definition, creating from shared auth response"),
                     Doc = kz_doc:delete_revision(Account),

@@ -55,6 +55,8 @@
                                       ,<<"Original-Contact">>
                                       ,<<"Registrar-Node">>
                                       ,<<"Proxy-Path">>, <<"AOR">>, <<"RUID">>
+                                      ,<<"Proxy-Protocol">>, <<"Proxy-IP">>, <<"Proxy-Port">>
+                                      ,<<"Source-IP">>, <<"Source-Port">>
                                       ,<<"First-Registration">>
                                       ,<<"Custom-Channel-Vars">>
                                       ]).

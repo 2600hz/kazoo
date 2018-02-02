@@ -43,12 +43,12 @@ handle_req(JObj, Props) ->
 -spec maybe_prepend_preflow(kapps_call:call(), kz_json:object()) -> kz_json:object().
 maybe_prepend_preflow(Call, CallFlow) ->
     AccountDb = kapps_call:account_db(Call),
-    case kz_account:fetch(AccountDb) of
+    case kzd_accounts:fetch(AccountDb) of
         {'error', _E} ->
             lager:warning("could not open account doc ~s : ~p", [AccountDb, _E]),
             CallFlow;
         {'ok', Doc} ->
-            case kz_account:preflow_id(Doc) of
+            case kzd_accounts:preflow_id(Doc) of
                 'undefined' -> CallFlow;
                 PreflowId   -> kzd_callflow:prepend_preflow(CallFlow, PreflowId)
             end

@@ -21,7 +21,7 @@ render_test_() ->
     ,fun setup/0
     ,fun cleanup/1
     ,fun(_ReturnOfSetup) ->
-             [{"you're awesome test"
+             [{"your awesome test"
               ,?_assertEqual(good, evil)
               }
              ]
@@ -68,28 +68,28 @@ core/kazoo_fixturedb/priv/dbs/
 ...
 ```
 
-#### Attachments are Reside in `docs` Directory
+#### Attachments reside in `docs` directory
 
-Document attachments are stores in `docs` directory. Their file names are encoded by the document ID and attachment name, (see [Document Attachments](#document-attachments) section). Attachments are usually audio files, PDFs or pictures. FixtureDB has some default files in `priv/media_files`. You can simply use them by creating a symbolic link to them.
+Document attachments are stored in `docs` directory. Their file names are encoded by the document ID and attachment name, (see [Document Attachments](#document-attachments) section). Attachments are usually audio files, PDFs or pictures. FixtureDB has some default files in `priv/media_files`. You can simply use them by creating a symbolic link to them.
 
 #### View Results Directory
 
-View results are exactly the same result sets which `kz_datamgr:get_results/2,3` returns. It is your responsibility to write the correct view result structure and in the order. Complex queries has their own unique filename which is explained in [View Results](#view-results) section.
+View results are exactly the same result sets which `kz_datamgr:get_results/2,3` returns. It is your responsibility to write the correct view result structure and in the proper sort order. Complex queries have their own unique filename which is explained in the [View Results](#view-results) section.
 
 ## Using FixtureDB
 
-FixtureDB acts as database driver for `kazoo_data`, so you need to start `kazoo_config` first to read the database configuration, then start `kazoo_data` connection link by running `kazoo_data_link_sup:start_link()` to bring up Kazoo data connection ETS table. `kazoo_data_link_sup` is lite version of `kazoo_data_sup` which is not depend on `kazoo_amqp` and tracing capability to be available, it's just make a new connection to database (which in this case is FixtureDB).
+FixtureDB acts as database driver for `kazoo_data`, so you need to start `kazoo_config` first to read the database configuration, then start `kazoo_data` connection link by running `kazoo_data_link_sup:start_link()` to bring up Kazoo data connection ETS table. `kazoo_data_link_sup` is a lite version of `kazoo_data_sup` which does not depend on `kazoo_amqp` and tracing capability to be available; its just making a new connection to a database (which in this case is FixtureDB).
 
-OS environment `KAZOO_CONFIG` is necessary for `kazoo_config` to read the correct FixtureDB database configuration and by default is set to [`$(ROOT)/rel/config-test.ini`](../../../rel/config-test.ini) in [`kz.mk`](../../../make/kz.mk) file for `test`, `eunit`, `proper` and `fixture_db` targets.
+OS environment variable `KAZOO_CONFIG` is necessary for `kazoo_config` to read the correct FixtureDB database configuration and by default is set to [`$(ROOT)/rel/config-test.ini`](../../../rel/config-test.ini) in [`kz.mk`](../../../make/kz.mk) file for `test`, `eunit`, `proper` and `fixture_db` targets.
 
-In the tests which need accessing to database you have to bring up `kazoo_config` and `kazoo_data_link_sup`:
+In tests which access the database, you have to bring up `kazoo_config` and `kazoo_data_link_sup`:
 
 ```erlang
 {'ok', _} = application:ensure_all_started('kazoo_config').
 {'ok', _Pid} = kazoo_data_link_sup:start_link().
 ```
 
-> **NOTE:** Don't forget to stop the `kazoo_config` and `kazoo_data_link_sup` after your test is finished (see [EUnit test example](#example-unit-test-using-setupcleanup-method) above), otherwise your test would failed because the `kazoo_config` and `kazoo_data_link_sup` are not shut down normally!
+> **NOTE:** Don't forget to stop the `kazoo_config` and `kazoo_data_link_sup` after your test is finished (see [EUnit test example](#example-unit-test-using-setupcleanup-method) above), otherwise your test will fail because the `kazoo_config` and `kazoo_data_link_sup` are not shut down normally!
 
 ### Database
 
@@ -97,9 +97,9 @@ Each database has a directory of their own inside `core/kazoo_fixturedb/priv/dbs
 
 > **NOTE:** Database name in URL encoded, e.g. `account/xxxx` becomes `account%2Fac%2Fco%2Funtxxxx`.
 
-In each database there are two directories: `docs` for storing regular document inside database and `views` for storing view results.
+In each database there are two directories: `docs` for storing regular JSON documents inside the database and `views` for storing view results.
 
-To make it easy to map each attachment or complex view to their corresponding files in `docs` and `views` directories there are two CSV index files at the root of the database directory.
+To make it easy to map each attachment or complex view to their corresponding files in the `docs` and `views` directories, there are two CSV index files at the root of the database directory.
 
 ### Fixture JSON Documents
 

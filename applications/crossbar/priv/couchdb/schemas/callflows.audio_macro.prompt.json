@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.audio_macro.prompt",
+    "description": "Validator for playing prompts",
+    "properties": {
+        "id": {
+            "description": "Prompt ID",
+            "type": "string"
+        },
+        "language": {
+            "description": "The language of the speaker",
+            "type": "string"
+        },
+        "terminators": {
+            "default": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "*",
+                "0",
+                "#"
+            ],
+            "description": "What DTMF can terminate playback of the audio",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}

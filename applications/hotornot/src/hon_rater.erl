@@ -170,7 +170,7 @@ rate_resp(Rate, RateReq) ->
 
 -spec should_update_callee_id(kz_term:ne_binary() | kapi_rate:req()) -> boolean().
 should_update_callee_id(?NE_BINARY = AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountDoc} ->
             kz_json:is_true([<<"caller_id_options">>, <<"show_rate">>], AccountDoc, 'false');
         {'error', _R} ->

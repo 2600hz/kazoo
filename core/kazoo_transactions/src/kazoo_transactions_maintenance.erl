@@ -89,12 +89,12 @@ current_balance(AccountId) ->
 
 -spec get_topup_thresholds(kz_term:ne_binary()) -> {kz_term:api_integer(), integer() | string(), integer() | string()}.
 get_topup_thresholds(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'error', _Reason} ->
             io:format("failed to open account ~p: ~p", [AccountId, _Reason]),
             {'undefined', 'undefined', 'undefined'};
         {'ok', JObj} ->
-            {kz_account:low_balance_threshold(JObj)
+            {kzd_accounts:low_balance_threshold(JObj)
             ,kz_json:get_integer_value([<<"topup">>, <<"amount">>], JObj, "N/A")
             ,kz_json:get_integer_value([<<"topup">>, <<"threshold">>], JObj, "N/A")
             }

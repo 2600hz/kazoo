@@ -1009,8 +1009,8 @@ account_id(#kapps_call{account_id=AccountId}) ->
 
 -spec account_realm(call()) -> kz_term:ne_binary().
 account_realm(#kapps_call{account_id=AccountId}) ->
-    {'ok', Doc} = kz_account:fetch(AccountId),
-    kz_account:realm(Doc).
+    {'ok', Doc} = kzd_accounts:fetch(AccountId),
+    kzd_accounts:realm(Doc).
 
 -spec set_authorizing_id(kz_term:ne_binary(), call()) -> call().
 set_authorizing_id(AuthorizingId, #kapps_call{}=Call) when is_binary(AuthorizingId) ->

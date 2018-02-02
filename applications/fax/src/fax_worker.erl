@@ -991,7 +991,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     ETimeout = kz_term:to_binary(kapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 40)),
     AccountId =  kz_doc:account_id(JObj),
-    AccountRealm = kz_account:fetch_realm(AccountId),
+    AccountRealm = kzd_accounts:fetch_realm(AccountId),
     Request = props:filter_undefined(
                 [{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"from_name">>, JObj)}
                 ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"from_number">>, JObj)}

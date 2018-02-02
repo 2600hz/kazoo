@@ -31,7 +31,7 @@ init() ->
                             'maybe_test_for_initial_occurrences').
 
 %% Triggerables
--spec maybe_test_for_initial_occurrences(kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
+-spec maybe_test_for_initial_occurrences(kz_term:ne_binary(), kzd_accounts:doc()) -> 'ok'.
 maybe_test_for_initial_occurrences(AccountId, AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
     case ?SHOULD_CRAWL_FOR_FIRST_OCCURRENCE of
@@ -45,11 +45,11 @@ maybe_test_for_initial_occurrences(AccountId, AccountJObj) ->
 %%% Internal functions
 %%%=============================================================================
 %% First Registration
--spec maybe_test_for_registrations(kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
+-spec maybe_test_for_registrations(kz_term:ne_binary(), kzd_accounts:doc()) -> 'ok'.
 maybe_test_for_registrations(AccountId, AccountJObj) ->
-    Realm = kz_account:realm(AccountJObj),
+    Realm = kzd_accounts:realm(AccountJObj),
     case Realm =:= 'undefined'
-        orelse kz_account:sent_initial_registration(AccountJObj)
+        orelse kzd_accounts:sent_initial_registration(AccountJObj)
     of
         'true' -> 'ok';
         'false' -> test_for_registrations(AccountId, Realm)
@@ -79,14 +79,14 @@ test_for_registrations(AccountId, Realm) ->
 
 -spec handle_initial_registration(kz_term:ne_binary()) -> 'ok'.
 handle_initial_registration(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountJObj} -> notify_initial_registration(AccountJObj);
         _E -> 'ok'
     end.
 
--spec notify_initial_registration(kz_account:doc()) -> 'ok'.
+-spec notify_initial_registration(kzd_accounts:doc()) -> 'ok'.
 notify_initial_registration(AccountJObj) ->
-    UpdatedAccountJObj = kz_account:set_initial_registration_sent(AccountJObj, 'true'),
+    UpdatedAccountJObj = kzd_accounts:set_initial_registration_sent(AccountJObj, 'true'),
     _ = kz_util:account_update(UpdatedAccountJObj),
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"registration">>}
@@ -95,9 +95,9 @@ notify_initial_registration(AccountJObj) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
 
 %% First Call
--spec maybe_test_for_initial_call(kz_term:ne_binary(), kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
+-spec maybe_test_for_initial_call(kz_term:ne_binary(), kz_term:ne_binary(), kzd_accounts:doc()) -> 'ok'.
 maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj) ->
-    case kz_account:sent_initial_call(AccountJObj) of
+    case kzd_accounts:sent_initial_call(AccountJObj) of
         'true' -> 'ok';
         'false' ->
             lager:debug("looking for initial call in account ~s", [AccountId]),
@@ -118,14 +118,14 @@ test_for_initial_call(AccountId, AccountDb) ->
 
 -spec handle_initial_call(kz_term:ne_binary()) -> 'ok'.
 handle_initial_call(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountJObj} -> notify_initial_call(AccountJObj);
         _ -> 'ok'
     end.
 
--spec notify_initial_call(kz_account:doc()) -> 'ok'.
+-spec notify_initial_call(kzd_accounts:doc()) -> 'ok'.
 notify_initial_call(AccountJObj) ->
-    UpdatedAccountJObj = kz_account:set_initial_call_sent(AccountJObj, 'true'),
+    UpdatedAccountJObj = kzd_accounts:set_initial_call_sent(AccountJObj, 'true'),
     _ = kz_util:account_update(UpdatedAccountJObj),
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"call">>}

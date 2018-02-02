@@ -123,6 +123,10 @@
             "description": "The language for the device",
             "type": "string"
         },
+        "mac_address": {
+            "description": "The MAC Address of the device (if applicable)",
+            "type": "string"
+        },
         "media": {
             "$ref": "endpoint.media",
             "description": "Configure audio/video/etc media options for this device"
@@ -156,10 +160,33 @@
         },
         "outbound_flags": {
             "description": "List of flags (features) this device requires when making outbound calls",
-            "items": {
-                "type": "string"
-            },
-            "type": "array"
+            "oneOf": [
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                {
+                    "properties": {
+                        "dynamic": {
+                            "description": "Dynamic outbound flags",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "static": {
+                            "description": "Static outbound flags",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                }
+            ]
         },
         "owner_id": {
             "description": "The ID of the user object that 'owns' the device",

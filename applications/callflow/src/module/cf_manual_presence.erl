@@ -21,7 +21,7 @@
 handle(Data, Call) ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     PresenceId =
-        case binary:match((P = kz_device:presence_id(Data, CaptureGroup)), <<"@">>) of
+        case binary:match((P = kzd_devices:presence_id(Data, CaptureGroup)), <<"@">>) of
             'nomatch' -> <<P/binary, "@", (kapps_call:request_realm(Call))/binary>>;
             _Else -> P
         end,

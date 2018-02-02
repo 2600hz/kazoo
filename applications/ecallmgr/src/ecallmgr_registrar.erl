@@ -108,6 +108,7 @@
                       ,proxy :: kz_term:api_binary() | '_'
                       ,proxy_ip :: kz_term:api_binary() | '_'
                       ,proxy_port :: kz_term:api_integer() | '_'
+                      ,proxy_proto :: kz_term:api_binary() | '_'
                       ,bridge_uri :: kz_term:api_binary() | '_'
                       ,source_ip :: kz_term:api_binary() | '_'
                       ,source_port :: kz_term:api_binary() | '_'
@@ -182,7 +183,7 @@ handle_fs_reg(Node, Props) ->
     kz_amqp_worker:cast(Req, fun kapi_registration:publish_success/1).
 
 -spec lookup_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
+                            {'ok', kz_term:ne_binary(), kz_term:proplist()} |
                             {'error', 'not_found'}.
 lookup_contact(<<>>, _Username) -> {'error', 'not_found'};
 lookup_contact(_Realm, <<>>) -> {'error', 'not_found'};
@@ -191,17 +192,35 @@ lookup_contact(<<_/binary>> = Realm, <<_/binary>> = Username) ->
         'undefined' -> fetch_contact(Username, Realm);
         #registration{contact=Contact
                      ,bridge_uri='undefined'
-                     } ->
+                     }=Reg ->
             lager:info("found user ~s@~s contact ~s"
                       ,[Username, Realm, Contact]
                       ),
-            {'ok', Contact};
-        #registration{bridge_uri=Contact} ->
+            {'ok', Contact, contact_vars(to_props(Reg))};
+        #registration{bridge_uri=Contact}=Reg ->
             lager:info("found user ~s@~s bridge uri  ~s"
                       ,[Username, Realm, Contact]
                       ),
-            {'ok', Contact}
+            {'ok', Contact, contact_vars(to_props(Reg))}
     end.
+
+-spec contact_vars(kz_term:proplist()) -> kz_term:proplist().
+contact_vars(Props) ->
+    lists:usort(lists:foldl(fun contact_vars_fold/2, [], Props)).
+
+-spec contact_vars_fold({kz_term:ne_binary(), term()}, kz_term:proplist()) -> kz_term:proplist().
+contact_vars_fold({<<"Proxy-Protocol">>, Proto}, Props) ->
+    case kz_term:to_lower_binary(Proto) of
+        <<"ws", _/binary>> -> [{<<"Media-Webrtc">>, true} | Props];
+        _ -> Props
+    end;
+contact_vars_fold({<<"Original-Contact">>, Contact}, Props) ->
+    [#uri{}=UriContact] = kzsip_uri:uris(Contact),
+    case props:get_value(<<"transport">>, UriContact#uri.opts) of
+        'undefined' -> Props;
+        Transport -> contact_vars_fold({<<"Proxy-Protocol">>, Transport}, Props)
+    end;
+contact_vars_fold(_ , Props) -> Props.
 
 -spec lookup_original_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      {'ok', kz_term:ne_binary()} |
@@ -635,7 +654,7 @@ fetch_contact(Username, Realm) ->
             lager:info("found user ~s@~s contact ~s via fetch"
                       ,[Username, Realm, Contact]
                       ),
-            {'ok', Contact};
+            {'ok', Contact, contact_vars(kz_json:to_proplist(JObj))};
         {'error', _R}=Error ->
             lager:info("original contact query for user ~s@~s failed: ~p", [Username, Realm, _R]),
             Error
@@ -792,6 +811,7 @@ create_registration(JObj) ->
     Proxy = kz_json:get_value(<<"Proxy-Path">>, JObj, Reg#registration.proxy),
     ProxyIP = kz_json:get_value(<<"Proxy-IP">>, JObj, Reg#registration.proxy_ip),
     ProxyPort = kz_json:get_integer_value(<<"Proxy-Port">>, JObj, Reg#registration.proxy_port),
+    ProxyProto = kz_json:get_value(<<"Proxy-Protocol">>, JObj, Reg#registration.proxy_proto),
     OriginalContact =
         kz_json:get_first_defined([<<"Original-Contact">>
                                   ,<<"Contact">>
@@ -824,6 +844,7 @@ create_registration(JObj) ->
                       ,proxy=Proxy
                       ,proxy_ip=ProxyIP
                       ,proxy_port=ProxyPort
+                      ,proxy_proto=ProxyProto
                       ,expires=Expires
                       ,registrar_node=RegistrarNode
                       ,registrar_hostname=RegistrarHostname
@@ -1182,6 +1203,7 @@ to_props(Reg) ->
       ,{<<"Proxy-Path">>, Reg#registration.proxy}
       ,{<<"Proxy-IP">>, Reg#registration.proxy_ip}
       ,{<<"Proxy-Port">>, Reg#registration.proxy_port}
+      ,{<<"Proxy-Protocol">>, Reg#registration.proxy_proto}
       ,{<<"Expires">>, Reg#registration.expires}
       ,{<<"Account-ID">>, Reg#registration.account_id}
       ,{<<"Account-DB">>, Reg#registration.account_db}
@@ -1240,6 +1262,7 @@ print_summary({[#registration{username=Username
                              ,proxy=Proxy
                              ,proxy_ip=ProxyIP
                              ,proxy_port=ProxyPort
+                             ,proxy_proto=ProxyProto
                              }
                ]
               ,Continuation
@@ -1249,7 +1272,7 @@ print_summary({[#registration{username=Username
     Remaining = (LastRegistration + Expires) - kz_time:now_s(),
     Props = breakup_contact(Contact),
     Hostport = props:get_first_defined(['received', 'hostport'], Props),
-    Path = proxy_path(Proxy, ProxyIP, ProxyPort),
+    Path = proxy_path(Proxy, ProxyIP, ProxyPort, ProxyProto),
     io:format("| ~-45s | ~-22s | ~-22s | ~-32s | ~-4B |~n"
              ,[User, Hostport, Path, CallId, Remaining]
              ),
@@ -1295,16 +1318,17 @@ breakup_contact(Contact) when is_binary(Contact) ->
 breakup_contact(Contact) ->
     breakup_contact(kz_term:to_binary(Contact)).
 
--spec proxy_path(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_integer()) -> binary().
-proxy_path('undefined', 'undefined', 'undefined') -> <<>>;
-proxy_path('undefined', 'undefined', Port) -> proxy_path('undefined', <<>>, Port);
-proxy_path('undefined', IP, 'undefined') -> IP;
-proxy_path('undefined', IP, Port) -> <<IP/binary, ":", (kz_term:to_binary(Port))/binary>>;
-proxy_path(Proxy, _, Port) ->
+-spec proxy_path(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_integer(), kz_term:api_binary()) -> binary().
+proxy_path(Proxy, IP, Port, 'undefined') -> proxy_path(Proxy, IP, Port, <<"udp">>);
+proxy_path('undefined', 'undefined', 'undefined', _) -> <<>>;
+proxy_path('undefined', 'undefined', Port, Proto) -> proxy_path('undefined', <<>>, Port, Proto);
+proxy_path('undefined', IP, 'undefined', Proto) -> <<Proto/binary, ":", IP/binary>>;
+proxy_path('undefined', IP, Port, Proto) -> <<Proto/binary, ":", IP/binary, ":", (kz_term:to_binary(Port))/binary>>;
+proxy_path(Proxy, _, Port, Proto) ->
     Proxy1 = binary:replace(Proxy, <<"sip:">>, <<>>),
     case binary:match(Proxy1, <<":">>) of
-        'nomatch' -> <<Proxy1/binary, ":", (kz_term:to_binary(Port))/binary>>;
-        _ -> Proxy1
+        'nomatch' -> <<Proto/binary, ":", Proxy1/binary, ":", (kz_term:to_binary(Port))/binary>>;
+        _ -> <<Proto/binary, ":", Proxy1/binary>>
     end.
 
 -spec find_contact_parameters(kz_term:ne_binaries(), kz_term:proplist()) -> kz_term:proplist().

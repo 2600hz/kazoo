@@ -70,7 +70,7 @@ continue_processing(JObj, AccountDb, VMBox, Emails) ->
     AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
-    {'ok', AccountJObj} = kz_account:fetch(AccountDb),
+    {'ok', AccountJObj} = kzd_accounts:fetch(AccountDb),
     Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
 
     Props = [{<<"email_address">>, Emails}

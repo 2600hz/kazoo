@@ -15,9 +15,9 @@
 -define(SECONDS_IN_WEEK,   604800).
 -define(SECONDS_IN_YEAR, 31540000).
 
--define(BYTES_K, 1024).
--define(BYTES_M, 1048576).
--define(BYTES_G, 1073741824).
+-define(BYTES_K,          1024).
+-define(BYTES_M,       1048576).
+-define(BYTES_G,    1073741824).
 -define(BYTES_T, 1099511627776).
 
 -define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>

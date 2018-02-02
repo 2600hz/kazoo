@@ -15,7 +15,7 @@ create_new_number_test_() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
@@ -55,7 +55,7 @@ create_with_carrier_test_() ->
             ,{'dry_run', 'false'}
             ,{'module_name', CarrierModule}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
@@ -96,7 +96,7 @@ reseller_new_number_test_() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
@@ -127,7 +127,7 @@ fail_new_number_test_() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
              }
             ],
     {'error', Reason} = knm_number:create(?TEST_CREATE_NUM, Props),
@@ -145,7 +145,7 @@ create_new_available_number_test_() ->
             ,{'dry_run', 'false'}
             ,{state, ?NUMBER_STATE_AVAILABLE}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
@@ -205,7 +205,7 @@ create_new_port_in_test_() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
              }
             ,{'state', ?NUMBER_STATE_PORT_IN}
             ,{'module_name', ?CARRIER_LOCAL}
@@ -253,7 +253,7 @@ create_dry_run_test_() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'true'}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
     {'dry_run', Services, Charges} = knm_number:create(?TEST_CREATE_NUM, Props),
@@ -279,7 +279,7 @@ move_non_existing_mobile_number_test_() ->
             ,{'public_fields', PublicFields}
             ,{'module_name', ?CARRIER_MDN}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
     [{"Verify a non existing mdn cannot be moved to in_service"
@@ -302,7 +302,7 @@ create_non_existing_mobile_number_test_() ->
             ,{module_name, ?CARRIER_MDN}
             ,{mdn_run, true}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true)
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true)
              }
             ],
     {ok, N} = knm_number:create(?TEST_CREATE_NUM, Props),
@@ -388,7 +388,7 @@ create_with_disallowed_account() ->
                              ,[?TEST_CREATE_NUM
                               ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
                                ,{<<"auth_by_account">>
-                                ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
+                                ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
                                 }
                                ]
                               ]
@@ -404,7 +404,7 @@ create_with_number_porting() ->
                              ,[?TEST_AVAILABLE_NUM %% pretend it is porting
                               ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
                                ,{<<"auth_by_account">>
-                                ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+                                ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
                                 }
                                ]
                               ]),
@@ -444,7 +444,7 @@ create_new_number() ->
     ,?_assert(knm_number:ensure_can_create(?TEST_CREATE_NUM
                                           ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
                                            ,{<<"auth_by_account">>
-                                            ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+                                            ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
                                             }
                                            ]
                                           )

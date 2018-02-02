@@ -81,7 +81,7 @@ get_services(JObj) ->
 -spec maybe_account_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = kapps_call:account_id(Call),
-    {'ok', Doc} = kz_account:fetch(AccountId),
+    {'ok', Doc} = kzd_accounts:fetch(AccountId),
     Services = get_services(Doc),
 
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
@@ -245,7 +245,7 @@ set_language(Call) ->
     Default = kz_media_util:prompt_language(kapps_call:account_id(Call)),
     case kz_endpoint:get(Call) of
         {'ok', Endpoint} ->
-            Language = kz_device:language(Endpoint, Default),
+            Language = kzd_devices:language(Endpoint, Default),
             lager:debug("setting language '~s' for this call", [Language]),
             kapps_call:set_language(kz_term:to_lower_binary(Language), Call);
         {'error', _E} ->

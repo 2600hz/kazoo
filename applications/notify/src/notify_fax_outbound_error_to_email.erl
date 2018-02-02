@@ -39,7 +39,7 @@ handle_req(JObj, _Props) ->
     MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
-    {'ok', AcctObj} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
+    {'ok', AcctObj} = kzd_accounts:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     SendResult =
         case is_notice_enabled(AcctObj) of

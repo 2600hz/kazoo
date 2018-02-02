@@ -174,8 +174,8 @@ heuristic_from_flag(Force) ->
 -spec is_allowed(kz_tasks:extra_args()) -> boolean().
 is_allowed(ExtraArgs) ->
     AuthAccountId = maps:get('auth_account_id', ExtraArgs),
-    {'ok', AuthAccountDoc} = kz_account:fetch(AuthAccountId),
-    kz_account:is_superduper_admin(AuthAccountDoc).
+    {'ok', AuthAccountDoc} = kzd_accounts:fetch(AuthAccountId),
+    kzd_accounts:is_superduper_admin(AuthAccountDoc).
 
 -spec do_compact_all() -> rows().
 do_compact_all() ->

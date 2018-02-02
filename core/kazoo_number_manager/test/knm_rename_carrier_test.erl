@@ -14,7 +14,7 @@ create_new_number_rename_carrier_test_() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ,{assign_to, ?RESELLER_ACCOUNT_ID}
               ,{dry_run, false}
-              ,{<<"auth_by_account">>, kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true)}
+              ,{<<"auth_by_account">>, kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true)}
               ,{public_fields, kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}])}
               ],
     {ok, N1} = knm_number:create(?TEST_CREATE_NUM, Options),

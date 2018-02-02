@@ -394,7 +394,6 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     of
         'true' ->
             lager:info("slot has parked call '~s' by parker '~s', it is available", [ParkedCallId, ParkerCallId]),
-            _ = kz_datamgr:del_doc(kapps_call:account_db(Call), ?SLOT_DOC_ID(SlotNumber)),
             do_save_slot(SlotNumber, Slot, Call);
         'false' ->
             case kapps_call_command:b_channel_status(ParkedCallId) of
@@ -403,7 +402,6 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                     {'error', 'occupied'};
                 _Else ->
                     lager:info("slot is availabled because parked call '~s' no longer exists: ~p", [ParkedCallId, _Else]),
-                    _ = kz_datamgr:del_doc(kapps_call:account_db(Call), ?SLOT_DOC_ID(SlotNumber)),
                     do_save_slot(SlotNumber, Slot, Call)
             end
     end.
@@ -423,6 +421,26 @@ do_save_slot(SlotNumber, Slot, Call) ->
         {'error', _Error} ->
             lager:info("error when attempting to store call parking data for slot ~s : ~p", [SlotNumber, _Error]),
             {'error', 'occupied'}
+    end.
+
+-spec slot_doc(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> kz_json:object().
+slot_doc(SlotNumber, Slot, Call) ->
+    AccountDb = kapps_call:account_db(Call),
+    Doc = case kz_json:get_json_value(<<"pvt_fields">>, Slot) of
+              'undefined' -> kz_json:set_value(<<"slot">>, Slot, kz_json:new());
+              Pvt -> kz_json:set_value(<<"slot">>, kz_doc:public_fields(Slot), Pvt)
+          end,
+    Options = [{'type', ?PARKED_CALL_DOC_TYPE}
+              ,{'account_id', kapps_call:account_id(Call)}
+              ,{'id', ?SLOT_DOC_ID(SlotNumber)}
+              ],
+    maybe_add_slot_doc_rev(kz_doc:update_pvt_parameters(Doc, AccountDb, Options), AccountDb).
+
+-spec maybe_add_slot_doc_rev(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+maybe_add_slot_doc_rev(JObj, AccountDb) ->
+    case kz_datamgr:lookup_doc_rev(AccountDb, kz_doc:id(JObj)) of
+        {'ok', Rev} -> kz_json:set_value(<<"_rev">>, Rev, JObj);
+        {'error', _} -> JObj
     end.
 
 %%--------------------------------------------------------------------
@@ -539,6 +557,12 @@ load_parked_call(JObj) ->
     Slot = kz_json:get_json_value(<<"slot">>, Doc),
     {SlotNumber, kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(Doc), Slot)}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_cleanup_slot(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 maybe_cleanup_slot(SlotNumber, Call, OldCallId) ->
     _ = kz_util:put_callid(OldCallId),
@@ -577,21 +601,27 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
             case kz_json:get_ne_binary_value([<<"slot">>, <<"Call-ID">>], JObj) of
                 ParkedCallId ->
                     lager:info("delete parked call ~s in slot ~s", [ParkedCallId, SlotNumber]),
-                    case kz_datamgr:del_doc(AccountDb, JObj) of
-                        {'ok', _}=Ok ->
-                            Slot = kz_json:get_json_value(<<"slot">>, JObj),
-                            update_presence(<<"terminated">>, Slot),
-                            Ok;
-                        {'error', _R}=E ->
-                            lager:info("failed to delete slot ~s : ~p", [SlotNumber, _R]),
-                            E
-                    end;
+                    delete_slot(AccountDb, JObj);
                 _Else ->
                     lager:info("call ~s is parked in slot ~s and we expected ~s", [_Else, SlotNumber, ParkedCallId]),
                     {'error', 'unexpected_callid'}
             end;
         {'error', _R}=E ->
             lager:info("failed to open the parked call doc ~s : ~p", [SlotNumber, _R]),
+            E
+    end.
+
+-spec delete_slot(kz_term:ne_binary(), kz_json:object()) ->
+                         {'ok', kz_json:object()} |
+                         {'error', any()}.
+delete_slot(AccountDb, JObj) ->
+    case kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"slot">>, JObj)) of
+        {'ok', _}=Ok ->
+            Slot = kz_json:get_json_value(<<"slot">>, JObj),
+            update_presence(<<"terminated">>, Slot),
+            Ok;
+        {'error', _R}=E ->
+            lager:info("failed to delete slot ~s : ~p", [kz_doc:id(JObj), _R]),
             E
     end.
 
@@ -939,25 +969,22 @@ publish_event(Call, SlotNumber, Event) ->
           ],
     kapi_call:publish_event(Cmd).
 
--spec slot_doc(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> kz_json:object().
-slot_doc(SlotNumber, Slot, Call) ->
-    AccountDb = kapps_call:account_db(Call),
-    Doc = case kz_json:get_json_value(<<"pvt_fields">>, Slot) of
-              'undefined' -> kz_json:set_value(<<"slot">>, Slot, kz_json:new());
-              Pvt -> kz_json:set_value(<<"slot">>, kz_doc:public_fields(Slot), Pvt)
-          end,
-    Options = [{'type', ?PARKED_CALL_DOC_TYPE}
-              ,{'account_id', kapps_call:account_id(Call)}
-              ,{'id', ?SLOT_DOC_ID(SlotNumber)}
-              ],
-    kz_doc:update_pvt_parameters(Doc, AccountDb, Options).
-
 -spec get_slot(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_slot(SlotNumber, AccountDb) ->
     DocId = ?SLOT_DOC_ID(SlotNumber),
     case kz_datamgr:open_doc(AccountDb, {?PARKED_CALL_DOC_TYPE, DocId}) of
-        {'ok', JObj} ->
-            Slot = kz_json:get_json_value(<<"slot">>, JObj),
-            {'ok', kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(JObj), Slot)};
+        {'ok', JObj} -> maybe_empty_slot(JObj);
         {'error', _} = E -> E
+    end.
+
+-spec maybe_empty_slot(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
+maybe_empty_slot(JObj) ->
+    case kz_json:get_json_value(<<"slot">>, JObj) of
+        'undefined' -> {'error', 'not_occupied'};
+        Slot ->
+            {'ok', kz_json:set_value(<<"pvt_fields">>
+                                    ,kz_doc:private_fields(JObj)
+                                    ,Slot
+                                    )
+            }
     end.

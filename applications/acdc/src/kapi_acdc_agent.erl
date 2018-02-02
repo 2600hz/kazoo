@@ -18,6 +18,7 @@
         ,logout/1, logout_v/1
         ,pause/1, pause_v/1
         ,resume/1, resume_v/1
+        ,end_wrapup/1, end_wrapup_v/1
         ,login_queue/1, login_queue_v/1
         ,logout_queue/1, logout_queue_v/1
 
@@ -37,6 +38,7 @@
         ,publish_logout/1, publish_logout/2
         ,publish_pause/1, publish_pause/2
         ,publish_resume/1, publish_resume/2
+        ,publish_end_wrapup/1, publish_end_wrapup/2
         ,publish_login_queue/1, publish_login_queue/2
         ,publish_logout_queue/1, publish_logout_queue/2
 
@@ -226,6 +228,7 @@ stats_resp_v(JObj) ->
 -define(LOGOUT_VALUES, [{<<"Event-Name">>, <<"logout">>} | ?AGENT_VALUES]).
 -define(PAUSE_VALUES, [{<<"Event-Name">>, <<"pause">>} | ?AGENT_VALUES]).
 -define(RESUME_VALUES, [{<<"Event-Name">>, <<"resume">>} | ?AGENT_VALUES]).
+-define(END_WRAPUP_VALUES, [{<<"Event-Name">>, <<"end_wrapup">>} | ?AGENT_VALUES]).
 -define(LOGIN_QUEUE_VALUES, [{<<"Event-Name">>, <<"login_queue">>} | ?AGENT_VALUES]).
 -define(LOGOUT_QUEUE_VALUES, [{<<"Event-Name">>, <<"logout_queue">>} | ?AGENT_VALUES]).
 
@@ -329,6 +332,21 @@ resume(JObj) -> resume(kz_json:to_proplist(JObj)).
 resume_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?AGENT_HEADERS, ?RESUME_VALUES, ?AGENT_TYPES);
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
+
+-spec end_wrapup(kz_term:api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
+end_wrapup(Props) when is_list(Props) ->
+    case end_wrapup_v(Props) of
+        'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for agent_end_wrapup"}
+    end;
+end_wrapup(JObj) -> end_wrapup(kz_json:to_proplist(JObj)).
+
+-spec end_wrapup_v(kz_term:api_terms()) -> boolean().
+end_wrapup_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?AGENT_HEADERS, ?END_WRAPUP_VALUES, ?AGENT_TYPES);
+end_wrapup_v(JObj) -> end_wrapup_v(kz_json:to_proplist(JObj)).
 
 -spec agent_status_routing_key(kz_term:proplist()) -> kz_term:ne_binary().
 agent_status_routing_key(Props) when is_list(Props) ->
@@ -528,6 +546,15 @@ publish_resume(JObj) ->
 -spec publish_resume(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_resume(API, ContentType) ->
     {'ok', Payload} = resume((API1 = kz_api:prepare_api_payload(API, ?RESUME_VALUES))),
+    amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
+
+-spec publish_end_wrapup(kz_term:api_terms()) -> 'ok'.
+publish_end_wrapup(JObj) ->
+    publish_end_wrapup(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_end_wrapup(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_end_wrapup(API, ContentType) ->
+    {'ok', Payload} = end_wrapup((API1 = kz_api:prepare_api_payload(API, ?END_WRAPUP_VALUES))),
     amqp_util:kapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
 -spec publish_login_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.

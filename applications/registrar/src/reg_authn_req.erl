@@ -148,7 +148,7 @@ get_device_presence_id(AccountDb, DeviceId) ->
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            case kz_device:presence_id(JObj) of
+            case kzd_devices:presence_id(JObj) of
                 'undefined' -> 'undefined';
                 PresenceId -> PresenceId
             end
@@ -327,11 +327,11 @@ get_auth_value(JObj) ->
 
 -spec add_account_name(auth_user()) -> auth_user().
 add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'error', _} -> AuthUser;
         {'ok', Account} ->
-            Realm = kz_account:realm(Account),
-            AuthUser#auth_user{account_name = kz_account:name(Account)
+            Realm = kzd_accounts:realm(Account),
+            AuthUser#auth_user{account_name = kzd_accounts:name(Account)
                               ,account_realm = Realm
                               ,account_normalized_realm = kz_term:to_lower_binary(Realm)
                               }
