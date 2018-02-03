@@ -347,9 +347,8 @@ query_statuses(RespQ, MsgId, Match, Limit) ->
             kapi_acdc_stats:publish_status_err(RespQ, Resp);
         Stats ->
             QueryResults = lists:foldl(fun query_status_fold/2, kz_json:new(), Stats),
-            LimitList = lists:duplicate(Limit, 0),
             TrimmedResults = kz_json:map(fun(A, B) ->
-                                                 trim_query_statuses(A, B, LimitList)
+                                                 {A, trim_query_statuses(B, Limit)}
                                          end, QueryResults),
 
             Resp = [{<<"Agents">>, TrimmedResults}
@@ -359,30 +358,20 @@ query_statuses(RespQ, MsgId, Match, Limit) ->
             kapi_acdc_stats:publish_status_resp(RespQ, Resp)
     end.
 
-trim_query_statuses(A, Statuses, Limit) ->
-    {_, Trimmed} = kz_json:foldl(fun trim_query_statuses_fold/3
-                                ,{Limit
-                                 ,kz_json:new()
-                                 }, Statuses),
-    {A, Trimmed}.
-
-trim_query_statuses_fold(TBin, Datum, {Ks, Data}=Acc) ->
-    T = kz_term:to_integer(TBin),
-    case lists:min(Ks) of
-        N when N < T ->
-            {[T | lists:delete(N, Ks)]
-            ,kz_json:set_value(TBin
-                              ,kz_doc:public_fields(Datum)
-                              ,kz_json:delete_key(N, Data)
-                              )};
-        _ -> Acc
-    end.
+-spec trim_query_statuses(kz_json:object(), pos_integer()) -> kz_json:object().
+trim_query_statuses(Statuses, Limit) ->
+    StatusProps = kz_json:to_proplist(Statuses),
+    SortedProps = lists:sort(fun({A, _}, {B, _}) ->
+                                     kz_term:to_integer(A) >= kz_term:to_integer(B)
+                             end, StatusProps),
+    LimitedProps = lists:sublist(SortedProps, Limit),
+    kz_json:from_list(LimitedProps).
 
 -spec query_status_fold(status_stat(), kz_json:object()) -> kz_json:object().
 query_status_fold(#status_stat{agent_id=AgentId
                               ,timestamp=T
                               }=Stat, Acc) ->
-    Doc = status_stat_to_doc(Stat),
+    Doc = kz_doc:public_fields(status_stat_to_doc(Stat)),
     kz_json:set_value([AgentId, kz_term:to_binary(T)], Doc, Acc).
 
 -spec status_stat_to_doc(status_stat()) -> kz_json:object().
