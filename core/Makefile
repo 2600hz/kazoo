@@ -25,9 +25,9 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 first:
-	@$(MAKE) -C kazoo_stdlib/ $(ACTION)
-	@$(MAKE) -C kazoo_amqp/ $(ACTION)
-	@$(MAKE) -C kazoo_data/ $(ACTION)
+	@$(MAKE) -j1 -C kazoo_stdlib/ $(ACTION)
+	@$(MAKE) -j1 -C kazoo_amqp/ $(ACTION)
+	@$(MAKE) -j1 -C kazoo_data/ $(ACTION)
 
 $(MAKEDIRS): first
-	@$(MAKE) -C $(@D) $(ACTION)
+	@$(MAKE) -j1 -C $(@D) $(ACTION)

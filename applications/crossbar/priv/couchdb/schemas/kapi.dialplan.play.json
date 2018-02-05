@@ -53,6 +53,10 @@
             ],
             "type": "string"
         },
+        "Loop-Count": {
+            "minimum": 1,
+            "type": "integer"
+        },
         "Media-Name": {
             "type": "string"
         },
