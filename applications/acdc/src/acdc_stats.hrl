@@ -56,6 +56,7 @@
                      ,callid :: kz_term:api_binary() | '_'
                      ,caller_id_name :: kz_term:api_binary() | '_'
                      ,caller_id_number :: kz_term:api_binary() | '_'
+                     ,queue_id :: kz_term:api_binary() | '_'
                      ,is_archived = 'false' :: boolean() | '$1' | '$2' | '_'
                      }).
 -type status_stat() :: #status_stat{}.

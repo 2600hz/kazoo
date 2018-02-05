@@ -304,6 +304,7 @@
     "ecallmgr.user_cache_time_in_ms": "ecallmgr user cache time in in milliseconds",
     "ecallmgr.{Direction}_rate_required": "ecallmgr {Direction} rate required",
     "ecallmgr.{Direction}_rate_resp_timeout": "ecallmgr {Direction} rate resp timeout",
+    "edr.backends": "Enabled edr backends",
     "fax.allow_all_addresses_when_empty": "fax allow all addresses when empty",
     "fax.allowed_content_types": "fax allowed content types",
     "fax.cloud_registration_pool_interval": "fax cloud registration pool interval",
