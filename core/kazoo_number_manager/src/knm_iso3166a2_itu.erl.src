@@ -2,9 +2,9 @@
 %%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% ISO3166-alpha2 & ITU stuff.
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_iso3166a2_itu).
 
