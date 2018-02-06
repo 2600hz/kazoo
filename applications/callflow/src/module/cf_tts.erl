@@ -29,13 +29,33 @@
 handle(Data, Call) ->
     kapps_call_command:answer(Call),
 
-    NoopId = kapps_call_command:tts(kz_json:get_binary_value(<<"text">>, Data)
-                                   ,kz_json:get_binary_value(<<"voice">>, Data)
-                                   ,kz_json:get_binary_value(<<"language">>, Data)
-                                   ,kz_json:get_list_value(<<"terminators">>, Data, ?ANY_DIGIT)
-                                   ,kz_json:get_binary_value(<<"engine">>, Data)
-                                   ,Call
-                                   ),
+    Command = kz_json:from_list(
+                [{<<"Application-Name">>, <<"tts">>}
+                ,{<<"Text">>, to_say(Data)}
+                ,{<<"Terminators">>, kapps_call_command:tts_terminators(terminators(Data))}
+                ,{<<"Voice">>, kapps_call_command:tts_voice(voice(Data))}
+                ,{<<"Language">>, kapps_call_command:tts_language(language(Data), Call)}
+                ,{<<"Engine">>, kapps_call_command:tts_engine(engine(Data), Call)}
+                ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                ,{<<"Endless-Playback">>, endless_playback(Data)}
+                ]),
+
+    send_command(Command, Call).
+
+send_command(TTSCommand, Call) ->
+    NoopId = kz_datamgr:get_uuid(),
+
+    Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                                  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ])
+               ,TTSCommand
+               ],
+    Command = [{<<"Application-Name">>, <<"queue">>}
+              ,{<<"Commands">>, Commands}
+              ],
+    kapps_call_command:send_command(Command, Call),
+
     lager:debug("tts is waiting for noop ~s", [NoopId]),
     case cf_util:wait_for_noop(Call, NoopId) of
         {'ok', Call1} ->
@@ -45,3 +65,21 @@ handle(Data, Call) ->
         {'error', _} ->
             cf_exe:stop(Call)
     end.
+
+terminators(Data) ->
+    kz_json:get_list_value(<<"terminators">>, Data, ?ANY_DIGIT).
+
+engine(Data) ->
+    kz_json:get_binary_value(<<"engine">>, Data).
+
+language(Data) ->
+    kz_json:get_binary_value(<<"language">>, Data).
+
+voice(Data) ->
+    kz_json:get_binary_value(<<"voice">>, Data).
+
+to_say(Data) ->
+    kz_json:get_binary_value(<<"text">>, Data).
+
+endless_playback(Data) ->
+    kz_json:get_boolean_value(<<"endless_playback">>, Data).

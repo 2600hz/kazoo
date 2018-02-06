@@ -36,14 +36,14 @@ Key | Description | Type | Default | Required | Support Level
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |  
 `formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |  
 `language` | The language for the device | `string()` |   | `false` |  
+`mac_address` | The MAC Address of the device (if applicable) | `string()` |   | `false` |  
 `media` | Configure audio/video/etc media options for this device | [#/definitions/endpoint.media](#endpointmedia) |   | `false` |  
 `metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false` |  
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..2048)` |   | `false` |  
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object()` | `{}` | `false` |  
 `mwi_unsolicitated_updates` | When true enables unsolicitated mwi notifications | `boolean()` | `true` | `false` |  
 `name` | A friendly name for the device | `string(1..128)` |   | `true` |  
-`outbound_flags.[]` |   | `string()` |   | `false` |  
-`outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string())` |   | `false` |  
+`outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string()) | object()` |   | `false` |  
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false` |  
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false` |  
 `provision.combo_keys./^[0-9]+$/.type` | Feature key type | `string('line' | 'presence' | 'parking' | 'personal_parking' | 'speed_dial')` |   | `true` |  

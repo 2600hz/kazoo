@@ -161,17 +161,59 @@ filter(_Xref, Results) ->
 
 print('undefined_function_calls'=Xref, Results) ->
     io:format("Xref: listing ~p\n", [Xref]),
-    F = fun ({{M1,F1,A1}, {M2,F2,A2}}) ->
-                io:format("~30.. s:~-30..,s/~p ~30.. s ~30.. s:~s/~p\n"
-                         ,[M1,F1,A1, "calls undefined", M2,F2,A2])
-        end,
-    lists:foreach(F, Results);
+    Sorted = lists:keysort(1, Results),
+    lists:foldl(fun print_undefined_function_call/2, 'undefined', Sorted);
 print('undefined_functions'=Xref, Results) ->
     io:format("Xref: listing ~p\n", [Xref]),
     F = fun ({M, F, A}) -> io:format("~30.. s:~s/~p\n", [M, F, A]) end,
     lists:foreach(F, Results);
 print(Xref, Results) ->
     io:format("Xref: listing ~p\n\t~p\n", [Xref, Results]).
+
+print_undefined_function_call({{M1,F1,A1}, {M2,F2,A2}}, {M1, _Path}=Acc) ->
+    io:format("~30.. s:~s/~p calls undefined ~s:~s/~p\n"
+             ,[M1,F1,A1, M2,F2,A2]
+             ),
+    Acc;
+print_undefined_function_call({{M1,_,_}, _}=Call, _OldAcc) ->
+    {M1, M1Path} = module_path(M1),
+    io:format("~s:1: ~s has the following error(s)~n", [M1Path, M1]),
+    print_undefined_function_call(Call, {M1, M1Path}).
+
+module_path(Module) ->
+    {Module
+    ,case Module:module_info('compile') of
+         CompileOptions when is_list(CompileOptions) ->
+             case proplists:get_value('source', CompileOptions) of
+                 'undefined' -> beam_to_source(code:which(Module));
+                 Source -> source_to_relative_path(Source)
+             end;
+         _ -> beam_to_source(code:which(Module))
+     end
+    }.
+
+source_to_relative_path(Source) ->
+    {'ok', CWD} = file:get_cwd(),
+    source_to_relative_path(string:tokens(Source, "/")
+                           ,string:tokens(CWD, "/")
+                           ).
+
+source_to_relative_path([Dir | Source], [Dir | CWD]) ->
+    source_to_relative_path(Source, CWD);
+source_to_relative_path(SourceParts, _CWD) ->
+    string:join(SourceParts, "/").
+
+beam_to_source(BeamPath) ->
+    SourceFile = filename:basename(BeamPath, ".beam") ++ ".erl",
+    AppDir = filename:dirname(filename:dirname(BeamPath)),
+    RootDir = filename:dirname(filename:dirname(AppDir)) ++ "/",
+
+    filelib:fold_files(AppDir
+                      ,SourceFile
+                      ,'true'
+                      ,fun(X, _) -> iolist_to_binary(re:replace(X, RootDir, "")) end
+                      ,""
+                      ).
 
 usage() ->
     %% ok = io:setopts([{encoding, unicode}]),

@@ -52,7 +52,7 @@ authorized_apps(AccountId, UserId) ->
 -spec allowed_app(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 allowed_app(AccountId, AppId) ->
     case [App || App <- allowed_apps(AccountId),
-                 AppId =:= kzd_app:id(App)
+                 AppId =:= kz_doc:id(App)
          ]
     of
         [App|_] ->
@@ -252,8 +252,8 @@ is_filtered(AccountId, _App, <<"port">>=_AppName) ->
     lager:debug("filtering '~s' application", [_AppName]),
     ResellerId = kz_services:find_reseller_id(AccountId),
     MaybeHide =
-        case kz_whitelabel:fetch(ResellerId) of
-            {'ok', JObj} -> kz_whitelabel:port_hide(JObj);
+        case kzd_whitelabel:fetch(ResellerId) of
+            {'ok', JObj} -> kzd_whitelabel:hide_port(JObj);
             {'error', 'not_found'} -> 'false';
             {'error', _R} ->
                 lager:error("failed to load whitelabel doc for ~s: ~p", [ResellerId, _R]),

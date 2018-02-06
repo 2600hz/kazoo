@@ -281,14 +281,7 @@ validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
     lager:debug("fetch media contents for '~s'", [MediaId]),
     load_media_binary(Context, MediaId);
 validate_media_binary(Context, _MediaId, ?HTTP_POST, []) ->
-    cb_context:add_validation_error(
-      <<"file">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([
-                                                       {<<"message">>, <<"Please provide an media file">>}
-                                                      ])
-                                   ,Context
-     );
+    error_missing_file(Context);
 validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
     Context1 = load_media_meta(Context, MediaId),
     lager:debug("loaded media meta for '~s'", [MediaId]),
@@ -298,14 +291,22 @@ validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
         _Status -> Context1
     end;
 validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
-    cb_context:add_validation_error(
-      <<"file">>
+    cb_context:add_validation_error(<<"file">>
                                    ,<<"maxItems">>
                                    ,kz_json:from_list([
                                                        {<<"message">>, <<"Please provide a single media file">>}
                                                       ])
                                    ,Context
-     ).
+                                   ).
+
+-spec error_missing_file(cb_context:context()) -> cb_context:context().
+error_missing_file(Context) ->
+    cb_context:add_validation_error(<<"file">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide an media file">>}
+                                                      ])
+                                   ,Context
+                                   ).
 
 -spec maybe_normalize_upload(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> cb_context:context().
 maybe_normalize_upload(Context, MediaId, FileJObj) ->
@@ -955,16 +956,19 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     lager:debug("file content type: ~s", [CT]),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_media:type())],
 
-    update_media_binary(
-      crossbar_doc:save_attachment(MediaId
-                                  ,cb_modules_util:attachment_name(Filename, CT)
-                                  ,Contents
-                                  ,Context
-                                  ,Opts
-                                  )
-                       ,MediaId
-                       ,Files
-     ).
+    AttachmentName = cb_modules_util:attachment_name(Filename, CT),
+    Context1 = crossbar_doc:save_attachment(MediaId
+                                           ,AttachmentName
+                                           ,Contents
+                                           ,Context
+                                           ,Opts
+                                           ),
+    case cb_context:resp_status(Context1) of
+        'success' -> update_media_binary(Context1, MediaId, Files);
+        _Failure ->
+            lager:info("failed to save attachment ~s to ~s", [AttachmentName, MediaId]),
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

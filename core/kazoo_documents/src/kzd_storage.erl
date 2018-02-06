@@ -1,0 +1,92 @@
+-module(kzd_storage).
+
+-export([new/0]).
+-export([attachments/1, attachments/2, set_attachments/2]).
+-export([connections/1, connections/2, set_connections/2]).
+-export([id/1, id/2, set_id/2]).
+-export([plan/1, plan/2, set_plan/2]).
+-export([ui_metadata/1, ui_metadata/2, set_ui_metadata/2]).
+-export([index/2, index/3, set_index/3]).
+
+-include("kz_documents.hrl").
+
+-type doc() :: kz_json:object().
+-export_type([doc/0]).
+
+-define(SCHEMA, <<"storage">>).
+
+-spec new() -> doc().
+new() ->
+    kz_json_schema:default_object(?SCHEMA).
+
+-spec attachments(doc()) -> kz_term:api_object().
+attachments(Doc) ->
+    attachments(Doc, 'undefined').
+
+-spec attachments(doc(), Default) -> kz_json:object() | Default.
+attachments(Doc, Default) ->
+    kz_json:get_json_value([<<"attachments">>], Doc, Default).
+
+-spec set_attachments(doc(), kz_json:object()) -> doc().
+set_attachments(Doc, Attachments) ->
+    kz_json:set_value([<<"attachments">>], Attachments, Doc).
+
+-spec connections(doc()) -> kz_term:api_object().
+connections(Doc) ->
+    connections(Doc, 'undefined').
+
+-spec connections(doc(), Default) -> kz_json:object() | Default.
+connections(Doc, Default) ->
+    kz_json:get_json_value([<<"connections">>], Doc, Default).
+
+-spec set_connections(doc(), kz_json:object()) -> doc().
+set_connections(Doc, Connections) ->
+    kz_json:set_value([<<"connections">>], Connections, Doc).
+
+-spec id(doc()) -> kz_term:api_binary().
+id(Doc) ->
+    id(Doc, 'undefined').
+
+-spec id(doc(), Default) -> binary() | Default.
+id(Doc, Default) ->
+    kz_json:get_binary_value([<<"id">>], Doc, Default).
+
+-spec set_id(doc(), binary()) -> doc().
+set_id(Doc, Id) ->
+    kz_json:set_value([<<"id">>], Id, Doc).
+
+-spec plan(doc()) -> kz_term:api_object().
+plan(Doc) ->
+    plan(Doc, 'undefined').
+
+-spec plan(doc(), Default) -> kz_json:object() | Default.
+plan(Doc, Default) ->
+    kz_json:get_json_value([<<"plan">>], Doc, Default).
+
+-spec set_plan(doc(), kz_json:object()) -> doc().
+set_plan(Doc, Plan) ->
+    kz_json:set_value([<<"plan">>], Plan, Doc).
+
+-spec ui_metadata(doc()) -> kz_term:api_object().
+ui_metadata(Doc) ->
+    ui_metadata(Doc, 'undefined').
+
+-spec ui_metadata(doc(), Default) -> kz_json:object() | Default.
+ui_metadata(Doc, Default) ->
+    kz_json:get_json_value([<<"ui_metadata">>], Doc, Default).
+
+-spec set_ui_metadata(doc(), kz_json:object()) -> doc().
+set_ui_metadata(Doc, UiMetadata) ->
+    kz_json:set_value([<<"ui_metadata">>], UiMetadata, Doc).
+
+-spec index(doc(), kz_json:key()) -> any().
+index(Doc, Index) ->
+    index(Doc, Index, 'undefined').
+
+-spec index(doc(), kz_json:key(), Default) -> any() | Default.
+index(Doc, Index, Default) ->
+    kz_json:get_value([Index], Doc, Default).
+
+-spec set_index(doc(), kz_json:key(), any()) -> doc().
+set_index(Doc, Index, Value) ->
+    kz_json:set_value([Index], Value, Doc).

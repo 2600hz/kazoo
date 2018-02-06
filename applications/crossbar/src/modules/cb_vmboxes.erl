@@ -910,7 +910,7 @@ create_new_message_document(Context, BoxJObj) ->
     JObj = kzd_box_message:new(AccountId, Props),
     MsgId = kz_doc:id(JObj),
 
-    AccountRealm = case kz_account:fetch_realm(AccountId) of 'undefined' -> <<"nodomain">>; R -> R end,
+    AccountRealm = case kzd_accounts:fetch_realm(AccountId) of 'undefined' -> <<"nodomain">>; R -> R end,
     DefaultCID = kz_privacy:anonymous_caller_id_number(AccountId),
     CallerNumber = kz_json:get_ne_binary_value(<<"caller_id_number">>, Doc, DefaultCID),
     CallerName = kz_json:get_ne_binary_value(<<"caller_id_name">>, Doc, DefaultCID),

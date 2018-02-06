@@ -162,7 +162,7 @@ base_service_object(AccountId, AccountJObj) ->
                ,[{fun kzd_services:set_status/2, kzd_services:status_good()}
                 ,{fun kzd_services:set_is_reseller/2, depreciated_is_reseller(AccountJObj)}
                 ,{fun kzd_services:set_reseller_id/2, ResellerId}
-                ,{fun kzd_services:set_tree/2, kz_account:tree(AccountJObj)}
+                ,{fun kzd_services:set_tree/2, kzd_accounts:tree(AccountJObj)}
                 ,{fun kzd_services:set_billing_id/2, depreciated_billing_id(AccountJObj)}
                 ,{fun kzd_services:set_quantities/2, kz_json:new()}
                 ,{fun kzd_services:set_plans/2, populate_service_plans(AccountJObj, ResellerId)}
@@ -533,7 +533,7 @@ set_billing_id(BillingId, #kz_services{account_id = BillingId
                         };
 set_billing_id(BillingId, #kz_services{jobj = ServicesJObj
                                       }=Services) ->
-    PvtTree = kz_account:tree(ServicesJObj, [BillingId]),
+    PvtTree = kzd_accounts:tree(ServicesJObj, [BillingId]),
     try lists:last(PvtTree) of
         BillingId ->
             Services#kz_services{jobj = kzd_services:set_billing_id(ServicesJObj, BillingId)
@@ -1555,7 +1555,7 @@ get_reseller_id([Parent|Ancestors]) ->
 get_reseller_id(Account=?NE_BINARY) ->
     case fetch_account(Account) of
         {'ok', AccountJObj} ->
-            get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
+            get_reseller_id(lists:reverse(kzd_accounts:tree(AccountJObj)));
         {'error', _R} ->
             lager:warning("unable to open account definition for ~s: ~p", [Account, _R]),
             get_reseller_id([])
@@ -1575,9 +1575,9 @@ fetch_account(?A_SUB_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_sub_account.json");
 fetch_account(?B_SUB_ACCOUNT_ID) -> kz_json:fixture(?APP, "a_sub_account.json");
 fetch_account(?UNRELATED_ACCOUNT_ID) -> kz_json:fixture(?APP, "unrelated_account.json");
 %% Line below is needed for one of the kapps_account_config test
-fetch_account(Account) -> kz_account:fetch(Account).
+fetch_account(Account) -> kzd_accounts:fetch(Account).
 -else.
-fetch_account(Account) -> kz_account:fetch(Account).
+fetch_account(Account) -> kzd_accounts:fetch(Account).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -1639,7 +1639,7 @@ any_changed(KeyNotSameFun, Quantities) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_definition(kz_term:ne_binary()) -> kz_account:doc().
+-spec get_account_definition(kz_term:ne_binary()) -> kzd_accounts:doc().
 get_account_definition(?MATCH_ACCOUNT_RAW(AccountId)) ->
     case fetch_account(AccountId) of
         {'error', _R} ->

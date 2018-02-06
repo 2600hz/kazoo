@@ -110,7 +110,7 @@ request_caller_id(OffnetReq) ->
 -spec route_req(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:extra_options(), kapi_offnet_resource:req()) -> kz_term:proplist().
 route_req(CallId, FetchId, Props, OffnetReq) ->
     TargetAccountId = knm_number_options:account_id(Props),
-    TargetAccountRealm = kz_account:fetch_realm(TargetAccountId),
+    TargetAccountRealm = kzd_accounts:fetch_realm(TargetAccountId),
     OffnetReqAccountRealm = kapi_offnet_resource:account_realm(OffnetReq),
     ToDID = kapi_offnet_resource:to_did(OffnetReq),
     To = <<ToDID/binary, "@", TargetAccountRealm/binary>>,

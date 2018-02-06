@@ -108,9 +108,9 @@ handle_port_request(DataJObj) ->
 
 -spec account_tree(kz_term:ne_binary()) -> kz_term:proplist().
 account_tree(AccountId) ->
-    {'ok', AccountJObj} = kz_account:fetch(AccountId),
-    [{AncestorId, kz_account:fetch_name(AncestorId)}
-     || AncestorId <- kz_account:tree(AccountJObj)
+    {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
+    [{AncestorId, kzd_accounts:fetch_name(AncestorId)}
+     || AncestorId <- kzd_accounts:tree(AccountJObj)
     ].
 
 maybe_set_emails(DataJObj) ->
@@ -146,21 +146,21 @@ maybe_set_to(DataJObj) ->
 
 -spec find_port_authority(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary() | kz_term:ne_binaries().
 find_port_authority(MasterAccountId, MasterAccountId) ->
-    case kz_whitelabel:fetch(MasterAccountId) of
+    case kzd_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
             teletype_util:template_system_value(?TEMPLATE_ID, <<"default_to">>);
         {'ok', JObj} ->
             lager:debug("getting master account's port authority"),
-            kz_whitelabel:port_authority(JObj)
+            kzd_whitelabel:port_authority(JObj)
     end;
 find_port_authority(MasterAccountId, AccountId) ->
-    case kz_whitelabel:fetch(AccountId) of
+    case kzd_whitelabel:fetch(AccountId) of
         {'error', _R} ->
             ResellerId = kz_services:get_reseller_id(AccountId),
             lager:debug("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
             find_port_authority(MasterAccountId, ResellerId);
         {'ok', JObj} ->
             lager:debug("using account ~s for port authority", [AccountId]),
-            kz_whitelabel:port_authority(JObj)
+            kzd_whitelabel:port_authority(JObj)
     end.

@@ -8,9 +8,7 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
--define(DEBUG(_Fmt, _Args), 'ok').
-%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+-include_lib("kazoo_ast/src/kz_ast.hrl").
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
@@ -32,12 +30,9 @@ to_schema_doc(M) ->
 to_schema_doc(M, Usage) ->
     <<"cf_", Base/binary>> = kz_term:to_binary(M),
     Schema = kz_ast_util:schema_path(<<"callflows.", Base/binary, ".json">>),
-    kz_ast_util:ensure_file_exists(Schema),
+    _ = kz_ast_util:ensure_file_exists(Schema),
     update_schema(Base, Schema, Usage),
     update_doc(Base, Schema).
-
--define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
--define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
 
 update_doc(Base, Schema) ->
     RefPath = filename:join([code:lib_dir('callflow'), "doc", "ref", <<Base/binary,".md">>]),
@@ -65,7 +60,7 @@ ensure_id(Base, Schema) ->
     case kz_doc:id(Schema) of
         ID -> Schema;
         _Id ->
-            ?DEBUG("updating _id from ~p to ~p~n", [_Id, ID]),
+            ?LOG_DEBUG("updating _id from ~p to ~p~n", [_Id, ID]),
             kz_json:set_value(<<"_id">>, ID, Schema)
     end.
 
@@ -84,7 +79,7 @@ maybe_insert_schema('get_first_defined', _Ks, _Default, Schema) ->
 maybe_insert_schema('get_first_defined_keys', _Ks, _Default, Schema) ->
     Schema;
 maybe_insert_schema(_F, ['undefined' | _Keys], _Default, Schema) ->
-    ?DEBUG("skipping function ~p with key undefined (~p left)", [_F, _Keys]),
+    ?LOG_DEBUG("skipping function ~p with key undefined (~p left)", [_F, _Keys]),
     Schema;
 maybe_insert_schema(F, [K|Ks], Default, Schema) ->
     Section = kz_json:get_json_value([<<"properties">>, K], Schema, kz_json:new()),
@@ -105,7 +100,7 @@ check_default({_M, _F, _A}) -> 'undefined';
 check_default([<<_/binary>>|_]=L) ->
     L;
 check_default([_|_]=_L) ->
-    ?DEBUG("default list ~p~n", [_L]),
+    ?LOG_DEBUG("default list ~p~n", [_L]),
     'undefined';
 check_default([]) -> [];
 check_default(?EMPTY_JSON_OBJECT=J) -> J;
@@ -118,7 +113,7 @@ check_default(B) when is_binary(B) -> B;
 check_default(A) when is_atom(A) -> 'undefined';
 
 check_default(Default) ->
-    ?DEBUG("unchanged default ~p~n", [Default]),
+    ?LOG_DEBUG("unchanged default ~p~n", [Default]),
     Default.
 
 guess_type('get_value', <<_/binary>>) ->
@@ -172,7 +167,7 @@ guess_type('get_ne_value', <<_/binary>>) ->
 guess_type('get_ne_value', 'undefined') ->
     'undefined';
 guess_type(_F, _D) ->
-    ?DEBUG("couldn't guess ~p(~p)~n", [_F, _D]),
+    ?LOG_DEBUG("couldn't guess ~p(~p)~n", [_F, _D]),
     'undefined'.
 
 -spec process() -> [{module(), list()}].
@@ -192,7 +187,7 @@ process(Module) when is_atom(Module) ->
         'true' ->
             io:format("."),
             U = process_action(Module),
-            ?DEBUG("  usage for ~p: ~p~n", [Module, U]),
+            ?LOG_DEBUG("  usage for ~p: ~p~n", [Module, U]),
             U
     end.
 
@@ -215,7 +210,7 @@ process_expression(Acc, ?DYN_FUN_ARGS(_Function, Args)) ->
 process_expression(Acc, ?MOD_FUN_ARGS(Module, Function, Args)) ->
     process_mfa(Acc, Module, Function, Args);
 process_expression(Acc, ?DYN_MOD_FUN_ARGS(_Module, _Function, _Args)) ->
-    ?DEBUG("  skipping dyn module call~n", []),
+    ?LOG_DEBUG("  skipping dyn module call~n", []),
     Acc;
 process_expression(Acc, ?ANON(Clauses)) ->
     process_expressions(Acc, Clauses);
@@ -274,7 +269,7 @@ process_expression(Acc, ?LC_BIN_GENERATOR(Pattern, Expr)) ->
     process_expressions(Acc, [Pattern, Expr]);
 
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
-    ?DEBUG("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
+    ?LOG_DEBUG("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
 
 process_list(Acc, Head, Tail) ->
@@ -321,7 +316,7 @@ process_match_mfa(#usage{data_var_name=DataName
                  ,VarName
                  ,_M, _F, [?BINARY_MATCH(_Key), _Value, ?VAR(DataName)]
                  ) ->
-    ?DEBUG("adding alias ~p~n", [VarName]),
+    ?LOG_DEBUG("adding alias ~p~n", [VarName]),
     Acc#usage{data_var_aliases=[VarName|Aliases]};
 process_match_mfa(Acc, _VarName, M, F, As) ->
     process_mfa(Acc, M, F, As).
@@ -345,7 +340,7 @@ process_mfa(#usage{data_var_name=DataName
                   }=Acc
            ,'kz_json'=M, 'set_value'=F, [Key, Value, ?VAR(DataName)]
            ) ->
-    ?DEBUG("adding set_value usage ~p, ~p, ~p~n", [Key, Value, DataName]),
+    ?LOG_DEBUG("adding set_value usage ~p, ~p, ~p~n", [Key, Value, DataName]),
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Value)})};
 process_mfa(#usage{}=Acc
            ,'kz_json', _F, [{call, _, _, _}=_Key|_]
@@ -384,17 +379,17 @@ process_mfa(#usage{data_var_name=DataName
                   ,data_var_aliases=Aliases
                   }=Acc
            ,M, F, As) ->
-    ?DEBUG("looking in arg list for ~p or ~p~n", [DataName, Aliases]),
+    ?LOG_DEBUG("looking in arg list for ~p or ~p~n", [DataName, Aliases]),
     case arg_list_has_data_var(DataName, Aliases, As) of
         {DataName, T} ->
-            ?DEBUG("  found ~p in args of ~p:~p~n", [DataName, M, F]),
+            ?LOG_DEBUG("  found ~p in args of ~p:~p~n", [DataName, M, F]),
             Acc1 = process_mfa_call(Acc, M, F, As),
             process_args(Acc1, T);
         'undefined' ->
-            ?DEBUG("  no ~p in arg list ~p, processing args directly~n", [DataName, As]),
+            ?LOG_DEBUG("  no ~p in arg list ~p, processing args directly~n", [DataName, As]),
             process_args(Acc, As);
         {Alias, T} ->
-            ?DEBUG("  processing call with alias ~p: ~p:~p(~p)~n", [Alias, M, F, As]),
+            ?LOG_DEBUG("  processing call with alias ~p: ~p:~p(~p)~n", [Alias, M, F, As]),
             Acc1 = process_mfa_call(Acc#usage{data_var_name=Alias}, M, F, As),
             process_args(Acc1, T)
     end.
@@ -410,25 +405,25 @@ process_args(Acc, As) ->
 arg_list_has_data_var(DataName, _Aliases, ?LIST(?VAR(DataName), Tail)) ->
     {DataName, Tail};
 arg_list_has_data_var(_DataName, _Aliases, ?MOD_FUN_ARGS(_M, _F, _As)) ->
-    ?DEBUG("  ignoring mfa ~p:~p/~p~n", [_M, _F, length(_As)]),
+    ?LOG_DEBUG("  ignoring mfa ~p:~p/~p~n", [_M, _F, length(_As)]),
     'undefined';
 arg_list_has_data_var(_DataName, _Aliases, ?FUN_ARGS(_F, _As)) ->
-    ?DEBUG("  ignoring fa ~p/~p~n", [_F, length(_As)]),
+    ?LOG_DEBUG("  ignoring fa ~p/~p~n", [_F, length(_As)]),
     'undefined';
 arg_list_has_data_var(_DataName, _Aliases, ?EMPTY_LIST) ->
-    ?DEBUG("  reached end of arg list~n", []),
+    ?LOG_DEBUG("  reached end of arg list~n", []),
     'undefined';
 arg_list_has_data_var(DataName, Aliases, ?LIST(?VAR(Name), Tail)) ->
     case lists:member(Name, Aliases) of
         'true' ->
-            ?DEBUG("  name ~s is an alias of ~s~n", [Name, DataName]),
+            ?LOG_DEBUG("  name ~s is an alias of ~s~n", [Name, DataName]),
             {Name, Tail};
         'false' ->
-            ?DEBUG("  failed to find ~s in aliases ~p~n", [Name, Aliases]),
+            ?LOG_DEBUG("  failed to find ~s in aliases ~p~n", [Name, Aliases]),
             arg_list_has_data_var(DataName, Aliases, Tail)
     end;
 arg_list_has_data_var(DataName, Aliases, ?LIST(_Head, Tail)) ->
-    ?DEBUG("  skipping arg ~p~n", [_Head]),
+    ?LOG_DEBUG("  skipping arg ~p~n", [_Head]),
     arg_list_has_data_var(DataName, Aliases, Tail);
 
 arg_list_has_data_var(DataName, _Aliases, [?VAR(DataName)|T]) ->
@@ -447,31 +442,31 @@ arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
                                           | T
                                          ]) ->
     case arg_list_has_data_var(DataName, Aliases, Args) of
-        {DataName, _} -> ?DEBUG("  sublist had ~p~n", [DataName]), {DataName, T};
+        {DataName, _} -> ?LOG_DEBUG("  sublist had ~p~n", [DataName]), {DataName, T};
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
-        {Alias, _} -> ?DEBUG("  sublist had alias ~p~n", [Alias]), {Alias, T}
+        {Alias, _} -> ?LOG_DEBUG("  sublist had alias ~p~n", [Alias]), {Alias, T}
     end;
 arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS(_M, _F, Args)|T]=As) ->
     case arg_list_has_data_var(DataName, Aliases, Args) of
-        {DataName, _} -> ?DEBUG("  sub-fun had ~p~n", [DataName]), {DataName, As};
+        {DataName, _} -> ?LOG_DEBUG("  sub-fun had ~p~n", [DataName]), {DataName, As};
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
-        {Alias, _} -> ?DEBUG("  sub-fun had alias ~p~n", [Alias]), {Alias, As}
+        {Alias, _} -> ?LOG_DEBUG("  sub-fun had alias ~p~n", [Alias]), {Alias, As}
     end;
 arg_list_has_data_var(DataName, Aliases, [?FUN_ARGS(_F, Args)|T]=As) ->
     case arg_list_has_data_var(DataName, Aliases, Args) of
-        {DataName, _} -> ?DEBUG("  sub-fun had ~p~n", [DataName]), {DataName, As};
+        {DataName, _} -> ?LOG_DEBUG("  sub-fun had ~p~n", [DataName]), {DataName, As};
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
-        {Alias, _} -> ?DEBUG("  sub-fun had alias ~p~n", [Alias]), {Alias, As}
+        {Alias, _} -> ?LOG_DEBUG("  sub-fun had alias ~p~n", [Alias]), {Alias, As}
     end;
 arg_list_has_data_var(DataName, Aliases, [?LIST(_H, _T)=H|T]=As) ->
     case arg_list_has_data_var(DataName, Aliases, H) of
-        {DataName, _} -> ?DEBUG("  sub-list had ~p~n", [DataName]), {DataName, As};
+        {DataName, _} -> ?LOG_DEBUG("  sub-list had ~p~n", [DataName]), {DataName, As};
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
-        {Alias, _} -> ?DEBUG("  sub-list had alias ~p~n", [Alias]), {Alias, As}
+        {Alias, _} -> ?LOG_DEBUG("  sub-list had alias ~p~n", [Alias]), {Alias, As}
     end;
 
 arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
-    ?DEBUG("  arg not data-name ~p: ~p~n", [DataName, _H]),
+    ?LOG_DEBUG("  arg not data-name ~p: ~p~n", [DataName, _H]),
     arg_list_has_data_var(DataName, Aliases, T).
 
 arg_to_key(?BINARY_MATCH(Arg)) ->
@@ -505,7 +500,7 @@ maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
         'true' -> Usages;
         'false' ->
-            ?DEBUG("adding usage: ~p~n", [Call]),
+            ?LOG_DEBUG("adding usage: ~p~n", [Call]),
             [Call | Usages]
     end.
 
@@ -532,10 +527,10 @@ process_mf_arity(#usage{usages=Usages}=Acc, M, F, Arity) ->
 process_mfa_call(Acc, M, F, As) ->
     case have_visited(Acc, M, F, As) of
         'true' ->
-            ?DEBUG("  already visited ~p:~p(~p)~n", [M, F, As]),
+            ?LOG_DEBUG("  already visited ~p:~p(~p)~n", [M, F, As]),
             Acc;
         'false' ->
-            ?DEBUG("~n  calling ~p:~p(~p)~n", [M, F, As]),
+            ?LOG_DEBUG("~n  calling ~p:~p(~p)~n", [M, F, As]),
             process_mfa_call(Acc, M, F, As, 'true')
     end.
 
@@ -551,10 +546,10 @@ process_mfa_call(#usage{functions=Fs
         [] when ShouldAddAST ->
             case kz_ast_util:module_ast(M) of
                 'undefined' ->
-                    ?DEBUG("  failed to find AST for ~p~n", [M]),
+                    ?LOG_DEBUG("  failed to find AST for ~p~n", [M]),
                     Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
                 {M, AST} ->
-                    ?DEBUG("  added AST for ~p~n", [M]),
+                    ?LOG_DEBUG("  added AST for ~p~n", [M]),
                     #module_ast{functions=NewFs}
                         = kz_ast_util:add_module_ast(#module_ast{functions=Fs}, M, AST),
                     process_mfa_call(Acc#usage{functions=NewFs}
@@ -562,14 +557,14 @@ process_mfa_call(#usage{functions=Fs
                                     )
             end;
         [] ->
-            ?DEBUG("  no clauses for ~p:~p~n", [M, F]),
+            ?LOG_DEBUG("  no clauses for ~p:~p~n", [M, F]),
             Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
         [Clauses] when F =:= 'evaluate_rules_for_creation';
                        F =:= 'create_endpoints' ->
             process_mfa_clauses_kz_endpoint(Acc, M, F, As, Clauses);
         [_Clauses] when M =:= 'kzc_recordings_sup',
                         F =:= 'start_recording' ->
-            ?DEBUG("checking kzc_recording:init/1~n", []),
+            ?LOG_DEBUG("checking kzc_recording:init/1~n", []),
             process_mfa_call(Acc, 'kzc_recording', 'init', [?VAR('_', 'Call'), ?VAR('_', 'Data')]);
         [Clauses] ->
             process_mfa_clauses(Acc, M, F, As, Clauses)
@@ -596,7 +591,7 @@ process_mfa_clauses(#usage{visited=Vs
                            ,Clauses
                            ,data_index(DataName, As)
                            ),
-    ?DEBUG("  visited ~p:~p(~p)~n", [M, F, As]),
+    ?LOG_DEBUG("  visited ~p:~p(~p)~n", [M, F, As]),
     Acc#usage{usages=lists:usort(ModuleUsages ++ Usages)
              ,functions=NewFs
              ,visited=ModuleVisited
@@ -616,7 +611,7 @@ process_mfa_clauses_kz_endpoint(#usage{visited=Vs}=Acc
                   )
     ] = Expressions,
 
-    ?DEBUG("  visiting funs in ~p:~p(~p)~n", [M, F, As]),
+    ?LOG_DEBUG("  visiting funs in ~p:~p(~p)~n", [M, F, As]),
     process_mfa_clauses_kz_endpoint_folds(Acc#usage{visited=lists:usort([{M, F, As} | Vs])}
                                          ,M, list_of_fun_expressions_to_f(FunExpressions), FunArgs
                                          );
@@ -628,7 +623,7 @@ process_mfa_clauses_kz_endpoint(#usage{visited=Vs}=Acc
           ,?LIST(_, _)=FunExpressions
           ) = hd(Expressions),
 
-    ?DEBUG("  visiting funs in ~p:~p(~p)~n", [M, F, As]),
+    ?LOG_DEBUG("  visiting funs in ~p:~p(~p)~n", [M, F, As]),
     process_mfa_clauses_kz_endpoint_folds(Acc#usage{visited=lists:usort([{M, F, As} | Vs])}
                                          ,M, list_of_fun_expressions_to_f(FunExpressions), As
                                          ).
@@ -644,14 +639,14 @@ process_mfa_clauses_kz_endpoint_folds(#usage{usages=Usages}=Acc, M, Funs, FunArg
           ,visited=ModuleVisited
           } =
         lists:foldl(fun(LocalFun, MyAcc) ->
-                            ?DEBUG("  checking for usage in ~p:~p(~p)~n", [M, LocalFun, FunArgs]),
+                            ?LOG_DEBUG("  checking for usage in ~p:~p(~p)~n", [M, LocalFun, FunArgs]),
                             process_mfa_call(MyAcc, M, LocalFun, FunArgs)
                     end
                    ,ForFsAcc
                    ,Funs
                    ),
 
-    ?DEBUG("  new usages: ~p~n", [ModuleUsages]),
+    ?LOG_DEBUG("  new usages: ~p~n", [ModuleUsages]),
     Acc#usage{usages=lists:usort(ModuleUsages ++ Usages)
              ,functions=NewFs
              ,visited=ModuleVisited
@@ -677,9 +672,9 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
                   ,?CLAUSE(Args, _Guards, _Body)=Clause
                   ,0
                   ) ->
-    ?DEBUG("  guessing index for ~p from ~p~n", [DataName, Args]),
+    ?LOG_DEBUG("  guessing index for ~p from ~p~n", [DataName, Args]),
     DataIndex = data_index(DataName, Args),
-    ?DEBUG("  guessed data index of ~p as ~p~n", [DataName, DataIndex]),
+    ?LOG_DEBUG("  guessed data index of ~p as ~p~n", [DataName, DataIndex]),
     process_mfa_clause(Acc, Clause, DataIndex);
 process_mfa_clause(Acc, _Clause, 'undefined') ->
     Acc;
@@ -689,16 +684,16 @@ process_mfa_clause(#usage{data_var_name=DataName
                   ,?CLAUSE(Args, _Guards, Body)
                   ,DataIndex
                   ) ->
-    ?DEBUG("  processing mfa clause for ~p(~p)~n", [DataName, DataIndex]),
+    ?LOG_DEBUG("  processing mfa clause for ~p(~p)~n", [DataName, DataIndex]),
     case lists:nth(DataIndex, Args) of
         ?VAR('_') -> Acc;
         ?EMPTY_LIST -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
         ?MOD_FUN_ARGS('kz_json', 'set_value', _Args)=_ClauseArgs ->
-            ?DEBUG("skipping set_value on ~p(~p)~n", [_Args, element(2, _ClauseArgs)]),
+            ?LOG_DEBUG("skipping set_value on ~p(~p)~n", [_Args, element(2, _ClauseArgs)]),
             process_clause_body(Acc, Body);
         ?VAR(NewName) ->
-            ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
+            ?LOG_DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages
                   ,functions=ClauseFs
                   ,visited=Vs
@@ -710,7 +705,7 @@ process_mfa_clause(#usage{data_var_name=DataName
                      };
         ?ATOM('undefined') -> Acc;
         ?LIST(?VAR(NewName), _Tail) ->
-            ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
+            ?LOG_DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages
                   ,functions=ClauseFs
                   ,visited=Vs
@@ -721,9 +716,9 @@ process_mfa_clause(#usage{data_var_name=DataName
                      ,data_var_aliases=lists:usort([NewName | Aliases])
                      };
         _Unexpected ->
-            ?DEBUG("unexpected arg(~p) at ~p in ~p, expected ~p~n"
-                  ,[_Unexpected, DataIndex, Args, DataName]
-                  ),
+            ?LOG_DEBUG("unexpected arg(~p) at ~p in ~p, expected ~p~n"
+                      ,[_Unexpected, DataIndex, Args, DataName]
+                      ),
             Acc
     end.
 

@@ -198,8 +198,8 @@ is_master_account(Account) ->
 %%--------------------------------------------------------------------
 -spec account_depth(kz_term:ne_binary()) -> kz_term:api_non_neg_integer().
 account_depth(Account) ->
-    {'ok', JObj} = kz_account:fetch(Account),
-    length(kz_account:tree(JObj)).
+    {'ok', JObj} = kzd_accounts:fetch(Account),
+    length(kzd_accounts:tree(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,12 +210,12 @@ account_depth(Account) ->
 -spec account_descendants(kz_term:ne_binary()) -> kz_term:ne_binaries().
 account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
     View = <<"accounts/listing_by_descendants">>,
-    ViewOptions = [{startkey, [AccountId]}
-                  ,{endkey, [AccountId, kz_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions) of
-        {ok, JObjs} -> [kz_account:id(JObj) || JObj <- JObjs];
-        {error, _R} ->
+        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
+        {'error', _R} ->
             lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
             []
     end.
@@ -445,7 +445,7 @@ is_enabled(_AccountId, {_Type, 'undefined'}) -> 'true';
 is_enabled(AccountId, {<<"device">>, DeviceId}) ->
     Default = kapps_config:get_is_true(<<"registrar">>, <<"device_enabled_default">>, 'true'),
     {'ok', DeviceJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DeviceId),
-    kz_device:enabled(DeviceJObj, Default)
+    kzd_devices:enabled(DeviceJObj, Default)
         orelse throw({'error', {'device_disabled', DeviceId}});
 is_enabled(AccountId, {<<"owner">>, OwnerId}) ->
     case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of

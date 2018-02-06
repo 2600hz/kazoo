@@ -55,7 +55,7 @@ handle_req(JObj, _Props) ->
     {'ok', AccountDoc} = notify_util:get_account_doc(JObj),
     AccountJObj = kz_doc:public_fields(AccountDoc),
 
-    lager:debug("creating port cancel notice for ~s(~s)", [kz_account:name(AccountJObj)
+    lager:debug("creating port cancel notice for ~s(~s)", [kzd_accounts:name(AccountJObj)
                                                           ,kz_doc:account_id(AccountDoc)
                                                           ]),
 

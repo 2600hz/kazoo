@@ -237,7 +237,7 @@ local_originate_caller_id(OffnetReq) ->
 
 -spec get_account_realm(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_account_realm(AccountId) ->
-    case kz_account:fetch_realm(AccountId) of
+    case kzd_accounts:fetch_realm(AccountId) of
         'undefined' -> AccountId;
         Realm -> Realm
     end.

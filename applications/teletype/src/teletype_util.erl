@@ -373,14 +373,14 @@ account_params(DataJObj) ->
 -spec find_account_params(kz_term:api_binary()) -> kz_term:proplist().
 find_account_params('undefined') -> [];
 find_account_params(AccountId) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountJObj} ->
             props:filter_undefined(
-              [{<<"name">>, kz_account:name(AccountJObj)}
-              ,{<<"realm">>, kz_account:realm(AccountJObj)}
-              ,{<<"id">>, kz_account:id(AccountJObj)}
-              ,{<<"language">>, kz_account:language(AccountJObj)}
-              ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+              [{<<"name">>, kzd_accounts:name(AccountJObj)}
+              ,{<<"realm">>, kzd_accounts:realm(AccountJObj)}
+              ,{<<"id">>, kz_doc:id(AccountJObj)}
+              ,{<<"language">>, kzd_accounts:language(AccountJObj)}
+              ,{<<"timezone">>, kzd_accounts:timezone(AccountJObj)}
                | maybe_add_parent_params(AccountId, AccountJObj)
               ]);
         {'error', _E} ->
@@ -390,14 +390,14 @@ find_account_params(AccountId) ->
 
 -spec maybe_add_parent_params(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 maybe_add_parent_params(AccountId, AccountJObj) ->
-    case kz_account:parent_account_id(AccountJObj) of
+    case kzd_accounts:parent_account_id(AccountJObj) of
         'undefined' -> [];
         AccountId -> [];
         ParentAccountId ->
-            {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
-            [{<<"parent_name">>, kz_account:name(ParentAccountJObj)}
-            ,{<<"parent_realm">>, kz_account:realm(ParentAccountJObj)}
-            ,{<<"parent_id">>, kz_account:id(ParentAccountJObj)}
+            {'ok', ParentAccountJObj} = kzd_accounts:fetch(ParentAccountId),
+            [{<<"parent_name">>, kzd_accounts:name(ParentAccountJObj)}
+            ,{<<"parent_realm">>, kzd_accounts:realm(ParentAccountJObj)}
+            ,{<<"parent_id">>, kz_doc:id(ParentAccountJObj)}
             ]
     end.
 
@@ -581,10 +581,10 @@ should_handle_notification(_JObj, 'true') ->
 should_handle_notification(JObj, 'false') ->
     Account = kapi_notifications:account_id(JObj),
 
-    Config = kz_account:get_inherited_value(Account
-                                           ,fun kz_account:notification_preference/1
-                                           ,kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<"notification_app">>, ?APP_NAME)
-                                           ),
+    Config = kzd_accounts:get_inherited_value(Account
+                                             ,fun kzd_accounts:notification_preference/1
+                                             ,kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<"notification_app">>, ?APP_NAME)
+                                             ),
 
     lager:debug("notification configuration is: ~p", [Config]),
     Config =:= ?APP_NAME.
@@ -636,8 +636,8 @@ is_notice_enabled_default(TemplateKey) ->
 
 -spec get_parent_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
 get_parent_account_id(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:parent_account_id(JObj);
+    case kzd_accounts:fetch(AccountId) of
+        {'ok', JObj} -> kzd_accounts:parent_account_id(JObj);
         {'error', _E} ->
             lager:error("failed to find parent account for ~s", [AccountId]),
             'undefined'

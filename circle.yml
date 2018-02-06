@@ -21,6 +21,7 @@ dependencies:
   pre:
       - bash ./scripts/circleci-build-erlang.sh:
           timeout: 1800
+      - which ag >/dev/null 2>&1 || sudo apt-get update; sudo apt-get install silversearcher-ag
       - pip install --upgrade pip
       - pip install PyYAML mkdocs pyembed-markdown jsonschema
 
@@ -31,12 +32,13 @@ test:
     - ./scripts/code_checks.bash $($CHANGED)
     - make fmt
     - if [[ "$CIRCLE_BRANCH" = 'master' ]]; then make bump-copyright; fi
-    - . ~/.kerl/$OTP_VERSION/activate && JOBS="" make
+    - . ~/.kerl/$OTP_VERSION/activate && JOBS="1" make
     - . ~/.kerl/$OTP_VERSION/activate && make code_checks
     - . ~/.kerl/$OTP_VERSION/activate && make app_applications
     - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
     - make docs
+    - . ~/.kerl/$OTP_VERSION/activate && scripts/evil_specs_remover.escript -k
     - make validate-schemas
     # - |
     #   if [[ ! -z "$($CHANGED_SWAGGER)" ]]; then

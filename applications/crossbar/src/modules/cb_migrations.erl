@@ -239,7 +239,7 @@ mark_migration_complete(MigId, AccountId, Context) ->
     Args = kz_json:from_list(
              [{<<"auth_user_id">>, User}
              ,{<<"auth_account_id">>, AuthAccountId}
-             ,{<<"auth_account_name">>, kz_account:fetch_name(AuthAccountId)}
+             ,{<<"auth_account_name">>, kzd_accounts:fetch_name(AuthAccountId)}
              ,{<<"auth_user_name">>, get_user_name(AuthAccountId, User)}
              ,{<<"performed_time">>, kz_time:now_s()}
              ,{<<"original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}

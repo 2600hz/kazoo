@@ -7,19 +7,61 @@
 %%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
 -module(kz_att_s3).
+-behaviour(gen_attachment).
 
 -include("kz_att.hrl").
 -include_lib("erlcloud/include/erlcloud_aws.hrl").
 
+%% `gen_attachment' behaviour callbacks (API)
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 
 %% ====================================================================
-%% API functions
+%% `gen_attachment' behaviour callbacks (API)
 %% ====================================================================
+-spec put_attachment(gen_attachment:settings()
+                    ,gen_attachment:db_name()
+                    ,gen_attachment:doc_id()
+                    ,gen_attachment:att_name()
+                    ,gen_attachment:contents()
+                    ,gen_attachment:options()
+                    ) -> gen_attachment:put_response().
+put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
+    {Bucket, FilePath, Config} = aws_bpc(Params, {DbName, DocId, AName}),
+    case put_object(Bucket, FilePath, Contents, Config) of
+        {'ok', Props} ->
+            Metadata = [ convert_kv(KV) || KV <- Props, filter_kv(KV)],
+            S3Key = encode_retrieval(Params, FilePath),
+            {'ok', [{'attachment', [{<<"S3">>, S3Key}
+                                   ,{<<"metadata">>, kz_json:from_list(Metadata)}
+                                   ]}
+                   ,{'headers', Props}
+                   ]};
+        _E -> _E
+    end.
 
+-spec fetch_attachment(gen_attachment:handler_props()
+                      ,gen_attachment:db_name()
+                      ,gen_attachment:doc_id()
+                      ,gen_attachment:att_name()
+                      ) -> gen_attachment:fetch_response().
+fetch_attachment(Conn, DbName, DocId, AName) ->
+    HandlerProps = kz_json:get_value(<<"handler_props">>, Conn, 'undefined'),
+    case kz_json:get_value(<<"S3">>, Conn) of
+        'undefined' -> gen_attachment:error_response(400, 'invalid_data');
+        S3 ->
+            {Bucket, FilePath, Config} = aws_bpc(S3, HandlerProps, {DbName, DocId, AName}),
+            case get_object(Bucket, FilePath, Config) of
+                {'ok', Props} -> {'ok', props:get_value('content', Props)};
+                _E -> _E
+            end
+    end.
+
+%% ====================================================================
+%% Internal functions
+%% ====================================================================
 -spec bucket(map()) -> string().
 bucket(#{bucket := Bucket}) -> kz_term:to_list(Bucket).
 
@@ -29,7 +71,6 @@ fix_scheme(<<"http://">> = Scheme) -> Scheme;
 fix_scheme(<<"https">> = Scheme) -> <<Scheme/binary, "://">>;
 fix_scheme(<<"http">> = Scheme) -> <<Scheme/binary, "://">>;
 fix_scheme(Scheme) -> <<Scheme/binary, "://">>.
-
 
 -spec aws_config(map()) -> aws_config().
 aws_config(#{'key' := Key
@@ -61,7 +102,6 @@ aws_config(#{'key' := Key
                ,s3_follow_redirect_count=3
                ,aws_region=Region
                }.
-
 
 -spec aws_default_fields() -> kz_term:proplist().
 aws_default_fields() ->
@@ -98,7 +138,6 @@ aws_bpc(Map, AttInfo) ->
 aws_bpc(S3, Handler, Attinfo) ->
     aws_bpc(merge_params(S3, Handler), Attinfo).
 
-
 -spec encode_retrieval(map(), kz_term:ne_binary()) -> kz_term:ne_binary().
 encode_retrieval(Map, FilePath) ->
     base64:encode(term_to_binary({Map, FilePath})).
@@ -134,36 +173,6 @@ decode_retrieval(S3) ->
         #{} = Map -> Map
     end.
 
--spec put_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
-put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
-    {Bucket, FilePath, Config} = aws_bpc(Params, {DbName, DocId, AName}),
-    case put_object(Bucket, FilePath, Contents, Config) of
-        {'ok', Props} ->
-            Metadata = [ convert_kv(KV) || KV <- Props, filter_kv(KV)],
-            S3Key = encode_retrieval(Params, FilePath),
-            {'ok', [{'attachment', [{<<"S3">>, S3Key}
-                                   ,{<<"metadata">>, kz_json:from_list(Metadata)}
-                                   ]}
-                   ,{'headers', Props}
-                   ]};
-        _E -> _E
-    end.
-
--spec fetch_attachment(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'error', 'invalid_data'} |
-                              {'ok', binary()}.
-fetch_attachment(Conn, DbName, DocId, AName) ->
-    HandlerProps = kz_json:get_value(<<"handler_props">>, Conn, 'undefined'),
-    case kz_json:get_value(<<"S3">>, Conn) of
-        'undefined' -> {'error', 'invalid_data'};
-        S3 ->
-            {Bucket, FilePath, Config} = aws_bpc(S3, HandlerProps, {DbName, DocId, AName}),
-            case get_object(Bucket, FilePath, Config) of
-                {'ok', Props} -> {'ok', props:get_value('content', Props)};
-                _E -> _E
-            end
-    end.
-
 filter_kv({"x-amz" ++ _, _V}) -> 'true';
 filter_kv({"etag", _V}) -> 'true';
 filter_kv(_KV) -> 'false'.
@@ -178,7 +187,8 @@ convert_kv({<<"etag">> = K, V}) ->
     {K, binary:replace(V, <<$">>, <<>>, ['global'])};
 convert_kv(KV) -> KV.
 
--spec put_object(string(), string() | kz_term:ne_binary(), binary(), aws_config()) -> {ok, kz_term:proplist()} | {error, any()}.
+-spec put_object(string(), string() | kz_term:ne_binary(), binary(), aws_config()) -> {ok, kz_term:proplist()} |
+                                                                                      gen_attachment:error_response().
 put_object(Bucket, FilePath, Contents,Config)
   when is_binary(FilePath) ->
     put_object(Bucket, kz_term:to_list(FilePath), Contents,Config);
@@ -188,15 +198,11 @@ put_object(Bucket, FilePath, Contents, #aws_config{s3_host=Host} = Config) ->
     try erlcloud_s3:put_object(Bucket, FilePath, Contents, Options, [], Config) of
         Headers -> {ok, Headers}
     catch
-        error : {aws_error, Reason} ->
-            lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
-            {error, Reason};
-        _E : Reason ->
-            lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
-            {error, Reason}
+        error : Error -> handle_s3_error(Error, Host, FilePath)
     end.
 
--spec get_object(string(), string() | kz_term:ne_binary(), aws_config()) -> {ok, kz_term:proplist()} | {error, any()}.
+-spec get_object(string(), string() | kz_term:ne_binary(), aws_config()) -> {ok, kz_term:proplist()} |
+                                                                            gen_attachment:error_response().
 get_object(Bucket, FilePath, Config)
   when is_binary(FilePath) ->
     get_object(Bucket, kz_term:to_list(FilePath), Config);
@@ -206,5 +212,23 @@ get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
     try erlcloud_s3:get_object(Bucket, FilePath, Options, Config) of
         Headers -> {ok, Headers}
     catch
-        error : {aws_error, Reason} -> {error, Reason}
+        error : Error -> handle_s3_error(Error, Host, FilePath)
     end.
+
+-spec handle_s3_error({'aws_error'
+                      ,{'socket_error', binary()} |
+                       {'http_error', pos_integer(), string(), binary()}
+                      }
+                     ,string()
+                     ,string() | kz_term:ne_binary()
+                     ) -> gen_attachment:error_response().
+handle_s3_error({'aws_error', {'http_error', RespCode, _RespStatusLine, RespBody} = Reason}
+               ,Host
+               ,FilePath
+               ) ->
+    lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
+    gen_attachment:error_response(RespCode, RespBody);
+handle_s3_error({'aws_error', {'socket_error', RespBody} = Reason}, Host, FilePath) ->
+    lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
+    Error = <<"Socket error: ", (io_lib:format("~p", [RespBody]))/binary>>,
+    gen_attachment:error_response(400, Error).

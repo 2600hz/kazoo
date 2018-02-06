@@ -218,7 +218,8 @@ post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
         <<"login">> -> publish_update(Context, AgentId, fun kapi_acdc_agent:publish_login/1);
         <<"logout">> -> publish_update(Context, AgentId, fun kapi_acdc_agent:publish_logout/1);
         <<"pause">> -> publish_update(Context, AgentId, fun kapi_acdc_agent:publish_pause/1);
-        <<"resume">> -> publish_update(Context, AgentId, fun kapi_acdc_agent:publish_resume/1)
+        <<"resume">> -> publish_update(Context, AgentId, fun kapi_acdc_agent:publish_resume/1);
+        <<"end_wrapup">> -> publish_update(Context, AgentId, fun kapi_acdc_agent:publish_end_wrapup/1)
     end,
     crossbar_util:response(<<"status update sent">>, Context);
 post(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN) ->
@@ -576,7 +577,7 @@ validate_status_change(Context) ->
             check_for_status_error(Context, cb_context:req_value(Context, <<"status">>))
     end.
 
--define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>]).
+-define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>, <<"end_wrapup">>]).
 -spec validate_status_change(cb_context:context(), kz_term:api_binary()) ->
                                     cb_context:context().
 validate_status_change(Context, S) ->

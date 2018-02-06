@@ -1,0 +1,118 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.audio_macro",
+    "description": "Validator for the audio_macro callflow's data object",
+    "properties": {
+        "language": {
+            "description": "The language of the speaker",
+            "type": "string"
+        },
+        "macros": {
+            "default": [],
+            "description": "The audio macro data",
+            "items": {
+                "description": "The individual media to play",
+                "oneOf": [
+                    {
+                        "$ref": "callflows.play",
+                        "description": "media file to play",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "play"
+                                ],
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "callflows.audio_macro.tone",
+                        "description": "tone to play",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "tone"
+                                ],
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "callflows.audio_macro.prompt",
+                        "description": "prompt to play",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "prompt"
+                                ],
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "callflows.audio_macro.say",
+                        "description": "say macro to execute",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "say"
+                                ],
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "callflows.tts",
+                        "description": "TTS text to say",
+                        "properties": {
+                            "macro": {
+                                "enum": [
+                                    "tts"
+                                ],
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "properties": {
+                    "macro": {
+                        "description": "the macro type to process",
+                        "enum": [
+                            "play",
+                            "prompt",
+                            "say",
+                            "tts",
+                            "tone"
+                        ],
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+        },
+        "terminators": {
+            "default": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "*",
+                "0",
+                "#"
+            ],
+            "description": "What DTMF can terminate playback of the audio",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}

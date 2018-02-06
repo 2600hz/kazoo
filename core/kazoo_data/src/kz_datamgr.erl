@@ -57,6 +57,7 @@
         ,all_design_docs/2
         ,copy_doc/4, copy_doc/5
         ,move_doc/4, move_doc/5
+        ,maybe_update_doc/2
         ]).
 
 %% attachments
@@ -77,6 +78,7 @@
         ,get_result_doc/3, get_result_docs/3
         ,design_info/2
         ,design_compact/2
+        ,maybe_adapt_multilines/1
         ]).
 
 -export([get_uuid/0, get_uuid/1
@@ -212,6 +214,9 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
             do_revise_docs_from_folder(DbName, Sleep, T)
     end.
 
+-spec maybe_update_doc(kz_term:ne_binary(), kz_json:object()) ->
+                              {'ok', kz_json:object()} |
+                              data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
         true -> ensure_saved(DbName, JObj);
@@ -1032,11 +1037,13 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
 
 -spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary()) ->
                               {'ok', binary()} |
-                              data_error().
+                              data_error() |
+                              gen_attachment:error_response().
 
 -spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
                               {'ok', binary()} |
-                              data_error().
+                              data_error() |
+                              gen_attachment:error_response().
 fetch_attachment(DbName, {DocType, DocId}, AName) ->
     fetch_attachment(DbName, DocId, AName, [{'doc_type', DocType}]);
 fetch_attachment(DbName, DocId, AName) ->
@@ -1079,12 +1086,14 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 
 -spec put_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
-                            data_error().
+                            data_error() |
+                            gen_attachment:error_response().
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec put_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
                             {'ok', kz_json:object(), kz_term:proplist()} |
-                            data_error().
+                            data_error() |
+                            gen_attachment:error_response().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 

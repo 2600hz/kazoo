@@ -588,7 +588,8 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
                                                  ,watchers=sets:new()
                                                  }),
     lager:debug("assigned consumer ~p new channel ~p on ~s after ~pμs"
-               ,[Consumer, Channel, Broker, kz_time:elapsed_us(Timestamp)]),
+               ,[Consumer, Channel, Broker, kz_time:elapsed_us(Timestamp)]
+               ),
     register_channel_handlers(Channel, Consumer),
     _ = maybe_reconnect(Assigment),
     _ = send_notifications(Assigment),

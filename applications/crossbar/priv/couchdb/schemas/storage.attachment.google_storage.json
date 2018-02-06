@@ -28,6 +28,7 @@
                     "properties": {
                         "oauth_doc_id": {
                             "description": "Doc ID in the system 'auth' database",
+                            "kazoo-validation": true,
                             "type": "string"
                         }
                     },

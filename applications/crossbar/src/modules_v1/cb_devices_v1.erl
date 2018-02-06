@@ -358,7 +358,7 @@ prepare_outbound_flags(DeviceId, Context) ->
 
 -spec prepare_device_realm(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
@@ -464,7 +464,7 @@ on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
-    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
+    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -474,7 +474,7 @@ on_successful_validation(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_device(DeviceId, Context) ->
-    crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
+    crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -485,7 +485,7 @@ load_device(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
-    AccountRealm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    AccountRealm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
@@ -645,8 +645,8 @@ maybe_remove_aggregate(_, _, _) -> 'false'.
                         cb_context:context().
 put_action(Context, DeviceId, <<"notify">>) ->
     lager:debug("publishing NOTIFY for ~s", [DeviceId]),
-    Username = kz_device:sip_username(cb_context:doc(Context)),
-    Realm = kz_account:fetch_realm(cb_context:account_id(Context)),
+    Username = kzd_devices:sip_username(cb_context:doc(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     Req = props:filter_undefined(
             [{<<"Body">>, cb_context:req_value(Context, [<<"data">>, <<"body">>, <<"data">>])}
             ,{<<"Content-Type">>, cb_context:req_value(Context, [<<"data">>, <<"body">>, <<"content_type">>])}

@@ -56,6 +56,9 @@
                                                 ]}
                          ]).
 
+-ifdef(TEST).
+load(Schema) -> fload(Schema).
+-else.
 -spec load(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
 load(<<"./", Schema/binary>>) -> load(Schema);
@@ -66,6 +69,7 @@ load(<<_/binary>> = Schema) ->
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
     end;
 load(Schema) -> load(kz_term:to_binary(Schema)).
+-endif.
 
 -spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
                                        {'error', 'not_found'}.
@@ -194,7 +198,8 @@ validate(<<_/binary>> = Schema, DataJObj, Options) ->
     {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, Options);
 validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->
-    jesse:validate_with_schema(SchemaJObj, DataJObj, Options0 ++ ?DEFAULT_OPTIONS).
+    Options = props:insert_values(?DEFAULT_OPTIONS, Options0),
+    jesse:validate_with_schema(SchemaJObj, DataJObj, Options).
 
 -type option() :: {'version', kz_term:ne_binary()} |
                   {'error_code', integer()} |
@@ -768,35 +773,35 @@ depreciated_validation_error(<<"account">>, <<"expired">>, Message, Options) ->
     build_validate_error([<<"account">>]
                         ,<<"expired">>
                         ,Message
-                        ,props:insert_values([{'error_code', 423}
-                                             ,{'error_message', <<"locked">>}
-                                             ]
-                                            ,Options
-                                            )
+                        ,props:set_values([{'error_code', 423}
+                                          ,{'error_message', <<"locked">>}
+                                          ]
+                                         ,Options
+                                         )
                         );
 depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Options) ->
     build_validate_error([<<"account">>]
                         ,<<"disabled">>
                         ,Message
-                        ,props:insert_values([{'error_code', 423}
-                                             ,{'error_message', <<"locked">>}
-                                             ]
-                                            ,Options
-                                            )
+                        ,props:set_values([{'error_code', 423}
+                                          ,{'error_message', <<"locked">>}
+                                          ]
+                                         ,Options
+                                         )
                         );
 depreciated_validation_error(Property, Code, Message, Options) ->
     build_validate_error(Property, Code, Message
-                        ,insert_default_options(Options)
+                        ,set_default_options(Options)
                         ).
 
--spec insert_default_options(options()) -> options().
-insert_default_options(Options) ->
-    props:insert_values([{'version', ?CURRENT_VERSION}
-                         ,{'error_code', 400}
-                         ,{'error_message', <<"invalid_request">>}
-                        ]
-                       ,Options
-                       ).
+-spec set_default_options(options()) -> options().
+set_default_options(Options) ->
+    props:set_values([{'version', ?CURRENT_VERSION}
+                     ,{'error_code', 400}
+                     ,{'error_message', <<"validation error">>}
+                     ]
+                    ,Options
+                    ).
 
 -spec build_validate_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
                                   validation_error().
@@ -865,7 +870,9 @@ flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
     end;
 flatten_prop(Path, V) -> [{Path, V}].
 
--spec default_object(kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+-spec default_object(string() | kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+default_object([_|_]=SchemaId) ->
+    default_object(list_to_binary(SchemaId));
 default_object(?NE_BINARY=SchemaId) ->
     {'ok', Schema} = load(SchemaId),
     default_object(Schema);
@@ -881,7 +888,7 @@ default_properties(Flat) ->
                               <<"default">> =:= lists:last(Keys)
                                   andalso {'true', {lists:droplast(Keys), Value}}
                       end
-                      ,Flat
+                     ,Flat
                      ).
 
 -spec filtering_list(kz_json:object()) -> list(kz_json:keys() | []).

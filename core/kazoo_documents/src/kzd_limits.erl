@@ -1,0 +1,106 @@
+-module(kzd_limits).
+
+-export([new/0]).
+-export([allow_prepay/1, allow_prepay/2, set_allow_prepay/2]).
+-export([burst_trunks/1, burst_trunks/2, set_burst_trunks/2]).
+-export([calls/1, calls/2, set_calls/2]).
+-export([inbound_trunks/1, inbound_trunks/2, set_inbound_trunks/2]).
+-export([outbound_trunks/1, outbound_trunks/2, set_outbound_trunks/2]).
+-export([resource_consuming_calls/1, resource_consuming_calls/2, set_resource_consuming_calls/2]).
+-export([twoway_trunks/1, twoway_trunks/2, set_twoway_trunks/2]).
+
+
+-include("kz_documents.hrl").
+
+-type doc() :: kz_json:object().
+-export_type([doc/0]).
+
+-define(SCHEMA, <<"limits">>).
+
+-spec new() -> doc().
+new() ->
+    kz_json_schema:default_object(?SCHEMA).
+
+-spec allow_prepay(doc()) -> boolean().
+allow_prepay(Doc) ->
+    allow_prepay(Doc, true).
+
+-spec allow_prepay(doc(), Default) -> boolean() | Default.
+allow_prepay(Doc, Default) ->
+    kz_json:get_boolean_value([<<"allow_prepay">>], Doc, Default).
+
+-spec set_allow_prepay(doc(), boolean()) -> doc().
+set_allow_prepay(Doc, AllowPrepay) ->
+    kz_json:set_value([<<"allow_prepay">>], AllowPrepay, Doc).
+
+-spec burst_trunks(doc()) -> kz_term:api_integer().
+burst_trunks(Doc) ->
+    burst_trunks(Doc, 'undefined').
+
+-spec burst_trunks(doc(), Default) -> integer() | Default.
+burst_trunks(Doc, Default) ->
+    kz_json:get_integer_value([<<"burst_trunks">>], Doc, Default).
+
+-spec set_burst_trunks(doc(), integer()) -> doc().
+set_burst_trunks(Doc, BurstTrunks) ->
+    kz_json:set_value([<<"burst_trunks">>], BurstTrunks, Doc).
+
+-spec calls(doc()) -> kz_term:api_integer().
+calls(Doc) ->
+    calls(Doc, 'undefined').
+
+-spec calls(doc(), Default) -> integer() | Default.
+calls(Doc, Default) ->
+    kz_json:get_integer_value([<<"calls">>], Doc, Default).
+
+-spec set_calls(doc(), integer()) -> doc().
+set_calls(Doc, Calls) ->
+    kz_json:set_value([<<"calls">>], Calls, Doc).
+
+-spec inbound_trunks(doc()) -> kz_term:api_integer().
+inbound_trunks(Doc) ->
+    inbound_trunks(Doc, 'undefined').
+
+-spec inbound_trunks(doc(), Default) -> integer() | Default.
+inbound_trunks(Doc, Default) ->
+    kz_json:get_integer_value([<<"inbound_trunks">>], Doc, Default).
+
+-spec set_inbound_trunks(doc(), integer()) -> doc().
+set_inbound_trunks(Doc, InboundTrunks) ->
+    kz_json:set_value([<<"inbound_trunks">>], InboundTrunks, Doc).
+
+-spec outbound_trunks(doc()) -> kz_term:api_integer().
+outbound_trunks(Doc) ->
+    outbound_trunks(Doc, 'undefined').
+
+-spec outbound_trunks(doc(), Default) -> integer() | Default.
+outbound_trunks(Doc, Default) ->
+    kz_json:get_integer_value([<<"outbound_trunks">>], Doc, Default).
+
+-spec set_outbound_trunks(doc(), integer()) -> doc().
+set_outbound_trunks(Doc, OutboundTrunks) ->
+    kz_json:set_value([<<"outbound_trunks">>], OutboundTrunks, Doc).
+
+-spec resource_consuming_calls(doc()) -> kz_term:api_integer().
+resource_consuming_calls(Doc) ->
+    resource_consuming_calls(Doc, 'undefined').
+
+-spec resource_consuming_calls(doc(), Default) -> integer() | Default.
+resource_consuming_calls(Doc, Default) ->
+    kz_json:get_integer_value([<<"resource_consuming_calls">>], Doc, Default).
+
+-spec set_resource_consuming_calls(doc(), integer()) -> doc().
+set_resource_consuming_calls(Doc, ResourceConsumingCalls) ->
+    kz_json:set_value([<<"resource_consuming_calls">>], ResourceConsumingCalls, Doc).
+
+-spec twoway_trunks(doc()) -> kz_term:api_integer().
+twoway_trunks(Doc) ->
+    twoway_trunks(Doc, 'undefined').
+
+-spec twoway_trunks(doc(), Default) -> integer() | Default.
+twoway_trunks(Doc, Default) ->
+    kz_json:get_integer_value([<<"twoway_trunks">>], Doc, Default).
+
+-spec set_twoway_trunks(doc(), integer()) -> doc().
+set_twoway_trunks(Doc, TwowayTrunks) ->
+    kz_json:set_value([<<"twoway_trunks">>], TwowayTrunks, Doc).

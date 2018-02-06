@@ -59,6 +59,20 @@
         "port": {
             "description": "Parameters releated to whitelabeling port requests",
             "properties": {
+                "authority": {
+                    "description": "The email(s) to be used for admin port requests",
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    ]
+                },
                 "features": {
                     "description": "The URL to use when the features link is clicked",
                     "format": "uri",

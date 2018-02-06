@@ -8,6 +8,8 @@
 
 -export([call_collect/2
         ,cast/2
+
+        ,collecting/1
         ,is_completed/1
         ]).
 
@@ -188,7 +190,9 @@ collecting([JObj|_]) ->
         andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
+        <<"disabled">> -> 'true';
         <<"failed">> -> 'true';
+        <<"ignored">> -> 'true';
         _ -> 'false'
     end.
 
@@ -205,15 +209,21 @@ is_completed([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
         andalso kz_json:get_ne_binary_value(<<"Status">>, JObj)
     of
-        <<"completed">> -> 'true';
+        <<"completed">> ->
+            'true';
+        <<"disabled">> ->
+            lager:debug("notification is disabled"),
+            'true';
         <<"failed">> ->
             FailureMsg = kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj),
             ShouldIgnore = should_ignore_failure(FailureMsg),
             lager:debug("teletype failed with reason ~s, ignoring: ~s", [FailureMsg, ShouldIgnore]),
             ShouldIgnore;
-        %% FIXME: Is pending enough to consider publish was successful? at least teletype received the notification!
-        %% <<"pending">> -> 'true';
-        _ -> 'false'
+        <<"ignored">> ->
+            lager:debug("teletype has ignored the notification"),
+            'true';
+        _ ->
+            'false'
     end;
 is_completed(JObj) ->
     is_completed([JObj]).

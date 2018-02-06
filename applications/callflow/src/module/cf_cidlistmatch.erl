@@ -55,7 +55,10 @@ is_matching_prefix(AccountDb, ListId, Number) ->
 is_matching_regexp(AccountDb, ListId, Number) ->
     case kz_datamgr:get_results(AccountDb, <<"lists/regexps_in_list">>, [{'key', ListId}]) of
         {'ok', Regexps} ->
-            Patterns = [kz_json:get_value(<<"value">>, X) || X <- Regexps],
+            Patterns = [kz_json:get_value(<<"value">>, X)
+                        || X <- Regexps,
+                           X =/= null
+                       ],
             match_regexps(Patterns, Number);
         _ ->
             'false'

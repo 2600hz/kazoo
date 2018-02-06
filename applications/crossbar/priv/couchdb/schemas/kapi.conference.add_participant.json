@@ -30,7 +30,43 @@
         "Callee-ID-Number": {
             "type": "string"
         },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
         "Channel-Authorized": {
+            "type": "string"
+        },
+        "Channel-Call-State": {
+            "type": "string"
+        },
+        "Channel-Created-Time": {
+            "type": "integer"
+        },
+        "Channel-Is-Loopback": {
+            "type": "string"
+        },
+        "Channel-Loopback-Bowout": {
+            "type": "string"
+        },
+        "Channel-Loopback-Bowout-Execute": {
+            "type": "string"
+        },
+        "Channel-Loopback-Leg": {
+            "type": "string"
+        },
+        "Channel-Loopback-Other-Leg-ID": {
+            "type": "string"
+        },
+        "Channel-Moving": {
+            "type": "string"
+        },
+        "Channel-Name": {
+            "type": "string"
+        },
+        "Channel-State": {
             "type": "string"
         },
         "Conference-ID": {
@@ -51,6 +87,9 @@
         "Destination": {
             "type": "string"
         },
+        "Disposition": {
+            "type": "string"
+        },
         "Ecallmgr-Node": {
             "type": "string"
         },
@@ -69,6 +108,15 @@
         "From": {
             "type": "string"
         },
+        "From-Tag": {
+            "type": "string"
+        },
+        "Hangup-Cause": {
+            "type": "string"
+        },
+        "Hangup-Code": {
+            "type": "string"
+        },
         "Is-Loopback": {
             "type": "string"
         },
@@ -81,19 +129,49 @@
         "Media-Server": {
             "type": "string"
         },
+        "Msg-ID": {
+            "type": "string"
+        },
         "Node": {
+            "type": "string"
+        },
+        "Origination-Call-ID": {
             "type": "string"
         },
         "Other-Leg-Call-ID": {
             "type": "string"
         },
+        "Other-Leg-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Other-Leg-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Other-Leg-Destination-Number": {
+            "type": "string"
+        },
+        "Other-Leg-Direction": {
+            "type": "string"
+        },
         "Presence-ID": {
+            "type": "string"
+        },
+        "Raw-Application-Data": {
+            "type": "string"
+        },
+        "Raw-Application-Name": {
             "type": "string"
         },
         "Realm": {
             "type": "string"
         },
+        "Replaced-By": {
+            "type": "string"
+        },
         "Request": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
             "type": "string"
         },
         "Switch-Nodename": {
@@ -109,6 +187,12 @@
             "type": "string"
         },
         "To": {
+            "type": "string"
+        },
+        "To-Tag": {
+            "type": "string"
+        },
+        "Transfer-History": {
             "type": "string"
         },
         "Username": {

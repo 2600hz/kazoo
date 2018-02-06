@@ -105,14 +105,14 @@ is_topup_today(_AccountId, _TopupTransactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_top_up(kz_term:api_binary() | kz_account:doc()) ->
+-spec get_top_up(kz_term:api_binary() | kzd_accounts:doc()) ->
                         {'error', error()} |
                         {'ok', integer(), integer()}.
 get_top_up(<<_/binary>> = Account) ->
     case kapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
         'false' -> {'error', 'topup_disabled'};
         'true' ->
-            case kz_account:fetch(Account) of
+            case kzd_accounts:fetch(Account) of
                 {'error', _E}=Error ->
                     lager:error("could not open account ~s: ~p", [Account, _E]),
                     Error;

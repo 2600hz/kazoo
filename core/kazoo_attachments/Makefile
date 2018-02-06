@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = kazoo_attachments
 
-SOURCES = src/*.erl
+SOURCES = src/gen_attachment.erl $(wildcard src/*.erl)
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+include $(ROOT)/make/kz.mk

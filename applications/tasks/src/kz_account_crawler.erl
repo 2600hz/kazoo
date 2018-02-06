@@ -194,10 +194,10 @@ crawl_account(AccountId) ->
     OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
     check_then_process_account(AccountId, OpenResult).
 
--spec check_then_process_account(kz_term:ne_binary(), {'ok', kz_account:doc()} | {'error',any()}) -> 'ok'.
+-spec check_then_process_account(kz_term:ne_binary(), {'ok', kzd_accounts:doc()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', AccountJObj}) ->
     case kz_doc:is_soft_deleted(AccountJObj)
-        orelse not kz_account:is_enabled(AccountJObj) of
+        orelse not kzd_accounts:is_enabled(AccountJObj) of
         'true' ->
             lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
         'false' ->
@@ -206,7 +206,7 @@ check_then_process_account(AccountId, {'ok', AccountJObj}) ->
 check_then_process_account(AccountId, {'error', _R}) ->
     lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R]).
 
--spec process_account(kz_term:ne_binary(), kz_account:doc()) -> 'ok'.
+-spec process_account(kz_term:ne_binary(), kzd_accounts:doc()) -> 'ok'.
 process_account(AccountId, AccountJObj) ->
     lager:debug("account crawler processing account ~s", [AccountId]),
     _ = tasks_bindings:pmap(<<"tasks.account_crawler">>, [AccountId, AccountJObj]),

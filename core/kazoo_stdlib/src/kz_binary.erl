@@ -56,7 +56,7 @@ pad_left(Bin, _Size, _Value) -> Bin.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Join a binary together with a seperator.
+%% Join a binary together with a separator.
 %%
 %% @end
 %%--------------------------------------------------------------------

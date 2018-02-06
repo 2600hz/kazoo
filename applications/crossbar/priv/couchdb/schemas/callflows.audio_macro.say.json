@@ -1,0 +1,81 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.audio_macro.say",
+    "description": "Validator for executing say commands",
+    "properties": {
+        "gender": {
+            "description": "The gender of the speaker",
+            "enum": [
+                "masculine",
+                "feminine",
+                "neuter"
+            ],
+            "type": "string"
+        },
+        "language": {
+            "description": "The language of the speaker",
+            "type": "string"
+        },
+        "method": {
+            "description": "The method to use when saying the text",
+            "enum": [
+                "none",
+                "pronounced",
+                "iterated",
+                "counted"
+            ],
+            "type": "string"
+        },
+        "terminators": {
+            "default": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "*",
+                "0",
+                "#"
+            ],
+            "description": "What DTMF can terminate playback of the audio",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "text": {
+            "description": "Text to say",
+            "type": "string"
+        },
+        "type": {
+            "description": "The type to use when saying the text",
+            "enum": [
+                "number",
+                "items",
+                "persons",
+                "messages",
+                "currency",
+                "time_measurement",
+                "current_date",
+                "current_time",
+                "current_date_time",
+                "telephone_number",
+                "telephone_extension",
+                "url",
+                "ip_address",
+                "e-mail_address",
+                "postal_address",
+                "account_number",
+                "name_spelled",
+                "name_phonetic",
+                "short_date_time"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

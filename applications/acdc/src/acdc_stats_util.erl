@@ -12,6 +12,7 @@
         ,pause_time/2
         ,caller_id_name/2
         ,caller_id_number/2
+        ,queue_id/2
 
         ,get_query_limit/1
         ,db_name/1
@@ -39,6 +40,10 @@ caller_id_name(_, JObj) ->
 -spec caller_id_number(any(), kz_json:object()) -> kz_term:api_integer().
 caller_id_number(_, JObj) ->
     kz_json:get_value(<<"Caller-ID-Number">>, JObj).
+
+-spec queue_id(any(), kz_json:object()) -> kz_term:ne_binary().
+queue_id(_, JObj) ->
+    kz_json:get_value(<<"Queue-ID">>, JObj).
 
 -spec get_query_limit(kz_json:object()) -> pos_integer().
 get_query_limit(JObj) ->

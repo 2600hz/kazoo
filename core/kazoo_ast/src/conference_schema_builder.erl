@@ -26,7 +26,7 @@ to_schema() ->
 
 to_schema(Usage) ->
     Schema = kz_ast_util:schema_path(<<"conferences.json">>),
-    kz_ast_util:ensure_file_exists(Schema),
+    _ = kz_ast_util:ensure_file_exists(Schema),
     update_schema(Schema, Usage).
 
 update_schema(Path, Usage) ->

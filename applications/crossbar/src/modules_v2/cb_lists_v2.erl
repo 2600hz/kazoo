@@ -24,6 +24,7 @@
 -include("crossbar.hrl").
 
 -define(CB_LIST, <<"lists/crossbar_listing">>).
+-define(ENTRIES_VIEW, <<"lists/entries">>).
 -define(ENTRIES, <<"entries">>).
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
@@ -34,7 +35,7 @@
 %%%===================================================================
 -spec maybe_migrate(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', Lists} -> migrate(AccountDb, Lists);
@@ -43,22 +44,57 @@ maybe_migrate(Account) ->
 
 -spec migrate(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate(AccountDb, [List | Lists]) ->
-    DocId = kz_json:get_value(<<"id">>, List),
-    Entries = kz_json:to_proplist(kz_json:get_value([<<"doc">>, <<"entries">>], List, kz_json:new())),
+    ListJObj = kz_json:get_json_value(<<"doc">>, List),
+    OldEntries = kz_json:get_value(<<"entries">>, ListJObj, kz_json:new()),
 
-    MigrateEntryFun = fun({Id, Entry}) ->
-                              kz_json:set_values([{<<"pvt_type">>, ?TYPE_LIST_ENTRY}
-                                                 ,{<<"list_entry_old_id">>, Id}
-                                                 ,{<<"list_id">>, DocId}]
-                                                ,Entry)
-                      end,
-    Entries1 = lists:map(MigrateEntryFun, Entries),
-    kz_datamgr:save_doc(AccountDb, Entries1),
-    Doc = kz_json:delete_key(<<"entries">>, kz_json:get_value(<<"doc">>, List)),
-    kz_datamgr:save_doc(AccountDb, Doc),
+    Entries = kz_json:map(fun(Id, EntryJObj) -> migrate_to_entry_doc(AccountDb, Id, EntryJObj, ListJObj) end, OldEntries),
+
+    {ok, _} = kz_datamgr:save_docs(AccountDb, Entries),
+    migrate_old_entry_docs(AccountDb, List),
+    {ok, _} = kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"entries">>, ListJObj)),
     migrate(AccountDb, Lists);
 migrate(_AccountDb, []) ->
     'ok'.
+
+%% @doc Migrate old entry documents to the new format
+%% @end
+-spec migrate_old_entry_docs(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+migrate_old_entry_docs(AccountDb, ListJObj) ->
+    case kz_datamgr:get_results(AccountDb, ?ENTRIES_VIEW, ['include_docs']) of
+        {'ok', Entries} ->
+            Updated = [migrate_old_entry_doc(AccountDb, ListJObj, kz_json:get_value(<<"doc">>, Entry)) || Entry <- Entries],
+            {'ok', _} = kz_datamgr:open_doc(AccountDb, Updated),
+            'ok';
+        {'error', _Reason} ->
+            lager:debug("failed to fetch and migrate old entries to new format: ~p", [_Reason])
+    end.
+
+%% @doc Migrate old entry document to the new format, e.g. set capture_group_length (old length value),
+%% capture_group_key (old cid_key) and move cid_name/cid_number to name/number
+%% @end
+-spec migrate_old_entry_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+migrate_old_entry_doc(AccountDb, ListJObj, EntryJObj) ->
+    case kz_json:get_first_defined([<<"capture_group_key">>, <<"cid_key">>, <<"list_entry_old_id">>], EntryJObj) of
+        'undefined' ->
+            lager:debug("unable to find entry id for ~s inside list ~p", [kz_doc:id(EntryJObj), kz_doc:id(ListJObj)]),
+            EntryJObj;
+        EntryId -> migrate_to_entry_doc(AccountDb, EntryId, EntryJObj, ListJObj)
+    end.
+
+-spec migrate_to_entry_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+migrate_to_entry_doc(AccountDb, EntryId, EntryJObj, ListJObj) ->
+    Doc = kz_json:set_values(
+            [{<<"name">>, kz_json:get_first_defined([<<"cid_name">>, <<"name">>], EntryJObj)}
+            ,{<<"number">>, kz_json:get_first_defined([<<"cid_number">>, <<"number">>], EntryJObj)}
+            ,{<<"capture_group_key">>, kz_json:get_first_defined([<<"capture_group_key">>, <<"cid_key">>, <<"list_entry_old_id">>]
+                                                                ,EntryJObj
+                                                                ,EntryId
+                                                                )
+             }
+            ,{<<"capture_group_length">>, kz_term:to_integer(kz_json:get_first_defined([<<"capture_group_length">>, <<"length">>], ListJObj))}
+            ,{<<"list_id">>, kz_doc:id(ListJObj)}
+            ], kz_json:delete_keys([<<"cid_name">>, <<"cid_number">>, <<"length">>, <<"list_entry_old_id">>], EntryJObj)),
+    kz_doc:update_pvt_parameters(Doc, AccountDb, [{<<"type">>, ?TYPE_LIST_ENTRY}]).
 
 -spec init() -> any().
 init() ->
@@ -172,19 +208,19 @@ validate_req(?HTTP_PUT, Context, []) ->
 validate_req(?HTTP_GET, Context, [ListId]) ->
     crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST));
 validate_req(?HTTP_DELETE, Context, [ListId]) ->
-    crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
+    crossbar_doc:load_view(?ENTRIES_VIEW, [{'key', ListId}], Context);
 validate_req(?HTTP_POST, Context, [ListId]) ->
     validate_doc(ListId, ?TYPE_LIST, Context);
 validate_req(?HTTP_PATCH, Context, [ListId] = Path) ->
     crossbar_doc:patch_and_validate(ListId, Context, fun(_Id, C) -> validate_req(?HTTP_POST, C, Path) end);
 
 validate_req(?HTTP_GET, Context, [ListId, ?ENTRIES]) ->
-    crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
+    crossbar_doc:load_view(?ENTRIES_VIEW, [{'key', ListId}], Context);
 validate_req(?HTTP_PUT, Context, [ListId, ?ENTRIES]) ->
     ReqData = kz_json:set_values([{<<"list_id">>, ListId}], cb_context:req_data(Context)),
     validate_doc('undefined', ?TYPE_LIST_ENTRY, cb_context:set_req_data(Context, ReqData));
 validate_req(?HTTP_DELETE, Context, [ListId, ?ENTRIES]) ->
-    crossbar_doc:load_view(<<"lists/entries">>, [{'key', ListId}], Context);
+    crossbar_doc:load_view(?ENTRIES_VIEW, [{'key', ListId}], Context);
 
 validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId]) ->
     crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY));

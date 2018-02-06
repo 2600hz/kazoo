@@ -15,6 +15,7 @@
         ,timezone/1, timezone/2
         ,skip_instructions/1, skip_instructions/2
         ,skip_greeting/1, skip_greeting/2
+        ,skip_envelope/1, skip_envelope/2
         ,pin/1, pin/2
         ,mailbox_number/1, mailbox_number/2
         ,pin_required/1, pin_required/2
@@ -36,6 +37,7 @@
 -define(KEY_TIMEZONE, <<"timezone">>).
 -define(KEY_SKIP_INSTRUCTIONS, <<"skip_instructions">>).
 -define(KEY_SKIP_GREETING, <<"skip_greeting">>).
+-define(KEY_SKIP_ENVELOPE, <<"skip_envelope">>).
 -define(KEY_PIN, <<"pin">>).
 -define(KEY_MAILBOX_NUMBER, <<"mailbox">>).
 -define(KEY_PIN_REQUIRED, <<"require_pin">>).
@@ -105,7 +107,7 @@ timezone(Box, Default) ->
 owner_timezone(Box, Default) ->
     case kzd_user:fetch(kz_doc:account_db(Box), owner_id(Box)) of
         {'ok', OwnerJObj} -> kzd_user:timezone(OwnerJObj, Default);
-        {'error', _} -> kz_account:timezone(kz_doc:account_id(Box), Default)
+        {'error', _} -> kzd_accounts:timezone(kz_doc:account_id(Box), Default)
     end.
 
 -spec skip_instructions(doc()) -> boolean().
@@ -123,6 +125,14 @@ skip_greeting(Box) ->
 -spec skip_greeting(doc(), Default) -> boolean() | Default.
 skip_greeting(Box, Default) ->
     kz_json:is_true(?KEY_SKIP_GREETING, Box, Default).
+
+-spec skip_envelope(doc()) -> boolean().
+skip_envelope(Box) ->
+    skip_envelope(Box, 'false').
+
+-spec skip_envelope(doc(), Default) -> boolean() | Default.
+skip_envelope(Box, Default) ->
+    kz_json:is_true(?KEY_SKIP_ENVELOPE, Box, Default).
 
 -spec pin(doc()) -> kz_term:api_binary().
 pin(Box) ->

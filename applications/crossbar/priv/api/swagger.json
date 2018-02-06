@@ -448,6 +448,51 @@
                     "minLength": 1,
                     "type": "string"
                 },
+                "notifications": {
+                    "description": "account notification settings",
+                    "properties": {
+                        "first_occurrence": {
+                            "description": "send emails on these account-firsts",
+                            "properties": {
+                                "sent_initial_call": {
+                                    "default": false,
+                                    "description": "has the account made their first call",
+                                    "type": "boolean"
+                                },
+                                "sent_initial_registration": {
+                                    "default": false,
+                                    "description": "has the account registered their first device",
+                                    "type": "boolean"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "low_balance": {
+                            "description": "Low balance settings",
+                            "properties": {
+                                "enabled": {
+                                    "default": true,
+                                    "description": "should the account be checked for this alert",
+                                    "type": "boolean"
+                                },
+                                "last_notification": {
+                                    "description": "Timestamp, in gregorian seconds, of when the last low_balance alert was sent",
+                                    "type": "integer"
+                                },
+                                "sent_low_balance": {
+                                    "description": "has the alert been sent (avoids duplication/spamming)",
+                                    "type": "boolean"
+                                },
+                                "threshold": {
+                                    "description": "account balance to send alert on",
+                                    "type": "number"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                },
                 "org": {
                     "description": "Full legal name of the organization",
                     "type": "string"
@@ -494,6 +539,16 @@
                     "minLength": 5,
                     "type": "string"
                 },
+                "topup": {
+                    "description": "Topup settings for the account",
+                    "properties": {
+                        "threshold": {
+                            "description": "The account balance when topup occurs",
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
                 "voicemail": {
                     "properties": {
                         "notify": {
@@ -503,6 +558,16 @@
                                 }
                             },
                             "type": "object"
+                        }
+                    },
+                    "type": "object"
+                },
+                "zones": {
+                    "description": "The zone(s) of an account",
+                    "properties": {
+                        "home": {
+                            "description": "Which zone is considered the account's home zone",
+                            "type": "string"
                         }
                     },
                     "type": "object"
@@ -572,6 +637,15 @@
         "app": {
             "description": "Appstore applications",
             "properties": {
+                "allowed_users": {
+                    "description": "User type allowed to access the app",
+                    "enum": [
+                        "specific",
+                        "all",
+                        "admins"
+                    ],
+                    "type": "string"
+                },
                 "api_url": {
                     "description": "Application api url",
                     "format": "uri",
@@ -584,7 +658,7 @@
                     "type": "string"
                 },
                 "i18n": {
-                    "description": "Application source url",
+                    "description": "Application translation",
                     "type": "object"
                 },
                 "icon": {
@@ -617,7 +691,11 @@
                 "price": {
                     "description": "Application price",
                     "minimum": 0,
-                    "type": "integer"
+                    "type": "number"
+                },
+                "published": {
+                    "description": "is the app published",
+                    "type": "boolean"
                 },
                 "screenshots": {
                     "items": {
@@ -638,6 +716,13 @@
                 },
                 "urls": {
                     "type": "object"
+                },
+                "users": {
+                    "description": "User IDs authorized to use the app (when allowed_users = 'specific')",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "version": {
                     "description": "Application version",
@@ -1285,6 +1370,268 @@
             },
             "type": "object"
         },
+        "callflows.audio_macro": {
+            "description": "Validator for the audio_macro callflow's data object",
+            "properties": {
+                "language": {
+                    "description": "The language of the speaker",
+                    "type": "string"
+                },
+                "macros": {
+                    "default": [],
+                    "description": "The audio macro data",
+                    "items": {
+                        "description": "The individual media to play",
+                        "oneOf": [
+                            {
+                                "$ref": "callflows.play",
+                                "description": "media file to play",
+                                "properties": {
+                                    "macro": {
+                                        "enum": [
+                                            "play"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "callflows.audio_macro.tone",
+                                "description": "tone to play",
+                                "properties": {
+                                    "macro": {
+                                        "enum": [
+                                            "tone"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "callflows.audio_macro.prompt",
+                                "description": "prompt to play",
+                                "properties": {
+                                    "macro": {
+                                        "enum": [
+                                            "prompt"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "callflows.audio_macro.say",
+                                "description": "say macro to execute",
+                                "properties": {
+                                    "macro": {
+                                        "enum": [
+                                            "say"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "callflows.tts",
+                                "description": "TTS text to say",
+                                "properties": {
+                                    "macro": {
+                                        "enum": [
+                                            "tts"
+                                        ],
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        ],
+                        "properties": {
+                            "macro": {
+                                "description": "the macro type to process",
+                                "enum": [
+                                    "play",
+                                    "prompt",
+                                    "say",
+                                    "tts",
+                                    "tone"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.audio_macro.prompt": {
+            "description": "Validator for playing prompts",
+            "properties": {
+                "id": {
+                    "description": "Prompt ID",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "The language of the speaker",
+                    "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.audio_macro.say": {
+            "description": "Validator for executing say commands",
+            "properties": {
+                "gender": {
+                    "description": "The gender of the speaker",
+                    "enum": [
+                        "masculine",
+                        "feminine",
+                        "neuter"
+                    ],
+                    "type": "string"
+                },
+                "language": {
+                    "description": "The language of the speaker",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "The method to use when saying the text",
+                    "enum": [
+                        "none",
+                        "pronounced",
+                        "iterated",
+                        "counted"
+                    ],
+                    "type": "string"
+                },
+                "terminators": {
+                    "default": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "*",
+                        "0",
+                        "#"
+                    ],
+                    "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "text": {
+                    "description": "Text to say",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type to use when saying the text",
+                    "enum": [
+                        "number",
+                        "items",
+                        "persons",
+                        "messages",
+                        "currency",
+                        "time_measurement",
+                        "current_date",
+                        "current_time",
+                        "current_date_time",
+                        "telephone_number",
+                        "telephone_extension",
+                        "url",
+                        "ip_address",
+                        "e-mail_address",
+                        "postal_address",
+                        "account_number",
+                        "name_spelled",
+                        "name_phonetic",
+                        "short_date_time"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.audio_macro.tone": {
+            "description": "Validator for playing a tone - TGML",
+            "properties": {
+                "duration_off": {
+                    "description": "time, in milliseconds, for turning the tone off",
+                    "type": "integer"
+                },
+                "duration_on": {
+                    "description": "time, in milliseconds, for turning the tone on",
+                    "type": "integer"
+                },
+                "frequencies": {
+                    "description": "The tone frequencies to play",
+                    "items": {
+                        "description": "The tone frequency",
+                        "type": "integer"
+                    },
+                    "type": "array"
+                },
+                "repeat": {
+                    "description": "how many times to repeat the tone",
+                    "type": "integer"
+                },
+                "volume": {
+                    "description": "Volume of the tone being played",
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "callflows.branch_bnumber": {
             "description": "Validator for the branch_bnumber callflow's data object",
             "properties": {},
@@ -1734,6 +2081,11 @@
                     "type": "string"
                 }
             },
+            "type": "object"
+        },
+        "callflows.edr": {
+            "description": "Validator for the edr callflow's data object",
+            "properties": {},
             "type": "object"
         },
         "callflows.fax_detect": {
@@ -2413,6 +2765,11 @@
                     "description": "Media ID or URL of the media to play",
                     "type": "string"
                 },
+                "loop_count": {
+                    "description": "How many times to loop the media",
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "terminators": {
                     "default": [
                         "1",
@@ -3065,6 +3422,10 @@
         "callflows.tts": {
             "description": "Validator for the TTS (Text-to-speech) callflow action",
             "properties": {
+                "endless_playback": {
+                    "description": "Loop the media until cancelled",
+                    "type": "boolean"
+                },
                 "engine": {
                     "description": "What TTS engine to use",
                     "enum": [
@@ -3075,7 +3436,6 @@
                     "type": "string"
                 },
                 "language": {
-                    "default": "en",
                     "description": "The language of the speaker",
                     "type": "string"
                 },
@@ -4110,6 +4470,10 @@
                     "description": "The language for the device",
                     "type": "string"
                 },
+                "mac_address": {
+                    "description": "The MAC Address of the device (if applicable)",
+                    "type": "string"
+                },
                 "media": {
                     "$ref": "#/definitions/endpoint.media",
                     "description": "Configure audio/video/etc media options for this device"
@@ -4143,10 +4507,33 @@
                 },
                 "outbound_flags": {
                     "description": "List of flags (features) this device requires when making outbound calls",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "array"
+                    "oneOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "properties": {
+                                "dynamic": {
+                                    "description": "Dynamic outbound flags",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "static": {
+                                    "description": "Static outbound flags",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    ]
                 },
                 "owner_id": {
                     "description": "The ID of the user object that 'owns' the device",
@@ -5058,6 +5445,54 @@
                     "type": "array"
                 }
             }
+        },
+        "kapi.acdc_agent.end_wrapup": {
+            "description": "AMQP API for acdc_agent.end_wrapup",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "end_wrapup"
+                    ],
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presence-State": {
+                    "enum": [
+                        "trying",
+                        "online",
+                        "offline",
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Agent-ID"
+            ],
+            "type": "object"
         },
         "kapi.acdc_agent.login": {
             "description": "AMQP API for acdc_agent.login",
@@ -6453,6 +6888,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -6499,6 +6937,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -6571,6 +7012,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -6617,6 +7061,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -6665,6 +7112,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -6711,6 +7161,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -6759,6 +7212,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -6805,6 +7261,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -6908,6 +7367,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -6954,6 +7416,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -8332,7 +8797,43 @@
                 "Callee-ID-Number": {
                     "type": "string"
                 },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
                 "Channel-Authorized": {
+                    "type": "string"
+                },
+                "Channel-Call-State": {
+                    "type": "string"
+                },
+                "Channel-Created-Time": {
+                    "type": "integer"
+                },
+                "Channel-Is-Loopback": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Bowout": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Bowout-Execute": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Leg": {
+                    "type": "string"
+                },
+                "Channel-Loopback-Other-Leg-ID": {
+                    "type": "string"
+                },
+                "Channel-Moving": {
+                    "type": "string"
+                },
+                "Channel-Name": {
+                    "type": "string"
+                },
+                "Channel-State": {
                     "type": "string"
                 },
                 "Conference-ID": {
@@ -8353,6 +8854,9 @@
                 "Destination": {
                     "type": "string"
                 },
+                "Disposition": {
+                    "type": "string"
+                },
                 "Ecallmgr-Node": {
                     "type": "string"
                 },
@@ -8371,6 +8875,15 @@
                 "From": {
                     "type": "string"
                 },
+                "From-Tag": {
+                    "type": "string"
+                },
+                "Hangup-Cause": {
+                    "type": "string"
+                },
+                "Hangup-Code": {
+                    "type": "string"
+                },
                 "Is-Loopback": {
                     "type": "string"
                 },
@@ -8383,19 +8896,49 @@
                 "Media-Server": {
                     "type": "string"
                 },
+                "Msg-ID": {
+                    "type": "string"
+                },
                 "Node": {
+                    "type": "string"
+                },
+                "Origination-Call-ID": {
                     "type": "string"
                 },
                 "Other-Leg-Call-ID": {
                     "type": "string"
                 },
+                "Other-Leg-Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Other-Leg-Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Other-Leg-Destination-Number": {
+                    "type": "string"
+                },
+                "Other-Leg-Direction": {
+                    "type": "string"
+                },
                 "Presence-ID": {
+                    "type": "string"
+                },
+                "Raw-Application-Data": {
+                    "type": "string"
+                },
+                "Raw-Application-Name": {
                     "type": "string"
                 },
                 "Realm": {
                     "type": "string"
                 },
+                "Replaced-By": {
+                    "type": "string"
+                },
                 "Request": {
+                    "type": "string"
+                },
+                "Switch-Hostname": {
                     "type": "string"
                 },
                 "Switch-Nodename": {
@@ -8411,6 +8954,12 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "To-Tag": {
+                    "type": "string"
+                },
+                "Transfer-History": {
                     "type": "string"
                 },
                 "Username": {
@@ -9350,6 +9899,9 @@
                 "Conference-ID": {
                     "type": "string"
                 },
+                "Endless-Playback": {
+                    "type": "boolean"
+                },
                 "Engine": {
                     "type": "string"
                 },
@@ -9382,6 +9934,10 @@
                 },
                 "Leg": {
                     "type": "string"
+                },
+                "Loop-Count": {
+                    "minimum": 1,
+                    "type": "integer"
                 },
                 "Terminators": {
                     "items": {
@@ -11345,6 +11901,10 @@
                     ],
                     "type": "string"
                 },
+                "Loop-Count": {
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "Media-Name": {
                     "type": "string"
                 },
@@ -13030,6 +13590,9 @@
                 "Conference-ID": {
                     "type": "string"
                 },
+                "Endless-Playback": {
+                    "type": "boolean"
+                },
                 "Engine": {
                     "type": "string"
                 },
@@ -13062,6 +13625,10 @@
                 },
                 "Leg": {
                     "type": "string"
+                },
+                "Loop-Count": {
+                    "minimum": 1,
+                    "type": "integer"
                 },
                 "Terminators": {
                     "items": {
@@ -13257,6 +13824,60 @@
             },
             "required": [
                 "Results"
+            ],
+            "type": "object"
+        },
+        "kapi.edr_amqp.event": {
+            "description": "AMQP API for edr_amqp.event",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Account-Tree": {
+                    "type": "string"
+                },
+                "Body": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "edr"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "event"
+                    ],
+                    "type": "string"
+                },
+                "Gregorian-Time": {
+                    "type": "integer"
+                },
+                "ID": {
+                    "type": "string"
+                },
+                "Node": {
+                    "type": "string"
+                },
+                "Severity": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "type": "string"
+                },
+                "Verbosity": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Body",
+                "Gregorian-Time",
+                "ID",
+                "Node",
+                "Severity",
+                "Timestamp",
+                "Verbosity"
             ],
             "type": "object"
         },
@@ -15589,7 +16210,7 @@
                 },
                 "Event-Name": {
                     "enum": [
-                        "update"
+                        "notify_update"
                     ],
                     "type": "string"
                 },
@@ -15606,7 +16227,7 @@
                     "type": "string"
                 },
                 "Preview": {
-                    "type": "string"
+                    "type": "boolean"
                 },
                 "Reply-To": {
                     "type": "string"
@@ -15614,7 +16235,9 @@
                 "Status": {
                     "enum": [
                         "completed",
+                        "disabled",
                         "failed",
+                        "ignored",
                         "pending"
                     ],
                     "type": "string"
@@ -19047,7 +19670,16 @@
                 "Profile-Name": {
                     "type": "string"
                 },
+                "Proxy-IP": {
+                    "type": "string"
+                },
                 "Proxy-Path": {
+                    "type": "string"
+                },
+                "Proxy-Port": {
+                    "type": "string"
+                },
+                "Proxy-Protocol": {
                     "type": "string"
                 },
                 "RPid": {
@@ -19063,6 +19695,12 @@
                     "type": "string"
                 },
                 "Registrar-Node": {
+                    "type": "string"
+                },
+                "Source-IP": {
+                    "type": "string"
+                },
+                "Source-Port": {
                     "type": "string"
                 },
                 "Status": {
@@ -22908,7 +23546,6 @@
                     "type": "boolean"
                 },
                 "record_sample_rate": {
-                    "default": 8000,
                     "description": "Sampling rate for the recording",
                     "type": "integer"
                 },
@@ -25477,6 +26114,7 @@
                             "properties": {
                                 "oauth_doc_id": {
                                     "description": "Doc ID in the system 'auth' database",
+                                    "kazoo-validation": true,
                                     "type": "string"
                                 }
                             },
@@ -25681,7 +26319,8 @@
                 "stub": {
                     "type": "boolean"
                 }
-            }
+            },
+            "type": "object"
         },
         "storage.plan.database.document": {
             "description": "schema for document type storage plan",
@@ -27832,6 +28471,174 @@
             },
             "type": "object"
         },
+        "system_config.edr": {
+            "description": "Schema for edr system_config",
+            "properties": {
+                "backends": {
+                    "default": [],
+                    "description": "Registered edr backends",
+                    "items": {
+                        "properties": {
+                            "bindings": {
+                                "description": "The types of events the backend should be notified about",
+                                "items": {
+                                    "description": "An edr binding",
+                                    "properties": {
+                                        "account_id": {
+                                            "anyOf": [
+                                                {
+                                                    "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "items": {
+                                                        "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "default": "*"
+                                        },
+                                        "app_name": {
+                                            "default": "*",
+                                            "description": "Which apps should we receive events from? If not specified or * then events for all apps will be received",
+                                            "type": "string"
+                                        },
+                                        "exact_severity": {
+                                            "default": false,
+                                            "description": "If true, then only events with severity exactly matching the severity field will be received. If false then more severe events will also be received",
+                                            "type": "boolean"
+                                        },
+                                        "exact_verbosity": {
+                                            "default": false,
+                                            "description": "If true, then only events with verbosity exactly matching the verbosity field will be received. If false then less verbose events will also be received",
+                                            "type": "boolean"
+                                        },
+                                        "include_descendants": {
+                                            "default": false,
+                                            "description": "Should we receive events relating to descendant accounts if an account is specified?",
+                                            "type": "boolean"
+                                        },
+                                        "severity": {
+                                            "anyOf": [
+                                                {
+                                                    "description": "What severity are we interested in events for?",
+                                                    "enum": [
+                                                        "ok",
+                                                        "warning",
+                                                        "critical"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "items": {
+                                                        "description": "What severity are we interested in events for?",
+                                                        "enum": [
+                                                            "ok",
+                                                            "warning",
+                                                            "critical"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "default": "ok"
+                                        },
+                                        "verbosity": {
+                                            "anyOf": [
+                                                {
+                                                    "description": "What verbosity are we interested in events for?",
+                                                    "enum": [
+                                                        "trace",
+                                                        "debug",
+                                                        "info",
+                                                        "warn",
+                                                        "error",
+                                                        "fatal"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "items": {
+                                                        "description": "What verbosity are we interested in events for?",
+                                                        "enum": [
+                                                            "trace",
+                                                            "debug",
+                                                            "info",
+                                                            "warn",
+                                                            "error",
+                                                            "fatal"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "default": "info"
+                                        }
+                                    },
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            "enabled": {
+                                "default": true,
+                                "description": "Should the backend be started on edr app start?",
+                                "type": "boolean"
+                            },
+                            "name": {
+                                "description": "A unique identifier for the backend",
+                                "minLength": 1,
+                                "type": "string"
+                            },
+                            "options": {
+                                "description": "Options passed on to the backend module. These vary by module",
+                                "properties": {
+                                    "formatter": {
+                                        "description": "Output format configuration which is used by some (but not all) backends",
+                                        "properties": {
+                                            "options": {
+                                                "description": "Options passed on to the formatter module. These vary by module",
+                                                "type": "object"
+                                            },
+                                            "type": {
+                                                "description": "The formatter module to be used (eg. json refers to edr_fmt_json.erl)",
+                                                "enum": [
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": {
+                                "description": "The backend module to be used (eg. amqp refers to edr_be_amqp.erl)",
+                                "enum": [
+                                    "amqp",
+                                    "file",
+                                    "http"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "type",
+                            "bindings",
+                            "enabled"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
         "system_config.fax": {
             "description": "Schema for fax system_config",
             "properties": {
@@ -28667,6 +29474,7 @@
                     "type": "integer"
                 },
                 "proxy_password": {
+                    "default": "",
                     "description": "media proxy password",
                     "type": "string"
                 },
@@ -28691,6 +29499,7 @@
                     "type": "boolean"
                 },
                 "proxy_username": {
+                    "default": "",
                     "description": "media proxy username",
                     "type": "string"
                 },
@@ -31901,6 +32710,11 @@
                     "description": "Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify)",
                     "type": "boolean"
                 },
+                "skip_envelope": {
+                    "default": false,
+                    "description": "Determines if the envelope should be skipped",
+                    "type": "boolean"
+                },
                 "skip_greeting": {
                     "default": false,
                     "description": "Determines if the greeting should be skipped",
@@ -32186,6 +33000,20 @@
                 "port": {
                     "description": "Parameters releated to whitelabeling port requests",
                     "properties": {
+                        "authority": {
+                            "description": "The email(s) to be used for admin port requests",
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                }
+                            ]
+                        },
                         "features": {
                             "description": "The URL to use when the features link is clicked",
                             "format": "uri",

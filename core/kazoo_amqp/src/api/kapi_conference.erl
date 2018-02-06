@@ -25,7 +25,8 @@
 -export([mute_participant/1, mute_participant_v/1]).
 -export([play/1, play_v/1
         ,tones/1, tones_v/1
-        ,say/1, say_v/1, tts/1, tts_v/1
+        ,say/1, say_v/1
+        ,tts/1, tts_v/1
         ]).
 -export([record/1, record_v/1]).
 -export([recordstop/1, recordstop_v/1]).
@@ -144,29 +145,58 @@
                                           ,<<"Authorizing-Type">>
                                           ,<<"Bridge-ID">>
                                           ,<<"Call-Direction">>
+                                          ,<<"Call-ID">>
                                           ,<<"Callee-ID-Name">>
                                           ,<<"Callee-ID-Number">>
+                                          ,<<"Caller-ID-Name">>
+                                          ,<<"Caller-ID-Number">>
                                           ,<<"Channel-Authorized">>
+                                          ,<<"Channel-Call-State">>
+                                          ,<<"Channel-Created-Time">>
+                                          ,<<"Channel-Is-Loopback">>
+                                          ,<<"Channel-Loopback-Bowout">>
+                                          ,<<"Channel-Loopback-Bowout-Execute">>
+                                          ,<<"Channel-Loopback-Leg">>
+                                          ,<<"Channel-Loopback-Other-Leg-ID">>
+                                          ,<<"Channel-Moving">>
+                                          ,<<"Channel-Name">>
+                                          ,<<"Channel-State">>
                                           ,<<"Custom-Application-Vars">>
                                           ,<<"Custom-Channel-Vars">>
                                           ,<<"Custom-SIP-Headers">>
                                           ,<<"Destination">>
+                                          ,<<"Disposition">>
                                           ,<<"Ecallmgr-Node">>
                                           ,<<"From">>
+                                          ,<<"From-Tag">>
+                                          ,<<"Hangup-Cause">>
+                                          ,<<"Hangup-Code">>
                                           ,<<"Is-Loopback">>
                                           ,<<"Is-On-Hold">>
                                           ,<<"Media-Node">>
                                           ,<<"Media-Server">>
+                                          ,<<"Msg-ID">>
                                           ,<<"Node">>
+                                          ,<<"Origination-Call-ID">>
                                           ,<<"Other-Leg-Call-ID">>
+                                          ,<<"Other-Leg-Caller-ID-Name">>
+                                          ,<<"Other-Leg-Caller-ID-Number">>
+                                          ,<<"Other-Leg-Destination-Number">>
+                                          ,<<"Other-Leg-Direction">>
                                           ,<<"Presence-ID">>
+                                          ,<<"Raw-Application-Data">>
+                                          ,<<"Raw-Application-Name">>
                                           ,<<"Realm">>
+                                          ,<<"Replaced-By">>
                                           ,<<"Request">>
+                                          ,<<"Switch-Hostname">>
                                           ,<<"Switch-Nodename">>
                                           ,<<"Switch-URI">>
                                           ,<<"Switch-URL">>
                                           ,<<"Timestamp">>
                                           ,<<"To">>
+                                          ,<<"To-Tag">>
+                                          ,<<"Transfer-History">>
                                           ,<<"Username">>
                                           ]).
 
@@ -449,7 +479,8 @@
           ,AccountId/binary, "."
           ,ConferenceId/binary, "."
           ,(amqp_util:encode(CallId))/binary
-        >>).
+        >>
+       ).
 -define(CONFERENCE_EVENT_HEADERS, [<<"Event">>
                                   ,<<"Conference-ID">>
                                   ,<<"Instance-ID">>
@@ -1613,10 +1644,12 @@ event_key(API)
   when is_list(API) ->
     event_key(kz_json:from_list(API));
 event_key(API) ->
-    Event = kz_json:get_value(<<"Event">>, API),
+    Event = kz_json:get_ne_binary_value(<<"Event">>, API),
     AccountId = kz_json:get_first_defined([<<"Account-ID">>
-                                          ,[<<"Custom-Channel-Vars">>]
-                                          ], API),
+                                          ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                                          ]
+                                         ,API
+                                         ),
     ConferenceId = kz_json:get_value(<<"Conference-ID">>, API),
     CallId = kz_json:get_value(<<"Call-ID">>, API, ConferenceId),
     ?CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId).

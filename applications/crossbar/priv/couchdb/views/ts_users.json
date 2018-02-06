@@ -1,8 +1,5 @@
 {
     "_id": "_design/ts_users",
-    "filters": {
-        "export": "function(doc, req) { return ( doc._id.substring(0, 5) != 'user_' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

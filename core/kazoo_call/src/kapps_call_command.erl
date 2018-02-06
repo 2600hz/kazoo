@@ -72,12 +72,15 @@
 -export([play/2, play/3, play/4, play/5
         ,play_command/2, play_command/3, play_command/4, play_command/5
         ,b_play/2, b_play/3, b_play/4, b_play/5
+        ,play_terminators/1
+        ,play_leg/1
         ]).
 -export([prompt/2, prompt/3]).
 
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
         ,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
+        ,tts_terminators/1, tts_voice/1, tts_language/2, tts_engine/2
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -114,7 +117,7 @@
         ,b_conference/6, b_conference/7
         ]).
 
--export([noop/1]).
+-export([noop/1, noop_id/0]).
 -export([flush/1, flush_dtmf/1
         ,send_dtmf/2, send_dtmf/3
         ,recv_dtmf/2
@@ -224,6 +227,7 @@
 -export_type([audio_macro_prompt/0
              ,audio_macro_prompts/0
              ,store_fun/0
+             ,collect_digits_return/0
              ]).
 
 -type store_fun() :: kz_term:ne_binary() | fun(() -> kz_term:ne_binary()).
@@ -460,7 +464,7 @@ audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, []).
 -spec audio_macro(audio_macro_prompts(), kapps_call:call(), kz_json:objects()) ->
                          binary().
 audio_macro([], Call, Queue) ->
-    NoopId = kz_datamgr:get_uuid(),
+    NoopId = noop_id(),
     Prompts = [kz_json:from_list(
                  [{<<"Application-Name">>, <<"noop">>}
                  ,{<<"Msg-ID">>, NoopId}
@@ -1490,7 +1494,7 @@ play(Media, Terminators, Leg, Call) ->
 -spec play(kz_term:ne_binary(), kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_boolean(), kapps_call:call()) ->
                   kz_term:ne_binary().
 play(Media, Terminators, Leg, Endless, Call) ->
-    NoopId = kz_datamgr:get_uuid(),
+    NoopId = noop_id(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                                   ,{<<"Msg-ID">>, NoopId}
@@ -1547,7 +1551,7 @@ tts(SayMe, Voice, Lang, Terminators, Call) ->
 
 -spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
-    NoopId = kz_datamgr:get_uuid(),
+    NoopId = noop_id(),
 
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
@@ -1594,16 +1598,17 @@ tts_terminators('undefined') -> ?ANY_DIGIT;
 tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
 
+-spec tts_voice(kz_term:api_ne_binaries()) -> kz_term:ne_binary().
 tts_voice('undefined') -> kazoo_tts:default_voice();
 tts_voice(Voice) -> Voice.
 
+-spec tts_language(kz_term:api_ne_binaries(), kapps_call:call()) -> kz_term:ne_binary().
 tts_language('undefined', Call) -> kapps_call:language(Call);
 tts_language(Language, _Call) -> Language.
 
 -spec tts_engine(kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts_engine('undefined', Call) -> kazoo_tts:default_provider(Call);
 tts_engine(Engine, _Call) -> Engine.
-
 
 -spec b_tts(kz_term:api_binary(), kapps_call:call()) -> kapps_api_std_return().
 b_tts(SayMe, Call) ->
@@ -2305,10 +2310,12 @@ b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
 %% Produces the low level kz_api request to preform a noop
 %% @end
 %%--------------------------------------------------------------------
+-spec noop_id() -> kz_term:ne_binary().
+noop_id() -> kz_datamgr:get_uuid().
 
 -spec noop(kapps_call:call()) -> kz_term:ne_binary().
 noop(Call) ->
-    NoopId = kz_datamgr:get_uuid(),
+    NoopId = noop_id(),
     Command = [{<<"Application-Name">>, <<"noop">>}
               ,{<<"Msg-ID">>, NoopId}
               ],
@@ -2328,7 +2335,7 @@ b_noop(Call) -> wait_for_noop(Call, noop(Call)).
 
 -spec flush(kapps_call:call()) -> binary().
 flush(Call) ->
-    NoopId = kz_datamgr:get_uuid(),
+    NoopId = noop_id(),
     Command = [{<<"Application-Name">>, <<"noop">>}
               ,{<<"Msg-ID">>, NoopId}
               ,{<<"Insert-At">>, <<"flush">>}
@@ -3433,7 +3440,7 @@ b_play_macro(Media, Call) ->
 
 -spec play_macro(kz_term:ne_binaries(), kapps_call:call()) -> kz_term:ne_binary().
 play_macro(Media, Call) ->
-    NoopId = kz_datamgr:get_uuid(),
+    NoopId = noop_id(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                                   ,{<<"Msg-ID">>, NoopId}

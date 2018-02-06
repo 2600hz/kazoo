@@ -1,0 +1,45 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2018, 2600Hz
+%%% @doc
+%%% EDR in-core API
+%%% @end
+%%% @contributors
+%%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%%    Conversant Ltd (Max Lay)
+%%%-------------------------------------------------------------------
+-module(kz_edr).
+
+-include_lib("../include/edr.hrl").
+
+-export([event/5, event/6]).
+
+%% Callback for new process
+-export([send_event/1]).
+
+-spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object()) -> 'ok'.
+event(AppName, AppVersion, Severity, Verbosity, Body) ->
+    event(AppName, AppVersion, Severity, Verbosity, Body, 'undefined').
+
+-spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object(), kz_term:api_ne_binary()) -> 'ok'.
+event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->
+    GregorianTime = kz_time:now_s(kz_time:now()),
+    Event = #edr_event{account_id=AccountId
+                      ,app_name=AppName
+                      ,app_version=AppVersion
+                      ,body=Body
+                      ,id=kz_datamgr:get_uuid()
+                      ,node=kz_term:to_binary(node())
+                      ,severity=Severity
+                      ,timestamp=kz_time:iso8601(GregorianTime)
+                       %% Time needs to be computed ASAP
+                      ,gregorian_time=GregorianTime
+                      ,verbosity=Verbosity},
+    %% We want to resume execution as soon as possible, and not to crash on event processing failure.
+    %% So, we'll spawn a new process to do this
+    spawn(?MODULE, 'send_event', [Event]),
+    'ok'.
+
+-spec send_event(edr_event()) -> any().
+send_event(#edr_event{account_id=AccountId}=Event) ->
+    {'ok', Account} = kzd_accounts:fetch(AccountId),
+    edr_bindings:distribute(Event#edr_event{account_tree=kzd_accounts:tree(Account)}).

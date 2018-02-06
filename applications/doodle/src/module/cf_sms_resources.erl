@@ -127,7 +127,7 @@ get_from_uri_realm(Data, Call) ->
 -spec maybe_get_call_from_realm(kapps_call:call()) -> kz_term:api_ne_binary().
 maybe_get_call_from_realm(Call) ->
     case kapps_call:from_realm(Call) of
-        <<"norealm">> -> kz_account:fetch_realm(kapps_call:account_id(Call));
+        <<"norealm">> -> kzd_accounts:fetch_realm(kapps_call:account_id(Call));
         Realm -> Realm
     end.
 

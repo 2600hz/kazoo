@@ -1,8 +1,5 @@
 {
     "_id": "_design/numbers",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'number' ); }"
-    },
     "language": "javascript",
     "views": {
         "list_by_number": {

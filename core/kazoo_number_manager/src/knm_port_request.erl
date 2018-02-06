@@ -330,7 +330,7 @@ transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
                          _ -> undefined
                      end,
     #{auth_account_id => AuthAccountId
-     ,auth_account_name => kz_account:fetch_name(AuthAccountId)
+     ,auth_account_name => kzd_accounts:fetch_name(AuthAccountId)
      ,auth_user_id => OptionalUserId
      ,user_first_name => FirstName
      ,user_last_name => LastName
@@ -514,7 +514,7 @@ clear_numbers_from_port(PortReq) ->
 maybe_send_request(JObj) ->
     kz_util:put_callid(kz_doc:id(JObj)),
     AccountId = kz_doc:account_id(JObj),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', AccountDoc} ->
             Url = kz_json:get_value(<<"submitted_port_requests_url">>, AccountDoc),
             maybe_send_request(JObj, Url);
@@ -687,8 +687,8 @@ update_doc(_Doc, 'undefined') ->
     lager:debug("no account id in doc ~s", [kz_doc:id(_Doc)]),
     'undefined';
 update_doc(PortRequest, AccountId) ->
-    {'ok', AccountDoc} = kz_account:fetch(AccountId),
-    kz_json:set_value(?PORT_PVT_TREE, kz_account:tree(AccountDoc), PortRequest).
+    {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
+    kz_json:set_value(?PORT_PVT_TREE, kzd_accounts:tree(AccountDoc), PortRequest).
 
 -spec fetch_docs(binary(), pos_integer()) -> {'ok', kz_json:objects()}.
 fetch_docs(StartKey, Limit) ->

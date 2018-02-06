@@ -647,8 +647,12 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
         'false' -> 'ok'
     end;
 process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
-    {'ok', Channel} = fetch(UUID, 'record'),
-    kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}, Channel),
+    case fetch(UUID, 'record') of
+        {'ok', Channel} ->
+            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}, Channel);
+        {'error', 'not_found'} -> 'ok'
+    end,
+
     _ = ecallmgr_fs_channels:destroy(UUID, Node),
     maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->

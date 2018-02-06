@@ -157,20 +157,20 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             _ = kapps_call_command:queued_hangup(Call),
             'ok';
         'false' ->
-            cf_exe:branch(kz_json:get_value(<<"flow">>, Flow), Call)
+            cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call)
     end.
 
 -spec should_use_account_cid(kz_json:object()) -> boolean().
 should_use_account_cid(Data) ->
     kz_json:is_true(<<"use_account_caller_id">>, Data, ?DEFAULT_USE_ACCOUNT_CALLER_ID).
 
--spec maybe_update_caller_id(kz_json:object(), boolean()) -> kapps_call:call().
+-spec maybe_update_caller_id(kapps_call:call(), boolean()) -> kapps_call:call().
 maybe_update_caller_id(Call, 'true') -> use_account_cid(Call);
 maybe_update_caller_id(Call, 'false') -> keep_original_cid(Call).
 
 -spec start_preconnect_audio(kz_json:object(), kapps_call:call()) -> 'ok'.
 start_preconnect_audio(Data, Call) ->
-    case kz_json:get_ne_value(<<"preconnect_audio">>, Data, <<"dialtone">>) of
+    case kz_json:get_ne_binary_value(<<"preconnect_audio">>, Data, <<"dialtone">>) of
         <<"dialtone">> ->
             lager:debug("playing dialtone..."),
             play_dialtone(Call);
@@ -267,10 +267,10 @@ should_restrict_call(Data, Call, Number) ->
 %%--------------------------------------------------------------------
 -spec should_restrict_call_by_account(kapps_call:call(), kz_term:ne_binary()) -> boolean().
 should_restrict_call_by_account(Call, Number) ->
-    case kz_account:fetch(kapps_call:account_id(Call)) of
+    case kzd_accounts:fetch(kapps_call:account_id(Call)) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = knm_converters:classify(Number),
             lager:info("classified number as ~p", [Classification]),
-            kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
+            <<"deny">> =:= kz_json:get_ne_binary_value([<<"call_restriction">>, Classification, <<"action">>], JObj)
     end.

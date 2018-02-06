@@ -84,7 +84,7 @@ Each line on the text file has the format `{correct}|{mispelt} [{misspelt} ...]`
 
 ## check-unstaged.bash
 
-Checks if any unstanged changes are found in the repo and exits if so. Used in CircleCI to fail builds with unstaged changes after applying code checks, spell checking, etc.
+Checks if any unstaged changes are found in the repo and exits if so. Used in CircleCI to fail builds with unstaged changes after applying code checks, spell checking, etc.
 
 
 ## check-xref.escript
@@ -101,7 +101,7 @@ Xref: listing undefined_functions
 Done
 ```
 
-If there are any calls to non-existant modules, or non-exported functions, you will get errors listed here.
+If there are any calls to nonexistent modules, or non-exported functions, you will get errors listed here.
 
 
 ## circleci-build-erlang.sh
@@ -288,7 +288,7 @@ In this example, the `cb_context.erl` has 115 evil specs, 119 lines were removed
 
 ```shell
 $ scripts/evil_specs_remover.escript -k
-Searching for evil sepcspecs...
+Searching for evil specspecs...
 processing 1 file(s) with evil specspec:
   file /home/hesaam/work/2600hz/kazoo/scripts/../applications/crossbar/src/cb_context.erl (115 specs): -119 +200
 
@@ -320,6 +320,9 @@ Updates crossbar docs with the schema table from the ref (auto-gen) version
 
 Parses the ecallmgr code looking for keys used to access values in the FreeSWITCH proplist and builds a header file at applications/ecallmgr/src/fs\_event\_filters.hrl for use when initializing mod\_kazoo.
 
+## generate-kzd-builders.escript
+
+Builds accessor modules (`.erl.src` files) in `core/kazoo_documents/src` from the API schemas. Changes to the `.erl.src` should be manually migrated to the corresponding `.erl` file.
 
 ## generate-schemas.escript
 
@@ -737,7 +740,7 @@ Here no errors were generated.
 
 ## `validate_mkdocs.py`
 
-Parses the mkdocs.yml and looks for non-existent docs
+Parses the mkdocs.yml and looks for nonexistent docs
 
 
 ## `wh_to_kz.sh`

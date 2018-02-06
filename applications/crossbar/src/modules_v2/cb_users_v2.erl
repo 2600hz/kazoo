@@ -366,7 +366,7 @@ load_attachment(UserId, AttachmentId, Context) ->
 maybe_update_devices_presence(Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Doc = cb_context:doc(Context),
-    case kz_device:presence_id(DbDoc) =:= kz_device:presence_id(Doc) of
+    case kzd_devices:presence_id(DbDoc) =:= kzd_devices:presence_id(Doc) of
         'true' ->
             lager:debug("presence_id did not change, ignoring");
         'false' ->
@@ -384,14 +384,14 @@ update_devices_presence(Context) ->
             update_devices_presence(Context, DeviceDocs)
     end.
 
--spec update_devices_presence(cb_context:context(), kz_device:docs()) -> 'ok'.
+-spec update_devices_presence(cb_context:context(), kzd_devices:docs()) -> 'ok'.
 update_devices_presence(Context, DeviceDocs) ->
     lists:foreach(fun(DeviceDoc) -> update_device_presence(Context, DeviceDoc) end
                  ,DeviceDocs
                  ).
 
 -spec user_devices(cb_context:context()) ->
-                          {'ok', kz_device:docs()} |
+                          {'ok', kzd_devices:docs()} |
                           {'error', any()}.
 user_devices(Context) ->
     UserId = kz_doc:id(cb_context:doc(Context)),
@@ -404,7 +404,7 @@ user_devices(Context) ->
             {'ok', [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]}
     end.
 
--spec update_device_presence(cb_context:context(), kz_device:doc()) -> pid().
+-spec update_device_presence(cb_context:context(), kzd_devices:doc()) -> pid().
 update_device_presence(Context, DeviceDoc) ->
     AuthToken = cb_context:auth_token(Context),
     ReqId = cb_context:req_id(Context),

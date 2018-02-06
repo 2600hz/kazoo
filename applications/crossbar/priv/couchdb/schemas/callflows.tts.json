@@ -3,6 +3,10 @@
     "_id": "callflows.tts",
     "description": "Validator for the TTS (Text-to-speech) callflow action",
     "properties": {
+        "endless_playback": {
+            "description": "Loop the media until cancelled",
+            "type": "boolean"
+        },
         "engine": {
             "description": "What TTS engine to use",
             "enum": [
@@ -13,7 +17,6 @@
             "type": "string"
         },
         "language": {
-            "default": "en",
             "description": "The language of the speaker",
             "type": "string"
         },

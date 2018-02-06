@@ -27,12 +27,12 @@
                         ]))
        ).
 
--define(SPECSPEC_REGEX, "ag --nogroup '\\-spec[^.]+\\.$(\n\\-spec[^.]+\\.$)+' ").
+-define(SPECSPEC_REGEX, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '\\-spec[^.]+\\.$(\\n\\-spec[^.]+\\.$)+' ").
 
 main([_|_]=Args) ->
     _ = io:setopts('user', [{'encoding', 'unicode'}]),
     check_ag_available(),
-    io:format("Searching for evil sepcspecs...~n"),
+    io:format("Searching for evil sepc+specs...~n"),
     {Options, Paths} = parse_args(Args, {[], []}),
     check_result(list_to_binary(search_for_evil_specs(Paths)), Paths, Options);
 main(_) ->
@@ -54,7 +54,7 @@ check_ag_available() ->
 
 usage() ->
     io:format("no correct paths to files or directories was given.~n~n"),
-    io:format("Usage: \n\t~s [--create-backup|-b] [--use-kazoo-dirs|-k] <paths_to_files_or_dir>+\n", [filename:basename(escript:script_name())]),
+    io:format("Usage: \n\t~s [--create-backup|-b] [--use-kazoo-dirs|-k] [--debug] [path_to_file_or_dir]*\n", [filename:basename(escript:script_name())]),
     halt(1).
 
 search_for_evil_specs([]) ->
@@ -90,69 +90,81 @@ parse_args(["--use-kazoo-dirs" | Rest], {Opts, Paths}) ->
     parse_args(Rest, {[{use_kazoo_dirs, true} | Opts], Paths});
 parse_args(["-k" | Rest], {Opts, Paths}) ->
     parse_args(Rest, {[{use_kazoo_dirs, true} | Opts], Paths});
+parse_args(["--debug" | Rest], {Opts, Paths}) ->
+    parse_args(Rest, {[{debug, true} | Opts], Paths});
 parse_args(["." | Rest], {Opts, Paths}) ->
     parse_args(Rest, {Opts, [kazoo_root() | Paths]});
 parse_args([Path | Rest], {Opts, Paths}) ->
     parse_args(Rest, {Opts, [filename:absname(Path) | Paths]}).
 
 check_result(<<>>, _, _) ->
-    io:format("Hooray! no evil specsecs was found 🎉~n");
+    io:format("Hooray! no evil spec+specs was found 🎉~n");
 check_result(<<"ERR:", _/binary>>=Error, _, _) ->
-    io:put_chars(Error);
+    io:put_chars(Error),
+    halt(1);
 check_result(Result, [Path], Options) ->
     case {filelib:is_dir(Path), filelib:is_file(Path)} of
         {true, _} -> process_ag_result(Result, Options);
         {_, true} ->
             %% since this is a single file ag won't print filename
             %% adding "file_name:" to the result here
-            Lines = [<<(list_to_binary(Path))/binary, ":", Line/binary>>
+            Lines = [<<(list_to_binary(Path))/binary, ":", Line/binary, "\n">>
                          || Line <- binary:split(Result, <<"\n">>, [global]),
                             Line =/= <<>>
                     ],
-            process_ag_result(Lines, Options)
+            process_ag_result(iolist_to_binary(Lines), Options)
     end;
 check_result(Result, [_|_], Options) ->
     process_ag_result(Result, Options).
 
 %% get list of files and specs from ag result
 process_ag_result(Result, Options) ->
-    FilesSpecs = parse_ag_result(Options, [Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], []),
+    {FilesSpecs, Errors} = parse_ag_result(Options, [Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], [], []),
     io:format("processing ~b file(s) with evil specspec:~n", [length(FilesSpecs)]),
     _ = lists:map(fun process_file/1, FilesSpecs),
-    io:format("~n🍺 finished~n").
+    io:format("~n🍺 finished~n"),
+    lists:keyfind(debug, 1, Options) =:= {debug, true}
+        andalso io:put_chars(<<"\nThere were some errors:\n", (iolist_to_binary(Errors))/binary, "\n">>),
+    halt(1).
 
 %% Get list of specs for each file from ag result by parse
 %% the first line, then get all specs for the file.
 %% Then extract specs info from AST.
-parse_ag_result(_, [], Acc) -> Acc;
-parse_ag_result(Options, [H|T], Acc) ->
-    FirstLine = {File, _, _, true} = parse_ag_line(H),
-    {NewTail, FileSpecs} = get_ag_file_specs(T, File, [FirstLine]),
-    FilePath = binary_to_list(File),
-    lists:keyfind(backup, 1, Options) =:= {backup, true}
-        andalso backup_file(FilePath),
-    {ok, Forms} = epp_dodger:quick_parse_file(FilePath, [{no_fail, true}]),
-    SpecMaps = get_ag_specs_info(Forms, FileSpecs, []),
-    parse_ag_result(Options, NewTail, [{FilePath, SpecMaps}|Acc]).
+parse_ag_result(_, [], Acc, ErrorAcc) -> {Acc, ErrorAcc};
+parse_ag_result(Options, [H|T], SpecAcc, ErrorAcc) ->
+    case parse_ag_line(H) of
+        {File, _, _, true}=FirstLine ->
+            {NewTail, FileSpecs, Errors} = get_ag_file_specs(T, File, [FirstLine], ErrorAcc),
+            FilePath = binary_to_list(File),
+            lists:keyfind(backup, 1, Options) =:= {backup, true}
+                andalso backup_file(FilePath),
+            {ok, Forms} = epp_dodger:quick_parse_file(FilePath, [{no_fail, true}]),
+            SpecMaps = get_ag_specs_info(Forms, FileSpecs, []),
+            parse_ag_result(Options, NewTail, [{FilePath, SpecMaps}|SpecAcc], Errors);
+        Error ->
+            parse_ag_result(Options, T, SpecAcc, ErrorAcc ++ [Error])
+    end.
 
 %% get all specs for this file
-get_ag_file_specs([], _, Acc) -> {[], Acc};
-get_ag_file_specs([H|T], File, Acc) ->
+get_ag_file_specs([], _, Acc, ErrorAcc) -> {[], Acc, ErrorAcc};
+get_ag_file_specs([H|T], File, Acc, ErrorAcc) ->
     case parse_ag_line(H) of
         {File, _, _, _}=Line ->
-            get_ag_file_specs(T, File, Acc ++ [Line]);
-        _ ->
-            {[H|T], Acc}
+            get_ag_file_specs(T, File, Acc ++ [Line], ErrorAcc);
+        {_, _, _, _} ->
+            {[H|T], Acc, ErrorAcc};
+        Error ->
+            get_ag_file_specs(T, File, Acc, ErrorAcc ++ [Error])
     end.
 
 %% find spec function name/arity from AST
 get_ag_specs_info(_, [], Acc) -> Acc;
 get_ag_specs_info(Forms, [{_, Pos, Line, true}|T], Acc) ->
     %% {attribute, line, {{fun_name, arity}, func_type_ast}}
-    {_, _, _, {{FunName, Arity}, _}} = lists:keyfind(binary_to_integer(Pos), 2, Forms),
+    {_, _, _, {{FunName, Arity}, _}} = lists:keyfind(Pos, 2, Forms),
     {NewTail, SpecLines} = get_multi_line_spec(T, [Line]),
     SpecMap = #{spec => SpecLines
-               ,spec_pos => binary_to_integer(Pos)
+               ,spec_pos => Pos
                ,spec_length => length(SpecLines)
                ,fun_name => FunName
                ,arity => Arity
@@ -166,11 +178,18 @@ get_multi_line_spec([{_, _, Line, false}|T], Acc) ->
 get_multi_line_spec(Lines, Acc) ->
     {Lines, Acc}.
 
+parse_ag_line(<<"ERR:", _/binary>>=Error) ->
+    Error;
 parse_ag_line(Bin) ->
+    try explode_line(Bin)
+    catch _:_ -> <<Bin/binary, "\n">>
+    end.
+
+explode_line(Bin) ->
     [File, PosRest] = binary:split(Bin, <<":">>),
     [Pos, Rest] = binary:split(PosRest, <<":">>),
     Line = iolist_to_binary(Rest),
-    {File, Pos, Line, is_spec_line(Line)}.
+    {File, binary_to_integer(Pos), Line, is_spec_line(Line)}.
 
 is_spec_line(<<"-spec", _/binary>>) -> true;
 is_spec_line(_) -> false.

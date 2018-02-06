@@ -899,7 +899,7 @@ is_domain_unique(AccountId, Domain) ->
 maybe_update_account_definition(Context) ->
     maybe_update_account_definition(Context, cb_context:resp_status(Context)).
 maybe_update_account_definition(Context, 'success') ->
-    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kz_account:type())),
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kzd_accounts:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             AccountDoc = cb_context:doc(Context1),
@@ -922,7 +922,7 @@ maybe_cleanup_account_definition(Context) ->
     maybe_cleanup_account_definition(Context, cb_context:resp_status(Context)).
 
 maybe_cleanup_account_definition(Context, 'success') ->
-    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kz_account:type())),
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kzd_accounts:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             AccountDoc = cb_context:doc(Context1),

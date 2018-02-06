@@ -16,6 +16,9 @@
         "Conference-ID": {
             "type": "string"
         },
+        "Endless-Playback": {
+            "type": "boolean"
+        },
         "Engine": {
             "type": "string"
         },
@@ -48,6 +51,10 @@
         },
         "Leg": {
             "type": "string"
+        },
+        "Loop-Count": {
+            "minimum": 1,
+            "type": "integer"
         },
         "Terminators": {
             "items": {

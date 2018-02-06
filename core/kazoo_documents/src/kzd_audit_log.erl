@@ -194,6 +194,6 @@ update_audit_log(Services, AuditLog) ->
                        [{?KEY_ACCOUNT_QUANTITIES, kzd_services:quantities(JObj)}
                        ,{?KEY_DIFF_QUANTITIES, kz_services:diff_quantities(Services)}
                        ,{?KEY_CASCADE_QUANTITIES, kz_services:cascade_quantities(Services)}
-                       ,{<<"account_name">>, kz_account:fetch_name(AccountId)}
+                       ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
                        ])),
     set_audit_account(AuditLog, AccountId, AccountAudit).

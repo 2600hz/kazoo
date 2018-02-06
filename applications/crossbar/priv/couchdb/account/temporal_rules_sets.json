@@ -1,8 +1,5 @@
 {
     "_id": "_design/temporal_rules_sets",
-    "filters": {
-        "export": "function(doc, req) { return ( doc.pvt_type == 'temporal_rule_set' ); }"
-    },
     "language": "javascript",
     "views": {
         "crossbar_listing": {

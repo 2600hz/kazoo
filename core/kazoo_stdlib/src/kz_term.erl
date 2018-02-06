@@ -40,6 +40,7 @@
         ,is_ne_binaries/1
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1, is_ne_list/1
+        ,is_pos_integer/1
         ,identity/1
         ,always_true/1, always_false/1
         ]).
@@ -81,6 +82,7 @@
 
 -type api_number() :: number() | 'undefined'.
 -type api_integer() :: integer() | 'undefined'.
+-type api_integers() :: [integer()] | 'undefined'.
 -type api_pos_integer() :: pos_integer() | 'undefined'.
 -type api_non_neg_integer() :: non_neg_integer() | 'undefined'.
 -type api_float() :: float() | 'undefined'.
@@ -102,50 +104,51 @@
 
 -type functions() :: [function()].
 
--export_type([text/0
-             ,atoms/0
-             ,pids/0
-             ,references/0
-             ,proplist_key/0
-             ,proplist_value/0
-             ,proplist_property/0
-             ,proplist/0
-             ,proplists/0
-             ,proplist_kv/2
-             ,pid_ref/0
-             ,pid_refs/0
-             ,api_pid_ref/0
-             ,api_pid_refs/0
-             ,api_terms/0
-             ,api_binary/0
-             ,api_ne_binary/0
-             ,api_ne_binaries/0
+-export_type([api_atom/0
+             ,api_atoms/0
              ,api_binaries/0
+             ,api_binary/0
+             ,api_boolean/0
+             ,api_float/0
+             ,api_integer/0
+             ,api_integers/0
+             ,api_list/0
+             ,api_ne_binaries/0
+             ,api_ne_binary/0
+             ,api_non_neg_integer/0
+             ,api_number/0
              ,api_object/0
              ,api_objects/0
-             ,api_boolean/0
-             ,api_atom/0
-             ,api_atoms/0
-             ,api_string/0
-             ,api_reference/0
              ,api_pid/0
-             ,api_list/0
-             ,api_number/0
-             ,api_integer/0
+             ,api_pid_ref/0
+             ,api_pid_refs/0
              ,api_pos_integer/0
-             ,api_non_neg_integer/0
-             ,api_float/0
+             ,api_reference/0
+             ,api_string/0
+             ,api_terms/0
+             ,atoms/0
+             ,binaries/0
              ,deeplist/0
-             ,std_return/0
-             ,sup_no_return/0
+             ,functions/0
+             ,integers/0
              ,jobj_return/0
              ,jobjs_return/0
-             ,ne_binary/0
              ,ne_binaries/0
-             ,binaries/0
+             ,ne_binary/0
+             ,pid_ref/0
+             ,pid_refs/0
+             ,pids/0
+             ,proplist/0
+             ,proplist_key/0
+             ,proplist_kv/2
+             ,proplist_property/0
+             ,proplist_value/0
+             ,proplists/0
+             ,references/0
+             ,std_return/0
              ,strings/0
-             ,integers/0
-             ,functions/0
+             ,sup_no_return/0
+             ,text/0
              ]).
 
 %%--------------------------------------------------------------------
@@ -317,7 +320,6 @@ is_true("true") -> 'true';
 is_true('true') -> 'true';
 is_true(_) -> 'false'.
 
-
 -type caster() :: fun((any()) -> any()).
 -spec safe_cast(any(), any(), caster()) -> any().
 safe_cast(Value, Default, CastFun) ->
@@ -365,17 +367,24 @@ is_boolean(_) -> 'false'.
 
 -spec is_empty(any()) -> boolean().
 is_empty(0) -> 'true';
+
 is_empty([]) -> 'true';
 is_empty("0") -> 'true';
 is_empty("NULL") -> 'true';
 is_empty("undefined") -> 'true';
+is_empty([_|_]) -> 'false';
+
 is_empty(<<>>) -> 'true';
 is_empty(<<"0">>) -> 'true';
 is_empty(<<"NULL">>) -> 'true';
 is_empty(<<"undefined">>) -> 'true';
+is_empty(<<_/binary>>) -> 'false';
+
 is_empty('null') -> 'true';
 is_empty('undefined') -> 'true';
+
 is_empty(Float) when is_float(Float), Float =:= 0.0 -> 'true';
+
 is_empty(MaybeJObj) ->
     case kz_json:is_json_object(MaybeJObj) of
         'false' -> 'false'; %% if not a json object, it's not empty
@@ -394,6 +403,11 @@ is_proplist(_) -> 'false'.
 is_ne_list([_|_]) -> 'true';
 is_ne_list(_) -> 'false'.
 
+-spec is_pos_integer(any()) -> boolean().
+is_pos_integer(X) ->
+    is_integer(X)
+        andalso X > 0.
+
 -spec identity(X) -> X.
 identity(X) -> X.
 
@@ -408,7 +422,6 @@ to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
 to_lower_string(Else) ->
     to_lower_string(to_list(Else)).
-
 
 -spec to_upper_binary(any()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';

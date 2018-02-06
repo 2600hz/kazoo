@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @yright (C) 2011-2015 2600Hz INC
+%%% @yright (C) 2011-2018 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -541,6 +541,7 @@
                           ,<<"Media-Name">>
                           ]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Endless-Playback">>
+                                   ,<<"Loop-Count">>
                                    ,<<"Format">>
                                    ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
                                    ,<<"Insert-At">>
@@ -557,6 +558,7 @@
                          ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}
                         ,{<<"Endless-Playback">>, fun kz_term:is_boolean/1}
+                        ,{<<"Loop-Count">>, fun kz_term:is_pos_integer/1}
                         ]).
 
 %% Break Request
@@ -665,11 +667,16 @@
 
 %% TTS
 -define(TTS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Text">>]).
--define(OPTIONAL_TTS_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>
-                                  ,<<"Voice">>, <<"Language">>, <<"Engine">>
+-define(OPTIONAL_TTS_REQ_HEADERS, [<<"Conference-ID">>
+                                  ,<<"Endless-Playback">>
+                                  ,<<"Loop-Count">>
+                                  ,<<"Engine">>
                                   ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
-                                  ,<<"Conference-ID">>
+                                  ,<<"Insert-At">>
+                                  ,<<"Language">>
                                   ,<<"Leg">>
+                                  ,<<"Terminators">>
+                                  ,<<"Voice">>
                                   ]).
 -define(TTS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                         ,{<<"Event-Name">>, <<"command">>}
@@ -677,7 +684,10 @@
                         ,{<<"Voice">>, [<<"male">>, <<"female">>]}
                         ,?INSERT_AT_TUPLE
                         ]).
--define(TTS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
+-define(TTS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}
+                       ,{<<"Endless-Playback">>, fun kz_term:is_boolean/1}
+                       ,{<<"Loop-Count">>, fun kz_term:is_pos_integer/1}
+                       ]).
 
 %% Respond
 -define(RESPOND_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Response-Code">>]).

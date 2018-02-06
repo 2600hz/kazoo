@@ -194,6 +194,10 @@ pages:
       - 'Match CID': 'applications/callflow/doc/cidlistmatch.md'
       - 'Set CID': 'applications/callflow/doc/set_cid.md'
       - 'Check CID': 'applications/callflow/doc/check_cid.md'
+    - 'Playing Media':
+      - 'Media/URL': 'applications/callflow/doc/play.md'
+      - 'Audio Macros': 'applications/callflow/doc/audio_macro.md'
+      - 'Text-to-speech (TTS)': 'applications/callflow/doc/tts.md'
     - 'Conference': 'applications/callflow/doc/conference.md'
     - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
     - 'Webhooks': 'applications/callflow/doc/webhooks.md'
@@ -228,7 +232,6 @@ pages:
         - 'Action': 'applications/callflow/doc/intercept.md'
         - 'Feature Code': 'applications/callflow/doc/intercept_feature.md'
     - 'SIP Response': 'applications/callflow/doc/response.md'
-    - 'Text-to-speech (TTS)': 'applications/callflow/doc/tts.md'
     - 'Variable Branch': 'applications/callflow/doc/branch_variable.md'
     - 'Hangup': 'applications/callflow/doc/hangup.md'
     - 'Nomorobo': 'applications/callflow/doc/nomorobo.md'
@@ -239,7 +242,6 @@ pages:
         - 'Agents': 'applications/callflow/doc/acdc_agent.md'
         - 'Queue Login': 'applications/callflow/doc/acdc_queue.md'
         - 'Member Entry': 'applications/callflow/doc/acdc_member.md'
-    - 'Play Media': 'applications/callflow/doc/play.md'
     - 'Menu (IVR)': 'applications/callflow/doc/menu.md'
     - 'Custom Webhook': 'applications/callflow/doc/webhook.md'
     - 'Channel Move': 'applications/callflow/doc/move.md'
@@ -420,6 +422,9 @@ pages:
   - 'Kazoo PropEr':
     - 'core/kazoo_proper/doc/README.md'
     - 'core/kazoo_proper/doc/rates.md'
+  - 'Kazoo EDR':
+      - 'core/kazoo_edr/doc/README.md'
+      - 'applications/edr/doc/README.md'
   - 'Kazoo Performance Testing':
       - 'core/kazoo_perf/doc/maintenance.md'
   - 'Kazoo Test FixtureDB':
@@ -447,3 +452,4 @@ pages:
   - 'Running Dev Shells': 'scripts/dev/README.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
   - 'Webhooks': 'doc/engineering/webhooks.md'
+  - 'Attachments': 'core/kazoo_attachments/README.md'

@@ -149,7 +149,7 @@ get_from_uri_realm(Data, Call) ->
 maybe_get_call_from_realm(Call) ->
     case kapps_call:from_realm(Call) of
         <<"norealm">> ->
-            kz_account:fetch_realm(kapps_call:account_id(Call));
+            kzd_accounts:fetch_realm(kapps_call:account_id(Call));
         Realm -> Realm
     end.
 
@@ -236,7 +236,7 @@ get_sip_headers(Data, Call) ->
                ],
     AuthEndCSH = case kz_endpoint:get(Call) of
                      {'ok', AuthorizingEndpoint} ->
-                         kz_device:custom_sip_headers_outbound(AuthorizingEndpoint, kz_json:new());
+                         kzd_devices:custom_sip_headers_outbound(AuthorizingEndpoint, kz_json:new());
                      _ -> kz_json:new()
                  end,
     CSH = kz_json:get_json_value(<<"custom_sip_headers">>, Data),

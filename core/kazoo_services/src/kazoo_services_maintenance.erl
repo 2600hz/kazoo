@@ -337,7 +337,7 @@ remove_orphaned_services() ->
                                  non_neg_integer().
 maybe_remove_orphan(<<"_design/", _/binary>>, Count) -> Count;
 maybe_remove_orphan(<<_/binary>> = AccountId, Count) ->
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'ok', _AccountDoc} -> Count;
         {'error', 'not_found'} ->
             {'ok', _} = kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),

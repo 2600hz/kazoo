@@ -57,12 +57,12 @@ handle_req(JObj, Props) ->
                            ) -> 'ok'.
 maybe_prepend_preflow(JObj, Props, Call, Callflow, NoMatch) ->
     AccountId = kapps_call:account_id(Call),
-    case kz_account:fetch(AccountId) of
+    case kzd_accounts:fetch(AccountId) of
         {'error', _E} ->
             lager:warning("could not open account doc ~s : ~p", [AccountId, _E]),
             maybe_reply_to_req(JObj, Props, Call, Callflow, NoMatch);
         {'ok', AccountDoc} ->
-            case kz_account:preflow_id(AccountDoc) of
+            case kzd_accounts:preflow_id(AccountDoc) of
                 'undefined' ->
                     lager:debug("ignore preflow, not set"),
                     maybe_reply_to_req(JObj, Props, Call, Callflow, NoMatch);
@@ -192,7 +192,7 @@ send_route_response(Flow, JObj, Call) ->
              ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
              ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
              ,{<<"Pre-Park">>, pre_park_action(Call)}
-             ,{<<"From-Realm">>, kz_account:fetch_realm(AccountId)}
+             ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
              ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

@@ -441,7 +441,11 @@ on_successful_validation(Id, Context) ->
 check_modifiers(Context) ->
     JObj = cb_context:doc(Context),
     HookEvent = kz_json:get_value(<<"hook">>, JObj),
-    case get_hook_definition(HookEvent) of
+    case HookEvent =/= <<"all">>
+        andalso get_hook_definition(HookEvent)
+    of
+        'false' ->
+            Context;
         'undefined' ->
             cb_context:add_system_error('datastore_fault', Context);
         HookDefinition ->
