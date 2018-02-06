@@ -27,7 +27,7 @@
                         ]))
        ).
 
--define(SPECSPEC_REGEX, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '\\-spec[^.]+\\.$(\\n\\-spec[^.]+\\.$)+' ").
+-define(SPECSPEC_REGEX, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '^\\-spec[^.]+\\.$(\\n+\\-spec[^.]+\\.$)+' ").
 
 main([_|_]=Args) ->
     _ = io:setopts('user', [{'encoding', 'unicode'}]),
