@@ -342,7 +342,7 @@ split_and_save_to_number_dbs(AccountDb, Results) ->
     F = fun (JObj, M) ->
                 NewJObj = kz_json:get_value(<<"doc">>, JObj),
                 NumberDb = knm_converters:to_db(knm_converters:normalize(kz_doc:id(NewJObj))),
-                M#{NumberDb => [NewJObj | maps:get(NumberDb, M, [])]}
+                M#{NumberDb => [kz_doc:delete_revision(NewJObj) | maps:get(NumberDb, M, [])]}
         end,
     Map = lists:foldl(F, #{}, Results),
     save_to_number_dbs(AccountDb, maps:to_list(Map), 1).
