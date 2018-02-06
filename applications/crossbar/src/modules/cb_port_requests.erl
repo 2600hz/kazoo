@@ -5,9 +5,9 @@
 %%% Handles port request life cycles
 %%% See doc/port_requests.md
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_port_requests).
 

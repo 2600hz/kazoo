@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_auxiliary_sup).
 

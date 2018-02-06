@@ -7,13 +7,12 @@
 %%% Allow embeddable HTML forms (or other ways to POST to the URL)
 %%% and create a call.
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Edouard Swiac
+%%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Edouard Swiac
-%%%   KAZOO-4175: Sponsored by Conversant Ltd,
-%%%       implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(cb_clicktocall).
 

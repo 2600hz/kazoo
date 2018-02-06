@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
 %%% Supervisor for running conference participant processes
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(conf_participant_sup).
 

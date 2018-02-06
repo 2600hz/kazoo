@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Generate the XML for various FS responses
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 

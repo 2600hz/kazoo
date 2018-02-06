@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_configs).
 

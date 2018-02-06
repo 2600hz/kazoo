@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(doodle_shared_listener).
 -behaviour(gen_listener).

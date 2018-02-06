@@ -2,9 +2,8 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handle authn_req messages
-%%% @end
-%%% @contributors
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_authn_req).
 

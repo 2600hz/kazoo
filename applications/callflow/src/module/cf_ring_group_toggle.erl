@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @doc
 %%% Logs a user in or out of a ring group
+%%%
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%   Max Lay
 %%%-------------------------------------------------------------------
 -module(cf_ring_group_toggle).
 

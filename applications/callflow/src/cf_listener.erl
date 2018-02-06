@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Listener for route requests that can be fulfilled by callflows
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_listener).
 -behaviour(gen_listener).

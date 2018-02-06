@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kapps_config_maint_listener).
 -behaviour(gen_listener).

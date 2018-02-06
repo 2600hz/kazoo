@@ -3,11 +3,10 @@
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
+%%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%%
-%%% @contributors
-%%% Peter Defebvre
-%%%
 %%%-------------------------------------------------------------------
 -module(notify_voicemail_full).
 

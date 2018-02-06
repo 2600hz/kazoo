@@ -8,9 +8,9 @@
 %%%   ,"format":["mp3","wav"] // what format to store the recording in
 %%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_record_call).
 

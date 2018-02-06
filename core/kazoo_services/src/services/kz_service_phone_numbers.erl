@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_phone_numbers).
 -behaviour(kz_gen_service).

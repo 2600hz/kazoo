@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author VCCS Telecom
 %%% @end
-%%% @contributors
-%%% VCCS Telecom
 %%%-------------------------------------------------------------------
 -module(kz_service_billing).
 -behaviour(kz_gen_service).

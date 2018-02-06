@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(conference_maintenance).
 

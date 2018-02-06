@@ -21,11 +21,10 @@
 %%% Note: Be sure to set the internal and external caller IDs for the devices.
 %%% These are used to resolve to/from numbers correctly.
 %%%
+%%%
+%%% @author Benedict Chan <benchan@sendhub.com>
 %%% @end
-%%% @contributors
-%%%   Benedict Chan (benchan@sendhub.com)
 %%%-------------------------------------------------------------------
-
 -module(cf_singular_call_hooks).
 -include("callflow.hrl").
 

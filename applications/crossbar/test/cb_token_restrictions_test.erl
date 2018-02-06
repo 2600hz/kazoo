@@ -1,8 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%% @contributors
-%%%   James Aimonetti
+%%%
+%%% @author James Aimonetti
+%%% @end
 %%%-------------------------------------------------------------------
 -module(cb_token_restrictions_test).
 

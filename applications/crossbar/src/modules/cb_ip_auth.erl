@@ -4,10 +4,10 @@
 %%% Account IP auth module
 %%%
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(cb_ip_auth).
 

@@ -10,11 +10,11 @@
 %%%   "scope": "[custome_channel_vars|device|user|account|_]",
 %%% }
 %%%
+%%%
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
-%%%   KAZOO-4601: SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(cf_branch_variable).
 

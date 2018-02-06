@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(doodle_inbound_listener).
 -behaviour(gen_listener).

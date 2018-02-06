@@ -7,9 +7,9 @@
 %%%   // optional after here
 %%%   ,"interdigit_timeout":2000
 %%% }
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route).
 

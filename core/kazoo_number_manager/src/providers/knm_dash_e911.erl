@@ -4,9 +4,9 @@
 %%%
 %%% Handle e911 provisioning
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_dash_e911).
 -behaviour(knm_gen_provider).

@@ -1,15 +1,15 @@
-%%%----------------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Match list module
 %%%
 %%% Handle client requests for match list documents
 %%%
+%%%
+%%% @author Kozlov Yakov
+%%% @author SIPLABS, LLC (Maksim Krzhemenevskiy, Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   Kozlov Yakov
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy, Ilya Ashchepkov)
-%%%----------------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 -module(cb_lists_v1).
 
 -export([init/0

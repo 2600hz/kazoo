@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_force_outbound_tests).
 

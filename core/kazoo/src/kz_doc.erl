@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Utilities for manipulating Kazoo/Kazoo documents
+%%%
+%%% @author Edouard Swiac
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_doc).
 

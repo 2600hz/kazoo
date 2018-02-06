@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(pusher_util).
 

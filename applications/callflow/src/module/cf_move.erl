@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(cf_move).
 -behaviour(gen_cf_action).

@@ -12,12 +12,12 @@
 %%% not requiring an additional API call for the template and merge/unmerge it
 %%% from requests.
 %%%
+%%%
+%%% @author Jon Blanton
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Jon Blanton
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(cb_global_provisioner_templates).
 

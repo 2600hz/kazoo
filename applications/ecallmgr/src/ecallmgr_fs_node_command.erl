@@ -2,10 +2,9 @@
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%% Execute node commands
-%%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%
+%%% @author Luis Azedo
+%%% @end
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_node_command).
 

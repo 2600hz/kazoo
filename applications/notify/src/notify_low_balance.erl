@@ -3,10 +3,10 @@
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
-%%% @end
 %%%
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
 %%%-------------------------------------------------------------------
 -module(notify_low_balance).
 

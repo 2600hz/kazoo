@@ -7,9 +7,9 @@
 %%%   credit - a credit has been added to account-id
 %%%   debit - a debit has been applied to account-id
 %%%   balance - a request for any whapp with the balance of account-id to reply
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kapi_money).
 

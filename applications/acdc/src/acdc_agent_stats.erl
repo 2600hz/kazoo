@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Collector of stats for agents
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_stats).
 

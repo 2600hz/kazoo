@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kazoo_call_sup).
 -behaviour(supervisor).

@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kazoo_couch_maintenance).
 

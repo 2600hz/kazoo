@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
+%%% @doc Account, user, device level privacy.
 %%% "data":{
 %%%   "to_did":"+14155550987" // statically dial DID
 %%%   ,"media":"media_id"
@@ -18,12 +18,10 @@
 %%%   ,"ignore_early_media":boolean()
 %%%   ,"outbound_flags":["flag_1","flag_2"] // used to match flags on carrier docs
 %%% }
-%%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%
-%%%   Account, user, device level privacy - Sponsored by Raffel Internet B.V.
-%%%       implemented by Voyager Internet Ltd.
+%%% @author Karl Anderson
+%%% @author Sponsored by Raffel Internet B.V. Implemented by Voyager Internet Ltd.
+%%% @end
 %%%-------------------------------------------------------------------
 -module(cf_resources).
 -behaviour(gen_cf_action).

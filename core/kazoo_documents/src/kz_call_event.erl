@@ -2,9 +2,9 @@
 %%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
 %%% Call Event JSON Object
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_call_event).
 

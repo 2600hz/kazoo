@@ -4,9 +4,9 @@
 %%%
 %%% Handle e911 provisioning
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_telnyx_e911).
 -behaviour(knm_gen_provider).

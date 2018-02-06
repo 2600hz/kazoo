@@ -5,9 +5,9 @@
 %%%
 %%% Store/retrieve media files
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_media).
 

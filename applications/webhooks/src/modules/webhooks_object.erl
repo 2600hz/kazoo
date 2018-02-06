@@ -1,9 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%%
-%%% @contributors
+%%% @end
 %%%-------------------------------------------------------------------
-
 -module(webhooks_object).
 
 -export([init/0
@@ -171,3 +170,4 @@ find_account_id(Classification, DB, _Id)
     kz_util:format_account_id(DB, 'raw');
 find_account_id('aggregate', <<"accounts">>, Id) -> Id;
 find_account_id(_, _, _) -> 'undefined'.
+

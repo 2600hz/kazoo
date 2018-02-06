@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kz_nodes).
 -behaviour(gen_listener).

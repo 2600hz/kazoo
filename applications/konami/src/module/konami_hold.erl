@@ -7,10 +7,10 @@
 %%%   ,"moh_bleg":"media_id"
 %%%   ,"unhold_key":"DTMF"
 %%% }
+%%%
+%%% @author James Aimonetti
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(konami_hold).
 

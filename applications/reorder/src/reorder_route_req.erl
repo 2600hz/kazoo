@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% handler for route requests, responds if reorder match
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(reorder_route_req).
 

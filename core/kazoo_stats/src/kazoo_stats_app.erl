@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
+%%%
+%%% @author Jon Blanton <jon@2600hz.com>
 %%% @end
-%%% @contributors
-%%%   Jon Blanton <jon@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(kazoo_stats_app).
 

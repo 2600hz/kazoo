@@ -2,11 +2,11 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_command).
 

@@ -2,9 +2,9 @@
 %%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Sergey Korobkov
 %%% @end
-%%% @contributors
-%%%   Sergey Korobkov
 %%%-------------------------------------------------------------------
 -module(kt_resource_selectors).
 %% behaviour: tasks_provider

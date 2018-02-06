@@ -4,9 +4,9 @@
 %%% Recieves a ping, responds with a pong.
 %%% Useful for both keeping a websocket connection up, and figuring
 %%% out if a websocket connection is still up
+%%%
+%%% @author Conversant Ltd (Max Lay)
 %%% @end
-%%% @contributors
-%%% Conversant Ltd (Max Lay)
 %%%-------------------------------------------------------------------
 -module(bh_ping).
 

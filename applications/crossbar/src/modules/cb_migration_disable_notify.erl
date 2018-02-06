@@ -3,9 +3,9 @@
 %%% @doc
 %%% Crawl accounts and disable notify settings so that we use Teletype instead
 %%%
+%%%
+%%% @author Mark Magnusson
 %%% @end
-%%% @contributors
-%%%     Mark Magnusson
 %%%-------------------------------------------------------------------
 -module(cb_migration_disable_notify).
 

@@ -3,7 +3,6 @@
 %%% @doc
 %%% Test utilities for manipulating maps
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_maps_tests).
 

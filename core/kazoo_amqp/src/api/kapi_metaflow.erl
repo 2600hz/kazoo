@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Metaflow requests, responses, and errors
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kapi_metaflow).
 

@@ -2,11 +2,10 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Renders a custom account email template, or the system default,
+%%%
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%%
-%%% @contributors
-%%% Karl Anderson <karl@2600hz.org>
-%%%
 %%%-------------------------------------------------------------------
 -module(notify_transaction).
 

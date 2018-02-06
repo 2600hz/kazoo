@@ -11,9 +11,9 @@
 %%%  {132,...}
 %%% timer:tc(hon_util, candidate_rates, [<<"53341341354">>]).
 %%%  {16989,...}
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hon_trie).
 -behaviour(gen_server).

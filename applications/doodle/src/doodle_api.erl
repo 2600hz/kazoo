@@ -2,9 +2,8 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handle sms api docs
-%%% @end
-%%% @contributors
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(doodle_api).
 

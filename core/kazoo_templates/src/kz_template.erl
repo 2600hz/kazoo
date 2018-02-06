@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(kz_template).
 

@@ -2,11 +2,11 @@
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @end
 %%%-------------------------------------------------------------------
 -module(hangups_listener).
 -behaviour(gen_listener).

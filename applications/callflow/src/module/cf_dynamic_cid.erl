@@ -9,10 +9,10 @@
 %%%   // optional after this
 %%%   "interdigit_timeout":2000
 %%% }
+%%%
+%%% @author Karl Anderson
+%%% @author William Lloyd
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   William Lloyd
 %%%-------------------------------------------------------------------
 -module(cf_dynamic_cid).
 

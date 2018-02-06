@@ -3,9 +3,9 @@
 %%% @doc
 %%%
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors:
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(cb_ips).
 

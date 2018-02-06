@@ -4,9 +4,9 @@
 %%%
 %%% Create freeswitch offline configuration
 %%%
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(crossbar_freeswitch).
 -behaviour(gen_server).

@@ -6,7 +6,6 @@
 %%%   "collection_name":"your_name_here" // the collection to flush
 %%% }
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_flush_dtmf).
 

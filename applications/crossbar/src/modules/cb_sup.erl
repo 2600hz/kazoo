@@ -15,9 +15,9 @@
 %%% Eventaully support the idea of RPC-like AMQP requests to drill down per-node
 %%% or per-application for these stats
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_sup).
 

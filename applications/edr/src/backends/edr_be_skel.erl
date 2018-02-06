@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Skeleton of backend module
+%%%
+%%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%% @end
-%%% @contributors
-%%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%%-------------------------------------------------------------------
 -module(edr_be_skel).
 

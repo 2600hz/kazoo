@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Routing requests, responses, and wins!
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(kapi_discovery).
 

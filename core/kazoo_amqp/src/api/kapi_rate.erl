@@ -3,7 +3,6 @@
 %%% @doc
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kapi_rate).
 

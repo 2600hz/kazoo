@@ -3,11 +3,11 @@
 %%% @doc
 %%% Detects if a call is fax
 %%% user(s).
+%%%
+%%% @author James Aimonetti
+%%% @author Ben Wann
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Ben Wann
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cf_fax_detect).
 

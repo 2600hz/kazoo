@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Look up IP for authorization/replaying of route_req
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(reg_route_req).
 

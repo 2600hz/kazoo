@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(teletype_transaction).
 

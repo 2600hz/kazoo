@@ -3,7 +3,6 @@
 %%% @doc
 %%% Handle authn_req messages
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(conf_authn_req).
 

@@ -2,10 +2,10 @@
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Hesaam Farhang
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%     Hesaam Farhang
-%%%     Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kz_account_crawler).
 -behaviour(gen_server).

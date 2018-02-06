@@ -6,9 +6,9 @@
 %%%   stopping when an agent logs out
 %%%   collecting stats from agents
 %%%   and more!!!
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_manager).
 -behaviour(gen_listener).

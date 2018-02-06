@@ -2,9 +2,9 @@
 %%% @copyright (C) 2016-2018, 2600Hz INC
 %%% @doc
 %%% Utilities for tasks validation & stuff.
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kz_tasks).
 

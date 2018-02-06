@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% API resource
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Jon Blanton
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Jon Blanton
 %%%-------------------------------------------------------------------
 -module(api_resource).
 

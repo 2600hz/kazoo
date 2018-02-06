@@ -3,7 +3,6 @@
 %%% @doc
 %%% Execute conference commands
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_conference_control).
 -behaviour(gen_listener).

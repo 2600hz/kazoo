@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kzd_apps_store).
 

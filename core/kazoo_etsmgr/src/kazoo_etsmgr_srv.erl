@@ -5,9 +5,9 @@
 %%% Protects against the main writer dying
 %%%
 %%% Inspired by: http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kazoo_etsmgr_srv).
 -behaviour(gen_server).

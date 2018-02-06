@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016, Voxter Communications Inc.
 %%% @doc
+%%%
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_queue_manager_test).
 

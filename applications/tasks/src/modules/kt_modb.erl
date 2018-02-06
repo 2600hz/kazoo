@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kt_modb).
 %% behaviour: tasks_provider

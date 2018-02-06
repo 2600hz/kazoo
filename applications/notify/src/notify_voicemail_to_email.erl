@@ -3,11 +3,11 @@
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
-%%%   Karl Anderson <karl@2600hz.org>
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
 %%%-------------------------------------------------------------------
 -module(notify_voicemail_to_email).
 

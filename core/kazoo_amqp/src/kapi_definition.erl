@@ -3,7 +3,6 @@
 %%% @doc
 %%% Kazoo API Definition Helpers
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kapi_definition).
 

@@ -28,7 +28,6 @@
 %%% The "_" child key is equivalent to "0" in this case.
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_nomorobo).
 

@@ -4,10 +4,10 @@
 %%%
 %%% Handle client requests for phone_number documents
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_other).
 -behaviour(knm_gen_carrier).

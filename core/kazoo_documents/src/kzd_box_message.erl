@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Mailbox message document manipulation
+%%%
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(kzd_box_message).
 

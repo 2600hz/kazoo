@@ -2,9 +2,8 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
-%%% @end
-%%% @contributors
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_resources_test).
 

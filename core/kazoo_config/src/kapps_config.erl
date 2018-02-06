@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Pierre Fenoll
+%%% @author Roman Galeev
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Pierre Fenoll
-%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(kapps_config).
 

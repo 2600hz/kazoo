@@ -4,10 +4,10 @@
 %%% data:
 %%%   target_type: "user" or "device"
 %%%   target_id: Device-ID or User-ID where Call-ID will be bridged (intercepted)
+%%%
+%%% @author Peter Defebvre
+%%% @author Sergey Korobkov
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Sergey Korobkov
 %%%-------------------------------------------------------------------
 -module(konami_intercept).
 

@@ -4,9 +4,9 @@
 %%%
 %%% Bindings and JSON APIs for dealing with agents, as part of ACDc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kapi_acdc_agent).
 

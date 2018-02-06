@@ -2,10 +2,10 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_agent_listener).
 -behaviour(gen_listener).

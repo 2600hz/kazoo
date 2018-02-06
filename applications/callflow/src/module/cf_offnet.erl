@@ -18,9 +18,9 @@
 %%%   ,"ignore_early_media":boolean()
 %%%   ,"outbound_flags":["flag_1","flag_2"] // used to match flags on carrier docs
 %%% }
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_offnet).
 

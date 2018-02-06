@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors:
-%%%   Peter Defebvre
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cb_ledgers).
 

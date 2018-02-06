@@ -21,9 +21,9 @@
 %%% 2) create simple callflow with number = 401
 %%% 3) dial 401 to start ringing the phones in group, in another phone dial *7401 to make call camping
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_camping_feature).
 

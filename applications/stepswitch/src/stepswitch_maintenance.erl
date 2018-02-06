@@ -2,9 +2,9 @@
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(stepswitch_maintenance).
 

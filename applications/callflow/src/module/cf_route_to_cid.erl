@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Kirill Sysoev
 %%% @end
-%%% @contributors
-%%%   Kirill Sysoev
 %%%-------------------------------------------------------------------
 -module(cf_route_to_cid).
 

@@ -2,10 +2,10 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kazoo_number_manager_sup).
 

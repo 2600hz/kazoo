@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz, INC
 %%% @doc
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_hangup).
 

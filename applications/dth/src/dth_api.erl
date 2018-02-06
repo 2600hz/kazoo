@@ -3,9 +3,9 @@
 %%% @doc
 %%% Builder and validator, much like kz_api.erl, of the AMQP APIs
 %%% exposed by this WhApp
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(dth_api).
 

@@ -9,10 +9,10 @@
 %%% * it operates without an account id (or account db)
 %%% * it authorizes an account level cred
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_api_auth).
 

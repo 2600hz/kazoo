@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz, INC
 %%% @doc
 %%% Make a request for authorization, and answer queries about the CallID
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_authz).
 

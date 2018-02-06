@@ -6,9 +6,9 @@
 %%%
 %%%  App/Key combo used to send messages.
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(kapi_delegate).
 

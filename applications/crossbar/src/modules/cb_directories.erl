@@ -4,9 +4,9 @@
 %%%
 %%% Handle CRUD operations for Directories
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_directories).
 

@@ -4,10 +4,10 @@
 %%%
 %%% Carrier for inums
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_inum).
 -behaviour(knm_gen_carrier).

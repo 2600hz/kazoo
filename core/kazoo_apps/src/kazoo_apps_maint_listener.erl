@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kazoo_apps_maint_listener).
 -behaviour(gen_listener).

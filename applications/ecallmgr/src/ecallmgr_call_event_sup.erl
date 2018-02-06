@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_event_sup).
 

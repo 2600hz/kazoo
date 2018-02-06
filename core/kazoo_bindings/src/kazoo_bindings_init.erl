@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Wait for Bindings
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings_init).
 

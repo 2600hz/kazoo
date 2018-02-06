@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kz_service_ui_apps).
 -behaviour(kz_gen_service).

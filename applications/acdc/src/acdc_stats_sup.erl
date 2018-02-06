@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Manage the bucket servers
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_stats_sup).
 

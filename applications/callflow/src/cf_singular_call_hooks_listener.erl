@@ -4,9 +4,9 @@
 %%% This listener handles call CHANNEL_DESTROY events.
 %%% It is started by cf_singular_call_hooks and will
 %%% trigger when it is time to send the call end hook.
+%%%
+%%% @author Benedict Chan
 %%% @end
-%%% @contributors
-%%%   Benedict Chan
 %%%-------------------------------------------------------------------
 -module(cf_singular_call_hooks_listener).
 

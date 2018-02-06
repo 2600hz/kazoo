@@ -4,9 +4,9 @@
 %%%
 %%% When implementing template modules, these callbacks are a must!
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(teletype_gen_email_template).
 

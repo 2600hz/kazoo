@@ -18,10 +18,10 @@
 %%% /agents/AID/status
 %%%   GET: last 10 status updates
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_agents).
 

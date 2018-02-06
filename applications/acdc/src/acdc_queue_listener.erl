@@ -10,11 +10,11 @@
 %%%      to auto-ack the payloads, defering that until the connection is
 %%%      accepted by the agent.
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_queue_listener).
 -behaviour(gen_listener).

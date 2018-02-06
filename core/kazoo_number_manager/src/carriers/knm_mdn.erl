@@ -4,9 +4,9 @@
 %%%
 %%% Handle tower-of-power MDN phone numbers.
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_mdn).
 -behaviour(knm_gen_carrier).

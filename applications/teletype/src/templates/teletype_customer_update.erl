@@ -2,10 +2,10 @@
 %%% @copyright (C) 2014-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Kirill Sysoev
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Kirill Sysoev
 %%%-------------------------------------------------------------------
 -module(teletype_customer_update).
 

@@ -3,10 +3,10 @@
 %%% @doc
 %%% Display various informations
 %%%
+%%%
+%%% @author Edouard Swiac
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_about).
 

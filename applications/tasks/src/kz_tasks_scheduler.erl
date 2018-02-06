@@ -2,9 +2,9 @@
 %%% @copyright (C) 2016-2018, 2600Hz INC
 %%% @doc
 %%% Schedule one-off tasks only once per cluster
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kz_tasks_scheduler).
 -behaviour(gen_server).

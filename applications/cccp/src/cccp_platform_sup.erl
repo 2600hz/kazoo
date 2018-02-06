@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author OnNet (Kirill Sysoev github.com/onnet)
 %%% @end
-%%% @contributors
-%%%   OnNet (Kirill Sysoev github.com/onnet)
 %%%-------------------------------------------------------------------
 -module(cccp_platform_sup).
 

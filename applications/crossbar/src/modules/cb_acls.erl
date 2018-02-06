@@ -4,10 +4,10 @@
 %%%
 %%% ACLs from 7 to 77
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Edouard Swiac
 %%% @end
-%%% Contributors: Karl Anderson
-%%%               James Aimonetti
-%%%               Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(cb_acls).
 

@@ -29,9 +29,9 @@
 %%%   "nomatch": { [callflow node to branch to when regex does not match or no child node defined for incoming caller id] },
 %%%   "+15558881111": { [callflow node to branch to absolute mode is true and caller id matches +15558881111)] }
 %%% }
+%%%
+%%% @author Brian Davis
 %%% @end
-%%% @contributors
-%%%   Brian Davis
 %%%-------------------------------------------------------------------
 -module(cf_check_cid).
 

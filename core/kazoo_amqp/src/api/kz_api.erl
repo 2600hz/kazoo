@@ -12,10 +12,10 @@
 %%% This will parse the proplist and return a boolean()if the proplist is valid
 %%% for creating a JSON message.
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kz_api).
 

@@ -10,9 +10,9 @@
 %%% GET /v1/registrations :
 %%%   Get a count of system-wide registrations - for superduper admins only
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_registrations).
 

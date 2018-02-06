@@ -4,10 +4,10 @@
 %%% Instructs the switch to receive a fax from the caller
 %%% Stores the fax in the database and optionally emails a configured
 %%% user(s).
+%%%
+%%% @author James Aimonetti
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cf_receive_fax).
 

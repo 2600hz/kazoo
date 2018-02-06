@@ -3,7 +3,6 @@
 %%% @doc
 %%% Base module for callflow action
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_audio_macro).
 

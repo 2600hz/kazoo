@@ -2,11 +2,11 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% Collector of stats
+%%%
+%%% @author James Aimonetti
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_stats).
 -behaviour(gen_listener).

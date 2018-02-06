@@ -13,10 +13,10 @@
 %%%                receive -> Resp
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings_test).
 

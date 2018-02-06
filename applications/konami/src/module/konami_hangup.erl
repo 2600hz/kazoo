@@ -3,9 +3,9 @@
 %%% @doc
 %%% Hang up the call
 %%% Data = {}
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_hangup).
 

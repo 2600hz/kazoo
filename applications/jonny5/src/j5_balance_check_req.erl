@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
+%%%
+%%% @author Dinkor (Sergey Korobkov)
 %%% @end
-%%% @contributors
-%%%     Dinkor (Sergey Korobkov)
 %%%-------------------------------------------------------------------
 -module(j5_balance_check_req).
 

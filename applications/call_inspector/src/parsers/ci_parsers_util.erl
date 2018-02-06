@@ -2,9 +2,9 @@
 %%% @copyright (c) 2015-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%% Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(ci_parsers_util).
 

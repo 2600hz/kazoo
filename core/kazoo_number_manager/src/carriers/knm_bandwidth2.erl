@@ -4,12 +4,12 @@
 %%%
 %%% Handle client requests for phone_number documents using new bandwidth api
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Mark Magnusson
+%%% @author Pierre Fenoll
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%     Karl Anderson
-%%%     Mark Magnusson
-%%%     Pierre Fenoll
-%%%     Luis Azedo
 %%%-------------------------------------------------------------------
 -module(knm_bandwidth2).
 -behaviour(knm_gen_carrier).

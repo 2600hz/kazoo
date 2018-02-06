@@ -2,9 +2,8 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% Handles endpoint inbound recording
-%%% @end
-%%% @contributors
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kz_endpoint_recording).
 

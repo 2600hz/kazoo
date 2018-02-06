@@ -5,9 +5,9 @@
 %%% through. You can request events with a verbosity or severity
 %%% greater than what edr_be_amqp has bound to, however you won't
 %%% receive any of them.
+%%%
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%% Max Lay
 %%%-------------------------------------------------------------------
 -module(bh_edr).
 

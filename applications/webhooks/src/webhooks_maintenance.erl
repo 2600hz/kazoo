@@ -2,9 +2,9 @@
 %%% @Copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(webhooks_maintenance).
 

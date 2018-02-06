@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%% @end
-%%% @contributors
-%%%    Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(kazoo_snmp).
 

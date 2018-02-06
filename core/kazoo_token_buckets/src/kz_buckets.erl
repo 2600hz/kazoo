@@ -3,9 +3,9 @@
 %%% @doc
 %%% API interface for buckets
 %%% ETS writer for table
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_buckets).
 

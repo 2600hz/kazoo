@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Listener for sysconf_read, and sysconf_write AMQP requests
+%%%
+%%% @author Edouard Swiac
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(sysconf_listener).
 -behaviour(gen_listener).

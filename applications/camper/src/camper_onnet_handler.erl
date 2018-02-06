@@ -2,9 +2,9 @@
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(camper_onnet_handler).
 -behaviour(gen_server).

@@ -4,9 +4,9 @@
 %%% Handle requests to read configuration data
 %%% Support nested keys a la kz_json, with a #
 %%% as a separator i.e key#subkey#subsubkey
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(sysconf_get).
 

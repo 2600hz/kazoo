@@ -5,9 +5,9 @@
 %%% Ratedeck document accessors
 %%%   Every account can be assigned a ratedeck
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kzd_ratedeck).
 

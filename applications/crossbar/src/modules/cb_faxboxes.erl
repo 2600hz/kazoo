@@ -4,9 +4,9 @@
 %%%
 %%% Fax Box API
 %%%
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors:
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cb_faxboxes).
 

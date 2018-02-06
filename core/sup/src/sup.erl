@@ -3,11 +3,11 @@
 %%% @doc
 %%% A really simple escript to accept RPC request and push them
 %%% into a running kazoo virtual machine.
+%%%
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Pierre Fenoll
-%%%------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 -module(sup).
 
 -export([main/1]).

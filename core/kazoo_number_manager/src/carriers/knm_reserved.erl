@@ -4,9 +4,9 @@
 %%%
 %%% Find reserved numbers in a sub-account.
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_reserved).
 -behaviour(knm_gen_carrier).

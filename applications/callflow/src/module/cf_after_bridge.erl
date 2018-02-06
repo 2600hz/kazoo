@@ -7,11 +7,10 @@
 %%%   "action": "park" | "transfer" | "hangup",
 %%%   "data":"some_extension_number" // number to transfer to or bool
 %%% }
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
-
 -module(cf_after_bridge).
 
 -behaviour(gen_cf_action).
@@ -44,3 +43,4 @@ build_action(<<"transfer">>, ToExtension) when is_binary(ToExtension) ->
 build_action(_Cmd, _Data) ->
     lager:info("unknown command: ~s(~p)", [_Cmd, _Data]),
     kz_json:new().
+

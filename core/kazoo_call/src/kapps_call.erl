@@ -1,13 +1,13 @@
-%%============================================================================
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
-%%%============================================================================
+%%%-------------------------------------------------------------------
 -module(kapps_call).
 
 -export([new/0, put_callid/1]).

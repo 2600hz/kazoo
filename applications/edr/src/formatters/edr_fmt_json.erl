@@ -2,9 +2,9 @@
 %%% @copyright (C) 2016, Conversant Ltd
 %%% @doc
 %%% JSON formatter module
+%%%
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%    Max Lay
 %%%-------------------------------------------------------------------
 -module(edr_fmt_json).
 

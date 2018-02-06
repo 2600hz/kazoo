@@ -2,10 +2,10 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Notification for 'first' registration and call
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(notify_first_occurrence).
 

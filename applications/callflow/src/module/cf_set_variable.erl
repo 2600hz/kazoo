@@ -8,9 +8,9 @@
 %%%   "channel": "a", "both"
 %%% }
 %%%
+%%%
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%% @contributors
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cf_set_variable).
 

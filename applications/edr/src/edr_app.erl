@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
 %%% Created : 17 Jul 2016
-%%% @contributors
-%%%   SIPLABS, LLC (Vorontsov Nikita)
-%%%   Conversant Ltd (Max Lay)
+%%%
+%%% @author SIPLABS, LLC (Vorontsov Nikita)
+%%% @author Conversant Ltd (Max Lay)
+%%% @end
 %%%-------------------------------------------------------------------
 -module(edr_app).
 

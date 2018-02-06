@@ -2,9 +2,9 @@
 %%% @copyright (C) 2016-2018, 2600Hz INC
 %%% @doc
 %%% Trigger jobs for execution
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kz_tasks_trigger).
 -behaviour(gen_server).

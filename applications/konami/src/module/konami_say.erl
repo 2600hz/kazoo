@@ -8,9 +8,9 @@
 %%%   ,"method":"pronounced"
 %%%   ,"language":"en"
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_say).
 

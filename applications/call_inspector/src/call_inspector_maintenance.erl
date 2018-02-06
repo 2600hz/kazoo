@@ -2,9 +2,8 @@
 %%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
-%%% @contributors
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(call_inspector_maintenance).
 

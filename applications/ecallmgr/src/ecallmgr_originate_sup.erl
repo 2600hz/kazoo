@@ -3,7 +3,6 @@
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_originate_sup).
 -behaviour(supervisor).

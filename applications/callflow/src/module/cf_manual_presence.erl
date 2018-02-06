@@ -5,9 +5,9 @@
 %%%   "presence_id":"foo" // for "foo@bar.com"
 %%%   ,"status":"idle" //"idle", "ringing", "busy"
 %%% }
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_manual_presence).
 

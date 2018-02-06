@@ -4,10 +4,10 @@
 %%%
 %%% Handle CRUD operations for Directories
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cb_freeswitch).
 

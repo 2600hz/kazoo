@@ -3,9 +3,9 @@
 %%% @doc
 %%% Hang up the call
 %%% Data = {}
+%%%
+%%% @author Michal Tesar
 %%% @end
-%%% @contributors
-%%%   Michal Tesar
 %%%-------------------------------------------------------------------
 -module(konami_break).
 

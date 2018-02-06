@@ -7,10 +7,10 @@
 %%% /accounts/{account_id}/users/{user_id}/metaflows - manip user's metaflows
 %%% /accounts/{account_id}/devices/{device_id}/metaflows - manip user's metaflows
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_metaflows).
 

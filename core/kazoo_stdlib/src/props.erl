@@ -3,10 +3,10 @@
 %%% @doc
 %%% Mostly a drop-in replacement and extension of the proplists module,
 %%% but using the lists module to implement
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(props).
 

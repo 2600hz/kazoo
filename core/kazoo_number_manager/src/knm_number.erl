@@ -2,11 +2,11 @@
 %%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
+%%% @author James Aimonetti
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   James Aimonetti
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_number).
 

@@ -4,9 +4,9 @@
 %%%
 %%% Handle publishing notification events for new port requests
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_port_notifier).
 -behaviour(knm_gen_provider).

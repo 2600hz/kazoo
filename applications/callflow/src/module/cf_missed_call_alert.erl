@@ -4,7 +4,6 @@
 %%% Sends a notification for missed call
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_missed_call_alert).
 

@@ -5,9 +5,9 @@
 %%% data:{
 %%%   "id":"callflow_id"
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_callflow).
 

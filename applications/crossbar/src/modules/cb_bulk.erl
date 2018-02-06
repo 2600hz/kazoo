@@ -4,10 +4,10 @@
 %%%
 %%% Listing of all expected v1 callbacks
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_bulk).
 

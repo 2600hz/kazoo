@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% User document: tests
+%%%
+%%% @author SIPLABS, LLS (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   SIPLABS, LLS (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(kzd_user_test).
 

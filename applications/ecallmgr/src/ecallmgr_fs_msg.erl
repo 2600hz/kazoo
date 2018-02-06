@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% Notify-type requests, like MWI updates, received and processed here
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%    Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_msg).
 -behaviour(gen_listener).

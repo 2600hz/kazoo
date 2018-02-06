@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(kvm_migrate_crawler).
 -behaviour(gen_server).

@@ -4,10 +4,10 @@
 %%%
 %%% When implementing carrier modules, these callbacks are a must!
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_gen_carrier).
 

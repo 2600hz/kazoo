@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_local).
 -behaviour(kz_gen_bookkeeper).

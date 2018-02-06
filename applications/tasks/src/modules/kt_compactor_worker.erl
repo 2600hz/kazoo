@@ -11,7 +11,6 @@
 %%% The list of shards on the node and the design documents in the db will be generated
 %%% and compaction will begin on those shards.
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kt_compactor_worker).
 

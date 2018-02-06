@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Handle the emulation of the Dial verb
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kzt_twiml_dial).
 

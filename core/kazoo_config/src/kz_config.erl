@@ -2,11 +2,10 @@
 %%% @copyright (C) 2013-2018, 2600Hz, INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
-
 -module(kz_config).
 
 -export([get/1, get/2, get/3
@@ -334,3 +333,4 @@ zone() ->
 -spec zone(atom()) -> kz_term:ne_binary() | atom().
 zone('binary') -> kz_term:to_binary(zone());
 zone(_) -> zone().
+

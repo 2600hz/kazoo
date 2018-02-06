@@ -2,11 +2,11 @@
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event queue
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
-%%%   Karl Anderson <karl@2600hz.org>
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
 -behaviour(gen_listener).

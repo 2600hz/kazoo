@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Check and notify if account's balance is below notification threshold.
+%%%
+%%% @author Harenson Henao
 %%% @end
-%%% @contributors
-%%%   Harenson Henao
 %%%-------------------------------------------------------------------
 -module(kt_low_balance).
 

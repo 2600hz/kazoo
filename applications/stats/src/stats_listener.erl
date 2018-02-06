@@ -5,9 +5,9 @@
 %%% It listens to targeted/statistics AMPQ messages, and is accessed by
 %%% kazoo_snmp for SNMP queries.
 %%%
+%%%
+%%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%% @end
-%%% @contributors
-%%%    Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(stats_listener).
 -behaviour(gen_listener).

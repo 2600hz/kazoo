@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Handles authentication requests, responses, queue bindings
+%%%
+%%% @author James Aimonetti
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(kapi_authn).
 

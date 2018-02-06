@@ -31,9 +31,9 @@
 %%% /queues/QID/eavesdrop
 %%%   PUT: ring a phone/user and eavesdrop on the queue's calls
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_queues).
 

@@ -2,8 +2,9 @@
 %%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc HTTP helper functions for Kazoo
 %%%
-%%% @contributors
-%%%     Mark Magnusson
+%%%
+%%% @author Mark Magnusson
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kz_http_util).
 

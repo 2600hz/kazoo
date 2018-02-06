@@ -6,11 +6,11 @@
 %%% This is a simple auth mechanism, once the user has aquired an
 %%% auth token this module will allow access.  This module should be
 %%% updated to be FAR more robust.
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(bh_token_auth).
 

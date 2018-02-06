@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Luis Azedo
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_managed).
 -behaviour(knm_gen_carrier).

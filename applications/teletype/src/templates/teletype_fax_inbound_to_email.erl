@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(teletype_fax_inbound_to_email).
 

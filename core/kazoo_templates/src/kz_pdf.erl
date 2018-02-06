@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018 2600Hz, INC
 %%% @doc
 %%% Builds PDF from an HTML template using HTMLDoc (http://www.msweet.org/projects.php?Z1)
+%%%
+%%% @author Peter Defebvre
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   Peter Defebvre
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_pdf).
 

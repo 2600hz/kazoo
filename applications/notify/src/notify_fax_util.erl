@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_fax_util).
 

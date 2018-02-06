@@ -4,9 +4,9 @@
 %%%
 %%%
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(knm_vitelity_util).
 

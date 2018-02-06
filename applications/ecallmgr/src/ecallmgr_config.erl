@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Edouard Swiac
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 

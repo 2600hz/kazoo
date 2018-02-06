@@ -4,9 +4,9 @@
 %%%
 %%% Find reserved numbers in an account's reseller account.
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_reserved_reseller).
 -behaviour(knm_gen_carrier).

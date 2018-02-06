@@ -2,10 +2,10 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Michael Dunton
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Michael Dunton
 %%%-------------------------------------------------------------------
 -module(notify_maintenance).
 

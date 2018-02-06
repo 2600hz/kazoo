@@ -2,10 +2,10 @@
 %%% @copyright (c) 2010-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cdr_sup).
 

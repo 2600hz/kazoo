@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Handle prepend feature
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_prepend).
 -behaviour(knm_gen_provider).

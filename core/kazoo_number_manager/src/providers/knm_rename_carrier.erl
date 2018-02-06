@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% Handle renaming module_name for admins
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_rename_carrier).
 -behaviour(knm_gen_provider).

@@ -3,7 +3,6 @@
 %%% @doc
 %%% runtime options for bindings
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings_rt).
 

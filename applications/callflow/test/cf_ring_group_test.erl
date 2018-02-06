@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author SIPLABS LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%     SIPLABS LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(cf_ring_group_test).
 

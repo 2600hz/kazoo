@@ -2,12 +2,12 @@
 %%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Peter Defebvre
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%% Karl Anderson
-%%% James Aimonetti
-%%% Peter Defebvre
-%%% Ben Wann
 %%%-------------------------------------------------------------------
 -module(blackhole_sup).
 

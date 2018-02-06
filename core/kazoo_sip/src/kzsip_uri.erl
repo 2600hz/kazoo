@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%% Parse and manipulate SIP URIs
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kzsip_uri).
 

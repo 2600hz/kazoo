@@ -3,7 +3,6 @@
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(jonny5_maintenance).
 

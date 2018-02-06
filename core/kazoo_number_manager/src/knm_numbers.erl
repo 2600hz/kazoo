@@ -3,10 +3,10 @@
 %%% @doc
 %%%   Bulk operations on numbers.
 %%%   Note: functions should not `throw`, instead return `ret()`.
+%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_numbers).
 

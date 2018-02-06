@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_maintenance).
 

@@ -15,10 +15,10 @@
 %%% device_id will only connect to a channel of a specific device,
 %%% user_id will only connect to channel on any of the user's devices*
 %%%
+%%%
+%%% @author SIPLABS LLC (Mikhail Rodionov)
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Mikhail Rodionov)
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_eavesdrop).
 

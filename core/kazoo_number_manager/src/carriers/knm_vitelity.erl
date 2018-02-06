@@ -4,10 +4,10 @@
 %%%
 %%% Handle client requests for phone_number documents
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_vitelity).
 -behaviour(knm_gen_carrier).

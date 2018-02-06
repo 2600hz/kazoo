@@ -3,11 +3,11 @@
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in kazoo_util.erl
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
-%%%   Karl Anderson <karl@2600hz.org>
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 

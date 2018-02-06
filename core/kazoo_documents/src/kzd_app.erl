@@ -2,11 +2,11 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Account document
+%%%
+%%% @author Peter Defebvre
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Karl Anderson
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kzd_app).
 

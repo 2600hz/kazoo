@@ -2,7 +2,6 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(teletype_util_test).
 

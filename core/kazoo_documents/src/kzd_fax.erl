@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Fax document manipulation
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(kzd_fax).
 

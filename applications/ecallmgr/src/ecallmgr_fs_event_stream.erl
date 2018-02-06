@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_event_stream).
 -behaviour(gen_server).

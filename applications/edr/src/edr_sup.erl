@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
 %%% Created : 17 Jul 2016
-%%% @contributors
-%%%   SIPLABS, LLC (Vorontsov Nikita)
+%%%
+%%% @author SIPLABS, LLC (Vorontsov Nikita)
+%%% @end
 %%%-------------------------------------------------------------------
 -module(edr_sup).
 

@@ -11,9 +11,9 @@
 %%%     request, expect a response back (or timeout)
 %%%   call_collect: uses the timeout to collect responses (successful or not)
 %%%     and returns the resulting list of responses
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_amqp_worker).
 -behaviour(gen_listener).

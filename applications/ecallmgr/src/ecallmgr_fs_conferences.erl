@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Track FreeSWITCH conference information and provide accessors
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conferences).
 -behaviour(gen_listener).

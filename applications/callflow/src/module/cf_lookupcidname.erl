@@ -7,10 +7,9 @@
 %%% "data":{
 %%%   "lists": ["01fc63f92d9b89a25dd4ff1039e64497"]
 %%% },
+%%%
+%%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%     Sponsored by Conversant Ltd,
-%%%         implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(cf_lookupcidname).
 

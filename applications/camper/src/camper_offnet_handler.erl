@@ -7,9 +7,9 @@
 %%%
 %%%  Ring to offnet number, parks it and bridge with reqester.
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(camper_offnet_handler).
 -behaviour(gen_listener).

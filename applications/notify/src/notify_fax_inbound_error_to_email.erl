@@ -3,10 +3,10 @@
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with fax attachment to the user.
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @end
 %%%-------------------------------------------------------------------
 -module(notify_fax_inbound_error_to_email).
 

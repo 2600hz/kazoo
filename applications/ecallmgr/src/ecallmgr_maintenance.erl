@@ -2,9 +2,8 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
 %%%
-%%% @contributors
+%%% @end
 %%%-------------------------------------------------------------------
 -module(ecallmgr_maintenance).
 

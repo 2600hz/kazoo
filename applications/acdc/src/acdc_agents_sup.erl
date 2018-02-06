@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agents_sup).
 

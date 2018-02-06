@@ -3,7 +3,6 @@
 %%% @doc
 %%% Module for extending schema validation
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_json_schema_extensions).
 

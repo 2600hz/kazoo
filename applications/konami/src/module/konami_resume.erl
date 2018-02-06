@@ -4,9 +4,9 @@
 %%% Reconnect the two legs of the call, if possible
 %%% Data = {
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_resume).
 

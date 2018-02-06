@@ -8,7 +8,6 @@
 %%% and block until a connection becomes available, after that it
 %%% removes itself....
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_amqp_bootstrap).
 -behaviour(gen_server).

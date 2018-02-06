@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Intra-whapp comm
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kapi_omnipresence).
 

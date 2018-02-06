@@ -7,9 +7,9 @@
 %%% to the requester.
 %%% Each request received by TS_RESPONDER should be put into a new spawn()
 %%% to avoid blocking on each request.
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_responder).
 -behaviour(gen_listener).

@@ -11,7 +11,6 @@
 %%%   ,"collection_name":"your_name_here" // name the collection for later processing
 %%% }
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_collect_dtmf).
 

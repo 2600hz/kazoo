@@ -5,9 +5,9 @@
 %%%
 %%% Config values to set for threshold checks:
 %%%   "one", "five", "fifteen", "day", "mean"
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hangups_monitoring).
 -behaviour(gen_server).

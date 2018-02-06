@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%%
-%%% @contributors
-%%% Peter Defebvre
+%%%
+%%% @author Peter Defebvre
+%%% @end
 %%%-------------------------------------------------------------------
-
 -module(webhooks_parking).
 
 -export([init/0
@@ -94,3 +94,4 @@ format(JObj) ->
                  ,<<"Custom-Channel-Vars">>
                  ],
     kz_json:normalize_jobj(JObj1, RemoveKeys, []).
+

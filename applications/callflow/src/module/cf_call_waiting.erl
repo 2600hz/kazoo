@@ -9,9 +9,9 @@
 %%%
 %%% * Default value
 %%%
+%%%
+%%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_call_waiting).
 

@@ -2,9 +2,9 @@
 %%% @copyright (C) 2015-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author Mark Magnusson
 %%% @end
-%%% @contributors
-%%%     Mark Magnusson
 %%%-------------------------------------------------------------------
 -module(teletype_account_zone_change).
 

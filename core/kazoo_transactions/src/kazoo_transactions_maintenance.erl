@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz, INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%% Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kazoo_transactions_maintenance).
 

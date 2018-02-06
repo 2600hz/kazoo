@@ -6,10 +6,10 @@
 %%% Authenticates tokens if they are accessing the parent or
 %%% child account only
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_simple_authz).
 

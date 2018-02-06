@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_media_tts_cache).
 -behaviour(gen_server).

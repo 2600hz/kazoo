@@ -6,7 +6,6 @@
 %%% This is a simple authz mechanism, it checks if a subscribe
 %%% action is allowed by looking at auth_account_id tree
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(bh_authz_subscribe).
 

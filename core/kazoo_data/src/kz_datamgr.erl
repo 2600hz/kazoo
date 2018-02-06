@@ -3,7 +3,6 @@
 %%% @doc
 %%% Manage data connections
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_datamgr).
 

@@ -3,9 +3,9 @@
 %%% @doc
 %%%
 %%%
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors:
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cb_sms).
 

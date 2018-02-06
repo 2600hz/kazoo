@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(teletype_service_added).
 -behaviour(teletype_gen_email_template).

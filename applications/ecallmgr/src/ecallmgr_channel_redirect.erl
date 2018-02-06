@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_channel_redirect).
 

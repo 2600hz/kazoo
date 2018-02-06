@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Handle processing of the pivot call
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(pivot_call).
 -behaviour(gen_listener).

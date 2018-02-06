@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
 %%% Ubiquiti SSO Utilities
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_ubiquiti_util).
 

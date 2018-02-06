@@ -4,9 +4,9 @@
 %%%
 %%% Listing of all expected v1 callbacks
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors:
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(cb_apps_store).
 

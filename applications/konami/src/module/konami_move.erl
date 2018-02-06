@@ -3,9 +3,9 @@
 %%% @doc
 %%% data:
 %%%   owner_id: User-ID to fetch devices for
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(konami_move).
 

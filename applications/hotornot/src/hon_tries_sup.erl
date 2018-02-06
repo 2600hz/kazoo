@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hon_tries_sup).
 

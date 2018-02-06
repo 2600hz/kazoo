@@ -3,7 +3,6 @@
 %%% @doc
 %%% Various utilities - a veritable cornucopia
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_time).
 

@@ -3,7 +3,6 @@
 %%% @doc
 %%% Receives START/STOP RECORD event
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_recordings).
 -behaviour(gen_server).

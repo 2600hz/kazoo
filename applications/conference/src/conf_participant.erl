@@ -2,10 +2,10 @@
 %%% @copyright (C) 2013-2018 2600Hz Inc
 %%% @doc
 %%% Conference participant process
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(conf_participant).
 -behaviour(gen_listener).

@@ -2,9 +2,8 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Handles storage proxy requests for media binaries
-%%% @end
-%%% @contributors
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kz_media_store_proxy).
 -behaviour(cowboy_handler).

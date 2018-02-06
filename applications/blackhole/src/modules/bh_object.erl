@@ -2,10 +2,10 @@
 %%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
+%%% @author Roman Galeev
 %%% @end
-%%% @contributors
-%%% Peter Defebvre
-%%% Roman Galeev
 %%%-------------------------------------------------------------------
 -module(bh_object).
 

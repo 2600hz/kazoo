@@ -3,7 +3,6 @@
 %%% @doc
 %%% Receives PRESENCE_IN event
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_presence).
 -behaviour(gen_server).

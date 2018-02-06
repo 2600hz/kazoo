@@ -3,10 +3,10 @@
 %%% @doc
 %%% Ecallmgr module (statem) for disconnecting calls when account
 %%% balance drops below zero
+%%%
+%%% @author Dinkor (Sergey Korobkov)
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   Dinkor (Sergey Korobkov)
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(ecallmgr_balance_crawler_statem).
 

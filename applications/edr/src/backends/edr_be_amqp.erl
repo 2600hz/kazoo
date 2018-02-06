@@ -3,9 +3,9 @@
 %%% @doc
 %%% Relays EDR messages to amqp via kapi_edr_amqp
 %%%
+%%%
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%    Max Lay
 %%%-------------------------------------------------------------------
 -module(edr_be_amqp).
 

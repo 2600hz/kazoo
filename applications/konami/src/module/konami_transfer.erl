@@ -8,9 +8,9 @@
 %%%   ,"target":"1000" // extension/DID to transfer to
 %%%   ,"ringback":"%(2000,4000,440,480)" // ringback to play to transferor
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_transfer).
 

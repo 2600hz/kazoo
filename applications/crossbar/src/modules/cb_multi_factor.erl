@@ -5,7 +5,6 @@
 %%% Multi factor authentication configuration API endpoint
 %%%
 %%% @end
-%%% @contributors:
 %%%-------------------------------------------------------------------
 -module(cb_multi_factor).
 

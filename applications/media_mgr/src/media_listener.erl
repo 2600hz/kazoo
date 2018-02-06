@@ -2,10 +2,10 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(media_listener).
 -behaviour(gen_listener).

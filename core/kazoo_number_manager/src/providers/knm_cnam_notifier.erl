@@ -3,9 +3,9 @@
 %%% @doc
 %%%
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_cnam_notifier).
 -behaviour(knm_gen_provider).

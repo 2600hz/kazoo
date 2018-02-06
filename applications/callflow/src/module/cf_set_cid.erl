@@ -7,9 +7,9 @@
 %%%
 %%% if one of them is empty then module will restore original values
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_set_cid).
 

@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author SIPLABS LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   SIPLABS LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(cf_ring_group).
 

@@ -3,9 +3,9 @@
 %%% @doc
 %%% Listens for a list of events and gproc-sends them out to folks who
 %%% want them
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_hooks_listener).
 -behaviour(gen_listener).

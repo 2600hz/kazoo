@@ -5,10 +5,10 @@
 %%%
 %%% Handle client requests for hotdesks management
 %%%
+%%%
+%%% @author Edouard Swiac
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_hotdesks).
 

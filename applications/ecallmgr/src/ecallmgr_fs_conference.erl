@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018 2600Hz INC
 %%% @doc
 %%% Execute conference commands
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @author Roman Galeev
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conference).
 -behaviour(gen_server).

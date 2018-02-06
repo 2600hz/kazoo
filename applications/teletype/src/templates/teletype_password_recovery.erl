@@ -2,9 +2,9 @@
 %%% @copyright (C) 2015-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(teletype_password_recovery).
 

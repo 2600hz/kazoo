@@ -1,4 +1,4 @@
-%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
@@ -21,10 +21,10 @@
 %%%   {broker | broker_tag, kz_term:ne_binary()} -> optional, for binding to specific brokers
 %%%   {declare_exchanges, declare_exchanges()} -> optional, for declaring dynamic exchanges used only in this connection
 %%% ]
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(gen_listener).
 -behaviour(gen_server).

@@ -3,9 +3,9 @@
 %%% @doc
 %%% Log messages in a way to make importing to WebSequenceDiagrams.com
 %%% easier
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(webseq_diagram_srv).
 -behaviour(gen_server).

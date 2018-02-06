@@ -6,7 +6,6 @@
 %%%   ,"duration_ms":2000 // optional duration, in milliseconds, to send dtmf
 %%% }
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_send_dtmf).
 

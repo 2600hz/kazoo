@@ -35,10 +35,10 @@
 %%%
 %%%
 %%%
+%%%
+%%% @author SIPLABS LLC (Mikhail Rodionov)
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Mikhail Rodionov)
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_intercept_feature).
 

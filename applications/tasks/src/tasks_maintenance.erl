@@ -2,9 +2,9 @@
 %%% @Copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(tasks_maintenance).
 

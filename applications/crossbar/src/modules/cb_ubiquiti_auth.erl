@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Ubiquiti SSO auth module
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_ubiquiti_auth).
 

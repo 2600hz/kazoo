@@ -31,9 +31,9 @@
 %%% 2) Send ASR request with CallID, ControlQ, and a response Q
 %%% 3) Wait for ASR response with text of what was said
 %%% 4) Find matches and iterate through the list, or go back to 1.
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_directory).
 

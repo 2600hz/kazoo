@@ -4,9 +4,9 @@
 %%%
 %%% Listing of all expected v1 callbacks
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors:
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_profile).
 

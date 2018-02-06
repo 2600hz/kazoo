@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz Inc
 %%% @doc
 %%%
-%%% @end
 %%%
-%%% @contributors
-%%%   Karl Anderson
+%%%
+%%% @author Karl Anderson
+%%% @end
 %%%-------------------------------------------------------------------
 -module(cf_callflow).
 

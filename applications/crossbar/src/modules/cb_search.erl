@@ -4,9 +4,9 @@
 %%%
 %%% Listing of all expected v1 callbacks
 %%%
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors:
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cb_search).
 

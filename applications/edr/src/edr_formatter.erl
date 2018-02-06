@@ -2,9 +2,9 @@
 %%% @copyright (C) 2017, Conversant Ltd
 %%% @doc
 %%% EDR output formatter
+%%%
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%    Max Lay
 %%%-------------------------------------------------------------------
 -module(edr_formatter).
 

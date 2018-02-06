@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors:
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(cb_websockets).
 

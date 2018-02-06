@@ -1,4 +1,4 @@
-%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% Handles starting/stopping a call recording
@@ -10,11 +10,10 @@
 %%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
 %%%   ,"record_on_answer": boolean() // whether to delay the start of the recording
 %%% }
-%%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%
-%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
+%%% @author James Aimonetti
+%%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kzc_recording).
 

@@ -2,10 +2,10 @@
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti
+%%%
+%%% @author James Aimonetti
+%%% @end
 %%%-------------------------------------------------------------------
 -module(hangups_maintenance).
 

@@ -3,9 +3,7 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
-
 -module(blackhole_data_emitter).
 
 -include("blackhole.hrl").

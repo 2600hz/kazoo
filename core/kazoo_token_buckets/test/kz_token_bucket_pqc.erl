@@ -13,9 +13,9 @@
 %%% amount is < TOKENS, that the bucket refills at FR/FRT, and that the
 %%% bucket cannot exceed MAX tokens.
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_token_bucket_pqc).
 

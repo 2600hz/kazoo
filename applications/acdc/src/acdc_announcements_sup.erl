@@ -2,9 +2,9 @@
 %%% @copyright (C) 2017, Voxter Communications
 %%% @doc
 %%%
+%%%
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_announcements_sup).
 

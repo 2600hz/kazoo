@@ -6,9 +6,9 @@
 %%%   "id":"media_id"
 %%%   ,"leg":["self", "peer", "both"] // which leg to play the media to
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_play).
 

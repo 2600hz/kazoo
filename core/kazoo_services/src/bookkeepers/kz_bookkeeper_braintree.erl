@@ -3,7 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_braintree).
 -behaviour(kz_gen_bookkeeper).

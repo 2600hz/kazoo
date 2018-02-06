@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors:
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(cb_auth).
 

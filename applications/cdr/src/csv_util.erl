@@ -2,11 +2,11 @@
 %%% @copyright (c) 2010-2018, 2600Hz
 %%% @doc
 %%% Utility module for V3 Kazoo Migration
+%%%
+%%% @author Ben Wann
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Ben Wann
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(csv_util).
 

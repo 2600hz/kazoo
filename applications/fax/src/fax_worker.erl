@@ -2,10 +2,10 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_worker).
 -behaviour(gen_listener).

@@ -9,9 +9,9 @@
 %%%
 %%% unit can be one of: "ms", "s", "m", "h"
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_sleep).
 

@@ -3,9 +3,9 @@
 %%% @doc
 %%%
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_iso3166a2_itu_test).
 

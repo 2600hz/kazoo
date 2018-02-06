@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_smtp).
 -behaviour(gen_smtp_server_session).

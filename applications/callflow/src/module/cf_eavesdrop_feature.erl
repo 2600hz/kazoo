@@ -15,9 +15,9 @@
 %%% One of the approved_device_id, appoved_user_id, approved_group_id
 %%% must be defined to access feature code.
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_eavesdrop_feature).
 

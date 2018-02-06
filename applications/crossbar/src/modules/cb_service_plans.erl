@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors:
-%%%     Peter Defebvre
-%%%     Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cb_service_plans).
 

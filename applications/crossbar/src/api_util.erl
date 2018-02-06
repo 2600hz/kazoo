@@ -3,11 +3,11 @@
 %%% @doc
 %%% Moved util functions out of v1_resource so only REST-related calls
 %%% are in there.
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Jon Blanton
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Jon Blanton
 %%%-------------------------------------------------------------------
 -module(api_util).
 

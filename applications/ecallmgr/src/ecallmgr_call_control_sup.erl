@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
-%%% @end
 %%%
-%%% @contributors
-%%% James Aimonetti <james@2600hz.org>
-%%% Karl Anderson <karl@2600hz.org>
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control_sup).
 

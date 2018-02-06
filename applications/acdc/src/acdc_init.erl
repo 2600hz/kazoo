@@ -3,10 +3,10 @@
 %%% @doc
 %%% Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
+%%%
+%%% @author James Aimonetti
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_init).
 

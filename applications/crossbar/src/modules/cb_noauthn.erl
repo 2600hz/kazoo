@@ -5,10 +5,10 @@
 %%%
 %%% Authenticates everyone! PARTY TIME!
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_noauthn).
 

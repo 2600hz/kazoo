@@ -2,11 +2,11 @@
 %%% @copyright (C) 2016-2018, 2600Hz INC
 %%% @doc
 %%% Handle prepend feature
+%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(knm_providers).
 

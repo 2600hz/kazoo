@@ -2,9 +2,10 @@
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc Represent a date, and perform various manipulations on it.
 %%%
-%%% @contributors
-%%%     Mark Magnusson
-%%%     Karl Anderson
+%%%
+%%% @author Mark Magnusson
+%%% @author Karl Anderson
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kz_date).
 

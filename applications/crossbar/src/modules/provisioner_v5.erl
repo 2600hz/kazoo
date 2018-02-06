@@ -4,9 +4,9 @@
 %%%
 %%% Common functions for the provisioner modules
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%    Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(provisioner_v5).
 

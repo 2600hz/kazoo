@@ -36,15 +36,9 @@
 %%%
 %%%
 %%%
-%%% @end
-%%% @contributors
-%%%   Luis Azedo  <luis.azedo@factorlusitano.com>
-%%%-------------------------------------------------------------------
-%%% @author Luis Azedo
-%%% @doc
 %%%
+%%% @author Luis Azedo  <luis.azedo@factorlusitano.com>
 %%% @end
-%%% Created : 10 Oct 2013
 %%%-------------------------------------------------------------------
 -module(cf_group_pickup_feature).
 

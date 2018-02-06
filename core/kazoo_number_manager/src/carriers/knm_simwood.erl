@@ -5,10 +5,10 @@
 %%% Handle client requests for phone_number at Simwood (UK based provider)
 %%% https://www.simwood.com/services/api
 %%%
+%%%
+%%% @author OnNet (Kirill Sysoev github.com/onnet)
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   OnNet (Kirill Sysoev github.com/onnet)
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_simwood).
 -behaviour(knm_gen_carrier).

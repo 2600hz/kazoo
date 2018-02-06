@@ -7,9 +7,9 @@
 %%%   "action":["login","logout"] // one of these
 %%%   ,"id":"queue_id" // which queue to login/logout the caller
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_acdc_queue).
 

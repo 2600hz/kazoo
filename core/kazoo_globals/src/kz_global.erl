@@ -2,10 +2,10 @@
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Luis Azedo
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_global).
 

@@ -14,10 +14,10 @@
 %%% * it operates without an account id (or account db)
 %%% * it 'proxies' crossbar auth requests to an external URL
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_shared_auth).
 

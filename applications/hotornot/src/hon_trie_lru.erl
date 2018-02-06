@@ -12,9 +12,9 @@
 %%%
 %%% Progressively load rates instead of seeding from the database
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hon_trie_lru).
 -behaviour(gen_server).

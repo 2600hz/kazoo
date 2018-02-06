@@ -1,12 +1,11 @@
-%%%-----------------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Google Drive for attachments
+%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-----------------------------------------------------------------------------
-
+%%%-------------------------------------------------------------------
 -module(kz_att_google_drive).
 -behaviour(gen_attachment).
 
@@ -29,9 +28,10 @@
 -define(DRV_TOKEN_OPTIONS, #{scopes => ?DRV_SCOPES}).
 -define(DRV_FOLDER_CT, <<"application/vnd.google-apps.folder">>).
 
-%% ====================================================================
-%% `gen_attachment' behaviour callbacks (API)
-%% ====================================================================
+%%%====================================================================
+%%% `gen_attachment' behaviour callbacks (API)
+%%%====================================================================
+
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -119,9 +119,10 @@ do_fetch_attachment({'error', Reason}, _, HandlerProps, DbName, DocId, AName) ->
     Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
     kz_att_error:new('oauth_failure', Routines).
 
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
+%%%====================================================================
+%%% Internal functions
+%%%====================================================================
+
 -spec get_json_from_url(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
     case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{'ssl', [{'versions', ['tlsv1.2']}]}]) of

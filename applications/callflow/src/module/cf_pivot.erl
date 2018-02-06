@@ -10,9 +10,9 @@
 %%%   ,"method":"get" // or "post"
 %%%   ,"debug":false // or true
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_pivot).
 

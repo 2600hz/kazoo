@@ -4,9 +4,9 @@
 %%%
 %%% A Number Manager module for carrier: telnyx.com
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_telnyx).
 -behaviour(knm_gen_carrier).

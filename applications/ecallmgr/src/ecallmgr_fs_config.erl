@@ -2,10 +2,10 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% Send config commands to FS
+%%%
+%%% @author Edouard Swiac
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_config).
 -behaviour(gen_server).

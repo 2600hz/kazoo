@@ -4,9 +4,9 @@
 %%% "data":{
 %%%   "action":"activate" | "deactivate" | "update" | "toggle" | "menu"
 %%% }
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_call_forward).
 

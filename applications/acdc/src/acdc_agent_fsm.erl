@@ -3,10 +3,10 @@
 %%% @doc
 %%% Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.
+%%%
+%%% @author James Aimonetti
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_agent_fsm).
 

@@ -7,9 +7,9 @@
 %%%   // optional after here
 %%%   "interdigit_timeout":2000
 %%% }
+%%%
+%%% @author Edouard Swiac
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(cf_hotdesk).
 

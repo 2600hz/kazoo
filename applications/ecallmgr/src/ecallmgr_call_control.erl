@@ -1,4 +1,4 @@
-%%%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
@@ -36,11 +36,11 @@
 %%% something else executed that might have been related to the main
 %%% application's execute (think set commands, like playback terminators);
 %%% we can note the event happened, and continue looping as we were.
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
-%%%   Karl Anderson <karl@2600hz.org>
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control).
 -behaviour(gen_listener).

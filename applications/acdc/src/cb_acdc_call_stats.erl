@@ -10,9 +10,9 @@
 %%% This was initially developed on 3.22, and since modified to reflect
 %%% updates to cb_cdrs.
 %%%
+%%%
+%%% @author Sponsored by Raffel Internet B.V., Implemented by Conversant Ltd
 %%% @end
-%%% @contributors
-%%%   Sponsored by Raffel Internet B.V., implemented by Conversant Ltd
 %%%-------------------------------------------------------------------
 -module(cb_acdc_call_stats).
 

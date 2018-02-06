@@ -6,7 +6,6 @@
 %%% Sets the language to use for the rest of the call
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_language).
 

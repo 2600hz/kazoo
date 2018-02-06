@@ -4,9 +4,9 @@
 %%%
 %%% Common functions for the provisioner modules
 %%%
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(provisioner_util).
 

@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Jon Blanton
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Jon Blanton
 %%%-------------------------------------------------------------------
 -module(crossbar_init).
 

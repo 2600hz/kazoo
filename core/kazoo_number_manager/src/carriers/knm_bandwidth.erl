@@ -4,9 +4,9 @@
 %%%
 %%% Handle client requests for phone_number documents
 %%%
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(knm_bandwidth).
 -behaviour(knm_gen_carrier).

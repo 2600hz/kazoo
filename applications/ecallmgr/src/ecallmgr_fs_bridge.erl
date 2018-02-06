@@ -2,10 +2,10 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Helpers for bridging in FreeSWITCH
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_bridge).
 

@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% proplists-like interface to json objects
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_json).
 

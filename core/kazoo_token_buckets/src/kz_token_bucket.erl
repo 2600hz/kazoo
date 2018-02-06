@@ -10,9 +10,9 @@
 %%%
 %%% Metered = start_link(100, 10, 'false'), % start with 100 tokens, add 1 per 100ms instead
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_token_bucket).
 -behaviour(gen_server).

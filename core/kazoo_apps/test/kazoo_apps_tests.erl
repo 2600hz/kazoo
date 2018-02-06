@@ -2,9 +2,9 @@
 %%% @copyright (C) 2018, 2600Hz, INC
 %%% @doc
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kazoo_apps_tests).
 

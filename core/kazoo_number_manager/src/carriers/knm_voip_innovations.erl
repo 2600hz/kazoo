@@ -4,9 +4,9 @@
 %%%
 %%% A Number Manager module for carrier: VoIPInnovations.com
 %%%
+%%%
+%%% @author Pierre Fenoll, Joe Black
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll, Joe Black
 %%%-------------------------------------------------------------------
 -module(knm_voip_innovations).
 -behaviour(knm_gen_carrier).

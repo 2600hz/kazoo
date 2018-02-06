@@ -2,9 +2,9 @@
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_number_crawler).
 -behaviour(gen_server).

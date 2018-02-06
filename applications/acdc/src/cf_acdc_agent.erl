@@ -11,9 +11,9 @@
 %%%                      ,"red_flash", "red_solid", "green"
 %%%                     ]
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_acdc_agent).
 

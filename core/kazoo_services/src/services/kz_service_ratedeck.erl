@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%%
+%%%
+%%% @author Sergey Korobkov
 %%% @end
-%%% @contributors
-%%%     Sergey Korobkov
 %%%-------------------------------------------------------------------
 -module(kz_service_ratedeck).
 -behaviour(kz_gen_service).

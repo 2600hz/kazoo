@@ -2,9 +2,9 @@
 %%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
 %%% Diversion SIP header manipulation
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kzsip_diversion).
 

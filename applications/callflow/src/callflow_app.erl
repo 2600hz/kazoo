@@ -2,9 +2,9 @@
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(callflow_app).
 

@@ -4,10 +4,10 @@
 %%%
 %%% Handle client requests for phone_number documents
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_phone_numbers_v1).
 

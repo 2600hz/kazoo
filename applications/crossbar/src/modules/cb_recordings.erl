@@ -4,16 +4,13 @@
 %%%
 %%% Provides access to stored call recordings.
 %%%
+%%%
+%%% Original <a href="https://github.com/2600hz/kazoo/pull/1218">pull request</a>
+%%%
+%%% @author OnNet (Kirill Sysoev [github.com/onnet])
+%%% @author Dinkor (Andrew Korniliv [github.com/dinkor])
+%%% @author Lazedo (Luis Azedo [github.com/2600hz])
 %%% @end
-%%% @contributors:
-%%%
-%%%   Original pull request https://github.com/2600hz/kazoo/pull/1218
-%%%     OnNet (Kirill Sysoev github.com/onnet)
-%%%     Dinkor (Andrew Korniliv github.com/dinkor)
-%%%
-%%%   refactor
-%%%     lazedo (Luis Azedo github.com/2600hz)
-%%%
 %%%-------------------------------------------------------------------
 -module(cb_recordings).
 

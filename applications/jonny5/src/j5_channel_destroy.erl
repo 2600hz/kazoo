@@ -3,7 +3,6 @@
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(j5_channel_destroy).
 

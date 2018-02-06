@@ -6,9 +6,9 @@
 %%% /accounts/{account_id}/access_lists - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/access_lists - manip user's access lists
 %%%
+%%%
+%%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors:
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cb_access_lists).
 

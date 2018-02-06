@@ -4,10 +4,10 @@
 %%% Expose system configuration data.
 %%% System configuration data is stored as key/values in a namespace
 %%% (a doc) in system_config DB.
+%%%
+%%% @author Edouard Swiac
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kapi_sysconf).
 

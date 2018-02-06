@@ -2,9 +2,9 @@
 %%% @copyright (C) 2015-2018, 2600Hz Inc
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(teletype_port_request).
 

@@ -6,9 +6,9 @@
 %%% /accounts/{account_id}/rate_limits - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/rate_limits - manip device's access lists
 %%%
+%%%
+%%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors:
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cb_rate_limits).
 

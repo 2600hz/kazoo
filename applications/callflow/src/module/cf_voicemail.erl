@@ -8,10 +8,10 @@
 %%%   ,"max_message_length":500
 %%%   ,"interdigit_timeout":2000 // in milliseconds
 %%% }
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_voicemail).
 -behaviour(gen_cf_action).

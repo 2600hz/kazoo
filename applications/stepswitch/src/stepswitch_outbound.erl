@@ -2,11 +2,11 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% Handle offnet requests, including rating them
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(stepswitch_outbound).
 

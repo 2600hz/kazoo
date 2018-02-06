@@ -1,4 +1,4 @@
-%%%-----------------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%%
@@ -6,11 +6,11 @@
 %%% handle authentication (directory) requests; one to handle route (dialplan)
 %%% requests, and one to monitor the node and various stats about the node.
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-----------------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 -module(ecallmgr_fs_nodes).
 -behaviour(gen_listener).
 

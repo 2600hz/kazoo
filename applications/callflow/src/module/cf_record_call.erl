@@ -3,11 +3,10 @@
 %%% @doc
 %%% Handles starting/stopping a call recording
 %%%
-%%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%
-%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
+%%% @author James Aimonetti
+%%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC
+%%% @end
 %%%-------------------------------------------------------------------
 -module(cf_record_call).
 

@@ -3,8 +3,6 @@
 %%% @doc
 %%%
 %%% @end
-%%% @contributors
-
 %%%-------------------------------------------------------------------
 -module('cb_presence').
 
@@ -473,3 +471,4 @@ save_report(Context) ->
     HostURL = cb_context:host_url(Context),
     URL = <<HostURL/binary, "/", MagicPath/binary>>,
     {Report, URL}.
+

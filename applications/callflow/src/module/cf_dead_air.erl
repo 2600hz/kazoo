@@ -7,9 +7,9 @@
 %%%
 %%% "data":{}
 %%%
+%%%
+%%% @author Kirill Sysoev github.com/onnet
 %%% @end
-%%% @contributors
-%%%   Kirill Sysoev github.com/onnet
 %%%-------------------------------------------------------------------
 -module(cf_dead_air).
 

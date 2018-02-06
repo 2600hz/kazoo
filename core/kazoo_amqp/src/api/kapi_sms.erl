@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
 %%% @doc
 %%% Routing requests, responses, and wins!
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kapi_sms).
 

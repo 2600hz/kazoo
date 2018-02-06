@@ -2,9 +2,9 @@
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Dinkor Media Group (Sergey Korobkov)
 %%% @end
-%%% @contributors
-%%%   Dinkor Media Group (Sergey Korobkov)
 %%%-------------------------------------------------------------------
 -module(cb_allotments).
 

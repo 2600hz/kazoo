@@ -18,9 +18,9 @@
 %%% group_id will steal a channel from any devices/users in a group*
 %%%  * no guarantees on which if multiple inbound calls are ringing
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_group_pickup).
 

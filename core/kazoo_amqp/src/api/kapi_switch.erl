@@ -2,9 +2,9 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Switch events messages
+%%%
+%%% @author Eduoard Swiac
 %%% @end
-%%% @contributors
-%%%   Eduoard Swiac
 %%%-------------------------------------------------------------------
 -module(kapi_switch).
 

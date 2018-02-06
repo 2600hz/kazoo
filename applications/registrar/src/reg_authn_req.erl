@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handle authn_req messages
+%%%
+%%% @author James Aimonetti
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(reg_authn_req).
 

@@ -2,10 +2,10 @@
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% Track the FreeSWITCH channel information, and provide accessors
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_channel).
 -behaviour(gen_server).

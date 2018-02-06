@@ -2,10 +2,10 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% Behaviour of backend modules
+%%%
+%%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%% @author Conversant Ltd (Max Lay)
 %%% @end
-%%% @contributors
-%%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
-%%%    Conversant Ltd (Max Lay)
 %%%-------------------------------------------------------------------
 -module(gen_edr_backend).
 

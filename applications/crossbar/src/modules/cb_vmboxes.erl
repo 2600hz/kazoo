@@ -5,11 +5,11 @@
 %%%
 %%% Handle client requests for vmbox documents
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(cb_vmboxes).
 

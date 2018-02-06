@@ -13,11 +13,11 @@
 %%%                receive -> Resp
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(blackhole_bindings).
 

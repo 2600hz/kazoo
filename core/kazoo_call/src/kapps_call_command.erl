@@ -2,12 +2,11 @@
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
 %%%
-%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kapps_call_command).
 

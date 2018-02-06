@@ -9,9 +9,9 @@
 %%%   ,"terminators":["1", "3", "5"]
 %%%   ,"engine":"flite"
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_tts).
 

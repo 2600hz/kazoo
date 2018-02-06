@@ -11,9 +11,9 @@
 %%%   "match": { [callflow node to branch to when absolute mode is false and regex matches] },
 %%%   "nomatch": { [callflow node to branch to when regex does not match or no child node defined for incoming caller id] },
 %%% }
+%%%
+%%% @author Kozlov Yakov
 %%% @end
-%%% @contributors
-%%%   Kozlov Yakov
 %%%-------------------------------------------------------------------
 -module(cf_cidlistmatch).
 

@@ -4,9 +4,9 @@
 %%%
 %%% When implementing provider modules, these callbacks are a must!
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_gen_provider).
 

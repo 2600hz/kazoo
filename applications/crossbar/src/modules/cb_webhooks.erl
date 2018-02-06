@@ -4,9 +4,9 @@
 %%%
 %%% Handle CRUD operations for WebHooks
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_webhooks).
 

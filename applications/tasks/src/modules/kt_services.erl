@@ -2,9 +2,9 @@
 %%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kt_services).
 %% behaviour: tasks_provider

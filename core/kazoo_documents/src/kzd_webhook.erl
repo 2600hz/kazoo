@@ -4,9 +4,9 @@
 %%%
 %%% Webhook document accessors
 %%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kzd_webhook).
 

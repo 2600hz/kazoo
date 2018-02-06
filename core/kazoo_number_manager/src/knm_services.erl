@@ -3,10 +3,10 @@
 %%% @doc
 %%%
 %%%
+%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_services).
 

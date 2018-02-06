@@ -2,9 +2,9 @@
 %%% @copyright (C) 2017, Conversant Ltd
 %%% @doc
 %%%
+%%%
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%   Max Lay
 %%%-------------------------------------------------------------------
 -module(kapi_edr_amqp).
 

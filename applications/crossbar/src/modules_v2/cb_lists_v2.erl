@@ -1,14 +1,14 @@
-%%%----------------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Match list module
 %%%
 %%% Handle client requests for match list documents, api v2
 %%%
+%%%
+%%% @author SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   SIPLABS, LLC (Ilya Ashchepkov)
-%%%----------------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 -module(cb_lists_v2).
 
 -export([maybe_migrate/1]).

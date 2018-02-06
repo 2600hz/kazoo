@@ -3,9 +3,9 @@
 %%% @doc
 %%% Account module
 %%%
+%%%
+%%% @author Jon Blanton <jon@2600hz.com>
 %%% @end
-%%% @contributors
-%%%   Jon Blanton <jon@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(cb_whitelabel).
 

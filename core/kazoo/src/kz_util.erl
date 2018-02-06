@@ -2,10 +2,10 @@
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kz_util).
 

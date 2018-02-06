@@ -3,12 +3,12 @@
 %%% @doc
 %%%
 %%% Allow resellers directly below the master account to find
-%%  manually-added `available' numbers.
+%%% manually-added `available' numbers.
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_inventory).
 -behaviour(knm_gen_carrier).
@@ -157,3 +157,4 @@ disconnect_number(Number) -> Number.
 %%--------------------------------------------------------------------
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
+

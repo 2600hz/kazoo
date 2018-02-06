@@ -9,7 +9,6 @@
 %%%   ,"engine":"flite" // or "ispeech if configured
 %%% }
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(cf_tts).
 

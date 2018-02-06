@@ -2,11 +2,11 @@
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
+%%%
+%%% @author James Aimonetti
+%%% @author Edouard Swiac
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Edouard Swiac
-%%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(cdr_listener).
 -behaviour(gen_listener).

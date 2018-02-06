@@ -3,11 +3,11 @@
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with port request information to configured email address
-%%% @end
 %%%
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%   James Aimonetti
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @author James Aimonetti
+%%% @end
 %%%-------------------------------------------------------------------
 -module(notify_port_cancel).
 

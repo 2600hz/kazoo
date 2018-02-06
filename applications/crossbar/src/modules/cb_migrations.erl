@@ -3,9 +3,9 @@
 %%% @doc
 %%% Handle various migrations that can be performed on accounts
 %%%
+%%%
+%%% @author Mark Magnusson
 %%% @end
-%%% @contributors
-%%%     Mark Magnusson
 %%%-------------------------------------------------------------------
 -module(cb_migrations).
 

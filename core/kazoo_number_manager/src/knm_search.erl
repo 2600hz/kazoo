@@ -4,7 +4,6 @@
 %%%
 %%%
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(knm_search).
 -behaviour(gen_listener).

@@ -7,9 +7,9 @@
 %%% If the call is destined for a known client, the offnet whapp (probably
 %%% stepswitch) will redirect the request back in, to be picked up by
 %%% ts_from_offnet.
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_from_onnet).
 

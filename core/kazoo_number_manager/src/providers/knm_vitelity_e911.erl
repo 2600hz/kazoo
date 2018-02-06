@@ -4,10 +4,10 @@
 %%%
 %%% Handle e911 provisioning
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_vitelity_e911).
 -behaviour(knm_gen_provider).

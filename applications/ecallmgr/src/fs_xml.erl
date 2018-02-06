@@ -3,9 +3,9 @@
 %%% @doc
 %%% XML-formatter for FreeSWITCH XML responses
 %%% Copy of xmerl/src/xmerl_xml.erl
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(fs_xml).
 

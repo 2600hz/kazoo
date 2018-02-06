@@ -2,9 +2,9 @@
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%%
+%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(cb_mobile_manager).
 
