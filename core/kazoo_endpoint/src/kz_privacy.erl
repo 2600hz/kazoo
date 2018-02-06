@@ -41,7 +41,6 @@
 -type cid() :: {cid_name(), cid_number()}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Would anonymize caller id if screen and hide parameters in
 %% CCVs are presents and system is configured to hide some part of
@@ -80,7 +79,6 @@ has_flags(JObj) ->
                 ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find out if we call should be blocked if it's anonymous and Account
 %% or system is configured to block anonymous calls
@@ -106,7 +104,6 @@ should_block_anonymous(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Checks all possible variables to see if the incoming call is anonymous
 %% @end
@@ -123,7 +120,6 @@ is_anonymous(JObj) ->
         orelse HasPrivacyFlags.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Default anonymous Caller IDs from System wide config, or Account
 %% @end

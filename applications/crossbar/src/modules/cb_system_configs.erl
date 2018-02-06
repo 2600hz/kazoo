@@ -31,7 +31,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -51,7 +50,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.system_configs">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -75,7 +73,6 @@ authorize(Context, _Id) -> authorize(Context).
 authorize(Context, _Id, _Node) -> authorize(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -95,7 +92,6 @@ allowed_methods(_SystemConfigId, _Node) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /system_configs => []
@@ -114,7 +110,6 @@ resource_exists(_Id) -> 'true'.
 resource_exists(_Id, _Node) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -214,7 +209,6 @@ validate_node_request(Context, Id, Node, FullConfig) ->
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
@@ -224,7 +218,6 @@ put(Context, _Id) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -253,7 +246,6 @@ patch(Context, Id, Node) ->
     post(Context, Id, Node).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end

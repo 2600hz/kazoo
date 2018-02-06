@@ -14,7 +14,6 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create the partial url for this module
 %% @end
@@ -25,7 +24,6 @@ url() ->
     "/client_token/".
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create client Token
 %% @end

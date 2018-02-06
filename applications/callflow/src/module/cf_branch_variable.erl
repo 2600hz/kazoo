@@ -27,7 +27,6 @@
 -type variable_key() :: kz_term:api_ne_binary() | kz_term:api_ne_binaries().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module
 %% @end

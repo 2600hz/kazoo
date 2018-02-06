@@ -21,7 +21,6 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create the partial url for this module
 %% @end
@@ -36,7 +35,6 @@ url(CustomerId, AddressId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses/", kz_term:to_list(AddressId)]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find a customer by id
 %% @end
@@ -48,7 +46,6 @@ find(CustomerId, AddressId) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new customer using the given record
 %% @end
@@ -66,7 +63,6 @@ create(CustomerId, Address) ->
     create(Address#bt_address{customer_id=CustomerId}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Updates a customer with the given record
 %% @end
@@ -81,7 +77,6 @@ update(#bt_address{id=AddressId
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Deletes a customer id from braintree's system
 %% @end
@@ -100,7 +95,6 @@ delete(CustomerId, AddressId) ->
     #bt_address{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a customer record
 %% @end
@@ -131,7 +125,6 @@ xml_to_record(Xml, Base) ->
                }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a customer record
 %% @end
@@ -167,7 +160,6 @@ record_to_xml(Address, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given json object into a record
 %% @end
@@ -192,7 +184,6 @@ json_to_record(JObj) ->
                }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given record into a json object
 %% @end
@@ -220,7 +211,6 @@ record_to_json(#bt_address{}=Address) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the object exists in but no id has been provided then generate
 %% a uuid to use during creation.

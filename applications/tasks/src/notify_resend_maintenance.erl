@@ -39,7 +39,6 @@
 -define(FAILED_TYPE_VIEW, <<"pending_notify/failed_by_type">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Same as pending/2 without showing details and limited to 100 notifications
 %% @end
@@ -49,7 +48,6 @@ pending() ->
     pending(<<"100">>, <<"false">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Same as pending/2 without showing details
 %% @end
@@ -59,7 +57,6 @@ pending(ShowCount) ->
     pending(ShowCount, <<"false">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Prints a limited amount of notifications publish pending.
 %% Notification that been process is excluded.
@@ -97,7 +94,6 @@ pending(ShowCount, _Details) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Show Pending notification by type, limited to first 100 ready to
 %% process.
@@ -120,7 +116,6 @@ pending_by_type(Type) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Same as failed/2 without showing details and limited to 100
 %% @end
@@ -130,7 +125,6 @@ failed() ->
     failed(<<"100">>, <<"false">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Same as failed/2 without showing details
 %% @end
@@ -140,7 +134,6 @@ failed(ShowCount) ->
     failed(ShowCount, <<"false">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Prints a limited amount of notifications publish which maxed their tries.
 %% Options:
@@ -170,7 +163,6 @@ failed(ShowCount, _Details) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Show failed notification by type, limited to first 100
 %% @end
@@ -192,7 +184,6 @@ failed_by_type(Type) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Send the notification by Id
 %% @end
@@ -212,7 +203,6 @@ send_notify(Id) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Show details for the notification by Id
 %% @end
@@ -280,7 +270,6 @@ bulk_delete(Ids) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Prints total pending notification for each type
 %% @end

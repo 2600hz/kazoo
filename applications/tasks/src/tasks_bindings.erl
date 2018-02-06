@@ -50,13 +50,11 @@
 %%% API
 %%%===================================================================
 
-%% @public
 -spec apply(kz_json:object(), list()) -> list().
 apply(API, Args) ->
     Action = kz_json:get_value(<<"action">>, API),
     ?MODULE:apply(API, Action, Args).
 
-%% @public
 -spec apply(kz_json:object(), kz_term:ne_binary(), list()) -> list().
 apply(API, Action, Args) ->
     Category = kz_json:get_value(<<"category">>, API),
@@ -65,7 +63,6 @@ apply(API, Action, Args) ->
     map(Route, Args).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% return [ {Result, Payload1} ], a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
@@ -86,7 +83,6 @@ pmap(Routing, Payload, Options) ->
     kazoo_bindings:pmap(Routing, Payload, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% return the modified Payload after it has been threaded through
 %% all matching bindings

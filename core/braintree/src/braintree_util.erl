@@ -34,7 +34,6 @@
 -export_type([char_to_bin_res/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -78,7 +77,6 @@ props_to_xml([{K, V}|T], Xml) ->
     props_to_xml(T, [{K, [kz_term:to_list(V)]}|Xml]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -92,7 +90,6 @@ bt_error_to_json(BtError) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -111,7 +108,6 @@ bt_verification_to_json(BtVerification) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -125,7 +121,6 @@ bt_api_error_to_json(BtApiError) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -137,7 +132,6 @@ error_no_payment_token() ->
     throw({'no_payment_token', kz_json:from_list([{<<"no_payment_token">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -149,7 +143,6 @@ error_authentication() ->
     throw({'authentication', kz_json:from_list([{<<"authentication">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -161,7 +154,6 @@ error_authorization() ->
     throw({'authorization', kz_json:from_list([{<<"authorization">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -173,7 +165,6 @@ error_not_found(Object) ->
     throw({'not_found', kz_json:from_list([{<<"not_found">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -185,7 +176,6 @@ error_upgrade_required() ->
     throw({'upgrade_required', kz_json:from_list([{<<"upgrade_required">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -197,7 +187,6 @@ error_server_error() ->
     throw({'server_error', kz_json:from_list([{<<"server_error">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -209,7 +198,6 @@ error_maintenance() ->
     throw({'maintenance', kz_json:from_list([{<<"maintenance">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -221,7 +209,6 @@ error_api(ApiError) ->
     throw({'api_error', kz_json:from_list([{<<"api_error">>, JObj}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -233,7 +220,6 @@ error_io_fault() ->
     throw({'io_fault', kz_json:from_list([{<<"io_fault">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -245,7 +231,6 @@ error_min_amount(Amount) ->
               throw({'min_amount', kz_json:from_list([{<<"min_amount">>, Error}])}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

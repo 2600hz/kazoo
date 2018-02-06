@@ -86,7 +86,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -112,7 +111,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.queues">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -138,7 +136,6 @@ allowed_methods(_QueueId, ?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /queues => []
@@ -178,7 +175,6 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -388,7 +384,6 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
@@ -459,7 +454,6 @@ filter_response_fields(JObj) ->
                      ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verib is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -477,7 +471,6 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
     read(Id, crossbar_doc:save(Context)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -486,7 +479,6 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
 patch(Context, Id) ->
     post(Context, Id).
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end

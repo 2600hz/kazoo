@@ -32,7 +32,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -61,7 +60,6 @@ to_response(Context, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -74,7 +72,6 @@ allowed_methods() -> [?HTTP_GET].
 allowed_methods(_CallId) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /call_inspector => []
@@ -89,7 +86,6 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.

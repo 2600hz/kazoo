@@ -17,7 +17,6 @@
 -define(KEY, ?FEATURE_FORCE_OUTBOUND).
 
 
-%% @public
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(N) ->
     case knm_phone_number:state(knm_number:phone_number(N)) of
@@ -25,7 +24,6 @@ save(N) ->
         _ -> delete(N)
     end.
 
-%% @public
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(N) ->
     case feature(N) =:= undefined of

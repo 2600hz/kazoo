@@ -34,7 +34,6 @@
 -type updates() :: #kz_service_updates{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -68,7 +67,6 @@ customer_has_card(Customer, AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -105,7 +103,6 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -127,7 +124,6 @@ transactions(AccountId, From0, To0) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -145,7 +141,6 @@ subscriptions(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -181,7 +176,6 @@ commit_transactions(BillingId, _Transactions, _Try) ->
     'error'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

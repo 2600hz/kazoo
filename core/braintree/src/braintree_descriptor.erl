@@ -15,7 +15,6 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -25,7 +24,6 @@ get_name(#bt_descriptor{name=Name}) ->
     Name.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert the given XML to a descriptor record
 %% @end
@@ -42,7 +40,6 @@ xml_to_record(Xml, Base) ->
                   }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert the given XML to a descriptor record
 %% @end
@@ -64,7 +61,6 @@ record_to_xml(Descriptor, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given record into a json object
 %% @end
@@ -77,7 +73,6 @@ record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
                       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given json obj into a record
 %% @end

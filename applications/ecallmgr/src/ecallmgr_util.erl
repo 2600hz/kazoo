@@ -89,7 +89,6 @@
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% send the SendMsg proplist to the freeswitch node
 %% @end
@@ -484,7 +483,6 @@ is_node_up(Node, UUID) ->
         andalso ecallmgr_fs_channel:exists(UUID).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% set channel and call variables in FreeSWITCH
 %% @end
@@ -648,7 +646,6 @@ maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
 maybe_sanitize_fs_value(_, Val) -> Val.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
 %% and create the dial string ([origination_caller_id_name=Name
@@ -1096,7 +1093,6 @@ maybe_append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars
     list_to_binary([ecallmgr_fs_xml:get_leg_vars(ChannelVars++HeaderVars), Contact]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1117,7 +1113,6 @@ create_masquerade_event(Application, EventName, Boolean) ->
     >>.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

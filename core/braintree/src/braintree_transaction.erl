@@ -30,7 +30,6 @@
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create the partial url for this module
 %% @end
@@ -53,7 +52,6 @@ url(TransactionId, Options) ->
                  ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find a transaction by id
 %% @end
@@ -65,7 +63,6 @@ find(TransactionId) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find transactions by customer id
 %% @end
@@ -102,7 +99,6 @@ find_by_customer(CustomerId, Min, Max) ->
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new transaction using the given record
 %% @end
@@ -125,7 +121,6 @@ create(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{customer_id=CustomerId}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a sale transaction
 %% @end
@@ -158,7 +153,6 @@ quick_sale(CustomerId, Amount, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a credit transaction
 %% @end
@@ -182,7 +176,6 @@ quick_credit(CustomerId, Amount) ->
                                       }).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Void transactions that have a status:authorized or submitted_for_settlement
 %% @end
@@ -196,7 +189,6 @@ void(TransactionId) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Refund a transaction with status: settled or settling
 %% @end
@@ -216,7 +208,6 @@ refund(TransactionId, Amount) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a transaction record
 %% @end
@@ -305,7 +296,6 @@ get_transaction_sources([Element|Elements], Sources) ->
     get_transaction_sources(Elements, [Source|Sources]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a transaction record
 %% @end
@@ -399,7 +389,6 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given record into a json object
 %% @end

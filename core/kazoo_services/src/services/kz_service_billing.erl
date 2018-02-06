@@ -16,7 +16,6 @@
 -define(SERVICE_CATEGORY, <<"billing">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -47,7 +46,6 @@ reconcile_fold(JObj, S) ->
     kz_services:update(?SERVICE_CATEGORY, Item, Quantity, S).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

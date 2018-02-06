@@ -28,7 +28,6 @@
 -define(MANAGED_VIEW_FILE, <<"views/numbers_managed.json">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -38,7 +37,6 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
@@ -48,7 +46,6 @@ info() ->
 is_local() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check with carrier if these numbers are registered with it.
 %% @end
@@ -58,7 +55,6 @@ is_local() -> 'true'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query the local system for a quantity of available numbers
 %% in a rate center
@@ -122,7 +118,6 @@ format_number_resp(QID, JObj) ->
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, kz_json:new()}}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -130,7 +125,6 @@ format_number_resp(QID, JObj) ->
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -146,7 +140,6 @@ acquire_number(Number) ->
                        ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Release a number from the routing table
 %% @end
@@ -225,7 +218,6 @@ update_doc(Number, UpdateProps) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

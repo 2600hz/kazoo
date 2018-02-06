@@ -55,7 +55,6 @@
 -type input_term() :: atom() | string() | kz_term:ne_binary().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -118,7 +117,6 @@ add_missing_modules(Modules, MissingModules) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -138,7 +136,6 @@ flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -170,7 +167,6 @@ persist_module(Module, Mods) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -183,7 +179,6 @@ stop_module(Module) ->
     io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -192,7 +187,6 @@ stop_module(Module) ->
 running_modules() -> crossbar_bindings:modules_loaded().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -218,7 +212,6 @@ find_account_by_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -246,7 +239,6 @@ find_account_by_name(Name) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -274,7 +266,6 @@ find_account_by_realm(Realm) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -288,7 +279,6 @@ find_account_by_id(Id) ->
     find_account_by_id(kz_term:to_binary(Id)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -301,7 +291,6 @@ allow_account_number_additions(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -314,7 +303,6 @@ disallow_account_number_additions(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -327,7 +315,6 @@ enable_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -340,7 +327,6 @@ disable_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -353,7 +339,6 @@ promote_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -366,7 +351,6 @@ demote_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -607,7 +591,6 @@ validate_user(JObj, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -673,7 +656,6 @@ print_account_info(AccountDb, AccountId) ->
     {'ok', AccountId}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -695,7 +677,6 @@ maybe_move_account(AccountId, ToAccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

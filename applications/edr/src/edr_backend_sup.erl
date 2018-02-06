@@ -58,7 +58,6 @@ startup_child(#backend{type=Type, name=Name}=Backend) ->
     ?WORKER_NAME_ARGS_TYPE(Name, Module, [Backend], 'transient').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Starts the supervisor
 %% @end
@@ -72,7 +71,6 @@ start_link() ->
 %% ===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about

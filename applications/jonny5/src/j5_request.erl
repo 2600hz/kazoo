@@ -101,7 +101,6 @@
 -export_type([request/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -164,7 +163,6 @@ request_number(Number, CCVs) ->
 ccvs(#request{request_ccvs=CCVs}) -> CCVs.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -189,7 +187,6 @@ to_jobj(Request) ->
     kz_json:from_list(Props).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -238,7 +235,6 @@ authorize_reseller(Reason, Request) ->
     authorized_by_reseller(Reason, Request).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -285,7 +281,6 @@ deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
                    }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -313,7 +308,6 @@ is_authorized(#request{account_authorized=AccountAuthorized
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -326,7 +320,6 @@ set_account_id(AccountId, Request) ->
 account_id(#request{account_id=AccountId}) -> AccountId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -339,7 +332,6 @@ set_reseller_id(ResellerId, Request) ->
 reseller_id(#request{reseller_id=ResellerId}) -> ResellerId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -362,7 +354,6 @@ account_billing(#request{account_billing=Billing}) -> Billing.
 reseller_billing(#request{reseller_billing=Billing}) -> Billing.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -379,7 +370,6 @@ clear_soft_limit(Request) ->
 soft_limit(#request{soft_limit=SoftLimit}) -> SoftLimit.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -388,7 +378,6 @@ soft_limit(#request{soft_limit=SoftLimit}) -> SoftLimit.
 other_leg_call_id(#request{other_leg_call_id=CallId}) -> CallId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -397,7 +386,6 @@ other_leg_call_id(#request{other_leg_call_id=CallId}) -> CallId.
 timestamp(#request{timestamp=Timestamp}) -> Timestamp.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -407,7 +395,6 @@ answered_time(#request{answered_time=AnsweredTime}) ->
     AnsweredTime.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -417,7 +404,6 @@ billing_seconds(#request{billing_seconds=BillingSeconds}) ->
     BillingSeconds.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -427,7 +413,6 @@ call_direction(#request{call_direction=CallDirection}) ->
     CallDirection.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -436,7 +421,6 @@ call_direction(#request{call_direction=CallDirection}) ->
 call_id(#request{call_id=CallId}) -> CallId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -445,7 +429,6 @@ call_id(#request{call_id=CallId}) -> CallId.
 from(#request{sip_from=From}) -> From.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -454,7 +437,6 @@ from(#request{sip_from=From}) -> From.
 to(#request{sip_to=To}) -> To.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -463,7 +445,6 @@ to(#request{sip_to=To}) -> To.
 message_id(#request{message_id=MessageId}) -> MessageId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -472,7 +453,6 @@ message_id(#request{message_id=MessageId}) -> MessageId.
 server_id(#request{server_id=ServerId}) -> ServerId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -481,7 +461,6 @@ server_id(#request{server_id=ServerId}) -> ServerId.
 node(#request{node=NodeId}) -> NodeId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -490,7 +469,6 @@ node(#request{node=NodeId}) -> NodeId.
 classification(#request{classification=Classification}) -> Classification.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -499,7 +477,6 @@ classification(#request{classification=Classification}) -> Classification.
 number(#request{number=Number}) -> Number.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -509,7 +486,6 @@ per_minute_cost(#request{request_jobj=JObj}) ->
     wht_util:per_minute_cost(JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

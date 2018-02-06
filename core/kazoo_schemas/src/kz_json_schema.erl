@@ -651,7 +651,6 @@ error_to_jobj(Other, _Options) ->
     throw({'schema_error', Other}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Add a validation error to the list of request errors
 %% @end

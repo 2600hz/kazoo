@@ -16,7 +16,6 @@
 -define(DEFAULT_EVENT_WAIT, 10 * ?MILLISECONDS_IN_SECOND).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module
 %% @end

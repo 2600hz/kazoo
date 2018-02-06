@@ -23,7 +23,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -35,7 +34,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.dialplans">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -46,7 +44,6 @@ allowed_methods() ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -55,7 +52,6 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

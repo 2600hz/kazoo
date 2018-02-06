@@ -94,7 +94,6 @@
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -114,7 +113,6 @@ is_number(#knm_number{}) -> 'true';
 is_number(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Attempts to get a number from DB.
 %% Note: Number parameter has to be normalized.
@@ -134,7 +132,6 @@ get(Num, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Attempts to create a new number in DB or modify an existing one.
 %% Note: `assign_to' number option MUST be set.
@@ -216,7 +213,6 @@ ensure_state(PN, AllowedStates) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Fetches then transitions an existing number to the reserved state.
 %% @end
@@ -290,7 +286,6 @@ ensure_number_is_not_porting(Num, Options) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -304,7 +299,6 @@ move(Num, MoveTo, Options) ->
     ?TRY3(move, Num, MoveTo, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Attempts to update some phone_number fields.
 %% Note: will always result in a phone_number save.
@@ -321,7 +315,6 @@ update(Num, Routines, Options) ->
     ?TRY3(update, Num, Routines, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Note: option 'assign_to' needs to be set.
 %% @end
@@ -331,7 +324,6 @@ reconcile(DID, Options) ->
     ?TRY2(reconcile, DID, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -345,7 +337,6 @@ release(Num, Options) ->
     ?TRY2(release, Num, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Remove a number from the system without doing any state checking.
 %% Sounds too harsh for you? You are looking for release/1,2.
@@ -356,7 +347,6 @@ delete(Num, Options) ->
     ?TRY2(delete, Num, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -370,7 +360,6 @@ assign_to_app(Num, App, Options) ->
     ?TRY3(assign_to_app, Num, App, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

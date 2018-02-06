@@ -72,7 +72,6 @@
 %%% API
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -82,7 +81,6 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
@@ -92,7 +90,6 @@ info() ->
 is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check with carrier if these numbers are registered with it.
 %% @end
@@ -102,7 +99,6 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query the Bandwidth.com system for a quanity of available numbers
 %% in a rate center
@@ -151,7 +147,6 @@ found_number_to_KNM(Found, QID) ->
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -215,7 +210,6 @@ acquire_and_provision_number(Number) ->
 disconnect_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -223,7 +217,6 @@ disconnect_number(Number) -> Number.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

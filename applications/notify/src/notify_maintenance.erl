@@ -28,7 +28,6 @@
 -define(SMTP_CLIENT_DOC, <<"smtp_client">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns whether an account's initial call notification has been sent
 %% @end
@@ -47,7 +46,6 @@ check_initial_call(Account) when is_binary(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns whether the initial_registration notification has been sent
 %% @end
@@ -65,7 +63,6 @@ check_initial_registration(Account) when is_binary(Account) ->
             io:format("unable to open account doc ~s: ~p", [AccountId, _R])
     end.
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Configures the Relay key of the SMTP_Client System Config document.
 %% @end
@@ -79,7 +76,6 @@ configure_smtp_relay(Value) ->
             'failed'
     end.
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Configures the username key of the SMTP_Client System Config document.
 %% @end
@@ -94,7 +90,6 @@ configure_smtp_username(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Configures the password key of the SMTP_Client System Config document.
 %% @end
@@ -109,7 +104,6 @@ configure_smtp_password(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Configures the username key of the SMTP_Client System Config document.
 %% @end
@@ -124,7 +118,6 @@ configure_smtp_auth(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Configures the port key of the SMTP_Client System Config document.
 %% @end
@@ -139,7 +132,6 @@ configure_smtp_port(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -151,7 +143,6 @@ refresh() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

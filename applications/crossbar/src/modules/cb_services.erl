@@ -35,7 +35,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -52,7 +51,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -72,7 +70,6 @@ allowed_methods(?PATH_STATUS) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /services => []
@@ -98,7 +95,6 @@ content_types_provided(Context, ?PATH_AUDIT) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -146,7 +142,6 @@ validate(Context0, ?PATH_STATUS) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is a GET, execute necessary code to fulfill the GET
 %% request. Generally, this will involve stripping pvt fields and loading
@@ -167,7 +162,6 @@ get(Context, ?PATH_STATUS) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verib is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).

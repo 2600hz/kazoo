@@ -21,7 +21,6 @@
 -define(DEBIT, <<"debit">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -40,7 +39,6 @@ get(Account, Name) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -69,7 +67,6 @@ credit(LedgerId, SrcService, SrcId, Usage, Props, AccountId) ->
     create(LedgerId, ?CREDIT, SrcService, SrcId, Usage, Props, AccountId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

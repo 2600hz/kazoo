@@ -62,7 +62,6 @@
 -define(REQ_URL_INDEX, 1).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Send synchronous request
 %%--------------------------------------------------------------------
 
@@ -179,7 +178,6 @@ put(Url, Headers, Body, Options) ->
     req('put', Url, Headers, Body, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Send a synchronous HTTP request
 %%--------------------------------------------------------------------
 
@@ -206,7 +204,6 @@ req(Method, Url, Hdrs, Body, Opts) ->
     execute_request(Method, Request, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Send an asynchronous HTTP request
 %%--------------------------------------------------------------------
 
@@ -255,7 +252,6 @@ execute_request(Method, Request, Opts) ->
     handle_response(timer:tc(F)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Response to caller in a proper manner
 %%--------------------------------------------------------------------
 -spec handle_response(httpc_ret() | {pos_integer(), {method(), kz_term:text(), httpc_ret()}}) -> ret().

@@ -177,7 +177,6 @@ maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Update pvt_signature_secret for user
 %% @end
@@ -291,7 +290,6 @@ master_account_id() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Log successful authentication if configured to do so
 %% @end
@@ -321,7 +319,6 @@ log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) -
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Log failed authentication if configured to do so
 %% @end

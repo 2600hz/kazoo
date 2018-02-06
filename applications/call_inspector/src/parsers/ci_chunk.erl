@@ -183,7 +183,6 @@ is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Gives back an ordered list of entities participating in the SIP dialog.
 %%

@@ -120,7 +120,6 @@
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -168,7 +167,6 @@ base_service_object(AccountId, AccountJObj) ->
                 ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -198,7 +196,6 @@ maybe_calc_updates(Services, 'true') ->
     Services#kz_services{cascade_quantities = Qs}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -318,7 +315,6 @@ handle_fetch_result(AccountId, JObj) ->
                 }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -330,7 +326,6 @@ add_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
     Services#kz_services{jobj = UpdatedJObj}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -341,7 +336,6 @@ delete_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
                         }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -454,7 +448,6 @@ save_doc(JObj) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -478,7 +471,6 @@ delete(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -495,7 +487,6 @@ list_categories(#kz_services{jobj = JObj
                  ])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -514,7 +505,6 @@ list_items(#kz_services{jobj = JObj
                  ])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -549,7 +539,6 @@ set_billing_id(BillingId, AccountId=?NE_BINARY) ->
     set_billing_id(BillingId, fetch(AccountId)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -573,7 +562,6 @@ get_billing_id(Account=?NE_BINARY) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -590,7 +578,6 @@ update(CategoryId, ItemId, Quantity, #kz_services{updates = JObj
                         }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -608,7 +595,6 @@ activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
     activation_charges(CategoryId, ItemId, Services).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -623,7 +609,6 @@ commit_transactions(#kz_services{billing_id = BillingId}=Services, Activations) 
     Bookkeeper:commit_transactions(BillingId, Transactions).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -638,7 +623,6 @@ charge_transactions(#kz_services{billing_id = BillingId}=Services, Activations) 
     Bookkeeper:charge_transactions(BillingId, Transactions).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -671,7 +655,6 @@ select_bookkeeper(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -704,7 +687,6 @@ current_balance(AccountId) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -717,7 +699,6 @@ service_plan_json(Account=?NE_BINARY) ->
     service_plan_json(fetch(Account)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -758,7 +739,6 @@ to_json(#kz_services{jobj = JObj
     kz_json:set_values(Props, JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -791,7 +771,6 @@ master_account_id() -> kapps_util:get_master_account_id().
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Throws an error if the billing account is not in "good_standing",
 %% used when update requests are made to kill them if there are
@@ -881,7 +860,6 @@ move_to_good_standing(?MATCH_ACCOUNT_RAW(AccountId)) ->
                              }).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -913,7 +891,6 @@ reconcile(#kz_services{}=Services) ->
     save(reconcile_only(Services)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -949,7 +926,6 @@ pause_between_service_reconciliation() ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -990,7 +966,6 @@ status(#kz_services{status = Status}) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1048,7 +1023,6 @@ diff_quantity(CategoryId, ItemId, #kz_services{jobj = JObj
     UpdateQuantity - ItemQuantity.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1059,7 +1033,6 @@ updated_quantity(CategoryId, ItemId, #kz_services{updates = JObj}) ->
     kz_json:get_integer_value([CategoryId, ItemId], JObj, 0).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1082,7 +1055,6 @@ category_quantity(CategoryId, ItemExceptions, #kz_services{updates = UpdatedQuan
     sum_values(0, QsMinusEx).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1094,7 +1066,6 @@ cascade_quantity(CategoryId, ItemId, #kz_services{cascade_quantities = JObj}=Ser
         + quantity(CategoryId, ItemId, Services).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1117,7 +1088,6 @@ sum_values(Acc0, JObj) ->
     kz_json:foldl(F, Acc0, JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1129,7 +1099,6 @@ reset_category(CategoryId, #kz_services{updates = JObj}=Services) ->
                         }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% Helper function to know if an account is a reseller or not.
@@ -1144,7 +1113,6 @@ is_reseller(ServicesJObj) ->
     kzd_services:is_reseller(ServicesJObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1346,7 +1314,6 @@ get_service_module(Module) ->
     get_service_module(<<?SERVICE_MODULE_PREFIX, Module/binary>>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1534,7 +1501,6 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

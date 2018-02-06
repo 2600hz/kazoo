@@ -32,7 +32,6 @@
 -export_type([kz_transactions/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -113,7 +112,6 @@ call_charges(Ledger, CallId, Event, 'false') ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Filter list of transactions by reason
 %% @end
@@ -154,7 +152,6 @@ is_from_braintree(Transaction) ->
     kz_transaction:description(Transaction) =:= <<"braintree transaction">>.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Keep only per minute transactions
 %% @end
@@ -175,7 +172,6 @@ is_per_minute(Transaction) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% fetch last transactions
 %% @end
@@ -190,7 +186,6 @@ fetch_last(Account, Count) ->
     fetch_local(Account, [ViewOptions]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% fetch last transactions from From to To
 %% @end
@@ -233,7 +228,6 @@ get_range(Account, From, To) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% fetch last local transactions from From to To
 %% @end
@@ -291,7 +285,6 @@ do_fetch_bookkeeper(_Account, [], Transactions) ->
     {'ok', Transactions}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% fetch last bookkeeper transactions from From to To
 %% @end
@@ -344,7 +337,6 @@ transaction_to_prop_fold(Transaction, Acc) ->
     [{{Date, Amount}, Transaction}|Acc].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Save list of record
 %% @end
@@ -367,7 +359,6 @@ save([Transaction | Transactions], Acc) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -391,7 +382,6 @@ remove([Transaction | Transactions], Acc) ->
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -401,7 +391,6 @@ to_json(Transactions) ->
     [kz_transaction:to_json(Tr) || Tr <- Transactions].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

@@ -66,7 +66,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -100,7 +99,6 @@ allowed_methods(_WhitelabelDomain, ?WELCOME_REQ) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -124,7 +122,6 @@ resource_exists(_, ?WELCOME_REQ) -> 'true';
 resource_exists(_, ?ICON_REQ) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -151,7 +148,6 @@ authorize(_Context, _Nouns, _Verb) ->
     'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

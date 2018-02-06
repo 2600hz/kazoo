@@ -32,7 +32,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -49,7 +48,6 @@ init() ->
                          ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -79,7 +77,6 @@ allowed_methods(?AVAILABLE, _PlanId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /service_plans => []
@@ -98,7 +95,6 @@ resource_exists(_) -> 'true'.
 resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -179,7 +175,6 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
     maybe_allow_change(Context, PlanId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -255,7 +250,6 @@ post(Context, PlanId, ?OVERRIDE) ->
     end.
 
 %%----------------------------------- ---------------------------------
-%% @public
 %% @doc
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end

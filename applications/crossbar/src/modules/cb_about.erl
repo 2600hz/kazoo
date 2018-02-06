@@ -23,7 +23,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -35,7 +34,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.about">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -45,7 +43,6 @@ init() ->
 allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -56,7 +53,6 @@ allowed_methods() -> [?HTTP_GET].
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

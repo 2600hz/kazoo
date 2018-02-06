@@ -19,7 +19,6 @@
 -include("services.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the reseller status on the provided account and update all
 %% sub accounts
@@ -50,7 +49,6 @@ do_promote(AccountId) ->
     cascade_reseller_id(AccountId, AccountId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Remove reseller status from an account and set all its sub accounts
 %% to the next higher reseller
@@ -82,7 +80,6 @@ do_demote(AccountId) ->
     cascade_reseller_id(ResellerId, AccountId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the reseller_id to the provided value on all the sub-accounts
 %% of the provided account
@@ -108,7 +105,6 @@ cascade_reseller_id(Reseller, Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set teh reseller_id to the provided value on the provided account
 %% @end

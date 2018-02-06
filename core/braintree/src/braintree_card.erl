@@ -30,7 +30,6 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create the partial url for this module
 %% @end
@@ -49,7 +48,6 @@ url(Token, _) ->
     "/payment_methods/credit_card/" ++ kz_term:to_list(Token).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a list of #bt_cards{} find the current default payment token.
 %% @end
@@ -76,7 +74,6 @@ payment_tokens(Cards) ->
     [payment_token(Card) || Card <- Cards].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find a credit card by id
 %% @end
@@ -94,7 +91,6 @@ find(Token) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new credit card using the given record
 %% @end
@@ -112,7 +108,6 @@ create(CustomerId, Card) ->
     create(Card#bt_card{customer_id=CustomerId}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Updates a credit card with the given record
 %% @end
@@ -125,7 +120,6 @@ update(#bt_card{token=Token}=Card) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Deletes a credit card id from braintree's system
 %% @end
@@ -137,7 +131,6 @@ delete(Token) ->
     #bt_card{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Finds the tokens of credit cards that have all expired
 %% @end
@@ -153,7 +146,6 @@ expired() ->
 expired(#bt_card{expired=Expired}) -> Expired.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Finds the tokens of credit cards expiring between the given
 %% start and end dates. Dates are given as MMYYYY
@@ -172,7 +164,6 @@ expiring(Start, End) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Accessors for field 'make_default'.
 %% @end
@@ -295,7 +286,6 @@ record_to_xml(#bt_card{}=Card, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given json object into a record
 %% @end
@@ -320,7 +310,6 @@ json_to_record(JObj) ->
             }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given record into a json object
 %% @end
@@ -349,7 +338,6 @@ record_to_json(#bt_card{}=Card) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the object exists in but no id has been provided then generate
 %% a uuid to use during creation.

@@ -25,7 +25,6 @@
 -define(KEY_NUMBERS_ACTIVATION_CHARGES, <<"numbers_activation_charges">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -89,7 +88,6 @@ maybe_create_activation_transaction(Number, Feature, Units, TotalCharges) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -101,7 +99,6 @@ deactivate_feature(Number, Feature) ->
     knm_number:set_phone_number(Number, PN).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -113,7 +110,6 @@ deactivate_features(Number, Features) ->
     knm_number:set_phone_number(Number, PN).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -156,7 +152,6 @@ update_services(T=#{todo := Ns, options := Options}) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -201,12 +196,10 @@ do_activate(T, ToActivate, BillingId, AssignedTo) ->
             knm_numbers:charge(Key, TotalCharges, knm_numbers:add_oks(Ns, T1))
     end.
 
-%% @public
 -spec phone_number_activation_charges(knm_numbers:collection()) -> non_neg_integer().
 phone_number_activation_charges(T) ->
     knm_numbers:charge(?KEY_NUMBER_ACTIVATION_CHARGES, T).
 
-%% @public
 -spec activation_charges(knm_numbers:collection()) -> non_neg_integer().
 activation_charges(T) ->
     knm_numbers:charge(<<"activation">>, T).

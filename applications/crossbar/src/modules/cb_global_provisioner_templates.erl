@@ -70,7 +70,6 @@ init_db() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Add content types provided by this module
 %% @end
@@ -102,7 +101,6 @@ get_content_type(JObj) ->
     kz_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Add content types accepted by this module
 %% @end
@@ -121,7 +119,6 @@ content_types_accepted(Context, _, ?IMAGE_REQ, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -143,7 +140,6 @@ allowed_methods(_TemplateId, ?IMAGE_REQ) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -161,7 +157,6 @@ resource_exists(_) -> 'true'.
 resource_exists(_, ?IMAGE_REQ) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

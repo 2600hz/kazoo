@@ -167,7 +167,6 @@
 -type mailbox() :: #mailbox{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module, based on the payload will either
 %% connect a caller to check_voicemail or compose_voicemail.

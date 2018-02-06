@@ -17,7 +17,6 @@
 -define(KEY, ?FEATURE_FAILOVER).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is saved, and will
 %% add the failover route (for in service numbers only)
@@ -33,7 +32,6 @@ save(N, ?NUMBER_STATE_IN_SERVICE) -> update_failover(N);
 save(N, _) -> delete(N).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is deleted, and will
 %% remove the failover route

@@ -48,7 +48,6 @@
 -define(URL, <<"https://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module
 %% @end

@@ -108,7 +108,6 @@ content_types_provided(Context) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

@@ -130,7 +130,6 @@ resource_exists(_, ?IDENTIFY) -> 'true';
 resource_exists(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Ensure we will be able to bill for phone_numbers
 %% @end
@@ -153,7 +152,6 @@ billing(Context, _Verb, _Nouns) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
@@ -168,7 +166,6 @@ authenticate(Context) ->
 authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -183,7 +180,6 @@ authorize(Context) ->
 authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

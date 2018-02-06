@@ -32,7 +32,6 @@
 -export_type([target/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module sends an arbitrary response back to the
 %% call originator.

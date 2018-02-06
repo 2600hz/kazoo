@@ -21,7 +21,6 @@
 -include("provisioner_v5.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -111,7 +110,6 @@ get_model(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -149,7 +147,6 @@ account_settings(JObj) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -193,7 +190,6 @@ save_device(AccountId, Device, Request, AuthToken) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Use before a POST or PUT to a device.
 %% Return the account id a MAC address belongs to, `false' otherwise.

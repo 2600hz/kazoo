@@ -160,7 +160,6 @@ create_account_doc(Realm, AcctID, AcctDB) ->
             'ignore'
     end.
 
-%% @public
 %% @doc
 %% Some calls get stuck if they miss the CDR. This clears them out.
 %%@end
@@ -182,7 +181,6 @@ clear_old_calls(Super) ->
      end || P <- Ps
     ].
 
-%% @public
 %% @doc
 %% Usage example: sup trunkstore_maintenance classifier_inherit international pbx_username@realm.domain.tld
 %% @end
@@ -190,7 +188,6 @@ clear_old_calls(Super) ->
 classifier_inherit(Classifier, UserR) ->
     set_classifier_action(<<"inherit">>, Classifier, UserR).
 
-%% @public
 %% @doc
 %% Usage example: sup trunkstore_maintenance classifier_deny international pbx_username@realm.domain.tld
 %% @end

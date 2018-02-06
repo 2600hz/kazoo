@@ -46,7 +46,6 @@
 -type menu() :: #cf_menu_data{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module
 %% @end

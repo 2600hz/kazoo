@@ -54,7 +54,6 @@
 %%% API
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -64,7 +63,6 @@ init() ->
     kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -73,7 +71,6 @@ current_state(JObj) ->
     kz_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_UNCONFIRMED).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -91,7 +88,6 @@ public_fields(JObj) ->
                       ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -113,7 +109,6 @@ get(DID=?NE_BINARY) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -132,7 +127,6 @@ account_active_ports(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -144,7 +138,6 @@ account_has_active_port(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -159,7 +152,6 @@ normalize_attachments_map(K, V) ->
     {K, kz_json:delete_keys([<<"digest">>, <<"revpos">>, <<"stub">>], V)}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -175,7 +167,6 @@ normalize_numbers(PortReq) ->
 normalize_number_map(N, Meta) ->
     {knm_converters:normalize(N), Meta}.
 
-%% @public
 -spec new(kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
 new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
     Normalized = normalize_numbers(PortReq),
@@ -187,7 +178,6 @@ new(PortReq, ?MATCH_ACCOUNT_RAW(AuthAccountId), AuthUserId) ->
     kz_json:set_values(Unconf, Normalized).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -226,7 +216,6 @@ transition_to_canceled(JObj, Metadata) ->
     transition(JObj, Metadata, [?PORT_UNCONFIRMED, ?PORT_SUBMITTED, ?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_CANCELED).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -303,7 +292,6 @@ maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
                   ]}
     ].
 
-%% @public
 -type transition_metadata() :: #{auth_account_id => kz_term:ne_binary()
                                 ,auth_account_name => kz_term:api_ne_binary()
                                 ,auth_user_id => kz_term:api_ne_binary()
@@ -312,12 +300,10 @@ maybe_user(UserId, OptionalFirstName, OptionalLastName) ->
                                 ,optional_reason => kz_term:api_ne_binary()
                                 }.
 
-%% @public
 -spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
 transition_metadata(AuthAccountId, AuthUserId) ->
     transition_metadata(AuthAccountId, AuthUserId, undefined).
 
-%% @public
 -spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
 transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
     OptionalUserId = case UserId of
@@ -346,7 +332,6 @@ get_user_name(AuthAccountId, UserId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -363,7 +348,6 @@ charge_for_port(_JObj, AccountId) ->
     kz_services:commit_transactions(Services, [Transaction]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -388,7 +372,6 @@ assign_to_app(Number, NewApp, JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -408,7 +391,6 @@ send_submitted_request(JObj) ->
     maybe_send_request(kz_json:get_value(<<"doc">>, JObj)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

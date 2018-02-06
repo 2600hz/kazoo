@@ -101,7 +101,6 @@
 %%% API
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -111,7 +110,6 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
@@ -120,12 +118,10 @@ info() ->
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
-%% @public
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check with carrier if these numbers are registered with it.
 %% @end
@@ -135,7 +131,6 @@ is_number_billable(_Number) -> 'true'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query the Bandwidth.com system for a quantity of available numbers
 %% in a rate center
@@ -197,7 +192,6 @@ process_search_response(Result, Options) ->
     {'ok', Found}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -289,7 +283,6 @@ from_bandwidth2(Number) -> <<"+1", Number/binary>>.
 disconnect_number(_Number) -> _Number.
 
 
-%% @public
 -spec sites() -> 'ok'.
 sites() ->
     {'ok', Xml} = api_get(url(["sites"])),
@@ -304,7 +297,6 @@ process_site(Site) ->
     Name = kz_xml:get_value("Name/text()", Site),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
-%% @public
 -spec peers(binary()) -> 'ok'.
 peers(SiteId) ->
     {'ok', Xml} = api_get(url(["sippeers"])),

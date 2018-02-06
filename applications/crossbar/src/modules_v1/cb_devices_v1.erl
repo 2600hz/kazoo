@@ -58,7 +58,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -82,7 +81,6 @@ allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -100,7 +98,6 @@ resource_exists(_) -> 'true'.
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Ensure we will be able to bill for devices
 %% @end
@@ -120,7 +117,6 @@ process_billing(Context, [{<<"devices">>, _}|_], _Verb) ->
 process_billing(Context, _Nouns, _Verb) -> Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -142,7 +138,6 @@ authorize(?DEVICES_QCALL_NOUNS(_DeviceId, _Number), ?HTTP_GET) ->
 authorize(_Nouns, _Verb) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

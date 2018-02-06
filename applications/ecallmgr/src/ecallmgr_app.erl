@@ -19,7 +19,6 @@
 
 %% Application callbacks
 
-%% @public
 %% @doc Implement the application start behaviour
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
@@ -45,7 +44,6 @@ request(Acc) ->
      | Acc
     ].
 
-%% @public
 %% @doc Implement the application stop behaviour
 -spec stop(any()) -> any().
 stop(_State) ->

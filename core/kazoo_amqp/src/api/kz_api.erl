@@ -148,8 +148,6 @@ reply_to(JObj) ->
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec default_headers_v(kz_term:api_terms()) -> boolean().
-
 
 -spec default_headers(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(AppName, AppVsn) ->
@@ -176,6 +174,9 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     ,{?KEY_APP_VERSION, AppVsn}
     ,{?KEY_NODE, kz_term:to_binary(node())}
     ].
+
+-spec default_headers_v(kz_term:api_terms()) -> boolean().
+
 
 default_headers_v(Props) when is_list(Props) ->
     Filtered = props:filter_empty(Props),

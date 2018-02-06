@@ -24,7 +24,6 @@
 -type patterns() :: [pattern()].
 
 %%-----------------------------------------------------------------------------
-%% @public
 %% @doc
 %% lookup the callflow based on the requested number in the account
 %% @end

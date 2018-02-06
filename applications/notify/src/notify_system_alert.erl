@@ -23,7 +23,6 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".system_alert">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% initialize the module
 %% @end
@@ -37,7 +36,6 @@ init() ->
     lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% process the AMQP requests
 %% @end

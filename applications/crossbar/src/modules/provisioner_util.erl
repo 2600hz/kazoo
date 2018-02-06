@@ -64,7 +64,6 @@ cleanse_mac_address(MACAddress) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -121,7 +120,6 @@ maybe_provision_v5(Context, ?HTTP_POST) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -151,7 +149,6 @@ maybe_delete_provision(Context, 'success') ->
 maybe_delete_provision(_Context, _Status) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -172,7 +169,6 @@ maybe_update_account(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -266,7 +262,6 @@ should_build_contact_list(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This doesn't belong here, needs to be in an external library. Make request to
 %% get provisioning defaults
@@ -305,7 +300,6 @@ get_provision_defaults(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -745,7 +739,6 @@ get_provisioning_type() ->
             Result
     end.
 
-%% @public
 
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
 maybe_sync_sip_data(Context, Type) ->

@@ -17,7 +17,6 @@
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".missed_call_alert">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc maybe add termination handler then unconditionally
 %%      continue the flow
 %% @end
@@ -28,7 +27,6 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc only add handler if the call is coming from another account or
 %%      from a resource external to kazoo
 %% @end
@@ -48,7 +46,6 @@ maybe_add_handle(_Data, Call, _Wat) ->
     Call.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc handles call termination, only handle if neither the bridged
 %%      or voicemail message left flags are set
 %% @end

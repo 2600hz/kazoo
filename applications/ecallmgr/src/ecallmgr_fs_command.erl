@@ -21,7 +21,6 @@
 -define(FS_CMD_SET_MULTIVAR, 'kz_uuid_setvar_multi').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% set channel and call variables in FreeSWITCH
 %% @end
@@ -39,7 +38,6 @@ set(Node, UUID, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% set channel and call variables in FreeSWITCH (in background)
 %% @end
@@ -57,7 +55,6 @@ bg_set(Node, UUID, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% unset channel and call variables in FreeSWITCH
 %% @end
@@ -71,7 +68,6 @@ unset(Node, UUID, Props) ->
     api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% unset channel and call variables in FreeSWITCH (in background)
 %% @end
@@ -85,7 +81,6 @@ bg_unset(Node, UUID, Props) ->
     bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% export channel and call variables in FreeSWITCH
 %% @end
@@ -104,7 +99,6 @@ export(Node, UUID, Props) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -123,7 +117,6 @@ bridge_export(Node, UUID, Props) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

@@ -45,7 +45,6 @@
 -type get_map() :: #{kz_term:ne_binary() => kz_json:objects()}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get all voicemail messages (metadata only) for an account which
 %% are in retention duration range in whatever folder they're in.
@@ -62,7 +61,6 @@ get(AccountId) ->
     normalize_account_listing(get_view_results(AccountId, ?MSG_LISTING_BY_TIMESTAMP, ViewOpts, 'undefined')).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get all voicemail messages (metadata only) for a specific box which
 %% are in retention duration range and in whatever folder they're in.
@@ -79,7 +77,6 @@ get(AccountId, Box) ->
     get(AccountId, kz_doc:id(Box)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns count of messages in an account which are in retention
 %% duration in whatever folder they are in.
@@ -102,7 +99,6 @@ count(AccountId) ->
     count_per_folder(AccountId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns total count of non-deleted messages in a specific box which
 %% are in retention duration and are in 'new' or 'saved' folder only.
@@ -114,7 +110,6 @@ count(AccountId, BoxId) ->
     New + Saved.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns a tuple of count of non-deleted messages in a specific box which
 %% are in retention duration and are in 'new' or 'saved' folder only.
@@ -131,7 +126,6 @@ count_non_deleted(AccountId, BoxId) ->
     }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get a list of voicemail boxes assign to a user first and then
 %% return total count of non-deleted messages of those boxes.
@@ -167,7 +161,6 @@ sum_owner_mailboxes(AccountId, [BoxId|BoxIds], {New, Saved}) ->
     sum_owner_mailboxes(AccountId,  BoxIds, {New + BoxNew, Saved + BoxSaved}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns count of messages per box per folder in an account which are in
 %% retention duration.
@@ -188,7 +181,6 @@ count_per_folder(AccountId) ->
     count_per_folder(AccountId, [], ?MSG_COUNT_PER_FOLDER, ?COUNT_ALL).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Same as count_per_folder/1 but only for a specific box
 %% @end
@@ -198,7 +190,6 @@ count_per_folder(AccountId, BoxId) ->
     count_per_folder(AccountId, [BoxId], ?MSG_COUNT_PER_BOX_FOLDER, ?COUNT_ALL).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Loop over each folder, get view result and do the sum with
 %% previous result.
@@ -224,7 +215,6 @@ count_per_folder(AccountId, Keys, View, Folder, ResultMap) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -279,7 +269,6 @@ update_fun(Db, JObjs, #{failed := Failed}=ResultMap) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc fetch message docs for a voicemail box
 %% @end
 %%--------------------------------------------------------------------
@@ -320,7 +309,6 @@ fetch_faild_with_reason(Reason, Db, Ids, #{failed := Failed}=ResultMap) ->
     ResultMap#{failed => IdReasons ++ Failed}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -338,7 +326,6 @@ change_folder(Folder, Msgs, AccountId, BoxId, Funs) ->
     update(AccountId, BoxId, Msgs, Fun).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Move messages to another vmbox
 %% @end
 %%--------------------------------------------------------------------
@@ -373,7 +360,6 @@ do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResultMap, Fun
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc copy messages to other vmbox(es)
 %% @end
 %%--------------------------------------------------------------------

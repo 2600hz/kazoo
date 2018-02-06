@@ -37,7 +37,6 @@ init() ->
 
 %%% Triggerables
 
-%% @public
 %% @doc
 %% Cleanup expired port requests
 %% @end

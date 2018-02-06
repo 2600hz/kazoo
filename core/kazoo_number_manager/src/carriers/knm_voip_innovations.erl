@@ -80,7 +80,6 @@
 %%% API
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -90,7 +89,6 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
@@ -99,12 +97,10 @@ info() ->
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
-%% @public
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check with carrier if these numbers are registered with it.
 %% @end
@@ -115,7 +111,6 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
@@ -137,7 +132,6 @@ find_numbers(<<NXX:6/binary,_/binary>>, Quantity, Options) ->
     to_numbers(MaybeJson, knm_search:query_id(Options)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -161,7 +155,6 @@ acquire_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Release a number from the routing table
 %% @end
@@ -185,7 +178,6 @@ disconnect_number(Number) ->
             maybe_return(Ret, Number)
     end.
 
-%% @public
 -spec should_lookup_cnam() -> boolean().
 should_lookup_cnam() -> 'true'.
 

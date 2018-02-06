@@ -51,7 +51,6 @@
 -define(URL(Path), "https://" ?DOMAIN "/origination/" ++ filename:join(Path)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Turns +13129677542 into %2B13129677542.
 %% @end

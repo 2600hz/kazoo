@@ -31,7 +31,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -44,7 +43,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -60,7 +58,6 @@ allowed_methods(?MULTI) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /skels => []
@@ -76,7 +73,6 @@ resource_exists() -> 'true'.
 resource_exists(?MULTI) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -90,7 +86,6 @@ authorize(Context, ?MULTI) ->
     cb_context:auth_account_id(Context) =/= 'undefined'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.

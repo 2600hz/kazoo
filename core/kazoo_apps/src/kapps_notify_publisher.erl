@@ -40,7 +40,6 @@
 -type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Publish notification and collect notify update messages from
 %% teletype, useful if you want to make sure teletype processed
@@ -55,7 +54,6 @@ call_collect(Req, PublishFun) ->
     CallResp.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Publish notification asynchronous, and save the payload to db
 %% if it failed.

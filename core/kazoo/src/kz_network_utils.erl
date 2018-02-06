@@ -72,7 +72,6 @@
              ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -81,7 +80,6 @@
 lookup_timeout() -> ?LOOKUP_TIMEOUT.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -93,7 +91,6 @@ get_hostname() ->
     Hostname.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -122,7 +119,6 @@ is_ip(Address) ->
         orelse is_ipv6(Address).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Detects if specified IP family is supported by system
 %% (Need 'ping' command installed on the system.
 %%  ping is part of iputils package)
@@ -173,7 +169,6 @@ ping_cmd_option('ping6') -> "ping6 -c 1 localhost";
 ping_cmd_option(_) -> "ping -c 1 localhost".
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Default binding IP address (bind on all interfaces) based
 %%      on supported IP family
 %% @end
@@ -197,7 +192,6 @@ prefered_inet('system') ->
     kapps_config:get_string(<<"kapps_controller">>, <<"default_apps_ip_address_to_bind">>, "0.0.0.0").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -264,7 +258,6 @@ verify_cidr(IP, CIDR) ->
 %%     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -276,7 +269,6 @@ is_rfc1918_ip(IP) ->
         orelse verify_cidr(IP, "172.16.0.0/12").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -315,7 +307,6 @@ find_nameservers_parent([_|Parts], Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -374,7 +365,6 @@ resolve_a_record_fold(IPTuple, I) ->
     [iptuple_to_binary(IPTuple) | I].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -423,7 +413,6 @@ mxtuple_to_binary({_Priority, Domain}) ->
     <<(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary>>.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -442,7 +431,6 @@ pretty_print_bytes(Bytes) ->
     io_lib:format("~BB", [Bytes]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -459,7 +447,6 @@ lookup_dns(Hostname, Type, Options) ->
     {'ok', inet_res:lookup(kz_term:to_list(Hostname), 'in', Type, Options)}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

@@ -33,7 +33,6 @@
 -type doc() :: kz_json:object().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -49,7 +48,6 @@ fetch(Account, TaskId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -58,69 +56,56 @@ id(JObj) ->
     kz_doc:id(JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec type() -> kz_term:ne_binary().
 type() -> <<"task">>.
 
-%% @public
 -spec node(doc()) -> kz_term:ne_binary() | 'undefined'.
 node(Doc) ->
     kz_json:get_ne_binary_value(?PVT_WORKER_NODE, Doc).
 
-%% @public
 -spec account_id(doc()) -> kz_term:ne_binary().
 account_id(Doc) ->
     kz_json:get_ne_binary_value(?PVT_ACCOUNT_ID, Doc).
 
-%% @public
 -spec auth_account_id(doc()) -> kz_term:ne_binary().
 auth_account_id(Doc) ->
     kz_json:get_ne_binary_value(?PVT_AUTH_ACCOUNT_ID, Doc).
 
-%% @public
 -spec category(doc()) -> kz_term:ne_binary().
 category(Doc) ->
     kz_json:get_ne_binary_value(?PVT_CATEGORY, Doc).
 
-%% @public
 -spec action(doc()) -> kz_term:ne_binary().
 action(Doc) ->
     kz_json:get_ne_binary_value(?PVT_ACTION, Doc).
 
-%% @public
 -spec status(doc()) -> kz_term:ne_binary().
 status(Doc) ->
     kz_json:get_ne_binary_value(?PVT_STATUS, Doc).
 
-%% @public
 -spec file_name(doc()) -> kz_term:ne_binary().
 file_name(Doc) ->
     kz_json:get_ne_binary_value(?PVT_FILENAME, Doc).
 
-%% @public
 -spec start_timestamp(doc()) -> kz_time:api_seconds().
 start_timestamp(Doc) ->
     kz_json:get_integer_value(?PVT_STARTED_AT, Doc).
 
-%% @public
 -spec end_timestamp(doc()) -> kz_time:api_seconds().
 end_timestamp(Doc) ->
     kz_json:get_integer_value(?PVT_FINISHED_AT, Doc).
 
-%% @public
 -spec total_count(doc()) -> kz_term:api_pos_integer().
 total_count(Doc) ->
     kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc).
 
-%% @public
 -spec failure_count(doc()) -> kz_term:api_non_neg_integer().
 failure_count(Doc) ->
     kz_json:get_integer_value(?PVT_TOTAL_ROWS_FAILED, Doc).
 
-%% @public
 -spec success_count(doc()) -> kz_term:api_non_neg_integer().
 success_count(Doc) ->
     kz_json:get_integer_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc).

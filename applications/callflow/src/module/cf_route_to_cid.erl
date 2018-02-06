@@ -15,7 +15,6 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This module attempts to lookup endpoints by it's cid number.
 %% Returns continue if fails to connect or stop when successful.

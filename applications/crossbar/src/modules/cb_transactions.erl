@@ -33,7 +33,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -67,7 +66,6 @@ flatten([JObj|JObjs], Results) ->
 flatten(Else, _) -> Else.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -91,7 +89,6 @@ allowed_methods(?SUBSCRIPTIONS) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /transactions => []
@@ -107,7 +104,6 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -125,7 +121,6 @@ validate(Context, PathToken) ->
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -220,7 +215,6 @@ create_credit_tansaction(CreditType, Context) ->
                ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

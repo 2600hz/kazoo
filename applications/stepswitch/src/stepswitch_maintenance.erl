@@ -25,7 +25,6 @@
 -include("stepswitch.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -49,7 +48,6 @@ pretty_print_lookup([{Key, Value}|Props]) ->
     pretty_print_lookup(Props).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Displays account tree when given a DID
 %% @end
@@ -78,7 +76,6 @@ print_tree([AccountId|Tree]) ->
     print_tree(Tree).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -111,7 +108,6 @@ pretty_print_resource([{Key, Value}|Props]) ->
     pretty_print_resource(Props).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Flush the stepswitch local cache
 %% @end
@@ -124,7 +120,6 @@ cnam_flush() ->
     io:format("flushed ~p entries from cnam cache~n", [stepswitch_cnam:flush()]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Lookup a number in the route db and return the account ID if known
 %% @end
@@ -136,7 +131,6 @@ refresh() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Lookup a number in the route db and return the account ID if known
 %% @end
@@ -161,7 +155,6 @@ pretty_print_number_props([{Key, Value}|Props]) ->
     pretty_print_number_props(Props).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Instructs stepswitch_outbound to re-scan the resource db and
 %% refresh the cache.
@@ -179,7 +172,6 @@ reload_resources(Account) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

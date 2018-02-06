@@ -891,7 +891,6 @@ set_low_balance_threshold(Doc, Threshold) ->
     set_notifications_low_balance_threshold(Doc, Threshold).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -909,7 +908,6 @@ reset_low_balance_sent(Doc) ->
     set_notifications_low_balance_sent_low_balance(Doc, 'false').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -932,7 +930,6 @@ low_balance_enabled_exists(Doc) ->
     'undefined' =/= kz_json:get_value(<<"enabled">>, LowBalance).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

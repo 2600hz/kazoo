@@ -23,7 +23,6 @@
 -include("kazoo_config.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Return a section of the config file
 %% @end
@@ -44,7 +43,6 @@ get(Section, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Return values of the config file
 %% @end
@@ -75,7 +73,6 @@ get_boolean(Section, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Return values of the config file
 %% @end
@@ -93,7 +90,6 @@ get_integer(Section, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Return values of the config file
 %% @end
@@ -123,7 +119,6 @@ get_raw_string(Section, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -137,7 +132,6 @@ get_node_section_name() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set or unset enviroment variables
 %% @end

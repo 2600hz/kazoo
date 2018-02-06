@@ -25,7 +25,6 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% initialize the module
 %% @end
@@ -57,7 +56,6 @@ handle_req(JObj, _Props) ->
                                  ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% process the AMQP requests
 %% @end

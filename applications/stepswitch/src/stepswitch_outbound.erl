@@ -17,7 +17,6 @@
 -include_lib("kazoo/include/kz_api_literals.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% process an offnet resource request (outbound)
 %% route

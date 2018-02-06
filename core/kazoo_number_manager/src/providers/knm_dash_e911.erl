@@ -35,7 +35,6 @@
        ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
@@ -60,7 +59,6 @@ save(Number, _State) ->
     delete(Number).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state

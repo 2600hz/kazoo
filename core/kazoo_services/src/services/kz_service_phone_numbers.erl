@@ -33,7 +33,6 @@
 -type pns() :: [pn()].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -66,7 +65,6 @@ reset(Services, [Category | Categories]) ->
     reset(kz_services:reset_category(Category, Services), Categories).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -78,7 +76,6 @@ feature_activation_charge(Feature, Services) ->
     wht_util:dollars_to_units(Charge).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

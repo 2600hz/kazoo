@@ -97,7 +97,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
@@ -118,7 +117,6 @@ maybe_authenticate(_Verb, _Nouns) ->
     'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -216,7 +214,6 @@ resource_exists(?CLASSIFIERS, _PhoneNumber) -> 'true';
 resource_exists(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Ensure we will be able to bill for phone_numbers
 %% @end
@@ -238,7 +235,6 @@ maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], _Verb) ->
 maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

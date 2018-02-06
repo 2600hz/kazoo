@@ -14,7 +14,6 @@
 -include("services.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -32,7 +31,6 @@ current_billing_period(AccountId, 'transactions', {Min, Max}) ->
     kz_bookkeeper_braintree:transactions(AccountId, Min, Max).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

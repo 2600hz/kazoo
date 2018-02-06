@@ -46,7 +46,6 @@
              ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create the partial url for this module
 %% @end
@@ -69,7 +68,6 @@ url(SubscriptionId, Options) ->
                  ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new subscription record
 %% @end
@@ -93,7 +91,6 @@ new_subscription_id() ->
     kz_binary:rand_hex(16).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get the subscription id
 %% @end
@@ -103,7 +100,6 @@ get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get the subscription id
 %% @end
@@ -120,7 +116,6 @@ get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get the quantity of addons
 %% @end
@@ -137,7 +132,6 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get the subscription id
 %% @end
@@ -160,7 +154,6 @@ update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amou
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find a specific discount
 %% @end
@@ -177,7 +170,6 @@ get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Update the amount of a specific discount
 %% @end
@@ -199,12 +191,10 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
 
-%% @public
 -spec get_payment_token(subscription()) -> kz_term:api_binary().
 get_payment_token(#bt_subscription{payment_token = PT}) -> PT.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find a subscription by id
 %% @end
@@ -215,7 +205,6 @@ find(SubscriptionId) ->
     xml_to_record(XML).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new subscription using the given record
 %% @end
@@ -231,7 +220,6 @@ create(#bt_subscription{}=Subscription) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Updates a subscription with the given record.
 %% Note: a cancelled subscription cannot be updated.
@@ -249,7 +237,6 @@ update(#bt_subscription{id=SubscriptionId}=Subscription) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Deletes a subscription id from braintree's system
 %% @end
@@ -263,7 +250,6 @@ cancel(SubscriptionId) ->
     #bt_subscription{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -275,7 +261,6 @@ reset(Subscription) ->
                                                      ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -285,7 +270,6 @@ reset_addons(#bt_subscription{add_ons=AddOns}=Subscription) ->
     Subscription#bt_subscription{add_ons=[AddOn#bt_addon{quantity=0} || AddOn <- AddOns]}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -295,7 +279,6 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
     Subscription#bt_subscription{discounts=[Discount#bt_discount{quantity=0} || Discount <- Discounts]}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Really ugly function to update an addon for a given subscription
 %% or subscription id
@@ -329,7 +312,6 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Really ugly function to increment an addon for a given subscription
 %% or subscription id
@@ -356,7 +338,6 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
     increment_addon_quantity(Subscription, AddOnId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Really ugly function to update a discount for a given subscription
 %% @end
@@ -384,7 +365,6 @@ update_discount_quantity(SubscriptionId, DiscountId, Quantity) ->
     update_discount_quantity(Subscription, DiscountId, Quantity).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Really ugly function to increment a discount for a given subscription
 %% @end
@@ -410,7 +390,6 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
     increment_discount_quantity(Subscription, DiscountId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Update payment token and reset fields to be able to push update back
 %% @end
@@ -433,7 +412,6 @@ update_payment_token(#bt_subscription{id=Id}, PaymentToken) ->
                     }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns whether subscription is cancelled (impossible to update)
 %% @end
@@ -443,7 +421,6 @@ is_cancelled(#bt_subscription{status = ?BT_CANCELED}) -> 'true';
 is_cancelled(#bt_subscription{}) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns whether subscription is cancelled (impossible to update)
 %% @end
@@ -453,7 +430,6 @@ is_expired(#bt_subscription{status = ?BT_EXPIRED}) -> 'true';
 is_expired(#bt_subscription{}) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a subscription record
 %% @end
@@ -501,7 +477,6 @@ xml_to_record(Xml, Base) ->
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a subscription record
 %% @end
@@ -559,7 +534,6 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given record into a json object
 %% @end

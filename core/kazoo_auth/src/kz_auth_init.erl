@@ -11,7 +11,6 @@
 -export([start_link/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().

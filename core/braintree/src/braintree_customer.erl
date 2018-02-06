@@ -35,7 +35,6 @@
              ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create the partial url for this module
 %% @end
@@ -50,7 +49,6 @@ url(CustomerId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId)]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new customer record
 %% @end
@@ -60,7 +58,6 @@ new(CustomerId) ->
     #bt_customer{id=CustomerId}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new subscription record
 %% @end
@@ -71,7 +68,6 @@ new_subscription(PlanId, Customer) ->
     braintree_subscription:new(PlanId, PaymentToken).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a customer record find (if any) the default payment token
 %% @end
@@ -89,7 +85,6 @@ default_payment_card(CustomerId) ->
     default_payment_card(find(CustomerId)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get the customer id
 %% @end
@@ -99,7 +94,6 @@ get_id(#bt_customer{id=CustomerId}) ->
     CustomerId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get credit cards
 %% @end
@@ -109,7 +103,6 @@ get_cards(#bt_customer{credit_cards=Cards}) ->
     Cards.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get subscriptions
 %% @end
@@ -119,7 +112,6 @@ get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
     Subscriptions.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get a subscription
 %% @end
@@ -141,7 +133,6 @@ get_subscription(PlanId, [_|Subscriptions]) ->
     get_subscription(PlanId, Subscriptions).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find a customer by id
 %% @end
@@ -155,7 +146,6 @@ all() ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find a customer by id
 %% @end
@@ -168,7 +158,6 @@ find(CustomerId) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Creates a new customer using the given record
 %% @end
@@ -183,7 +172,6 @@ create(CustomerId) ->
     create(new(CustomerId)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Updates a customer with the given record
 %% @end
@@ -285,7 +273,6 @@ do_update(#bt_customer{id=CustomerId}=Customer) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Deletes a customer id from braintree's system
 %% @end
@@ -299,7 +286,6 @@ delete(CustomerId) ->
     #bt_customer{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert the given XML to a customer record
 %% @end
@@ -336,7 +322,6 @@ xml_to_record(Xml, Base) ->
                 }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert the given record to XML
 %% @end
@@ -368,7 +353,6 @@ record_to_xml(Customer, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given json object into a record
 %% @end
@@ -396,7 +380,6 @@ maybe_add_credit_card(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given record into a json object
 %% @end

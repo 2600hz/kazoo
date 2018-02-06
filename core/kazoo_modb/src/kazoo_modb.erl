@@ -38,7 +38,6 @@
 -export_type([view_options/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -104,7 +103,6 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -159,7 +157,6 @@ couch_open(AccountMODb, DocId, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -234,7 +231,6 @@ save_fun('false') -> fun kz_datamgr:save_doc/3;
 save_fun('true') -> fun kz_datamgr:ensure_saved/3.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Move a document from source to destination with attachments,
 %% optionally applies a transform function on the document
@@ -283,7 +279,6 @@ move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Copy a document from source to destination with attachments,
 %% optionally applies a transform function on the document
@@ -354,7 +349,6 @@ maybe_create_destination_db(FromDb, FromId, ToDb, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -520,7 +514,6 @@ migrate_routines([R | Rs], Acc) ->
     migrate_routines(Rs, [R | Acc]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -572,7 +565,6 @@ delete_if_orphaned(AccountMODb, 'true') ->
     Succeeded.
 
 
-%% @public
 
 -spec get_range(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                        kz_term:ne_binaries().
@@ -594,13 +586,11 @@ get_range(Type, AccountId, From, To) ->
 
 -type year_month_tuple() :: {kz_time:year(), kz_time:month()}.
 
-%% @public
 -spec get_year_month_sequence(kz_term:ne_binary(), year_month_tuple(), year_month_tuple()) ->
                                      kz_term:ne_binaries().
 get_year_month_sequence(Account, From, To) ->
     get_year_month_sequence(Account, From, To, []).
 
-%% @public
 -spec get_year_month_sequence(kz_term:ne_binary(), year_month_tuple(), year_month_tuple(), kz_term:proplist()) ->
                                      kz_term:ne_binaries().
 get_year_month_sequence(Account, Tuple, Tuple, Range) ->

@@ -112,7 +112,6 @@ num(N) ->
     knm_phone_number:number(knm_number:phone_number(N)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Either `nums()' xor `oks()'.
 %% @end
@@ -121,7 +120,6 @@ num(N) ->
 todo(#{todo := ToDo}) -> ToDo.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set of numbers' assigned_to fields.
 %% @end
@@ -140,7 +138,6 @@ assigned_to(#{todo := Ns}) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set of numbers' prev_assigned_to fields.
 %% @end
@@ -158,7 +155,6 @@ prev_assigned_to(#{todo := Ns}) ->
         [AccountId] -> AccountId
     end.
 
-%% @public
 
 -spec options(t()) -> options().
 options(#{options := V}) -> V.
@@ -166,7 +162,6 @@ options(#{options := V}) -> V.
 -spec options(options(), t()) -> t().
 options(V, T) -> T#{options => V}.
 
-%% @public
 
 -spec plan(t()) -> plan().
 plan(#{plan := V}) -> V.
@@ -174,7 +169,6 @@ plan(#{plan := V}) -> V.
 -spec plan(plan(), t()) -> t().
 plan(V, T) -> T#{plan => V}.
 
-%% @public
 
 -spec services(t()) -> services().
 services(#{services := V}) -> V.
@@ -182,7 +176,6 @@ services(#{services := V}) -> V.
 -spec services(services(), t()) -> t().
 services(V, T) -> T#{services => V}.
 
-%% @public
 
 -spec transactions(t()) -> transactions().
 transactions(#{transactions := V}) -> V.
@@ -190,11 +183,9 @@ transactions(#{transactions := V}) -> V.
 -spec transactions(transactions(), t()) -> t().
 transactions(V, T) -> T#{transactions => V}.
 
-%% @public
 -spec transaction(kz_transaction:transaction(), t()) -> t().
 transaction(V, T=#{transactions := Vs}) -> T#{transactions => [V | Vs]}.
 
-%% @public
 
 -spec charges(t()) -> charges().
 charges(#{charges := V}) -> V.
@@ -202,7 +193,6 @@ charges(#{charges := V}) -> V.
 -spec charges(charges(), t()) -> t().
 charges(V, T) -> T#{charges => V}.
 
-%% @public
 
 -spec charge(kz_term:ne_binary(), t()) -> non_neg_integer().
 charge(K, #{charges := Vs}) -> props:get_value(K, Vs, 0).
@@ -210,19 +200,16 @@ charge(K, #{charges := Vs}) -> props:get_value(K, Vs, 0).
 -spec charge(kz_term:ne_binary(), non_neg_integer(), t()) -> t().
 charge(K, V, T=#{charges := Vs}) -> T#{charges => [{K, V} | Vs]}.
 
-%% @public
 -spec ok(ok() | oks(), t()) -> t().
 ok(Numbers, T) when is_list(Numbers) -> T#{ok => Numbers};
 ok(Number, T) when not is_list(Number) ->
     T#{ok => [Number | maps:get(ok, T)]}.
 
-%% @public
 -spec add_oks(oks(), t()) -> t().
 %%FIXME: unify with ok/2.
 add_oks(Numbers, T=#{ok := OKs}) when is_list(Numbers) ->
     T#{ok => Numbers ++ OKs}.
 
-%% @public
 -spec ko(num() | knm_number:knm_number() | nums() | [knm_number:knm_number()], ko(), t()) -> t().
 ko(?NE_BINARY=Num, Reason, T) ->
     lager:debug("number ~s error: ~p", [Num, Reason]),
@@ -238,7 +225,6 @@ ko(N, Reason, T) ->
     ko(Num, Reason, T).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Attempts to get numbers from DB.
 %% Note: each number in `Nums' has to be normalized.
@@ -269,7 +255,6 @@ do_get_pn(Nums, Options, Error) ->
     {Yes, No} = are_reconcilable(Nums),
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)).
 
-%% @public (used by knm_number_crawler)
 -spec from_jobjs(kz_json:objects()) -> t().
 from_jobjs(JObjs) ->
     Options = knm_number_options:default(),
@@ -300,7 +285,6 @@ from_jobjs(JObjs) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Attempts to create new numbers in DB or modify existing ones.
 %% Note: `assign_to' number option MUST be set.
@@ -337,7 +321,6 @@ create(Nums, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -357,7 +340,6 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     ret(do(fun move_to/1, T)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Attempts to update some phone_number fields.
 %% Note: will always result in a phone_number save.
@@ -398,7 +380,6 @@ do_update(T0, Routines) ->
              ])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -418,7 +399,6 @@ release(Nums, Options) ->
              ])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Remove numbers from the system without doing any state checking.
 %% Sounds too harsh for you? You are looking for release/1,2.
@@ -438,7 +418,6 @@ delete(Nums, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Note: option 'assign_to' needs to be set.
 %% @end
@@ -456,7 +435,6 @@ reconcile(Nums, Options0) ->
     ret(merge_okkos(Ta, Tb)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Fetches then transitions existing numbers to the reserved state.
 %% @end
@@ -469,7 +447,6 @@ reserve(Nums, Options) ->
              ])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -488,7 +465,6 @@ assign_to_app(Nums, App, Options) ->
              ])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Release all of an account's numbers
 %% @end
 %%--------------------------------------------------------------------
@@ -505,7 +481,6 @@ free(Account=?NE_BINARY) ->
                  ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find an account's phone numbers that have emergency services enabled
 %% @end
@@ -519,7 +494,6 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% List an account's phone numbers & statuses.
 %% Does not go through sub accounts.
@@ -662,7 +636,6 @@ ret(#{ok := OKs
           end
      }.
 
-%% @public
 -spec to_json(ret()) -> kz_json:object().
 to_json(#{ok := Ns, ko := KOs}) ->
     Successes = [{num(N), knm_number:to_public_json(N)} || N <- Ns],

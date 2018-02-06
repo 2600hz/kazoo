@@ -37,7 +37,6 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Ensure a binary is a minimum size, padding it if not with a given
 %% value.
@@ -54,7 +53,6 @@ pad_left(Bin, Size, Value) when byte_size(Bin) < Size ->
 pad_left(Bin, _Size, _Value) -> Bin.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Join a binary together with a separator.
 %%
@@ -125,7 +123,6 @@ strip_right(<<A, B/binary>>, C) ->
 strip_right(<<>>, _) -> <<>>.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Ensure a binary is a maximum given size, truncating it if not.
 %% @end

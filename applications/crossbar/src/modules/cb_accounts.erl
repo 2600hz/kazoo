@@ -83,7 +83,6 @@ init() ->
     cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -125,7 +124,6 @@ allowed_methods(_AccountId, ?TREE) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -153,7 +151,6 @@ resource_exists(_, Path) ->
     lists:member(Path, Paths).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with account data
@@ -175,7 +172,6 @@ validate_resource(Context, AccountId, _Path) ->
     load_account_db(Context, AccountId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -285,7 +281,6 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -322,7 +317,6 @@ patch(Context, AccountId) ->
     post(Context, AccountId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -379,7 +373,6 @@ put(Context, AccountId, ?RESELLER) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

@@ -17,7 +17,6 @@
 -define(KEY, ?FEATURE_RENAME_CARRIER).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is saved, and will
 %% add the prepend route (for in service numbers only)
@@ -43,7 +42,6 @@ save(N) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is deleted, and will
 %% remove the prepend route

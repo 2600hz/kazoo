@@ -16,7 +16,6 @@
 %%% API
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given an ISO3166-alpha2 country code, return +dialcode.
 %% @end

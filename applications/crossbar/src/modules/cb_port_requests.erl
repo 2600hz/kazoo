@@ -62,7 +62,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -82,7 +81,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.port_requests">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -138,7 +136,6 @@ allowed_methods(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /port_requests => []
@@ -169,7 +166,6 @@ resource_exists(_PortRequestId, _) -> 'false'.
 resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be using to respond (matched against
 %% client's accept header)
@@ -200,7 +196,6 @@ content_types_provided_get(Context, Id, AttachmentId) ->
     cb_context:add_attachment_content_type(Context1, Id, AttachmentId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
@@ -228,7 +223,6 @@ content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -293,7 +287,6 @@ validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -303,7 +296,6 @@ get(Context, Id, ?PATH_TOKEN_LOA) ->
     cb_context:set_resp_data(Context, kz_json:encode(cb_context:doc(Context))).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
@@ -335,7 +327,6 @@ save(Context) ->
     crossbar_doc:save(Context1).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -389,7 +380,6 @@ date_as_configured_timezone(<<YYYY:4/binary, $-, MM:2/binary, $-, DD:2/binary, $
     kz_time:to_gregorian_seconds({Date, Time}, FromTimezone).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -423,7 +413,6 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     crossbar_doc:save_attachment(Id, AttachmentId, Contents, Context, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end

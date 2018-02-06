@@ -18,7 +18,6 @@
 -include("include/kazoo_transactions.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -36,7 +35,6 @@ balance(Account, Year, Month) ->
     wht_util:units_to_dollars(Balance).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Enable tauto top up
 %% @end
@@ -47,7 +45,6 @@ enable_top_up() ->
     io:format("auto top up enabled ~n").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Disable tauto top up
 %% @end

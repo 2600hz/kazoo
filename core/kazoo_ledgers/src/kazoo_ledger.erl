@@ -36,7 +36,6 @@
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -46,7 +45,6 @@ new() ->
     kz_json:new().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -91,7 +89,6 @@ create_hash(Ledger) ->
     kz_binary:md5(kz_json:encode(kz_json:from_list(Props))).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -105,7 +102,6 @@ set_type(L, Type) ->
     kz_json:set_value(?PVT_LEDGER_TYPE, Type, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -119,7 +115,6 @@ set_amount(L, Amount) ->
     kz_json:set_value(?AMOUNT, Amount, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -133,7 +128,6 @@ set_description(L, Desc) ->
     kz_json:set_value(?DESC, Desc, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -143,7 +137,6 @@ source(Ledger) ->
     kz_json:get_json_value(?SRC, Ledger).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -157,7 +150,6 @@ set_source_service(L, Service) ->
     kz_json:set_value(?SRC_SERVICE, Service, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -171,7 +163,6 @@ set_source_id(L, Id) ->
     kz_json:set_value(?SRC_ID, Id, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -181,7 +172,6 @@ usage(Ledger) ->
     kz_json:get_json_value(?USAGE, Ledger).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -195,7 +185,6 @@ set_usage_type(L, Type) ->
     kz_json:set_value(?USAGE_TYPE, Type, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -209,7 +198,6 @@ set_usage_quantity(L, Quantity) ->
     kz_json:set_value(?USAGE_QUANTITY, Quantity, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -223,7 +211,6 @@ set_usage_unit(L, Unit) ->
     kz_json:set_value(?USAGE_UNIT, Unit, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -233,7 +220,6 @@ period(Ledger) ->
     kz_json:get_json_value(?PERIOD, Ledger).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -247,7 +233,6 @@ set_period_start(L, Start) ->
     kz_json:set_value(?PERIOD_START, Start, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -261,7 +246,6 @@ set_period_end(L, End) ->
     kz_json:set_value(?PERIOD_END, End, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -271,7 +255,6 @@ account(Ledger) ->
     kz_json:get_json_value(?ACCOUNT, Ledger).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -285,7 +268,6 @@ set_account_id(L, Start) ->
     kz_json:set_value(?ACCOUNT_ID, Start, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -299,7 +281,6 @@ set_account_name(L, End) ->
     kz_json:set_value(?ACCOUNT_NAME, End, L).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

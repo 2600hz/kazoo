@@ -95,7 +95,6 @@
 -export_type([account_format/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Standardized way of logging the stacktrace...
 %% @end
@@ -168,7 +167,6 @@ change_syslog_log_level(L) ->
     change_syslog_log_level(kz_term:to_atom(L)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a representation of an account return it in a 'encoded',
 %% unencoded or 'raw' format.
@@ -253,7 +251,6 @@ raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a representation of an account resource_selectors return it in a 'encoded',
 %% unencoded or 'raw' format.
@@ -309,7 +306,6 @@ raw_resource_selectors_id(Other) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a representation of an account resource_selectors return it in a 'encoded',
 %% @end
@@ -319,7 +315,6 @@ format_resource_selectors_db(AccountId) ->
     format_resource_selectors_id(AccountId, 'encoded').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a representation of an account, build an MODb in an 'encoded' format.
 %% Note: accepts MODbs as well as account IDs/DBs
@@ -338,7 +333,6 @@ format_account_id(Account, Year, Month) when is_integer(Year),
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), kz_date:pad_month(Month)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a representation of an account, build an MODb in an 'encoded' format.
 %% Note: accepts MODbs as well as account IDs/DBs
@@ -363,7 +357,6 @@ format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a representation of an account return it in a 'encoded' format.
 %% Note: accepts MODbs as well as account IDs/DBs
@@ -374,7 +367,6 @@ format_account_db(AccountId) ->
     format_account_id(AccountId, 'encoded').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a representation of an MODb return the MODb in the specified format.
 %% Note: crashes if given anything but an MODb (in any format).
@@ -396,7 +388,6 @@ format_account_modb(AccountId, 'encoded') ->
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Normalize the account name by converting the name to lower case
 %% and then removing all non-alphanumeric characters.
@@ -424,7 +415,6 @@ is_alphanumeric(_) ->
     false.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Determine if the given account id/db exists in the hierarchy of
 %% the provided account id/db. Optionally consider the account in
@@ -466,7 +456,6 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -482,7 +471,6 @@ is_system_admin(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% checks the pvt_enabled flag and returns 'false' only if the flag is
 %% specificly set to 'false'.  If it is missing or set to anything else
@@ -513,7 +501,6 @@ is_account_expired(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -528,7 +515,6 @@ maybe_disable_account(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -539,7 +525,6 @@ disable_account(Account) ->
     account_update(Account, fun kzd_accounts:disable/1).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -550,7 +535,6 @@ enable_account(Account) ->
     account_update(Account, fun kzd_accounts:enable/1).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -561,7 +545,6 @@ set_superduper_admin(Account, IsAdmin) ->
     account_update(Account, fun(J) -> kzd_accounts:set_superduper_admin(J, IsAdmin) end).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -597,7 +580,6 @@ account_update(Account, UpdateFun) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a module name try to verify its existence, loading it into the
 %% the vm if possible.
@@ -620,7 +602,6 @@ try_load_module(Name) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given an JSON Object extracts the Call-ID into the processes
 %% dictionary, failing that the Msg-ID and finally a generic
@@ -665,7 +646,6 @@ is_kz_log_md_equal(K1, K2) -> K1 =< K2.
 kz_log_md_clear() ->
     lager:md([]).
 
-%% @public
 %% @doc
 %% Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
 %% If time is elapsed, the sub-process is killed & function returns `timeout'.
@@ -734,7 +714,6 @@ startup() ->
     get('$startup').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given an object, extract the category and name into a tuple
 %% @end
@@ -867,12 +846,10 @@ node_hostname() ->
     [_Name, Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
     Host.
 
-%% @public
 -spec write_file(file:filename_all(), iodata()) -> 'ok'.
 write_file(Filename, Bytes) ->
     write_file(Filename, Bytes, []).
 
-%% @public
 -spec write_file(file:filename_all(), iodata(), [file:mode()]) -> 'ok'.
 write_file(Filename, Bytes, Modes) ->
     case file:write_file(Filename, Bytes, Modes) of
@@ -889,7 +866,6 @@ rename_file(FromFilename, ToFilename) ->
             lager:error("moving file ~s into ~s failed : ~p", [FromFilename, ToFilename, _E])
     end.
 
-%% @public
 -spec delete_file(file:filename_all()) -> 'ok'.
 delete_file(Filename) ->
     case file:delete(Filename) of
@@ -898,7 +874,6 @@ delete_file(Filename) ->
             lager:error("deleting file ~s failed : ~p", [Filename, _E])
     end.
 
-%% @public
 -spec delete_dir(string()) -> 'ok'.
 delete_dir(Dir) ->
     F = fun(D) -> 'ok' = file:del_dir(D) end,
@@ -920,7 +895,6 @@ del_all_files([Dir | T], EmptyDirs) ->
     lists:foreach(fun delete_file/1, Files),
     del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
 
-%% @public
 -spec make_dir(file:filename_all()) -> 'ok'.
 make_dir(Filename) ->
     case file:make_dir(Filename) of
@@ -1018,7 +992,6 @@ uniq([{K,_}=KV|Rest], S, L) ->
             uniq(Rest, NewS, [KV|L])
     end.
 
-%% @public
 -spec iolist_join(Sep, List1) -> List2 when
       Sep :: T,
       List1 :: [T],

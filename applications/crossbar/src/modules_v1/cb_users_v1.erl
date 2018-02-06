@@ -67,7 +67,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -111,7 +110,6 @@ content_types_provided(Context, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -130,7 +128,6 @@ resource_exists(_, ?CHANNELS) -> 'true';
 resource_exists(_, ?VCARD) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with userId
@@ -178,7 +175,6 @@ validate_user_id(UserId, Context, Doc) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Ensure we will be able to bill for users
 %% @end
@@ -199,7 +195,6 @@ process_billing(Context, [{<<"users">>, _}|_], _Verb) ->
 process_billing(Context, _Nouns, _Verb) -> Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -223,7 +218,6 @@ authorize_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
 authorize_users(_Nouns, _Verb) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

@@ -21,7 +21,6 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".new_account">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% initialize the module
 %% @end
@@ -35,7 +34,6 @@ init() ->
     lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% process the AMQP requests
 %% @end

@@ -15,7 +15,6 @@
 -define(AUTHZ_ID, <<"authorizing_id">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check if the device sip ip is unique
 %% @end

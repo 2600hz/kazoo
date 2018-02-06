@@ -18,7 +18,6 @@
 -include("services.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -56,7 +55,6 @@ reconcile(Services, AppName) ->
     kz_services:update(?CATEGORY, AppName, 1, NewServices).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

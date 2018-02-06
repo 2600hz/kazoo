@@ -28,7 +28,6 @@
 -define(KZ_SERVICES_DB_TMP, <<"services_backup">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -38,7 +37,6 @@ flush() ->
     kz_services:flush_services().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Add arbitrary credit to an account, without charging the accounts
 %% credit card
@@ -57,7 +55,6 @@ credit(AccountId, Amount) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Add arbitrary debit to an account, without charging the accounts
 %% debit card
@@ -103,7 +100,6 @@ admin_description(T) ->
     kz_transaction:set_description(<<"system administrator credit modification">>, T).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% maintenance function for the services db
 %% @end
@@ -114,7 +110,6 @@ refresh() ->
     kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% scheduals an eventual sync with the bookkeeper and will dirty the
 %% full reseller tree (as it normally does when changes occur)
@@ -145,7 +140,6 @@ reconcile(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% runs an immediate sync with a bookkeeper without dirting the
 %% reseller tree (only the one account is affected)
@@ -174,7 +168,6 @@ do_sync_descendants([Descendant|Descendants]) ->
     do_sync_descendants(Descendants).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the reseller_id to the provided value on the provided account
 %% @end
@@ -188,7 +181,6 @@ set_reseller_id(Reseller, Account) ->
     whs_account_conversion:set_reseller_id(Reseller, Account).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the reseller_id to the provided value on all the sub-accounts
 %% of the provided account
@@ -203,7 +195,6 @@ cascade_reseller_id(Reseller, Account) ->
     whs_account_conversion:cascade_reseller_id(Reseller, Account).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Remove reseller status from an account and set all its sub accounts
 %% to the next higher reseller
@@ -216,7 +207,6 @@ demote_reseller(Account) ->
     whs_account_conversion:demote(Account).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the reseller status on the provided account and update all
 %% sub accounts
@@ -229,7 +219,6 @@ make_reseller(Account) ->
     whs_account_conversion:promote(Account).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

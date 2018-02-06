@@ -54,7 +54,6 @@
 -type feature_parameters() :: #feature_parameters{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -63,7 +62,6 @@ save(Number) ->
     do_exec(Number, 'save').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -72,7 +70,6 @@ delete(Number) ->
     do_exec(Number, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% List features a number is allowed by its reseller to enable.
 %% @end
@@ -86,7 +83,6 @@ available_features(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
     list_available_features(feature_parameters(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% The name of the billable service associated with a feature.
 %% @end
@@ -109,7 +105,6 @@ service_name(Feature, _) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Util function to get E911 caller name defaults.
 %% @end
@@ -472,7 +467,6 @@ remove_denied_features(N) ->
     NewPN = knm_phone_number:remove_denied_features(PN),
     knm_number:set_phone_number(N, NewPN).
 
-%% @public
 -spec features_denied(knm_phone_number:knm_phone_number()) -> kz_term:ne_binaries().
 features_denied(PN) ->
     cleanse_features(list_denied_features(feature_parameters(PN))).

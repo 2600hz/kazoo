@@ -26,7 +26,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -38,7 +37,6 @@ init() ->
     crossbar_bindings:bind(<<"*.validate.acls">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -48,7 +46,6 @@ init() ->
 allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /acls => []
@@ -60,7 +57,6 @@ allowed_methods() -> [?HTTP_GET].
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.

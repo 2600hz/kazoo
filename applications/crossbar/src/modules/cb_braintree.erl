@@ -49,7 +49,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -81,7 +80,6 @@ allowed_methods(?TRANSACTIONS_PATH_TOKEN, _TransactionId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -103,7 +101,6 @@ resource_exists(?ADDRESSES_PATH_TOKEN, _) -> 'true';
 resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

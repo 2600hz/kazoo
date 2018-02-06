@@ -19,7 +19,6 @@
 -define(KEY, ?FEATURE_PORT).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is saved, and will
 %% produce notifications if the porting object changes
@@ -46,7 +45,6 @@ save(Number, _CurrentState, _State) ->
     Number.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function is called each time a number is deleted
 %% @end

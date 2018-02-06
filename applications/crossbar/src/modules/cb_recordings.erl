@@ -36,7 +36,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -52,7 +51,6 @@ init() ->
     cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -66,7 +64,6 @@ allowed_methods() -> [?HTTP_GET].
 allowed_methods(_RecordingId) -> [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %%
@@ -80,7 +77,6 @@ resource_exists() -> 'true'.
 resource_exists(_RecordingId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be using to respond (matched against
 %% client's Accept header)
@@ -101,7 +97,6 @@ content_types_provided_for_download(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -128,7 +123,6 @@ validate_recording(Context, RecordingId, ?HTTP_DELETE) ->
     load_recording_doc(Context, RecordingId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -195,7 +189,6 @@ do_load_recording_binary_attachment(Context, DocId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

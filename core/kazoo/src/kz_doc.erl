@@ -197,7 +197,6 @@ add_pvt_document_hash(JObj, _, _) ->
     set_document_hash(JObj, Hash).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will filter any private fields out of the provided
 %% json proplist
@@ -228,7 +227,6 @@ get_public_keys(JObj) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will return a boolean, true if the provided key is
 %% considered private; otherwise false
@@ -240,7 +238,6 @@ is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will filter any public fields out of the provided
 %% json proplist
@@ -331,7 +328,6 @@ latest_attachment_id(Doc) ->
             Name
     end.
 
-%% @public
 %% @doc Gets a random attachment from JObj (no order is imposed!)
 
 -spec attachment(kz_json:object()) -> kz_term:api_object().

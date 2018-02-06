@@ -34,7 +34,6 @@
 
 
 %%-----------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get a non-empty configuration key for a given category and cast it as a binary
 %% @end
@@ -53,7 +52,6 @@ get_ne_binary(Account, Category, Path, Default) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get a non-empty configuration key for a given category and cast it as
 %% a list of binary
@@ -73,7 +71,6 @@ get_ne_binaries(Account, Category, Path, Default) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get a configuration key for a given category and cast it as a pos_integer
 %% @end
@@ -97,7 +94,6 @@ to_pos_integer(Value, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Will search the account db first, then system_config for values.
 %% @end
@@ -133,7 +129,6 @@ get_global(Account, Category) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get global starting from reseller config.
 %% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
@@ -167,7 +162,6 @@ maybe_load_config_from_reseller(Account, Category) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Same as get_hierarchy/4 with Default set to undefined
 %% @end
@@ -177,7 +171,6 @@ get_hierarchy(Account, Category, Key) ->
     get_hierarchy(Account, Category, Key, undefined).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Same as get_with_strategy/5 with Strategy "hierarchy_merge"
 %% @end
@@ -187,7 +180,6 @@ get_hierarchy(Account, Category, Key, Default) ->
     get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get a configuration key for a given category with a given strategy.
 %%
@@ -389,7 +381,6 @@ get_account_tree(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the Value for the Key in account db
 %% @end
@@ -409,7 +400,6 @@ maybe_set_account(AccountId, Category, Key, Value) ->
     JObj2.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the Value for the Key in account db if found, otherwise get
 %% system_config value then save in account db.
@@ -441,7 +431,6 @@ update_config_for_saving(AccountId, JObj) ->
                                  ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Flush accounts specific config cache
 %% @end
@@ -578,7 +567,6 @@ strategy_funs(<<"hierarchy_merge">>) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find AccountId from binary, Call object or JObj.
 %% @end

@@ -68,7 +68,6 @@
         kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"parallel_jobs_count">>, 1)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -109,7 +108,6 @@ log_carrier_module_usage([JObj|JObjs], Database, Totals0) ->
     log_carrier_module_usage(JObjs, Database, Totals1).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -168,7 +166,6 @@ convert_carrier_module_number(Num, Target) ->
     convert_carrier_module_numbers([Num], Target).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -200,7 +197,6 @@ refresh_numbers_db(<<"+", _/binary>> = Num) ->
 refresh_numbers_db(_Thing) ->
     ?SUP_LOG_DEBUG("skipping badly formed ~s", [_Thing]).
 
-%% @public
 -spec update_number_services_view(kz_term:ne_binary()) -> no_return.
 update_number_services_view(?MATCH_ACCOUNT_RAW(AccountId)) ->
     update_number_services_view(kz_util:format_account_db(AccountId));
@@ -236,7 +232,6 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
             ?SUP_LOG_DEBUG("View updated for ~s!", [AccountDb])
     end.
 
-%% @public
 
 -spec fix_accounts_numbers([kz_term:ne_binary()]) -> 'ok'.
 fix_accounts_numbers(Accounts) ->
@@ -771,7 +766,6 @@ generate_numbers(Type, AccountId, StartingNumber, Quantity) ->
     M:generate_numbers(AccountId, kz_term:to_integer(StartingNumber), kz_term:to_integer(Quantity)).
 
 
-%% @public
 -spec delete(kz_term:ne_binary()) -> 'no_return'.
 delete(Num) ->
     case knm_number:delete(Num, knm_number_options:default()) of
@@ -781,27 +775,23 @@ delete(Num) ->
     'no_return'.
 
 
-%% @public
 -spec purge_discovery() -> 'no_return'.
 purge_discovery() ->
     Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) end,
     pforeach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
-%% @public
 -spec purge_deleted(kz_term:ne_binary()) -> 'no_return'.
 purge_deleted(Prefix) ->
     purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DELETED),
     'no_return'.
 
-%% @public
 -spec purge_deleted() -> 'no_return'.
 purge_deleted() ->
     Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DELETED) end,
     pforeach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
-%% @public
 -spec purge_discovery(kz_term:ne_binary()) -> 'no_return'.
 purge_discovery(Prefix) ->
     purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DISCOVERY),
@@ -838,7 +828,6 @@ invalid_feature(Feature) ->
     io:format("Feature '~s' is not a known feature.\n", [Feature]),
     all_features().
 
-%% @public
 -spec all_features() -> no_return.
 all_features() ->
     io:format("Known features:\n\t~s\n", [list_features(?ALL_KNM_FEATURES)]),
@@ -891,7 +880,6 @@ edit_feature_permissions_on_number(Num, Fun, Feature) ->
             end
     end.
 
-%% @public
 -spec feature_permissions_on_number(kz_term:ne_binary()) -> no_return.
 feature_permissions_on_number(Num) ->
     case knm_number:get(Num) of
@@ -899,27 +887,22 @@ feature_permissions_on_number(Num) ->
         {ok, N} -> list_number_feature_permissions(N)
     end.
 
-%% @public
 -spec add_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:add_allowed_feature/2, Feature).
 
-%% @public
 -spec remove_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_allowed_feature/2, Feature).
 
-%% @public
 -spec add_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:add_denied_feature/2, Feature).
 
-%% @public
 -spec remove_denied_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
     edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_denied_feature/2, Feature).
 
-%% @public
 -spec feature_permissions_on_reseller_of(kz_term:ne_binary()) -> no_return.
 feature_permissions_on_reseller_of(?MATCH_ACCOUNT_RAW(AccountId)) ->
     Allowed = empty_list_when_undefined(?FEATURES_ALLOWED_RESELLER(AccountId)),
@@ -959,36 +942,30 @@ edit_denied_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
             feature_permissions_on_reseller_of(AccountId)
     end.
 
-%% @public
 -spec add_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_allowed_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_allowed_feature_permissions_on_reseller_of(AccountId, Cons, Feature).
 
-%% @public
 -spec remove_allowed_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_allowed_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     edit_allowed_feature_permissions_on_reseller_of(AccountId, fun lists:delete/2, Feature).
 
-%% @public
 -spec add_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 add_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_denied_feature_permissions_on_reseller_of(AccountId, Cons, Feature).
 
-%% @public
 -spec remove_denied_feature_on_reseller_of(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
 remove_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     edit_denied_feature_permissions_on_reseller_of(AccountId, fun lists:delete/2, Feature).
 
-%% @public
 -spec feature_permissions_on_system_config() -> no_return.
 feature_permissions_on_system_config() ->
     Allowed = knm_providers:system_allowed_features(),
     io:format("Features allowed on system config document:\n\t~s\n", [list_features(Allowed)]),
     no_return.
 
-%% @public
 -spec reset_allowed_features_to_defaults_on_system_config() -> no_return.
 reset_allowed_features_to_defaults_on_system_config() ->
     set_features_on_system_config(?DEFAULT_FEATURES_ALLOWED_SYSTEM).
@@ -1009,18 +986,15 @@ edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
             set_features_on_system_config(Fun(Feature, Allowed))
     end.
 
-%% @public
 -spec add_allowed_feature_on_system_config(kz_term:ne_binary()) -> no_return.
 add_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
     Cons = fun (AFeature, Features) -> [AFeature|Features] end,
     edit_allowed_feature_permissions_on_system_config(Cons, Feature).
 
-%% @public
 -spec remove_allowed_feature_on_system_config(kz_term:ne_binary()) -> no_return.
 remove_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
     edit_allowed_feature_permissions_on_system_config(fun lists:delete/2, Feature).
 
-%% @public
 -spec ensure_adminonly_features_are_reachable() -> no_return.
 ensure_adminonly_features_are_reachable() ->
     Configured = knm_providers:system_allowed_features(),

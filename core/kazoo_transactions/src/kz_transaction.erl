@@ -83,7 +83,6 @@
              ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -135,7 +134,6 @@ version(#kz_transaction{pvt_vsn = Version}) -> Version.
 order_id(#kz_transaction{order_id = OrderId}) -> OrderId.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -187,7 +185,6 @@ new(Ledger, Amount, Type) ->
                    }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create transaction record of type credit (with Amount & Reason)
 %% @end
@@ -197,7 +194,6 @@ credit(Ledger, Amount) ->
     new(Ledger, Amount, <<"credit">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create transaction record of type debit (with Amount & Reason)
 %% @end
@@ -207,7 +203,6 @@ debit(Ledger, Amount) ->
     new(Ledger, Amount, <<"debit">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -281,7 +276,6 @@ set_order_id(OrderId, T) ->
     T#kz_transaction{order_id = OrderId}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -295,7 +289,6 @@ is_per_minute(Transaction) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -308,7 +301,6 @@ is_reason([_ | Reasons], Transaction) ->
 is_reason(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Transform transaction record to Json object
 %% @end
@@ -343,7 +335,6 @@ to_json(#kz_transaction{}=T) ->
         ])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Transform Json Object to transaction record
 %% @end
@@ -410,7 +401,6 @@ clean_jobj(JObj) ->
     kz_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Transform Json Object to transaction record
 %% @end
@@ -443,7 +433,6 @@ from_json(JObj) ->
                    }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -460,7 +449,6 @@ remove(#kz_transaction{}=Transaction) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -483,7 +471,6 @@ save(#kz_transaction{}=Transaction) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

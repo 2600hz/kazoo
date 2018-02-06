@@ -91,7 +91,6 @@ update_all_accounts(File) ->
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will import every .json file found in the given
 %% application priv/couchdb/views/ folder into every account
@@ -105,7 +104,6 @@ revise_whapp_views_in_accounts(App) ->
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will replicate the results of the filter from each
 %% account db into the target database
@@ -119,7 +117,6 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will replicate the results of the filter from the
 %% source database into the target database
@@ -147,7 +144,6 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Find the system admin from the system_config if set, if not
 %% set it to the oldest acccount and return that.
@@ -192,7 +188,6 @@ is_master_account(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -221,7 +216,6 @@ account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -231,7 +225,6 @@ account_has_descendants(Account) ->
     [] =/= (account_descendants(AccountId) -- [AccountId]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a list of accounts this returns the id of the oldest
 %% @end
@@ -254,7 +247,6 @@ find_oldest_doc([First|Docs]) ->
     {'ok', OldestDocID}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will return a list of all account database names
 %% in the requested encoding
@@ -357,7 +349,6 @@ is_account_db(Db) ->
                         {'error', 'not_found'}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
@@ -463,7 +454,6 @@ is_enabled(AccountId, {<<"account">>, AccountId}) ->
 is_enabled(_AccountId, {_Type, _Thing}) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Names are one->many with accounts since account names are not
 %% unique.
 %% @end
@@ -505,7 +495,6 @@ cache(Key, AccountDbs) ->
     kz_cache:store_local(?KAPPS_GETBY_CACHE, Key, AccountDbs, ?GET_BY_CACHE_ORIGIN).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given an JSON Object for a hangup event, or bridge completion
 %% this returns the cause and code for the call termination
@@ -523,7 +512,6 @@ get_call_termination_reason(JObj) ->
     {Cause, Code}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -549,7 +537,6 @@ get_view_json(Path) ->
     {kz_doc:id(JObj), JObj}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -664,7 +651,6 @@ amqp_pool_collect(Api, PubFun, Until, Timeout) ->
     kz_amqp_worker:call_collect(Api, PubFun, Until, Timeout).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Extracts the User and Realm from either the Request or To field, configured
 %% in the system_config DB. Defaults to Request (To is the other option)

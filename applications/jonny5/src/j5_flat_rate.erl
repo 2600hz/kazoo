@@ -18,7 +18,6 @@
 -define(BLACKLIST, kapps_config:get_ne_binary(?APP_NAME, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -39,7 +38,6 @@ authorize(Request, Limits) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

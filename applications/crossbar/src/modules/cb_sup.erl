@@ -118,7 +118,6 @@ format_path_tokens([_Module, _Function]=L) -> L;
 format_path_tokens([Module, Function | Args]) -> [Module, Function, Args].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Initializes the bindings this module will respond to.
 %%--------------------------------------------------------------------
 -spec init() -> supervisor:startchild_ret().
@@ -131,7 +130,6 @@ init() ->
     Ret.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -155,7 +153,6 @@ authorize(Context, _Module, _Function, _Args) ->
     cb_context:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -175,7 +172,6 @@ allowed_methods(_Module, _Function, _Args) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /sup => []
@@ -223,7 +219,6 @@ module_name(ModuleBin) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.

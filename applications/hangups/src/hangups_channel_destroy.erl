@@ -18,7 +18,6 @@
         ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -158,7 +157,6 @@ find_source(JObj) ->
 find_direction(JObj) ->
     kz_call_event:call_direction(JObj, <<"unknown">>).
 
-%% @public
 
 -spec start_meters(kz_term:ne_binary()) -> 'ok'.
 start_meters(HangupCause) ->

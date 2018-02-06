@@ -17,7 +17,6 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -27,7 +26,6 @@ get_quantity(#bt_addon{quantity=Quantity}) ->
     Quantity.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a customer record
 %% @end
@@ -48,7 +46,6 @@ xml_to_record(Xml, Base) ->
              }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Contert the given XML to a customer record
 %% @end
@@ -74,7 +71,6 @@ record_to_xml(Addon, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given record into a json object
 %% @end
@@ -88,7 +84,6 @@ record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Convert a given json obj into a record
 %% @end

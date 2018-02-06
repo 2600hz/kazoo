@@ -63,7 +63,6 @@
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -73,7 +72,6 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
@@ -83,7 +81,6 @@ info() ->
 is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query the local system for a quanity of available numbers
 %% in a rate center
@@ -104,7 +101,6 @@ find_numbers(Prefix, Quantity, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check with carrier if these numbers are registered with it.
 %% @end
@@ -132,7 +128,6 @@ check_numbers(Numbers) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query the local system for a quanity of available numbers
 %% in a rate center
@@ -142,7 +137,6 @@ check_numbers(Numbers) ->
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -183,7 +177,6 @@ acquire_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Release a number from the routing table
 %% @end
@@ -192,7 +185,6 @@ acquire_number(Number) ->
 disconnect_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

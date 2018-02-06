@@ -190,7 +190,6 @@ get_token_cost(JObj, Default, Keys) ->
         V -> kz_term:to_integer(V)
     end.
 
-%% @public
 -spec take_sync_field(cb_context:context()) -> cb_context:context().
 take_sync_field(Context) ->
     Doc = cb_context:doc(Context),
@@ -200,7 +199,6 @@ take_sync_field(Context) ->
                                 ,{fun cb_context:set_doc/2, CleansedDoc}
                                 ]).
 
-%% @public
 -spec remove_plaintext_password(cb_context:context()) -> cb_context:context().
 remove_plaintext_password(Context) ->
     Doc = kz_json:delete_keys([<<"password">>
@@ -210,7 +208,6 @@ remove_plaintext_password(Context) ->
                              ),
     cb_context:set_doc(Context, Doc).
 
-%% @public
 -spec validate_number_ownership(kz_term:ne_binaries(), cb_context:context()) ->
                                        cb_context:context().
 validate_number_ownership(Numbers, Context) ->

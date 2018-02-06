@@ -34,7 +34,6 @@
 -define(PATTERNS, <<"patterns">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -44,7 +43,6 @@ new() ->
     kz_json:from_list([{<<"pvt_type">>, type()}]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -53,7 +51,6 @@ new() ->
 type() -> ?PVT_TYPE.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -67,7 +64,6 @@ set_numbers(Doc, Numbers) ->
     kz_json:set_value(?NUMBERS, Numbers, Doc).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -81,7 +77,6 @@ set_patterns(Doc, Patterns) ->
     kz_json:set_value(?PATTERNS, Patterns, Doc).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -91,7 +86,6 @@ is_feature_code(Doc) ->
     kz_json:get_value(?FEATURE_CODE, Doc, 'false') =/= 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

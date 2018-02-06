@@ -73,7 +73,6 @@
              ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -96,7 +95,6 @@ public_json(Item) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -106,7 +104,6 @@ empty() ->
     #kz_service_item{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -116,7 +113,6 @@ category(#kz_service_item{category=Category}) ->
     Category.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -126,7 +122,6 @@ set_category(Category, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{category=Category}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -136,7 +131,6 @@ item(#kz_service_item{item=Item}) ->
     Item.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -146,7 +140,6 @@ set_item(Item, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{item=Item}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -156,7 +149,6 @@ name(#kz_service_item{name=Name}) ->
     Name.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -166,7 +158,6 @@ set_name(Name, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{name=Name}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -176,7 +167,6 @@ quantity(#kz_service_item{quantity=Quantity}) ->
     Quantity.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -195,7 +185,6 @@ set_quantity(Q, #kz_service_item{}=ServiceItem) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -205,7 +194,6 @@ rate(#kz_service_item{rate=Rate}) ->
     Rate.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -217,7 +205,6 @@ set_rate(Rate, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{rate=kz_term:to_float(Rate)}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -227,7 +214,6 @@ single_discount(#kz_service_item{single_discount=SingleDiscount}) ->
     SingleDiscount.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -237,7 +223,6 @@ set_single_discount(SingleDiscount, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{single_discount=kz_term:is_true(SingleDiscount)}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -247,7 +232,6 @@ single_discount_rate(#kz_service_item{single_discount_rate=Rate}) ->
     Rate.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -259,7 +243,6 @@ set_single_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{single_discount_rate=kz_term:to_float(Rate)}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -269,7 +252,6 @@ cumulative_discount(#kz_service_item{cumulative_discount=Quantity}) ->
     Quantity.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -281,7 +263,6 @@ set_cumulative_discount(Quantity, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{cumulative_discount=kz_term:to_integer(Quantity)}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -291,7 +272,6 @@ cumulative_discount_rate(#kz_service_item{cumulative_discount_rate=Rate}) ->
     Rate.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -303,7 +283,6 @@ set_cumulative_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{cumulative_discount_rate=kz_term:to_float(Rate)}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -313,7 +292,6 @@ bookkeeper(Bookkeeper, #kz_service_item{bookkeepers=Bookkeepers}) ->
     kz_json:get_ne_value(Bookkeeper, Bookkeepers).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -323,7 +301,6 @@ set_bookkeepers(Bookkeepers, #kz_service_item{}=ServiceItem) ->
     ServiceItem#kz_service_item{bookkeepers=Bookkeepers}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -332,7 +309,6 @@ set_bookkeepers(Bookkeepers, #kz_service_item{}=ServiceItem) ->
 activation_charge(#kz_service_item{activation_charge=Charge}) -> Charge.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -342,7 +318,6 @@ set_activation_charge(Charge, ServiceItem) ->
     ServiceItem#kz_service_item{activation_charge=Charge}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -351,7 +326,6 @@ set_activation_charge(Charge, ServiceItem) ->
 minimum(#kz_service_item{minimum=Min}) -> Min.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -361,7 +335,6 @@ set_minimum(Min, ServiceItem) ->
     ServiceItem#kz_service_item{minimum=Min}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -370,7 +343,6 @@ set_minimum(Min, ServiceItem) ->
 exceptions(#kz_service_item{exceptions=Exc}) -> Exc.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

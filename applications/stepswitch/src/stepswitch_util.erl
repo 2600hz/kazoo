@@ -21,7 +21,6 @@
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -45,7 +44,6 @@ get_realm(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -63,7 +61,6 @@ assume_e164(<<$+, _/binary>> = Number) -> Number;
 assume_e164(Number) -> <<$+, Number/binary>>.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -77,7 +74,6 @@ get_outbound_destination(OffnetReq) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% if the given number is shorter then a known caller id then try
 %% to pad the front of the dialed number with values from the

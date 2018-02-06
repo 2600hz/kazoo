@@ -13,7 +13,6 @@
 -include("services.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a vendor database and service plan id, fetch the document.
 %% Merge any plan overrides into the plan property.
@@ -40,7 +39,6 @@ fetch_plan(VendorDb, PlanId) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -54,7 +52,6 @@ activation_charges(CategoryId, ItemId, ServicePlan) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

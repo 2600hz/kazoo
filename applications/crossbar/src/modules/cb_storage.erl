@@ -50,7 +50,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -69,7 +68,6 @@ init() ->
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -117,7 +115,6 @@ do_authorize(Context, {'user', UserId, AccountId}) ->
                ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -136,7 +133,6 @@ allowed_methods(?PLANS_TOKEN, _StoragePlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /storage => []
@@ -154,7 +150,6 @@ resource_exists(?PLANS_TOKEN) -> 'true'.
 resource_exists(?PLANS_TOKEN, _PlanId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -207,7 +202,6 @@ validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
     read(Context, PlanId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
@@ -221,7 +215,6 @@ put(Context, ?PLANS_TOKEN) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -244,7 +237,6 @@ patch(Context, ?PLANS_TOKEN, PlanId) ->
     post(Context, ?PLANS_TOKEN, PlanId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end

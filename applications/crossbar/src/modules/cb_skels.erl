@@ -41,7 +41,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -69,7 +68,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.finish_request">>, ?MODULE, 'finish_request').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
@@ -79,7 +77,6 @@ init() ->
 authenticate(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -89,7 +86,6 @@ authenticate(_) -> 'false'.
 authorize(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -105,7 +101,6 @@ allowed_methods(_Thing) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /skels => []
@@ -121,7 +116,6 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be using to respond (matched against
 %% client's accept header)
@@ -133,7 +127,6 @@ content_types_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
@@ -145,7 +138,6 @@ content_types_accepted(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If you provide alternative languages, return a list of languages and optional
 %% quality value:
@@ -157,7 +149,6 @@ languages_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If you provide alternative charsets, return a list of charsets and optional
 %% quality value:
@@ -169,7 +160,6 @@ charsets_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If you provide alternative encodings, return a list of encodings and optional
 %% quality value:
@@ -181,7 +171,6 @@ encodings_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -216,7 +205,6 @@ validate_skel(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If you handle billing-related calls, this callback will allow you to
 %% execute those.
@@ -227,7 +215,6 @@ billing(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
@@ -237,7 +224,6 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -248,7 +234,6 @@ post(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -259,7 +244,6 @@ patch(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
@@ -269,7 +253,6 @@ delete(Context, _) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If you want to manipulate the etag header, change it here in the cb_context{}
 %% @end
@@ -279,7 +262,6 @@ etag(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set the expires header
 %% @end
@@ -289,7 +271,6 @@ expires(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% The response has gone out, do some cleanup of your own here.
 %% @end

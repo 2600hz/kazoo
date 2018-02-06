@@ -25,7 +25,6 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".first_occurrence">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

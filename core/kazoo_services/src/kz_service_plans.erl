@@ -46,7 +46,6 @@
        ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create an empty service plans data structure.
 %% @end
@@ -55,7 +54,6 @@
 empty() -> [].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -180,7 +178,6 @@ find_reseller_id(ServicesJObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -196,7 +193,6 @@ public_json([ServicesPlan|ServicesPlans], JObj) ->
     public_json(ServicesPlans, NewJObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -228,7 +224,6 @@ open_cache_doc(Db, Id) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -238,7 +233,6 @@ delete_service_plan(PlanId, ServicesJObj) ->
     kzd_services:set_plan(ServicesJObj, PlanId, 'undefined').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -258,7 +252,6 @@ plan_summary(ServicesJObj) ->
                ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -272,7 +265,6 @@ activation_charges(Category, Item, ServicePlans) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given a the services on an account (and descedants) as well as the
 %% service plans the account is subscribed to create a list of items
@@ -304,7 +296,6 @@ create_items(ServiceJObj, ServicePlans) ->
                ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Return a json object with all the items for an account
 %% @end

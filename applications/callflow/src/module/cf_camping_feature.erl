@@ -128,7 +128,6 @@ do(Monad, Actions) ->
     lists:foldl(fun(Action, Acc) -> '>>='(Acc, Action) end, Monad, Actions).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module, creates the parameters and branches
 %% to cf_group_pickup.

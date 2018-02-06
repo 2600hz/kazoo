@@ -90,7 +90,6 @@
 -type fails() :: 'error' | 'fatal'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function set the response status to success, and load the provided
 %% data.
@@ -126,7 +125,6 @@ response_402(Data, Context) ->
     create_response('error', <<"accept charges">>, 402, Data, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function load the error message into a 500 response, of type
 %% fatal or error.
@@ -140,7 +138,6 @@ response('fatal', Msg, Context) ->
     create_response('fatal', Msg, 500, kz_json:new(), Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function load the error message into a specific code response,
 %% of type fatal or error.
@@ -154,7 +151,6 @@ response('fatal', Msg, Code, Context) ->
     create_response('fatal', Msg, Code, kz_json:new(), Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function load the error message into a specific code response,
 %% of type fatal or error with additional data
@@ -167,7 +163,6 @@ response('fatal', Msg, Code, JTerm, Context) ->
     create_response('fatal', Msg, Code, JTerm, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function loads the response vars in Context, soon it will
 %% make smarter choices about formating resp_data and filtering
@@ -186,7 +181,6 @@ create_response(Status, Msg, Code, JTerm, Context) ->
                        ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the request is faulty (doesn't have a
 %% match in validation, or some other issue with it keeps it from being
@@ -198,7 +192,6 @@ response_faulty_request(Context) ->
     response('error', <<"faulty request">>, 404, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% When a module is no longer valid, alert the client of the deprecated status
 %% by either sending a 410 Gone or a 301 Redirect (when using the arity
@@ -243,7 +236,6 @@ response_redirect(Context, RedirectUrl, JObj, Redirect) ->
                    ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the requested ID did not match a
 %% data record. Using 404 as 410 is a permanent Gone, while 404 is
@@ -258,7 +250,6 @@ response_bad_identifier(?NE_BINARY = Id, Context) ->
     response('error', <<"bad identifier">>, 404, [Id], Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the requested resource update fails
 %% because of a conflict in the DB
@@ -270,7 +261,6 @@ response_conflicting_docs(Context) ->
     response('error', <<"conflicting documents">>, 409, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the requested data query was missing
 %% @end
@@ -281,7 +271,6 @@ response_missing_view(Context) ->
     response('fatal', <<"datastore missing view">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the datastore timed out
 %% @end
@@ -292,7 +281,6 @@ response_datastore_timeout(Context) ->
     response('error', <<"datastore timeout">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the datastore timed out
 %% @end
@@ -303,7 +291,6 @@ response_datastore_conn_refused(Context) ->
     response('error', <<"datastore connection refused">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the provided data did not validate
 %% @end
@@ -314,7 +301,6 @@ response_invalid_data(JTerm, Context) ->
     response('error', <<"invalid data">>, 400, JTerm, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the datastore does not have the requested
 %% record collection
@@ -325,7 +311,6 @@ response_db_missing(Context) ->
     response('fatal', <<"data collection missing: database not found">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a standard response if the datastore does not have the requested
 %% record collection
@@ -359,7 +344,6 @@ flush_registration(Username, Context) ->
     Realm = kzd_accounts:fetch_realm(cb_context:account_id(Context)),
     flush_registration(Username, Realm).
 
-%% @public
 -spec flush_registration(cb_context:context()) -> 'ok'.
 flush_registration(Context) ->
     OldDevice = cb_context:fetch(Context, 'db_doc'),
@@ -434,7 +418,6 @@ maybe_flush_registration_on_deleted(Realm, _OldDevice, NewDevice) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -552,7 +535,6 @@ move_service(AccountId, NewTree, NewResellerId, Dirty) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Return all descendants of the account id
 %% @end
@@ -562,7 +544,6 @@ get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
     kapps_util:account_descendants(AccountId) -- [AccountId].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -576,7 +557,6 @@ get_tree(<<_/binary>> = Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -592,7 +572,6 @@ replicate_account_definition(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Flag all descendants of the account id as disabled
 %% @end
@@ -613,7 +592,6 @@ disable_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Flag all descendants of the account id as enabled
 %% @end
@@ -634,7 +612,6 @@ enable_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Helper to set data for all auth type
 %% @end
@@ -706,7 +683,6 @@ format_app(Lang, AppJObj) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Update all descendants of the account id pvt_enabled flag with State
 %% @end
@@ -736,7 +712,6 @@ change_pvt_enabled(State, AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% Get user/account language
 %% @doc
 %% @end
@@ -941,7 +916,6 @@ get_priv_level_restrictions(Restrictions, PrivLevel) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -995,7 +969,6 @@ handle_no_descendants(ViewOptions) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1026,7 +999,6 @@ format_emergency_caller_id_number(Context, Emergency) ->
              )
     end.
 
-%% @public
 -type refresh_type() :: 'user' | 'device' | 'sys_info' | 'account'.
 
 -spec maybe_refresh_fs_xml(refresh_type(), cb_context:context()) -> 'ok'.
@@ -1125,7 +1097,6 @@ map_server(Server, Acc) ->
     Name = kz_json:get_value(<<"server_name">>, Server),
     kz_json:set_value(Name, Server, Acc).
 
-%% @public
 -spec refresh_fs_xml(cb_context:context()) -> 'ok'.
 refresh_fs_xml(Context) ->
     Realm = kzd_accounts:fetch_realm(cb_context:account_db(Context)),
@@ -1145,7 +1116,6 @@ refresh_fs_xml(Realm, Doc) ->
             kz_amqp_worker:cast(Req, fun kapi_switch:publish_fs_xml_flush/1)
     end.
 
-%% @public
 -spec get_devices_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binaries().
 get_devices_by_owner(_AccountDb, 'undefined') -> [];
 get_devices_by_owner(AccountDb, OwnerId) ->
@@ -1246,7 +1216,6 @@ update_descendants_count(AccountId, JObj, NewCount) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

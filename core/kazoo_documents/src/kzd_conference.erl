@@ -13,7 +13,6 @@
 -define(SCHEMA, <<"conferences">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -23,7 +22,6 @@ new() ->
     kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

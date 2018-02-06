@@ -434,7 +434,6 @@ media_path(Path, AccountId) when is_binary(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

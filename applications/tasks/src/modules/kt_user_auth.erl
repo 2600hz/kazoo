@@ -31,7 +31,6 @@ init() ->
 
 %%% Triggerables
 
-%% @public
 -spec cleanup_reset_ids(kz_term:ne_binary()) -> 'ok'.
 cleanup_reset_ids(AccountDb) ->
     ViewOptions = [{'key', ?RESET_PVT_TYPE}

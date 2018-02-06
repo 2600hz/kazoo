@@ -23,7 +23,6 @@
 -include("knm.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -33,7 +32,6 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
@@ -43,7 +41,6 @@ info() ->
 is_local() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check with carrier if these numbers are registered with it.
 %% @end
@@ -53,7 +50,6 @@ is_local() -> 'true'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query the local system for a quantity of reserved numbers
 %% assigned to an account's reseller account.
@@ -117,7 +113,6 @@ format_numbers(QID, JObjs) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -125,7 +120,6 @@ format_numbers(QID, JObjs) ->
 is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
@@ -134,7 +128,6 @@ is_number_billable(_Number) -> 'false'.
 acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Release a number from the routing table
 %% @end
@@ -144,7 +137,6 @@ acquire_number(Number) -> Number.
 disconnect_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

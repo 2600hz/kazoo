@@ -23,7 +23,6 @@
 -define(PVT_SIGNING_SECRET, <<"pvt_signature_secret">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Sign the identity (a user_id or an account_id).
 %% Secret is consist of identity secrect and a provider secret.
@@ -245,7 +244,6 @@ update_kazoo_secret(#{auth_db := Db
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Verify the identity signature from a Token map.
 %% Retruns the map with `identify_verified` is set to result of verification
@@ -307,7 +305,6 @@ verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
     Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns a boolean of the Token map's verification result
 %% @end
@@ -318,7 +315,6 @@ verify(Token) ->
     Verified.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Reset system_key (provider identity secret).
 %% @end
@@ -329,7 +325,6 @@ reset_system_secret() ->
     kapps_config:set_string(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Reset account/user identity secret
 %% @end
@@ -360,7 +355,6 @@ reset_secret(Claims) ->
     reset_secret(kz_json:to_map(Claims)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Set a new ?PVT_SIGNING_SECRET value on supplied doc
 %% @end

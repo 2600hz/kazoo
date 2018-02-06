@@ -37,7 +37,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -50,7 +49,6 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -61,7 +59,6 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Ensure we will be able to bill for devices
 %% @end

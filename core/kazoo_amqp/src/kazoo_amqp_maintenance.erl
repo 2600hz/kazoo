@@ -33,7 +33,6 @@
 -define(CONNECTIONS, 'kz_amqp_connections').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -66,7 +65,6 @@ add_broker(Broker, Zone) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -78,7 +76,6 @@ remove_broker(Broker) ->
     kz_amqp_connections:remove(Broker).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -102,7 +99,6 @@ add_connection(Broker, Zone) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -113,7 +109,6 @@ primary_broker() ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -211,7 +206,6 @@ log_invalid_assignment(#kz_amqp_assignment{}=Assignment) ->
     io:format("invalid assignment:~n ~p~n", [lager:pr(Assignment, ?MODULE)]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -252,7 +246,6 @@ connection_summary({[#kz_amqp_connections{connection=Connection
     connection_summary(ets:match_object(Continuation), PrimaryBroker).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -393,7 +386,6 @@ broker_summary_prechannels(Broker) ->
     io:format(" ~-11B |~n", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -425,7 +417,6 @@ channel_summary_age('undefined') -> 0;
 channel_summary_age(Timestamp) -> kz_time:elapsed_s(Timestamp).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

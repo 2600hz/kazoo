@@ -50,7 +50,6 @@
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module, creates the parameters and branches
 %% to cf_group_pickup.

@@ -27,7 +27,6 @@ handle_event(JObj, _Props) ->
             maybe_handle_channel_event(AccountId, HookEvent, J)
     end.
 
-%% @public
 -spec maybe_handle_channel_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),

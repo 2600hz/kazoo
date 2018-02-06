@@ -19,7 +19,6 @@
 %% Application callbacks
 %% ===================================================================
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Implement the application start behaviour
 %% @end
@@ -30,7 +29,6 @@ start(_StartType, _StartArgs) ->
     acdc_sup:start_link().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Implement the application stop behaviour
 %% @end

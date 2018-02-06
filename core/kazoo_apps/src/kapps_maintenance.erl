@@ -92,7 +92,6 @@ refresh_account_db(Database) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -109,7 +108,6 @@ rebuild_token_auth(Pause) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -123,7 +121,6 @@ migrate_to_4_0() ->
     no_return.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -234,7 +231,6 @@ blocking_refresh(Pause) ->
     refresh(Databases, Pause).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -277,7 +273,6 @@ refresh(Database) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -300,7 +295,6 @@ remove_depreciated_databases([Database|Databases]) ->
     remove_depreciated_databases(Databases).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -390,7 +384,6 @@ verify_aggregated_device(AccountDb, AccountId, JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -451,7 +444,6 @@ get_medias(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -541,7 +533,6 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
     clean_trunkstore_docs(AccountDb, JObjs, NewTrunks, NewInboundTrunks).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -585,7 +576,6 @@ migrate_media(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -638,7 +628,6 @@ should_remove_aggregate(AccountRealm, Device) ->
         andalso kzd_devices:sip_ip(Device) =:= 'undefined'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

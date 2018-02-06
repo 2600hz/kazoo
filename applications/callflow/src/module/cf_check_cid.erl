@@ -42,7 +42,6 @@
 -include("callflow.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module
 %% @end

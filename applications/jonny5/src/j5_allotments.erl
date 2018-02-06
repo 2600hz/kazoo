@@ -12,7 +12,6 @@
 -include("jonny5.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -62,7 +61,6 @@ maybe_group_consumed([Member|Group], Allotment, Limits, Acc) when is_binary(Memb
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

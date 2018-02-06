@@ -227,7 +227,6 @@ is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns true if the request contains a system admin module.
 %% @end
@@ -730,7 +729,6 @@ maybe_add_content_type_provided(Context, AttachmentId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Sets a value in the crossbar context for later retrieval during
 %% this request.
@@ -741,7 +739,6 @@ store(#cb_context{storage=Storage}=Context, Key, Data) ->
     Context#cb_context{storage=[{Key, Data} | props:delete(Key, Storage)]}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Fetches a previously stored value from the current request.
 %% @end
@@ -759,7 +756,6 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function extracts the request ID and sets it as 'callid' in
 %% the process dictionary, where the logger expects it.
@@ -770,7 +766,6 @@ put_reqid(#cb_context{req_id=ReqId}) ->
     kz_util:put_callid(ReqId).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -783,7 +778,6 @@ has_errors(#cb_context{validation_errors=JObj
 has_errors(#cb_context{}) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -823,7 +817,6 @@ response(#cb_context{resp_error_code=Code
     {'error', {ErrorCode, ErrorMsg, ErrorData}}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Add a validation error to the list of request errors
 %% @end
@@ -958,7 +951,6 @@ find_schema(Schema=?NE_BINARY) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1073,7 +1065,6 @@ build_system_error(Code, Error, JObj, Context) ->
                       }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Add a validation error to the list of request errors
 %% @end

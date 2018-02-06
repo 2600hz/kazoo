@@ -53,7 +53,6 @@ authenticate(?HTTP_PUT, [{<<"onboard">>,[]}]) -> 'true';
 authenticate(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -66,7 +65,6 @@ allowed_methods() ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -78,7 +76,6 @@ resource_exists() ->
     'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

@@ -82,7 +82,6 @@
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Normalize then query the various providers for available numbers.
 %% @end
@@ -115,7 +114,6 @@ check_numbers(Module, Nums) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a list of all carrier modules available to a subaccount.
 %% @end
@@ -153,7 +151,6 @@ default_carrier() ->
     ?DEFAULT_CARRIER_MODULE.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% List all carrier modules.
 %% @end
@@ -177,7 +174,6 @@ all_modules() ->
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Get information on the available carriers
 %% @end
@@ -231,7 +227,6 @@ allowed_creation_states(AccountId) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Buy a number from its carrier module
 %% @end
@@ -267,7 +262,6 @@ acquire(Number, ?NE_BINARY=Mod, 'false') ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -331,7 +325,6 @@ reseller_id(Options) ->
     props:get_value('reseller_id', Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns whether carrier handles numbers local to the system.
 %% @end

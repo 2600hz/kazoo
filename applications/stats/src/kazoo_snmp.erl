@@ -29,7 +29,6 @@ get_oid('get_next', RowIndex, Cols, Table) ->
 kazoo_ver('get') ->
     {'value', kz_term:to_list(kz_util:kazoo_version())}.
 
-%% @public
 %% @doc Create the directories and agent configuration files
 -spec start() -> 'ok'.
 start() ->

@@ -144,7 +144,6 @@ update_doc_from_file(DbName, App, File) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create or overwrite the existing contents of a document with the
 %% contents of a file
@@ -164,7 +163,6 @@ revise_doc_from_file(DbName, App, File) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Loads all .json files in an applications priv/couchdb/views/ folder
 %% into a given database
@@ -175,7 +173,6 @@ revise_views_from_folder(DbName, App) ->
     revise_docs_from_folder(DbName, App, "views").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Loads all .json files in an applications folder, relative to
 %% priv/couchdb/ into a given database
@@ -256,7 +253,6 @@ inline_js_fun(Type, Code, Acc) ->
     kz_json:set_value(Type, Code, Acc).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Load fixture files from a folder into a database, only if the id
 %% isn't already existant
@@ -290,7 +286,6 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
     do_load_fixtures_from_folder(DbName, Fs).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Detemine if a database exists
 %% @end
@@ -322,7 +317,6 @@ db_exists(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Detemine if a database exists, also checks other connections
 %% @end
@@ -337,7 +331,6 @@ db_exists_all(DbName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Retrieve information regarding all databases
 %% @end
@@ -348,7 +341,6 @@ db_info() ->
     kzs_db:db_info(kzs_plan:plan()).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Retrieve information regarding a database
 %% @end
@@ -364,7 +356,6 @@ db_info(DbName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Retrieve information regarding a database design doc
 %% @end
@@ -424,7 +415,6 @@ db_view_update(DbName, Views, Remove) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Replicate a DB from one host to another
 %%
@@ -465,7 +455,6 @@ db_replicate(JObj) ->
     kzs_db:db_replicate(kzs_plan:plan(), JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Detemine if a database exists
 %% @end
@@ -485,7 +474,6 @@ db_create(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Compact a database
 %% @end
@@ -501,7 +489,6 @@ db_compact(DbName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Delete a database (takes an 'encoded' DbName)
 %% @end
@@ -521,7 +508,6 @@ db_delete(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Archive a database (takes an 'encoded' DbName)
 %% @end
@@ -555,7 +541,6 @@ db_import(DbName, ArchiveFile) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% fetch a cached doc or open it if not available.
 %% @end
@@ -642,7 +627,6 @@ flush_cache_docs(DbName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% open a document given a doc id returns an error tuple or the json
 %% @end
@@ -687,7 +671,6 @@ open_doc(DbName, DocId, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Open documents given doc ids returns an error tuple or the json.
 %% Each returned JObj contains either an <<"doc">> or <<"error">> field.
@@ -744,7 +727,6 @@ read_chunked_results(DocIds, {error, Reason}, Acc) ->
     ] ++ Acc.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Open documents given doc ids returns an error tuple or the json.
 %% Attempts to fetch from cache before making an ad-hoc bulk read.
@@ -818,7 +800,6 @@ all_design_docs(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
@@ -844,7 +825,6 @@ lookup_doc_rev(DbName, DocId, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Save document to database
 %% @end
@@ -858,7 +838,6 @@ save_doc(DbName, Doc) ->
     save_doc(DbName, Doc, []).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Save a document. If it fails because of conflict, pulls latest
 %% revision and tries saving again. Otherwise return.
@@ -938,7 +917,6 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% fetch, update and save a doc (creating if not present)
 %% @end
@@ -982,7 +960,6 @@ update_doc(DbName, Id, UpdateProps, CreateProps, ExtraUpdateProps)
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% remove document from the db
 %% @end
@@ -1007,7 +984,6 @@ del_doc(DbName, Doc, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% remove documents from the db
 %% @end
@@ -1038,16 +1014,15 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
                               {'ok', binary()} |
                               data_error() |
                               kz_att_error:error().
-
--spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                              {'ok', binary()} |
-                              data_error() |
-                              kz_att_error:error().
 fetch_attachment(DbName, {DocType, DocId}, AName) ->
     fetch_attachment(DbName, DocId, AName, [{'doc_type', DocType}]);
 fetch_attachment(DbName, DocId, AName) ->
     fetch_attachment(DbName, DocId, AName, []).
 
+-spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
+                              {'ok', binary()} |
+                              data_error() |
+                              kz_att_error:error().
 fetch_attachment(DbName, {DocType, DocId}, AName, Options) when ?VALID_DBNAME(DbName) ->
     fetch_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options));
 fetch_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME(DbName) ->
@@ -1230,7 +1205,6 @@ add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% get the results of the view
 %% {Total, Offset, Meta, Rows}
@@ -1319,7 +1293,6 @@ get_result_ids(JObjs) ->
     [kz_doc:id(JObj) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Gets the only result of a view.
 %% If no result is found: returns `{error, not_found}'.
@@ -1473,7 +1446,6 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
     kzs_doc:move_doc(Src, Dst, CopySpec, Options).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% How many documents are chunked when doing a bulk save
 %% @end
@@ -1483,7 +1455,6 @@ max_bulk_insert() ->
     kazoo_data_config:get_pos_integer(<<"max_bulk_insert">>, 2000).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% How many documents are chunked when doing a bulk read
 %% @end

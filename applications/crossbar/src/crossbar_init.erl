@@ -54,7 +54,6 @@ api_version_constraint('forward', NotVersion) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -66,7 +65,6 @@ start_link() ->
     'ignore'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 
@@ -119,7 +117,6 @@ start_mod_version(Version, Mod) ->
             'false'
     end.
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> 'ok'.

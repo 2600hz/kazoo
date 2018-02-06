@@ -42,7 +42,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -63,7 +62,6 @@ init() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
@@ -79,7 +77,6 @@ authenticate(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -97,7 +94,6 @@ authorize(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -121,7 +117,6 @@ allowed_methods(_TaskId, ?PATH_OUTPUT) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /tasks => []
@@ -141,7 +136,6 @@ resource_exists(_TaskId, ?PATH_INPUT) -> 'true';
 resource_exists(_TaskId, ?PATH_OUTPUT) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
@@ -165,7 +159,6 @@ cta(Context, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be using to respond (matched against
 %% client's Accept header)
@@ -233,7 +226,6 @@ download_filename(_Context, Name) ->
     Name.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -322,7 +314,6 @@ validate_new_attachment(Context, 'false') ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
@@ -362,7 +353,6 @@ task_account_id(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -409,7 +399,6 @@ patch(Context, TaskId, ?PATH_STOP) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end

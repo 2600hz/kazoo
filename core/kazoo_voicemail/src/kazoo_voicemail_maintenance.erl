@@ -24,7 +24,6 @@
 -define(VIEW_MISSING_METADATA, <<"mailbox_messages/missing_metadata">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Migrate all messages in vmbox into the new modb format
 %% @end
 %%--------------------------------------------------------------------
@@ -60,7 +59,6 @@ print_migration_stats(Props) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -155,7 +153,6 @@ rebuild_message_metadata(JObj, AttachmentName) ->
     kzd_box_message:set_metadata(Metadata, JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

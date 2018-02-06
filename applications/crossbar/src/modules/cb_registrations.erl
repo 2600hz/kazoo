@@ -44,7 +44,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -58,7 +57,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.registrations">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -76,7 +74,6 @@ allowed_methods(_Username) ->
     [?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% @end
@@ -90,7 +87,6 @@ resource_exists(?COUNT_PATH_TOKEN) -> 'true';
 resource_exists(_Username) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -105,7 +101,6 @@ authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
     cb_context:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

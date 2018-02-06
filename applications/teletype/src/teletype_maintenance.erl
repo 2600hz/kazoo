@@ -127,7 +127,6 @@ list_templates_from_db(Db) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Remove Template Customization from an account
 %% @end
@@ -156,7 +155,6 @@ remove_customization(Account, Ids) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Forcing System's Templates to an account by first removing
 %% account's customization and then copy the templates from

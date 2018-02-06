@@ -51,7 +51,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -65,7 +64,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.websockets">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
@@ -76,7 +74,6 @@ authenticate(Context) ->
     authenticate_req(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -87,7 +84,6 @@ authorize(Context) ->
     authorize_req(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -103,7 +99,6 @@ allowed_methods(_SocketId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /websockets => []
@@ -119,7 +114,6 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.

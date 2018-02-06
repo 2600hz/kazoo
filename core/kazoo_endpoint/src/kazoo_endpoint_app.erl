@@ -18,7 +18,6 @@
 %% Application callbacks
 %% ===================================================================
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
@@ -26,7 +25,6 @@ start(_Type, _Args) ->
     kazoo_endpoint_sup:start_link().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.

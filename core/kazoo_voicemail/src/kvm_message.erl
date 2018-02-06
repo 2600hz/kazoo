@@ -26,7 +26,6 @@
 -type new_msg_ret() :: {'ok', kapps_call:call()} | {'error', kapps_call:call(), any()}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc receive and store a new voicemail message
 %% expected options:
 %% [{<<"Attachment-Name">>, AttachmentName}
@@ -122,7 +121,6 @@ new_forward_message(Call, Metadata, SrcBoxId, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc fetch message doc
 %% @end
 %%--------------------------------------------------------------------
@@ -154,7 +152,6 @@ do_fetch(AccountId, MessageId, BoxId, RetenTimestamp) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc fetch message metadata
 %% @end
 %%--------------------------------------------------------------------
@@ -172,7 +169,6 @@ message(AccountId, MessageId, BoxId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Set a message folder, returning the new updated message on success
 %% or the old message on failed update
 %%
@@ -199,7 +195,6 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
     change_folder(ToFolder, MessageId, AccountId, 'undefined').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Change message folder
 %%    Note: if folder is {?VM_FOLDER_DELETED, 'true'}, it would move to
 %%      deleted folder and marked as soft-deleted, otherwise it just move to deleted
@@ -266,7 +261,6 @@ do_update(JObj, Funs) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Move a message to another vmbox
 %% @end
 %%--------------------------------------------------------------------
@@ -331,7 +325,6 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc copy a message to other vmbox(es)
 %% @end
 %%--------------------------------------------------------------------
@@ -448,7 +441,6 @@ move_copy_final_check(AccountId, FromId, ToId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

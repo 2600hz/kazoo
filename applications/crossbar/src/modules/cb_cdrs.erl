@@ -194,7 +194,6 @@ provided_types(Context) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -345,7 +344,6 @@ split_to_modbs(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, Map) ->
     Db = kazoo_modb:get_modb(AccountId, Year, Month),
     maps:update_with(Db, fun(List) -> List ++ [Id] end, [Id], Map).
 
-%% @public
 -spec load_chunked_cdr_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 load_chunked_cdr_ids(Context, RespType, Ids) ->
     Fun = fun(Id, Acc) -> split_to_modbs(cb_context:account_id(Context), Id, Acc) end,

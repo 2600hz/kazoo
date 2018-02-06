@@ -15,7 +15,6 @@
 -export([start/2, stop/1]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> {'ok', pid()}.
@@ -24,7 +23,6 @@ start(_Type, _Args) ->
     frontier_sup:start_link().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().

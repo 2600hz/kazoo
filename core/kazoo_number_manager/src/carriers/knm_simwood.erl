@@ -39,7 +39,6 @@
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -49,7 +48,6 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
@@ -59,7 +57,6 @@ info() ->
 is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check with carrier if these numbers are registered with it.
 %% @end
@@ -69,7 +66,6 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Query Simwood.com for available numbers
 %% @end
@@ -82,7 +78,6 @@ find_numbers(Prefix, Quantity, Options) ->
     process_response(kz_json:decode(Body), Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Acquire a given number from Simwood.com
 %% @end
@@ -99,7 +94,6 @@ acquire_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Return number back to Simwood.com
 %% @end
@@ -116,7 +110,6 @@ disconnect_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -124,7 +117,6 @@ disconnect_number(Number) ->
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

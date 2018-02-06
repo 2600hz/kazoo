@@ -51,7 +51,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -64,7 +63,6 @@ allowed_methods() ->
     [?HTTP_PUT, ?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -75,7 +73,6 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -89,7 +86,6 @@ authorize(_, [{<<"shared_auth">>, _}]) ->'true';
 authorize(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -103,7 +99,6 @@ authenticate(?HTTP_PUT, [{<<"shared_auth">>, []}]) -> 'true';
 authenticate(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function runs for each side of the shared auth request
 %%
@@ -188,7 +183,6 @@ validate_request(Context, ?HTTP_GET, JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

@@ -49,7 +49,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -67,7 +66,6 @@ allowed_methods(_DirectoryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -82,7 +80,6 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
@@ -100,7 +97,6 @@ content_types_provided(Context, _Id) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -118,7 +114,6 @@ to_pdf({Req, Context}) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -136,7 +131,6 @@ validate(Context, Id) ->
     validate_directory(Context, Id, cb_context:req_verb(Context)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -145,7 +139,6 @@ post(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -154,7 +147,6 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -163,7 +155,6 @@ patch(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

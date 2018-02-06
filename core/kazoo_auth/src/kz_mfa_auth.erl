@@ -19,7 +19,6 @@
 -export_type([result/0]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Read configuration and do authentication with configured MFA provider
 %% @end
 %%--------------------------------------------------------------------

@@ -24,7 +24,6 @@
 -type group_weight() :: 1..100.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or

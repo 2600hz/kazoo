@@ -35,7 +35,6 @@
 -include("callflow.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -62,7 +61,6 @@ lookup_endpoint(Username, Realm) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -72,7 +70,6 @@ flush() ->
     kz_cache:flush_local(?CACHE_NAME).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -96,7 +93,6 @@ do_show_calls([Srv|Srvs], Total) ->
     do_show_calls(Srvs, Total + 1).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -108,7 +104,6 @@ blocking_refresh() ->
                   end, kapps_util:get_all_accounts()).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -127,7 +122,6 @@ refresh(Account) ->
     refresh(kz_term:to_binary(Account)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -184,7 +178,6 @@ do_recorded_name_migration(Db, MediaId, OwnerId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will migrate all the menus mailbox documents to
 %% the latest version.
@@ -267,7 +260,6 @@ update_doc(Key, Value, Id, Db) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%        Set call_restriction flag on account level
 %%        Usage: sup callflow_maintenance account_set_classifier_inherit international accountname
@@ -324,7 +316,6 @@ all_accounts_set_classifier(Action, Classifier) ->
                   end, kapps_util:get_all_accounts()).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%        Set call_restriction flag on device level
 %%        Usage: sup callflow_maintenance device_classifier_inherit international  username@realm.tld
@@ -374,7 +365,6 @@ is_classifier(Classifier) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%        Lists call restrictions on all levels of an account
 %%        Usage: sup callflow_maintenance list_account_restrictions accountname
@@ -446,7 +436,6 @@ print_trunkstore_call_restrictions(DbName) ->
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Update certain patterns matching feature codes (see KAZOO-3122)
 %% @end

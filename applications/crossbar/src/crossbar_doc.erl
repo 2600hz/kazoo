@@ -84,7 +84,6 @@
 -type load_view_params() :: #load_view_params{}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns the version number attached to created/updated documents.
 %% Indicates what pvt fields are created/updated when saving.
@@ -96,7 +95,6 @@
 current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function attempts to load the context with account details,
 %% including the account db name and the account doc.
@@ -247,7 +245,6 @@ handle_successful_load(Context, JObj, 'false') ->
     cb_context:store(handle_datamgr_success(JObj, Context), 'db_doc', JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function attempts to merge the submitted data with the private
 %% fields of an existing account document, if successful it will
@@ -314,7 +311,6 @@ patch_the_doc(RequestData, ExistingDoc) ->
     kz_json:merge(fun kz_json:merge_left/2, PubJObj, ExistingDoc).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function attempts to load the context with the results of a view
 %% run against the accounts database.
@@ -492,7 +488,6 @@ start_key_fun(Options, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function attempts to load the context with the results of all the
 %% docs in the supplied Db, with the fold function weeding out those not
@@ -520,7 +515,6 @@ load_docs(Context, Filter)
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function attempts to load the context with the binary payload
 %% stored as an attachment
@@ -550,7 +544,6 @@ load_attachment(Doc, AName, Options, Context) ->
     load_attachment({kz_doc:type(Doc), kz_doc:id(Doc)}, AName, Options, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
@@ -598,7 +591,6 @@ save(Context, JObj, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
@@ -632,7 +624,6 @@ ensure_saved(Context, JObj, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Save the Contents as an attachment on the document.
 %%
@@ -644,7 +635,6 @@ save_attachment(DocId, AName, Contents, Context) ->
     save_attachment(DocId, AName, Contents, Context, []).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Save the Contents as an attachment on the document with options
 %%
@@ -717,7 +707,6 @@ maybe_delete_doc(Context, DocId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will attempt to remove an account document from the
 %% account database.  This is preformed as a soft-delete and enforced
@@ -781,7 +770,6 @@ do_delete(Context, JObj, CouchFun) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will attempt to remove an attachment from a document.
 %% Unlike the delete function, this is NOT a soft-delete.
@@ -805,7 +793,6 @@ delete_attachment(DocId, AName, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function will attempt to convert a revision tag on the provided
 %% document into a usable ETag for the response

@@ -41,7 +41,6 @@
 -define(HTTP_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -51,7 +50,6 @@ is_good_standing(_AccountId, Status) ->
     Status =:= kzd_services:status_good().
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -127,7 +125,6 @@ to_list(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -138,7 +135,6 @@ commit_transactions(_BillingId, Transactions) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -147,7 +143,6 @@ commit_transactions(_BillingId, Transactions) ->
 charge_transactions(_BillingId, _Transactions) -> [].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

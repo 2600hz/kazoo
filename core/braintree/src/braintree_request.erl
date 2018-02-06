@@ -23,7 +23,6 @@
 -define(BT_DEFAULT_PRIVATE_KEY, kapps_config:get_binary(?CONFIG_CAT, <<"default_private_key">>, <<>>)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Preform a get request to braintree's system
 %% @end
@@ -33,7 +32,6 @@ get(Path) ->
     do_request('get', Path, <<>>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Preform a post request to braintree's system
 %% @end
@@ -43,7 +41,6 @@ post(Path, Request) ->
     do_request('post', Path, Request).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Preform a put request to braintree's system
 %% @end
@@ -53,7 +50,6 @@ put(Path, Request) ->
     do_request('put', Path, Request).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Preform a delete request to braintree's system
 %% @end

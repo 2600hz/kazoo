@@ -76,7 +76,6 @@ init() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -106,7 +105,6 @@ allowed_methods(_MediaId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -211,7 +209,6 @@ content_types_accepted_for_upload(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If you provide alternative languages, return a list of languages and optional
 %% quality value:

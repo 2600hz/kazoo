@@ -25,7 +25,6 @@ name_mapping() ->
     [{<<"call_priority">>, <<"Call-Priority">>}].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module
 %% @end

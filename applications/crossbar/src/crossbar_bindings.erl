@@ -55,7 +55,6 @@
 %%% API
 %%%===================================================================
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% return [ {Result, Payload1} ], a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
@@ -77,7 +76,6 @@ pmap(Routing, Payload) ->
     kazoo_bindings:pmap(Routing, Payload).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% return the modified Payload after it has been threaded through
 %% all matching bindings

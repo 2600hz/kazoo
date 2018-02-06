@@ -76,7 +76,6 @@ maybe_authorize_admin(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -112,7 +111,6 @@ allowed_methods(?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -138,7 +136,6 @@ resource_exists(?RESOURCE, _ResourceId, ?NAME, _SelectorName) -> 'true';
 resource_exists(?NAME, _SelectorName, ?RESOURCE, _ResourceId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

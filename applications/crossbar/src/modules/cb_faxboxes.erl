@@ -65,7 +65,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -82,7 +81,6 @@ init() ->
     crossbar_bindings:bind(<<"*.execute.delete.faxboxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -98,7 +96,6 @@ allowed_methods(_FaxboxId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /faxes => []
@@ -124,7 +121,6 @@ validate_resource(Context, FaxboxId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -204,7 +200,6 @@ validate_patch(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
@@ -220,7 +215,6 @@ put(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -237,7 +231,6 @@ post(Context, _Id) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge).
@@ -248,7 +241,6 @@ patch(Context, Id) ->
     post(Context, Id).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end

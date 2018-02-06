@@ -54,7 +54,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -80,7 +79,6 @@ authenticate([{<<"freeswitch">>,[]}], ?HTTP_GET, Context) ->
 authenticate(_Nouns, _Verb, _Context) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -99,7 +97,6 @@ content_types_provided(Context) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', ?MIME_TYPES}]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -112,7 +109,6 @@ allowed_methods() ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -123,7 +119,6 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request

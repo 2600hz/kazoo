@@ -28,7 +28,6 @@ api_path() ->
     {'_', [], 'blackhole_socket_handler', []}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().

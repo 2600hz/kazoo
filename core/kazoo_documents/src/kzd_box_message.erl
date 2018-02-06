@@ -64,7 +64,6 @@
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Generate a mailbox message doc with the given properties
 %% expected options in Props:
 %%    [<<"Attachment-Name">>
@@ -154,7 +153,6 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
                    ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Build message metadata
 %% @end
 %%--------------------------------------------------------------------
@@ -182,7 +180,6 @@ get_msg_id(JObj) ->
     kz_json:get_first_defined(Paths, JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Accessors methods
 %% @end
 %%--------------------------------------------------------------------
@@ -214,7 +211,6 @@ set_folder_deleted(Metadata) ->
     kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, Metadata).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%   Note: Doc here is the whole message doc
 %% @end
@@ -304,7 +300,6 @@ set_source_id(SourceId, JObj) ->
     kz_json:set_value(?KEY_SOURCE_ID, SourceId, JObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Filter messages based on specific folder
 %% @end
 %%--------------------------------------------------------------------
@@ -313,7 +308,6 @@ filter_folder(Messages, Folder) ->
     [M || M <- Messages, folder(M) =:= Folder].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Count message list in specific folder(s)
 %% @end
 %%--------------------------------------------------------------------
@@ -329,7 +323,6 @@ count_folder(Messages, Folder) ->
     count_folder(Messages, [Folder]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -343,7 +336,6 @@ change_message_name(NBoxJ, MsgJObj) ->
     set_message_name(NewName, MsgJObj).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

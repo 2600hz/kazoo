@@ -23,7 +23,6 @@ config_doc_id() ->
     ?CALL_RESPONSE_CONF.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create a call response, as a queue of events when media should be
 %% played as part of the error.
@@ -125,7 +124,6 @@ do_send(CallId, CtrlQ, Commands) ->
                        ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -159,7 +157,6 @@ send_default_response(Call, Response) ->
         ).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% returns the configured response proplist
 %% @end
@@ -174,7 +171,6 @@ get_response(Cause, Call) ->
     kapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause, Default).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% returns the default action given the error
 %% @end

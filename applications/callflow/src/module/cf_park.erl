@@ -38,7 +38,6 @@
 -define(PARKING_APP_NAME, <<"park">>).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module sends an arbitrary response back to the
 %% call originator.
@@ -52,7 +51,6 @@ update_presence(SlotNumber, _PresenceId, AccountDb) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module sends an arbitrary response back to the
 %% call originator.

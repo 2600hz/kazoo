@@ -55,7 +55,6 @@
 -define(LIMITS_KEY(AccountId), {'limits', AccountId}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -90,7 +89,6 @@ cached() ->
     [Limit || {_, Limit} <- kz_cache:filter_local(?CACHE_NAME, IsLimit)].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -101,7 +99,6 @@ to_props(#limits{}=Limits) ->
 to_props(Account) -> to_props(?MODULE:get(Account)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -111,7 +108,6 @@ account_id(#limits{account_id=AccountId}) -> AccountId;
 account_id(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -120,7 +116,6 @@ account_id(_) -> 'undefined'.
 enabled(#limits{enabled=Enabled}) -> Enabled.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -129,7 +124,6 @@ enabled(#limits{enabled=Enabled}) -> Enabled.
 soft_limit_outbound(#limits{soft_limit_outbound=SoftLimit}) -> SoftLimit.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -138,7 +132,6 @@ soft_limit_outbound(#limits{soft_limit_outbound=SoftLimit}) -> SoftLimit.
 soft_limit_inbound(#limits{soft_limit_inbound=SoftLimit}) -> SoftLimit.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -147,7 +140,6 @@ soft_limit_inbound(#limits{soft_limit_inbound=SoftLimit}) -> SoftLimit.
 allotments(#limits{allotments=Allotments}) -> Allotments.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -156,7 +148,6 @@ allotments(#limits{allotments=Allotments}) -> Allotments.
 calls(#limits{calls=Calls}) -> Calls.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -165,7 +156,6 @@ calls(#limits{calls=Calls}) -> Calls.
 resource_consuming_calls(#limits{resource_consuming_calls=Calls}) -> Calls.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -177,7 +167,6 @@ inbound_trunks(#limits{bundled_inbound_trunks=BundledTrunks
     BundledTrunks + Trunks.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -189,7 +178,6 @@ outbound_trunks(#limits{bundled_outbound_trunks=BundledTrunks
     BundledTrunks + Trunks.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -201,7 +189,6 @@ twoway_trunks(#limits{bundled_twoway_trunks=BundledTrunks
     BundledTrunks + Trunks.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -210,7 +197,6 @@ twoway_trunks(#limits{bundled_twoway_trunks=BundledTrunks
 burst_trunks(#limits{burst_trunks=Trunks}) -> Trunks.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -219,7 +205,6 @@ burst_trunks(#limits{burst_trunks=Trunks}) -> Trunks.
 allow_prepay(#limits{allow_prepay=AllowPrepay}) -> AllowPrepay.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -228,7 +213,6 @@ allow_prepay(#limits{allow_prepay=AllowPrepay}) -> AllowPrepay.
 allow_postpay(#limits{allow_postpay=AllowPostpay}) -> AllowPostpay.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -237,7 +221,6 @@ allow_postpay(#limits{allow_postpay=AllowPostpay}) -> AllowPostpay.
 reserve_amount(#limits{reserve_amount=ReserveAmount}) -> ReserveAmount.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

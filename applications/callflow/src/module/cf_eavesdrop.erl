@@ -31,7 +31,6 @@
         ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module sends an arbitrary response back to the
 %% call originator.

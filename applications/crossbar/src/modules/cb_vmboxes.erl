@@ -69,7 +69,6 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -103,7 +102,6 @@ allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -192,7 +190,6 @@ maybe_add_types_provided(Context, ?BIN_DATA, ?HTTP_GET) ->
 maybe_add_types_provided(Context, _, _) -> Context.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -310,7 +307,6 @@ load_or_upload(DocId, MediaId, Context, ?HTTP_GET) ->
     load_message_binary(DocId, MediaId, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -375,7 +371,6 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -392,7 +387,6 @@ put(Context, _DocId, ?MESSAGES_RESOURCE, MsgID, ?BIN_DATA) ->
     maybe_save_attachment(cb_context:set_account_db(Context, kvm_util:get_db(cb_context:account_id(Context), MsgID))).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -426,7 +420,6 @@ delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

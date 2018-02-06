@@ -98,7 +98,6 @@ reasons(Min, Max)
     ].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -110,7 +109,6 @@ dollars_to_units(Dollars) ->
     dollars_to_units(kz_term:to_float(Dollars)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -121,13 +119,11 @@ units_to_dollars(Units) when is_number(Units) ->
 units_to_dollars(Units) ->
     units_to_dollars(kz_term:to_integer(Units)).
 
-%% @public
 -spec pretty_print_dollars(dollars()) -> kz_term:ne_binary().
 pretty_print_dollars(Amount) ->
     kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -140,7 +136,6 @@ base_call_cost(RateCost, RateMin, RateSurcharge)
     RateCost * ( RateMin div 60 ) + RateSurcharge.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -267,7 +262,6 @@ get_rollup_balance(Account, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -280,7 +274,6 @@ current_account_dollars(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -348,7 +341,6 @@ get_integer_value(Key, JObj, Default) ->
       kz_json:get_first_defined(Keys, JObj, Default)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -372,7 +364,6 @@ per_minute_cost(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% R :: rate, per minute, in units (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
@@ -404,7 +395,6 @@ calculate_call(R, RI, RM, Sur, Secs) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -468,7 +458,6 @@ mobile() -> <<"mobile">>.
 unknown() -> <<"unknown">>.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -478,7 +467,6 @@ is_valid_reason(Reason) ->
     maps:is_key(Reason, reasons()).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -488,7 +476,6 @@ reason_code(Reason) ->
     maps:get(Reason, reasons(), ?CODE_UNKNOWN).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -501,7 +488,6 @@ code_reason(Code) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -511,7 +497,6 @@ collapse_call_transactions(Transactions) ->
     collapse_call_transactions(Transactions, dict:new(), []).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

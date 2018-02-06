@@ -131,7 +131,6 @@
 
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -172,18 +171,15 @@ do_new(DID, Setters) ->
     {ok, PN} = setters(from_number(DID), Setters),
     PN.
 
-%% @public
 -spec from_number(kz_term:ne_binary()) -> knm_phone_number().
 from_number(DID) ->
     from_json(kz_doc:set_id(kz_json:new(), DID)).
 
-%% @public
 -spec from_number_with_options(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number().
 from_number_with_options(DID, Options) ->
     do_new(DID, new_setters(Options)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -470,7 +466,6 @@ is_mdn_for_mdn_run(T0=#{todo := PNs, options := Options}) ->
     lists:foldl(F, T0, PNs).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -513,7 +508,6 @@ log_why_not_to_save(false, _Num) ->
     lager:debug("deleted, skip saving ~s", [_Num]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% To call only from knm_numbers:delete/2 (only for sysadmins).
 %% @end
@@ -544,7 +538,6 @@ set_state_deleted(T) ->
     setters(T, [{fun set_state/2, ?NUMBER_STATE_DELETED}]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Returns same fields view phone_numbers.json returns.
 %% @end
@@ -580,7 +573,6 @@ to_public_json(PN) ->
     kz_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -781,7 +773,6 @@ from_json_with_options(JObj, PN) ->
     from_json_with_options(JObj, Options).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -790,7 +781,6 @@ is_phone_number(#knm_phone_number{}) -> 'true';
 is_phone_number(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -853,7 +843,6 @@ setters_fold_apply(Fun, Args) ->
     erlang:apply(Fun, Args).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -876,7 +865,6 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -891,7 +879,6 @@ rev(#knm_phone_number{rev=Rev}) -> Rev.
 set_rev(N, ?NE_BINARY=Rev) -> N#knm_phone_number{rev=Rev}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -908,7 +895,6 @@ set_assign_to(PN, AssignTo=?MATCH_ACCOUNT_RAW(_)) ->
     PN#knm_phone_number{assign_to = AssignTo}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -949,7 +935,6 @@ set_assigned_to(PN, AssignedTo=?MATCH_ACCOUNT_RAW(_), UsedBy=?NE_BINARY) ->
                        }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -970,7 +955,6 @@ set_prev_assigned_to(PN, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     ?DIRTY(PN#knm_phone_number{prev_assigned_to = PrevAssignedTo}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -988,7 +972,6 @@ set_used_by(PN, UsedBy=?NE_BINARY) ->
     ?DIRTY(PN#knm_phone_number{used_by = UsedBy}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1097,7 +1080,6 @@ features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1129,7 +1111,6 @@ is_state(State)
 is_state(_) -> false.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1194,7 +1175,6 @@ unwind_reserve_history(PN0) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1211,7 +1191,6 @@ set_ported_in(PN, Ported) when is_boolean(Ported) ->
     ?DIRTY(PN#knm_phone_number{ported_in = Ported}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1272,7 +1251,6 @@ local_feature(PN) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1304,7 +1282,6 @@ update_carrier_data(PN=#knm_phone_number{carrier_data = Data}, JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1323,7 +1300,6 @@ set_region(PN, Region=?NE_BINARY) ->
     ?DIRTY(PN#knm_phone_number{region = Region}).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1339,7 +1315,6 @@ set_auth_by(PN, ?MATCH_ACCOUNT_RAW(AuthBy)) ->
     PN#knm_phone_number{auth_by=AuthBy}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1359,7 +1334,6 @@ is_admin(AuthBy) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1372,7 +1346,6 @@ set_is_dirty(PN, IsDirty=false) -> PN#knm_phone_number{is_dirty = IsDirty}.
 -endif.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1384,7 +1357,6 @@ set_dry_run(PN, DryRun) when is_boolean(DryRun) ->
     PN#knm_phone_number{dry_run=DryRun}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1396,7 +1368,6 @@ set_batch_run(PN, BatchRun) when is_boolean(BatchRun) ->
     PN#knm_phone_number{batch_run=BatchRun}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1408,7 +1379,6 @@ set_mdn_run(PN, MDNRun) when is_boolean(MDNRun) ->
     PN#knm_phone_number{mdn_run=MDNRun}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1427,7 +1397,6 @@ set_locality(PN, JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1479,7 +1448,6 @@ doc_from_public_fields(JObj) ->
       sanitize_public_fields(JObj)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1496,7 +1464,6 @@ set_modified(PN, Modified)
     PN#knm_phone_number{modified = Modified}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1515,7 +1482,6 @@ set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
     ?DIRTY(PN#knm_phone_number{created = Created}).
 
-%% @public
 -spec remove_denied_features(knm_phone_number()) -> knm_phone_number().
 remove_denied_features(PN) ->
     DeniedFeatures = knm_providers:features_denied(PN),
@@ -1578,7 +1544,6 @@ private_to_public() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -1594,7 +1559,6 @@ list_attachments(PN, AuthBy) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc Sanitize phone number docs fields and remove deprecated fields
 %% @end
 %%--------------------------------------------------------------------
@@ -1606,7 +1570,6 @@ sanitize_public_fields(JObj) ->
     kz_json:delete_keys(Keys, kz_doc:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------

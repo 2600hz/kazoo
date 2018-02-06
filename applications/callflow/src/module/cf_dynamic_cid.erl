@@ -52,7 +52,6 @@
 -type cid() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module
 %% @end

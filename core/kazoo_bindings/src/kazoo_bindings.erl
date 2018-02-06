@@ -122,7 +122,6 @@
 %%% API
 %%%===================================================================
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% return [ {Result, Payload1} ], a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
@@ -176,7 +175,6 @@ get_binding_candidates(Vsn, Action) ->
                             }]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% return the modified Payload after it has been threaded through
 %% all matching bindings
@@ -220,7 +218,6 @@ succeeded(Res, F) when is_list(Res),
     [R || R <- Res, F(R)].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Match routing patterns. * matches 1 slot, # 0 or more.
 %% Note: matching only accepts wilcards on first argument (asymetric).

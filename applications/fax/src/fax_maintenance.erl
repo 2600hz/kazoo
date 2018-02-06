@@ -192,7 +192,6 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Flush the fax local cache
 %% @end

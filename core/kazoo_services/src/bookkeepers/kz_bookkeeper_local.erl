@@ -16,7 +16,6 @@
 -include("services.hrl").
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -25,7 +24,6 @@
 is_good_standing(_AccountId, _Status) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -34,7 +32,6 @@ is_good_standing(_AccountId, _Status) -> 'true'.
 sync(_Items, _AccountId) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -45,7 +42,6 @@ commit_transactions(_BillingId, Transactions) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -54,7 +50,6 @@ commit_transactions(_BillingId, Transactions) ->
 charge_transactions(_BillingId, _Transactions) -> [].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end

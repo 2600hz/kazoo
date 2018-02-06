@@ -175,7 +175,6 @@
 -type amqp_properties() :: [amqp_property()].
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Publish AMQP messages
 %% @end
@@ -519,7 +518,6 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
     end.
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create AMQP exchanges
 %% @end
@@ -625,7 +623,6 @@ declare_exchange(Exchange, Type, Options) ->
                        }.
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Create AMQP queues
 %% @end
@@ -839,7 +836,6 @@ message_ttl(Args, Acc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Delete AMQP queue
 %% @end
@@ -909,7 +905,6 @@ queue_delete(Queue, Prop) ->
     kz_amqp_channel:command(QD).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
@@ -1067,7 +1062,6 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     kz_amqp_channel:command(QB).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Unbind a Queue from an Exchange
 %% @end
@@ -1177,7 +1171,6 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
     kz_amqp_channel:command(UB).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
@@ -1199,7 +1192,6 @@ basic_consume(Queue, Options) ->
     kz_amqp_channel:command(BC).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% This method cancels a consumer. This does not affect already delivered messages,
 %% but it does mean the server will not send any more messages for that consumer.
@@ -1213,7 +1205,6 @@ basic_cancel() -> kz_amqp_channel:command(#'basic.cancel'{}).
 basic_cancel(ConsumerTag) -> kz_amqp_channel:command(#'basic.cancel'{consumer_tag=ConsumerTag}).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% This method sets confirmation from server
 %% @end
@@ -1222,7 +1213,6 @@ basic_cancel(ConsumerTag) -> kz_amqp_channel:command(#'basic.cancel'{consumer_ta
 confirm_select() -> kz_amqp_channel:command(#'confirm.select'{}).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% This method sets flow control
 %% @end
@@ -1240,7 +1230,6 @@ flow_control_reply(Active) ->
     kz_amqp_channel:command(#'channel.flow_ok'{active=Active}).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %%
 %% @end
@@ -1258,7 +1247,6 @@ access_request(Options) ->
                      }.
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Determines if the content is flaged as type JSON
 %% @end
@@ -1267,7 +1255,6 @@ access_request(Options) ->
 is_json(#'P_basic'{content_type=CT}) -> CT =:= ?DEFAULT_CONTENT_TYPE.
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% When sent by the client, this method acknowledges one or more messages
 %% delivered via the Deliver or Get-'Ok' methods.
@@ -1278,7 +1265,6 @@ basic_ack(#'basic.deliver'{delivery_tag=DTag}) -> basic_ack(DTag);
 basic_ack(DTag) -> kz_amqp_channel:command(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% NOTE: THIS METHOD IS A RABBITMQ-SPECIFIC EXTENSION OF AMQP
 %% Reject one or more incoming messages.
@@ -1289,7 +1275,6 @@ basic_nack(#'basic.deliver'{delivery_tag=DTag}) -> basic_nack(DTag);
 basic_nack(DTag) -> kz_amqp_channel:command(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Determine if the AMQP host is currently reachable
 %% @end
@@ -1298,7 +1283,6 @@ basic_nack(DTag) -> kz_amqp_channel:command(#'basic.nack'{delivery_tag=DTag}).
 is_host_available() -> kz_amqp_connections:is_available().
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Specify quality of service
 %% @end
@@ -1308,7 +1292,6 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
     kz_amqp_channel:command(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% Encode a key so characters like dot won't interfere with routing separator
 %% @end

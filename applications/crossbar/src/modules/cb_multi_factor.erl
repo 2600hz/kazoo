@@ -31,7 +31,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -49,7 +48,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.multi_factor">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
@@ -82,7 +80,6 @@ authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], _) -> {'stop', cb_co
 authorize_system_multi_factor(_, _, _) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -103,7 +100,6 @@ allowed_methods(?ATTEMPTS, _AttemptId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /multi_factor => []
@@ -122,7 +118,6 @@ resource_exists(_ConfigId) -> 'true'.
 resource_exists(?ATTEMPTS, _AttemptId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -174,7 +169,6 @@ validate_multi_factor_config(Context, ConfigId, ?HTTP_DELETE) ->
     read(ConfigId, Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
@@ -184,7 +178,6 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -195,7 +188,6 @@ post(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -206,7 +198,6 @@ patch(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end

@@ -49,7 +49,6 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Entry point for this module, creates the parameters and branches
 %% to cf_intercept.

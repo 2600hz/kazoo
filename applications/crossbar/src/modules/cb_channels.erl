@@ -29,7 +29,6 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Initializes the bindings this module will respond to.
 %% @end
@@ -46,7 +45,6 @@ init() ->
                          ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
@@ -62,7 +60,6 @@ allowed_methods(_UUID) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Does the path point to a valid resource
 %% So /channels => []
@@ -78,7 +75,6 @@ resource_exists() -> 'true'.
 resource_exists(_UUID) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% What content-types will the module be using to respond (matched against
 %% client's accept header)
@@ -93,7 +89,6 @@ content_types_provided(Context) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
@@ -124,7 +119,6 @@ validate_channel(Context, Id, ?HTTP_PUT) ->
     validate_action(Context, Id).
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
@@ -135,7 +129,6 @@ post(Context, _UUID) ->
     cb_context:set_resp_status(Context, 'success').
 
 %%--------------------------------------------------------------------
-%% @public
 %% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save
 %% (after a merge perhaps).
