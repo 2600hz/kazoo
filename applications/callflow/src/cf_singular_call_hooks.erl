@@ -47,7 +47,6 @@
 %% and if so, then we know the call should be hooked.
 %% We then can start the event listener, which will send init and end hooks.
 %%
-%% @spec maybe_hook_call(kapps_call:call()) -> ok.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_hook_call(kapps_call:call()) -> boolean().
@@ -67,7 +66,6 @@ maybe_hook_call(Call) ->
 %% Sends an initial request signifying the start of this entire conversation
 %% in a hook to a preconfigured URL.
 %%
-%% @spec send_init_hook(kapps_call:call()) -> boolean().
 %% @end
 %%--------------------------------------------------------------------
 -spec send_init_hook(kapps_call:call()) -> boolean().
@@ -109,7 +107,6 @@ send_init_hook(Call) ->
 %% Sends a request signifying the end of this entire conversation in a
 %% hook to a preconfigured URL.
 %%
-%% @spec send_end_hook(kapps_call:call(), kz_json:object()) -> boolean().
 %% @end
 %%--------------------------------------------------------------------
 -spec send_end_hook(kapps_call:call(), kz_json:object()) -> boolean().
@@ -177,7 +174,6 @@ should_hook(Call) ->
 %% The call hook is enabled if the URL in the system_config / callflows / singular_call_hook_url
 %% field is not set to disabled.
 %%
-%% @spec is_enabled() -> boolean().
 %% @end
 %%--------------------------------------------------------------------
 -spec is_enabled() -> boolean().
@@ -191,7 +187,6 @@ is_enabled() ->
 %% has an existing bridge. We also check the presence of referredby and
 %% want to send the hook if it is a call transfer
 %%
-%% @spec call_is_singular(kapps_call:call()) -> boolean().
 %% @end
 %%--------------------------------------------------------------------
 -spec call_is_singular(kapps_call:call()) -> boolean().
@@ -208,7 +203,6 @@ call_is_singular(Call) ->
 %% @doc
 %% Gets where the call was started. If kapps_call returns undefined, it was on net.
 %%
-%% @spec get_inception(kapps_call:call()) -> kz_term:ne_binary().
 %% @end
 %%--------------------------------------------------------------------
 -spec get_inception(kapps_call:call()) -> kz_term:ne_binary().
@@ -223,7 +217,6 @@ get_inception(Call) ->
 %% @doc
 %% Gets the singular call hook URL from the configuration (may be cached).
 %%
-%% @spec get_hook_url() -> kz_term:ne_binary().
 %% @end
 %%--------------------------------------------------------------------
 -spec get_hook_url() -> kz_term:ne_binary().

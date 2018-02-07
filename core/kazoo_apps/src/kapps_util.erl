@@ -80,7 +80,6 @@
 %% Update a document in each crossbar account database with the
 %% file contents.  This is intended for _design docs....
 %%
-%% @spec update_all_accounts() -> ok | error
 %% @end
 %%--------------------------------------------------------------------
 -spec update_all_accounts(kz_term:ne_binary()) -> 'ok'.

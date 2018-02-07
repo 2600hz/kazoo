@@ -124,7 +124,6 @@ terminate(Reason, #state{module_state=ModState, module=Mod}) ->
 %% @doc
 %% Convert process state when code is changed
 %%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', any()} | {'error', any()}.

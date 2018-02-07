@@ -393,10 +393,6 @@ deleted_endpoint(ServerRef, EP) ->
 %% gen_statem:start_link/[3,4], this function is called by the new
 %% process to initialize.
 %%
-%% @spec init(Args) -> {'ok', StateName, State} |
-%%                     {'ok', StateName, State, Timeout} |
-%%                     ignore |
-%%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', atom(), state()}.
@@ -1494,7 +1490,6 @@ handle_info(_Info, StateName, State) ->
 %% necessary cleaning up. When it returns, the gen_statem terminates with
 %% Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), atom(), state()) -> 'ok'.
@@ -1507,8 +1502,6 @@ terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
 %% @doc
 %% Convert process state when code is changed
 %%
-%% @spec code_change(OldVsn, StateName, State, Extra) ->
-%%                   {'ok', StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.
