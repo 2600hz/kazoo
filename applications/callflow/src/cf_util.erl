@@ -667,7 +667,9 @@ process_event(Call, NoopId, JObj) ->
         {<<"call_event">>, <<"DTMF">>, _} ->
             DTMF = kz_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:debug("recv DTMF ~s, adding to default", [DTMF]),
-            wait_for_noop(kapps_call:add_to_dtmf_collection(DTMF, Call), NoopId);
+            Call1 = kapps_call:add_to_dtmf_collection(DTMF, Call),
+            cf_exe:set_call(Call1),
+            wait_for_noop(Call1, NoopId);
         _Ignore ->
             wait_for_noop(Call, NoopId)
     end.

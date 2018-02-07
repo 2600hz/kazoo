@@ -31,8 +31,8 @@ handle(Data, Call) ->
             lager:info("invalid data in the play callflow"),
             cf_exe:continue(Call);
         Media ->
-            NoopId = play(Data, Call, Media),
-            handle_noop_recv(Call, cf_util:wait_for_noop(Call, NoopId))
+            NoopResult = play(Data, Call, Media),
+            handle_noop_recv(Call, NoopResult)
     end.
 
 -spec handle_noop_recv(kapps_call:call(), {'ok', kapps_call:call()} | {'error', any()}) -> 'ok'.

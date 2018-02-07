@@ -1373,7 +1373,6 @@ add_to_dtmf_collection(DTMF, Collection, Call) ->
 flush() ->
     kz_cache:flush_local(?KAPPS_CALL_CACHE).
 
-
 -spec cache(call()) -> 'ok'.
 cache(Call) ->
     cache(Call, 'undefined', 5 * ?SECONDS_IN_MINUTE).

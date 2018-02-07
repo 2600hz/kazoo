@@ -102,7 +102,9 @@ send_cmd(Node, UUID, "xferext", Dialplan) ->
     XferExt = [begin
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
                    {kz_term:to_list(K), kz_term:to_list(V)}
-               end || {K, V} <- Dialplan],
+               end
+               || {K, V} <- Dialplan
+              ],
     'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]);
 send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
     send_cmd(Node, UUID, App, kz_term:to_list(Args));
