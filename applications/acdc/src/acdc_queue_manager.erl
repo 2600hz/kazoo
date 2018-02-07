@@ -849,13 +849,11 @@ get_strategy(<<"round_robin">>) -> 'rr';
 get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
 
--spec create_strategy_state(queue_strategy()
-                           ,strategy_state()
-                           ,kz_term:ne_binary(), kz_term:ne_binary()
-                           ) -> strategy_state().
+-spec create_strategy_state(queue_strategy(), kz_term:ne_binary(), kz_term:ne_binary()) -> strategy_state().
 create_strategy_state(Strategy, AcctDb, QueueId) ->
     create_strategy_state(Strategy, #strategy_state{}, AcctDb, QueueId).
 
+-spec create_strategy_state(queue_strategy(), strategy_state(), kz_term:ne_binary(), kz_term:ne_binary()) -> strategy_state().
 create_strategy_state('rr', #strategy_state{agents='undefined'}=SS, AcctDb, QueueId) ->
     create_strategy_state('rr', SS#strategy_state{agents=queue:new()}, AcctDb, QueueId);
 create_strategy_state('rr', #strategy_state{agents=AgentQ}=SS, AcctDb, QueueId) ->
