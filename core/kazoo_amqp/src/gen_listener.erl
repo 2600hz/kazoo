@@ -1146,6 +1146,7 @@ update_federated_bindings(#state{bindings=[{Binding, Props}|_]
             {_Existing, New} = broker_connections(Fs, FederatedBrokers),
             'ok' = update_existing_listeners_bindings(Fs, Binding, NonFederatedProps),
             {'ok', NewListeners} = start_new_listeners(New, Binding, NonFederatedProps, State),
+            gen_server:cast(self(), {?MODULE, {'listener_federators_started', NewListeners, FederatedBrokers}}),
             State#state{federators=NewListeners ++ Fs}
     end.
 
