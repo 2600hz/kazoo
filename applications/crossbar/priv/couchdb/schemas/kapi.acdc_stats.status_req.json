@@ -24,6 +24,9 @@
             ],
             "type": "string"
         },
+        "Limit": {
+            "type": "string"
+        },
         "Start-Range": {
             "type": "string"
         },

@@ -364,6 +364,7 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
              ,{<<"Start-Range">>, Yday}
              ,{<<"End-Range">>, Now}
              ,{<<"Most-Recent">>, kz_term:is_false(Recent)}
+             ,{<<"Limit">>, cb_context:req_value(Context, <<"limit">>)}
              ]),
 
     {'ok', Resp} = acdc_agent_util:most_recent_statuses(cb_context:account_id(Context), Opts),
