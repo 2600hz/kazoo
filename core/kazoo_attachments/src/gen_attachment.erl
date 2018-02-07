@@ -20,9 +20,10 @@
 -type error_body()       :: binary() | % encoded map()
                             bitstring() | % <<"example">>
                             atom(). % 'not_found' | 'return_id_missing' | etc.
--opaque error_response() :: {'gen_attachment_error', [{'error_code', error_code()} |
-                                                      {'error_body', error_body()}
-                                                     ]}.
+-type verbosity()        :: 'default' | 'verbose'.
+-type error_response() :: {'error', [{'error_code', error_code()} |
+                                     {'error_body', error_body()}
+                                    ]}.
 -type put_response()     :: {'ok', [{atom(), [{binary(), binary() | kz_json:object()}]}]} |
                             error_response().
 -type fetch_response()   :: {'ok', iodata()} | error_response().
@@ -69,7 +70,15 @@
 %% Setter
 -spec error_response(error_code(), error_body()) -> error_response().
 error_response(ErrorCode, ErrorBody) ->
-    {'gen_attachment_error', [{'error_code', ErrorCode}, {'error_body', ErrorBody}]}.
+    error_response(ErrorCode, ErrorBody, 'default').
+
+-spec error_response(error_code(), error_body(), verbosity()) -> error_response().
+error_response(ErrorCode, ErrorBody, 'verbose') ->
+    {'error', [{'error_code', ErrorCode}, {'error_body', ErrorBody}]};
+error_response(ErrorCode, ErrorBody, 'default') ->
+    ErrorCodeBin = kz_term:to_binary(ErrorCode),
+    ErrorBodyBin = kz_term:to_binary(ErrorBody),
+    {'error', <<ErrorCodeBin/binary, ": ", ErrorBodyBin/binary>>}.
 
 %% Getters
 %% Read the note about `kz_datamgr:data_error()' after the types declaration
