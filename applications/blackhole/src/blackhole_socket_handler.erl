@@ -12,31 +12,37 @@
         ,websocket_init/1
         ,websocket_handle/2
         ,websocket_info/2
-        ,websocket_terminate/2
         ,terminate/3
         ]).
 
 -include("blackhole.hrl").
 
--spec init(cowboy_req:req(), State) ->
-                  {'ok' | 'cowboy_websocket', cowboy_req:req(), State | {inet:ip_address(), kz_term:ne_binary()}}.
+-define(IDLE_TIMEOUT, ?MILLISECONDS_IN_HOUR).
+
+-type blackhole_init() :: {inet:ip_address(), kz_term:ne_binary()}.
+
+-spec init(cowboy_req:req(), cowboy_websocket:opts()) ->
+                  {'ok' , cowboy_req:req(), cowboy_websocket:opts()} |
+                  {'cowboy_websocket', cowboy_req:req(), blackhole_init(), cowboy_websocket:opts()}.
 init(Req, HandlerOpts) ->
     lager:info("handling socket init"),
     case cowboy_req:parse_header(<<"sec-websocket-protocol">>, Req) of
         'undefined' ->
             {RemoteIP, _} = cowboy_req:peer(Req),
             lager:info("no sub protocols defined by remote client ~p", [RemoteIP]),
-            {'cowboy_websocket', Req, {RemoteIP, session_id(Req)}};
+            {'cowboy_websocket', Req, {RemoteIP, session_id(Req)}, #{idle_timeout => ?IDLE_TIMEOUT}};
         _SubProtocols ->
             lager:warning("sub-protocols are not supported at the moment: ~p", [_SubProtocols]),
             {'ok', cowboy_req:reply(400, Req), HandlerOpts}
     end.
 
 -spec terminate(any(), any(), any()) -> 'ok'.
-terminate(_Reason, _Req, _State) ->
-    lager:info("bh socket going down: ~p", [_Reason]).
+terminate(_Reason, _Req, State) ->
+    lager:info("bh socket going down: ~p", [_Reason]),
+    blackhole_socket_callback:close(State),
+    'ok'.
 
--spec websocket_init({inet:ip_address(), kz_term:ne_binary()}) -> {'ok', bh_context:context()}.
+-spec websocket_init(blackhole_init()) -> {'ok', bh_context:context()}.
 websocket_init({RemoteIP, SessionsId}) ->
     lager:info("init from ~p(~p)", [RemoteIP, SessionsId]),
     {'ok', _State} = blackhole_socket_callback:open(self(), SessionsId, RemoteIP).
@@ -64,10 +70,6 @@ websocket_info({'send_data', Data}, State) ->
 websocket_info(Info, State) ->
     lager:info("unhandled websocket info: ~p", [Info]),
     {'ok', State}.
-
--spec websocket_terminate(any(), bh_context:context()) -> bh_context:context().
-websocket_terminate(_Reason, State) ->
-    blackhole_socket_callback:close(State).
 
 -spec session_id(cowboy_req:req()) -> binary().
 session_id(Req) ->
