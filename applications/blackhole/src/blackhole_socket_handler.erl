@@ -17,7 +17,7 @@
 
 -include("blackhole.hrl").
 
--define(IDLE_TIMEOUT, 3600000).
+-define(IDLE_TIMEOUT, ?MILLISECONDS_IN_HOUR).
 
 -type blackhole_init() :: {inet:ip_address(), kz_term:ne_binary()}.
 
