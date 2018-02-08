@@ -932,7 +932,6 @@ delete_media_binary(MediaId, Context, _AccountId) ->
     end.
 
 -spec is_tts(kz_json:object()) -> boolean().
--spec is_tts(kz_json:object(), api_binary()) -> boolean().
 is_tts(JObj) ->
     kz_json:get_ne_binary_value(<<"media_source">>, JObj) =:= <<"tts">>.
 

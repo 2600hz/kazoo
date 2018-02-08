@@ -1318,8 +1318,6 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
 %%--------------------------------------------------------------------
 -spec record_name(ne_binary(), mailbox(), kapps_call:call()) ->
                          'ok' | mailbox().
--spec record_name(ne_binary(), mailbox(), kapps_call:call(), ne_binary()) ->
-                         'ok' | mailbox().
 record_name(AttachmentName, #mailbox{owner_id='undefined'
                                     ,name_media_id='undefined'
                                     ,mailbox_id=BoxId
