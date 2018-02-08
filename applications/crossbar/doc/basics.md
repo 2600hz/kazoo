@@ -274,3 +274,26 @@ curl -v \
     -H "Range: bytes={START_BYTE}-{END_BYTE}" \
     http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MESSAGE_ID}/raw
 ```
+
+#### Requesting data in CSV format
+
+In some cases (eg CDR) its possible to request data in CSV format
+You must define the Content-type in the header
+You can define the file name in the request header or URL (Optional)
+
+```shell
+curl -v -X GET \
+    -H "Accept: text/csv" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-File-Name: {FILE_NAME}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
+```
+
+or
+
+```shell
+curl -v -X GET \
+    -H "Accept: text/csv" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?file_name={FILE_NAME}
+```
