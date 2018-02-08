@@ -413,7 +413,7 @@ maybe_create_tts_media_doc(Context, _) ->
     Context.
 
 -spec maybe_update_media_file(cb_context:context(), ne_binary(), boolean(), crossbar_status()) ->
-                                          cb_context:context().
+                                     cb_context:context().
 maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
     JObj = cb_context:doc(Context),
     Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
@@ -445,7 +445,11 @@ maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
                 <<"create">> ->
                     crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type()));
                 <<"update">> ->
-                    crossbar_doc:load_merge(MediaId, kz_doc:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
+                    C2 = crossbar_doc:load_merge(MediaId, kz_doc:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type())),
+                    case cb_context:resp_status(C2) of
+                        'success' -> crossbar_doc:save(C2);
+                        _ -> C2
+                    end
             end
     catch
         _E:_R ->
@@ -725,7 +729,7 @@ fix_prompt_start_keys(Context) ->
                                             ,cb_context:resp_envelope(Context)
                                             ,[<<"start_key">>, <<"next_start_key">>]
                                             )
-     ).
+                                ).
 
 -spec fix_prompt_start_keys_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 fix_prompt_start_keys_fold(Key, JObj) ->

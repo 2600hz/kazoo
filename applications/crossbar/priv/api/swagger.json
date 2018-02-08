@@ -21445,6 +21445,7 @@
                 }
             },
             "required": [
+                "media_source",
                 "name"
             ],
             "type": "object"
