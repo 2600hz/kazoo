@@ -386,7 +386,7 @@ post_media_doc(Context, MediaId, 'undefined') ->
 post_media_doc(Context, _MediaId, _AccountId) ->
     case is_tts(cb_context:doc(Context)) of
         'true' -> create_update_tts(Context, <<"update">>);
-        'false' -> crossbar_doc:save(crossbar_doc:save(remove_tts_keys(Context)))
+        'false' -> crossbar_doc:save(remove_tts_keys(Context))
     end.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -411,15 +411,7 @@ create_update_tts(Context, CreateOrUpdate) ->
     maybe_update_media_file(C1, CreateOrUpdate, is_tts_changed(cb_context:doc(C1)), cb_context:resp_status(C1)).
 
 maybe_create_tts_media_doc(Context, <<"create">>) ->
-    JObj = cb_context:doc(Context),
-    Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
-    Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
-
-    Doc = kz_json:set_values([{<<"pvt_previous_tts">>, Text}
-                             ,{<<"pvt_previous_voice">>, Voice}
-                             ], JObj
-                            ),
-    crossbar_doc:save(cb_context:set_doc(Context, Doc));
+    update_and_save_tts_doc(Context);
 maybe_create_tts_media_doc(Context, _) ->
     Context.
 
@@ -452,13 +444,12 @@ maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
             case cb_context:resp_status(C1) =:= 'success'
                 andalso CreateOrUpdate
             of
-                'false' -> maybe_delete_tts(Context, <<"creating TTS failed unexpectedly">>, CreateOrUpdate);
-                <<"create">> ->
-                    crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type()));
+                'false' -> maybe_delete_tts(C1, <<"creating TTS failed unexpectedly">>, CreateOrUpdate);
+                <<"create">> -> Context;
                 <<"update">> ->
                     C2 = crossbar_doc:load_merge(MediaId, kz_doc:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type())),
                     case cb_context:resp_status(C2) of
-                        'success' -> crossbar_doc:save(C2);
+                        'success' -> update_and_save_tts_doc(C2);
                         _ -> C2
                     end
             end
@@ -467,7 +458,22 @@ maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
             lager:debug("creating tts failed unexpectedly: ~s: ~p", [_E, _R]),
             maybe_delete_tts(Context, <<"creating TTS failed unexpectedly">>, CreateOrUpdate)
     end;
-maybe_update_media_file(Context, _, _, _) -> Context.
+maybe_update_media_file(Context, <<"update">>, 'false', 'success') ->
+    crossbar_doc:save(Context);
+maybe_update_media_file(Context, _, _, _) ->
+    Context.
+
+-spec update_and_save_tts_doc(cb_context:context()) -> cb_context:context().
+update_and_save_tts_doc(Context) ->
+    JObj = cb_context:doc(Context),
+    Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
+    Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
+
+    Doc = kz_json:set_values([{<<"pvt_previous_tts">>, Text}
+                             ,{<<"pvt_previous_voice">>, Voice}
+                             ], JObj
+                            ),
+    crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
 -spec maybe_delete_tts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 maybe_delete_tts(Context, Reason, <<"create">>) ->
