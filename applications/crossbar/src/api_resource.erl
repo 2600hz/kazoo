@@ -33,7 +33,7 @@
         ,delete_resource/2
         ,delete_completed/2
         ,is_conflict/2
-        ,to_json/2, to_binary/2, to_csv/2, to_pdf/2, send_file/2
+        ,to_json/2, to_xml/2, to_binary/2, to_csv/2, to_pdf/2, send_file/2
         ,from_json/2, from_binary/2, from_form/2
         ,multiple_choices/2
         ,generate_etag/2
@@ -772,6 +772,7 @@ create_from_response(Req, Context, Accept) ->
                  end,
     case to_fun(Context, Accept, DefaultFun) of
         'to_json' -> api_util:create_push_response(Req, Context);
+        'to_xml' -> api_util:create_push_response(Req, Context, fun api_util:create_resp_xml/2);
         'send_file' -> api_util:create_push_response(Req, Context, fun api_util:create_resp_file/2);
         _ ->
             %% sending json for now until we implement other types
@@ -804,6 +805,29 @@ to_json(Req, Context, Accept) ->
         Fun ->
             lager:debug("calling ~s instead of to_json to render response", [Fun]),
             (?MODULE):Fun(Req, Context)
+    end.
+
+-spec to_xml(cowboy_req:req(), cb_context:context()) -> {iolist(), cowboy_req:req(), cb_context:context()}.
+to_xml(Req, Context) ->
+    lager:debug("run: to_xml"),
+    [{Mod, _Params}|_] = cb_context:req_nouns(Context),
+    Verb = cb_context:req_verb(Context),
+    Event = api_util:create_event_name(Context, [<<"to_xml">>
+                                                ,kz_term:to_lower_binary(Verb)
+                                                ,Mod
+                                                ]),
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+    case cb_context:fetch(Context1, 'is_chunked') of
+        'true' -> {'halt', Req1, Context1};
+        _ ->
+            RespHeaders =
+                props:insert_values([{<<"content-type">>, <<"application/xml">>}]
+                                   ,cb_context:resp_headers(Context1)
+                                   ),
+            {cb_context:resp_data(Context1)
+            ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders))
+            ,Context1
+            }
     end.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->

@@ -31,7 +31,7 @@
         ,finish_request/2
         ,create_push_response/2, create_push_response/3
         ,set_resp_headers/2
-        ,create_resp_content/2, create_resp_file/2, create_csv_resp_content/2
+        ,create_resp_content/2, create_resp_file/2, create_csv_resp_content/2, create_resp_xml/2
         ,create_pull_response/2, create_pull_response/3
 
         ,init_chunk_stream/2
@@ -1254,6 +1254,12 @@ create_resp_file(Req, Context) ->
                   Res
           end,
     {{Len, Fun}, Req}.
+
+-spec create_resp_xml(cowboy_req:req(), cb_context:context()) ->
+                             {ne_binary() | iolist(), cowboy_req:req()}.
+create_resp_xml(Req, Context) ->
+    Content = cb_context:resp_data(Context),
+    {Content, cowboy_req:set_resp_header(<<"content-type">>, <<"application/xml">>, Req)}.
 
 %%--------------------------------------------------------------------
 %% @public
