@@ -1942,20 +1942,12 @@ recording_media_doc(Recording, Box, Call) ->
     kz_doc:id(JObj).
 
 -spec maybe_update_recording_media_doc(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_json:object() | kz_term:ne_binary(), 'new' | 'update') -> 'ok'.
-maybe_update_recording_media_doc(_, _, _, _, 'new') -> 'ok';
+maybe_update_recording_media_doc(_, _, _, _, 'new') ->
+    'ok';
 maybe_update_recording_media_doc(AttachmentName, Box, Call, ?NE_BINARY=MediaId, 'update') ->
     update_recording_media_doc(AttachmentName, Box, Call, MediaId);
 maybe_update_recording_media_doc(AttachmentName, Box, Call, JObj, 'update') ->
-    case kz_datamgr:open_doc(kapps_call:account_db(Call), kz_doc:id(JObj)) of
-        'false' -> update_recording_media_doc(AttachmentName, Box, Call, JObj);
-        {'ok', MediaDoc} ->
-            case kz_json:are_equal(kz_doc:public_fields(JObj), kz_doc:public_fields(MediaDoc)) of
-                'true' -> 'ok';
-                'false' ->  update_recording_media_doc(AttachmentName, Box, Call, JObj)
-            end;
-        {'error', _} ->
-            update_recording_media_doc(AttachmentName, Box, Call, JObj)
-    end.
+    update_recording_media_doc(AttachmentName, Box, Call, kz_doc:id(JObj)).
 
 -spec update_recording_media_doc(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 update_recording_media_doc(AttachmentName, Box, Call, MediaId) ->
