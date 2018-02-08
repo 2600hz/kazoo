@@ -32,6 +32,9 @@
             ],
             "type": "string"
         },
+        "Group-ID": {
+            "type": "string"
+        },
         "Insert-At": {
             "enum": [
                 "head",
