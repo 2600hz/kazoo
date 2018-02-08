@@ -482,9 +482,12 @@ cell_wrap('undefined') -> <<" ">>;
 cell_wrap([]) -> <<"`[]`">>;
 cell_wrap(L) when is_list(L) -> [<<"`[\"">>, kz_binary:join(L, <<"\", \"">>), <<"\"]`">>];
 cell_wrap(<<>>) -> <<"\"\"">>;
-cell_wrap(?EMPTY_JSON_OBJECT) -> <<"`{}`">>;
+cell_wrap(B) when is_binary(B) -> [<<"`">>, B, <<"`">>];
 cell_wrap(Type) ->
-    [<<"`">>, kz_term:to_binary(Type), <<"`">>].
+    case kz_json:is_json_term(Type) of
+        'true' -> [<<"`">>, kz_json:encode(Type), <<"`">>];
+        'false' -> [<<"`">>, kz_term:to_binary(Type), <<"`">>]
+    end.
 
 maybe_sub_properties_to_row(SchemaJObj, <<"object">>, Names, Settings, {_,_}=Acc0) ->
     ?LOG_DEBUG("names: ~p ~p~n", [Names, Settings]),
