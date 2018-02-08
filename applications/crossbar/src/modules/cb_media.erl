@@ -293,9 +293,7 @@ validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
 validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
     cb_context:add_validation_error(<<"file">>
                                    ,<<"maxItems">>
-                                   ,kz_json:from_list([
-                                                       {<<"message">>, <<"Please provide a single media file">>}
-                                                      ])
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide a single media file">>}])
                                    ,Context
                                    ).
 
@@ -303,8 +301,7 @@ validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
 error_missing_file(Context) ->
     cb_context:add_validation_error(<<"file">>
                                    ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"Please provide an media file">>}
-                                                      ])
+                                   ,kz_json:from_list([{<<"message">>, <<"Please provide an media file">>}])
                                    ,Context
                                    ).
 
@@ -374,26 +371,10 @@ put(Context) ->
 put_media(Context, 'undefined') ->
     put_media(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), <<"ignore">>);
 put_media(Context, _AccountId) ->
-    JObj = cb_context:doc(Context),
-    TTS = is_tts(JObj),
-
-    Routines = [fun crossbar_doc:save/1
-               ,fun(C) when TTS ->
-                        Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
-                        Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
-
-                        maybe_update_tts(C, Text, Voice, cb_context:resp_status(C));
-                   (C) -> C
-                end
-               ,fun(C) when TTS ->
-                        Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
-                        Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
-
-                        maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
-                   (C) -> C
-                end
-               ],
-    lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
+    case is_tts(cb_context:doc(Context)) of
+        'true' -> create_update_tts(Context, <<"create">>);
+        'false' -> crossbar_doc:save(Context)
+    end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, MediaId) ->
@@ -402,35 +383,22 @@ post(Context, MediaId) ->
 -spec post_media_doc(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 post_media_doc(Context, MediaId, 'undefined') ->
     post_media_doc(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
-post_media_doc(Context, MediaId, _AccountId) ->
-    JObj = cb_context:doc(Context),
-    Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
-    Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
-    TTS = is_tts(JObj),
-
-    Routines = [fun(C) when TTS ->
-                        maybe_merge_tts(C, MediaId, Text, Voice, cb_context:resp_status(C));
-                   (C) -> C
-                end
-               ,fun(C) when TTS ->
-                        maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
-                   (C) ->
-                        case cb_context:resp_status(C) of
-                            'success' -> crossbar_doc:save(remove_tts_keys(C));
-                            _Status -> Context
-                        end
-                end
-               ],
-    lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
+post_media_doc(Context, _MediaId, _AccountId) ->
+    case is_tts(cb_context:doc(Context)) of
+        'true' -> create_update_tts(Context, <<"update">>);
+        'false' -> crossbar_doc:save(crossbar_doc:save(remove_tts_keys(Context)))
+    end.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, MediaId, ?BIN_DATA) ->
     post_media_binary(Context, MediaId, cb_context:account_id(Context)).
 
 -spec remove_tts_keys(cb_context:context()) -> cb_context:context().
-remove_tts_keys(C) ->
-    JObj = cb_context:doc(C),
-    cb_context:set_doc(C, kz_json:delete_keys([<<"pvt_previous_tts">>, <<"pvt_previous_voice">>], JObj)).
+remove_tts_keys(Context) ->
+    cb_context:set_doc(Context
+                      ,kz_json:delete_keys([<<"pvt_previous_tts">>, <<"pvt_previous_voice">>]
+                                          ,cb_context:doc(Context)
+                                          )).
 
 -spec post_media_binary(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 post_media_binary(Context, MediaId, 'undefined') ->
@@ -438,32 +406,36 @@ post_media_binary(Context, MediaId, 'undefined') ->
 post_media_binary(Context, MediaId, _AccountId) ->
     update_media_binary(Context, MediaId).
 
--spec maybe_save_tts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), crossbar_status()) ->
-                            cb_context:context().
-maybe_save_tts(Context, Text, Voice, 'success') ->
-    JObj = kz_json:set_value(<<"media_source">>, <<"tts">>, cb_context:doc(Context)),
-    crossbar_doc:save(
-      cb_context:set_doc(Context
-                        ,kz_json:set_values([{<<"pvt_previous_tts">>, Text}
-                                            ,{<<"pvt_previous_voice">>, Voice}
-                                            ], JObj)
-                        )
-     );
-maybe_save_tts(Context, _Text, _Voice, _Status) ->
+create_update_tts(Context, CreateOrUpdate) ->
+    C1 = maybe_create_tts_media_doc(Context, CreateOrUpdate),
+    maybe_update_media_file(C1, CreateOrUpdate, is_tts_changed(cb_context:doc(C1)), cb_context:resp_status(C1)).
+
+maybe_create_tts_media_doc(Context, <<"create">>) ->
+    JObj = cb_context:doc(Context),
+    Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
+    Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
+
+    Doc = kz_json:set_values([{<<"pvt_previous_tts">>, Text}
+                             ,{<<"pvt_previous_voice">>, Voice}
+                             ], JObj
+                            ),
+    crossbar_doc:save(cb_context:set_doc(Context, Doc));
+maybe_create_tts_media_doc(Context, _) ->
     Context.
 
--spec maybe_update_tts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), crossbar_status()) ->
-                              cb_context:context().
-maybe_update_tts(Context, Text, VoiceLang, 'success') ->
+-spec maybe_update_media_file(cb_context:context(), kz_term:ne_binary(), boolean(), crossbar_status()) ->
+                                          cb_context:context().
+maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
     JObj = cb_context:doc(Context),
+    Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
+    Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
 
-    try kazoo_tts:create(Text, VoiceLang) of
+    try kazoo_tts:create(Text, Voice) of
         {'error', Reason} ->
-            _ = crossbar_doc:delete(Context),
+            maybe_delete_tts(Context, kz_term:to_binary(Reason), CreateOrUpdate),
             crossbar_util:response('error', kz_term:to_binary(Reason), Context);
         {'error', 'tts_provider_failure', Reason} ->
-            _ = crossbar_doc:delete(Context),
-            crossbar_util:response('error', kz_term:to_binary(Reason), Context);
+            maybe_delete_tts(Context, kz_term:to_binary(Reason), CreateOrUpdate);
         {'ok', ContentType, Content} ->
             MediaId = kz_doc:id(JObj),
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}
@@ -476,50 +448,28 @@ maybe_update_tts(Context, Text, VoiceLang, 'success') ->
                          ,(kz_term:to_binary(kz_time:now_s()))/binary
                          ,".wav"
                        >>,
-            _ = update_media_binary(cb_context:set_resp_status(cb_context:set_req_files(Context, [{FileName, FileJObj}])
-                                                              ,'error'
-                                                              )
-                                   ,MediaId
-                                   ),
-            crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
+            C1 = update_media_binary(cb_context:set_req_files(Context, [{FileName, FileJObj}]), MediaId),
+            case cb_context:resp_status(C1) =:= 'success'
+                andalso CreateOrUpdate
+            of
+                'false' -> maybe_delete_tts(Context, <<"creating TTS failed unexpectedly">>, CreateOrUpdate);
+                <<"create">> ->
+                    crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type()));
+                <<"update">> ->
+                    crossbar_doc:load_merge(MediaId, kz_doc:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
+            end
     catch
         _E:_R ->
-            lager:debug("creating tts excepted: ~s: ~p", [_E, _R]),
-            _ = crossbar_doc:delete(Context),
-            crossbar_util:response('error', <<"creating TTS failed unexpectedly">>, Context)
+            lager:debug("creating tts failed unexpectedly: ~s: ~p", [_E, _R]),
+            maybe_delete_tts(Context, <<"creating TTS failed unexpectedly">>, CreateOrUpdate)
     end;
-maybe_update_tts(Context, _Text, _Voice, _Status) -> Context.
+maybe_update_media_file(Context, _, _, _) -> Context.
 
--spec maybe_merge_tts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), crossbar_status()) ->
-                             cb_context:context().
-maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
-    JObj = cb_context:doc(Context),
-
-    case kazoo_tts:create(Text, Voice) of
-        {'error', R} ->
-            crossbar_util:response('error', kz_term:to_binary(R), Context);
-        {'error', 'tts_provider_failure', R} ->
-            crossbar_util:response('error', kz_term:to_binary(R), Context);
-        {'ok', ContentType, Content} ->
-            Headers = kz_json:from_list([{<<"content_type">>, ContentType}
-                                        ,{<<"content_length">>, iolist_size(Content)}
-                                        ]),
-            FileJObj = kz_json:from_list([{<<"headers">>, Headers}
-                                         ,{<<"contents">>, Content}
-                                         ]),
-            FileName = <<"text_to_speech_"
-                         ,(kz_term:to_binary(kz_time:now_s()))/binary
-                         ,".wav"
-                       >>,
-
-            _ = update_media_binary(cb_context:set_resp_status(cb_context:set_req_files(Context, [{FileName, FileJObj}])
-                                                              ,'error'
-                                                              )
-                                   ,MediaId
-                                   ),
-            crossbar_doc:load_merge(MediaId, kz_doc:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
-    end;
-maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
+-spec maybe_delete_tts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
+maybe_delete_tts(Context, Reason, <<"create">>) ->
+    _ = crossbar_doc:delete(Context),
+    crossbar_util:response('error', Reason, Context);
+maybe_delete_tts(Context, _, <<"update">>) ->
     Context.
 
 -spec delete_type(boolean() | cb_context:context()) -> ?HARD_DELETE | ?SOFT_DELETE.
@@ -783,8 +733,7 @@ normalize_prompt_results(JObj, Acc) ->
 
 -spec fix_prompt_start_keys(cb_context:context()) -> cb_context:context().
 fix_prompt_start_keys(Context) ->
-    cb_context:set_resp_envelope(
-      Context
+    cb_context:set_resp_envelope(Context
                                 ,lists:foldl(fun fix_prompt_start_keys_fold/2
                                             ,cb_context:resp_envelope(Context)
                                             ,[<<"start_key">>, <<"next_start_key">>]
@@ -836,11 +785,11 @@ validate_request(MediaId, Context) ->
 
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
+    Doc = cb_context:doc(Context),
     Props = [{<<"pvt_type">>, kzd_media:type()}
-            ,{<<"media_source">>, <<"upload">>}
              | maybe_add_prompt_fields(Context)
             ],
-    cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
+    cb_context:set_doc(Context, kz_json:set_values(Props, Doc));
 on_successful_validation(MediaId, Context) ->
     Context1 = crossbar_doc:load_merge(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type())),
     maybe_validate_prompt(MediaId, Context1, cb_context:resp_status(Context1)).
@@ -993,16 +942,14 @@ delete_media_binary(MediaId, Context, _AccountId) ->
 
 -spec is_tts(kz_json:object()) -> boolean().
 is_tts(JObj) ->
-    is_tts(JObj, kz_json:get_ne_value([<<"tts">>, <<"text">>], JObj)).
+    kz_json:get_ne_binary_value(<<"media_source">>, JObj) =:= <<"tts">>.
 
--spec is_tts(kz_json:object(), kz_term:api_binary()) -> boolean().
-is_tts(_JObj, 'undefined') -> 'false';
-is_tts(JObj, Text) ->
-    is_tts_text_changed(JObj, Text =:= kz_json:get_value(<<"pvt_previous_tts">>, JObj)).
+-spec is_tts_changed(kz_json:object()) -> boolean().
+is_tts_changed(JObj) ->
+    Text = kz_json:get_ne_binary_value([<<"tts">>, <<"text">>], JObj),
+    Voice = kz_json:get_ne_binary_value([<<"tts">>, <<"voice">>], JObj),
+    PreText = kz_json:get_value(<<"pvt_previous_tts">>, JObj),
+    PrevVoice = kz_json:get_ne_binary_value(<<"pvt_previous_voice">>, JObj),
 
--spec is_tts_text_changed(kz_json:object(), boolean()) -> boolean().
-is_tts_text_changed(JObj, 'true') ->
-    Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj),
-    PrevVoice = kz_json:get_value(<<"pvt_previous_voice">>, JObj),
-    not (Voice =:= PrevVoice);
-is_tts_text_changed(_JObj, 'false') -> 'true'.
+    Text =/= PreText
+        orelse Voice =/= PrevVoice.
