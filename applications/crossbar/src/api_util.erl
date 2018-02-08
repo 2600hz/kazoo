@@ -1318,15 +1318,15 @@ create_csv_chunk_response(Req, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Return the "filename" from the request header if available,
-%% if its not then check url params for "filename"
+%% Return the "x-file-name" from the request header if available,
+%% if its not then check url params for "file_name"
 %% if neither are present then return the default defined value
 %% @end
 %%--------------------------------------------------------------------
 -spec csv_file_name(cb_context:context(), kz_term:binary()) -> kz_term:binary().
 csv_file_name(Context, Default) ->
-    case cb_context:req_header(Context, <<"filename">>) of
-        'undefined' -> cb_context:req_value(Context, <<"filename">>, Default);
+    case cb_context:req_header(Context, <<"x-file-name">>) of
+        'undefined' -> cb_context:req_value(Context, <<"file_name">>, Default);
         FileName -> FileName
     end.
 
