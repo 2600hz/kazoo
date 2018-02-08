@@ -149,7 +149,6 @@
         ,<<"variable_loopback_bowout">>
         ,<<"variable_loopback_bowout_on_execute">>
         ,<<"variable_loopback_leg">>
-        ,<<"variable_media_group_id">>
         ,<<"variable_originate_disposition">>
         ,<<"variable_origination_callee_id_name">>
         ,<<"variable_origination_callee_id_number">>
