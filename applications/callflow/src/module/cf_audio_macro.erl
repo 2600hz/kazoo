@@ -206,9 +206,8 @@ build_tests(Data) ->
 build_macro_command(DataBin) ->
     Data = kz_json:decode(DataBin),
     M = get_macro(Data, kapps_call:new()),
-    ?debugFmt("built: ~p~n", [M]),
     [?_assert(is_list(M))].
-   
+
 validate(Data) ->
     Validated = kz_json_schema:validate(<<"callflows.audio_macro">>, kz_json:decode(Data)),
     'error' =:= element(1, Validated)
