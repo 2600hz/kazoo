@@ -96,6 +96,25 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
+Get CDRs as CSV and define filename:
+
+```shell
+curl -v -X GET \
+    -H "Accept: text/csv" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-File-Name: {FILE_NAME}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
+```
+
+or
+
+```shell
+curl -v -X GET \
+    -H "Accept: text/csv" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?file_name={FILE_NAME}
+```
+
 #### Fetch a CDR's details
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
