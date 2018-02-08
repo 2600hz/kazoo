@@ -335,7 +335,7 @@ status_match_builder_fold(<<"Status">>, Status, {StatusStat, Contstraints}) ->
     };
 status_match_builder_fold(_, _, Acc) -> Acc.
 
--spec query_statuses(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
+-spec query_statuses(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer() | 'no_limit') -> 'ok'.
 query_statuses(RespQ, MsgId, Match, Limit) ->
     case ets:select(status_table_id(), Match) of
         [] ->
@@ -358,13 +358,16 @@ query_statuses(RespQ, MsgId, Match, Limit) ->
             kapi_acdc_stats:publish_status_resp(RespQ, Resp)
     end.
 
--spec trim_query_statuses(kz_json:object(), pos_integer()) -> kz_json:object().
+-spec trim_query_statuses(kz_json:object(), pos_integer() | 'no_limit') -> kz_json:object().
 trim_query_statuses(Statuses, Limit) ->
     StatusProps = kz_json:to_proplist(Statuses),
     SortedProps = lists:sort(fun({A, _}, {B, _}) ->
                                      kz_term:to_integer(A) >= kz_term:to_integer(B)
                              end, StatusProps),
-    LimitedProps = lists:sublist(SortedProps, Limit),
+    LimitedProps = case Limit of
+                       'no_limit' -> SortedProps;
+                       _ -> lists:sublist(SortedProps, Limit)
+                   end,
     kz_json:from_list(LimitedProps).
 
 -spec query_status_fold(status_stat(), kz_json:object()) -> kz_json:object().
