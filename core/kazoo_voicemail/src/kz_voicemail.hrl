@@ -8,17 +8,17 @@
 
 -define(APP_NAME, <<"callflow">>).
 -define(APP_VERSION, <<"4.0.0">>).
--define(CF_CONFIG_CAT, <<"callflow">>).
+-define(VM_CONFIG_CAT, <<"callflow">>).
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
 
 -define(RETENTION_PATH, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]).
 -define(RETENTION_DAYS,
-        kapps_config:get_integer(?CF_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
+        kapps_config:get_integer(?VM_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
        ).
 
 -define(TIME_BETWEEN_ACCOUNT_CRAWLS,
-        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 2 * ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get_integer(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 2 * ?MILLISECONDS_IN_SECOND)).
 
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
 -type vm_folder() :: kz_term:ne_binary() | {kz_term:ne_binary(), boolean()}.
