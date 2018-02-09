@@ -621,7 +621,7 @@ handle_playback_looping(#state{current_cmd=AppCmd}=State) ->
             lager:debug("media is playing back endlessly, looping"),
             execute_control_request(AppCmd, State),
             State;
-        Count when is_integer(Count), Count > 0 ->
+        Count when is_integer(Count), Count > 1 ->
             lager:debug("media is looped (~p), looping", [Count]),
             execute_control_request(kz_json:set_value(<<"Loop-Count">>, Count-1, AppCmd), State),
             State;
