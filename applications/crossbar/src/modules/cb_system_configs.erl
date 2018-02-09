@@ -94,9 +94,14 @@ allowed_methods(_SystemConfigId, _Node) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /system_configs => []
+%%
+%% For example:
+%%
+%% ```
+%%    /system_configs => []
 %%    /system_configs/foo => [<<"foo">>]
 %%    /system_configs/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

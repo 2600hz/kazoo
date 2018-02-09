@@ -135,9 +135,14 @@ allowed_methods(?PLANS_TOKEN, _StoragePlanId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /storage => []
+%%
+%% For example:
+%%
+%% ```
+%%    /storage => []
 %%    /storage/foo => [<<"foo">>]
 %%    /storage/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

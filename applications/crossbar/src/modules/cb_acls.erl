@@ -48,9 +48,14 @@ allowed_methods() -> [?HTTP_GET].
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /acls => []
+%%
+%% For example:
+%%
+%% ```
+%%    /acls => []
 %%    /acls/foo => [<<"foo">>]
 %%    /acls/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

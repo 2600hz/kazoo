@@ -60,9 +60,14 @@ allowed_methods(?MULTI) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /skels => []
+%%
+%% For example:
+%%
+%% ```
+%%    /skels => []
 %%    /skels/foo => [<<"foo">>]
 %%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 
@@ -331,4 +336,3 @@ next_binary_key(<<>>) ->
     <<"\ufff0">>;
 next_binary_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
-

@@ -57,9 +57,14 @@ allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /pivot => []
+%%
+%% For example:
+%%
+%% ```
+%%    /pivot => []
 %%    /pivot/foo => [<<"foo">>]
 %%    /pivot/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

@@ -76,9 +76,14 @@ allowed_methods(_LedgerId, _LedgerEntryId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /ledgers => []
+%%
+%% For example:
+%%
+%% ```
+%%    /ledgers => []
 %%    /ledgers/foo => [<<"foo">>]
 %%    /ledgers/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

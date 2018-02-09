@@ -92,9 +92,14 @@ thing_id(Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /rate_limits => []
+%%
+%% For example:
+%%
+%% ```
+%%    /rate_limits => []
 %%    /rate_limits/foo => [<<"foo">>]
 %%    /rate_limits/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

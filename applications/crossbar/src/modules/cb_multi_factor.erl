@@ -102,9 +102,14 @@ allowed_methods(?ATTEMPTS, _AttemptId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /multi_factor => []
+%%
+%% For example:
+%%
+%% ```
+%%    /multi_factor => []
 %%    /multi_factor/foo => [<<"foo">>]
 %%    /multi_factor/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

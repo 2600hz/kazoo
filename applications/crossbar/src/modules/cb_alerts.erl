@@ -58,9 +58,14 @@ allowed_methods(_AlertId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /alerts => []
+%%
+%% For example:
+%%
+%% ```
+%%    /alerts => []
 %%    /alerts/foo => [<<"foo">>]
 %%    /alerts/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

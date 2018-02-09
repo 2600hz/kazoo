@@ -66,7 +66,6 @@ allowed_methods(_RecordingId) -> [?HTTP_GET, ?HTTP_DELETE].
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%%
 %% @end
 %%--------------------------------------------------------------------
 

@@ -61,9 +61,14 @@ allowed_methods(_GroupId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /groups => []
+%%
+%% For example:
+%%
+%% ```
+%%    /groups => []
 %%    /groups/foo => [<<"foo">>]
 %%    /groups/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

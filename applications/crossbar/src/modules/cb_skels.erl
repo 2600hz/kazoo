@@ -103,9 +103,14 @@ allowed_methods(_Thing) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /skels => []
+%%
+%% For example:
+%%
+%% ```
+%%    /skels => []
 %%    /skels/foo => [<<"foo">>]
 %%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

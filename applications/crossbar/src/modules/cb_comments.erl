@@ -84,9 +84,14 @@ allowed_methods(_CommentId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /comments => []
+%%
+%% For example:
+%%
+%% ```
+%%    /comments => []
 %%    /comments/foo => [<<"foo">>]
 %%    /comments/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

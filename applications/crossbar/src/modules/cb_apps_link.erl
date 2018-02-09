@@ -67,9 +67,14 @@ allowed_methods(?AUTHORIZE) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /apps_link => []
+%%
+%% For example:
+%%
+%% ```
+%%    /apps_link => []
 %%    /apps_link/foo => [<<"foo">>]
 %%    /apps_link/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists(path_token()) -> 'true'.

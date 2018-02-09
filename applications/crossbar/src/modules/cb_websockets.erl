@@ -101,9 +101,14 @@ allowed_methods(_SocketId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /websockets => []
+%%
+%% For example:
+%%
+%% ```
+%%    /websockets => []
 %%    /websockets/foo => [<<"foo">>]
 %%    /websockets/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

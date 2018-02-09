@@ -62,9 +62,14 @@ allowed_methods(_UUID) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /channels => []
+%%
+%% For example:
+%%
+%% ```
+%%    /channels => []
 %%    /channels/foo => [<<"foo">>]
 %%    /channels/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

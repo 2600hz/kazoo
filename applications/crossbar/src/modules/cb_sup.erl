@@ -179,9 +179,14 @@ allowed_methods(_Module, _Function, _Args) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /sup => []
+%%
+%% For example:
+%%
+%% ```
+%%    /sup => []
 %%    /sup/foo => [<<"foo">>]
 %%    /sup/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

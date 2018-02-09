@@ -61,9 +61,14 @@ allowed_methods(_SMSId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /faxes => []
+%%
+%% For example:
+%%
+%% ```
+%%    /faxes => []
 %%    /faxes/foo => [<<"foo">>]
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

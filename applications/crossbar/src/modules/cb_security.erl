@@ -110,9 +110,14 @@ allowed_methods(?ATTEMPTS, _AttemptId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /security => []
+%%
+%% For example:
+%%
+%% ```
+%%    /security => []
 %%    /security/foo => [<<"foo">>]
 %%    /security/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

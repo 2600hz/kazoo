@@ -122,9 +122,14 @@ authorize(_Context, _, _Nouns) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /notifications => []
+%%
+%% For example:
+%%
+%% ```
+%%    /notifications => []
 %%    /notifications/foo => [<<"foo">>]
 %%    /notifications/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

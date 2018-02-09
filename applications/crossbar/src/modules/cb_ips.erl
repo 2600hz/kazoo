@@ -77,9 +77,14 @@ allowed_methods(_IPAddress) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /dedicated_ips => []
+%%
+%% For example:
+%%
+%% ```
+%%    /dedicated_ips => []
 %%    /dedicated_ips/foo => [<<"foo">>]
 %%    /dedicated_ips/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

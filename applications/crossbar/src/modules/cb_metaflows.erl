@@ -56,9 +56,14 @@ allowed_methods() ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /metaflows => []
+%%
+%% For example:
+%%
+%% ```
+%%    /metaflows => []
 %%    /metaflows/foo => [<<"foo">>]
 %%    /metaflows/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

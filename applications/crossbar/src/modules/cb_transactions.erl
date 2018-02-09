@@ -91,9 +91,14 @@ allowed_methods(?SUBSCRIPTIONS) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /transactions => []
+%%
+%% For example:
+%%
+%% ```
+%%    /transactions => []
 %%    /transactions/foo => [<<"foo">>]
 %%    /transactions/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

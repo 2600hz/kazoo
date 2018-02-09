@@ -8,9 +8,23 @@
 
 -define(SEP, <<"%%%-------------------------------------------------------------------">>).
 -define(SEP_2, <<"%%%===================================================================">>).
+
+%% regex to find contributors tag.
 -define(HAS_CONTRIBUTORS_REGEX, "ag -G '(erl)$' -l '%%%+\\s*@?[Cc]ontributors'").
+
+%% regex to spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
+%% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
+%% multi line regex won't work). For multi line the first line should end with `|' followed by same regex until exhausted.
 -define(COMMENT_SPEC, "ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)'").
--define(SEP_SPEC, "ag -G '(erl)$' '%%%*\s*==+\n+[a-z-]+' applications/ core/").
+
+%% regex to find functions without comment block before them after a separator comment block
+%% to avoid EDoc to use the separator as the functions comment.
+%% Regex explanation: search for any line starts with at least two `%%' followed by any whitespace, followed by any new line until
+%% a `-spec' attribute or a function head is found.
+-define(SEP_SPEC, "ag -G '(erl)$' '%%%*\\s*==+$(\\n+(^-spec+|[a-z]+))' applications/ core/").
+
+%% regex for escaping codes in comment for `resource_exists' function crossbar modules.
+-define(CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource.?$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
@@ -20,9 +34,10 @@ main(_) ->
 
     io:format("Edocify Kazoo...~n~n"),
 
-    Run = [{?HAS_CONTRIBUTORS_REGEX, "rename and fix '@contributors' tags to '@author'", fun edocify_headers/1}
+    Run = [{?HAS_CONTRIBUTORS_REGEX, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
           ,{?COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
           ,{?SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
+          ,{?CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ],
     edocify(Run, 0).
 
@@ -69,10 +84,13 @@ check_result(<<"ERR:", _/binary>>=Error) ->
 check_result(Result) ->
     Result.
 
-%%%===================================================================
-%%% Edocify Header
-%%%===================================================================
-
+%%--------------------------------------------------------------------
+%% @doc
+%% Edocify Header by rename @contributors to @author.
+%% Ag will return a list of files and then we open each file and fix their
+%% header comment.
+%% @end
+%%--------------------------------------------------------------------
 edocify_headers(Result) ->
     Files = [F || F <- binary:split(Result, <<"\n">>, [global]), F =/= <<>>],
     io:format("~b file(s)~n", [length(Files)]),
@@ -158,23 +176,31 @@ look_after([<<"%%%", _/binary>>|_]) -> true;
 look_after([<<"%%%%", _/binary>>|_]) -> true;
 look_after(_) -> false.
 
-%%%===================================================================
-%%% Edocify Header
-%%%===================================================================
-
+%%--------------------------------------------------------------------
+%% @doc
+%% Removing @spec from comments.
+%% Ad regex will match line starts with `@spec' and the line it ends. So
+%% we can simply get file and positions for each file and remove the lines.
+%% @end
+%%--------------------------------------------------------------------
 remove_comment_specs(Result) ->
     CommentSpecs = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun do_remove_comment_specs/2, CommentSpecs),
     io:format(" done.~n").
 
 do_remove_comment_specs(File, Positions) ->
+    io:format("."),
     Lines = read_lines(File, true),
     save_lines(File, [L || {LN, L} <- Lines, not lists:member(LN, Positions)]).
 
-%%%===================================================================
-%%% Missing comment block after separator
-%%%===================================================================
-
+%%--------------------------------------------------------------------
+%% @doc
+%% Missing comment block after separator.
+%% Ad regex will match lines which starts with comment separator and ends with
+%% the line which has a `-spec' attribute or function head. We then go to those
+%% positions and format those lines.
+%% @end
+%%--------------------------------------------------------------------
 missing_comment_blocks_after_sep(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun add_missing_comment_blocks/2, Positions),
@@ -187,8 +213,6 @@ add_missing_comment_blocks(File, Positions) ->
 do_add_missing_comment_blocks([], _, Formatted) ->
     Formatted;
 do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
-    lists:member(LN, Positions)
-        andalso io:format("~nline ~p~n", [Line]),
     case lists:member(LN, Positions)
         andalso Line
     of
@@ -213,6 +237,48 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
             do_add_missing_comment_blocks(Lines, Positions, Formatted ++ maybe_add_empty_line(lists:last(Formatted)) ++ empty_block() ++ [Line])
     end.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Escape codes in comment block for `resource_exists' function crossbar modules.
+%% Ag regex will match the comments before resource_exists function with last line
+%% is `%% @end' line. We then formats those lines accordingly.
+%% @end
+%%--------------------------------------------------------------------
+cb_resource_exists_comments(Result) ->
+    Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
+    _ = maps:map(fun fix_cb_resource_exists_comment/2, Positions),
+    io:format("done.~n").
+
+fix_cb_resource_exists_comment(File, Positions) ->
+    io:format("."),
+    Lines = read_lines(File, true),
+    % io:format("~n~p~n", [do_cb_resource_exists_comment(Lines, Positions, [])]),
+    save_lines(File, do_cb_resource_exists_comment(Lines, Positions, [])).
+
+do_cb_resource_exists_comment([], _, Formatted) ->
+    Formatted;
+do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
+    case lists:member(LN, Positions)
+        andalso Line
+    of
+        false ->
+            do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [Line]);
+        <<"%%">> ->
+            %% remove empty comment line
+            do_cb_resource_exists_comment(Lines, Positions, Formatted);
+        <<"%% @end">> ->
+            Formatted ++ [Line] ++ [L || {_, L} <- Lines];
+        <<"%% So ", Rest/binary>> ->
+            do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [<<"%%">>, <<"%% For example:">>, <<"%%">>, <<"%% ```">>, <<"%%    ", Rest/binary>>]);
+        Other ->
+            case Lines of
+                [{_, <<"%% @end">>}|_] ->
+                    do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [Line, <<"%% '''">>]);
+                _ ->
+                    do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [Line])
+            end
+    end.
+
 %%%===================================================================
 %%% Utilities
 %%%===================================================================
@@ -222,7 +288,6 @@ maybe_add_empty_line(_) -> [<<>>].
 
 collect_positions_per_file([], Map) -> Map;
 collect_positions_per_file([Line | Lines], Map) ->
-    io:format("."),
     {File, Pos, _, _} = parse_ag_line(Line),
     collect_positions_per_file(Lines, Map#{File => maps:get(File, Map, []) ++ [Pos]}).
 

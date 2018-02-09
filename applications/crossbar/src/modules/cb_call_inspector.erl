@@ -74,9 +74,14 @@ allowed_methods(_CallId) -> [?HTTP_GET].
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /call_inspector => []
+%%
+%% For example:
+%%
+%% ```
+%%    /call_inspector => []
 %%    /call_inspector/foo => [<<"foo">>]
 %%    /call_inspector/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

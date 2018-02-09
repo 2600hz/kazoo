@@ -51,9 +51,14 @@ allowed_methods() -> [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /bulk => []
+%%
+%% For example:
+%%
+%% ```
+%%    /bulk => []
 %%    /bulk/foo => [<<"foo">>]
 %%    /bulk/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

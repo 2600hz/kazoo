@@ -46,9 +46,14 @@ allowed_methods() -> [?HTTP_GET].
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /contact_list => []
+%%
+%% For example:
+%%
+%% ```
+%%    /contact_list => []
 %%    /contact_list/foo => [<<"foo">>]
 %%    /contact_list/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

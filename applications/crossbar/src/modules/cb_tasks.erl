@@ -119,8 +119,13 @@ allowed_methods(_TaskId, ?PATH_OUTPUT) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /tasks => []
+%%
+%% For example:
+%%
+%% ```
+%%    /tasks => []
 %%    /tasks/task_id => [<<"task_id">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

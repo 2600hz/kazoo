@@ -72,9 +72,14 @@ allowed_methods(?PATH_STATUS) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /services => []
+%%
+%% For example:
+%%
+%% ```
+%%    /services => []
 %%    /services/foo => [<<"foo">>]
 %%    /services/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

@@ -79,9 +79,14 @@ allowed_methods(?AVAILABLE, _PlanId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /service_plans => []
+%%
+%% For example:
+%%
+%% ```
+%%    /service_plans => []
 %%    /service_plans/foo => [<<"foo">>]
 %%    /service_plans/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 

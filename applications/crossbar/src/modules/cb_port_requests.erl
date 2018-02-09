@@ -138,9 +138,14 @@ allowed_methods(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource
-%% So /port_requests => []
+%%
+%% For example:
+%%
+%% ```
+%%    /port_requests => []
 %%    /port_requests/foo => [<<"foo">>]
 %%    /port_requests/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 
