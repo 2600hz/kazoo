@@ -1,10 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Store routing keys/pid bindings. When a binding is fired,
-%%% pass the payload to the pid for evaluation, accumulating
+%%% @doc Store routing keys or PID bindings.
+%%%
+%%% When a binding is fired, pass the payload to the PID for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
+%%% Example:
+%%% ```
 %%% foo.erl -> bind("module.init").
 %%% *** Later ***
 %%% module.erl
@@ -13,6 +15,7 @@
 %%%                receive -> Resp
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
+%%% '''
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -54,17 +57,19 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @doc
-%% return [ {Result, Payload1} ], a list of tuples, the first element
-%% of which is the result of the bound handler, and the second element
-%% is the payload, possibly modified
-%% @end
-%%--------------------------------------------------------------------
+
 -type map_results() :: [boolean() |
                         http_methods() |
                         {boolean() | 'stop', cb_context:context()}
                        ].
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Returns `[{Result, Payload1}]', a list of tuples, the first element
+%% of which is the result of the bound handler, and the second element
+%% is the payload, possibly modified.
+%% @end
+%%--------------------------------------------------------------------
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     lager:debug("mapping ~s", [Routing]),
@@ -75,23 +80,24 @@ pmap(Routing, Payload) ->
     lager:debug("pmapping ~s", [Routing]),
     kazoo_bindings:pmap(Routing, Payload).
 
+-type fold_results() :: payload().
+
 %%--------------------------------------------------------------------
 %% @doc
-%% return the modified Payload after it has been threaded through
+%% Returns the modified Payload after it has been threaded through
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
--type fold_results() :: payload().
 -spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     lager:debug("folding ~s", [Routing]),
     kazoo_bindings:fold(Routing, Payload).
 
-%%-------------------------------------------------------------------
+%%--------------------------------------------------------------------
 %% @doc
-%% Helper functions for working on a result set of bindings
+%% Helper functions for working on a result set of bindings.
 %% @end
-%%-------------------------------------------------------------------
+%%--------------------------------------------------------------------
 -spec any(kz_term:proplist()) -> boolean().
 any(Res) when is_list(Res) ->
     kazoo_bindings:any(Res, fun check_bool/1).
@@ -119,21 +125,18 @@ matches([R|Restrictions], Tokens) ->
     kazoo_bindings:matches(Restriction, Tokens)
         orelse matches(Restrictions, Tokens).
 
-%%-------------------------------------------------------------------------
+%%--------------------------------------------------------------------
 %% @doc
 %% Helpers for the result set helpers
 %% @end
-%%-------------------------------------------------------------------------
+%%--------------------------------------------------------------------
 -spec check_bool({boolean(), any()} | boolean()) -> boolean().
 check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';
 check_bool(_) -> 'false'.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+
 -spec filter_out_failed({boolean() | 'stop', any()} | boolean() | any()) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
 filter_out_failed('true') -> 'true';
@@ -143,11 +146,8 @@ filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
 filter_out_failed(Term) -> not kz_term:is_empty(Term).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+
 -spec filter_out_succeeded({boolean() | 'stop', any()} | boolean() | any()) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
@@ -160,6 +160,7 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
+
 -spec bind(kz_term:ne_binary(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind(Binding=?NE_BINARY, Module, Fun) ->

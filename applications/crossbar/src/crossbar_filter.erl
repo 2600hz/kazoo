@@ -38,7 +38,7 @@ build(Context) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Equivalent of build_with_mapper/3, will call is_defined/1 on Context.
+%% Equivalent of {@link build_with_mapper/3}, will call {@link is_defined/1} on Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec build_with_mapper(cb_context:context(), crossbar_view:user_mapper_fun()) -> crossbar_view:mapper_fun().
@@ -74,7 +74,7 @@ is_defined(Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Check if only time filters are defined in query string, useful to
-%% crossbar_view to not add `include_docs` if only they are defined.
+%% crossbar_view to not add `include_docs' if only they are defined.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_only_time_filter(cb_context:context(), kz_term:ne_binary()) -> boolean().
@@ -98,7 +98,7 @@ is_only_time_filter(Context, FilterKey) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Returns 'true' if all of the requested props are found, 'false' if one is not found
+%% Returns `true' if all of the requested props are found, `false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
 -spec by_doc(kz_term:api_object(), cb_context:context()) -> boolean().
@@ -173,7 +173,7 @@ build_filter_map_fun(Context, FilterFun, UserMapper) when is_function(UserMapper
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Return `true` if key is a filter key
+%% Return `true' if key is a filter key.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_filter_key({binary(), any()}) -> boolean().
@@ -212,7 +212,7 @@ should_filter_doc(Doc, K, V) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Returns 'true' or 'false' if the prop is found inside the doc
+%% Returns `true' or `false' if the prop is found inside the doc.
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_prop(kz_json:object(), kz_term:ne_binary(), any()) -> kz_term:api_boolean().

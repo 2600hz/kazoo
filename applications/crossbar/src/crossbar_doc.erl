@@ -102,7 +102,6 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
-
 -spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context()) ->
                   cb_context:context().
 load({DocType, DocId}, Context) ->
@@ -170,13 +169,13 @@ maybe_open_cache_docs(DbName, DocIds, Options) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Returns 'true' or 'false' if the requested document type is matched
+%% Returns `true' or `false' if the requested document type is matched
 %% against the actual document type or the name of the last resource
 %% that request it. It first checks expected type is matched with document
 %% type, if it fails it checks document type with the name of the
-%% last resource. If the document doesn't have a `pvt_type`
-%% property or the resource requested that expected type to be `any`,
-%% it will return `true`.
+%% last resource. If the document doesn't have a `pvt_type'
+%% property or the resource requested that expected type to be `any',
+%% it will return `true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_document_type(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
@@ -248,7 +247,7 @@ handle_successful_load(Context, JObj, 'false') ->
 %% @doc
 %% This function attempts to merge the submitted data with the private
 %% fields of an existing account document, if successful it will
-%% load the context with the account details
+%% load the context with the account details.
 %%
 %% Failure here returns 410, 500, or 503
 %% @end
@@ -315,10 +314,9 @@ patch_the_doc(RequestData, ExistingDoc) ->
 %% This function attempts to load the context with the results of a view
 %% run against the accounts database.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
-
 -spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context()) ->
                        cb_context:context().
 load_view(View, Options, Context) ->
@@ -491,9 +489,9 @@ start_key_fun(Options, Context) ->
 %% @doc
 %% This function attempts to load the context with the results of all the
 %% docs in the supplied Db, with the fold function weeding out those not
-%% desired by returning 'undefined' or not adding it to the Accumulator
+%% desired by returning `undefined' or not adding it to the Accumulator.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_docs(cb_context:context(), filter_fun()) -> cb_context:context().
@@ -517,9 +515,9 @@ load_docs(Context, Filter)
 %%--------------------------------------------------------------------
 %% @doc
 %% This function attempts to load the context with the binary payload
-%% stored as an attachment
+%% stored as an attachment.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_attachment({kz_term:ne_binary(), kz_term:ne_binary()} | kazoo_data:docid() | kz_json:object(), kz_term:ne_binary(), kz_term:proplist(), cb_context:context()) ->
@@ -548,7 +546,7 @@ load_attachment(Doc, AName, Options, Context) ->
 %% This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -595,7 +593,7 @@ save(Context, JObj, Options) ->
 %% This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -627,7 +625,7 @@ ensure_saved(Context, JObj, Options) ->
 %% @doc
 %% Save the Contents as an attachment on the document.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
 -spec save_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -636,9 +634,9 @@ save_attachment(DocId, AName, Contents, Context) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Save the Contents as an attachment on the document with options
+%% Save the Contents as an attachment on the document with options.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
 -spec save_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:proplist()) ->
@@ -709,14 +707,14 @@ maybe_delete_doc(Context, DocId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% This function will attempt to remove an account document from the
-%% account database.  This is preformed as a soft-delete and enforced
+%% account database.
+%% This is preformed as a soft-delete and enforced
 %% by the views.  Clean up process remove old data based on the delete
 %% flag and last modified date
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
-
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     delete(Context, cb_context:should_soft_delete(Context)).
@@ -774,7 +772,7 @@ do_delete(Context, JObj, CouchFun) ->
 %% This function will attempt to remove an attachment from a document.
 %% Unlike the delete function, this is NOT a soft-delete.
 %%
-%% Failure here returns 500 or 503
+%% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_attachment(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
@@ -795,7 +793,7 @@ delete_attachment(DocId, AName, Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% This function will attempt to convert a revision tag on the provided
-%% document into a usable ETag for the response
+%% document into a usable ETag for the response.
 %% @end
 %%--------------------------------------------------------------------
 -spec rev_to_etag(kz_json:object() | kz_json:objects() | kz_term:ne_binary()) ->
@@ -1124,7 +1122,7 @@ handle_datamgr_errors(Else, _View, Context) ->
 %% @private
 %% @doc
 %% This function is used to update the private timestamps, and db
-%% parameters on all crossbar documents
+%% parameters on all crossbar documents.
 %% @end
 %%--------------------------------------------------------------------
 -spec update_pvt_parameters(kz_json:object() | kz_json:objects(), cb_context:context()) ->

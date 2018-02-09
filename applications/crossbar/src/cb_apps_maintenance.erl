@@ -34,11 +34,8 @@ migrate(Account) when is_binary(Account) ->
 %%% Internal functions
 %%%===================================================================
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+
 -spec save(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
 save(Account, Doc, AccountDoc) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
@@ -50,11 +47,8 @@ save(Account, Doc, AccountDoc) ->
 
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+
 -spec save_account(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 save_account(Account, AccountDoc) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),

@@ -41,9 +41,9 @@ init() ->
 %%--------------------------------------------------------------------
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
-%% Failure here returns 405
+%% Failure here returns 405.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ allowed_methods(_TemporalRuleId) ->
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
-%% Failure here returns 404
+%% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ resource_exists(_) -> 'true'.
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -190,7 +190,7 @@ on_successful_validation(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the results of a view
+%% Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

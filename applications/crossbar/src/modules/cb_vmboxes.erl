@@ -71,9 +71,9 @@ init() ->
 %%--------------------------------------------------------------------
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
-%% Failure here returns 405
+%% Failure here returns 405.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -105,7 +105,7 @@ allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId, ?BIN_DATA) ->
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
-%% Failure here returns 404
+%% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -194,7 +194,7 @@ maybe_add_types_provided(Context, _, _) -> Context.
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
 %%--------------------------------------------------------------------
 

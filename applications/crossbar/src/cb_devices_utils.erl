@@ -16,7 +16,7 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Check if the device sip ip is unique
+%% Check if the device SIP IP is unique.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_ip_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
@@ -24,12 +24,8 @@ is_ip_unique(IP, DeviceId) ->
     is_ip_acl_unique(IP, DeviceId)
         andalso is_ip_sip_auth_unique(IP, DeviceId).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec is_ip_acl_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_acl_unique(IP, DeviceId) ->
     lists:all(
@@ -45,12 +41,8 @@ is_ip_unique(JObj, IP, DeviceId) ->
             not (kz_network_utils:verify_cidr(IP, kz_json:get_value(<<"ip">>, JObj)))
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec is_ip_sip_auth_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_sip_auth_unique(IP, DeviceId) ->
     case kapps_util:get_ccvs_by_ip(IP) of
@@ -58,12 +50,8 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
         {'error', 'not_found'} -> 'true'
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec get_all_acl_ips() -> kz_json:objects().
 get_all_acl_ips() ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
@@ -84,12 +72,8 @@ get_all_acl_ips() ->
             extract_all_ips(kapi_sysconf:get_value(JObj, kz_json:new()))
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+
 -spec extract_all_ips(kz_json:object()) -> kz_json:objects().
 extract_all_ips(JObj) ->
     kz_json:foldl(fun extract_ip/3, [], JObj).

@@ -1,24 +1,25 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Sends request to start the call to recepient when he's available
+%%% @doc Sends request to start the call to recipient when he's available.
 %%%
+%%% ```
 %%% data: {
 %%%   "timeout": "_minutes_timeout"
 %%%   ,"tries": "_count"
 %%%   ,"try_interval": "_minutes_interval"
 %%%   ,"stop_after": "_minutes_timeout"
 %%% }
+%%% '''
 %%%
-%%% uses cf_capture_group to extract extension number
+%%% uses `cf_capture_group' to extract extension number
 %%%
-%%% `timeout`, `tries`, `try_interval` & `stop_after` will correct system
+%%% `timeout', `tries', `try_interval' and `stop_after' will correct system
 %%% defaults if present
 %%%
 %%% usage example
 %%%
-%%% 1) create a "pattern callflow" with "patterns": ["^\\*7([0-9]*)$"]
-%%% 2) create simple callflow with number = 401
+%%% 1) create a "pattern callflow" with "patterns": `["^\\*7([0-9]*)$"]'
+%%% 2) create simple callflow with `number = 401'
 %%% 3) dial 401 to start ringing the phones in group, in another phone dial *7401 to make call camping
 %%%
 %%%

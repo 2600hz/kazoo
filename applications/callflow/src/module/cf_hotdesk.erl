@@ -130,11 +130,12 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
 %% 3) Is the pin required?
 %% 3y) Is the pin valid?
 %% 3n) Login
+%%
+%% TODO: a UI bug keeps the hotdesk enabled from ever being true
 %%--------------------------------------------------------------------
 -spec login(hotdesk(), kapps_call:call()) -> kapps_api_std_return().
-%% TODO: a UI bug keeps the hotdesk enabled from ever being true
-%%login(#hotdesk{enabled=false}, Call) ->
-%%    kapps_call_command:b_prompt(<<"hotdesk-disabled">>, Call);
+%% %login(#hotdesk{enabled=false}, Call) ->
+%% %    kapps_call_command:b_prompt(<<"hotdesk-disabled">>, Call);
 login(Hotdesk, Call) -> maybe_require_login_pin(Hotdesk, Call).
 
 -spec maybe_require_login_pin(hotdesk(), kapps_call:call()) -> kapps_api_std_return().

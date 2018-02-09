@@ -46,7 +46,7 @@ allowed_methods() -> [?HTTP_GET].
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
-%% Failure here returns 404
+%% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
@@ -57,7 +57,7 @@ resource_exists() -> 'true'.
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().

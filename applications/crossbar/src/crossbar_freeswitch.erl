@@ -64,12 +64,18 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec reset() -> 'ok'.
 reset() ->
     gen_server:cast(crossbar_sup:find_proc(?SERVER), 'reset').
 
 %%--------------------------------------------------------------------
 %% @doc Starts the server
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
@@ -167,7 +173,7 @@ handle_info(_Info, State) ->
 %% @private
 %% @doc
 %% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
+%% terminate. It should be the opposite of {@link init/1} and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %% @end
@@ -191,6 +197,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec hourly_timer() -> reference().
 hourly_timer() ->
     erlang:start_timer(?MILLISECONDS_IN_HOUR, self(), ok).

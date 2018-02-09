@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc
+%%% @doc cf_set_cid.
 %%%
 %%% params:
-%%% caller_id_name & caller_id_number
+%%% `caller_id_name' and `caller_id_number'
 %%%
 %%% if one of them is empty then module will restore original values
 %%%

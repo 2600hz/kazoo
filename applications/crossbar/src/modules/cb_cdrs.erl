@@ -128,7 +128,7 @@ to_response(Context, _, _) ->
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/cdr/' can only accept GET
 %%
-%% Failure here returns 405
+%% Failure here returns 405.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -153,7 +153,7 @@ allowed_methods(?PATH_LEGS, _InteractionId) ->
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
-%% Failure here returns 404
+%% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -198,7 +198,7 @@ provided_types(Context) ->
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
 %%--------------------------------------------------------------------
 

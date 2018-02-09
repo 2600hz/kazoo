@@ -5,6 +5,7 @@
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
+%%% ```
 %%% foo.erl -> bind("module.init").
 %%% *** Later ***
 %%% module.erl
@@ -13,6 +14,7 @@
 %%%                receive -> Resp
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
+%%% '''
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -50,15 +52,16 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @doc
-%% return [ {Result, Payload1} ], a list of tuples, the first element
+
+-type map_results() :: list().
+%% return `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified
-%% @end
-%%--------------------------------------------------------------------
--type map_results() :: list().
+
 -type kz_bindings() :: list().
+%% return `[{Result, Payload1}]', a list of tuples, the first element
+%% of which is the result of the bound handler, and the second element
+%% is the payload, possibly modified
 
 %%--------------------------------------------------------------------
 %% @doc

@@ -105,7 +105,7 @@ authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
 %%--------------------------------------------------------------------
 

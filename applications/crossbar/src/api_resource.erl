@@ -46,6 +46,11 @@
 %%%===================================================================
 %%% Startup and shutdown of request
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc Init a REST request.
+%% @end
+%%--------------------------------------------------------------------
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
                   {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
@@ -279,6 +284,12 @@ pretty_metric(N, 'true') ->
 %%%===================================================================
 %%% CowboyHTTPRest API Callbacks
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Set `allow' and `allowed' parameters.
+%% @end
+%%--------------------------------------------------------------------
 -spec known_methods(cowboy_req:req(), cb_context:context()) ->
                            {http_methods(), cowboy_req:req(), cb_context:context()}.
 known_methods(Req, Context) ->
@@ -686,9 +697,13 @@ previously_existed(Req, State) ->
     lager:debug("run: previously_existed"),
     {'false', Req, State}.
 
+%%--------------------------------------------------------------------
+%% @doc
 %% If we're tunneling PUT through POST,
 %% we need to allow POST to create a nonexistent resource
-%% AKA, 201 Created header set
+%% AKA, 201 Created header set.
+%% @end
+%%--------------------------------------------------------------------
 -spec allow_missing_post(cowboy_req:req(), cb_context:context()) ->
                                 {boolean(), cowboy_req:req(), cb_context:context()}.
 allow_missing_post(Req, Context) ->
@@ -983,20 +998,20 @@ next_chunk_fold(#{chunking_started := StartedChunk
     end.
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
-%% Check folded 'to_json' response and send this chunk result.
+%% Check folded `to_json' response and send this chunk result.
 %%
 %% === Sending chunk response from the module directly ===
-%% If you're sending the chunk yourself in the module 'to_json', return
-%% a non_neg_integer of how many of queried items did you sent.
-%% (Obviously it should be same size as passed JObjs or less).
 %%
-%% The init_chunk_stream/1 is helping you to initializing chunk
+%% If module is sending the chunked response in its own `to_json' function,
+%% return a `non_neg_integer' of how many of queried items did you sent.
+%% Obviously it should be same size as passed JObjs or less.
+%%
+%% The {@link init_chunk_stream/1} is helping you to initializing chunk
 %% response by sending HTTP headers and start the response envelope.
 %%
 %% When an error occurred (e.g. a db request error) and you want to
-%% stop sending chunks, set the error in Context. If the chunk is already
+%% stop sending chunks, set the error in `Context'. If the chunk is already
 %% started it will be closed by the regular JSON envelope or CSV.
 %%
 %% If chunk is not started yet, a regular Crossbar error will be generated
@@ -1004,17 +1019,17 @@ next_chunk_fold(#{chunking_started := StartedChunk
 %% to the Context.
 %%
 %% === Let api_resource sends chunk response ===
-%% Simply set response in Context's `resp_data`, either as a list of JObjs
-%% or list of CSV binary (depends on response type)
 %%
-%% Note: The JObjs in Context's response data are in the correct order,
+%% Simply set response in `Context''s `resp_data', either as a list of JObjs
+%% or list of CSV binary (depends on response type).
+%%
+%% Note: The JObjs in `Context''s response data are in the correct order,
 %% if you're changing the JObjs (looping over, change/replace) do not forget
-%% to reverse it to the correct order again (unless you have a customized
-%%  sort order).
+%% to reverse it to the correct order again (unless you have a customized sort order).
 %%
 %% Note: For CSV, you have to check if chunk is started, if not
 %%       create the header and add it to the first element
-%%       (<<Headers/binary, "\r\n", FirstRow/binary>>) of you're response.
+%%       (`<<Headers/binary, "\r\n", FirstRow/binary>>') of you're response.
 %% @end
 %%--------------------------------------------------------------------
 -spec process_chunk(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
@@ -1065,29 +1080,26 @@ send_chunk_response(<<"to_csv">>, Req, Context) ->
     api_util:create_csv_chunk_response(Req, Context).
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc
-%% If chunked is started close data array and send envelope as the
-%% last chunk.
-%% Otherwise return {Req, Context} to allow api_util/api_resource
+%% If chunked is started close data array and send envelope as the last chunk.
+%% Otherwise return `{Req, Context}' to allow {@link api_util} or {@link api_resource}
 %% handling  the errors in the Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec finish_chunked_response(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
-%% chunk is not started, return whatever error's or response data in Context
 finish_chunked_response(#{chunking_started := 'false'
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
+%% chunk is not started, return whatever error's or response data in Context
     api_util:create_pull_response(Req, Context);
-%% Chunk is already started, stopping,
 finish_chunked_response(#{chunk_response_type := <<"to_csv">>
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
+%% Chunk is already started, stopping,
     'ok' = cowboy_req:stream_body(<<>>, 'fin', Req),
     {'stop', Req, Context};
-%% Chunk is already started closing JSON envelope,
 finish_chunked_response(#{total_queried := TotalQueried
                          ,chunking_started := 'true'
                          ,cowboy_req := Req
@@ -1095,6 +1107,7 @@ finish_chunked_response(#{total_queried := TotalQueried
                          ,last_key := NextStartKey
                          ,start_key := StartKey
                          }) ->
+%% Chunk is already started closing JSON envelope,
     DeleteKeys = [<<"start_key">>, <<"page_size">>, <<"next_start_key">>],
     Paging = kz_json:set_values([{<<"start_key">>, StartKey}
                                 ,{<<"page_size">>, TotalQueried}

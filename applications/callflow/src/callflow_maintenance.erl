@@ -184,9 +184,10 @@ do_recorded_name_migration(Db, MediaId, OwnerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate_menus() -> ['done' | 'error',...].
--spec migrate_menus(kz_term:ne_binary()) -> 'done' | 'error'.
 migrate_menus() ->
     [migrate_menus(Account) || Account <- kapps_util:get_all_accounts('raw')].
+
+-spec migrate_menus(kz_term:ne_binary()) -> 'done' | 'error'.
 migrate_menus(Account) ->
     Db = kz_util:format_account_id(Account, 'encoded'),
     lager:info("migrating all menus in ~s", [Db]),

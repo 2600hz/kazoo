@@ -121,7 +121,6 @@ add_missing_modules(Modules, MissingModules) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec refresh() -> 'ok'.
 refresh() ->
     io:format("please use kapps_maintenance:refresh().").
@@ -681,7 +680,6 @@ maybe_move_account(AccountId, ToAccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec descendants_count() -> 'ok'.
 descendants_count() ->
     crossbar_util:descendants_count().

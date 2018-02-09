@@ -72,6 +72,12 @@ handle_dry_run_resp(Context, Callback, Services, RespJObj) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec accepting_charges(cb_context:context(), kz_json:object()) -> kz_transaction:transactions().
 accepting_charges(Context, JObj) ->
     Items = extract_items(kz_json:delete_key(<<"activation_charges">>, JObj)),
@@ -113,7 +119,6 @@ extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec create_transactions(cb_context:context()
                          ,kz_json:object()
                          ,kz_transaction:transactions()) -> kz_transaction:transactions().
@@ -166,7 +171,6 @@ dry_run(Services) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec calc_service_updates(cb_context:context(), kz_term:ne_binary()) ->
                                   kz_services:services() | 'undefined'.
 calc_service_updates(Context, <<"device">>) ->

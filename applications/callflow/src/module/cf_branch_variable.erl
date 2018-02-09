@@ -143,7 +143,7 @@ find_child_in_branch(ChildName, Call, Keys) ->
             'undefined'
     end.
 
-%% Utility Funcations
+%% Utility Functions
 
 -spec device_owner(kapps_call:call()) -> kz_term:ne_binary().
 device_owner(Call) ->
@@ -160,7 +160,7 @@ device_owner(Call) ->
 %% @doc
 %% Normalize variable. Variable is a json path, so we should accept
 %% binary, or a path and ignore others,
-%% So if ones wants to look into a deep json object, path [<<"v1">>, <<"v2">>]
+%% So if ones wants to look into a deep json object, path `[<<"v1">>, <<"v2">>]'
 %% can be used to get the value.
 %% @end
 %%--------------------------------------------------------------------

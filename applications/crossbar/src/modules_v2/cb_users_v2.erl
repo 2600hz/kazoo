@@ -73,9 +73,9 @@ init() ->
 %%--------------------------------------------------------------------
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
-%% Failure here returns 405
+%% Failure here returns 405.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -122,7 +122,7 @@ content_types_provided(Context, _, _) ->
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
-%% Failure here returns 404
+%% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -184,7 +184,7 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 %% This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with userId
 %%
-%% Failure here returns 404
+%% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -231,7 +231,7 @@ validate_user_id(UserId, Context, Doc) ->
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -443,7 +443,7 @@ send_email(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
+%% Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
@@ -661,7 +661,7 @@ username_doc_id(Username, Context, _AccountDb) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the results of a view
+%% Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec(normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects()).

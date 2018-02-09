@@ -153,7 +153,7 @@ response('fatal', Msg, Code, Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% This function load the error message into a specific code response,
-%% of type fatal or error with additional data
+%% of type fatal or error with additional data.
 %% @end
 %%--------------------------------------------------------------------
 -spec response(fails(), kz_term:api_ne_binary(), kz_term:api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
@@ -184,7 +184,7 @@ create_response(Status, Msg, Code, JTerm, Context) ->
 %% @doc
 %% Create a standard response if the request is faulty (doesn't have a
 %% match in validation, or some other issue with it keeps it from being
-%% processed, like nonsensical chains)
+%% processed, like nonsensical chains).
 %% @end
 %%--------------------------------------------------------------------
 -spec response_faulty_request(cb_context:context()) -> cb_context:context().
@@ -199,12 +199,12 @@ response_faulty_request(Context) ->
 %%
 %% The RedirectUrl should be relative to the accessed URL. So, if the
 %% URL accessed that is deprecated is:
-%% /v1/account/{AID}/module/{MID}
-%% and that MID moved to module2, the RedirectURL should be:
-%% ../../module2/{MID}
+%% `/v1/account/{AID}/module/{MID}'
+%% and that MID moved to `module2', the RedirectURL should be:
+%% `../../module2/{MID}'
 %%
-%% If redirecting from module1 to module2, RedirectURL should be:
-%% ../module2
+%% If redirecting from `module1' to `module2', RedirectURL should be:
+%% `../module2'.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_deprecated(cb_context:context()) -> cb_context:context().
@@ -252,7 +252,7 @@ response_bad_identifier(?NE_BINARY = Id, Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Create a standard response if the requested resource update fails
-%% because of a conflict in the DB
+%% because of a conflict in the DB.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_conflicting_docs(cb_context:context()) ->
@@ -262,7 +262,7 @@ response_conflicting_docs(Context) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Create a standard response if the requested data query was missing
+%% Create a standard response if the requested data query was missing.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_missing_view(cb_context:context()) ->
@@ -272,7 +272,7 @@ response_missing_view(Context) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Create a standard response if the datastore timed out
+%% Create a standard response if the datastore timed out.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_datastore_timeout(cb_context:context()) ->
@@ -282,7 +282,7 @@ response_datastore_timeout(Context) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Create a standard response if the datastore timed out
+%% Create a standard response if the datastore timed out.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_datastore_conn_refused(cb_context:context()) ->
@@ -292,7 +292,7 @@ response_datastore_conn_refused(Context) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Create a standard response if the provided data did not validate
+%% Create a standard response if the provided data did not validate.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_invalid_data(kz_json:json_term(), cb_context:context()) ->
@@ -303,7 +303,7 @@ response_invalid_data(JTerm, Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Create a standard response if the datastore does not have the requested
-%% record collection
+%% record collection.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_db_missing(cb_context:context()) -> cb_context:context().
@@ -313,7 +313,7 @@ response_db_missing(Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Create a standard response if the datastore does not have the requested
-%% record collection
+%% record collection.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_db_fatal(cb_context:context()) -> cb_context:context().
@@ -421,7 +421,6 @@ maybe_flush_registration_on_deleted(Realm, _OldDevice, NewDevice) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec move_account(kz_term:ne_binary(), kz_term:ne_binary()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
@@ -536,7 +535,7 @@ move_service(AccountId, NewTree, NewResellerId, Dirty) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Return all descendants of the account id
+%% Return all descendants of the account id.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_descendants(kz_term:ne_binary()) -> kz_term:ne_binaries().
@@ -573,7 +572,7 @@ replicate_account_definition(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Flag all descendants of the account id as disabled
+%% Flag all descendants of the account id as disabled.
 %% @end
 %%--------------------------------------------------------------------
 -spec disable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
@@ -593,7 +592,7 @@ disable_account(AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Flag all descendants of the account id as enabled
+%% Flag all descendants of the account id as enabled.
 %% @end
 %%--------------------------------------------------------------------
 -spec enable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
@@ -613,7 +612,7 @@ enable_account(AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Helper to set data for all auth type
+%% Helper to set data for all auth type.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -684,7 +683,7 @@ format_app(Lang, AppJObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Update all descendants of the account id pvt_enabled flag with State
+%% Update all descendants of the account id pvt_enabled flag with State.
 %% @end
 %%--------------------------------------------------------------------
 -spec change_pvt_enabled(boolean(), kz_term:api_ne_binary()) -> ok | {error, any()}.
@@ -712,8 +711,8 @@ change_pvt_enabled(State, AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% Get user/account language
 %% @doc
+%% Get user/account language
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1167,7 +1166,6 @@ load_descendants_count(ViewOptions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec maybe_update_descendants_count(kz_term:ne_binary(), integer()) -> 'ok'.
 maybe_update_descendants_count(AccountId, NewCount) ->
     maybe_update_descendants_count(AccountId, NewCount, 3).
@@ -1214,9 +1212,3 @@ update_descendants_count(AccountId, JObj, NewCount) ->
             _ = replicate_account_definition(NewDoc),
             'ok'
     end.
-
-%%--------------------------------------------------------------------
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------

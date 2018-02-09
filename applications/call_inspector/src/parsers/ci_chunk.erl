@@ -183,10 +183,9 @@ is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Gives back an ordered list of entities participating in the SIP dialog.
+%% @doc Gives back an ordered list of entities participating in the SIP dialog.
 %%
-%% `Chunks` needs to be ordered (e.g. using reorder_dialog/1).
+%% `Chunks' needs to be ordered (e.g. using {@link reorder_dialog/1}).
 %% @end
 %%--------------------------------------------------------------------
 -spec get_dialog_entities([chunk()]) -> kz_term:ne_binaries().
