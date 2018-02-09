@@ -32,7 +32,7 @@ send_mwi_update(BoxId, Account) ->
 
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(AccountId),
-    Realm = kz_account:fetch_realm(AccountId),
+    Realm = kzd_accounts:fetch_realm(AccountId),
     {'ok', BoxJObj} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
     OwnerId = kzd_voicemail_box:owner_id(BoxJObj),
     BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
