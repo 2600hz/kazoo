@@ -678,6 +678,7 @@ generic_call_event_props(Props) ->
     ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
     ,{<<"Disposition">>, get_disposition(Props)}
     ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
+    ,{<<"Group-ID">>, kzd_freeswitch:ccv(Props, <<"media_group_id">>)}
     ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
     ,{<<"Hangup-Code">>, get_hangup_code(Props)}
     ,{<<"Media-Server">>, kzd_freeswitch:hostname(Props)}
@@ -754,7 +755,6 @@ specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Appli
     [{<<"DTMF-Digit">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
     ,{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
-    ,{<<"Group-ID">>, props:get_value(<<"variable_media_group_id">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Props) ->
     [{<<"Application-Name">>, <<"noop">>}

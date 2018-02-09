@@ -26,7 +26,7 @@
         ,get_event_type/1
         ]).
 
--export([audio_macro/2]).
+-export([audio_macro/2, audio_macro/3]).
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
         ,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
@@ -459,69 +459,78 @@ receive_event(Timeout, IgnoreOthers) ->
 -spec audio_macro(audio_macro_prompts(), kapps_call:call()) ->
                          kz_term:ne_binary().
 audio_macro([], Call) -> noop(Call);
-audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, []).
+audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, kz_binary:rand_hex(3)).
 
--spec audio_macro(audio_macro_prompts(), kapps_call:call(), kz_json:objects()) ->
+-spec audio_macro(audio_macro_prompts(), kapps_call:call(), kz_term:ne_binary()) ->
                          binary().
-audio_macro([], Call, Queue) ->
+audio_macro(Prompts, Call, GroupId) ->
+    {_, _, Queue} = lists:foldl(fun build_macro/2, {Call, GroupId, []}, Prompts),
+
     NoopId = noop_id(),
-    Prompts = [kz_json:from_list(
-                 [{<<"Application-Name">>, <<"noop">>}
-                 ,{<<"Msg-ID">>, NoopId}
-                 ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-                 ]) | Queue
-              ],
+    Commands = [kz_json:from_list(
+                  [{<<"Application-Name">>, <<"noop">>}
+                  ,{<<"Msg-ID">>, NoopId}
+                  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                  ])
+                | Queue
+               ],
     Command = [{<<"Application-Name">>, <<"queue">>}
-              ,{<<"Commands">>, Prompts}
+              ,{<<"Commands">>, Commands}
               ],
     send_command(Command, Call),
-    NoopId;
-audio_macro([{'play', MediaName}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(MediaName, ?ANY_DIGIT, Call) | Queue]);
-audio_macro([{'play', MediaName, Terminators}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
-audio_macro([{'play', MediaName, Terminators, Leg}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(MediaName, Terminators, Leg, Call) | Queue]);
-audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName)
-                                      ,?ANY_DIGIT
-                                      ,Call
-                                      )
-                          | Queue
-                         ]);
-audio_macro([{'prompt', PromptName, Lang}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName, Lang)
-                                      ,?ANY_DIGIT
-                                      ,Call
-                                      )
-                          | Queue
-                         ]);
-audio_macro([{'prompt', PromptName, Lang, Leg}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName, Lang)
-                                      ,?ANY_DIGIT
-                                      ,Leg
-                                      ,Call
-                                      )
-                          | Queue
-                         ]);
-audio_macro([{'say', Say}|T], Call, Queue) ->
-    audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, kapps_call:language(Call), Call) | Queue]);
-audio_macro([{'say', Say, Type}|T], Call, Queue) ->
-    audio_macro(T, Call, [say_command(Say, Type, <<"pronounced">>, kapps_call:language(Call), Call) | Queue]);
-audio_macro([{'say', Say, Type, Method}|T], Call, Queue) ->
-    audio_macro(T, Call, [say_command(Say, Type, Method, kapps_call:language(Call), Call) | Queue]);
-audio_macro([{'say', Say, Type, Method, Language}|T], Call, Queue) ->
-    audio_macro(T, Call, [say_command(Say, Type, Method, Language, Call) | Queue]);
-audio_macro([{'tones', Tones}|T], Call, Queue) ->
-    audio_macro(T, Call, [tones_command(Tones, Call) | Queue]);
-audio_macro([{'tts', Text}|T], Call, Queue) ->
-    audio_macro(T, Call, [tts_command(Text, Call) | Queue]);
-audio_macro([{'tts', Text, Voice}|T], Call, Queue) ->
-    audio_macro(T, Call, [tts_command(Text, Voice, Call) | Queue]);
-audio_macro([{'tts', Text, Voice, Lang}|T], Call, Queue) ->
-    audio_macro(T, Call, [tts_command(Text, Voice, Lang, Call) | Queue]);
-audio_macro([{'tts', Text, Voice, Lang, Engine}|T], Call, Queue) ->
-    audio_macro(T, Call, [tts_command(Text, Voice, Lang, ?ANY_DIGIT, Engine, Call) | Queue]).
+    NoopId.
+
+-type build_acc() :: {kapps_call:call(), kz_term:ne_binary(), kz_json:objects()}.
+-spec build_macro(audio_macro_prompt(), build_acc()) -> build_acc().
+build_macro({'play', MediaName}, {Call, GroupId, Queue}) ->
+    Command = play_command(MediaName, ?ANY_DIGIT, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'play', MediaName, Terminators}, {Call, GroupId, Queue}) ->
+    Command = play_command(MediaName, Terminators, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'play', MediaName, Terminators, Leg}, {Call, GroupId, Queue}) ->
+    Command = play_command(MediaName, Terminators, Leg, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'prompt', PromptName}, {Call, GroupId, Queue}) ->
+    Command = play_command(kapps_call:get_prompt(Call, PromptName), ?ANY_DIGIT, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'prompt', PromptName, Lang}, {Call, GroupId, Queue}) ->
+    Command = play_command(kapps_call:get_prompt(Call, PromptName, Lang), ?ANY_DIGIT, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'prompt', PromptName, Lang, Leg}, {Call, GroupId, Queue}) ->
+    Command = play_command(kapps_call:get_prompt(Call, PromptName, Lang)
+                          ,?ANY_DIGIT
+                          ,Leg
+                          ,Call
+                          ),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'say', Say}, {Call, GroupId, Queue}) ->
+    Command = say_command(Say, <<"name_spelled">>, <<"pronounced">>, kapps_call:language(Call), Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'say', Say, Type}, {Call, GroupId, Queue}) ->
+    Command = say_command(Say, Type, <<"pronounced">>, kapps_call:language(Call), Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'say', Say, Type, Method}, {Call, GroupId, Queue}) ->
+    Command = say_command(Say, Type, Method, kapps_call:language(Call), Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'say', Say, Type, Method, Language}, {Call, GroupId, Queue}) ->
+    Command = say_command(Say, Type, Method, Language, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'tones', Tones}, {Call, GroupId, Queue}) ->
+    Command = tones_command(Tones, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'tts', Text}, {Call, GroupId, Queue}) ->
+    Command = tts_command(Text, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'tts', Text, Voice}, {Call, GroupId, Queue}) ->
+    Command = tts_command(Text, Voice, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'tts', Text, Voice, Lang}, {Call, GroupId, Queue}) ->
+    Command = tts_command(Text, Voice, Lang, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
+build_macro({'tts', Text, Voice, Lang, Engine}, {Call, GroupId, Queue}) ->
+    Command = tts_command(Text, Voice, Lang, ?ANY_DIGIT, Engine, Call),
+    {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]}.
 
 %%--------------------------------------------------------------------
 %% @public

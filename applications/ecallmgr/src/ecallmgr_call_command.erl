@@ -1419,8 +1419,19 @@ play_app(UUID, JObj) ->
     F = ecallmgr_util:media_path(MediaName, 'new', UUID, JObj),
     %% if Leg is set, use uuid_broadcast; otherwise use playback
     case ecallmgr_fs_channel:is_bridged(UUID) of
-        'false' -> {playback_app(JObj), F};
+        'false' -> {playback_app(JObj), maybe_add_loop_count(JObj, F)};
         'true' -> play_bridged(UUID, JObj, F)
+    end.
+
+-spec maybe_add_loop_count(kz_json:object(), kz_term:ne_binary()) ->
+                                  kz_term:ne_binary().
+maybe_add_loop_count(JObj, Media) ->
+    case kz_json:is_true(<<"Endless-Playback">>, JObj, 'false')
+        orelse kz_json:get_integer_value(<<"Loop-Count">>, JObj)
+    of
+        Count when is_integer(Count), Count > 0 ->
+            list_to_binary(["+", kz_term:to_binary(Count), " ", Media]);
+        _ -> Media
     end.
 
 -spec playback_app(kz_json:object()) -> kz_term:ne_binary().
@@ -1429,8 +1440,7 @@ playback_app(JObj) ->
         orelse kz_json:get_integer_value(<<"Loop-Count">>, JObj)
     of
         'true' -> <<"endless_playback">>;
-        Count when is_integer(Count), Count > 0 ->
-            <<"loop_playback +", (kz_term:to_binary(Count))/binary>>;
+        Count when is_integer(Count), Count > 0 -> <<"loop_playback">>;
         _ -> <<"playback">>
     end.
 

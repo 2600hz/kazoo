@@ -264,8 +264,10 @@
 
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
--define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>, <<"Terminators">>
-                                    ,<<"Conference-ID">>, <<"Group-ID">>
+-define(OPTIONAL_TONES_REQ_HEADERS, [<<"Conference-ID">>
+                                    ,<<"Group-ID">>
+                                    ,<<"Insert-At">>
+                                    ,<<"Terminators">>
                                     ]).
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
@@ -641,10 +643,16 @@
 -define(PLAY_COLLECT_DIGITS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Say
--define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>
-                         ,<<"Type">>, <<"Method">>, <<"Say-Text">>
+-define(SAY_REQ_HEADERS, [<<"Application-Name">>
+                         ,<<"Call-ID">>
+                         ,<<"Language">>
+                         ,<<"Method">>
+                         ,<<"Say-Text">>
+                         ,<<"Type">>
                          ]).
--define(OPTIONAL_SAY_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_SAY_REQ_HEADERS, [<<"Group-ID">>
+                                  ,<<"Insert-At">>
+                                  ]).
 -define(SAY_REQ_VALUES
        ,[{<<"Event-Category">>, <<"call">>}
         ,{<<"Event-Name">>, <<"command">>}

@@ -530,7 +530,8 @@ force_queue_advance(#state{call_id=CallId
                           ,is_call_up=CallUp
                           }=State) ->
     lager:debug("received control queue unconditional advance, skipping wait for command completion of '~s'"
-               ,[CurrApp]),
+               ,[CurrApp]
+               ),
     case INU
         andalso queue:out(CmdQ)
     of
@@ -567,31 +568,20 @@ force_queue_advance(#state{call_id=CallId
 -spec handle_execute_complete(kz_term:api_binary(), kz_json:object(), state()) -> state().
 handle_execute_complete('undefined', _, State) -> State;
 handle_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
-    NoopId = kz_json:get_value(<<"Application-Response">>, JObj),
-    case NoopId =:= CurrMsgId of
-        'false' ->
+    case kz_json:get_ne_binary_value(<<"Application-Response">>, JObj) of
+        CurrMsgId ->
+            lager:debug("noop execution complete for ~s, advancing control queue", [CurrMsgId]),
+            forward_queue(State);
+        _NoopId ->
             lager:debug("received noop execute complete with incorrect id ~s (expecting ~s)"
-                       ,[NoopId, CurrMsgId]
+                       ,[_NoopId, CurrMsgId]
                        ),
-            State;
-        'true' ->
-            lager:debug("noop execution complete for ~s, advancing control queue", [NoopId]),
-            forward_queue(State)
+            State
     end;
-handle_execute_complete(<<"playback">> = AppName, JObj, #state{current_app=AppName
-                                                              ,command_q=CmdQ}=State) ->
-    lager:debug("playback finished, checking for group-id/DTMF termination"),
-    S = case kz_json:get_value(<<"DTMF-Digit">>, JObj) of
-            'undefined' ->
-                lager:debug("command finished playing, advancing control queue"),
-                State;
-            _DTMF ->
-                GroupId = kz_json:get_value(<<"Group-ID">>, JObj),
-                lager:debug("DTMF ~s terminated playback, flushing all with group id ~s"
-                           ,[_DTMF, GroupId]),
-                State#state{command_q=flush_group_id(CmdQ, GroupId, AppName)}
-        end,
-    forward_queue(S);
+handle_execute_complete(<<"playback">> = AppName, JObj, #state{current_app=AppName}=State) ->
+    handle_playback_complete(AppName, JObj, State);
+handle_execute_complete(<<"play">> = AppName, JObj, #state{current_app=AppName}=State) ->
+    handle_playback_complete(AppName, JObj, State);
 handle_execute_complete(AppName, _, #state{current_app=AppName}=State) ->
     lager:debug("~s execute complete, advancing control queue", [AppName]),
     forward_queue(State);
@@ -603,10 +593,28 @@ handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
         'false' -> State
     end.
 
+-spec handle_playback_complete(kz_term:ne_binary(), kz_json:object(), state()) -> state().
+handle_playback_complete(AppName, JObj, #state{command_q=CmdQ}=State) ->
+    lager:debug("playback finished, checking for group-id/DTMF termination"),
+    S = case kz_json:get_ne_binary_value(<<"DTMF-Digit">>, JObj) of
+            'undefined' ->
+                lager:debug("media finished playing, advancing control queue"),
+                State;
+            _DTMF ->
+                GroupId = kz_json:get_ne_binary_value(<<"Group-ID">>, JObj),
+                lager:debug("DTMF ~s terminated playback, flushing all with group id ~s"
+                           ,[_DTMF, GroupId]
+                           ),
+                State#state{command_q=flush_group_id(CmdQ, GroupId, AppName)}
+        end,
+    forward_queue(S).
+
 -spec flush_group_id(queue:queue(), kz_term:api_binary(), kz_term:ne_binary()) -> queue:queue().
 flush_group_id(CmdQ, 'undefined', _) -> CmdQ;
 flush_group_id(CmdQ, GroupId, AppName) ->
+    lager:debug("filtering commands ~s for group-id ~s", [AppName, GroupId]),
     Filter = kz_json:from_list([{<<"Application-Name">>, AppName}
+                               ,{<<"Group-ID">>, GroupId}
                                ,{<<"Fields">>, kz_json:from_list([{<<"Group-ID">>, GroupId}])}
                                ]),
     maybe_filter_queue([Filter], CmdQ).
@@ -981,7 +989,7 @@ queue_insert_fun('head') ->
 %% @end
 %%--------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue('undefined' | list(), queue:queue()) -> queue:queue().
+-spec maybe_filter_queue(kz_json:api_objects(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
@@ -999,20 +1007,28 @@ maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
     case queue:out(CommandQ) of
         {'empty', _} -> CommandQ;
         {{'value', NextJObj}, CommandQ1} ->
-            case (AppName = kz_json:get_value(<<"Application-Name">>, NextJObj)) =:=
-                kz_json:get_value(<<"Application-Name">>, AppJObj) of
+            case (NextAppName = kz_json:get_ne_binary_value(<<"Application-Name">>, NextJObj))
+                =:= (AppName = kz_json:get_ne_binary_value(<<"Application-Name">>, AppJObj))
+                orelse kz_json:get_ne_binary_value(<<"Group-ID">>, NextJObj)
+                =:= kz_json:get_ne_binary_value(<<"Group-ID">>, AppJObj, <<"nomatch">>)
+            of
                 'false' -> maybe_filter_queue(T, CommandQ);
                 'true' ->
-                    lager:debug("app ~s matched next command, checking fields", [AppName]),
-                    Fields = kz_json:get_value(<<"Fields">>, AppJObj),
+                    lager:debug("app ~s matched next command ~s, checking fields"
+                               ,[AppName, NextAppName]
+                               ),
+                    Fields = kz_json:get_json_value(<<"Fields">>, AppJObj, kz_json:new()),
                     lager:debug("fields: ~p", [Fields]),
-                    case lists:all(fun({AppField, AppValue}) ->
-                                           kz_json:get_value(AppField, NextJObj) =:= AppValue
-                                   end, kz_json:to_proplist(Fields))
+
+                    case kz_json:all(fun({AppField, AppValue}) ->
+                                             kz_json:get_value(AppField, NextJObj) =:= AppValue
+                                     end
+                                    ,Fields
+                                    )
                     of
                         'false' -> maybe_filter_queue(T, CommandQ);
                         'true' ->
-                            lager:debug("all fields matched next command, popping it off"),
+                            lager:debug("all fields matched queued command, popping it off"),
                             maybe_filter_queue(Apps, CommandQ1) % same app and all fields matched
                     end
             end
@@ -1046,14 +1062,15 @@ execute_control_request(Cmd, #state{node=Node
     Srv = self(),
 
     lager:debug("executing call command '~s' ~s"
-               ,[kz_json:get_value(<<"Application-Name">>, Cmd)
-                ,kz_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
-                ]),
-    Mod = get_module(kz_json:get_value(<<"Event-Category">>, Cmd, <<>>)
-                    ,kz_json:get_value(<<"Event-Name">>, Cmd, <<>>)
+               ,[kz_json:get_binary_value(<<"Application-Name">>, Cmd)
+                ,kz_json:get_binary_value(<<"Msg-ID">>, Cmd, <<>>)
+                ]
+               ),
+    Mod = get_module(kz_json:get_binary_value(<<"Event-Category">>, Cmd, <<>>)
+                    ,kz_json:get_binary_value(<<"Event-Name">>, Cmd, <<>>)
                     ),
 
-    CmdLeg = kz_json:get_value(<<"Call-ID">>, Cmd),
+    CmdLeg = kz_json:get_ne_binary_value(<<"Call-ID">>, Cmd),
     CallLeg = which_call_leg(CmdLeg, OtherLegs, CallId),
 
     try Mod:exec_cmd(Node, CallLeg, Cmd, self())
