@@ -1218,7 +1218,7 @@ update_mwi(Context, [BoxId | BoxIds]) ->
 
 update_mwi(Context, BoxId, 'success') ->
     AccountId = cb_context:account_id(Context),
-    _ = cb_modules_util:update_mwi(BoxId, AccountId),
+    _ = kvm_mwi:notify(BoxId, AccountId),
     Context;
 update_mwi(Context, _BoxId, _Status) ->
     Context.
