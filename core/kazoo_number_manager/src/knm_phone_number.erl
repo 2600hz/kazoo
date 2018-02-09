@@ -1613,6 +1613,10 @@ is_reserved_from_parent(_) -> false.
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec is_admin_or_in_account_hierarchy(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_admin_or_in_account_hierarchy(AuthBy, AccountId) ->
     case is_admin(AuthBy) of

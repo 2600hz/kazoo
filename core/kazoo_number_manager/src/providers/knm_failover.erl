@@ -48,6 +48,10 @@ delete(N) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(N) ->
     knm_phone_number:feature(knm_number:phone_number(N), ?KEY).

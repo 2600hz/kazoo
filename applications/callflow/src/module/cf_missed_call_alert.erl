@@ -64,6 +64,10 @@ handle_termination(Call, Notify, Data) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec add_handler(kz_json:object(), kapps_call:call()) -> 'ok'.
 add_handler(Data, Call) -> cf_exe:add_termination_handler(Call, {?MODULE, 'handle_termination', [Data]}).
 

@@ -29,6 +29,10 @@
 %%% IP
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -155,6 +159,10 @@ put(Context) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec on_successful_load(cb_context:context(), crossbar_status(), kz_json:objects()) -> cb_context:context().
 on_successful_load(Context, 'success', [Doc]) ->
     _AccountId = kz_json:get_value(<<"value">>, Doc),

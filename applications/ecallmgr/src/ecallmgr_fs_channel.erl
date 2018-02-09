@@ -495,6 +495,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec handle_channel_req_legacy(kz_term:ne_binary(), kz_term:ne_binary(), atom(), pid()) -> 'ok'.
 handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
     kz_amqp_channel:consumer_pid(Pid),

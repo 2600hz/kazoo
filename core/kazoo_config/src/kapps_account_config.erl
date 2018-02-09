@@ -462,7 +462,10 @@ flush(Account, Category, Strategy) ->
 %% Internal functions
 %% ====================================================================
 
-
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec walk_the_walk(map()) -> {ok, kz_json:object()} | {error, not_found}.
 walk_the_walk(#{strategy_funs := []
                ,results := []
@@ -605,7 +608,6 @@ maybe_new_doc({error, _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
 %% ====================================================================
 %% Migrates config settings
 %% ====================================================================
-
 
 -type migrate_setting() :: {kz_term:ne_binary(), kz_json:path()}.
 -type migrate_value() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_json:path(), _}.

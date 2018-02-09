@@ -19,6 +19,10 @@
 %%% `gen_attachment' behaviour callbacks (API)
 %%%====================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -86,6 +90,10 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
 %%% Internal functions
 %%%====================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec resolve_path(map(), attachment_info()) -> {string(), string()}.
 resolve_path(#{container := Container} = Settings, AttInfo) ->
     Url = azure_format_url(Settings, AttInfo),

@@ -6,6 +6,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
+
 -export([register_auth_app/4]).
 -export([register_common_providers/0]).
 -export([register_auth_app_key/2]).
@@ -19,6 +20,10 @@
 %% Internal functions
 %% ====================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec register_auth_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 register_auth_app(AccountId, OAuthId, Secret, Provider) ->
     Doc = kz_json:from_list([{<<"_id">>, OAuthId}

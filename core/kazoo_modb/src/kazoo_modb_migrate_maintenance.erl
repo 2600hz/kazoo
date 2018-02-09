@@ -43,6 +43,11 @@ migrate_account(Account) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_view_count(kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
 get_view_count(AccountId, View) ->
     get_view_count(AccountId, View, 2).
@@ -81,6 +86,11 @@ maps_update_with(Key, UpdateFun, Init, Map) ->
 %%%===================================================================
 %%% Voicemail Migration
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec migrate_voicemails(kz_term:ne_binary()) -> 'ok'.
 migrate_voicemails(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -254,6 +264,10 @@ update_message_array(BoxJObj, ResultSet) ->
 %%% Voicemail Migration
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec migrate_cdrs(kz_term:ne_binary()) -> 'ok'.
 migrate_cdrs(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),

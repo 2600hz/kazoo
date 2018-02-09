@@ -20,6 +20,10 @@
 %%% Attachment-related
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec fetch_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | fixture_error().
 fetch_attachment(Server, DbName, DocId, AName) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
@@ -51,6 +55,10 @@ attachment_url(Server, DbName, DocId, AName, _Options) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec relay_stream_attachment(pid(), reference(), {ok, reference()} | fixture_error()) -> any().
 relay_stream_attachment(Caller, Ref, AttResult) ->
     Caller ! {Ref, AttResult}.

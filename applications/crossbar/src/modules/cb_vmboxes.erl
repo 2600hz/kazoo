@@ -55,6 +55,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.vmboxes">>, ?MODULE, 'content_types_accepted'),
@@ -436,6 +440,10 @@ patch(Context, _Id) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec add_pvt_auth_funs(cb_context:context()) -> [fun((kz_json:object()) -> kz_json:object())].
 add_pvt_auth_funs(Context) ->
     [fun(JObj) -> crossbar_doc:add_pvt_auth(JObj, Context) end].

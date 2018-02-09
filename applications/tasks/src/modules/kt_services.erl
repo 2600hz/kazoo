@@ -41,6 +41,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, cleanup),
@@ -129,6 +133,10 @@ cleanup(_SystemDb) -> ok.
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec rows_for_quantities(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> [kz_csv:mapped_row()].
 rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) ->
     lists:append(

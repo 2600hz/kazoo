@@ -20,6 +20,10 @@
 %%% View-related
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec design_info(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> doc_resp().
 design_info(_Server, _DbName, Design) ->
     {ok, kz_json:from_list([{<<"name">>, Design}])}.
@@ -65,6 +69,10 @@ all_docs(Server, DbName, Options) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec prepare_view_result(server_map(), kz_term:ne_binary(), kz_json:objects(), kz_data:options()) -> kz_json:objects().
 prepare_view_result(Server, DbName, Result, Options) ->
     case props:get_value(include_docs, Options, false)

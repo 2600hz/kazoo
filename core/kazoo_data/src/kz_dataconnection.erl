@@ -136,6 +136,10 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec try_connection(data_connection()) ->  {'ok', data_connection()} | {'error', any()}.
 try_connection(#data_connection{app=App, props=Props}=Connection) ->
     lager:info("trying to connect ~s", [App]),

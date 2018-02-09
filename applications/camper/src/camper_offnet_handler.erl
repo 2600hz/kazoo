@@ -280,6 +280,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec build_bridge_request(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:proplist().
 build_bridge_request(ParkedCallId, Call, Q) ->
     CIDNumber = kapps_call:kvs_fetch('cf_capture_group', Call),

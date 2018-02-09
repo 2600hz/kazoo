@@ -13,6 +13,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
+
 -export([migrate/0, migrate/1, migrate/2]).
 -export([migrate_outbound_faxes/0, migrate_outbound_faxes/1]).
 -export([flush/0]).

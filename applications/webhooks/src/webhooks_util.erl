@@ -272,6 +272,10 @@ failed_hook(#webhook{hook_id = HookId
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec save_attempt(kz_term:api_binary(), kz_json:object()) -> 'ok'.
 save_attempt(AccountId, Attempt) ->
     Now = kz_time:now_s(),

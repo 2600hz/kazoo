@@ -48,6 +48,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     Bindings = [{<<"*.allowed_methods.presence">>, 'allowed_methods'}
@@ -470,4 +474,3 @@ save_report(Context) ->
     HostURL = cb_context:host_url(Context),
     URL = <<HostURL/binary, "/", MagicPath/binary>>,
     {Report, URL}.
-

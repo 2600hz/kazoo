@@ -112,6 +112,10 @@ to_email_addresses(_DataJObj, TemplateId, _) ->
 %%% Build data functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_faxbox_doc(kz_json:object(), kz_json:object()) -> kz_json:object().
 get_faxbox_doc(DataJObj, FaxDoc) ->
     BoxId = kz_json:find(<<"faxbox_id">>, [DataJObj, FaxDoc]),
@@ -187,6 +191,10 @@ find_timezone(DataJObj, FaxBoxJObj) ->
 %%% Attachment Utilities
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec fax_db(kz_json:object(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 fax_db(DataJObj, FaxId) ->
     case kapi_notifications:account_db(DataJObj, 'true') of

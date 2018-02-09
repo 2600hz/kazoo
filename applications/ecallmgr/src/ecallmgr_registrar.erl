@@ -526,6 +526,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec insert_registration(registration()) -> 'ok'.
 insert_registration(#registration{expires=0}=Registration) ->
     lager:info("deleting registration ~s@~s with contact ~s"

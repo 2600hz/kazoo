@@ -36,6 +36,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _Pid = maybe_start_jobs_listener(),
@@ -359,6 +363,10 @@ delete(Context, ResourceId) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_aggregate_resource(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_aggregate_resource(Context, ?KZ_OFFNET_DB) -> Context;
 maybe_aggregate_resource(Context, _AccountDb) ->

@@ -45,6 +45,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate.auth">>, ?MODULE, 'authenticate'),
@@ -427,6 +431,10 @@ delete(Context, ?PROVIDERS_PATH, _Id) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_authenticate(cb_context:context()) -> cb_context:context().
 maybe_authenticate(Context) ->
     case kz_auth:authenticate(cb_context:doc(Context)) of

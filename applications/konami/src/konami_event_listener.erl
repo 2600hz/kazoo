@@ -412,6 +412,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec cleanup_bindings(kz_types:server_ref()) -> 'ok'.
 cleanup_bindings(Srv) ->
     kz_util:put_callid(?MODULE),

@@ -215,6 +215,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_timelimit(kz_term:api_object() | integer()) -> pos_integer().
 get_timelimit('undefined') ->
     kz_media_util:max_recording_time_limit();

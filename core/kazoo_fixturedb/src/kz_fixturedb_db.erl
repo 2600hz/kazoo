@@ -22,6 +22,10 @@
 %%% DB operations
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec db_create(server_map(), kz_term:ne_binary(), kz_data:options()) -> boolean().
 db_create(_Server, _DbName, _Options) ->
     'true'.
@@ -64,6 +68,10 @@ db_list(Server, _Options) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_dbs_list(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_dbs_list(ServerUrl, ServerUrl) ->
     [kz_term:to_binary(filename:basename(Db)) || Db <- get_dbs_list(ServerUrl)];

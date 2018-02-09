@@ -127,6 +127,10 @@ validate(Context, CallId) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec inspect_call_id(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 inspect_call_id(CallId, Context) ->
     Req = [{<<"Call-ID">>, CallId}

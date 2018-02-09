@@ -22,6 +22,10 @@
 %%% Document operations
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec open_doc(server_map(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_data:options()) -> doc_resp().
 open_doc(Server, DbName, DocId, _Options) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
@@ -88,6 +92,10 @@ ensure_saved(Server, DbName, Doc, Options) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec perform_save_doc(server_map(), kz_term:ne_binary(), kz_json:object(), kz_data:options()) ->
                               kz_json:object().
 perform_save_doc(Server, DbName, JObj, Options) ->

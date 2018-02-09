@@ -140,6 +140,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init_props(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 init_props(Props, Options) ->
     case props:get_is_true(<<"Publish-Channel-State">>, Props) of

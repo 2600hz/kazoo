@@ -203,6 +203,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_sync_subscriptions(boolean(), binary()) -> 'ok'.
 maybe_sync_subscriptions('false', _) -> 'ok';
 maybe_sync_subscriptions('true', Queue) ->

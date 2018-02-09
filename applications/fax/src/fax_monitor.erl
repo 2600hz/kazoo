@@ -144,6 +144,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec distribute_accounts(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 distribute_accounts([]) -> [];
 distribute_accounts([AccountId|AccountIds]) ->

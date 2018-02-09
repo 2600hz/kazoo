@@ -162,6 +162,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec cleanup_invalid_notify_docs() -> 'ok'.
 cleanup_invalid_notify_docs() ->
     _ = kz_datamgr:db_archive(<<"system_config">>),

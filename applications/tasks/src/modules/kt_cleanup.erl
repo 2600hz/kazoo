@@ -27,6 +27,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = tasks_bindings:bind(?TRIGGER_ALL_DBS, ?MODULE, 'cleanup_soft_deletes').
@@ -50,6 +54,10 @@ cleanup_soft_deletes(Account) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec cleanup_account_soft_deletes(kz_term:ne_binary()) -> 'ok'.
 cleanup_account_soft_deletes(Account) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),

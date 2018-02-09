@@ -81,6 +81,11 @@
 %%%===================================================================
 %%% API functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec start(atom(), kz_term:atoms(), list(), atom(), list(), list()) -> kz_types:startlink_ret().
 start(Name, CandidateNodes, OptArgs, Mod, Arg, Options) ->
     start_it('start', Name, CandidateNodes, OptArgs, Mod, Arg, Options).
@@ -348,6 +353,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init(state(), any()) -> routine_ret().
 init(#state{callback_module = Mod, name = Name} = State, Arg) ->
     'true' = amqp_leader_listener:is_ready(),

@@ -420,6 +420,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, kz_term:ne_binary()} |
                       {'error', {atom(), nonempty_string()}, kz_term:ne_binary()} |
                       {'timeout', {atom(), kz_term:ne_binary()}}.

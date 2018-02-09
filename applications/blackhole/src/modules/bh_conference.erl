@@ -66,6 +66,10 @@ bindings(_Context, #{account_id := AccountId
 %%% Internal functions
 %%%==================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec command_binding_options(kz_term:ne_binary()) -> kz_term:proplist().
 command_binding_options(ConfId) ->
     [{'restrict_to', [{'command', ConfId}]}

@@ -16,6 +16,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
+
 -export([token_for_app/1, token_for_app/2
         ,token_for_auth_id/1, token_for_auth_id/2
         ]).
@@ -69,6 +70,10 @@ token_for_app(AppId, Options) ->
 %% Internal functions
 %% ====================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 add_app(#{app_id := AppId}=Map) ->
     case kz_auth_apps:get_auth_app(AppId, 'app_and_provider') of
         {'error', _} = Error -> Map#{error => Error};

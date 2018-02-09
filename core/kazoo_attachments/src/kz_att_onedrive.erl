@@ -56,6 +56,11 @@
 %% ====================================================================
 %% `gen_attachment' behaviour callbacks (API)
 %% ====================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -153,6 +158,11 @@ do_fetch_attachment({'error', _}, _, _, HandlerProps, DbName, DocId, AName) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec resolve_put_url(map(), attachment_info()) -> kz_term:ne_binary().
 resolve_put_url(Settings, AttInfo) ->
     Url = onedrive_format_url(Settings, AttInfo),

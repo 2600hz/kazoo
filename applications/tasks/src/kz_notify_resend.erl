@@ -233,6 +233,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec process_single(kz_json:object()) -> {'ok' | 'failed', kz_json:object()}.
 process_single(JObj) ->
     API = kz_json:get_value(<<"payload">>, JObj, kz_json:new()),

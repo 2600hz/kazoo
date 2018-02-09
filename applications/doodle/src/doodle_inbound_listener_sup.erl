@@ -35,6 +35,11 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec start_inbound_listener(amqp_listener_connection()) -> kz_types:startlink_ret().
 start_inbound_listener(Connection) ->
     supervisor:start_child(?SERVER, [Connection]).

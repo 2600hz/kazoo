@@ -19,6 +19,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 -type search_ret() :: 'ok' | {'ok', kz_json:object()}.
 
 -spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) ->

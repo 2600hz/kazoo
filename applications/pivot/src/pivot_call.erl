@@ -416,6 +416,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec send_req(kapps_call:call(), kz_term:ne_binary(), http_method(), kz_json:object() | kz_term:proplist(), kz_term:ne_binary(), boolean()) ->
                       {'ok', kz_http:req_id(), kapps_call:call()} |
                       {'stop', kapps_call:call()}.

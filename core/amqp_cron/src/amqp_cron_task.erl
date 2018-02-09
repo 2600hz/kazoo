@@ -294,6 +294,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 oneshot({'oneshot', Millis}, Exec, ParentPid) when is_integer(Millis) ->
     gen_server:cast(ParentPid, {'waiting', Millis}),
     sleep_accounting_for_max(Millis),

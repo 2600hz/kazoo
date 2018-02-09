@@ -71,6 +71,10 @@ close(Context) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 rate(Context, _Action, _Payload) ->
     Bucket = bh_context:websocket_session_id(Context),
     case kz_buckets:consume_token(?APP_NAME, Bucket) of

@@ -163,6 +163,10 @@ handle_answer(JObj, Props) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec process_call(kapps_call:call()) -> 'ok'.
 process_call(Call) ->
     CID = knm_converters:normalize(kapps_call:caller_id_number(Call)),

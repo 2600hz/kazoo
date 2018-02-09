@@ -1096,6 +1096,10 @@ webhook_disabled_definition() ->
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec api_definitions() -> kapi_definition:apis().
 api_definitions() ->
     [notify_update_definition()
@@ -1300,6 +1304,10 @@ declare_exchanges() ->
 %%% Helpers
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec account_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
 account_id('undefined') -> 'undefined';
 account_id(Req) when is_list(Req) -> find_account_id(Req, fun props:get_first_defined/2);

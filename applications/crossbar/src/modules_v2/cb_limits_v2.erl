@@ -26,6 +26,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.limits">>, ?MODULE, 'allowed_methods'),
@@ -235,4 +239,3 @@ cleanup_leaky_keys(Context) ->
                  ],
     ReqData = kz_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
     cb_context:set_req_data(Context, ReqData).
-

@@ -29,6 +29,11 @@ find_schema(<<_/binary>> = Schema) ->
 
 %%% Meta keywords
 %%% ===================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec properties(kz_json:path(), kz_term:ne_binary()) -> kz_json:object().
 properties(Key, Schema) ->
     case find_schema(Schema) of

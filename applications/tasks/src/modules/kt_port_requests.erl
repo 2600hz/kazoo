@@ -30,6 +30,10 @@
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, cleanup),
@@ -72,6 +76,10 @@ unconfirmed_port_reminder(AccountDb) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec cleanup(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 cleanup(Db, OldPortRequests) ->
     lager:debug("checking ~b old port requests", [length(OldPortRequests)]),

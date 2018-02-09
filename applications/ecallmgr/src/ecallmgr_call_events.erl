@@ -542,6 +542,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_process_channel_destroy(atom(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
     kz_util:spawn(fun maybe_manual_bowout/2, [Node, Props]),

@@ -57,6 +57,10 @@ prefix(Url, Country, City) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec fetch_req(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_http:http_ret().
 fetch_req(Numbers, Url) ->
     ReqBody = kz_json:from_list([{<<"data">>, Numbers}]),

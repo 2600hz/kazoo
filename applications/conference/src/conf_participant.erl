@@ -429,6 +429,10 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec log_conference_join(boolean(), non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 log_conference_join('true'=_Moderator, ParticipantId, Conference) ->
     lager:debug("caller has joined the local conference ~s as moderator ~p", [kapps_conference:name(Conference), ParticipantId]);

@@ -242,6 +242,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec outbound_flags(kapi_offnet_resource:req()) -> kz_term:api_binary().
 outbound_flags(OffnetJObj) ->
     case kapi_offnet_resource:flags(OffnetJObj) of

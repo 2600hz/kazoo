@@ -161,6 +161,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -type time() :: amqp_cron_task:oneshot() | amqp_cron_task:cron() | amqp_cron_task:sleeper().
 -type time_token_value() :: 'all' | integer() | kz_term:integers().
 -type amqp_cron_callback() :: {atom(), atom(), list()} | {fun(), list()}.

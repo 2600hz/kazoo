@@ -138,6 +138,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec make_and_store_chunk(atom(), hep:t()) -> 'ok'.
 make_and_store_chunk(ParserId, Hep) ->
     Data = binary:split(hep:payload(Hep), <<"\r\n">>, ['global', 'trim']),

@@ -92,6 +92,11 @@ phone_number_activation_charge(Services, Number) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec update_categories_fold(kz_term:ne_binary(), kz_term:ne_binary(), kz_services:services(), kz_json:object()) -> kz_json:object().
 update_categories_fold(Path, Category, Services, JObj) ->
     kz_json:foldl(fun (SubCat, Count, S) -> update_quantities_fold(SubCat, Count, S, Category) end

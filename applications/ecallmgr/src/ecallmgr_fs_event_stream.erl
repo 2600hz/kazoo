@@ -229,6 +229,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec request_event_stream(state()) -> {'ok', state()} | {'stop', any()}.
 request_event_stream(#state{node=Node}=State) ->
     Bindings = get_event_bindings(State),

@@ -432,6 +432,10 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec load_port_request(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
@@ -613,6 +617,10 @@ summary(Context) ->
 %%% Load Summary By Range
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec load_summary_by_type(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_summary_by_type(Context, <<"all">>) ->
     lager:debug("loading summary for all port requests"),
@@ -722,6 +730,10 @@ get_summarize_view_name(Context) ->
 %%% Load Summary By Number
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec load_summary_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_summary_by_number(Context, Number) ->
     Options = [{'keys', build_keys(Context, Number)}
@@ -748,6 +760,10 @@ build_keys(Context, Number) ->
 %%% Load Last Submitted
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec last_submitted(cb_context:context()) -> cb_context:context().
 last_submitted(Context) ->
     AccountId = cb_context:account_id(Context),

@@ -318,6 +318,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec update_consumer_tag({kz_amqp_history(), ets:continuation()} | '$end_of_table', kz_term:ne_binary()) -> 'ok'.
 update_consumer_tag('$end_of_table', _) -> 'ok';
 update_consumer_tag({[#kz_amqp_history{timestamp=Timestamp

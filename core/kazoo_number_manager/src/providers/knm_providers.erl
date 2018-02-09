@@ -127,6 +127,10 @@ e911_caller_name(Number, 'undefined') ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec service_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 service_name(<<"knm_dash_e911">>) -> ?LEGACY_DASH_E911;
 service_name(<<"knm_telnyx_e911">>) -> ?LEGACY_TELNYX_E911;

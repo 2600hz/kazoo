@@ -210,6 +210,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec make_name(kz_term:ne_binary()) -> file:filename().
 make_name(CallId) ->
     <<D1:2/binary, D2:2/binary, Rest/binary>> = kz_binary:md5(CallId),

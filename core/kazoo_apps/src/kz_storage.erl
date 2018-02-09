@@ -15,6 +15,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
+
 -export([store_file/3, store_file/4]).
 
 -spec store_file(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | function()) -> 'ok' | {'error', any()}.
@@ -30,7 +31,10 @@ store_file(Node, Filename, Url, Map) ->
 %% Internal functions
 %% ====================================================================
 
-
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec store_file_args(kz_term:ne_binary(), kz_term:ne_binary() | function()) -> kz_term:proplist().
 store_file_args(Filename, UrlFun) ->
     Url = case is_function(UrlFun, 0) of

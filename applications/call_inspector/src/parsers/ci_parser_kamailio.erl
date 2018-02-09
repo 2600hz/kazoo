@@ -164,6 +164,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec extract_chunks(atom(), file:io_device(), kz_term:ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
 extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev) of

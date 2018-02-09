@@ -133,6 +133,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec process_event(kz_term:api_binary(), kz_term:proplist(), atom()) -> any().
 process_event(UUID, Props, Node) ->
     kz_util:put_callid(UUID),

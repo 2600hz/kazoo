@@ -31,6 +31,10 @@
 %%% Driver callbacks
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec new_connection(map()) -> {'ok', server_map()}.
 new_connection(Map) ->
     Url = code:priv_dir(kazoo_fixturedb),
@@ -43,6 +47,10 @@ new_connection(Map) ->
 %%% Connection operations
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_db(server_map(), kz_term:ne_binary()) -> map().
 get_db(Server, DbName) ->
     ConnToUse = maybe_use_app_connection(Server, DbName),
@@ -72,6 +80,10 @@ server_info(_Server) ->
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_app_connection(server_map()) -> server_map().
 get_app_connection(#{options := Options}=Server) ->
     case maps:get(test_app, Options, 'unedfined') of
@@ -109,6 +121,10 @@ get_dummy_plan() ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec set_app_connection(server_map(), atom()) -> server_map().
 set_app_connection(#{options := Options}=Server, AppName) ->
     Path = case maps:get(test_db_subdir, Options, 'unedfined') of

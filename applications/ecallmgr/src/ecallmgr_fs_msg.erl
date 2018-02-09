@@ -177,6 +177,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec handle_message_route(kz_json:object(), kz_term:proplist()) -> no_return().
 handle_message_route(JObj, Props) ->
     _ = kz_util:put_callid(JObj),

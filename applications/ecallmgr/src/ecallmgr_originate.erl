@@ -406,6 +406,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_originate_action(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
     lager:debug("got originate with action fax"),

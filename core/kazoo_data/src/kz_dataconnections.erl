@@ -204,6 +204,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_start_new_connection(data_connection()) -> any().
 maybe_start_new_connection(Connection) ->
     _ = kz_dataconnection_sup:add(Connection),

@@ -1010,6 +1010,10 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
 %%% Attachment Functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary()) ->
                               {'ok', binary()} |
                               data_error() |
@@ -1137,6 +1141,10 @@ attachment_url(DbName, DocId, AttachmentId, Options) ->
 %%% Attachment Helper Functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 attachment_options(DbName, DocId, Options) ->
     RequiredOptions = [{'doc_type', fun kz_doc:type/1}
                       ,{'rev', fun kz_doc:revision/1}
@@ -1362,6 +1370,10 @@ get_uuids(Count, Size) -> [get_uuid(Size) || _ <- lists:seq(1, Count)].
 %%% Misc functions
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec suppress_change_notice() -> 'false'.
 suppress_change_notice() ->
     put('$kz_data_change_notice', 'false').
@@ -1583,4 +1595,3 @@ refresh_views(DbName) ->
         {'ok', Db} -> refresh_views(Db);
         {'error', _}=E -> E
     end.
-

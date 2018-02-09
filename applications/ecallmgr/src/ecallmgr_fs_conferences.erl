@@ -451,6 +451,11 @@ code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec conference_from_props(kzd_freeswitch:data(), atom()) -> conference().
 conference_from_props(Props, Node) ->
     conference_from_props(Props, Node, #conference{}).
