@@ -2,12 +2,12 @@
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc
 %%% Utilities to facilitate AMQP interaction
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Edouard Swiac
+%%% @author KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%% @end
-%%% @contributions
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Edouard Swiac
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(amqp_util).
 

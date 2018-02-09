@@ -10,7 +10,7 @@
 -define(SEP_2, <<"%%%===================================================================">>).
 
 %% regex to find contributors tag.
--define(HAS_CONTRIBUTORS_REGEX, "ag -G '(erl)$' -l '%%%+\\s*@?[Cc]ontributors'").
+-define(HAS_CONTRIBUTORS_REGEX, "ag -G '(erl)$' -l '%%%+\\s*@?([Cc]ontributors|[Cc]ontributions)'").
 
 %% regex to spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
 %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
@@ -24,7 +24,7 @@
 -define(SEP_SPEC, "ag -G '(erl)$' '%%%*\\s*==+$(\\n+(^-spec+|[a-z]+))' applications/ core/").
 
 %% regex for escaping codes in comment for `resource_exists' function crossbar modules.
--define(CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource.?$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
+-define(CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
@@ -77,7 +77,7 @@ edocify([{Cmd, Desc, Fun}|Rest], Ret) ->
     end.
 
 check_result(<<>>) ->
-    io:format("done.~n");
+    io:format(" done.~n");
 check_result(<<"ERR:", _/binary>>=Error) ->
     io:put_chars(Error),
     halt(1);
@@ -93,9 +93,8 @@ check_result(Result) ->
 %%--------------------------------------------------------------------
 edocify_headers(Result) ->
     Files = [F || F <- binary:split(Result, <<"\n">>, [global]), F =/= <<>>],
-    io:format("~b file(s)~n", [length(Files)]),
     _ = [edocify_header(F) || F <- Files],
-    io:format("done.~n").
+    io:format(" done.~n").
 
 edocify_header(File) ->
     io:format("."),
@@ -116,10 +115,14 @@ edocify_header([<<"@contributors", _/binary>>|T], Header) ->
     edocify_header([], Header ++ [<<"%%%">>] ++ Authors);
 edocify_header([<<>>|T], Header) ->
  edocify_header(T, Header ++ [<<"%%%">>]);
-edocify_header([<<"Contributors", _/binary>>], Header) ->
-    edocify_header([<<"@contributors">>], Header);
-edocify_header([<<"Contributors", _/binary>>|T], Header) ->
-    edocify_header([<<"@contributors">>|T], Header);
+edocify_header([<<"@contributions", Rest/binary>>|T], Header) ->
+    %% mind you it is `contributions' not `contributors'
+    edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
+edocify_header([<<"@Contributions", Rest/binary>>|T], Header) ->
+    %% mind you it is `Contributions' not `Contributors'
+    edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
+edocify_header([<<"Contributors", Rest/binary>>|T], Header) ->
+    edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
 edocify_header([H|T], Header) ->
  edocify_header(T, Header ++ [<<"%%% ", H/binary>>]).
 
@@ -204,7 +207,7 @@ do_remove_comment_specs(File, Positions) ->
 missing_comment_blocks_after_sep(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun add_missing_comment_blocks/2, Positions),
-    io:format("done.~n").
+    io:format(" done.~n").
 
 add_missing_comment_blocks(File, Positions) ->
     Lines = read_lines(File, true),
@@ -247,7 +250,7 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
 cb_resource_exists_comments(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun fix_cb_resource_exists_comment/2, Positions),
-    io:format("done.~n").
+    io:format(" done.~n").
 
 fix_cb_resource_exists_comment(File, Positions) ->
     io:format("."),

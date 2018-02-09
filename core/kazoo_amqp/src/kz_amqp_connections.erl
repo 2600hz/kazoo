@@ -2,9 +2,8 @@
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%%
-%%% @end
-%%% @contributions
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kz_amqp_connections).
 -behaviour(gen_server).

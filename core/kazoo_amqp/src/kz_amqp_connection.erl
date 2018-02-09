@@ -2,10 +2,10 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% Handle a host's connection/channels
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributions
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kz_amqp_connection).
 -behaviour(gen_server).

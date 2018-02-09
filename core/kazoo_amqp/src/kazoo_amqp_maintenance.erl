@@ -2,9 +2,8 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
-%%% @contributions
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kazoo_amqp_maintenance).
 

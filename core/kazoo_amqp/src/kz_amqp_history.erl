@@ -2,9 +2,8 @@
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%%
-%%% @end
-%%% @contributions
 %%%
+%%% @end
 %%%-------------------------------------------------------------------
 -module(kz_amqp_history).
 -behaviour(gen_server).
