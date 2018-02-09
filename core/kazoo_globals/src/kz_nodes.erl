@@ -475,10 +475,9 @@ status_list([{Whapp, #whapp_info{startup=Started,roles=Roles}}|Whapps], _Column)
     status_list(Whapps, 4).
 
 -spec simple_list(kz_term:ne_binaries()) -> 'ok'.
--spec simple_list(kz_term:ne_binaries(), 0..5) -> 'ok'.
-
 simple_list(List) -> simple_list(List, 0).
 
+-spec simple_list(kz_term:ne_binaries(), 0..5) -> 'ok'.
 simple_list([], _) -> io:format("~n", []);
 simple_list(List, Column) when Column > 4 ->
     io:format("~n" ++ ?HEADER_COL ++ "  ", [""]),

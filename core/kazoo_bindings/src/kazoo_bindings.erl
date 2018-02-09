@@ -5,6 +5,7 @@
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
+%%% ```
 %%% foo.erl -> bind("module.init").
 %%% *** Later ***
 %%% module.erl
@@ -13,6 +14,7 @@
 %%%                receive -> Resp
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
+%%% '''
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -72,7 +74,7 @@
 
 -define(SERVER, ?MODULE).
 
-%% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue:queue(), <<"foo.bar">>}
+%% `{<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue:queue(), <<"foo.bar">>}''
 
 -type payload() :: any().
 -type fold_results() :: payload().
@@ -121,9 +123,11 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @doc
-%% return [ {Result, Payload1} ], a list of tuples, the first element
+%% Map Payload over bound handlers.
+%% Return `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified
 %% @end
@@ -176,8 +180,9 @@ get_binding_candidates(Vsn, Action) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% return the modified Payload after it has been threaded through
-%% all matching bindings
+%% Fold over bound handlers.
+%% Return the modified Payload after it has been threaded through
+%% all matching bindings.
 %% @end
 %%--------------------------------------------------------------------
 -spec fold(kz_term:ne_binary(), payload()) -> fold_results().
@@ -190,7 +195,7 @@ fold(Routing, Payload, Options) ->
 
 %%-------------------------------------------------------------------
 %% @doc
-%% Helper functions for working on a result set of bindings
+%% Helper functions for working on a result set of bindings.
 %% @end
 %%-------------------------------------------------------------------
 -spec any(kz_term:proplist(), function()) -> boolean().
@@ -219,17 +224,16 @@ succeeded(Res, F) when is_list(Res),
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Match routing patterns. * matches 1 slot, # 0 or more.
-%% Note: matching only accepts wilcards on first argument (asymetric).
+%% Match routing patterns. `*' matches `1' slot, `#' `0' or more.
+%%
+%% `<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>'
+%%
+%% Note: matching only accepts wild-cards on first argument (asymmetric).
 %% @end
-%%
-%% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
-%%
 %%--------------------------------------------------------------------
 -spec matches(kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean().
 
-%% if both are empty, we made it!
-matches([], []) -> 'true';
+matches([], []) -> 'true'; %% if both are empty, we made it!
 matches([<<"#">>], []) -> 'true';
 
 matches([<<"#">>, <<"*">>], []) -> 'false';
@@ -286,6 +290,7 @@ matches(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @doc Starts the server
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
@@ -377,7 +382,7 @@ gift_data() -> 'ok'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Initializes the server
+%% Initializes the server.
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -390,7 +395,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Handling call messages
+%% Handling call messages.
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -590,7 +595,7 @@ handle_info(_Info, State) ->
 %% @private
 %% @doc
 %% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
+%% terminate. It should be the opposite of `Module:init/1' and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%

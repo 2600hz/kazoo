@@ -247,7 +247,7 @@ update_kazoo_secret(#{auth_db := Db
 %%--------------------------------------------------------------------
 %% @doc
 %% Verify the identity signature from a Token map.
-%% Retruns the map with `identify_verified` is set to result of verification
+%% Returns the map with `identify_verified' is set to result of verification
 %% @end
 %%--------------------------------------------------------------------
 -spec token(map()) -> map().

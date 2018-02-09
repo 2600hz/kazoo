@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
-%%% Simple & efficient operations on CSV binaries.
+%%% Simple and efficient operations on CSV binaries.
 %%%
 %%% @author Pierre Fenoll
 %%% @end

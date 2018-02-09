@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%% Util functions used by kazoo_couch
+%%% Util functions used by kazoo_couch.
 %%%
 %%% @author James Aimonetti
 %%% @end
@@ -41,9 +41,10 @@
 %% {'error', 'timeout'}.
 
 -spec retry504s(fun(() -> retry504_ret())) -> retry504_ret().
--spec retry504s(fun(() -> retry504_ret()), 0..3) -> retry504_ret().
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
+
+-spec retry504s(fun(() -> retry504_ret()), 0..3) -> retry504_ret().
 retry504s(_Fun, 3) ->
     lager:debug("504 retry failed"),
     kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
@@ -195,7 +196,6 @@ db_url(#server{}=Conn, DbName) ->
 %% returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec get_db(kz_data:connection(), kz_term:ne_binary()) -> db().
 get_db(Conn, DbName) ->
     get_db(Conn, DbName, kazoo_couch:server_version(Conn)).
