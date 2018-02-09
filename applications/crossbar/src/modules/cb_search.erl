@@ -59,7 +59,7 @@ allowed_methods(?MULTI) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %%
 %% For example:
 %%

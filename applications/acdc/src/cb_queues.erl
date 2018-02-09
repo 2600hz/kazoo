@@ -137,7 +137,7 @@ allowed_methods(_QueueId, ?EAVESDROP_PATH_TOKEN) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %% So
 %%
 %% ```

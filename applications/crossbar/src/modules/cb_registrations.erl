@@ -75,7 +75,7 @@ allowed_methods(_Username) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %% '''
 %% @end
 %%--------------------------------------------------------------------

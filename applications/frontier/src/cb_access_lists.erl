@@ -51,7 +51,7 @@ allowed_methods() ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %% So /access_lists => []
 %%    /access_lists/foo => [<<"foo">>]
 %%    /access_lists/foo/bar => [<<"foo">>, <<"bar">>]

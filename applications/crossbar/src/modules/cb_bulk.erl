@@ -50,7 +50,7 @@ allowed_methods() -> [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %%
 %% For example:
 %%

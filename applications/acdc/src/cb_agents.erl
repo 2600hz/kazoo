@@ -88,7 +88,7 @@ allowed_methods(_UserId, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %% So
 %% ```
 %%    /agents => []

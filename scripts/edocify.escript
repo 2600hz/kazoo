@@ -269,7 +269,7 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
         <<"%% @end">> ->
             Formatted ++ [Line] ++ [L || {_, L} <- Lines];
         <<"%% So ", Rest/binary>> ->
-            do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [<<"%%">>, <<"%% For example:">>, <<"%%">>, <<"%% ```">>, <<"%%    ", Rest/binary>>]);
+            do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [<<"%%">>, <<"%% For example:">>, <<"%%">>, <<"%% ```">>, <<"%%    ", Rest/binary, ".">>]);
         Other ->
             case Lines of
                 [{_, <<"%% @end">>}|_] ->

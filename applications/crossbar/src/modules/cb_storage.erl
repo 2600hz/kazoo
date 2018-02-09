@@ -134,7 +134,7 @@ allowed_methods(?PLANS_TOKEN, _StoragePlanId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %%
 %% For example:
 %%

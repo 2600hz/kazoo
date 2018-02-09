@@ -76,7 +76,7 @@ allowed_methods(_AppId, ?SCREENSHOT, _AppScreenshotIndex) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %% '''
 %% @end
 %%--------------------------------------------------------------------

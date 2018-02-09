@@ -73,7 +73,7 @@ allowed_methods(_CCCPId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %%
 %% ```
 %%    /cccps => []

@@ -118,7 +118,7 @@ allowed_methods(_TaskId, ?PATH_OUTPUT) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %%
 %% For example:
 %%

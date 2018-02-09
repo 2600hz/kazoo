@@ -178,7 +178,7 @@ allowed_methods(_Module, _Function, _Args) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Does the path point to a valid resource
+%% Does the path point to a valid resource.
 %%
 %% For example:
 %%
