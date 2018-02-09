@@ -160,9 +160,10 @@ hotload_app(App) ->
     hotload_app(kz_term:to_atom(App, 'true')).
 
 -spec gc_all() -> 'ok'.
--spec gc_pids([pid(),...]) -> 'ok'.
 gc_all() ->
     gc_pids(processes()).
+
+-spec gc_pids([pid(),...]) -> 'ok'.
 gc_pids(Ps) ->
     lists:foreach(fun (P) -> erlang:garbage_collect(P), timer:sleep(500) end, Ps).
 

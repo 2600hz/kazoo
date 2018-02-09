@@ -1,17 +1,22 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
+%%% @doc Trie LRU.
+%%%
+%%% ```
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix
 %%% (1127494 * 8) div 78009 = 115
+%%% '''
 %%%
 %%% Processing:
+%%%
+%%% ```
 %%% timer:tc(hon_trie, match_did, [<<"53341341354">>]).
 %%%  {132,...}
 %%% timer:tc(hon_util, candidate_rates, [<<"53341341354">>]).
 %%%  {16989,...}
+%%% '''
 %%%
-%%% Progressively load rates instead of seeding from the database
-%%%
+%%% Progressively load rates instead of seeding from the database.
 %%%
 %%% @author James Aimonetti
 %%% @end

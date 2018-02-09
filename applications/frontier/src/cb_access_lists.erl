@@ -52,9 +52,13 @@ allowed_methods() ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Does the path point to a valid resource.
-%% So /access_lists => []
+%%
+%% For example:
+%% ```
+%%    /access_lists => []
 %%    /access_lists/foo => [<<"foo">>]
 %%    /access_lists/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

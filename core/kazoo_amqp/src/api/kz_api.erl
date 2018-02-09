@@ -1,14 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2010-2016, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
-%%% Kazoo API Helpers
+%%% Kazoo API Helpers.
 %%%
 %%% Most API functions take a proplist, filter it against required headers
 %%% and optional headers, and return either the JSON string if all
 %%% required headers (default AND API-call-specific) are present, or an
 %%% error if some headers are missing.
 %%%
-%%% To only check the validity, use the api call's corresponding *_v/1 function.
+%%% To only check the validity, use the API call's corresponding *_v/1 function.
 %%% This will parse the proplist and return a boolean()if the proplist is valid
 %%% for creating a JSON message.
 %%%
