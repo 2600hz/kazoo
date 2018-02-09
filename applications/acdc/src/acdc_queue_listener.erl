@@ -100,7 +100,8 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @doc Starts the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(WorkerSup, MgrPid, AccountId, QueueId) ->

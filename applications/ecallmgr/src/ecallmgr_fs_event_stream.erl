@@ -40,7 +40,8 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @doc Starts the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(atom(), bindings(), bindings()) -> kz_types:startlink_ret().
 start_link(Node, Bindings, Subclasses) ->

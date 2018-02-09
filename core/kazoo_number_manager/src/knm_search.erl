@@ -73,7 +73,8 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @doc Starts the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 -ifdef(TEST).

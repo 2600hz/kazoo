@@ -160,7 +160,8 @@ send_reply(Token, JObj) ->
     kz_amqp_worker:cast(Payload, fun(P) -> kapi_pusher:publish_targeted_push_resp(Queue, P) end).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @doc Starts the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->

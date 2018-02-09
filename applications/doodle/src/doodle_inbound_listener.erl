@@ -53,7 +53,8 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @doc Starts the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(amqp_listener_connection()) -> kz_types:startlink_ret().
 start_link(#amqp_listener_connection{broker=Broker

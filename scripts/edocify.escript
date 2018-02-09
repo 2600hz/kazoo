@@ -26,6 +26,9 @@
 %% regex for escaping codes in comment for `resource_exists' function crossbar modules.
 -define(CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
 
+%% regex for finding start_link comments with no @end
+-define(START_LINK_COMMENT_WITH_NO_END, "ag '%% @doc Starts the server$\n%%*\s*-+' applications/ core/").
+
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
     check_ag_available(),
@@ -38,6 +41,7 @@ main(_) ->
           ,{?COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
           ,{?SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
+          ,{?START_LINK_COMMENT_WITH_NO_END, "start_link comments with no @end", fun start_link_comment_with_no_end/1}
           ],
     edocify(Run, 0).
 
@@ -64,8 +68,9 @@ run_ag(Cmd) ->
     end.
 
 edocify([], 0) ->
-    io:format("~nEDocified! 🎉~n");
+    io:format("~nAlready EDocified! 🎉~n");
 edocify([], Ret) ->
+    io:format("~nWe had some EDocification! 🤔~n"),
     halt(Ret);
 edocify([{Cmd, Desc, Fun}|Rest], Ret) ->
     io:format(":: ~s ", [Desc]),
@@ -255,7 +260,6 @@ cb_resource_exists_comments(Result) ->
 fix_cb_resource_exists_comment(File, Positions) ->
     io:format("."),
     Lines = read_lines(File, true),
-    % io:format("~n~p~n", [do_cb_resource_exists_comment(Lines, Positions, [])]),
     save_lines(File, do_cb_resource_exists_comment(Lines, Positions, [])).
 
 do_cb_resource_exists_comment([], _, Formatted) ->
@@ -280,6 +284,34 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
                 _ ->
                     do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [Line])
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Fix comment block before `start_link` which doesn't end properly with
+%% with `@end' tag.
+%% @end
+%%--------------------------------------------------------------------
+start_link_comment_with_no_end(Result) ->
+    Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
+    _ = maps:map(fun start_link_comment_with_no_end/2, Positions),
+    io:format(" done.~n").
+
+start_link_comment_with_no_end(File, Positions) ->
+    io:format("."),
+    Lines = read_lines(File, true),
+    save_lines(File, do_start_link_comment_with_no_end(Lines, Positions, [])).
+
+do_start_link_comment_with_no_end([], _, Formatted) ->
+    Formatted;
+do_start_link_comment_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
+    case lists:member(LN, Positions)
+        andalso Line
+    of
+        false ->
+            do_start_link_comment_with_no_end(Lines, Positions, Formatted ++ [Line]);
+        <<"%% @doc Starts the server">> ->
+            Formatted ++ [<<Line/binary, ".">>, <<"%% @end">>] ++ [L || {_, L} <- Lines]
     end.
 
 %%%===================================================================

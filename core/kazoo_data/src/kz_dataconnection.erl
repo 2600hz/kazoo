@@ -27,7 +27,8 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @doc Starts the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(data_connection()) -> kz_types:startlink_ret().
 start_link(#data_connection{}=Connection) ->
