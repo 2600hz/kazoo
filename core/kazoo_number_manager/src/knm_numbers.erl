@@ -1,8 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
-%%%   Bulk operations on numbers.
-%%%   Note: functions should not `throw`, instead return `ret()`.
+%%% Bulk operations on numbers.
+%%% Note: functions should not throw, instead return {@link ret()}.
 %%%
 %%% @author Peter Defebvre
 %%% @author Pierre Fenoll
@@ -113,7 +113,7 @@ num(N) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Either `nums()' xor `oks()'.
+%% Either `{@link nums()}' xor `{@link oks()}'.
 %% @end
 %%--------------------------------------------------------------------
 -spec todo(t()) -> nums() | oks().
@@ -121,7 +121,7 @@ todo(#{todo := ToDo}) -> ToDo.
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Set of numbers' assigned_to fields.
+%% Set of numbers' `assigned_to' fields.
 %% @end
 %%--------------------------------------------------------------------
 -spec assigned_to(t()) -> kz_term:api_ne_binary().
@@ -139,7 +139,7 @@ assigned_to(#{todo := Ns}) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Set of numbers' prev_assigned_to fields.
+%% Set of numbers' `prev_assigned_to' fields.
 %% @end
 %%--------------------------------------------------------------------
 -spec prev_assigned_to(t()) -> kz_term:api_ne_binary().
@@ -288,8 +288,8 @@ from_jobjs(JObjs) ->
 %% @doc
 %% Attempts to create new numbers in DB or modify existing ones.
 %% Note: `assign_to' number option MUST be set.
-%% Note: creating numbers with `ported_in` option set to true will
-%%   attempt to create them with state in_service.
+%% Note: creating numbers with `ported_in' option set to true will
+%%   attempt to create them with state `in_service'.
 %% @end
 %%--------------------------------------------------------------------
 -spec create(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
@@ -419,7 +419,7 @@ delete(Nums, Options) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Note: option 'assign_to' needs to be set.
+%% Note: option `assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
@@ -495,7 +495,7 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% List an account's phone numbers & statuses.
+%% List an account's phone numbers and statuses.
 %% Does not go through sub accounts.
 %% @end
 %%--------------------------------------------------------------------
@@ -547,13 +547,15 @@ new(Options, ToDos, KOs, Reason) ->
      ,charges => []
      }.
 
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Apply something to "todo" if not empty,
-%% if empty use "ok" as the new "todo".
-%% If "ok" is empty, return.
+%% Apply something to `todo' if not empty
+%% If empty use `ok' as the new `todo'.
+%% If `ok' is empty, return.
 %% Exported ONLY for inside-app use.
 %% @end
+%%--------------------------------------------------------------------
 -spec pipe(t(), appliers()) -> t();
           (t_pn(), appliers(t_pn())) -> t_pn().
 pipe(T, []) -> T;
@@ -569,7 +571,7 @@ pipe(T, [F|Fs]) ->
 
 %% @private
 %% @doc
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for {@link knm_number_states} use.
 %% @end
 -spec do(applier(), t()) -> t().
 do(_, T=#{todo := [], ok := []}) -> T;
@@ -583,7 +585,7 @@ do(F, T) ->
 
 %% @private
 %% @doc
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for `knm_number_states' use.
 %% @end
 -spec do_in_wrap(applier(t_pn()), t()) -> t().
 do_in_wrap(_, T=#{todo := [], ok := []}) -> T;
@@ -596,7 +598,7 @@ do_in_wrap(F, T0=#{todo := Ns}) ->
     rewrap_phone_numbers(NumsMap, T1).
 
 %% @private
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for `knm_number_states' use.
 -spec merge_okkos(t(), t()) -> t().
 merge_okkos(#{ok := OKa, ko := KOa}
            ,#{ok := OKb, ko := KOb} = B) ->
@@ -605,7 +607,7 @@ merge_okkos(#{ok := OKa, ko := KOa}
       }.
 
 %% @private
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for `knm_number_states' use.
 -spec merge_okkos([t()]) -> t().
 merge_okkos([T]) -> T;
 merge_okkos([T0|Ts]) ->

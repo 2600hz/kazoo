@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016-2018, 2600Hz INC
 %%% @doc
-%%% Utilities for tasks validation & stuff.
+%%% Utilities for tasks validation and stuff.
 %%%
 %%% @author Pierre Fenoll
 %%% @end

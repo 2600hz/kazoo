@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
-%%% Diversion SIP header manipulation
+%%% Diversion SIP header manipulation.
 %%%
 %%% @author James Aimonetti
 %%% @end
@@ -261,9 +261,11 @@ parse_param_value(Param, [Literal | Literals]) ->
 parse_param_value(Param, []) ->
     parse_token_param(Param).
 
--spec parse_token_param(kz_term:ne_binary(), iolist()) -> binary().
+-spec parse_token_param(kz_term:ne_binary()) -> binary().
 parse_token_param(Token) ->
     parse_token_param(Token, []).
+
+-spec parse_token_param(kz_term:ne_binary(), iolist()) -> binary().
 parse_token_param(<<$\s, _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
 parse_token_param(<<$\n, _/binary>>, Acc) ->

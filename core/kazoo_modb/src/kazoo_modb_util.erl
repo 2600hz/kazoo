@@ -64,15 +64,21 @@ split_account_mod(?MATCH_MODB_SUFFIX_ENCODED(Account,Year,Month)) ->
     ,kz_term:to_integer(Month)
     }.
 
-%% @doc
-%% Equivalent to `modb_id/3`
+%% @equiv modb_id(Year, Month, kz_binary:rand_hex(16))
 -spec modb_id() -> kz_term:ne_binary().
 modb_id() ->
     {Year, Month, _} = erlang:date(),
     modb_id(Year, Month, kz_binary:rand_hex(16)).
 
+%%--------------------------------------------------------------------
 %% @doc
-%% Equivalent to `modb_id/3`
+%% Generates MODB prefix document ID.
+%% If argument is a timestamp, generates will convert it to date time and
+%% then calls `modb_id(Year, Month, kz_binary:rand_hex(16))'.
+%%
+%% If the argument is a binary will generate an ID for current month.
+%% @end
+%%--------------------------------------------------------------------
 -spec modb_id(non_neg_integer() | kz_term:ne_binary()) -> kz_term:ne_binary().
 modb_id(Timestamp) when is_integer(Timestamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
@@ -81,14 +87,16 @@ modb_id(Id) when is_binary(Id) ->
     {Year, Month, _} = erlang:date(),
     modb_id(Year, Month, Id).
 
-%% @doc
-%% Equivalent to `modb_id/3`
+%% @equiv modb_id(Year, Month, kz_binary:rand_hex(16))
 -spec modb_id(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) -> kz_term:ne_binary().
 modb_id(Year, Month) ->
     modb_id(Year, Month, kz_binary:rand_hex(16)).
 
+%%--------------------------------------------------------------------
 %% @doc
 %% Format a document id prefix with year and month
+%% @end
+%%--------------------------------------------------------------------
 -spec modb_id(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month(), kz_term:ne_binary()) -> kz_term:ne_binary().
 modb_id(Year, Month, Id) ->
     <<(kz_term:to_binary(Year))/binary

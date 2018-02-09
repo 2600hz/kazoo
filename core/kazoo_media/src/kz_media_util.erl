@@ -52,10 +52,10 @@
 %%--------------------------------------------------------------------
 %% @doc
 %% Normalize audio file to the system default or specified sample rate.
-%% Acceptes media file content binary as input.
+%% Accepts media file content binary as input.
 %%
 %% By default it returns result as binary, if you want file path to the
-%%  normalized file only, pass the {'output', 'file'} as option.
+%%  normalized file only, pass the `{output, file}' as option.
 %% @end
 %%--------------------------------------------------------------------
 -type normalized_media() :: {'ok', binary()} |

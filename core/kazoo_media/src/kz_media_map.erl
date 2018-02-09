@@ -62,7 +62,8 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server.
+%% @doc
+%% Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -128,8 +129,8 @@ handle_media_doc_change(JObj, _Change) ->
 %% @private
 %% @doc
 %% Parse the kz_media_map prompt ID from media doc ID.
-%% Keeping old format separator "%2F" for backwards compatibility,
-%% i.e. deleting prompts carried forward from Kazoo < 4.0
+%% Keeping old format separator `%2F' for backwards compatibility,
+%% i.e. deleting prompts carried forward from Kazoo lower than 4.0.
 %% @end
 %%--------------------------------------------------------------------
 -spec extract_prompt_id(kz_term:ne_binary()) -> kz_term:ne_binary().
