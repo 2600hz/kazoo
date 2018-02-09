@@ -109,13 +109,8 @@ action_failure_test_() ->
     Doc = kz_json:from_list([{?FLOW, kz_json:new()}]),
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
 
-    [?_assertEqual(2, length(Errors))
+    [?_assertEqual(1, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
-                    ,'missing_required_property'
-                    ,<<"data">>
-                    ,[]
-                    }
-                   ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
                     ,<<"module">>
                     ,[]
@@ -135,13 +130,8 @@ child_action_failure_test_() ->
 
     Doc = kz_json:from_list([{?FLOW, Child}]),
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
-    [?_assertEqual(4, length(Errors))
+    [?_assertEqual(3, length(Errors))
     ,?_assertMatch([{'data_invalid', _
-                    ,'missing_required_property'
-                    ,<<"data">>
-                    ,[<<"children">>, <<"ca1">>]
-                    }
-                   ,{'data_invalid', _
                     ,'missing_required_property'
                     ,<<"module">>
                     ,[<<"children">>, <<"ca1">>]
@@ -172,13 +162,13 @@ child_action_failure_data_test_() ->
     Doc = kz_json:from_list([{?FLOW, Child}]),
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
 
-    [?_assertEqual(5, length(Errors))
+    [?_assertEqual(4, length(Errors))
     ,?_assertMatch([_, _, {'data_invalid', _SchemaJObj
                           ,'missing_required_property'
-                          ,<<"data">>
-                          ,[<<"children">>, <<"ca2">>]
+                          ,<<"key1">>
+                          ,[<<"data">>]
                           }
-                   , _, _]
+                   , _]
                   ,Errors
                   )
     ].
@@ -200,21 +190,11 @@ multiple_child_action_failures_test_() ->
     Doc = kz_json:from_list([{?FLOW, Child}]),
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
 
-    [?_assertEqual(4, length(Errors))
+    [?_assertEqual(2, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
-                    ,'missing_required_property'
-                    ,<<"data">>
-                    ,[<<"children">>, <<"mp1">>]
-                    }
-                   ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
                     ,<<"module">>
                     ,[<<"children">>, <<"mp1">>]
-                    }
-                   ,{'data_invalid', _SchemaJObj
-                    ,'missing_required_property'
-                    ,<<"data">>
-                    ,[<<"children">>, <<"mp2">>]
                     }
                    ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
@@ -225,3 +205,4 @@ multiple_child_action_failures_test_() ->
                   ,Errors
                   )
     ].
+
