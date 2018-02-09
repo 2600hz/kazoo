@@ -131,7 +131,7 @@ flush() ->
 
 -spec send(kz_global:name(), term()) -> pid().
 send(Name, Msg) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> exit({'badarg', {Name, Msg}});
         Global ->
             kz_global_proxy:send(kz_global:pid(Global), Msg),
@@ -144,13 +144,13 @@ whereis_name(Name) ->
 
 -spec where_is(kz_global:name()) -> pid() | 'undefined'.
 where_is(Name) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> 'undefined';
         Global -> kz_global:pid(Global)
     end.
 
--spec where(kz_global:name()) -> kz_global:global() | 'undefined'.
-where(Name) ->
+-spec lookup_name(kz_global:name()) -> kz_global:global() | 'undefined'.
+lookup_name(Name) ->
     case ets:lookup(?TAB_NAME, Name) of
         [Global] -> Global;
         [] -> 'undefined'
@@ -158,7 +158,7 @@ where(Name) ->
 
 -spec register_name(kz_global:name(), pid()) -> 'yes' | 'no'.
 register_name(Name, Pid) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' ->
             gen_listener:call(?SERVER, {'register', Name, Pid}, ?MILLISECONDS_IN_DAY);
         _Pid -> 'no'
@@ -177,7 +177,7 @@ stats() ->
 
 -spec unregister_name(kz_global:name()) -> 'ok'.
 unregister_name(Name) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> 'ok';
         _Global ->
             gen_listener:call(?SERVER, {'unregister', Name}, ?MILLISECONDS_IN_DAY)
@@ -434,7 +434,7 @@ maybe_add_zone(Zone, #state{zones=Zones}) ->
 -spec amqp_register(kz_global:global(), term()) -> 'ok'.
 amqp_register(Global, From) ->
     Name = kz_global:name(Global),
-    case where(Name) of
+    case lookup_name(Name) of
         Global ->
             case do_amqp_register(Global) of
                 'yes' ->
@@ -519,7 +519,7 @@ amqp_register_check_pending(JObj, Global) ->
 
 -spec register_local(kz_global:global()) -> 'yes' | 'no'.
 register_local(Global) ->
-    case where(kz_global:name(Global)) of
+    case lookup_name(kz_global:name(Global)) of
         Global ->
             Updated = kz_global:register_local(?TAB_NAME, Global),
             advertise_register(Updated),
@@ -540,7 +540,7 @@ advertise_register(Global) ->
 
 -spec register_remote(kz_global:global(), term()) -> 'ok'.
 register_remote(Global, From) ->
-    register_remote(where(kz_global:name(Global)), Global, From).
+    register_remote(lookup_name(kz_global:name(Global)), Global, From).
 
 -spec register_remote(kz_global:global() | 'undefined', kz_global:global(), term()) -> 'ok'.
 register_remote('undefined', Global, From) ->
@@ -577,7 +577,7 @@ maybe_register_remote_reply(From, Pid) ->
 
 -spec amqp_unregister(kz_global:name()) -> 'ok'.
 amqp_unregister(Name) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> 'ok';
         Global ->
             (kz_global:is_local(Global)
@@ -600,7 +600,7 @@ do_amqp_unregister(Global, Reason) ->
 
 -spec maybe_amqp_query(kz_global:name(), term()) -> 'ok'.
 maybe_amqp_query(Name, From) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> amqp_query(Name, From);
         Global -> gen_listener:reply(From, kz_global:pid(Global))
     end.
@@ -632,7 +632,7 @@ amqp_query(Name, From) ->
 
 -spec handle_amqp_call(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_call(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global ->
             maybe_handle_local_call(JObj
@@ -670,7 +670,7 @@ amqp_reply(JObj, Result) ->
 
 -spec handle_amqp_send(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_send(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global ->
             maybe_handle_local_send(JObj
@@ -688,7 +688,7 @@ maybe_handle_local_send(JObj, Global, 'true', 'true') ->
 
 -spec handle_amqp_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_query(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> amqp_query_empty_reply(JObj);
         Global ->
             maybe_handle_local_query(JObj
@@ -736,7 +736,7 @@ handle_amqp_register(JObj, _Props) ->
 
 -spec handle_amqp_register_state(kz_json:object(), kapi_globals:state()) -> 'ok'.
 handle_amqp_register_state(JObj, 'pending') ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> amqp_register_reply(JObj);
         Global ->
             maybe_handle_local_register(JObj, Global
@@ -784,7 +784,7 @@ amqp_register_reply(JObj, Global) ->
 
 -spec handle_amqp_unregister(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_unregister(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global -> maybe_unregister_remote(Global
                                          ,kapi_globals:reason(JObj)
