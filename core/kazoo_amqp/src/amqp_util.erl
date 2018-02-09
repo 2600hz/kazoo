@@ -1235,8 +1235,9 @@ flow_control_reply(Active) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec access_request() -> #'access.request'{}.
--spec access_request(kz_term:proplist()) -> #'access.request'{}.
 access_request() -> access_request([]).
+
+-spec access_request(kz_term:proplist()) -> #'access.request'{}.
 access_request(Options) ->
     #'access.request'{realm = ?P_GET('realm', Options, <<"/data">>)
                      ,exclusive = ?P_GET('exclusive', Options, 'false')
