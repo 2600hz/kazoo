@@ -10,21 +10,33 @@
 %%%
 %%% Options:
 %%% <dl>
-%%%   <dt>`{bindings, [{atom(), kz_term:proplist()}, ...]}`</dt><dd>the type of bindings, with optional properties to pass along.</dd>
-%%%   <dt>`{responders, [{Responder, [{<<"event-category">>, <<"event-name">>}, ...]}]`</dt>
-%%%      <dd><dl>
-%%%        <dt>`Responder`</dt>
-%%%          <dd>The module name to call `handle_req/2' on for those category/name combos. `Responder' can also be `{module, function}'
-%%%          ,to call `module:function/2' instead of `handle_req/2'.
-%%%          Responder can optionally define a `function/3' (or `handle_req/3') that will be called with the 3rd argument
-%%%          consisting of the delivery options including exchange and routing key.</dd>
-%%%      </dl></dd>
-%%%   <dt>`{queue_name, <<"some name">>}'</dt><dd>Optional, if you want a named queue.</dd>
-%%%   <dt>`{queue_options, [{key, value}]}'</dt><dd>Optional, if the queue requires different parameters.</dd>
-%%%   <dt>`{consume_options, [{key, value}]}'</dt><dd>Optional, if the consumption requires special parameters.</dd>
-%%%   <dt>`{basic_qos, integer()}'</dt><dd>Optional, if QoS is being set on this queue.</dd>
-%%%   <dt>`{broker | broker_tag, kz_term:ne_binary()}'</dt><dd>Optional, for binding to specific brokers.</dd>
-%%%   <dt>`{declare_exchanges, declare_exchanges()}'</dt><dd>Optional, for declaring dynamic exchanges used only in this connection.</dd>
+%%%   <dt>`{bindings, [{atom(), kz_term:proplist()}, ...]}'</dt>
+%%%   <dd>The type of bindings, with optional properties to pass along.</dd>
+%%%
+%%%   <dt>`{responders, [{Responder, [{<<"event-category">>, <<"event-name">>}, ...]}]'</dt>
+%%%   <dd>`Responder' is the module name to call `handle_req/2' on for those category/name combos. `Responder' can also be `{module, function}',
+%%%       to call `module:function/2' instead of `handle_req/2'.
+%%%       `Responder' can optionally define a `function/3' (or `handle_req/3') that will be called with the 3rd argument
+%%%       consisting of the delivery options including exchange and routing key.
+%%%   </dd>
+%%%
+%%%   <dt>`{queue_name, <<"some name">>}'</dt>
+%%%   <dd>Optional, if you want a named queue.</dd>
+%%%
+%%%   <dt>`{queue_options, [{key, value}]}'</dt>
+%%%   <dd>Optional, if the queue requires different parameters.</dd>
+%%%
+%%%   <dt>`{consume_options, [{key, value}]}'</dt>
+%%%   <dd>Optional, if the consumption requires special parameters.</dd>
+%%%
+%%%   <dt>`{basic_qos, integer()}'</dt>
+%%%   <dd>Optional, if QoS is being set on this queue.</dd>
+%%%
+%%%   <dt>`{broker | broker_tag, kz_term:ne_binary()}'</dt>
+%%%   <dd>Optional, for binding to specific brokers.</dd>
+%%%
+%%%   <dt>`{declare_exchanges, declare_exchanges()}'</dt>
+%%%   <dd>Optional, for declaring dynamic exchanges used only in this connection.</dd>
 %%% </dl>
 %%%
 %%% @author James Aimonetti
