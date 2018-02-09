@@ -262,7 +262,8 @@ handle_cast({'update_node', Node}, #state{node=OldNode}=State) ->
 handle_cast({'dialplan', JObj}, State) ->
     {'noreply', handle_dialplan(JObj, State)};
 handle_cast({'event_execute_complete', CallId, AppName, JObj}
-           ,#state{call_id=CallId}=State) ->
+           ,#state{call_id=CallId}=State
+           ) ->
     {'noreply', handle_execute_complete(AppName, JObj, State)};
 handle_cast({'event_execute_complete', _, _, _}, State) ->
     {'noreply', State};
@@ -587,7 +588,6 @@ handle_execute_complete(<<"playback">> = AppName, JObj, #state{current_app=AppNa
 handle_execute_complete(<<"play">> = AppName, JObj, #state{current_app=AppName}=State) ->
     handle_playback_complete(AppName, JObj, State);
 handle_execute_complete(AppName, _, #state{current_app=AppName}=State) ->
-
     lager:debug("~s execute complete, advancing control queue", [AppName]),
     forward_queue(State);
 handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
@@ -619,13 +619,13 @@ handle_playback_looping(#state{current_cmd=AppCmd}=State) ->
     of
         'true' ->
             lager:debug("media is playing back endlessly, looping"),
-            execute_control_request(AppCmd, State),
+            _ = execute_control_request(AppCmd, State),
             State;
         Count when is_integer(Count), Count > 1 ->
-            lager:debug("media is looped (~p), looping", [Count]),
+            lager:debug("media is looped (~p left), looping", [Count-1]),
             UpdatedCmd = kz_json:set_value(<<"Loop-Count">>, Count-1, AppCmd),
             execute_control_request(UpdatedCmd, State#state{current_cmd=UpdatedCmd}),
-            State;
+            State#state{current_cmd=UpdatedCmd};
         _Count ->
             lager:debug("media finished playing, advancing control queue"),
             forward_queue(State)
