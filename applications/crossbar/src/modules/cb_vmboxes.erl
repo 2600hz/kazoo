@@ -75,7 +75,7 @@ init() ->
 %%--------------------------------------------------------------------
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns. For example `/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept GET and PUT.
 %%
 %% Failure here returns 405.
 %% @end
@@ -314,7 +314,6 @@ load_or_upload(DocId, MediaId, Context, ?HTTP_GET) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
@@ -450,8 +449,8 @@ add_pvt_auth_funs(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc disallow vmbox messages array changing
-%% also check if vmbox has still message array
+%% @doc disallow vmbox messages array changing.
+%% Also check if vmbox has still message array
 %% and inform client to do migrate their vmbox
 %% @end
 %%--------------------------------------------------------------------
@@ -519,9 +518,9 @@ get_folder_filter(Context, Default) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Filter messages(JObjs) based on Folder or Ids and
-%% apply query strings filters on them as well
+%% apply query strings filters on them as well.
 %%
-%% Note: Filter can be <<"all">> which return all messages.
+%% Note: Filter can be `<<"all">>' which return all messages.
 %% @end
 %%--------------------------------------------------------------------
 -type filter_options() :: kvm_message:vm_folder() | kz_term:ne_binaries().
@@ -847,12 +846,12 @@ message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% For Backward compatibility with voicemail box `messages` array, set
-%% `max_range` to retention seconds to get all messages which are in
+%% For Backward compatibility with voicemail box `messages' array, set
+%% `max_range' to retention seconds to get all messages which are in
 %% retention duration range *only* if request doesn't have
-%% `created_from` in the query string.
+%% `created_from' in the query string.
 %%
-%% If `created_from` is set, use default Crossbar max range.
+%% If `created_from' is set, use default Crossbar max range.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_max_range(cb_context:context()) -> {kz_time:api_seconds(), kz_time:gregorian_seconds()}.

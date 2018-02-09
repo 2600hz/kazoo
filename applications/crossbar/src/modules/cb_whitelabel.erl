@@ -807,13 +807,6 @@ on_successful_validation(Context, WhitelabelId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load the binary attachment of a whitelabel doc
-%% @end
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Update the binary attachment of a whitelabel doc
 %% @end
 %%--------------------------------------------------------------------

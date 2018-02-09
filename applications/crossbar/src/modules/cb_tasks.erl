@@ -143,8 +143,8 @@ resource_exists(_TaskId, ?PATH_OUTPUT) -> 'true'.
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
-%% Content-Type header
-%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Content-Type header.
+%% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 
@@ -166,8 +166,8 @@ cta(Context, _) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be using to respond (matched against
-%% client's Accept header)
-%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% client's Accept header).
+%% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 

@@ -216,7 +216,7 @@ content_types_accepted_for_upload(Context, _Verb) ->
 %% @doc
 %% If you provide alternative languages, return a list of languages and optional
 %% quality value:
-%% [<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]
+%% `[<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]'
 %% @end
 %%--------------------------------------------------------------------
 
@@ -236,7 +236,7 @@ languages_provided(Context, _Id, _Path) ->
 %% @private
 %% @doc
 %% This function determines if the parameters and content are correct
-%% for this request
+%% for this request.
 %%
 %% Failure here returns 400.
 %% @end
@@ -653,7 +653,6 @@ normalize_language_results(JObj, Acc) ->
 %% Load prompt listing
 %% @end
 %%--------------------------------------------------------------------
-
 -spec load_available_prompts(cb_context:context()) ->
                                     cb_context:context().
 load_available_prompts(Context) ->
@@ -770,7 +769,6 @@ fix_prompt_start_keys_fold(Key, JObj) ->
 %% Load a media document from the database
 %% @end
 %%--------------------------------------------------------------------
-
 -spec load_media_meta(cb_context:context(), kz_term:ne_binary()) ->
                              cb_context:context().
 load_media_meta(Context, MediaId) ->
@@ -898,7 +896,6 @@ load_media_binary(Context, MediaId) ->
 %% Update the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec update_media_binary(cb_context:context(), path_token()) ->
                                  cb_context:context().
 update_media_binary(Context, MediaId) ->

@@ -1039,10 +1039,10 @@ map_keymap(_, _, ApiRangeKey) -> ApiRangeKey.
 %%
 %% Possible maps type:
 %% <dl>
-%%   <dt>{@type kz_term_ne_binary()}</dt><dd>to construct keys like `[<<"account">>, Timestamp]`.</dd>
-%%   <dt>{@type integer()}</dt><dd>to construct keys like `[1234, Timestamp]`.</dd>
-%%   <dt>{@type list()}</dt><dd>to construct keys like `[<<"en">>, <<"us">>, Timestamp]`.</dd>
-%%   <dt>{@type function())}</dt><dd>To customize your own key using a function with arity 1.</dd>
+%%   <dt>{@type kz_term_ne_binary()}</dt><dd>to construct keys like `[<<"account">>, Timestamp]'.</dd>
+%%   <dt>{@type integer()}</dt><dd>to construct keys like `[1234, Timestamp]'.</dd>
+%%   <dt>{@type list()}</dt><dd>to construct keys like `[<<"en">>, <<"us">>, Timestamp]'.</dd>
+%%   <dt>{@type function()}</dt><dd>To customize your own key using a function with arity 1.</dd>
 %% </dl>
 %% @end
 %%--------------------------------------------------------------------

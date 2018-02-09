@@ -78,8 +78,8 @@ resource_exists(_RecordingId) -> 'true'.
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be using to respond (matched against
-%% client's Accept header)
-%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% client's Accept header).
+%% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
@@ -102,7 +102,6 @@ content_types_provided_for_download(Context, _Verb) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
-
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     recording_summary(Context).
@@ -191,7 +190,6 @@ do_load_recording_binary_attachment(Context, DocId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec set_resp_headers(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 set_resp_headers(Context, AName) ->
     Headers = #{<<"content-disposition">> => get_disposition(AName, Context)},

@@ -173,8 +173,8 @@ resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be using to respond (matched against
-%% client's accept header)
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% client's accept header).
+%% Of the form `{atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 -spec acceptable_content_types() -> kz_term:proplist().
@@ -203,8 +203,8 @@ content_types_provided_get(Context, Id, AttachmentId) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
-%% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Content-Type header.
+%% Of the form `{atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 
@@ -466,7 +466,6 @@ validate_load_summary(Context, <<_/binary>> = Type) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec validate_port_request(cb_context:context(), http_method()) ->
                                    cb_context:context().
 validate_port_request(Context, ?HTTP_GET) ->
@@ -812,7 +811,7 @@ prepare_timeline(Context, Doc) ->
     NewDocs.
 
 %% @private
-%% calls by validate(Context, Id, ?PATH_TOKEN_TIMELINE)
+%% calls by `validate(Context, Id, ?PATH_TOKEN_TIMELINE)'
 -spec maybe_prepare_timeline(cb_context:context()) -> cb_context:context().
 maybe_prepare_timeline(Context) ->
     case success =:= cb_context:resp_status(Context) of
@@ -879,7 +878,6 @@ summary_attachments(Context, Id) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec on_successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
     on_successful_validation(Context, 'undefined', 'true');
@@ -921,7 +919,6 @@ on_successful_validation(Context, _Id, 'false') ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec can_update_port_request(cb_context:context()) -> boolean().
 can_update_port_request(Context) ->
     lager:debug("port request: ~p", [cb_context:doc(Context)]),
@@ -956,7 +953,6 @@ successful_validation(Context, _Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
                                       cb_context:context().
 check_number_portability(PortId, Number, Context) ->
@@ -1100,7 +1096,6 @@ maybe_move_state(Context, PortState) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec generate_loa(cb_context:context()) ->
                           cb_context:context().
 generate_loa(Context) ->

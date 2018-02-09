@@ -86,8 +86,8 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
-%% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Content-Type header.
+%% Of the form `{atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
@@ -242,7 +242,6 @@ pdf_props(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec pdf_users(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> any().
 pdf_users(AccountId, SortBy, Users) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),

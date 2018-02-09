@@ -123,8 +123,8 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be using to respond (matched against
-%% client's accept header)
-%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% client's accept header).
+%% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
@@ -134,8 +134,8 @@ content_types_provided(Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
-%% Content-Type header
-%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Content-Type header.
+%% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
@@ -145,8 +145,9 @@ content_types_accepted(Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% If you provide alternative languages, return a list of languages and optional
-%% quality value:
-%% [<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]
+%% quality value.
+%%
+%% e.g.: `[<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]'
 %% @end
 %%--------------------------------------------------------------------
 -spec languages_provided(cb_context:context()) -> cb_context:context().
@@ -156,8 +157,8 @@ languages_provided(Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% If you provide alternative charsets, return a list of charsets and optional
-%% quality value:
-%% [<<"iso-8859-5">>, <<"unicode-1-1;q=0.8">>]
+%% quality value.
+%%  e.g. `[<<"iso-8859-5">>, <<"unicode-1-1;q=0.8">>]'
 %% @end
 %%--------------------------------------------------------------------
 -spec charsets_provided(cb_context:context()) -> cb_context:context().
@@ -167,8 +168,8 @@ charsets_provided(Context) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% If you provide alternative encodings, return a list of encodings and optional
-%% quality value:
-%% [<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]
+%% quality value.
+%% e.g. : `[<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]'
 %% @end
 %%--------------------------------------------------------------------
 -spec encodings_provided(cb_context:context()) -> cb_context:context().
