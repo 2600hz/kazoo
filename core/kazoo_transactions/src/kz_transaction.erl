@@ -133,10 +133,6 @@ version(#kz_transaction{pvt_vsn = Version}) -> Version.
 -spec order_id(transaction()) -> kz_term:api_ne_binary().
 order_id(#kz_transaction{order_id = OrderId}) -> OrderId.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -type new() :: #{account_id => kz_term:ne_binary()
                 ,account_db => kz_term:ne_binary()
                 ,amount => units()
@@ -149,6 +145,10 @@ order_id(#kz_transaction{order_id = OrderId}) -> OrderId.
                 ,modified => kz_time:gregorian_seconds()
                 }.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec new(new()) -> transaction().
 new(#{account_id := AccountId
      ,account_db := AccountDb
@@ -186,7 +186,7 @@ new(Ledger, Amount, Type) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Create transaction record of type credit (with Amount & Reason)
+%% Create transaction record of type credit (with Amount and Reason).
 %% @end
 %%--------------------------------------------------------------------
 -spec credit(kz_term:ne_binary(), units()) -> transaction().
@@ -195,7 +195,7 @@ credit(Ledger, Amount) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Create transaction record of type debit (with Amount & Reason)
+%% Create transaction record of type debit (with Amount and Reason).
 %% @end
 %%--------------------------------------------------------------------
 -spec debit(kz_term:ne_binary(), units()) -> transaction().

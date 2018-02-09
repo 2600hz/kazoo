@@ -15,7 +15,7 @@
 -export([enable_top_up/0]).
 -export([top_up_status/0, top_up_status/1]).
 
--include("include/kazoo_transactions.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 %%--------------------------------------------------------------------
 %% @doc
