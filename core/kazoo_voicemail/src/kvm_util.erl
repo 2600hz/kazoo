@@ -1,11 +1,10 @@
-%%%-------------------------------------------------------------------
+%%--------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Voice mailbox utility functions
+%%% @doc Voice mailbox utility functions.
 %%%
 %%% @author Hesaam Farhang
 %%% @end
-%%%-------------------------------------------------------------------
+%%--------------------------------------------------------------------
 -module(kvm_util).
 
 -export([get_db/1, get_db/2
@@ -27,14 +26,19 @@
 -include("kz_voicemail.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc Generate database name based on DocId
+%% @doc Get formatted account's database name
 %% @end
 %%--------------------------------------------------------------------
-
 -spec get_db(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_db(AccountId) ->
     kz_util:format_account_db(AccountId).
 
+%%--------------------------------------------------------------------
+%% @doc Get formatted account's MODB database name.
+%%
+%% If the MessageId is not a `MODB_PREFIX' account's database will be returned.
+%% @end
+%%--------------------------------------------------------------------
 -spec get_db(kz_term:ne_binary(), kazoo_data:docid() | kz_json:object()) -> kz_term:ne_binary().
 get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
     get_db(AccountId, Year, Month);
@@ -49,21 +53,25 @@ get_db(AccountId, Doc) ->
 get_db(AccountId, Year, Month) ->
     kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
-%%--------------------------------------------------------------------
-%% @doc Generate a range of database names
-%% @end
-%%--------------------------------------------------------------------
-
+%% @equiv get_range_db(AccountId, retention_days(AccountId))
 -spec get_range_db(kz_term:ne_binary()) -> {kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:ne_binaries()}.
 get_range_db(AccountId) ->
     get_range_db(AccountId, retention_days(AccountId)).
 
+%%--------------------------------------------------------------------
+%% @doc Generate a range of MODB database names while considering retention days.
+%% @end
+%%--------------------------------------------------------------------
 -spec get_range_db(kz_term:ne_binary(), pos_integer()) -> {kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:ne_binaries()}.
 get_range_db(AccountId, Days) ->
     To = kz_time:now_s(),
     From = To - retention_seconds(Days),
     {From, To, lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)])}.
 
+%%--------------------------------------------------------------------
+%% @doc Split a list of messages into a map of database name and messages using the message ID.
+%% @end
+%%--------------------------------------------------------------------
 -spec split_to_modbs(kz_term:ne_binary(), kz_term:ne_binaries()) -> map().
 split_to_modbs(AccountId, MsgIds) ->
     lists:foldl(fun(Id, Map) ->
@@ -72,7 +80,7 @@ split_to_modbs(AccountId, MsgIds) ->
                 end, #{}, MsgIds).
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc Open `DocId' from MODB database and check the document type is matching expected type.
 %% @end
 %%--------------------------------------------------------------------
 -spec open_modb_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary()) -> db_ret().
@@ -83,7 +91,7 @@ open_modb_doc(AccountId, DocId, Type) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc Open `DocId' from account database and check the document type is matching expected type.
 %% @end
 %%--------------------------------------------------------------------
 -spec open_accountdb_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary()) -> db_ret().
@@ -94,8 +102,9 @@ open_accountdb_doc(AccountId, DocId, Type) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Protect against returning wrong doc when expected type is not matched
-%% (especially for requests from crossbar)
+%% @doc Protect against returning wrong doc when expected type is not matched.
+%%
+%% Especially useful for requests from crossbar
 %% @end
 %%--------------------------------------------------------------------
 -spec check_doc_type(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> db_ret().
@@ -106,10 +115,9 @@ check_doc_type(_Doc, _ExpectedType, _DocType) ->
     {'error', 'not_found'}.
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc If `BoxId' is not `undefined' check if message `source_id' matching the `BoxId'.
 %% @end
 %%--------------------------------------------------------------------
-
 -spec check_msg_belonging(kz_term:api_ne_binary(), kz_json:object()) -> boolean().
 check_msg_belonging(BoxId, JObj) ->
     check_msg_belonging(BoxId, JObj, kzd_box_message:source_id(JObj)).
@@ -124,13 +132,17 @@ check_msg_belonging(_BoxId, _JObj, _SourceId) ->
     'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc Get system's default retention duration.
 %% @end
 %%--------------------------------------------------------------------
 -spec retention_seconds() -> kz_time:gregorian_seconds().
 retention_seconds() ->
     retention_seconds(?RETENTION_DAYS).
 
+%%--------------------------------------------------------------------
+%% @doc Calculate Gregorian seconds of retention days.
+%% @end
+%%--------------------------------------------------------------------
 -spec retention_seconds(integer() | kz_term:api_binary()) -> kz_time:gregorian_seconds().
 retention_seconds(Days) when is_integer(Days)
                              andalso Days > 0 ->
@@ -140,6 +152,12 @@ retention_seconds(?NE_BINARY=AccountId) ->
 retention_seconds(_) ->
     retention_seconds(?RETENTION_DAYS).
 
+%%--------------------------------------------------------------------
+%% @doc Get account's configured of how many days a message should be retained.
+%%
+%% If account is not configured will use system's default value.
+%% @end
+%%--------------------------------------------------------------------
 -spec retention_days(kz_term:ne_binary()) -> integer().
 retention_days(AccountId) ->
     case kapps_account_config:get_pos_integer(AccountId, ?VM_CONFIG_CAT, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]) of
@@ -148,15 +166,17 @@ retention_days(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% if message is older than retention duration, set folder to deleted
+%% @doc If message is older than retention duration, set folder to deleted
 %% @end
 %%--------------------------------------------------------------------
 -spec enforce_retention(kz_json:object()) -> kz_json:object().
 enforce_retention(JObj) ->
     enforce_retention(JObj, kz_time:now_s() - retention_seconds(kz_doc:account_id(JObj))).
 
+%%--------------------------------------------------------------------
+%% @doc If message is older than retention duration, set folder to deleted
+%% @end
+%%--------------------------------------------------------------------
 -spec enforce_retention(kz_json:object(), kz_time:gregorian_seconds() | boolean()) -> kz_json:object().
 enforce_retention(JObj, RetentionTimestamp)
   when is_integer(RetentionTimestamp) ->
@@ -170,6 +190,10 @@ enforce_retention(JObj, 'true') ->
             kzd_box_message:set_metadata(kzd_box_message:set_folder_deleted(Metadata), JObj)
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Checks if message is older than retention duration
+%% @end
+%%--------------------------------------------------------------------
 -spec is_prior_to_retention(kz_json:object(), kz_time:api_seconds()) -> boolean().
 is_prior_to_retention(_, 'undefined') ->
     'false';
@@ -179,15 +203,16 @@ is_prior_to_retention(JObj, RetentionTimestamp) ->
     MsgTstamp =/= 0
         andalso MsgTstamp < RetentionTimestamp.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, 'undefined')
 -spec get_change_vmbox_funs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
                                    {kz_term:ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
     get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, 'undefined').
 
+%%--------------------------------------------------------------------
+%% @doc List of function to pass to `update' functions when changing mailbox of a message.
+%% @end
+%%--------------------------------------------------------------------
 -spec get_change_vmbox_funs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
                                    {kz_term:ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, ToId) ->
@@ -218,7 +243,7 @@ get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, ToId) ->
     }.
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc Get Caller ID Name.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_caller_id_name(kapps_call:call()) -> kz_term:ne_binary().
@@ -232,7 +257,7 @@ get_caller_id_name(Call) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc Get Caller ID Number.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_caller_id_number(kapps_call:call()) -> kz_term:ne_binary().
@@ -250,7 +275,7 @@ get_caller_id_number(Call) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc Publishes `voicemail_new' notification to teletype.
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_saved_notify(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call(), pos_integer(), kz_term:proplist()) ->
@@ -280,7 +305,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     kapps_notify_publisher:call_collect(NotifyProp, fun kapi_notifications:publish_voicemail_new/1).
 
 %%--------------------------------------------------------------------
-%% @doc
+%% @doc Publishes `voicemail_saved' notification.
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_voicemail_saved(pos_integer(), kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary(), kz_time:gregorian_seconds()) -> 'ok'.
@@ -312,7 +337,6 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec maybe_transcribe(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:api_object().
 maybe_transcribe(AccountId, MediaId, 'true') ->
     Db = get_db(AccountId, MediaId),
