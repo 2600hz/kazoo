@@ -141,492 +141,492 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
             Max = kz_json:get_value(<<"Maximum-Digits">>, JObj),
             Timeout = kz_json:get_value(<<"Timeout">>, JObj),
             Terminators = kz_json:get_value(<<"Terminators">>, JObj),
-            Media = <<$\', (ecallmgr_util:media_path(kz_json:get_ne_binary_value(<<"Media-Name">>, JObj), 'new', UUID, JObj))/binary, $\'>>,
-            InvalidMedia = <<$\', (ecallmgr_util:media_path(kz_json:get_ne_binary_value(<<"Failed-Media-Name">>, JObj), 'new', UUID, JObj))/binary, $\'>>,
-            Tries = kz_json:get_value(<<"Media-Tries">>, JObj),
-                             Regex = kz_json:get_value(<<"Digits-Regex">>, JObj),
-                             Storage = <<"collected_digits">>,
-                             Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
-                                                   ,Media, " ", InvalidMedia, " ", Storage, " ", Regex
-                                                   ]),
-                             {<<"play_and_get_digits">>, Data}
-                             end;
+            Media = <<$', (ecallmgr_util:media_path(kz_json:get_ne_binary_value(<<"Media-Name">>, JObj), 'new', UUID, JObj))/binary, $'>>,
+            InvalidMedia = <<$', (ecallmgr_util:media_path(kz_json:get_ne_binary_value(<<"Failed-Media-Name">>, JObj), 'new', UUID, JObj))/binary, $'>>,
+            Tries = kz_json:get_ne_binary_value(<<"Media-Tries">>, JObj),
+            Regex = kz_json:get_ne_binary_value(<<"Digits-Regex">>, JObj),
+            Storage = <<"collected_digits">>,
+            Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
+                                  ,Media, " ", InvalidMedia, " ", Storage, " ", Regex
+                                  ]),
+            {<<"play_and_get_digits">>, Data}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"record">>) ->
-                                   case kapi_dialplan:record_v(JObj) of
-                                       'false' -> {'error', <<"record failed to execute as JObj did not validate">>};
-                                       'true' ->
+get_fs_app(Node, UUID, JObj, <<"record">>) ->
+    case kapi_dialplan:record_v(JObj) of
+        'false' -> {'error', <<"record failed to execute as JObj did not validate">>};
+        'true' ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
-                                           Routines = [fun(V) ->
-                                                               case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
-                                                                   'false' -> V;
-                                                                   'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
-                                                               end
-                                                       end
-                                                      ,fun(V) ->
-                                                               case get_terminators(JObj) of
-                                                                   'undefined' -> V;
-                                                                   Terminators -> [Terminators|V]
-                                                               end
-                                                       end
-                                                      ],
-                                           Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
-                                           _ = ecallmgr_fs_command:set(Node, UUID, Vars),
+            Routines = [fun(V) ->
+                                case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
+                                    'false' -> V;
+                                    'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
+                                end
+                        end
+                       ,fun(V) ->
+                                case get_terminators(JObj) of
+                                    'undefined' -> V;
+                                    Terminators -> [Terminators|V]
+                                end
+                        end
+                       ],
+            Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
+            _ = ecallmgr_fs_command:set(Node, UUID, Vars),
 
-                                           MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
-                                           RecordingName = ecallmgr_util:recording_filename(MediaName),
-                                           RecArg = list_to_binary([RecordingName, " "
-                                                                   ,kz_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
-                                                                   ,kz_json:get_string_value(<<"Silence-Threshold">>, JObj, "500"), " "
-                                                                   ,kz_json:get_string_value(<<"Silence-Hits">>, JObj, "5")
-                                                                   ]),
-                                           {<<"record">>, RecArg}
-                                   end;
+            MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            RecArg = list_to_binary([RecordingName, " "
+                                    ,kz_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
+                                    ,kz_json:get_string_value(<<"Silence-Threshold">>, JObj, "500"), " "
+                                    ,kz_json:get_string_value(<<"Silence-Hits">>, JObj, "5")
+                                    ]),
+            {<<"record">>, RecArg}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
-                                   case kapi_dialplan:record_call_v(JObj) of
-                                       'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
-                                       'true' -> record_call(Node, UUID, JObj)
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
+    case kapi_dialplan:record_call_v(JObj) of
+        'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
+        'true' -> record_call(Node, UUID, JObj)
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"store">>) ->
-                                   case kapi_dialplan:store_v(JObj) of
-                                       'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
-                                           RecordingName = ecallmgr_util:recording_filename(MediaName),
-                                           lager:debug("streaming media ~s", [RecordingName]),
-                                           case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-                                               <<"put">> ->
+get_fs_app(Node, UUID, JObj, <<"store">>) ->
+    case kapi_dialplan:store_v(JObj) of
+        'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
+        'true' ->
+            MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            lager:debug("streaming media ~s", [RecordingName]),
+            case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                <<"put">> ->
                     %% stream file over HTTP PUT
-                                                   lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-                                                   _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
-                                                   {<<"store">>, 'noop'};
-                                               <<"post">> ->
+                    lager:debug("stream ~s via HTTP PUT", [RecordingName]),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
+                    {<<"store">>, 'noop'};
+                <<"post">> ->
                     %% stream file over HTTP POST
-                                                   lager:debug("stream ~s via HTTP POST", [RecordingName]),
-                                                   _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
-                                                   {<<"store">>, 'noop'};
-                                               _Method ->
+                    lager:debug("stream ~s via HTTP POST", [RecordingName]),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
+                    {<<"store">>, 'noop'};
+                _Method ->
                     %% unhandled method
-                                                   lager:debug("unhandled stream method ~s", [_Method]),
-                                                   {'return', 'error'}
-                                           end
-                                   end;
+                    lager:debug("unhandled stream method ~s", [_Method]),
+                    {'return', 'error'}
+            end
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"store_vm">>) ->
-                                   case kapi_dialplan:store_vm_v(JObj) of
-                                       'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
-                                           RecordingName = ecallmgr_util:recording_filename(MediaName),
-                                           lager:debug("streaming media ~s", [RecordingName]),
-                                           case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-                                               <<"put">> ->
+get_fs_app(Node, UUID, JObj, <<"store_vm">>) ->
+    case kapi_dialplan:store_vm_v(JObj) of
+        'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
+        'true' ->
+            MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            lager:debug("streaming media ~s", [RecordingName]),
+            case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                <<"put">> ->
                     %% stream file over HTTP PUT
-                                                   lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-                                                   _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store_vm', JObj),
-                                                   {<<"store_vm">>, 'noop'};
-                                               <<"post">> ->
+                    lager:debug("stream ~s via HTTP PUT", [RecordingName]),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store_vm', JObj),
+                    {<<"store_vm">>, 'noop'};
+                <<"post">> ->
                     %% stream file over HTTP POST
-                                                   lager:debug("stream ~s via HTTP POST", [RecordingName]),
-                                                   _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store_vm', JObj),
-                                                   {<<"store_vm">>, 'noop'};
-                                               _Method ->
+                    lager:debug("stream ~s via HTTP POST", [RecordingName]),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store_vm', JObj),
+                    {<<"store_vm">>, 'noop'};
+                _Method ->
                     %% unhandled method
-                                                   lager:debug("unhandled stream method ~s", [_Method]),
-                                                   {'return', 'error'}
-                                           end
-                                   end;
+                    lager:debug("unhandled stream method ~s", [_Method]),
+                    {'return', 'error'}
+            end
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
-                                   case kapi_dialplan:store_fax_v(JObj) of
-                                       'false' -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           File = kz_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID)),
-                                           lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
-                                           case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-                                               <<"put">> ->
-                                                   _ = stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
-                                                   {App, 'noop'};
-                                               _Method ->
-                                                   lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
-                                                   {'error', <<"invalid media transfer method">>}
-                                           end
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
+    case kapi_dialplan:store_fax_v(JObj) of
+        'false' -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
+        'true' ->
+            File = kz_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID)),
+            lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
+            case kz_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                <<"put">> ->
+                    _ = stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
+                    {App, 'noop'};
+                _Method ->
+                    lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
+                    {'error', <<"invalid media transfer method">>}
+            end
+    end;
 
-                             get_fs_app(_Node, _UUID, JObj, <<"send_dtmf">>) ->
-                                   case kapi_dialplan:send_dtmf_v(JObj) of
-                                       'false' -> {'error', <<"send_dtmf failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           DTMFs = kz_json:get_value(<<"DTMFs">>, JObj),
-                                           Duration = case kz_json:get_binary_value(<<"Duration">>, JObj) of
-                                                          'undefined' -> <<>>;
-                                                          D -> [<<"@">>, D]
-                                                      end,
-                                           {<<"send_dtmf">>, iolist_to_binary([DTMFs, Duration])}
-                                   end;
+get_fs_app(_Node, _UUID, JObj, <<"send_dtmf">>) ->
+    case kapi_dialplan:send_dtmf_v(JObj) of
+        'false' -> {'error', <<"send_dtmf failed to execute as JObj did not validate">>};
+        'true' ->
+            DTMFs = kz_json:get_value(<<"DTMFs">>, JObj),
+            Duration = case kz_json:get_binary_value(<<"Duration">>, JObj) of
+                           'undefined' -> <<>>;
+                           D -> [<<"@">>, D]
+                       end,
+            {<<"send_dtmf">>, iolist_to_binary([DTMFs, Duration])}
+    end;
 
-                             get_fs_app(_Node, UUID, JObj, <<"recv_dtmf">>) ->
-                                   case kapi_dialplan:recv_dtmf_v(JObj) of
-                                       'false' -> {'error', <<"recv_dtmf failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           DTMFs = kz_json:get_value(<<"DTMFs">>, JObj),
-                                           {<<"uuid_recv_dtmf">>, iolist_to_binary([UUID, " ", DTMFs])}
-                                   end;
+get_fs_app(_Node, UUID, JObj, <<"recv_dtmf">>) ->
+    case kapi_dialplan:recv_dtmf_v(JObj) of
+        'false' -> {'error', <<"recv_dtmf failed to execute as JObj did not validate">>};
+        'true' ->
+            DTMFs = kz_json:get_value(<<"DTMFs">>, JObj),
+            {<<"uuid_recv_dtmf">>, iolist_to_binary([UUID, " ", DTMFs])}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"tones">>) ->
-                                   case kapi_dialplan:tones_v(JObj) of
-                                       'false' -> {'error', <<"tones failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           'ok' = set_terminators(Node, UUID, kz_json:get_value(<<"Terminators">>, JObj)),
-                                           Tones = kz_json:get_list_value(<<"Tones">>, JObj, []),
-                                           tones_app(Tones)
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"tones">>) ->
+    case kapi_dialplan:tones_v(JObj) of
+        'false' -> {'error', <<"tones failed to execute as JObj did not validate">>};
+        'true' ->
+            'ok' = set_terminators(Node, UUID, kz_json:get_value(<<"Terminators">>, JObj)),
+            Tones = kz_json:get_list_value(<<"Tones">>, JObj, []),
+            tones_app(Tones)
+    end;
 
-                             get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
-                                   {<<"answer">>, <<>>};
+get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
+    {<<"answer">>, <<>>};
 
-                             get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
-                                   {<<"pre_answer">>, <<>>};
+get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
+    {<<"pre_answer">>, <<>>};
 
-                             get_fs_app(_Node, _UUID, JObj, <<"privacy">>) ->
-                                   case kapi_dialplan:privacy_v(JObj) of
-                                       'false' -> {'error', <<"privacy failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           Mode = kz_json:get_ne_binary_value(<<"Privacy-Mode">>, JObj),
-                                           {<<"privacy">>, Mode}
-                                   end;
+get_fs_app(_Node, _UUID, JObj, <<"privacy">>) ->
+    case kapi_dialplan:privacy_v(JObj) of
+        'false' -> {'error', <<"privacy failed to execute as JObj did not validate">>};
+        'true' ->
+            Mode = kz_json:get_ne_binary_value(<<"Privacy-Mode">>, JObj),
+            {<<"privacy">>, Mode}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"ring">>) ->
-                                   _ = case kz_json:get_value(<<"Ringback">>, JObj) of
-                                           'undefined' -> 'ok';
-                                           Ringback ->
-                                               Stream = ecallmgr_util:media_path(Ringback, 'extant', UUID, JObj),
-                                               lager:debug("custom ringback: ~s", [Stream]),
-                                               _ = ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
-                                       end,
-                                   {<<"ring_ready">>, <<>>};
+get_fs_app(Node, UUID, JObj, <<"ring">>) ->
+    _ = case kz_json:get_value(<<"Ringback">>, JObj) of
+            'undefined' -> 'ok';
+            Ringback ->
+                Stream = ecallmgr_util:media_path(Ringback, 'extant', UUID, JObj),
+                lager:debug("custom ringback: ~s", [Stream]),
+                _ = ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
+        end,
+    {<<"ring_ready">>, <<>>};
 
 %% receive a fax from the caller
-                             get_fs_app(Node, UUID, JObj, <<"receive_fax">>) ->
-                                   ecallmgr_fs_fax:receive_fax(Node, UUID, JObj);
+get_fs_app(Node, UUID, JObj, <<"receive_fax">>) ->
+    ecallmgr_fs_fax:receive_fax(Node, UUID, JObj);
 
-                             get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
-                                   case kz_json:get_value(<<"Hold-Media">>, JObj) of
-                                       'undefined' -> {<<"endless_playback">>, <<"${hold_music}">>};
-                                       Media ->
-                                           Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
-                                           lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-                                           {<<"endless_playback">>, Stream}
-                                   end;
+get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
+    case kz_json:get_value(<<"Hold-Media">>, JObj) of
+        'undefined' -> {<<"endless_playback">>, <<"${hold_music}">>};
+        Media ->
+            Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
+            lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+            {<<"endless_playback">>, Stream}
+    end;
 
-                             get_fs_app(_Node, UUID, JObj, <<"hold_control">>) ->
-                                   Arg = case kz_json:get_value(<<"Action">>, JObj) of
-                                             <<"hold">> -> <<>>;
-                                             <<"unhold">> -> <<"off">>;
-                                             <<"toggle">> -> <<"toggle">>
-                                         end,
-                                   {<<"uuid_hold">>, list_to_binary([Arg, " ", UUID])};
+get_fs_app(_Node, UUID, JObj, <<"hold_control">>) ->
+    Arg = case kz_json:get_value(<<"Action">>, JObj) of
+              <<"hold">> -> <<>>;
+              <<"unhold">> -> <<"off">>;
+              <<"toggle">> -> <<"toggle">>
+          end,
+    {<<"uuid_hold">>, list_to_binary([Arg, " ", UUID])};
 
-                             get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
-                                   UnholdKey = kz_json:get_value(<<"Unhold-Key">>, JObj),
+get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
+    UnholdKey = kz_json:get_value(<<"Unhold-Key">>, JObj),
 
-                                   AMOH = kz_json:get_value(<<"A-MOH">>, JObj, <<>>),
-                                   BMOH = kz_json:get_value(<<"B-MOH">>, JObj, <<>>),
+    AMOH = kz_json:get_value(<<"A-MOH">>, JObj, <<>>),
+    BMOH = kz_json:get_value(<<"B-MOH">>, JObj, <<>>),
 
-                                   AMedia = ecallmgr_util:media_path(AMOH, 'extant', UUID, JObj),
-                                   BMedia = ecallmgr_util:media_path(BMOH, 'extant', UUID, JObj),
+    AMedia = ecallmgr_util:media_path(AMOH, 'extant', UUID, JObj),
+    BMedia = ecallmgr_util:media_path(BMOH, 'extant', UUID, JObj),
 
-                                   {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
+    {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
 
-                             get_fs_app(Node, UUID, JObj, <<"page">>) ->
-                                   Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
-                                   case kapi_dialplan:page_v(JObj) of
-                                       'false' -> {'error', <<"page failed to execute as JObj did not validate">>};
-                                       'true' when Endpoints =:= [] -> {'error', <<"page request had no endpoints">>};
-                                       'true' ->
-                                           PageId = <<"page_", (kz_binary:rand_hex(8))/binary>>,
-                                           DefaultCCV = kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]),
-                                           CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, DefaultCCV)),
-                                           BargeParams = ecallmgr_util:multi_set_args(Node, UUID, CCVs, <<",">>, <<",">>),
-                                           AutoAnswer = list_to_binary(["{sip_invite_params=intercom=true"
-                                                                       ,",alert_info=intercom"
-                                                                       ,BargeParams
-                                                                       ,"}"
-                                                                       ]),
-                                           Routines = [fun(DP) ->
-                                                               [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
-                                                               ,{"application", <<"set conference_auto_outcall_profile=page">>}
-                                                               ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
-                                                               ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
-                                                                |DP
-                                                               ]
-                                                       end
-                                                      ,fun(DP) ->
-                                                               case kz_json:is_true([<<"Page-Options">>, <<"Two-Way-Audio">>], JObj, false) of
-                                                                   true -> DP;
-                                                                   false -> [{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
-                                                                             | DP
-                                                                            ]
-                                                               end
-                                                       end
-                                                      ,fun(DP) ->
-                                                               CIDName = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"${caller_id_name}">>),
-                                                               [{"application", <<"set conference_auto_outcall_caller_id_name=", CIDName/binary>>}|DP]
-                                                       end
-                                                      ,fun(DP) ->
-                                                               CIDNumber = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, <<"${caller_id_number}">>),
-                                                               [{"application", <<"set conference_auto_outcall_caller_id_number=", CIDNumber/binary>>}|DP]
-                                                       end
-                                                      ,fun(DP) ->
-                                                               Timeout = kz_json:get_binary_value(<<"Timeout">>, JObj, <<"5">>),
-                                                               [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}|DP]
-                                                       end
-                                                      ,fun(DP) ->
-                                                               {'ok', #channel{interaction_id=Id}} = ecallmgr_fs_channel:fetch(UUID, 'record'),
-                                                               Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
-                                                                        ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], Id}
-                                                                        ],
-                                                               EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
-                                                               Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
-                                                               OutCall = kz_binary:join(Channels, <<"|">>),
-                                                               [{"application", <<"conference_set_auto_outcall ", OutCall/binary>>} | DP]
-                                                       end
-                                                      ,fun(DP) ->
-                                                               [{"application", <<"conference ", PageId/binary, "@page">>}
-                                                               ,{"application", <<"park">>}
-                                                                |DP
-                                                               ]
-                                                       end
-                                                      ],
-                                           {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"page">>) ->
+    Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    case kapi_dialplan:page_v(JObj) of
+        'false' -> {'error', <<"page failed to execute as JObj did not validate">>};
+        'true' when Endpoints =:= [] -> {'error', <<"page request had no endpoints">>};
+        'true' ->
+            PageId = <<"page_", (kz_binary:rand_hex(8))/binary>>,
+            DefaultCCV = kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]),
+            CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, DefaultCCV)),
+            BargeParams = ecallmgr_util:multi_set_args(Node, UUID, CCVs, <<",">>, <<",">>),
+            AutoAnswer = list_to_binary(["{sip_invite_params=intercom=true"
+                                        ,",alert_info=intercom"
+                                        ,BargeParams
+                                        ,"}"
+                                        ]),
+            Routines = [fun(DP) ->
+                                [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
+                                ,{"application", <<"set conference_auto_outcall_profile=page">>}
+                                ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
+                                ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
+                                 |DP
+                                ]
+                        end
+                       ,fun(DP) ->
+                                case kz_json:is_true([<<"Page-Options">>, <<"Two-Way-Audio">>], JObj, false) of
+                                    true -> DP;
+                                    false -> [{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
+                                              | DP
+                                             ]
+                                end
+                        end
+                       ,fun(DP) ->
+                                CIDName = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"${caller_id_name}">>),
+                                [{"application", <<"set conference_auto_outcall_caller_id_name=", CIDName/binary>>}|DP]
+                        end
+                       ,fun(DP) ->
+                                CIDNumber = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, <<"${caller_id_number}">>),
+                                [{"application", <<"set conference_auto_outcall_caller_id_number=", CIDNumber/binary>>}|DP]
+                        end
+                       ,fun(DP) ->
+                                Timeout = kz_json:get_binary_value(<<"Timeout">>, JObj, <<"5">>),
+                                [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}|DP]
+                        end
+                       ,fun(DP) ->
+                                {'ok', #channel{interaction_id=Id}} = ecallmgr_fs_channel:fetch(UUID, 'record'),
+                                Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
+                                         ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], Id}
+                                         ],
+                                EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
+                                Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
+                                OutCall = kz_binary:join(Channels, <<"|">>),
+                                [{"application", <<"conference_set_auto_outcall ", OutCall/binary>>} | DP]
+                        end
+                       ,fun(DP) ->
+                                [{"application", <<"conference ", PageId/binary, "@page">>}
+                                ,{"application", <<"park">>}
+                                 |DP
+                                ]
+                        end
+                       ],
+            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"park">>) ->
-                                   case kapi_dialplan:park_v(JObj) of
-                                       'false' -> {'error', <<"park failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           maybe_set_park_timeout(Node, UUID, JObj),
-                                           {<<"park">>, <<>>}
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"park">>) ->
+    case kapi_dialplan:park_v(JObj) of
+        'false' -> {'error', <<"park failed to execute as JObj did not validate">>};
+        'true' ->
+            maybe_set_park_timeout(Node, UUID, JObj),
+            {<<"park">>, <<>>}
+    end;
 
-                             get_fs_app(_Node, _UUID, JObj, <<"echo">>) ->
-                                   case kapi_dialplan:echo_v(JObj) of
-                                       'false' -> {'error', <<"echo failed to execute as JObj did not validate">>};
-                                       'true' -> {<<"echo">>, <<>>}
-                                   end;
+get_fs_app(_Node, _UUID, JObj, <<"echo">>) ->
+    case kapi_dialplan:echo_v(JObj) of
+        'false' -> {'error', <<"echo failed to execute as JObj did not validate">>};
+        'true' -> {<<"echo">>, <<>>}
+    end;
 
-                             get_fs_app(_Node, _UUID, JObj, <<"sleep">>) ->
-                                   case kapi_dialplan:sleep_v(JObj) of
-                                       'false' -> {'error', <<"sleep failed to execute as JObj did not validate">>};
-                                       'true' -> {<<"sleep">>, kz_json:get_binary_value(<<"Time">>, JObj, <<"50">>)}
-                                   end;
+get_fs_app(_Node, _UUID, JObj, <<"sleep">>) ->
+    case kapi_dialplan:sleep_v(JObj) of
+        'false' -> {'error', <<"sleep failed to execute as JObj did not validate">>};
+        'true' -> {<<"sleep">>, kz_json:get_binary_value(<<"Time">>, JObj, <<"50">>)}
+    end;
 
-                             get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
-                                   case kapi_dialplan:say_v(JObj) of
-                                       'false' -> {'error', <<"say failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           Lang = say_language(kz_json:get_value(<<"Language">>, JObj)),
-                                           Type = kz_json:get_value(<<"Type">>, JObj),
-                                           Method = kz_json:get_value(<<"Method">>, JObj),
-                                           Txt = kz_json:get_value(<<"Say-Text">>, JObj),
-                                           Gender = kz_json:get_value(<<"Gender">>, JObj, <<>>),
+get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
+    case kapi_dialplan:say_v(JObj) of
+        'false' -> {'error', <<"say failed to execute as JObj did not validate">>};
+        'true' ->
+            Lang = say_language(kz_json:get_value(<<"Language">>, JObj)),
+            Type = kz_json:get_value(<<"Type">>, JObj),
+            Method = kz_json:get_value(<<"Method">>, JObj),
+            Txt = kz_json:get_value(<<"Say-Text">>, JObj),
+            Gender = kz_json:get_value(<<"Gender">>, JObj, <<>>),
 
-                                           Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt, " ", Gender]),
-                                           lager:debug("say command ~s", [Arg]),
-                                           {<<"say">>, Arg}
-                                   end;
+            Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt, " ", Gender]),
+            lager:debug("say command ~s", [Arg]),
+            {<<"say">>, Arg}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
-                                   ecallmgr_fs_bridge:call_command(Node, UUID, JObj);
+get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
+    ecallmgr_fs_bridge:call_command(Node, UUID, JObj);
 
-                             get_fs_app(_Node, UUID, JObj, <<"unbridge">>) ->
-                                   ecallmgr_fs_bridge:unbridge(UUID, JObj);
+get_fs_app(_Node, UUID, JObj, <<"unbridge">>) ->
+    ecallmgr_fs_bridge:unbridge(UUID, JObj);
 
-                             get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
-                                   case kapi_dialplan:call_pickup_v(JObj) of
-                                       'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
-                                       'true' -> call_pickup(Node, UUID, JObj)
-                                   end;
-                             get_fs_app(Node, UUID, JObj, <<"connect_leg">>) ->
-                                   case kapi_dialplan:connect_leg_v(JObj) of
-                                       'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
-                                       'true' -> connect_leg(Node, UUID, JObj)
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
+    case kapi_dialplan:call_pickup_v(JObj) of
+        'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
+        'true' -> call_pickup(Node, UUID, JObj)
+    end;
+get_fs_app(Node, UUID, JObj, <<"connect_leg">>) ->
+    case kapi_dialplan:connect_leg_v(JObj) of
+        'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
+        'true' -> connect_leg(Node, UUID, JObj)
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"eavesdrop">>) ->
-                                   case kapi_dialplan:eavesdrop_v(JObj) of
-                                       'false' -> {'error', <<"eavesdrop failed to execute as JObj did not validate">>};
-                                       'true' -> eavesdrop(Node, UUID, JObj)
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"eavesdrop">>) ->
+    case kapi_dialplan:eavesdrop_v(JObj) of
+        'false' -> {'error', <<"eavesdrop failed to execute as JObj did not validate">>};
+        'true' -> eavesdrop(Node, UUID, JObj)
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
-                                   case kapi_dialplan:execute_extension_v(JObj) of
-                                       'false' -> {'error', <<"execute extension failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           Routines = [fun execute_exten_handle_reset/4
-                                                      ,fun execute_exten_handle_ccvs/4
-                                                      ,fun execute_exten_pre_exec/4
-                                                      ,fun execute_exten_create_command/4
-                                                      ,fun execute_exten_post_exec/4
-                                                      ],
-                                           Extension = lists:foldr(fun(F, DP) ->
-                                                                           F(DP, Node, UUID, JObj)
-                                                                   end, [], Routines),
-                                           {<<"xferext">>, Extension}
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
+    case kapi_dialplan:execute_extension_v(JObj) of
+        'false' -> {'error', <<"execute extension failed to execute as JObj did not validate">>};
+        'true' ->
+            Routines = [fun execute_exten_handle_reset/4
+                       ,fun execute_exten_handle_ccvs/4
+                       ,fun execute_exten_pre_exec/4
+                       ,fun execute_exten_create_command/4
+                       ,fun execute_exten_post_exec/4
+                       ],
+            Extension = lists:foldr(fun(F, DP) ->
+                                            F(DP, Node, UUID, JObj)
+                                    end, [], Routines),
+            {<<"xferext">>, Extension}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
-                                   case kapi_dialplan:tone_detect_v(JObj) of
-                                       'false' -> {'error', <<"tone detect failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           Key = kz_json:get_value(<<"Tone-Detect-Name">>, JObj),
-                                           Freqs = [ kz_term:to_list(V) || V <- kz_json:get_value(<<"Frequencies">>, JObj) ],
-                                           FreqsStr = string:join(Freqs, ","),
-                                           Flags = case kz_json:get_value(<<"Sniff-Direction">>, JObj, <<"read">>) of
-                                                       <<"read">> -> <<"r">>;
-                                                       <<"write">> -> <<"w">>
-                                                   end,
-                                           Timeout = kz_json:get_value(<<"Timeout">>, JObj, <<"+1000">>),
-                                           HitsNeeded = kz_json:get_value(<<"Hits-Needed">>, JObj, <<"1">>),
+get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
+    case kapi_dialplan:tone_detect_v(JObj) of
+        'false' -> {'error', <<"tone detect failed to execute as JObj did not validate">>};
+        'true' ->
+            Key = kz_json:get_value(<<"Tone-Detect-Name">>, JObj),
+            Freqs = [ kz_term:to_list(V) || V <- kz_json:get_value(<<"Frequencies">>, JObj) ],
+            FreqsStr = string:join(Freqs, ","),
+            Flags = case kz_json:get_value(<<"Sniff-Direction">>, JObj, <<"read">>) of
+                        <<"read">> -> <<"r">>;
+                        <<"write">> -> <<"w">>
+                    end,
+            Timeout = kz_json:get_value(<<"Timeout">>, JObj, <<"+1000">>),
+            HitsNeeded = kz_json:get_value(<<"Hits-Needed">>, JObj, <<"1">>),
 
-                                           SuccessJObj = case kz_json:get_value(<<"On-Success">>, JObj, []) of
+            SuccessJObj = case kz_json:get_value(<<"On-Success">>, JObj, []) of
                               %% default to parking the call
-                                                             [] ->
-                                                                 [{<<"Application-Name">>, <<"park">>} | kz_api:extract_defaults(JObj)];
-                                                             AppJObj ->
-                                                                 kz_json:from_list(AppJObj ++ kz_api:extract_defaults(JObj))
-                                                         end,
+                              [] ->
+                                  [{<<"Application-Name">>, <<"park">>} | kz_api:extract_defaults(JObj)];
+                              AppJObj ->
+                                  kz_json:from_list(AppJObj ++ kz_api:extract_defaults(JObj))
+                          end,
 
-                                           {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj
-                                                                                      ,kapi_dialplan:application_name(SuccessJObj)
-                                                                                      )
-                                                                       of
+            {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj
+                                                       ,kapi_dialplan:application_name(SuccessJObj)
+                                                       )
+                                        of
                                             %% default to park if passed app isn't right
-                                                                           {'error', _Str} ->
-                                                                               {<<"park">>, <<>>};
-                                                                           {_, _}=Success ->
-                                                                               Success
-                                                                       end,
+                                            {'error', _Str} ->
+                                                {<<"park">>, <<>>};
+                                            {_, _}=Success ->
+                                                Success
+                                        end,
 
-                                           Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout
-                                                                 ," ", SuccessApp, " ", SuccessData, " ", HitsNeeded
-                                                                 ]),
+            Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout
+                                  ," ", SuccessApp, " ", SuccessData, " ", HitsNeeded
+                                  ]),
 
-                                           {<<"tone_detect">>, Data}
-                                   end;
+            {<<"tone_detect">>, Data}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"set_terminators">>) ->
-                                   case kapi_dialplan:set_terminators_v(JObj) of
-                                       'false' -> {'error', <<"set_terminators failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           'ok' = set_terminators(Node, UUID, kz_json:get_value(<<"Terminators">>, JObj)),
-                                           {<<"set">>, 'noop'}
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"set_terminators">>) ->
+    case kapi_dialplan:set_terminators_v(JObj) of
+        'false' -> {'error', <<"set_terminators failed to execute as JObj did not validate">>};
+        'true' ->
+            'ok' = set_terminators(Node, UUID, kz_json:get_value(<<"Terminators">>, JObj)),
+            {<<"set">>, 'noop'}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"set">>) ->
-                                   case kapi_dialplan:set_v(JObj) of
-                                       'false' -> {'error', <<"set failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           ChannelVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
-                                           CallVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
-                                           AppVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
+get_fs_app(Node, UUID, JObj, <<"set">>) ->
+    case kapi_dialplan:set_v(JObj) of
+        'false' -> {'error', <<"set failed to execute as JObj did not validate">>};
+        'true' ->
+            ChannelVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
+            CallVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
+            AppVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
 
-                                           props:filter_undefined(
-                                             [{<<"kz_multiset">>, maybe_multi_set(Node, UUID, ChannelVars)}
-                                             ,{<<"kz_multiset">>, maybe_multi_set(Node, UUID, [{?CAV(K), V} || {K, V} <- AppVars])}
-                                             ,{<<"kz_export">>, maybe_multi_set(Node, UUID, CallVars)}
-                                             ])
-                                   end;
+            props:filter_undefined(
+              [{<<"kz_multiset">>, maybe_multi_set(Node, UUID, ChannelVars)}
+              ,{<<"kz_multiset">>, maybe_multi_set(Node, UUID, [{?CAV(K), V} || {K, V} <- AppVars])}
+              ,{<<"kz_export">>, maybe_multi_set(Node, UUID, CallVars)}
+              ])
+    end;
 
-                             get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
-                                   case kapi_dialplan:respond_v(JObj) of
-                                       'false' -> {'error', <<"respond failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           Code = kz_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE),
-                                           Response = <<Code/binary ," "
-                                                        ,(kz_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary
-                                                      >>,
-                                           {<<"respond">>, Response}
-                                   end;
+get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
+    case kapi_dialplan:respond_v(JObj) of
+        'false' -> {'error', <<"respond failed to execute as JObj did not validate">>};
+        'true' ->
+            Code = kz_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE),
+            Response = <<Code/binary ," "
+                         ,(kz_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary
+                       >>,
+            {<<"respond">>, Response}
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
-                                   case kapi_dialplan:redirect_v(JObj) of
-                                       'false' -> {'error', <<"redirect failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           RedirectServer = lookup_redirect_server(JObj) ,
-                                           maybe_add_redirect_header(Node, UUID, RedirectServer),
+get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
+    case kapi_dialplan:redirect_v(JObj) of
+        'false' -> {'error', <<"redirect failed to execute as JObj did not validate">>};
+        'true' ->
+            RedirectServer = lookup_redirect_server(JObj) ,
+            maybe_add_redirect_header(Node, UUID, RedirectServer),
 
-                                           {<<"redirect">>, kz_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
-                                   end;
+            {<<"redirect">>, kz_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
+    end;
 
-                      %% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....dont think anything is using it.
-                             get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
-                                   _ = kz_util:spawn(fun send_fetch_call_event/3, [Node, UUID, JObj]),
-                                   {<<"fetch">>, 'noop'};
+%% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....dont think anything is using it.
+get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
+    _ = kz_util:spawn(fun send_fetch_call_event/3, [Node, UUID, JObj]),
+    {<<"fetch">>, 'noop'};
 
-                             get_fs_app(Node, UUID, JObj, <<"conference">>) ->
-                                   case kapi_dialplan:conference_v(JObj) of
-                                       'false' -> {'error', <<"conference failed to execute as JObj did not validate">>};
-                                       'true' -> get_conference_app(Node, UUID, JObj, kz_json:is_true(<<"Reinvite">>, JObj, 'false'))
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"conference">>) ->
+    case kapi_dialplan:conference_v(JObj) of
+        'false' -> {'error', <<"conference failed to execute as JObj did not validate">>};
+        'true' -> get_conference_app(Node, UUID, JObj, kz_json:is_true(<<"Reinvite">>, JObj, 'false'))
+    end;
 
-                             get_fs_app(_Node, _UUID, JObj, <<"fax_detection">>) ->
-                                   case kapi_dialplan:fax_detection_v(JObj) of
-                                       'false' -> {'error', <<"fax detect failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           case kz_json:get_value(<<"Action">>, JObj) of
-                                               <<"start">> ->
-                                                   Duration = kz_json:get_integer_value(<<"Duration">>, JObj, 3),
-                                                   Tone = case kz_json:get_value(<<"Direction">>, JObj, <<"inbound">>) of
-                                                              <<"inbound">> -> <<"cng">>;
-                                                              <<"outbound">> -> <<"ced">>
-                                                          end,
-                                                   {<<"spandsp_start_fax_detect">>, list_to_binary(["set 'noop' ", kz_term:to_binary(Duration), " ", Tone])};
-                                               <<"stop">> ->
-                                                   {<<"spandsp_stop_fax_detect">>, <<>>}
-                                           end
-                                   end;
+get_fs_app(_Node, _UUID, JObj, <<"fax_detection">>) ->
+    case kapi_dialplan:fax_detection_v(JObj) of
+        'false' -> {'error', <<"fax detect failed to execute as JObj did not validate">>};
+        'true' ->
+            case kz_json:get_value(<<"Action">>, JObj) of
+                <<"start">> ->
+                    Duration = kz_json:get_integer_value(<<"Duration">>, JObj, 3),
+                    Tone = case kz_json:get_value(<<"Direction">>, JObj, <<"inbound">>) of
+                               <<"inbound">> -> <<"cng">>;
+                               <<"outbound">> -> <<"ced">>
+                           end,
+                    {<<"spandsp_start_fax_detect">>, list_to_binary(["set 'noop' ", kz_term:to_binary(Duration), " ", Tone])};
+                <<"stop">> ->
+                    {<<"spandsp_stop_fax_detect">>, <<>>}
+            end
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"transfer">>) ->
-                                   case kapi_dialplan:transfer_v(JObj) of
-                                       'false' -> {'error', <<"transfer failed to execute as JObj did not validate">>};
-                                       'true' -> transfer(Node, UUID, JObj)
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"transfer">>) ->
+    case kapi_dialplan:transfer_v(JObj) of
+        'false' -> {'error', <<"transfer failed to execute as JObj did not validate">>};
+        'true' -> transfer(Node, UUID, JObj)
+    end;
 
-                             get_fs_app(Node, UUID, JObj, <<"media_macro">>) ->
-                                   case kapi_dialplan:media_macro_v(JObj) of
-                                       'false' -> {'error', <<"media macro failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           KVs = kz_json:foldr(fun(K, Macro, Acc) ->
-                                                                       [{K, media_macro_to_file_string(Macro)} | Acc]
-                                                               end
-                                                              ,[]
-                                                              ,kz_json:get_json_value(<<"Media-Macros">>, JObj)
-                                                              ),
-                                           {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs, <<"|">>)}
-                                   end;
+get_fs_app(Node, UUID, JObj, <<"media_macro">>) ->
+    case kapi_dialplan:media_macro_v(JObj) of
+        'false' -> {'error', <<"media macro failed to execute as JObj did not validate">>};
+        'true' ->
+            KVs = kz_json:foldr(fun(K, Macro, Acc) ->
+                                        [{K, media_macro_to_file_string(Macro)} | Acc]
+                                end
+                               ,[]
+                               ,kz_json:get_json_value(<<"Media-Macros">>, JObj)
+                               ),
+            {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs, <<"|">>)}
+    end;
 
-                             get_fs_app(_Node, _UUID, JObj, <<"play_macro">>) ->
-                                   case kapi_dialplan:play_macro_v(JObj) of
-                                       'false' -> {'error', <<"play macro failed to execute as JObj did not validate">>};
-                                       'true' ->
-                                           Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
-                                           Result = media_macro_to_file_string(Macro),
-                                           {<<"playback">>, Result}
-                                   end;
+get_fs_app(_Node, _UUID, JObj, <<"play_macro">>) ->
+    case kapi_dialplan:play_macro_v(JObj) of
+        'false' -> {'error', <<"play macro failed to execute as JObj did not validate">>};
+        'true' ->
+            Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
+            Result = media_macro_to_file_string(Macro),
+            {<<"playback">>, Result}
+    end;
 
-                             get_fs_app(_Node, UUID, JObj, <<"sound_touch">>) ->
-                                   case kapi_dialplan:sound_touch_v(JObj) of
-                                       'false' -> {'error', <<"soundtouch failed to execute as JObj did not validate">>};
-                                       'true' -> sound_touch(UUID, kz_json:get_value(<<"Action">>, JObj), JObj)
-                                   end;
+get_fs_app(_Node, UUID, JObj, <<"sound_touch">>) ->
+    case kapi_dialplan:sound_touch_v(JObj) of
+        'false' -> {'error', <<"soundtouch failed to execute as JObj did not validate">>};
+        'true' -> sound_touch(UUID, kz_json:get_value(<<"Action">>, JObj), JObj)
+    end;
 
-                             get_fs_app(_Node, _UUID, _JObj, _App) ->
-                                   lager:debug("unknown application ~s", [_App]),
-                                   {'error', <<"application unknown">>}.
+get_fs_app(_Node, _UUID, _JObj, _App) ->
+    lager:debug("unknown application ~s", [_App]),
+    {'error', <<"application unknown">>}.
 
 -spec media_macro_to_file_string(kz_term:ne_binaries()) -> kz_term:ne_binary().
 media_macro_to_file_string(Macro) ->
