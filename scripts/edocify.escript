@@ -49,7 +49,7 @@ main(_) ->
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
           ,{?REGEX_IN_DOC_LINE, "move comments written in the same line as @doc", fun move_in_doc_line/1}
-            %% must be last thing to run
+           %% must be last thing to run
           ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
           ],
     edocify(Run, 0).
@@ -122,13 +122,13 @@ edocify_header([<<"@contributors", _/binary>>], Header) ->
     edocify_header([], Header);
 edocify_header([<<"@contributors", _/binary>>|T], Header) ->
     Authors = [<<"%%% @author ", Author/binary>>
-               || A <- T,
-                  Author <- [strip_left_space(A)],
-                  Author =/= <<>>
+                   || A <- T,
+                      Author <- [strip_left_space(A)],
+                      Author =/= <<>>
               ],
     edocify_header([], Header ++ [<<"%%%">>] ++ Authors);
 edocify_header([<<>>|T], Header) ->
- edocify_header(T, Header ++ [<<"%%%">>]);
+    edocify_header(T, Header ++ [<<"%%%">>]);
 edocify_header([<<"@contributions", Rest/binary>>|T], Header) ->
     %% mind you it is `contributions' not `contributors'
     edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
@@ -138,7 +138,7 @@ edocify_header([<<"@Contributions", Rest/binary>>|T], Header) ->
 edocify_header([<<"Contributors", Rest/binary>>|T], Header) ->
     edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
 edocify_header([H|T], Header) ->
- edocify_header(T, Header ++ [<<"%%% ", H/binary>>]).
+    edocify_header(T, Header ++ [<<"%%% ", H/binary>>]).
 
 find_header([], Header) ->
     {Header, []};
@@ -411,8 +411,8 @@ parse_ag_line(<<"ERR:", _/binary>>=Error) ->
 parse_ag_line(Bin) ->
     try explode_line(Bin)
     catch _E:_T ->
-        io:format("~nfailed to parse file, position in ag response, ~p:~p, line:~n~s~n", [_E, _T, Bin]),
-        halt(1)
+            io:format("~nfailed to parse file, position in ag response, ~p:~p, line:~n~s~n", [_E, _T, Bin]),
+            halt(1)
     end.
 
 explode_line(Bin) ->

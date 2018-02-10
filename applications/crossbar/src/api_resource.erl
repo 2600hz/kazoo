@@ -1092,13 +1092,13 @@ finish_chunked_response(#{chunking_started := 'false'
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
-%% chunk is not started, return whatever error's or response data in Context
+    %% chunk is not started, return whatever error's or response data in Context
     api_util:create_pull_response(Req, Context);
 finish_chunked_response(#{chunk_response_type := <<"to_csv">>
                          ,context := Context
                          ,cowboy_req := Req
                          }) ->
-%% Chunk is already started, stopping,
+    %% Chunk is already started, stopping,
     'ok' = cowboy_req:stream_body(<<>>, 'fin', Req),
     {'stop', Req, Context};
 finish_chunked_response(#{total_queried := TotalQueried
@@ -1108,7 +1108,7 @@ finish_chunked_response(#{total_queried := TotalQueried
                          ,last_key := NextStartKey
                          ,start_key := StartKey
                          }) ->
-%% Chunk is already started closing JSON envelope,
+    %% Chunk is already started closing JSON envelope,
     DeleteKeys = [<<"start_key">>, <<"page_size">>, <<"next_start_key">>],
     Paging = kz_json:set_values([{<<"start_key">>, StartKey}
                                 ,{<<"page_size">>, TotalQueried}
