@@ -532,7 +532,9 @@ normalize_port_number(JObj, Num, AuthBy) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Lists numbers on GET /v2/accounts/{ACCOUNT_ID}/phone_numbers
+%% @doc
+%% Lists numbers on GET /v2/accounts/{ACCOUNT_ID}/phone_numbers.
+%% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
@@ -635,7 +637,9 @@ normalize_port_view_result(Number, Properties) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Search for numbers, requesting carrier module
+%% @doc
+%% Search for numbers, requesting carrier module.
+%% @end
 %%--------------------------------------------------------------------
 -spec maybe_find_numbers(cb_context:context()) -> cb_context:context().
 maybe_find_numbers(Context) ->
@@ -737,7 +741,9 @@ find_prefix(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Validates a collection-type numbers field.
+%% @doc
+%% Validates a collection-type numbers field..
+%% @end
 %%--------------------------------------------------------------------
 
 -spec validate_collection_request(cb_context:context()) -> cb_context:context().
@@ -912,7 +918,9 @@ validate_request(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Always validate DELETEs
+%% @doc
+%% Always validate DELETEs.
+%% @end
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(Context) ->

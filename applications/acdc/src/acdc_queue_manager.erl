@@ -287,7 +287,9 @@ pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Sr
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Initializes the server
+%% @doc
+%% Initializes the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec init([pid() | kz_json:object() | kz_term:ne_binary()]) -> {'ok', mgr_state()}.
 init([Super, QueueJObj]) ->

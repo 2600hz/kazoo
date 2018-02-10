@@ -33,7 +33,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the supervisor
+%% @doc
+%% Starts the supervisor.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(MgrPid, AcctId, QueueId) ->

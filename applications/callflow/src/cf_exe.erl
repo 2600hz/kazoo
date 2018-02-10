@@ -580,7 +580,9 @@ handle_info(_Msg, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Handle call messages, sometimes forward them on.
+%% @doc
+%% Handle call messages, sometimes forward them on..
+%% @end
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{cf_module_pid=PidRef

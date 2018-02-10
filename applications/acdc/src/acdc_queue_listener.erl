@@ -200,7 +200,9 @@ delivery(Srv) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Initializes the listener
+%% @doc
+%% Initializes the listener.
+%% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->

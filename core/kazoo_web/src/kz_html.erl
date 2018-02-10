@@ -11,7 +11,9 @@
 -export([escape/1]).
 
 %%--------------------------------------------------------------------
-%% @doc Escapes an HTML string
+%% @doc
+%% Escapes an HTML string.
+%% @end
 %%--------------------------------------------------------------------
 -spec escape(binary()) -> binary().
 escape(Source) ->

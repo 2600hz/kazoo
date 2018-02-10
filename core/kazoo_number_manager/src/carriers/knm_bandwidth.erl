@@ -312,7 +312,9 @@ make_numbers_request(Verb, Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Convert a number order response to json
+%% @doc
+%% Convert a number order response to json.
+%% @end
 %%--------------------------------------------------------------------
 -spec number_order_response_to_json(any()) -> kz_json:object().
 number_order_response_to_json([]) ->

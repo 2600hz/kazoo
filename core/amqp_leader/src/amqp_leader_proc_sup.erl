@@ -27,7 +27,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the supervisor
+%% @doc
+%% Starts the supervisor.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(atom(), kz_term:atoms(), list(), atom(), [], []) -> kz_types:startlink_ret().
 start_link(Name, Nodes, Opts, Module, [], []) ->

@@ -21,7 +21,9 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc URL decodes a URL encoded string
+%% @doc
+%% URL decodes a URL encoded string.
+%% @end
 %%--------------------------------------------------------------------
 -spec urldecode(binary()) -> binary().
 urldecode(Source) ->
@@ -44,7 +46,9 @@ urldecode(<<H, R/binary>>, Acc) ->
     urldecode(R, <<Acc/binary, H>>).
 
 %%--------------------------------------------------------------------
-%% @doc URL encodes a string
+%% @doc
+%% URL encodes a string.
+%% @end
 %%--------------------------------------------------------------------
 -spec urlencode(binary() | atom() | integer() | float() | string()) -> binary().
 urlencode(Source) when is_binary(Source) ->
@@ -94,7 +98,9 @@ urlencode(<<C, R/binary>>, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Converts a single character to its base-16 %-encoded form
+%% @doc
+%% Converts a single character to its base-16 %-encoded form.
+%% @end
 %%--------------------------------------------------------------------
 -spec encode_char(integer()) -> binary().
 encode_char(Char) ->
@@ -158,7 +164,9 @@ parse_query_string('val', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
     parse_query_string('val', R, KeyAcc, <<ValAcc/binary, C>>, RetAcc).
 
 %%--------------------------------------------------------------------
-%% @doc Splits a URL into scheme, location, path, query, and fragment parts
+%% @doc
+%% Splits a URL into scheme, location, path, query, and fragment parts.
+%% @end
 %%--------------------------------------------------------------------
 -spec urlsplit(binary()) -> {binary(), binary(), binary(), binary(), binary()}.
 urlsplit(Source) ->
@@ -170,7 +178,9 @@ urlsplit(Source) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Splits out the scheme portion of the URL (if present)
+%% @doc
+%% Splits out the scheme portion of the URL (if present).
+%% @end
 %%--------------------------------------------------------------------
 -spec urlsplit_s(binary()) -> {binary(), binary()}.
 urlsplit_s(Source) ->
@@ -203,7 +213,9 @@ urlsplit_s(<<C, R/binary>>, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Splits out the location portion of the URL
+%% @doc
+%% Splits out the location portion of the URL.
+%% @end
 %%--------------------------------------------------------------------
 -spec urlsplit_l(binary()) -> {binary(), binary()}.
 urlsplit_l(<<"//", R/binary>>) ->
@@ -249,7 +261,9 @@ urlsplit_p(<<C, R/binary>>, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Splits the query string and fragment parts of the URL
+%% @doc
+%% Splits the query string and fragment parts of the URL.
+%% @end
 %%--------------------------------------------------------------------
 -spec urlsplit_q(binary(), binary()) -> {binary(), binary()}.
 urlsplit_q(<<>>, Acc) ->
@@ -262,7 +276,9 @@ urlsplit_q(<<C, R/binary>>, Acc) ->
     urlsplit_q(R, <<Acc/binary, C>>).
 
 %%--------------------------------------------------------------------
-%% @doc Joins the elements of a URL together
+%% @doc
+%% Joins the elements of a URL together.
+%% @end
 %%--------------------------------------------------------------------
 -spec urlunsplit({binary(), binary(), binary(), binary(), binary()}) -> binary().
 urlunsplit({S, N, P, Q, F}) ->

@@ -47,7 +47,9 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the listener and binds to the call channel destroy events
+%% @doc
+%% Starts the listener and binds to the call channel destroy events.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(kapps_call:call(), fun(), list()) -> kz_types:startlink_ret().
 start_link(Call, Fun, Args) ->

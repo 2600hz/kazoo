@@ -370,7 +370,9 @@ identify(Context, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Load an instance from the database
+%% @doc
+%% Load an instance from the database.
+%% @end
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Number) ->

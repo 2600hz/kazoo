@@ -26,7 +26,9 @@
 %% ===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the supervisor
+%% @doc
+%% Starts the supervisor.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link(atom(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Node, Options) ->
@@ -75,4 +77,3 @@ event_child(Node, Event) ->
 -spec custom_child(atom(), atom()) -> kz_types:sup_child_spec().
 custom_child(Node, Subclass) ->
     ?WORKER_NAME_ARGS_TYPE(Subclass, 'ecallmgr_fs_event_stream', [Node, 'CUSTOM', Subclass], 'transient').
-

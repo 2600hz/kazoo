@@ -10,24 +10,24 @@
 -define(SEP_2, <<"%%%===================================================================">>).
 
 %% regex to find contributors tag.
--define(HAS_CONTRIBUTORS_REGEX, "ag -G '(erl)$' -l '%%%+\\s*@?([Cc]ontributors|[Cc]ontributions)'").
+-define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl)$' -l '%%%+\\s*@?([Cc]ontributors|[Cc]ontributions)'").
 
 %% regex to spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
 %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
 %% multi line regex won't work). For multi line the first line should end with `|' followed by same regex until exhausted.
--define(COMMENT_SPEC, "ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)'").
+-define(REGEX_COMMENT_SPEC, "ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)'").
 
 %% regex to find functions without comment block before them after a separator comment block
 %% to avoid EDoc to use the separator as the functions comment.
 %% Regex explanation: search for any line starts with at least two `%%' followed by any whitespace, followed by any new line until
 %% a `-spec' attribute or a function head is found.
--define(SEP_SPEC, "ag -G '(erl)$' '%%%*\\s*==+$(\\n+(^-spec+|[a-z]+))' applications/ core/").
+-define(REGEX_SEP_SPEC, "ag -G '(erl)$' '%%%*\\s*==+$(\\n+(^-spec+|[a-z]+))' applications/ core/").
 
 %% regex for escaping codes in comment for `resource_exists' function crossbar modules.
--define(CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
+-define(REGEX_CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
 
-%% regex for finding start_link comments with no @end
--define(START_LINK_COMMENT_WITH_NO_END, "ag '%% @doc Starts the server$\n%%*\s*-+' applications/ core/").
+%% regex for finding comment block with no @end
+-define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '%% @doc.+$\n%%*\s*-+' core/ applications/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
@@ -37,11 +37,11 @@ main(_) ->
 
     io:format("Edocify Kazoo...~n~n"),
 
-    Run = [{?HAS_CONTRIBUTORS_REGEX, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
-          ,{?COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
-          ,{?SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
-          ,{?CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
-          ,{?START_LINK_COMMENT_WITH_NO_END, "start_link comments with no @end", fun start_link_comment_with_no_end/1}
+    Run = [{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
+          ,{?REGEX_COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
+          ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
+          ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
+          ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
           ],
     edocify(Run, 0).
 
@@ -277,7 +277,7 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
             Formatted ++ [Line] ++ [L || {_, L} <- Lines];
         <<"%% So ", Rest/binary>> ->
             do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [<<"%%">>, <<"%% For example:">>, <<"%%">>, <<"%% ```">>, <<"%%    ", Rest/binary, ".">>]);
-        Other ->
+        _ ->
             case Lines of
                 [{_, <<"%% @end">>}|_] ->
                     do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [Line, <<"%% '''">>]);
@@ -292,26 +292,35 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
 %% with `@end' tag.
 %% @end
 %%--------------------------------------------------------------------
-start_link_comment_with_no_end(Result) ->
+comment_blocks_with_no_end(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
-    _ = maps:map(fun start_link_comment_with_no_end/2, Positions),
+    _ = maps:map(fun comment_blocks_with_no_end/2, Positions),
     io:format(" done.~n").
 
-start_link_comment_with_no_end(File, Positions) ->
+comment_blocks_with_no_end(File, Positions) ->
     io:format("."),
     Lines = read_lines(File, true),
-    save_lines(File, do_start_link_comment_with_no_end(Lines, Positions, [])).
+    save_lines(File, do_comment_blocks_with_no_end(Lines, Positions, [])).
 
-do_start_link_comment_with_no_end([], _, Formatted) ->
+do_comment_blocks_with_no_end([], _, Formatted) ->
     Formatted;
-do_start_link_comment_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
+do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
     case lists:member(LN, Positions)
         andalso Line
     of
         false ->
-            do_start_link_comment_with_no_end(Lines, Positions, Formatted ++ [Line]);
-        <<"%% @doc Starts the server">> ->
-            Formatted ++ [<<Line/binary, ".">>, <<"%% @end">>] ++ [L || {_, L} <- Lines]
+            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line]);
+        <<"%% @doc">> ->
+            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line]);
+        <<"%% @doc ", Rest/binary>> ->
+            LineWithDot = case lists:last(binary_to_list(Rest)) of
+                              [] -> Rest;
+                              [<<".">>|_] -> Rest;
+                              _ -> <<Rest/binary, ".">>
+                          end,
+            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<"%% @doc">>, <<"%% ", LineWithDot/binary>>, <<"%% @end">>]);
+        _ ->
+            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line])
     end.
 
 %%%===================================================================

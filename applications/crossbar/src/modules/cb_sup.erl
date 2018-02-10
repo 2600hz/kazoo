@@ -123,7 +123,9 @@ format_path_tokens([_Module, _Function]=L) -> L;
 format_path_tokens([Module, Function | Args]) -> [Module, Function, Args].
 
 %%--------------------------------------------------------------------
-%% @doc Initializes the bindings this module will respond to.
+%% @doc
+%% Initializes the bindings this module will respond to..
+%% @end
 %%--------------------------------------------------------------------
 -spec init() -> supervisor:startchild_ret().
 init() ->

@@ -14,7 +14,9 @@
 -export([start/2, stop/1]).
 
 %%--------------------------------------------------------------------
-%% @doc Implement the application start behaviour
+%% @doc
+%% Implement the application start behaviour.
+%% @end
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
@@ -26,7 +28,9 @@ start(_Type, _Args) ->
     Ok.
 
 %%--------------------------------------------------------------------
-%% @doc Implement the application stop behaviour
+%% @doc
+%% Implement the application stop behaviour.
+%% @end
 %%--------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.
 stop(_State) ->

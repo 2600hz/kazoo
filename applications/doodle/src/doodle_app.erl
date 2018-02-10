@@ -35,7 +35,9 @@ start(_Type, _Args) ->
     doodle_sup:start_link().
 
 %%--------------------------------------------------------------------
-%% @doc Implement the application stop behaviour
+%% @doc
+%% Implement the application stop behaviour.
+%% @end
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->

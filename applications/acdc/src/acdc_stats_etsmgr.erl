@@ -49,7 +49,9 @@ start_link(TableId, TableOptions) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Initializes the server
+%% @doc
+%% Initializes the server.
+%% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', #state{}}.
 init([TableId, TableOptions]) ->

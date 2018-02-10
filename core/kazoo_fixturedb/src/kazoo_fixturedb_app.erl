@@ -18,14 +18,18 @@
 %% ===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Implement the application start behaviour
+%% @doc
+%% Implement the application start behaviour.
+%% @end
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     kazoo_fixturedb_sup:start_link().
 
 %%--------------------------------------------------------------------
-%% @doc Implement the application stop behaviour
+%% @doc
+%% Implement the application stop behaviour.
+%% @end
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->

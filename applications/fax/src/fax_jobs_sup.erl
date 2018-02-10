@@ -26,7 +26,9 @@ start_account_jobs(AccountId) ->
     supervisor:start_child(?MODULE, [AccountId]).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the supervisor
+%% @doc
+%% Starts the supervisor.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->

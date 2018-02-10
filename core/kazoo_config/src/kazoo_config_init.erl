@@ -15,7 +15,9 @@
 -export([read_cookie/1]).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the app for inclusion in a supervisor tree
+%% @doc
+%% Starts the app for inclusion in a supervisor tree.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->

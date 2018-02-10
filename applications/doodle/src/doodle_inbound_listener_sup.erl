@@ -49,7 +49,9 @@ start_listeners() ->
     lists:foreach(fun start_inbound_listener/1, connections()).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the supervisor
+%% @doc
+%% Starts the supervisor.
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
