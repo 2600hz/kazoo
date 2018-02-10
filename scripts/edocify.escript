@@ -15,7 +15,7 @@
 %% regex to spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
 %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
 %% multi line regex won't work). For multi line the first line should end with `|' followed by same regex until exhausted.
--define(REGEX_COMMENT_SPEC, "ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)'").
+-define(REGEX_COMMENT_SPEC, "ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)' core/ applications/").
 
 %% regex to find functions without comment block before them after a separator comment block
 %% to avoid EDoc to use the separator as the functions comment.
@@ -27,10 +27,13 @@
 -define(REGEX_CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
 
 %% regex for finding comment block with no @end
--define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '%% @doc.+$\n%%*\s*-+' core/ applications/").
+-define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '%% @doc.+$\\n%%*\\s*-+' core/ applications/").
+
+%% regex for finding comments written in the same line as `@doc'
+-define(REGEX_IN_DOC_LINE, "ag '%%*\\s*@doc.+$'  core/ applications/").
 
 %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
--define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc(\\n%%*$)+'").
+-define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc(\\n%%*$)+'  core/ applications/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
@@ -45,6 +48,8 @@ main(_) ->
           ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
+          ,{?REGEX_IN_DOC_LINE, "move comments written in the same line as @doc", fun move_in_doc_line/1}
+            %% must be last thing to run
           ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
           ],
     edocify(Run, 0).
@@ -325,6 +330,37 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<"%% @doc">>, <<"%% ", LineWithDot/binary>>, <<"%% @end">>]);
         _ ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line])
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Move comments written in the same line as @doc to their own line
+%% @end
+%%--------------------------------------------------------------------
+move_in_doc_line(Result) ->
+    Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
+    _ = maps:map(fun move_in_doc_line/2, Positions),
+    io:format(" done.~n").
+
+move_in_doc_line(File, Positions) ->
+    io:format("."),
+    io:format("~n~p~n", [File]),
+    Lines = read_lines(File, true),
+    save_lines(File, do_move_in_doc_line(Lines, Positions, [])).
+
+do_move_in_doc_line([], _, Formatted) ->
+    Formatted;
+do_move_in_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
+    io:format("~n~p~n", [LN]),
+    case lists:member(LN, Positions)
+        andalso Line
+    of
+        false ->
+            do_move_in_doc_line(Lines, Positions, Formatted ++ [Line]);
+        <<"%% @doc", Rest/binary>> ->
+            do_move_in_doc_line(Lines, Positions, Formatted ++ [<<"%% @doc">>, <<"%%", Rest/binary>>]);
+        <<"%%% @doc", Rest/binary>> ->
+            do_move_in_doc_line(Lines, Positions, Formatted ++ [<<"%%% @doc">>, <<"%%%", Rest/binary>>])
     end.
 
 %%--------------------------------------------------------------------

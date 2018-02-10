@@ -1,5 +1,6 @@
 %% @author root
-%% @doc @todo Add description to kazoo_oauth_util.
+%% @doc
+%% @todo Add description to kazoo_oauth_util.
 
 
 -module(kazoo_oauth_service).

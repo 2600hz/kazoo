@@ -348,7 +348,8 @@ is_account_db(Db) ->
                         {'error', 'not_found'}.
 
 %%--------------------------------------------------------------------
-%% @doc Realms are one->one with accounts.
+%% @doc
+%% Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_by_realm(kz_term:ne_binary()) -> getby_return().
@@ -453,7 +454,8 @@ is_enabled(AccountId, {<<"account">>, AccountId}) ->
 is_enabled(_AccountId, {_Type, _Thing}) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc Names are one->many with accounts since account names are not
+%% @doc
+%% Names are one->many with accounts since account names are not
 %% unique.
 %% @end
 %%--------------------------------------------------------------------

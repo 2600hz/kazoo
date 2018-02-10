@@ -63,7 +63,8 @@ start_listener() ->
     gen_listener:cast(?SERVER, {'ready'}).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server.
+%% @doc
+%% Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().

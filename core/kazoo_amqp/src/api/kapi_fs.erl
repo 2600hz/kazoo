@@ -25,7 +25,8 @@
                                                 end}]).
 
 %%--------------------------------------------------------------------
-%% @doc FS Request
+%% @doc
+%% FS Request
 %%     Pass-through of FS dialplan commands
 %% Takes proplist, creates JSON string or error
 %% @end

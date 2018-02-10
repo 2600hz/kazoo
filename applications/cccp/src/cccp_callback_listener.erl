@@ -35,7 +35,8 @@
 -define(PROMPT_DELAY, kapps_config:get_integer(?CCCP_CONFIG_CAT, <<"prompt_delay">>, 1) * ?MILLISECONDS_IN_SECOND).
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server.
+%% @doc
+%% Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(list()) -> kz_types:startlink_ret().

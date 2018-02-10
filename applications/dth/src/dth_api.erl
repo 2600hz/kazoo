@@ -16,7 +16,8 @@
 -include("dth.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc Blacklist Request - see wiki
+%% @doc
+%% Blacklist Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -37,7 +38,8 @@ blacklist_req_v(JObj) ->
     blacklist_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Blacklist Response - see wiki
+%% @doc
+%% Blacklist Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

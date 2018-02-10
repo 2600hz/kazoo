@@ -1,5 +1,6 @@
 %% @author root
-%% @doc @todo Add description to kz_datafactory.
+%% @doc
+%% @todo Add description to kz_datafactory.
 
 
 -module(kz_dataconfig).

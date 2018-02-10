@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc Store routing keys or PID bindings.
+%%% @doc
+%%% Store routing keys or PID bindings.
 %%%
 %%% When a binding is fired, pass the payload to the PID for evaluation, accumulating
 %%% the results for the response to the running process.

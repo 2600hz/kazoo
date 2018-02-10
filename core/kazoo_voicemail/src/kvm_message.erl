@@ -27,7 +27,8 @@
 %% Result of storing message. If it's not successful element 3 of tuple has the error message.
 
 %%--------------------------------------------------------------------
-%% @doc Receives and stores a new voicemail message.
+%% @doc
+%% Receives and stores a new voicemail message.
 %%
 %% Usually this function is called by {@link cf_voicemail} module to create message
 %% metadata and store the media file in the storage. This may results in
@@ -96,7 +97,8 @@ new(Call, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Forwards and stores a voicemail message from source mailbox into destination mailbox.
+%% @doc
+%% Forwards and stores a voicemail message from source mailbox into destination mailbox.
 %%
 %% Usually this function is called by {@link cf_voicemail} module to forward a message from its source
 %% mailbox into the destination mailbox. This may result in sending a notification as described in {@link new/2}.
@@ -166,7 +168,8 @@ fetch(AccountId, MessageId) ->
     fetch(AccountId, MessageId, 'undefined').
 
 %%--------------------------------------------------------------------
-%% @doc Fetch a message document while considering the retention policy.
+%% @doc
+%% Fetch a message document while considering the retention policy.
 %%
 %% `MessageId` is in `MODB_PREFIX' format (`YYYYMM-...'). If the message is older than
 %% account's voicemail retention policy, it will marked as deleted.
@@ -206,7 +209,8 @@ message(AccountId, MessageId) ->
     message(AccountId, MessageId, 'undefined').
 
 %%--------------------------------------------------------------------
-%% @doc Fetch message metadata while considering the retention policy.
+%% @doc
+%% Fetch message metadata while considering the retention policy.
 %%
 %% See {@link fetch/2} for description about retention policy.
 %%
@@ -224,7 +228,8 @@ message(AccountId, MessageId, BoxId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Change the message's folder.
+%% @doc
+%% Change the message's folder.
 %%
 %% Returns the new updated message on success or the old message if update failed.
 %%
@@ -261,7 +266,8 @@ change_folder(Folder, Message, AccountId, BoxId) ->
     change_folder(Folder, Message, AccountId, BoxId, []).
 
 %%--------------------------------------------------------------------
-%% @doc Change the message's folder.
+%% @doc
+%% Change the message's folder.
 %%
 %% Note: If `Folder' is `` {<<"deleted">>, 'true'} '', the message would move to
 %%       deleted folder and and its document will marked as soft-deleted,
@@ -293,7 +299,8 @@ update(AccountId, BoxId, Message) ->
     update(AccountId, BoxId, Message, []).
 
 %%--------------------------------------------------------------------
-%% @doc Update the message document.
+%% @doc
+%% Update the message document.
 %%
 %% It tries to fetch the message and applies provided function on the document. You can pass a JObj
 %% instead of `MessageId'.
@@ -348,7 +355,8 @@ move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId) ->
     move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId, []).
 
 %%--------------------------------------------------------------------
-%% @doc Moves a message to another mailbox.
+%% @doc
+%% Moves a message to another mailbox.
 %%
 %% It reads the mailbox document from database first, then calls {@link  maybe_do_move/7}.
 %%
@@ -375,7 +383,8 @@ move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId, Funs) ->
     move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId, Funs).
 
 %%--------------------------------------------------------------------
-%% @doc Moves a message to another mailbox.
+%% @doc
+%% Moves a message to another mailbox.
 %%
 %% If the message is prior to retention policy it will marked as deleted and
 %% `{error, <<"prior_to_retention_duration">>}' will returned instead.
@@ -442,7 +451,8 @@ copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds) ->
     copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds, []).
 
 %%--------------------------------------------------------------------
-%% @doc Copy a message to other mailbox(es)
+%% @doc
+%% Copy a message to other mailbox(es)
 %%
 %% If the message is prior to retention policy it will marked as deleted and
 %% `{error, <<"prior_to_retention_duration">>}' will returned instead.
@@ -478,7 +488,8 @@ copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, Funs) ->
     copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds, Funs).
 
 %%--------------------------------------------------------------------
-%% @doc Copy a message to other mailbox(es)
+%% @doc
+%% Copy a message to other mailbox(es)
 %%
 %% If the message is prior to retention policy it will marked as deleted and
 %% `{error, <<"prior_to_retention_duration">>}' will returned instead.
@@ -588,7 +599,8 @@ move_copy_final_check(AccountId, FromId, ToId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Get Url of the media file from media server.
+%% @doc
+%% Get Url of the media file from media server.
 %% @end
 %%--------------------------------------------------------------------
 -spec media_url(AccountId, Message) -> binary() when AccountId::kz_term:ne_binary(), Message::message().
@@ -879,7 +891,8 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc If notification was successfully processed return the NotifyAction.
+%% @doc
+%% If notification was successfully processed return the NotifyAction.
 %% Otherwise return action 'nothing' to store the message as new voicemail.
 %% @end
 %%--------------------------------------------------------------------
@@ -931,7 +944,8 @@ update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Double check document to make sure it's not exists in db.
+%% @doc
+%% Double check document to make sure it's not exists in db.
 %%
 %% Using `kz_datamgr:ensure_save` is more efficient here, but
 %% we're doing this fetch/retry for proof of concept whether document's id

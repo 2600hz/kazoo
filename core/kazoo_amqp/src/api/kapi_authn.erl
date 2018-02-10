@@ -83,7 +83,8 @@
 -define(AUTHN_ERR_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc Authentication Request - see wiki
+%% @doc
+%% Authentication Request - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -107,7 +108,8 @@ req_event_type() ->
     {?EVENT_CATEGORY, ?AUTHN_REQ_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
-%% @doc Authentication Response - see wiki
+%% @doc
+%% Authentication Response - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -127,7 +129,8 @@ resp_v(JObj) ->
     resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Authentication Error - see wiki
+%% @doc
+%% Authentication Error - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -145,7 +148,8 @@ error_v(Prop) when is_list(Prop) ->
 error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Setup and tear down bindings for authn gen_listeners
+%% @doc
+%% Setup and tear down bindings for authn gen_listeners
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -168,7 +172,8 @@ declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
 %%--------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc
+%% Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
 

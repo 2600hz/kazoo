@@ -298,7 +298,8 @@ do_join_media_files(Files, Options) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Based on detected format options, normalize the files if
+%% @doc
+%% Based on detected format options, normalize the files if
 %% sample rate are different of desire sample rate, otherwise
 %% copy the files to a temporary place to join them together.
 %% @end
@@ -334,7 +335,8 @@ maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Detect file format options(sample_rate, file format) and return
+%% @doc
+%% Detect file format options(sample_rate, file format) and return
 %% a tuple of detect options
 %% @end
 %%--------------------------------------------------------------------

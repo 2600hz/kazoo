@@ -465,7 +465,8 @@ assign_to_app(Nums, App, Options) ->
              ])).
 
 %%--------------------------------------------------------------------
-%% @doc Release all of an account's numbers
+%% @doc
+%% Release all of an account's numbers
 %% @end
 %%--------------------------------------------------------------------
 -spec free(kz_term:ne_binary()) -> 'ok'.

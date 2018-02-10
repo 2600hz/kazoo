@@ -36,7 +36,8 @@
 -define(ADVERTISE_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc Request asr - see wiki
+%% @doc
+%% Request asr - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

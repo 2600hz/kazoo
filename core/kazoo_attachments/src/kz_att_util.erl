@@ -1,5 +1,6 @@
 %% @author root
-%% @doc @todo Add description to kz_att_util.
+%% @doc
+%% @todo Add description to kz_att_util.
 -module(kz_att_util).
 
 -export([sha256/1, sha256_mac/2, sha_mac/2

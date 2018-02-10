@@ -97,7 +97,8 @@
 
 
 %%--------------------------------------------------------------------
-%% @doc Number Request
+%% @doc
+%% Number Request
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -117,7 +118,8 @@ number_req_v(Prop) when is_list(Prop) ->
 number_req_v(JObj) -> number_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Discovery Request
+%% @doc
+%% Discovery Request
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -138,7 +140,8 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 
 %%--------------------------------------------------------------------
-%% @doc Discovery Response
+%% @doc
+%% Discovery Response
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -159,7 +162,8 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 
 %%--------------------------------------------------------------------
-%% @doc Discovery Flush
+%% @doc
+%% Discovery Flush
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -179,7 +183,8 @@ flush_v(Prop) when is_list(Prop) ->
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Bind AMQP Queue for routing requests
+%% @doc
+%% Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.

@@ -107,7 +107,8 @@ handle_static(Data, Call, CaptureGroup) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Read CID info from a list of CID defined in database
+%% @doc
+%% Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
 -type list_cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), binary()} |
@@ -137,7 +138,8 @@ proceed_with_call(CIDName, CIDNumber, Destination, Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Update caller id number. If call
+%% @doc
+%% Update caller id number. If call
 %% has a capture group, strip the non capture group digits from
 %% request, to and callee_number
 %% @end
@@ -155,7 +157,8 @@ update_call(Call, CIDNumber, Destination) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Same as update_call/3, but also sets caller id name
+%% @doc
+%% Same as update_call/3, but also sets caller id name
 %% @end
 %%--------------------------------------------------------------------
 -spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
@@ -176,7 +179,8 @@ update_call(Call, CIDNumber, CIDName, Destination) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc If Destination exists correct "request", "to" and "callee_id_number"
+%% @doc
+%% If Destination exists correct "request", "to" and "callee_id_number"
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_strip_features_code(kapps_call:call(), kz_term:api_binary()) -> 'ok'.
@@ -199,7 +203,8 @@ maybe_strip_features_code(Call, Destination) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Lookup callflow and continue with the call if we have a destination number
+%% @doc
+%% Lookup callflow and continue with the call if we have a destination number
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), binary()) -> 'ok'.
@@ -265,7 +270,8 @@ should_restrict_call(Call, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Collect CID number from user
+%% @doc
+%% Collect CID number from user
 %% @end
 %%--------------------------------------------------------------------
 -spec collect_cid_number(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
@@ -442,7 +448,8 @@ get_cid_length_from_list_document(Call, ListId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Play reject prompt if any of the caller id are empty
+%% @doc
+%% Play reject prompt if any of the caller id are empty
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_set_default_cid(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> cid().
@@ -462,7 +469,8 @@ maybe_set_default_cid(Name, Number, _Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc play reject prompts when caller id number is empty or invalid
+%% @doc
+%% play reject prompts when caller id number is empty or invalid
 %% @end
 %%--------------------------------------------------------------------
 -spec play_reject_prompt(kapps_call:call()) -> 'ok'.

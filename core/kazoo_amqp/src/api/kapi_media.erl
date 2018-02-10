@@ -63,7 +63,8 @@
 -define(MEDIA_ERROR_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc Request media - see wiki
+%% @doc
+%% Request media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -83,7 +84,8 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Response with media - see wiki
+%% @doc
+%% Response with media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -103,7 +105,8 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Media error - see wiki
+%% @doc
+%% Media error - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

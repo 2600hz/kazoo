@@ -1,5 +1,6 @@
 %% @author root
-%% @doc @todo Add description to registrar_crypto.
+%% @doc
+%% @todo Add description to registrar_crypto.
 
 -module(registrar_crypto).
 -include("reg.hrl").

@@ -51,7 +51,8 @@
 -define(ASR_ERROR_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc Request asr - see wiki
+%% @doc
+%% Request asr - see wiki
 %% Takes kz_term:proplist(), creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -71,7 +72,8 @@ req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Response with asr - see wiki
+%% @doc
+%% Response with asr - see wiki
 %% Takes kz_term:proplist(), creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -91,7 +93,8 @@ resp_v(JObj) ->
     resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Asr error - see wiki
+%% @doc
+%% Asr error - see wiki
 %% Takes kz_term:proplist(), creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

@@ -60,7 +60,8 @@
 -define(RESET_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc Subscribing for updates
+%% @doc
+%% Subscribing for updates
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -87,7 +88,8 @@ publish_subscribe(Req, ContentType) ->
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc notifying subscribers
+%% @doc
+%% notifying subscribers
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

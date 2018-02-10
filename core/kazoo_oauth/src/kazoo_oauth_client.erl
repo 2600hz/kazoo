@@ -1,5 +1,6 @@
 %% @author root
-%% @doc @todo Add description to kazoo_oauth_client.
+%% @doc
+%% @todo Add description to kazoo_oauth_client.
 -module(kazoo_oauth_client).
 
 -include("kazoo_oauth.hrl").

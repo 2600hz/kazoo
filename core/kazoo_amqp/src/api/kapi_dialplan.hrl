@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018 2600Hz INC
-%%% @doc Dialplan API definitions
+%%% @doc
+%%% Dialplan API definitions
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson

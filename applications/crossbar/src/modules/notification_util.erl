@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc Provide helper functions for firing notifications based on crossbar changes
+%%% @doc
+%%% Provide helper functions for firing notifications based on crossbar changes
 %%%
 %%% @author Mark Magnusson
 %%% @end

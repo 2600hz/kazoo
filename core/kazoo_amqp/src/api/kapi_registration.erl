@@ -120,7 +120,8 @@
 -define(REG_SYNC_RK, <<"registration.sync">>).
 
 %%--------------------------------------------------------------------
-%% @doc Registration Success - see wiki
+%% @doc
+%% Registration Success - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -140,7 +141,8 @@ success_v(Prop) when is_list(Prop) ->
 success_v(JObj) -> success_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Registration Success - see wiki
+%% @doc
+%% Registration Success - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -176,7 +178,8 @@ sync_v(Prop) when is_list(Prop) ->
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Registration Query - see wiki
+%% @doc
+%% Registration Query - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -196,7 +199,8 @@ query_req_v(Prop) when is_list(Prop) ->
 query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Registration Query Response - see wiki
+%% @doc
+%% Registration Query Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -216,7 +220,8 @@ query_resp_v(Prop) when is_list(Prop) ->
 query_resp_v(JObj) -> query_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Registration Query Response - see wiki
+%% @doc
+%% Registration Query Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -236,7 +241,8 @@ query_err_v(Prop) when is_list(Prop) ->
 query_err_v(JObj) -> query_err_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Setup and tear down bindings for authn gen_listeners
+%% @doc
+%% Setup and tear down bindings for authn gen_listeners
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -289,7 +295,8 @@ declare_exchanges() ->
     amqp_util:registrar_exchange().
 
 %%--------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc
+%% Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
 
@@ -303,7 +310,8 @@ publish_success(Success, ContentType) ->
     amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc
+%% Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
 
@@ -357,7 +365,8 @@ publish_sync(API, ContentType) ->
     amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc Special access to the API keys
+%% @doc
+%% Special access to the API keys
 %% @end
 %%--------------------------------------------------------------------
 -spec success_keys() -> kz_term:ne_binaries().

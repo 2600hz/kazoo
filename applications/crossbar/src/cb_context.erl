@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc Helpers for manipulating the `#cb_context{}' record.
+%%% @doc
+%%% Helpers for manipulating the `#cb_context{}' record.
 %%%
 %%% @author James Aimonetti
 %%% @end

@@ -61,7 +61,8 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server.
+%% @doc
+%% Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(kz_types:server_ref(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_types:startlink_ret().

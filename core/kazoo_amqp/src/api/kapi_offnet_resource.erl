@@ -182,7 +182,8 @@
 
 
 %%--------------------------------------------------------------------
-%% @doc Offnet resource request - see wiki
+%% @doc
+%% Offnet resource request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -202,7 +203,8 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Offnet resource request - see wiki
+%% @doc
+%% Offnet resource request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

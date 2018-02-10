@@ -53,7 +53,8 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server.
+%% @doc
+%% Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> kz_types:startlink_ret().

@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc Crossbar REST-related functions.
+%%% @doc
+%%% Crossbar REST-related functions.
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -516,7 +517,8 @@ decode_json_body(ReqBody, Req) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Normalizes envelope keys, sets envelope keys to lowercase.
+%% @doc
+%% Normalizes envelope keys, sets envelope keys to lowercase.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_envelope_keys(kz_json:object()) -> kz_json:object().
@@ -529,7 +531,8 @@ normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Determines if the request envelope is valid.
+%% @doc
+%% Determines if the request envelope is valid.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_valid_request_envelope(kz_json:object(), cb_context:context()) -> 'true' | validation_errors().
@@ -677,7 +680,8 @@ uppercase_all(L) when is_list(L) ->
     [kz_term:to_upper_binary(kz_term:to_binary(I)) || I <- L].
 
 %%--------------------------------------------------------------------
-%% @doc Insert `POST' if Verb is in allowed, otherwise remove `POST'.
+%% @doc
+%% Insert `POST' if Verb is in allowed, otherwise remove `POST'.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_add_post_method(kz_term:ne_binary(), http_method(), http_methods()) -> http_methods().
@@ -1096,7 +1100,8 @@ process_billing_response(Context, NewContext) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc This function determines if the response is of type success.
+%% @doc
+%% This function determines if the response is of type success.
 %% @end
 %%--------------------------------------------------------------------
 -spec succeeded(cb_context:context()) -> boolean().

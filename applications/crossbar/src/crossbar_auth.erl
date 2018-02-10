@@ -269,7 +269,8 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Checks if multi factor is enabled by looking at system, account and hierarchy.
+%% @doc
+%% Checks if multi factor is enabled by looking at system, account and hierarchy.
 %%
 %% If the configuration comes from a parent account
 %% then we should look for property `multi_factor.include_subaccounts'.

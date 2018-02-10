@@ -104,7 +104,8 @@
 -define(METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), <<"metaflow.bind.", (amqp_util:encode(AccountId))/binary, ".", (amqp_util:encode(CallId))/binary>>).
 
 %%--------------------------------------------------------------------
-%% @doc Request metaflow - see wiki
+%% @doc
+%% Request metaflow - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -125,7 +126,8 @@ action_v(JObj) -> action_v(kz_json:to_proplist(JObj)).
 
 
 %%--------------------------------------------------------------------
-%% @doc flow
+%% @doc
+%% flow
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -145,7 +147,8 @@ flow_v(Prop) when is_list(Prop) ->
 flow_v(JObj) -> flow_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc bind metaflow - see wiki
+%% @doc
+%% bind metaflow - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -323,7 +326,8 @@ ensure_callid(JObj) ->
     kz_json:set_value(<<"Call-ID">>, callid(JObj), JObj).
 
 %%--------------------------------------------------------------------
-%% @doc Asks for metaflows to be enabled for a call - see wiki
+%% @doc
+%% Asks for metaflows to be enabled for a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

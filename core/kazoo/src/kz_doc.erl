@@ -328,7 +328,8 @@ latest_attachment_id(Doc) ->
             Name
     end.
 
-%% @doc Gets a random attachment from JObj (no order is imposed!)
+%% @doc
+%% Gets a random attachment from JObj (no order is imposed!)
 
 -spec attachment(kz_json:object()) -> kz_term:api_object().
 attachment(JObj) ->

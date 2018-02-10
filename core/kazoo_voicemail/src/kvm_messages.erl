@@ -44,7 +44,8 @@
 -type get_map() :: #{kz_term:ne_binary() => kz_json:objects()}.
 
 %%--------------------------------------------------------------------
-%% @doc Get all voicemail messages metadata for an account which
+%% @doc
+%% Get all voicemail messages metadata for an account which
 %% are in retention duration range in whatever folder they're in.
 %%
 %% Returns a map with box_id as key and a list of messages metadata
@@ -59,7 +60,8 @@ get(AccountId) ->
     normalize_account_listing(get_view_results(AccountId, ?MSG_LISTING_BY_TIMESTAMP, ViewOpts, 'undefined')).
 
 %%--------------------------------------------------------------------
-%% @doc Get all voicemail messages metadata for a specific box which
+%% @doc
+%% Get all voicemail messages metadata for a specific box which
 %% are in retention duration range and in whatever folder they're in.
 %% @end
 %%--------------------------------------------------------------------
@@ -80,7 +82,8 @@ count(AccountId) ->
     count_per_folder(AccountId).
 
 %%--------------------------------------------------------------------
-%% @doc Get total count of non-deleted messages in a specific box.
+%% @doc
+%% Get total count of non-deleted messages in a specific box.
 %%
 %% Only counts messages which are in retention duration and are
 %% in `new' or `saved' folder only.
@@ -92,7 +95,8 @@ count(AccountId, BoxId) ->
     New + Saved.
 
 %%--------------------------------------------------------------------
-%% @doc Get count of non-deleted messages in a specific box.
+%% @doc
+%% Get count of non-deleted messages in a specific box.
 %%
 %% Only counts messages which are in retention duration and are
 %% in `new' or `saved' folder only.
@@ -147,7 +151,8 @@ sum_owner_mailboxes(AccountId, [BoxId|BoxIds], {New, Saved}) ->
     sum_owner_mailboxes(AccountId,  BoxIds, {New + BoxNew, Saved + BoxSaved}).
 
 %%--------------------------------------------------------------------
-%% @doc Get count of messages per box per folder in an account which are in
+%% @doc
+%% Get count of messages per box per folder in an account which are in
 %% retention duration.
 %%
 %% Sample output:
@@ -169,7 +174,8 @@ count_per_folder(AccountId) ->
     count_per_folder(AccountId, [], ?MSG_COUNT_PER_FOLDER, ?COUNT_ALL).
 
 %%--------------------------------------------------------------------
-%% @doc Get count of messages per folder for a mailbox which are in
+%% @doc
+%% Get count of messages per folder for a mailbox which are in
 %% retention duration.
 %%
 %% Sample output:
@@ -189,7 +195,8 @@ count_per_folder(AccountId, BoxId) ->
     count_per_folder(AccountId, [BoxId], ?MSG_COUNT_PER_BOX_FOLDER, ?COUNT_ALL).
 
 %%--------------------------------------------------------------------
-%% @doc Loop over each folder, get view result and do the sum with
+%% @doc
+%% Loop over each folder, get view result and do the sum with
 %% previous result.
 %% @end
 %%--------------------------------------------------------------------
@@ -221,7 +228,8 @@ update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
 %%--------------------------------------------------------------------
-%% @doc Update the messages documents.
+%% @doc
+%% Update the messages documents.
 %%
 %% It tries to fetch the message and applies provided function on the document. You can pass a JObj
 %% instead of `MessageId'.
@@ -299,7 +307,8 @@ fetch(AccountId, MsgIds) ->
     fetch(AccountId, MsgIds, 'undefined').
 
 %%--------------------------------------------------------------------
-%% @doc Fetch messages documents for a voicemail box
+%% @doc
+%% Fetch messages documents for a voicemail box
 %%
 %% Returns a JObj with successfully fetch documents and failed to fetch with error reason.
 %% @end
@@ -349,7 +358,8 @@ change_folder(Folder, Msgs, AccountId, BoxId) ->
     change_folder(Folder, Msgs, AccountId, BoxId, []).
 
 %%--------------------------------------------------------------------
-%% @doc Change messages folder.
+%% @doc
+%% Change messages folder.
 %%
 %% Note: Messages prior to retention duration will not update.
 %%
@@ -380,7 +390,8 @@ move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId) ->
     move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId, []).
 
 %%--------------------------------------------------------------------
-%% @doc Moves a list of messages to another mailbox.
+%% @doc
+%% Moves a list of messages to another mailbox.
 %%
 %% You can pass a list of JObj to use the ID of the documents to move.
 %%
@@ -426,7 +437,8 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, []).
 
 %%--------------------------------------------------------------------
-%% @doc Copies a list of messages to multiple mailboxes.
+%% @doc
+%% Copies a list of messages to multiple mailboxes.
 %%
 %% You can pass a list of JObj to use the ID of the documents to copy.
 %%
@@ -506,7 +518,8 @@ add_timestamp_if_defined(Key, Timestamp, ViewOpts) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Normalize listing view results.
+%% @doc
+%% Normalize listing view results.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_account_listing(kz_json:objects()) -> get_map().
@@ -524,7 +537,8 @@ normalize_account_listing(JObj, Map) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Normalize fetch/update bulk result.
+%% @doc
+%% Normalize fetch/update bulk result.
 %% Note: Optional checks message belonging to the BoxId and message
 %%       retention
 %% @end
@@ -568,7 +582,8 @@ normalize_bulk_results(#{succeeded := Succeeded
     normalize_bulk_results(NewMap, JObjs, Method, BoxId, RetenTimestamp).
 
 %%--------------------------------------------------------------------
-%% @doc check message retention. Also if the operation is update, checks if the message is in retention enforce set
+%% @doc
+%% check message retention. Also if the operation is update, checks if the message is in retention enforce set
 %% so the message won't be added to succeeded list
 %% @end
 %%--------------------------------------------------------------------
@@ -586,7 +601,8 @@ is_prior_to_retention(JObj, RetenTimestamp, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Normalize count view results.
+%% @doc
+%% Normalize count view results.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_count(kz_term:ne_binary(), kz_json:objects(), count_map()) -> count_map().
@@ -627,7 +643,8 @@ sum_per_folder(JObj, FolderKeyIndex, BoxIdKeyIndex, ResultMap) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Apply update functions and map all messages to their MODBs.
+%% @doc
+%% Apply update functions and map all messages to their MODBs.
 %%
 %% If message is prior to retention, do not apply functions, just
 %% set the folder to 'deleted' and set it to_update_map to update the

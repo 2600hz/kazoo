@@ -794,7 +794,8 @@ get_prefix(City) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Tries to fill [Number,locality] field with info from phonebook.
+%% @doc
+%% Tries to fill [Number,locality] field with info from phonebook.
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_locality(cb_context:context()) -> cb_context:context().

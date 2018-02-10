@@ -297,7 +297,8 @@ resume_v(Prop) when is_list(Prop) ->
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Bind AMQP Queue for routing requests
+%% @doc
+%% Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.

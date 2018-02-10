@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc Sends request to start the call to recipient when he's available.
+%%% @doc
+%%% Sends request to start the call to recipient when he's available.
 %%%
 %%% ```
 %%% data: {

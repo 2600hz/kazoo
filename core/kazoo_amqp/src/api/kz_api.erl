@@ -148,7 +148,8 @@ reply_to(JObj) ->
     kz_json:get_value(?KEY_REPLY_TO_PID, JObj).
 
 %%--------------------------------------------------------------------
-%% @doc Default Headers in all messages - see wiki
+%% @doc
+%% Default Headers in all messages - see wiki
 %% Creates the seed proplist for the eventual message to be sent
 %% All fields are required general headers.
 %% @end
@@ -294,7 +295,8 @@ is_empty(<<>>) -> 'true';
 is_empty(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc Extract just the default headers from a message
+%% @doc
+%% Extract just the default headers from a message
 %% @end
 %%--------------------------------------------------------------------
 -spec extract_defaults(kz_term:api_terms()) -> kz_term:proplist().
@@ -317,7 +319,8 @@ remove_defaults(JObj) ->
                        ).
 
 %%--------------------------------------------------------------------
-%% @doc Format an error event
+%% @doc
+%% Format an error event
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

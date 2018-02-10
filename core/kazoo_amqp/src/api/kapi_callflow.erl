@@ -25,7 +25,8 @@
 -define(RESUME_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc Resume a callflow's flow
+%% @doc
+%% Resume a callflow's flow
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -60,7 +61,8 @@ declare_exchanges() ->
     amqp_util:kapps_exchange().
 
 %%--------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc
+%% Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_resume(kz_term:api_terms()) -> 'ok'.

@@ -449,7 +449,8 @@ add_pvt_auth_funs(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc disallow vmbox messages array changing.
+%% @doc
+%% disallow vmbox messages array changing.
 %% Also check if vmbox has still message array
 %% and inform client to do migrate their vmbox
 %% @end
@@ -517,7 +518,8 @@ get_folder_filter(Context, Default) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Filter messages(JObjs) based on Folder or Ids and
+%% @doc
+%% Filter messages(JObjs) based on Folder or Ids and
 %% apply query strings filters on them as well.
 %%
 %% Note: Filter can be `<<"all">>' which return all messages.

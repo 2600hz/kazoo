@@ -116,7 +116,8 @@ is_ip(Address) ->
         orelse is_ipv6(Address).
 
 %%--------------------------------------------------------------------
-%% @doc Detects if specified IP family is supported by system
+%% @doc
+%% Detects if specified IP family is supported by system
 %% (Need 'ping' command installed on the system.
 %%  ping is part of iputils package)
 %% @end
@@ -166,7 +167,8 @@ ping_cmd_option('ping6') -> "ping6 -c 1 localhost";
 ping_cmd_option(_) -> "ping -c 1 localhost".
 
 %%--------------------------------------------------------------------
-%% @doc Default binding IP address (bind on all interfaces) based
+%% @doc
+%% Default binding IP address (bind on all interfaces) based
 %%      on supported IP family
 %% @end
 %%--------------------------------------------------------------------

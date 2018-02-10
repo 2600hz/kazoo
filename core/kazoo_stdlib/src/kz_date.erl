@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc Represent a date, and perform various manipulations on it.
+%%% @doc
+%%% Represent a date, and perform various manipulations on it.
 %%%
 %%%
 %%% @author Mark Magnusson
@@ -36,7 +37,8 @@
         ]).
 
 %%--------------------------------------------------------------------
-%% @doc Convert a Gregorian seconds integer to kz_date taking into consideration timezone
+%% @doc
+%% Convert a Gregorian seconds integer to kz_date taking into consideration timezone
 %% @end
 %%--------------------------------------------------------------------
 -spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) -> kz_time:date().
@@ -97,7 +99,8 @@ normalize({Y, M, D}=Date) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Calculate when the second date is in time, relative to the first
+%% @doc
+%% Calculate when the second date is in time, relative to the first
 %% calendar:time_difference/2 is obsolete. Convert to gregorian seconds instead
 %% @end
 %%--------------------------------------------------------------------

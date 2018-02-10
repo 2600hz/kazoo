@@ -239,7 +239,8 @@ account_is_failed(Ctx, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Process messages and do migrate
+%% @doc
+%% Process messages and do migrate
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate_messages(#ctx{}, kz_json:objects()) -> #ctx{}.
@@ -249,7 +250,8 @@ migrate_messages(#ctx{account_id = _AccountId}=Ctx, ViewResults) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Check Db existence and process with migration
+%% @doc
+%% Check Db existence and process with migration
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_migrate(#ctx{}, kz_term:ne_binaries(), map(), kz_term:ne_binaries() | non_neg_integer()) -> #ctx{}.
@@ -359,7 +361,8 @@ update_vmbox_message(Message, MODbFailed, Failed, _, Id, Timestamp) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Get messages from mailbox arrays and generate lagecy_msg listing view
+%% @doc
+%% Get messages from mailbox arrays and generate lagecy_msg listing view
 %% fake message_doc result for manual migration
 %% @end
 %%--------------------------------------------------------------------
@@ -408,7 +411,8 @@ create_legacy_view_result(BoxJObj, Message) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Check Db existence and remove messages that non exists dbs
+%% @doc
+%% Check Db existence and remove messages that non exists dbs
 %% @end
 %%--------------------------------------------------------------------
 -spec check_dbs_existence(#ctx{}, kz_term:ne_binaries(), map()) -> {#ctx{}, map()}.
@@ -427,7 +431,8 @@ check_dbs_existence(Ctx, [Db | Dbs], MsgMap) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Normalize bulk save results and update stats accordingly
+%% @doc
+%% Normalize bulk save results and update stats accordingly
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_bulk_result(#ctx{}, kz_term:ne_binary(), kz_json:objects()) -> #ctx{}.
@@ -449,7 +454,8 @@ normalize_bulk_result(#ctx{account_id = _AccountId}=Ctx, Db, [S | Saved]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc process legacy message view result, generate a new message doc
+%% @doc
+%% process legacy message view result, generate a new message doc
 %% for them and map them to proper modb.
 %%
 %% Note: We are moving metadata only, attachment still remains in AccountDb,
@@ -546,7 +552,8 @@ create_message(#ctx{account_id = AccountId
         ],
     kz_json:set_values(UpdateProps, Msg).
 
-%% @doc try to get private_media to read its create/modified timestamp to set as
+%% @doc
+%% try to get private_media to read its create/modified timestamp to set as
 %% voice mail message timestamp.
 %% @end
 -spec maybe_get_timestamp(#ctx{}, kz_json:objects()) -> {#ctx{}, kz_json:objects()}.

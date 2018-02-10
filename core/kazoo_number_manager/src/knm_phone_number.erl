@@ -1557,7 +1557,8 @@ list_attachments(PN, AuthBy) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Sanitize phone number docs fields and remove deprecated fields
+%% @doc
+%% Sanitize phone number docs fields and remove deprecated fields
 %% @end
 %%--------------------------------------------------------------------
 -spec sanitize_public_fields(kz_json:object()) -> kz_json:object().

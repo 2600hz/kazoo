@@ -37,7 +37,8 @@
 -export_type([req/0, resp/0]).
 
 %%--------------------------------------------------------------------
-%% @doc Dialplan Route Request - see wiki
+%% @doc
+%% Dialplan Route Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -60,7 +61,8 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
-%% @doc Dialplan Route Response - see wiki
+%% @doc
+%% Dialplan Route Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -112,7 +114,8 @@ is_actionable_resp(JObj) ->
     is_actionable_resp(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Route within a Dialplan Route Response - see wiki
+%% @doc
+%% Route within a Dialplan Route Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -132,7 +135,8 @@ resp_route_v(Prop) when is_list(Prop) ->
 resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Winning Responder Message - see wiki
+%% @doc
+%% Winning Responder Message - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -152,7 +156,8 @@ win_v(Prop) when is_list(Prop) ->
 win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Bind AMQP Queue for routing requests
+%% @doc
+%% Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.

@@ -162,7 +162,8 @@ originate_execute_v(API) ->
     kapi_dialplan:originate_execute_v(API).
 
 %%--------------------------------------------------------------------
-%% @doc Resource Request - see wiki
+%% @doc
+%% Resource Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -202,7 +203,8 @@ originate_req_endpoint_v(JObj) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc Resource Request - see wiki
+%% @doc
+%% Resource Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -222,7 +224,8 @@ originate_resp_v(JObj) ->
     originate_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Resource Request started - see wiki
+%% @doc
+%% Resource Request started - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -242,7 +245,8 @@ originate_started_v(JObj) ->
     originate_started_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Resource Request UUID - see wiki
+%% @doc
+%% Resource Request UUID - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -262,7 +266,8 @@ originate_uuid_v(JObj) ->
     originate_uuid_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Eavesdrop Request - see wiki
+%% @doc
+%% Eavesdrop Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -282,7 +287,8 @@ eavesdrop_req_v(JObj) ->
     eavesdrop_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Eavesdrop Response - see wiki
+%% @doc
+%% Eavesdrop Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

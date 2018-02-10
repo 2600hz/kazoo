@@ -133,7 +133,8 @@ doc_update_v(JObj) ->
     doc_update_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Format a call event from the switch for the listener
+%% @doc
+%% Format a call event from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

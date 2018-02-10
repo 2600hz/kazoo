@@ -118,7 +118,8 @@ is_callflow_child(Name, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc update the caller id and owner information for this call
+%% @doc
+%% update the caller id and owner information for this call
 %% @end
 %%--------------------------------------------------------------------
 -spec update_caller_identity(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -141,7 +142,8 @@ update_caller_identity(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc validate that all required parameters are defined
+%% @doc
+%% validate that all required parameters are defined
 %% @end
 %%--------------------------------------------------------------------
 -spec is_valid_caller_identity(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
