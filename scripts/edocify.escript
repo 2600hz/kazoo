@@ -344,14 +344,12 @@ move_in_doc_line(Result) ->
 
 move_in_doc_line(File, Positions) ->
     io:format("."),
-    io:format("~n~p~n", [File]),
     Lines = read_lines(File, true),
     save_lines(File, do_move_in_doc_line(Lines, Positions, [])).
 
 do_move_in_doc_line([], _, Formatted) ->
     Formatted;
 do_move_in_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
-    io:format("~n~p~n", [LN]),
     case lists:member(LN, Positions)
         andalso Line
     of
