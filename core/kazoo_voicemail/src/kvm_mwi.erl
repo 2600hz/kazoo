@@ -22,11 +22,11 @@
 %% @end
 %%--------------------------------------------------------------------
 
--spec notify(kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
+-spec notify(ne_binary(), ne_binary()) -> pid().
 notify(BoxId, Account) ->
     kz_util:spawn(fun() -> send_mwi_update(BoxId, Account) end).
 
--spec send_mwi_update(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec send_mwi_update(ne_binary(), ne_binary()) -> 'ok'.
 send_mwi_update(BoxId, Account) ->
     timer:sleep(?MILLISECONDS_IN_SECOND),
 
