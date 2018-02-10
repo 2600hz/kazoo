@@ -723,7 +723,6 @@ vm_count(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
+-spec vm_count_by_owner(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
