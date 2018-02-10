@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -40,7 +40,7 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Same as pending/2 without showing details and limited to 100 notifications
+%% Same as {@link pending/2} without showing details and limited to 100 notifications.
 %% @end
 %%--------------------------------------------------------------------
 -spec pending() -> 'no_return'.
@@ -49,7 +49,7 @@ pending() ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Same as pending/2 without showing details
+%% Same as {@link pending/2} without showing details.
 %% @end
 %%--------------------------------------------------------------------
 -spec pending(kz_term:ne_binary()) -> 'no_return'.
@@ -61,7 +61,7 @@ pending(ShowCount) ->
 %% Prints a limited amount of notifications publish pending.
 %% Notification that been process is excluded.
 %% Options:
-%%   ShowCount: amount of notificatiosn to show
+%%   ShowCount: amount of notifications to show
 %%   Details: Whether or not to show notifications details
 %% @end
 %%--------------------------------------------------------------------
@@ -117,7 +117,7 @@ pending_by_type(Type) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Same as failed/2 without showing details and limited to 100
+%% Same as {@link failed/2} without showing details and limited to 100.
 %% @end
 %%--------------------------------------------------------------------
 -spec failed() -> 'no_return'.
@@ -137,7 +137,7 @@ failed(ShowCount) ->
 %% @doc
 %% Prints a limited amount of notifications publish which maxed their tries.
 %% Options:
-%%   ShowCount: amount of notificatiosn to show
+%%   ShowCount: amount of notifications to show
 %%   Details: Whether or not to show notifications details
 %% @end
 %%--------------------------------------------------------------------
@@ -164,7 +164,7 @@ failed(ShowCount, _Details) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Show failed notification by type, limited to first 100
+%% Show failed notification by type, limited to first 100.
 %% @end
 %%--------------------------------------------------------------------
 -spec failed_by_type(kz_term:ne_binary()) -> 'no_return'.
@@ -185,7 +185,7 @@ failed_by_type(Type) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Send the notification by Id
+%% Send the notification by Id.
 %% @end
 %%--------------------------------------------------------------------
 -spec send_notify(kz_term:ne_binary()) -> 'no_return'.
@@ -204,7 +204,7 @@ send_notify(Id) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Show details for the notification by Id
+%% Show details for the notification by Id.
 %% @end
 %%--------------------------------------------------------------------
 -spec notify_info(kz_term:ne_binary()) -> 'no_return'.
@@ -271,7 +271,7 @@ bulk_delete(Ids) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Prints total pending notification for each type
+%% Prints total pending notification for each type.
 %% @end
 %%--------------------------------------------------------------------
 -spec statistics() -> 'no_return'.
@@ -306,9 +306,6 @@ get_total(ViewOptions, View) ->
             lists:sum([kz_json:get_integer_value(<<"value">>, R, 0) || R <- Rs]);
         {'error', _} -> 0
     end.
-
-%% print_job_table(ViewOptions) ->
-%%     print_job_table(ViewOptions, []).
 
 print_job_table(ViewOptions, RunningIds) ->
     print_job_table(ViewOptions, RunningIds, <<"pending_notify/pending_range">>).

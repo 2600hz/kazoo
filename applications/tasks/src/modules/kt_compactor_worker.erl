@@ -234,12 +234,12 @@ should_compact(Compactor, ?HEUR_RATIO) ->
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary()) ->
                                   {pos_integer(), pos_integer()} |
                                   'undefined' | 'not_found'.
--spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary(), 0..3) ->
-                                  {pos_integer(), pos_integer()} |
-                                  'undefined' | 'not_found'.
 get_db_disk_and_data(Conn, DbName) ->
     get_db_disk_and_data(Conn, DbName, 0).
 
+-spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary(), 0..3) ->
+                                  {pos_integer(), pos_integer()} |
+                                  'undefined' | 'not_found'.
 get_db_disk_and_data(_Conn, _DbName, 3=_N) ->
     lager:warning("getting db info for ~s failed ~b times", [_DbName, _N]),
     'undefined';

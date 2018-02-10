@@ -5,6 +5,7 @@
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
+%%% ```
 %%% foo.erl -> bind("module.init").
 %%% *** Later ***
 %%% module.erl
@@ -13,6 +14,7 @@
 %%%                receive -> Resp
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
+%%% '''
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -68,7 +70,8 @@ apply(API, Action, Args) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% return [ {Result, Payload1} ], a list of tuples, the first element
+%% Map over bound handlers.
+%% Return `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified
 %% @end
@@ -88,7 +91,8 @@ pmap(Routing, Payload, Options) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% return the modified Payload after it has been threaded through
+%% Fold over bound handlers.
+%% Return the modified Payload after it has been threaded through
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
@@ -99,7 +103,7 @@ fold(Routing, Payload) ->
 
 %%-------------------------------------------------------------------
 %% @doc
-%% Helper functions for working on a result set of bindings
+%% Helper functions for working on a result set of bindings.
 %% @end
 %%-------------------------------------------------------------------
 -spec any(map_results()) -> boolean().
@@ -120,7 +124,7 @@ succeeded(Res) when is_list(Res) ->
 
 %%-------------------------------------------------------------------------
 %% @doc
-%% Helpers for the result set helpers
+%% Helpers for the result set helpers.
 %% @end
 %%-------------------------------------------------------------------------
 -spec check_bool({boolean(), any()} | boolean()) -> boolean().
