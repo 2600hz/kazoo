@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Listing of all expected v1 callbacks
 %%%
 %%%
@@ -343,7 +342,6 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().

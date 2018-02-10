@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
-%%%
-%%%
-%%%
 %%% @author Peter Defebvre
 %%% @author Pierre Fenoll
 %%% @end

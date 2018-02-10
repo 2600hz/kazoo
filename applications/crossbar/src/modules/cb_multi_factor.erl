@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Multi factor authentication configuration API endpoint
 %%%
 %%% @end
@@ -311,7 +310,6 @@ merge_summary(Configured, Available) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().

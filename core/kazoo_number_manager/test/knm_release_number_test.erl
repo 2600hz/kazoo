@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
-%%%
 %%% @author James Aimonetti
 %%% @author Pierre Fenoll
 %%% @end

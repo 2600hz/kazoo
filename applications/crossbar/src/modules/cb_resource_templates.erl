@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Handle client requests for local resource documents
 %%%
 %%%
@@ -140,7 +139,6 @@ delete(Context, _) -> crossbar_doc:delete(Context).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec determine_template_database(cb_context:context()) -> cb_context:context().
@@ -173,7 +171,6 @@ local_template_database(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_allowed_to_update(cb_context:context()) -> boolean().
@@ -196,7 +193,6 @@ forbidden(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -210,7 +206,6 @@ validate_request(ResourceId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Created : 17 Jul 2016
 %%%
 %%% @author SIPLABS, LLC (Vorontsov Nikita)

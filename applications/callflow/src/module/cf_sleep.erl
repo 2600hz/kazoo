@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
-%%%
 %%% data:{
 %%%   "duration":2 // how long to delay for
 %%%   "unit":"s" // optional unit of time, defaults to seconds

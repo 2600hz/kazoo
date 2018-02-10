@@ -29,6 +29,9 @@
 %% regex for finding comment block with no @end
 -define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '%% @doc.+$\n%%*\s*-+' core/ applications/").
 
+%% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
+-define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc(\\n%%*$)+'").
+
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
     check_ag_available(),
@@ -42,6 +45,7 @@ main(_) ->
           ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
+          ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
           ],
     edocify(Run, 0).
 
@@ -323,6 +327,38 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line])
     end.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Remove empty comment lines after `@doc' to avoid empty paragraph
+%% or dot in summary. Regex only returns the line with `@doc' and
+%% empty comment line.
+%% @end
+%%--------------------------------------------------------------------
+remove_doc_tag_empty_comment(Result) ->
+    Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
+    _ = maps:map(fun remove_doc_tag_empty_comment/2, Positions),
+    io:format(" done.~n").
+
+remove_doc_tag_empty_comment(File, Positions) ->
+    io:format("."),
+    Lines = read_lines(File, true),
+    save_lines(File, do_remove_doc_tag_empty_comment(Lines, Positions, [])).
+
+do_remove_doc_tag_empty_comment([], _, Formatted) ->
+    Formatted;
+do_remove_doc_tag_empty_comment([{LN, Line}|Lines], Positions, Formatted) ->
+    case lists:member(LN, Positions)
+        andalso reverse_binary(Line)
+    of
+        false ->
+            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted ++ [Line]);
+        <<"cod@", _/binary>> ->
+            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted ++ [Line]);
+        _ ->
+            %% remove empty comment line
+            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted)
+    end.
+
 %%%===================================================================
 %%% Utilities
 %%%===================================================================
@@ -367,6 +403,11 @@ empty_block() ->
     ,<<"%% @end">>
     ,<<"%%--------------------------------------------------------------------">>
     ].
+
+reverse_binary(Binary) ->
+    Size = erlang:size(Binary)*8,
+    <<X:Size/integer-little>> = Binary,
+    <<X:Size/integer-big>>.
 
 read_lines(File, WithLineNumber) ->
     case file:read_file(File) of

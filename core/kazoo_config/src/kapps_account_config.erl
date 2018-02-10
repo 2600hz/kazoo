@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
-%%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end

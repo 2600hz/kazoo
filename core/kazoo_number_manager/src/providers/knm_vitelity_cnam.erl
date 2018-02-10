@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
-%%%
-%%%
-%%%
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -59,7 +56,6 @@ delete(Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
@@ -88,7 +84,6 @@ handle_outbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec try_update_outbound_cnam(knm_number:knm_number(), kz_term:ne_binary()) ->
@@ -109,7 +104,6 @@ try_update_outbound_cnam(Number, NewCNAM) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec outbound_cnam_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
@@ -127,7 +121,6 @@ outbound_cnam_options(DID, NewCNAM) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_outbound_xml_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_term:text()) ->
@@ -149,7 +142,6 @@ process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_outbound_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
@@ -165,7 +157,6 @@ process_outbound_resp(Number, FeatureData, Children) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec check_outbound_response_tag(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
@@ -186,7 +177,6 @@ check_outbound_response_tag(Number, NewCNAM, Children) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -217,7 +207,6 @@ handle_inbound_cnam(Number, 'false') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
@@ -235,7 +224,6 @@ remove_inbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_inbound_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
@@ -251,7 +239,6 @@ remove_inbound_options(Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec add_inbound_cnam(knm_number:knm_number()) ->
@@ -273,7 +260,6 @@ add_inbound_cnam(Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec inbound_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
@@ -289,7 +275,6 @@ inbound_options(DID) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
@@ -306,7 +291,6 @@ process_xml_resp(Number, XML) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
@@ -327,7 +311,6 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_cnam_update(knm_number:knm_number()) -> 'ok'.

@@ -212,7 +212,6 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec connected(kz_amqp_connection()) -> kz_amqp_connection().
@@ -248,7 +247,6 @@ connected(#kz_amqp_connection{broker=_Broker}=Connection) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnected(kz_amqp_connection()) -> kz_amqp_connection().
@@ -324,7 +322,6 @@ shutdown_connection(_ConnectionPid) -> 'ok'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec next_timeout(pos_integer(), pos_integer()) -> pos_integer().
@@ -348,7 +345,6 @@ zone_timeout(#kz_amqp_connection{broker=Broker}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_connect(kz_amqp_connection(), ?START_TIMEOUT..?MAX_TIMEOUT) -> kz_amqp_connection().
@@ -384,7 +380,6 @@ maybe_connect(#kz_amqp_connection{broker=_Broker
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec create_control_channel(kz_amqp_connection()) -> kz_amqp_connection().
@@ -414,7 +409,6 @@ create_control_channel(#kz_amqp_connection{broker=Broker}=Connection) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec initialize_prechannels(kz_amqp_connection()) -> kz_amqp_connection().
@@ -451,7 +445,6 @@ establish_prechannel(#kz_amqp_connection{broker=Broker
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec open_channel(kz_amqp_connection()) -> {'ok', pid()} | {'error', any()}.
@@ -484,7 +477,6 @@ open_channel(#kz_amqp_connection{connection=Pid}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges(kz_amqp_connection()) -> kz_amqp_connection().

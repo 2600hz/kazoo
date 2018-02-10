@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(j5_flat_rate).
@@ -19,7 +18,6 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
@@ -39,7 +37,6 @@ authorize(Request, Limits) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
@@ -48,7 +45,6 @@ reconcile_cdr(_, _) -> 'ok'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec eligible_for_flat_rate(j5_request:request()) -> boolean().
@@ -92,7 +88,6 @@ maybe_get_resource_flat_rate(Request, 'true') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_consume_flat_rate(j5_request:request(), j5_limits:limits()) -> j5_request:request().
@@ -115,7 +110,6 @@ maybe_consume_flat_rate_burst(Remaining, Request, Limits) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec consume_inbound_limits(j5_request:request(), j5_limits:limits()) -> integer().
@@ -136,7 +130,6 @@ get_inbound_resources(Request, Limits) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec consume_outbound_limits(j5_request:request(), j5_limits:limits()) -> integer().
@@ -157,7 +150,6 @@ get_outbound_resources(Request, Limits) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec consume_twoway_limits(integer(), j5_limits:limits()) -> integer().
@@ -168,7 +160,6 @@ consume_twoway_limits(Used, Limits) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec consume_limit(integer(), integer(), kz_term:ne_binary()) -> integer().

@@ -287,7 +287,6 @@ mime_to_extension(_) -> <<"wav">>.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec preaty_print_length(integer() | kz_term:api_object()) -> kz_term:ne_binary().

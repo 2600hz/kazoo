@@ -621,7 +621,6 @@ normalization_format(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -631,7 +630,6 @@ validate_request(VMBoxId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -654,7 +652,6 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec check_vmbox_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -666,7 +663,6 @@ check_vmbox_schema(VMBoxId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_migrate_notification_emails(cb_context:context()) -> cb_context:context().
@@ -688,7 +684,6 @@ maybe_migrate_notification_emails(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
@@ -1117,7 +1112,6 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1154,7 +1148,6 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1177,7 +1170,6 @@ update_mwi(Context, _BoxId, _Status) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_migrate_vm_box(kzd_voicemail_box:doc()) ->
@@ -1193,7 +1185,6 @@ maybe_migrate_vm_box(Box) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
@@ -1209,7 +1200,6 @@ migrate(Account) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_migrate_boxes(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
@@ -1231,7 +1221,6 @@ maybe_migrate_boxes(AccountDb, Boxes) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_boxes(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.

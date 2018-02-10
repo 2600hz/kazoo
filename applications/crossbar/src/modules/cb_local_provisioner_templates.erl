@@ -264,7 +264,6 @@ delete(Context, DocId, ?IMAGE_REQ) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec load_template_image(path_token(), cb_context:context()) -> cb_context:context().
@@ -274,7 +273,6 @@ load_template_image(DocId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -360,7 +358,6 @@ update_provisioner_template(DocId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().

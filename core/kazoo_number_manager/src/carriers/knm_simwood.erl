@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Handle client requests for phone_number at Simwood (UK based provider)
 %%% https://www.simwood.com/services/api
 %%%

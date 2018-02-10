@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz Inc
 %%% @doc
-%%%
-%%%
 %%% @author James Aimonetti
 %%% @author Kirill Sysoev
 %%% @end

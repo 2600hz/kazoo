@@ -765,7 +765,6 @@ update_response_with_attachment(Context, AttachmentId, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
@@ -866,7 +865,6 @@ attachment_name(AttachType, Filename, CT) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_domain_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
@@ -885,7 +883,6 @@ is_domain_unique(AccountId, Domain) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_account_definition(cb_context:context()) -> cb_context:context().
@@ -907,7 +904,6 @@ maybe_update_account_definition(Context, _Status) -> Context.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_cleanup_account_definition(cb_context:context()) -> cb_context:context().

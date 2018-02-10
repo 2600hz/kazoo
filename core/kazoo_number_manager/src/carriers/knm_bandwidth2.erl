@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
-%%%
 %%% Handle client requests for phone_number documents using new bandwidth api
 %%%
 %%%

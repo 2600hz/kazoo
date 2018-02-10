@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_services).
@@ -121,7 +120,6 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> services().
@@ -168,7 +166,6 @@ base_service_object(AccountId, AccountJObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -197,7 +194,6 @@ maybe_calc_updates(Services, 'true') ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary()) -> services().
@@ -316,7 +312,6 @@ handle_fetch_result(AccountId, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec add_service_plan(kz_term:ne_binary(), services()) -> services().
@@ -327,7 +322,6 @@ add_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_service_plan(kz_term:ne_binary(), services()) -> services().
@@ -337,7 +331,6 @@ delete_service_plan(PlanId, #kz_services{jobj = JObj}=Services) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec save_as_dirty(kz_term:ne_binary() | services()) -> services().
@@ -449,7 +442,6 @@ save_doc(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(kz_term:ne_binary()) -> kz_term:std_return().
@@ -472,7 +464,6 @@ delete(Account) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec list_categories(services()) -> kz_term:api_ne_binaries().
@@ -488,7 +479,6 @@ list_categories(#kz_services{jobj = JObj
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec list_items(services(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
@@ -506,7 +496,6 @@ list_items(#kz_services{jobj = JObj
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec set_billing_id(kz_term:api_binary(), kz_term:ne_binary() | services()) -> 'undefined' | services().
@@ -540,7 +529,6 @@ set_billing_id(BillingId, AccountId=?NE_BINARY) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_billing_id(kz_term:ne_binary() | services()) -> kz_term:ne_binary().
@@ -563,7 +551,6 @@ get_billing_id(Account=?NE_BINARY) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update(kz_term:ne_binary(), kz_term:ne_binary(), integer(), services()) -> services().
@@ -579,7 +566,6 @@ update(CategoryId, ItemId, Quantity, #kz_services{updates = JObj
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec activation_charges(kz_term:ne_binary(), kz_term:ne_binary(), services() | kz_term:ne_binary() | kz_service_plans:plans()) ->
@@ -596,7 +582,6 @@ activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec commit_transactions(services(), kz_transactions:kz_transactions()) -> ok | error.
@@ -610,7 +595,6 @@ commit_transactions(#kz_services{billing_id = BillingId}=Services, Activations) 
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec charge_transactions(services(), kz_transactions:kz_transactions()) -> kz_json:objects().
@@ -624,7 +608,6 @@ charge_transactions(#kz_services{billing_id = BillingId}=Services, Activations) 
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec select_bookkeeper(services() | kz_term:ne_binary()) -> bookkeeper().
@@ -656,7 +639,6 @@ select_bookkeeper(AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec check_bookkeeper(kz_term:ne_binary(), integer()) -> boolean().
@@ -688,7 +670,6 @@ current_balance(AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec service_plan_json(kz_term:ne_binary() | services()) -> kzd_service_plan:doc().
@@ -700,7 +681,6 @@ service_plan_json(Account=?NE_BINARY) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec public_json(kz_term:ne_binary() | services()) -> kz_json:object().
@@ -740,7 +720,6 @@ to_json(#kz_services{jobj = JObj
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_reseller_id(kz_term:api_binary()) -> kz_term:api_binary().
@@ -861,7 +840,6 @@ move_to_good_standing(?MATCH_ACCOUNT_RAW(AccountId)) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_only(kz_term:api_ne_binary() | services()) -> 'false' | services().
@@ -892,7 +870,6 @@ reconcile(#kz_services{}=Services) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_only(kz_term:api_binary() | services(), kz_term:text()) -> 'false' | services().
@@ -927,7 +904,6 @@ pause_between_service_reconciliation() ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec account_id(services()) -> kz_term:ne_binary().
@@ -967,7 +943,6 @@ status(#kz_services{status = Status}) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec quantity(kz_term:ne_binary(), kz_term:ne_binary(), services()) -> integer().
@@ -1024,7 +999,6 @@ diff_quantity(CategoryId, ItemId, #kz_services{jobj = JObj
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec updated_quantity(kz_term:ne_binary(), kz_term:ne_binary(), services()) -> integer().
@@ -1034,7 +1008,6 @@ updated_quantity(CategoryId, ItemId, #kz_services{updates = JObj}) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec category_quantity(kz_term:ne_binary(), services()) -> non_neg_integer().
@@ -1056,7 +1029,6 @@ category_quantity(CategoryId, ItemExceptions, #kz_services{updates = UpdatedQuan
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec cascade_quantity(kz_term:ne_binary(), kz_term:ne_binary(), services()) -> non_neg_integer().
@@ -1067,7 +1039,6 @@ cascade_quantity(CategoryId, ItemId, #kz_services{cascade_quantities = JObj}=Ser
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec cascade_category_quantity(kz_term:ne_binary(), services()) -> non_neg_integer().
@@ -1089,7 +1060,6 @@ sum_values(Acc0, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reset_category(kz_term:ne_binary(), services()) -> services().
@@ -1100,7 +1070,6 @@ reset_category(CategoryId, #kz_services{updates = JObj}=Services) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% Helper function to know if an account is a reseller or not.
 %% @end
 %%--------------------------------------------------------------------
@@ -1114,7 +1083,6 @@ is_reseller(ServicesJObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec dry_run(services()) -> kz_json:object().
@@ -1129,7 +1097,6 @@ dry_run(Services) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate_charges(services(), kz_json:objects()) -> kz_json:object().
@@ -1267,7 +1234,6 @@ get_item_plan(CategoryId, ItemId, ServicePlan) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_service_modules() -> kz_term:atoms().
@@ -1315,7 +1281,6 @@ get_service_module(Module) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec cascade_quantities(services()) -> kz_json:object().
@@ -1502,7 +1467,6 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_reseller_id(kz_term:ne_binaries() | kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -1548,7 +1512,6 @@ fetch_account(Account) -> kzd_accounts:fetch(Account).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_save('false' | services()) -> 'false' | services().
@@ -1569,7 +1532,6 @@ maybe_save(#kz_services{jobj = JObj
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1601,7 +1563,6 @@ any_changed(KeyNotSameFun, Quantities) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_definition(kz_term:ne_binary()) -> kzd_accounts:doc().
@@ -1616,7 +1577,6 @@ get_account_definition(?MATCH_ACCOUNT_RAW(AccountId)) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_clean_old_billing_id(services()) -> services().

@@ -259,7 +259,6 @@ hunt_for_callflow(Digits, Menu, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec record_greeting(binary(), menu(), kapps_call:call()) ->
@@ -303,7 +302,6 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) -
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec play_invalid_prompt(menu(), kapps_call:call()) ->
@@ -319,7 +317,6 @@ play_invalid_prompt(#cf_menu_data{invalid_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec play_transferring_prompt(menu(), kapps_call:call()) ->
@@ -335,7 +332,6 @@ play_transferring_prompt(#cf_menu_data{transfer_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec play_exit_prompt(menu(), kapps_call:call()) ->
@@ -351,7 +347,6 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_prompt(menu(), kapps_call:call()) -> kz_term:ne_binary().
@@ -417,7 +412,6 @@ tmp_file() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec review_recording(kz_term:ne_binary(), menu(), kapps_call:call()) ->
@@ -468,7 +462,6 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -507,7 +500,6 @@ update_doc(Updates, Id, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_menu_profile(kz_json:object(), kapps_call:call()) -> menu().

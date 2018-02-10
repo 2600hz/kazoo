@@ -214,7 +214,6 @@ code_change(_OldVsn, TemplateName, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_template_props(kz_term:api_object()) -> 'undefined' | kz_term:proplist().
@@ -225,7 +224,6 @@ json_to_template_props(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_proplist(kz_term:proplist()) -> kz_term:proplist().

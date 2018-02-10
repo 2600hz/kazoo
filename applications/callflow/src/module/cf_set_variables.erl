@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% "data":{
 %%%   "custom_application_vars": {"key": "value", "key": "value"},
 %%%   "export": true

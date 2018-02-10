@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% CRUD for call queues
 %%% /agents
 %%%   GET: list all known agents and their queues

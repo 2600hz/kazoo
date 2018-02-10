@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
-%%%
-%%%
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -127,7 +125,6 @@ validate(Context, PathToken) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -221,7 +218,6 @@ create_credit_tansaction(CreditType, Context) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -302,7 +298,6 @@ create_debit_tansaction(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -346,7 +341,6 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -424,7 +418,6 @@ validate_debit(Context, Amount) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_transactions(cb_context:context(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:api_binary()) ->
@@ -467,7 +460,6 @@ fetch_transactions(Context, From, To, Reason) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_monthly_recurring(cb_context:context(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds(), kz_term:api_binary()) ->
@@ -486,7 +478,6 @@ fetch_monthly_recurring(Context, From, To, Reason) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_subscriptions(cb_context:context()) -> cb_context:context().
@@ -505,7 +496,6 @@ filter_subscriptions(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_subscription(kz_json:object()) -> kz_json:object().
@@ -518,7 +508,6 @@ filter_subscription(BSubscription) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_braintree_subscription(kz_json:object()) -> kz_json:object().
@@ -542,7 +531,6 @@ clean_braintree_subscription(BSubscription) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_date_braintree_subscription(kz_json:object()) -> kz_json:object().
@@ -568,7 +556,6 @@ correct_date_braintree_subscription_fold(Key, BSub) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec send_resp({'ok', any()} | {'error', any()}, cb_context:context()) -> cb_context:context().

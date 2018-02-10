@@ -1,6 +1,5 @@
 %%%-------------------------------------------------------------------
 %%% @doc
-%%%
 %%% Read only access to ACDC stats docs
 %%%
 %%% This code is VERY similar to that in cb_cdrs. At some point code

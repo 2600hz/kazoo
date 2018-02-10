@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Handles port request life cycles
 %%% See doc/port_requests.md
 %%%
@@ -875,7 +874,6 @@ summary_attachments(Context, Id) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz Inc
 %%% @doc
-%%%
-%%%
 %%% @author James Aimonetti
 %%% @author Peter Defebvre
 %%% @author Ben Wann

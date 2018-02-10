@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Allow resellers directly below the master account to find
 %%% manually-added `available' numbers.
 %%%
@@ -149,4 +148,3 @@ disconnect_number(Number) -> Number.
 %%--------------------------------------------------------------------
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
-

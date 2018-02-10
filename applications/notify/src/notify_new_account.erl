@@ -110,7 +110,6 @@ create_template_props(Event, Admin, Account, AllDocs) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:api_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
@@ -153,7 +152,6 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_account(kz_json:objects()) -> kz_json:object().
@@ -169,7 +167,6 @@ find_account([Doc|Docs]) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_admin(kz_json:objects()) -> kz_json:object().

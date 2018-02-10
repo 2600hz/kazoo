@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Fax Box API
 %%%
 %%%
@@ -330,7 +329,6 @@ update_faxbox(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_faxbox_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().

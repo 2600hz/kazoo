@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Handle client requests for phone_number documents
 %%%
 %%%
@@ -105,7 +104,6 @@ disconnect_number(Number) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec should_lookup_cnam() -> boolean().
@@ -113,7 +111,6 @@ should_lookup_cnam() -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
@@ -126,7 +123,6 @@ is_number_billable(_) -> 'true'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec classify_and_find(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
@@ -145,7 +141,6 @@ classify_and_find(Prefix, Quantity, Options) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec tollfree_options(pos_integer(), knm_carriers:options()) ->
@@ -164,7 +159,6 @@ tollfree_options(Quantity, Options) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec local_options(kz_term:ne_binary(), knm_carriers:options()) ->
@@ -202,7 +196,6 @@ local_options(Prefix, Options) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find(kz_term:ne_binary(), pos_integer(), knm_carriers:options(), knm_vitelity_util:query_options()) ->
@@ -228,7 +221,6 @@ to_number(DID, CarrierData, QID) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec query_vitelity(kz_term:ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
@@ -266,7 +258,6 @@ query_vitelity(Prefix, Quantity, QOptions) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_resp(kz_term:ne_binary(), pos_integer(), kz_term:text()) ->
@@ -285,7 +276,6 @@ process_xml_resp(Prefix, Quantity, XML_binary) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_content_tag(kz_term:ne_binary(), pos_integer(), kz_types:xml_el()) ->
@@ -306,7 +296,6 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -346,7 +335,6 @@ process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec number_matches_prefix(kz_json:object(), kz_term:ne_binary()) -> boolean().
@@ -363,7 +351,6 @@ number_matches_prefix(JObj, Prefix) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_did_to_json(kz_types:xml_el()) -> kz_json:object().
@@ -394,7 +381,6 @@ xml_did_to_json(#xmlElement{name='number'
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec purchase_local_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
@@ -411,7 +397,6 @@ purchase_local_options(DID) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec purchase_tollfree_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
@@ -428,7 +413,6 @@ purchase_tollfree_options(DID) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec query_vitelity(knm_number:knm_number(), knm_vitelity_util:query_options()) ->
@@ -448,7 +432,6 @@ query_vitelity(Number, QOptions) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
@@ -466,7 +449,6 @@ process_xml_resp(Number, XML_binary) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
@@ -488,7 +470,6 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec release_did_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().

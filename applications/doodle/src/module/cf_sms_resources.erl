@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
-%%%
 %%% @author Karl Anderson
 %%% @author Luis Azedo
 %%% @end
@@ -79,7 +77,6 @@ handle_bridge_failure(Cause, Code, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec build_offnet_request(kz_json:object(), kapps_call:call()) -> kz_term:proplist().

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_amqp_assignments).
@@ -228,7 +226,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec import_pending_channels() -> 'ok'.
@@ -248,7 +245,6 @@ import_pending_channels() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec release_assignments({kz_amqp_assignments(), ets:continuation()} | '$end_of_table') -> 'ok'.
@@ -285,7 +281,6 @@ release_assignments({[#kz_amqp_assignment{timestamp=Timestamp
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -344,7 +339,6 @@ maybe_reassign(#kz_amqp_assignment{}=ConsumerAssignment, Broker) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_or_reserve(pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
@@ -400,7 +394,6 @@ assign_consumer(#kz_amqp_assignment{}=ChannelAssignment, Consumer, Type) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec move_channel_to_consumer(kz_amqp_assignment(), kz_amqp_assignment()) -> kz_amqp_assignment().
@@ -434,7 +427,6 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec add_consumer_to_channel(kz_amqp_assignment(), pid(), kz_amqp_type()) -> kz_amqp_assignment().
@@ -463,7 +455,6 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec add_channel_primary_broker(kz_term:ne_binary(), pid(), pid()) -> 'true'.
@@ -613,7 +604,6 @@ reconnect(Assignment, [Command|Commands]) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec send_notifications(kz_amqp_assignment()) -> kz_amqp_assignment().
@@ -651,7 +641,6 @@ notify_watchers(#kz_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_reserve(kz_term:api_pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
@@ -698,7 +687,6 @@ reserve(Consumer, _, 'float') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -type down_match() :: {'channel' | 'consumer', kz_amqp_assignment()}.
@@ -780,7 +768,6 @@ reassign_props('sticky') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec add_watcher(pid(), pid()) -> 'ok'.
@@ -826,7 +813,6 @@ request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_reference(reference()) -> down_matches().
@@ -848,7 +834,6 @@ find_reference(Ref) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec log_short_lived(kz_amqp_assignment()) -> 'ok'.

@@ -2,7 +2,6 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @doc
-%%%
 %%% @end
 %%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------

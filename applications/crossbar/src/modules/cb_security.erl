@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Kazoo authentication configuration API endpoint
 %%%
 %%% @end
@@ -341,7 +340,6 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 on_successful_validation(Id, Context) ->

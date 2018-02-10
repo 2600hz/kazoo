@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Handle publishing notification events for new port requests
 %%%
 %%%
@@ -60,7 +59,6 @@ feature(Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_port_feature(knm_number:knm_number()) -> knm_number:knm_number().
@@ -95,7 +93,6 @@ maybe_port_changed(Number, Port, 'false') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_port_update(knm_number:knm_number(), kz_json:object()) -> 'ok'.
@@ -114,7 +111,6 @@ publish_port_update(Number, Port) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_ported(knm_number:knm_number(), kz_json:object()) -> 'ok'.

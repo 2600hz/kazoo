@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018 2600Hz Inc
 %%% @doc
-%%%
-%%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC

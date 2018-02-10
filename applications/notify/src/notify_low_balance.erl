@@ -95,7 +95,6 @@ create_template_props(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec pretty_print_dollars(float()) -> kz_term:ne_binary().
@@ -133,7 +132,6 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec collect_recipients(kz_term:ne_binary()) -> kz_term:api_binaries() | kz_term:api_binary().

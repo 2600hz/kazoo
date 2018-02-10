@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_braintree).
@@ -35,7 +34,6 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
@@ -68,7 +66,6 @@ customer_has_card(Customer, AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -104,7 +101,6 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
@@ -125,7 +121,6 @@ transactions(AccountId, From0, To0) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec subscriptions(kz_term:ne_binary()) -> atom() | kz_json:objects().
@@ -142,7 +137,6 @@ subscriptions(AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -177,7 +171,6 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -293,7 +286,6 @@ notification_data(_Success, BillingId, _Amount, BraintreeTransaction) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec convert_transactions(kz_json:objects()) -> kz_transaction:transactions().
@@ -412,7 +404,6 @@ calculate([Addon|Addons], Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec timestamp_to_braintree(kz_time:api_seconds()) -> kz_term:ne_binary().
@@ -429,7 +420,6 @@ timestamp_to_braintree(Timestamp) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec utc_to_gregorian_seconds(kz_term:ne_binary()) -> kz_time:api_seconds().
@@ -449,7 +439,6 @@ utc_to_gregorian_seconds(UTC) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate_amount(kz_json:objects()) -> integer().
@@ -462,7 +451,6 @@ calculate_amount(JObjs) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec already_charged(kz_term:ne_binary() | integer() , integer() | kz_json:objects()) -> boolean().
@@ -494,7 +482,6 @@ already_charged(Code, [Transaction|Transactions]) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec already_charged_transaction(integer(), kz_term:ne_binary(), integer(), kz_json:object()) -> boolean().
@@ -524,7 +511,6 @@ already_charged_transaction(_, _, _, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_single_discount(kz_service_item:item(), braintree_subscription:subscription()) ->
@@ -548,7 +534,6 @@ handle_single_discount(ServiceItem, Subscription) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cumulative_discounts(kz_service_item:item(), braintree_subscription:subscription()) ->
@@ -572,7 +557,6 @@ handle_cumulative_discounts(ServiceItem, Subscription) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update_subscriptions(kz_term:ne_binary(), braintree_subscription:subscription(), updates()) ->
@@ -587,7 +571,6 @@ update_subscriptions(PlanId, Subscription, #kz_service_updates{bt_subscriptions=
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_bt_customer(kz_term:ne_binary(), boolean()) ->
@@ -604,7 +587,6 @@ fetch_bt_customer(AccountId, NewItems) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_or_create_subscription(kz_term:ne_binary(), updates() | braintree_customer:customer()) ->

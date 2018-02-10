@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
 %%% CRUD for call queues
 %%% /queues
 %%%   GET: list all known queues
@@ -476,7 +475,6 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
@@ -525,7 +523,6 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -535,7 +532,6 @@ validate_request(QueueId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -555,7 +551,6 @@ on_successful_validation(QueueId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 load_queue_agents(Id, Context) ->
@@ -670,7 +665,6 @@ maybe_rm_queue_from_agent(Id, A) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_all_queue_stats(cb_context:context()) -> cb_context:context().

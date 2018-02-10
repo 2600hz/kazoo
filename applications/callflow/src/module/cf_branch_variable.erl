@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Try to branch based on the value of a variable.
 %%%
 %%% "data":{

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
-%%%
-%%%
 %%% @author Roman Galeev
 %%% @author Hesaam Farhang
 %%% @end

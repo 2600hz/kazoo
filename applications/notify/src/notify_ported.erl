@@ -91,7 +91,6 @@ create_template_props(Event, Account) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_send_from(kz_json:object()) -> kz_term:ne_binary().

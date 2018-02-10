@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% SBC Rate limits
 %%% /accounts/{account_id}/rate_limits - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/rate_limits - manip device's access lists

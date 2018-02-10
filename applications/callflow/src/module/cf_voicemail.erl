@@ -202,7 +202,6 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -281,7 +280,6 @@ check_mailbox(#mailbox{pin=Pin
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_mailbox(mailbox(), kapps_call:call(), kz_term:ne_binary(), non_neg_integer()) ->
@@ -372,7 +370,6 @@ find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, Call
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -463,7 +460,6 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec play_greeting_intro(mailbox(), kapps_call:call()) -> kz_term:ne_binary() | 'ok'.
@@ -474,7 +470,6 @@ play_greeting_intro(_, _) -> 'ok'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec play_greeting(mailbox(), kapps_call:call()) -> kz_term:ne_binary() | 'ok'.
@@ -508,7 +503,6 @@ play_greeting(#mailbox{unavailable_media_id=MediaId}, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec play_instructions(mailbox(), kapps_call:call()) -> kz_term:ne_binary() | 'ok'.
@@ -519,7 +513,6 @@ play_instructions(#mailbox{skip_instructions='false'}, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec record_voicemail(kz_term:ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
@@ -587,7 +580,6 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -729,7 +721,6 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec message_count_prompts(integer(), integer()) -> kz_term:proplist().
@@ -1067,7 +1058,6 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1336,7 +1326,6 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1403,7 +1392,6 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec change_pin(mailbox(), kapps_call:call()) ->
@@ -1681,7 +1669,6 @@ owner_info(AccountDb, MailboxJObj, OwnerId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec populate_keys(kapps_call:call()) -> vm_keys().
@@ -1712,7 +1699,6 @@ populate_keys(Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_mailbox_doc(kz_term:ne_binary(), kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
@@ -1812,7 +1798,6 @@ try_match_callerid([Box|Boxes], CallerId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1982,7 +1967,6 @@ set_recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update_doc(kz_json:path()
@@ -2037,7 +2021,6 @@ get_unix_epoch(Epoch, Timezone) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_max_message_length(kz_json:objects()) -> pos_integer().

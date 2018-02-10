@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Acess lists
 %%% /accounts/{account_id}/access_lists - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/access_lists - manip user's access lists

@@ -12,7 +12,6 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
@@ -78,7 +77,6 @@ set_account_id(NumberProps, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec set_ignore_display_updates(knm_number_options:extra_options(), kz_json:object()) ->
@@ -89,7 +87,6 @@ set_ignore_display_updates(_, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec set_inception(knm_number_options:extra_options(), kz_json:object()) ->
@@ -101,7 +98,6 @@ set_inception(_, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec set_resource_type(knm_number_options:extra_options(), kz_json:object()) ->
@@ -112,7 +108,6 @@ set_resource_type(_, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_find_resource(knm_number_options:extra_options(), kz_json:object()) ->
@@ -178,7 +173,6 @@ maybe_format_destination(_, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_set_ringback(knm_number_options:extra_options(), kz_json:object()) ->
@@ -280,7 +274,6 @@ relay_request(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_transition_port_in(knm_number_options:extra_options(), kz_json:object()) -> any().
@@ -306,7 +299,6 @@ transition_port_in(Number, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_blacklisted(kz_json:object()) -> boolean().

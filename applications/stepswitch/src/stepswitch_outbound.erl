@@ -36,7 +36,6 @@ handle_req(OffnetJObj, _Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -56,7 +55,6 @@ handle_audio_req(Number, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_originate_req(kapi_offnet_resource:req()) -> any().
@@ -93,7 +91,6 @@ maybe_force_originate_outbound(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_sms_req(kapi_offnet_resource:req()) -> any().
@@ -109,7 +106,6 @@ handle_sms_req(OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
@@ -125,7 +121,6 @@ maybe_force_outbound(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound_sms(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
@@ -141,7 +136,6 @@ maybe_force_outbound_sms(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_bridge(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
@@ -169,7 +163,6 @@ maybe_correct_shortdial(Number, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_sms(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
@@ -183,7 +176,6 @@ maybe_sms(Number, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
@@ -194,7 +186,6 @@ local_extension(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec local_sms(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> 'ok'.
@@ -204,7 +195,6 @@ local_sms(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_originate(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
@@ -278,7 +268,6 @@ create_loopback_endpoint(Props, OffnetReq) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_no_resources(kapi_offnet_resource:req()) -> 'ok'.

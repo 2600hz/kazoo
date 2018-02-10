@@ -2,7 +2,6 @@
 %%% @copyright (C) 2018, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @doc
-%%%
 %%% @end
 %%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------

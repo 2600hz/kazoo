@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
-%%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Luis Azedo
@@ -1045,7 +1043,7 @@ guess_endpoint_type(Endpoint, []) ->
 %% @private
 %% @doc
 %% Creates the kazoo API endpoint for a bridge call command. This
-%% endpoint is comprised of the endpoint definition (commonally a
+%% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
@@ -1272,7 +1270,7 @@ get_custom_sip_interface(JObj) ->
 %% @private
 %% @doc
 %% Creates the kazoo API endpoint for a bridge call command. This
-%% endpoint is comprised of the endpoint definition (commonally a
+%% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
@@ -1337,7 +1335,6 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec create_mobile_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->

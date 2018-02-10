@@ -460,7 +460,6 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_system_admin(kz_term:api_binary()) -> boolean().

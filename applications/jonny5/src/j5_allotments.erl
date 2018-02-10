@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(j5_allotments).
@@ -13,7 +12,6 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
@@ -62,7 +60,6 @@ maybe_group_consumed([Member|Group], Allotment, Limits, Acc) when is_binary(Memb
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
@@ -126,7 +123,6 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_allotment(j5_request:request(), j5_limits:limits()) -> kz_term:api_object().
@@ -161,7 +157,6 @@ find_allotment_by_classification(Classification, Limits) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec allotment_consumed_so_far(kz_json:object(), j5_limits:limits()) ->
@@ -227,7 +222,6 @@ add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, At
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec cycle_start(kz_term:ne_binary()) -> integer().

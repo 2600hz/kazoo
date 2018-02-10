@@ -422,7 +422,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
@@ -453,7 +452,6 @@ call_control_ready(#state{call_id=CallId
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -552,7 +550,6 @@ force_queue_advance(#state{call_id=CallId
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_execute_complete(kz_term:api_binary(), kz_json:object(), state()) -> state().
@@ -666,7 +663,6 @@ forward_queue(#state{call_id = CallId
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_sofia_replaced(kz_term:ne_binary(), state()) -> state().
@@ -700,7 +696,6 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_channel_create(kz_term:proplist(), state()) -> state().
@@ -790,7 +785,6 @@ replace_call_id([Prop|T], Call1, Call2, Swap) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_channel_destroy(kz_term:proplist(), state()) -> state().
@@ -832,7 +826,6 @@ publish_leg_removal(Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_dialplan(kz_json:object(), state()) -> state().
@@ -1000,7 +993,6 @@ queue_insert_fun('head') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
@@ -1065,7 +1057,6 @@ get_module(Category, Name) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec execute_control_request(kz_json:object(), state()) -> 'ok'.
@@ -1188,7 +1179,6 @@ error_ccvs(Channel) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_keep_alive_ref(state()) -> kz_term:api_reference().
@@ -1213,7 +1203,6 @@ get_keep_alive_ref(#state{keep_alive_ref=TRef
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_to_events(atom(), kz_term:ne_binary()) -> 'true'.
@@ -1226,7 +1215,6 @@ bind_to_events(Node, CallId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec unbind_from_events(atom(), kz_term:ne_binary()) -> 'true'.

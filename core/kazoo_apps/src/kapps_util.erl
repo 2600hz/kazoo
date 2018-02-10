@@ -512,7 +512,6 @@ get_call_termination_reason(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_views_json(atom(), string()) -> kz_datamgr:views_listing().
@@ -537,7 +536,6 @@ get_view_json(Path) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update_views(kz_term:ne_binary(), kz_datamgr:views_listing()) -> boolean().
@@ -551,7 +549,6 @@ update_views(Db, Views, ShouldRemove) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec add_aggregate_device(kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
@@ -571,7 +568,6 @@ add_aggregate_device(Db, Device) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec rm_aggregate_device(kz_term:ne_binary(), kz_term:api_object() | kz_term:api_binary()) -> 'ok'.

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_service_plan).
@@ -40,7 +39,6 @@ fetch_plan(VendorDb, PlanId) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec activation_charges(kz_term:ne_binary(), kz_term:ne_binary(), kzd_service_plan:doc()) -> float().
@@ -53,7 +51,6 @@ activation_charges(CategoryId, ItemId, ServicePlan) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -204,7 +201,6 @@ cumulative_quantity(Item, CumulativeDiscount, Quantity) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec bookkeeper_jobj(kz_term:ne_binary(), kz_term:ne_binary(), kzd_service_plan:doc()) -> kz_json:object().
@@ -223,7 +219,6 @@ bookkeeper_jobj(CategoryId, ItemId, ServicePlan) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_rate_at_quantity(kz_term:ne_binary(), kz_term:ne_binary(), kzd_service_plan:doc(), kz_services:services()) ->

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
-%%%
 %%% @author Peter Defebvre
 %%% @author Luis Azedo
 %%% @end
@@ -98,7 +96,6 @@ resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
@@ -201,7 +198,6 @@ put(Context, ?DEBIT) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
@@ -215,7 +211,6 @@ validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec credit_or_debit(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -246,7 +241,6 @@ credit_or_debit(Context, Action) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec process_action(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
@@ -261,7 +255,6 @@ process_action(?DEBIT, SrcService, SrcId, AccountId, Usage, Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_impact_reseller(cb_context:context(), kz_json:object()) -> cb_context:context().
@@ -288,7 +281,6 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec read_ledgers(cb_context:context()) -> cb_context:context().
@@ -320,7 +312,6 @@ maybe_convert_units(_, Value) -> Value.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
@@ -377,7 +368,6 @@ maybe_set_doc_modb_prefix(Id, Created) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec read_ledger_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().

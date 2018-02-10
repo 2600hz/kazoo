@@ -84,7 +84,6 @@ create_template_props(_, AccountJObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec pretty_print_dollars(float()) -> kz_term:ne_binary().

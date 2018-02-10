@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_local).
@@ -17,7 +16,6 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
@@ -25,7 +23,6 @@ is_good_standing(_AccountId, _Status) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
@@ -33,7 +30,6 @@ sync(_Items, _AccountId) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
@@ -43,7 +39,6 @@ commit_transactions(_BillingId, Transactions) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
@@ -51,7 +46,6 @@ charge_transactions(_BillingId, _Transactions) -> [].
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
@@ -68,7 +62,6 @@ transactions(AccountId, From, To) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_topup(kz_term:ne_binary(), kz_transactions:transactions()) -> 'ok'.

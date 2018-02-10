@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_resources).
@@ -216,7 +215,6 @@ sort_resources(Resources) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
@@ -272,7 +270,6 @@ endpoint_ordering(P1, P2) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reverse_lookup(kz_json:object()) ->
@@ -408,7 +405,6 @@ search_gateway(_, _, _, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_resources(kz_term:ne_binaries(), resources()) -> resources().
@@ -449,7 +445,6 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec resources_to_endpoints(resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->
@@ -641,7 +636,6 @@ evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec gateways_to_endpoints(kz_term:ne_binary(), gateways(), kapi_offnet_resource:req(), kz_json:objects()) ->
@@ -837,7 +831,6 @@ gateway_emergency_resource(_) -> 'undefined'.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get() -> resources().
@@ -879,7 +872,6 @@ get_local_resource(ResourceId, AccountId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_global_resources() -> resources().
@@ -907,7 +899,6 @@ fetch_global_resources() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_local_resources(kz_term:ne_binary()) -> resources().
@@ -963,7 +954,6 @@ build_account_dedicated_proxy(Proxy) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1054,7 +1044,6 @@ classifier_is_emergency(ClassifierJObj, _Classifier, DefaultEmergency) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -type rule() :: re:mp().
@@ -1160,7 +1149,6 @@ resource_is_emergency(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec gateways_from_jobjs(kz_json:objects(), resource()) -> gateways().
@@ -1180,7 +1168,6 @@ gateways_from_jobjs([JObj|JObjs], Resource, Gateways) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec gateway_from_jobj(kz_json:object(), resource()) -> gateway().

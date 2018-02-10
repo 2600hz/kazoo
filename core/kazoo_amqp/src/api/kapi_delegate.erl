@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%%  Delegate job from one app to another app.
 %%%
 %%%  App/Key combo used to send messages.

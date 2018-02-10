@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
-%%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -810,7 +808,6 @@ rev_to_etag(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update_pagination_envelope_params(cb_context:context(), any(), kz_term:api_non_neg_integer()) ->
@@ -1090,7 +1087,6 @@ version_specific_success(JObjs, Context, _Version) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_datamgr_errors(kz_datamgr:data_errors(), kz_term:api_ne_binary() | kz_term:api_ne_binaries(), cb_context:context()) ->
@@ -1223,7 +1219,6 @@ add_pvt_alphanum_name(JObj, _, Name, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec extract_included_docs(cb_context:context(), kz_json:objects()) ->

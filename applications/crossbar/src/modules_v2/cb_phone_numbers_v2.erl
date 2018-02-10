@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Handle client requests for phone_number documents
 %%%
 %%%
@@ -718,7 +717,6 @@ maybe_reseller_id_lookup(ReqResellerId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_prefix(cb_context:context()) -> cb_context:context().
@@ -931,7 +929,6 @@ validate_delete(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec set_response(result(), cb_context:context()) -> cb_context:context().
@@ -1026,7 +1023,6 @@ reply_number_not_found(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec collection_process(cb_context:context(), kz_term:ne_binary() | http_method()) -> knm_numbers:ret().
@@ -1092,7 +1088,6 @@ maybe_ask_for_state(StateAskedFor) -> [{state, StateAskedFor}].
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 

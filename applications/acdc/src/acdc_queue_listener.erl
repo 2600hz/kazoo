@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% The queue process manages two queues
 %%%   1. a private one that Agents will send member_connect_* messages
 %%%      and such

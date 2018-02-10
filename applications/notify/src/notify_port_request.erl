@@ -291,7 +291,6 @@ create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec fix_attachment_name(kz_term:ne_binary() | list()) -> kz_term:ne_binary().

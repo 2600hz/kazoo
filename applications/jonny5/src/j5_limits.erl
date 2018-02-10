@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% @end
 %%%-------------------------------------------------------------------
 -module(j5_limits).
@@ -56,7 +55,6 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get(kz_term:ne_binary()) -> limits().
@@ -90,7 +88,6 @@ cached() ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec to_props(kz_term:ne_binary() | limits()) -> kz_term:proplist().
@@ -100,7 +97,6 @@ to_props(Account) -> to_props(?MODULE:get(Account)).
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec account_id(limits()) -> kz_term:api_binary().
@@ -109,7 +105,6 @@ account_id(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec enabled(limits()) -> boolean().
@@ -117,7 +112,6 @@ enabled(#limits{enabled=Enabled}) -> Enabled.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec soft_limit_outbound(limits()) -> boolean().
@@ -125,7 +119,6 @@ soft_limit_outbound(#limits{soft_limit_outbound=SoftLimit}) -> SoftLimit.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec soft_limit_inbound(limits()) -> boolean().
@@ -133,7 +126,6 @@ soft_limit_inbound(#limits{soft_limit_inbound=SoftLimit}) -> SoftLimit.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec allotments(limits()) -> kz_json:object().
@@ -141,7 +133,6 @@ allotments(#limits{allotments=Allotments}) -> Allotments.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec calls(limits()) -> tristate_integer().
@@ -149,7 +140,6 @@ calls(#limits{calls=Calls}) -> Calls.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_consuming_calls(limits()) -> tristate_integer().
@@ -157,7 +147,6 @@ resource_consuming_calls(#limits{resource_consuming_calls=Calls}) -> Calls.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec inbound_trunks(limits()) -> tristate_integer().
@@ -168,7 +157,6 @@ inbound_trunks(#limits{bundled_inbound_trunks=BundledTrunks
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec outbound_trunks(limits()) -> tristate_integer().
@@ -179,7 +167,6 @@ outbound_trunks(#limits{bundled_outbound_trunks=BundledTrunks
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec twoway_trunks(limits()) -> tristate_integer().
@@ -190,7 +177,6 @@ twoway_trunks(#limits{bundled_twoway_trunks=BundledTrunks
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec burst_trunks(limits()) -> tristate_integer().
@@ -198,7 +184,6 @@ burst_trunks(#limits{burst_trunks=Trunks}) -> Trunks.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec allow_prepay(limits()) -> boolean().
@@ -206,7 +191,6 @@ allow_prepay(#limits{allow_prepay=AllowPrepay}) -> AllowPrepay.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec allow_postpay(limits()) -> boolean().
@@ -214,7 +198,6 @@ allow_postpay(#limits{allow_postpay=AllowPostpay}) -> AllowPostpay.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve_amount(limits()) -> non_neg_integer().
@@ -222,7 +205,6 @@ reserve_amount(#limits{reserve_amount=ReserveAmount}) -> ReserveAmount.
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec max_postpay(limits()) -> non_neg_integer().
@@ -231,7 +213,6 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
@@ -266,7 +247,6 @@ get_default_limit(Key, Default) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_limit_units(kz_term:ne_binary(), kz_json:object(), float()) -> non_neg_integer().
@@ -284,7 +264,6 @@ get_default_limit_units(Key, Default) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_limit_boolean(kz_term:ne_binary(), kz_json:object(), boolean()) -> boolean().
@@ -312,7 +291,6 @@ get_default_limit_boolean(Key, Default) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_bundled_inbound_limit(kz_term:ne_binary(), kz_json:object()) -> non_neg_integer().
@@ -364,7 +342,6 @@ filter_bundled_limit(JObjs) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_limit_jobj(kz_term:ne_binary()) -> kz_json:object() | {'error', any()}.

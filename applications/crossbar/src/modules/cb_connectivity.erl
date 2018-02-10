@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
-%%%
 %%% Handle client requests for connectivity documents
 %%%
 %%%
@@ -160,7 +159,6 @@ registration_update(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec  track_assignment(atom(), cb_context:context()) -> 'ok'.
@@ -188,7 +186,6 @@ track_assignment('delete', Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec  get_numbers(kz_json:object()) -> kz_term:ne_binaries().
@@ -259,7 +256,6 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
