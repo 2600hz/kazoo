@@ -262,6 +262,33 @@ done (warnings were emitted)
 Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 
 
+## `edocify.escript`
+
+A script to fixes most issues which prevent EDoc to run properly.
+
+> **Note:** This script needs [`ag`](https://github.com/ggreer/the_silver_searcher) command line to run!
+
+```shell
+edocify.escript
+```
+
+Sample Output:
+
+```shell
+$ scripts/edocify.escript
+Edocify Kazoo...
+
+:: rename and fix `@contributors' tags to '@author' ... done.
+:: removing @spec from comments . done.
+:: adding missing comments block after separator  done.
+:: escape code block for 'resource_exists' function crossbar modules  done.
+:: fix comment blocks with no @end  done.
+:: move comments written in the same line as @doc  done.
+:: remove empty comment line after @doc . done.
+
+We had some EDocification! 🤔
+```
+
 ## `empty_schema_descriptions.bash`
 
 Checks JSON schemas for empty "description" properties and exit(1) if any are found
