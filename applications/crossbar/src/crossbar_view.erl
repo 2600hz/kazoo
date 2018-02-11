@@ -431,7 +431,7 @@ time_range(Context, Options, Key) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Checks whether or not end time is prior to start time. Returns a ranged
-%% tuple `{start_time, end_time}'' or `context' with validation error.
+%% tuple `{start_time, end_time}' or `context' with validation error.
 %% @end
 %%--------------------------------------------------------------------
 -spec time_range(cb_context:context(), pos_integer(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
