@@ -46,14 +46,8 @@ reconcile(Services) ->
 reconcile(Services, 'undefined') ->
     Services;
 reconcile(Services, <<_/binary>> = DeviceType) ->
-    case kz_services:is_dirty(Services) of
-        'true' ->
-            lager:debug("doing full reconcile for ~s", [DeviceType]),
-            do_reconcile(reconcile(Services), DeviceType);
-        'false' ->
-            lager:debug("doing partial reconcile for ~s", [DeviceType]),
-            do_reconcile(Services, DeviceType)
-    end.
+    lager:debug("doing partial reconcile for ~s", [DeviceType]),
+    do_reconcile(Services, DeviceType).
 
 -spec do_reconcile(kz_services:services(), ne_binary()) -> kz_services:services().
 do_reconcile(Services, DeviceType) ->
