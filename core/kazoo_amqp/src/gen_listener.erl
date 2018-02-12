@@ -594,7 +594,7 @@ handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
             handle_module_cast({?MODULE, {'federators_consuming', 'true'}}, State);
 
         Remaining ->
-            lager:info("all waiting federators are available!"),
+            lager:info("still waiting for federators: ~p", [Remaining]),
             {'noreply', State#state{waiting_federators = Remaining}}
     end;
 
