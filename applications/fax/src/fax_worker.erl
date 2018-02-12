@@ -393,7 +393,7 @@ handle_cast(_Msg, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-                                                % @doc
+%% @doc
 %% Handling all non call/cast messages
 %%
 %% @end
