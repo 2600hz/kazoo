@@ -51,7 +51,7 @@ add_defaults_array_test_() ->
     ].
 
 add_sub_defaults_array_test_() ->
-    {ok, SchemaJObj} = from_file("schemav3_sub_defaults_array.json"),
+    {'ok', SchemaJObj} = fixture('kazoo_schemas', "fixtures/schemav3_sub_defaults_array.json"),
 
     JObj = kz_json:decode(<<"{\"gateways\":[{\"name\":\"gateway1\",\"media\":{}}]}">>),
 
@@ -78,7 +78,7 @@ add_sub_defaults_array_test_() ->
     ].
 
 validate_sub_array_test_() ->
-    {ok, SchemaJObj} = from_file("schemav3_sub_defaults_array.json"),
+    {'ok', SchemaJObj} = fixture('kazoo_schemas', "fixtures/schemav3_sub_defaults_array.json"),
 
     JObj = kz_json:decode(<<"{\"gateways\":[{\"name\":\"gateway1\",\"media\":{}, \"codecs\": [\"G999\"]}, {\"name\":\"gateway2\", \"codecs\": [\"G999\"]}, {\"name\":\"gateway3\", \"codecs\": [\"PCMU\", \"G999\"]}]}">>),
 
@@ -89,6 +89,18 @@ validate_sub_array_test_() ->
                   ,kz_json_schema:validate(SchemaJObj, JObj)
                   )
     ].
+
+-spec fixture(file:filename_all()) -> {ok, kz_json:object()} | {error, not_found}.
+fixture(Path) ->
+    case file:read_file(Path) of
+        {ok, Bin} -> {ok, kz_json:decode(Bin)};
+        {error, _} -> {error, not_found}
+    end.
+
+-spec fixture(atom(), file:filename_all()) -> {ok, kz_json:object()} | {error, not_found}.
+fixture(App, Path) when is_atom(App) ->
+    fixture(filename:join(code:lib_dir(App, test), Path)).
+
 
 -spec from_file(nonempty_string()) -> kz_json:object().
 from_file(File) ->
