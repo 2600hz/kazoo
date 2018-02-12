@@ -53,7 +53,7 @@
 -define(MAXIMUM, <<"maximum">>).
 -define(ENABLED, <<"enabled">>).
 
--spec cumulative_merge_scheme() -> kz_json:paths().
+-spec cumulative_merge_scheme() -> [{kz_json:key(), fun((kz_json:path(), kz_json:object()|kz_json:objects()) -> kz_json:api_json_term())}].
 cumulative_merge_scheme() ->
     [{?ACTIVATION_CHARGE, fun kz_json:find/2}
     ,{?MINIMUM, fun ?MODULE:cumulative_merge_sum/2}

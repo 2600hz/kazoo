@@ -656,7 +656,7 @@ process_event(Call, NoopId, JObj) ->
             lager:debug("noop ~s received", [NoopId]),
             {'ok', Call};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-            case kz_json:get_value(<<"Application-Response">>, JObj) of
+            case kz_json:get_ne_binary_value(<<"Application-Response">>, JObj) of
                 NoopId ->
                     lager:debug("noop ~s received", [NoopId]),
                     {'ok', Call};

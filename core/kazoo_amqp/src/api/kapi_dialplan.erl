@@ -79,6 +79,7 @@
         ,dial_method_simultaneous/0
         ,terminators/1, terminators_v/1
         ,offsite_store_url/2
+        ,application_name/1
         ]).
 
 -export([bind_q/2
@@ -114,7 +115,7 @@ b_leg_events_v(Events) ->
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
 -spec v(kz_term:api_terms()) -> boolean().
 v(Prop) when is_list(Prop) ->
-    v(Prop, props:get_value(<<"Application-Name">>, Prop));
+    v(Prop, application_name(Prop));
 v(JObj) ->
     v(kz_json:to_proplist(JObj)).
 
@@ -1091,7 +1092,7 @@ error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 
 -spec publish_command(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_command(CtrlQ, Prop) when is_list(Prop) ->
-    publish_command(CtrlQ, Prop, props:get_value(<<"Application-Name">>, Prop));
+    publish_command(CtrlQ, Prop, application_name(Prop));
 publish_command(CtrlQ, JObj) ->
     publish_command(CtrlQ, kz_json:to_proplist(JObj)).
 
@@ -1102,7 +1103,7 @@ publish_command(CtrlQ, Prop, DPApp) ->
 
 -spec build_command(kz_term:api_terms()) -> {'ok', kz_term:api_terms()}.
 build_command(Prop) when is_list(Prop) ->
-    build_command(Prop, props:get_value(<<"Application-Name">>, Prop));
+    build_command(Prop, application_name(Prop));
 build_command(JObj) ->
     build_command(kz_json:to_proplist(JObj)).
 
@@ -1289,3 +1290,9 @@ sound_touch(JObj) -> sound_touch(kz_json:to_proplist(JObj)).
 sound_touch_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SOUNDTOUCH_HEADERS, ?SOUNDTOUCH_VALUES, ?SOUNDTOUCH_TYPES);
 sound_touch_v(JObj) -> sound_touch_v(kz_json:to_proplist(JObj)).
+
+-spec application_name(kz_term:api_terms()) -> kz_term:api_ne_binary().
+application_name(Prop) when is_list(Prop) ->
+    props:get_value(<<"Application-Name">>, Prop);
+application_name(JObj) ->
+    kz_json:get_ne_binary_value(<<"Application-Name">>, JObj).
