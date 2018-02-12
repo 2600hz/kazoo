@@ -774,6 +774,7 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
 %%
 %% Assumption/Principle:
 %%   A DOW can never occur more than four times in a month.
+%% @end
 %% ---------------------------------------------------------
 %% First attempt to calulate the date of the fouth DOW
 %% occurance.  Since the function corrects an invalid

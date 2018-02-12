@@ -116,6 +116,7 @@ encode_char(Char) ->
 %% If the input string contains a ? then everything after the ? will
 %% be treated as the query string, otherwise the entire input is treated
 %% as the query string. The return key->value pairs will be urldecoded.
+%% @end
 %%--------------------------------------------------------------------
 -spec parse_query_string(binary()) -> [{binary(), binary()}].
 parse_query_string(Source) ->
@@ -247,6 +248,7 @@ urlsplit_l(<<C, R/binary>>, Acc) ->
 %% @doc
 %% Splits and returns the path, query string, and fragment portions
 %% of the URL
+%% @end
 %%--------------------------------------------------------------------
 -spec urlsplit_p(binary(), binary()) -> {binary(), binary(), binary()}.
 urlsplit_p(<<>>, Acc) ->

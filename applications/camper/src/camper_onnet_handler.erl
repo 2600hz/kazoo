@@ -83,6 +83,7 @@ start_link() ->
 %% @private
 %% @doc
 %% Initializes the server
+%% @end
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->

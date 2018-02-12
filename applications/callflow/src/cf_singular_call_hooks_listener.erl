@@ -88,6 +88,7 @@ handle_call_event(JObj, Props) ->
 %% @private
 %% @doc
 %% Initializes the listener, and sends the init hook
+%% @end
 %%--------------------------------------------------------------------
 -spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->

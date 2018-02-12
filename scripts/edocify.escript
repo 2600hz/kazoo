@@ -30,7 +30,7 @@
 -define(REGEX_CB_RESOURCE_EXISTS_COMMENT, "ag '%%%*\\s*Does the path point to a valid resource$(\\n%%*\\s*.*)*\\n%%%*\\s*@end' applications/crossbar/").
 
 %% regex for finding comment block with no @end
--define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '%% @doc.+$\\n%%*\\s*-+' core/ applications/").
+-define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '^%%*[ ]*@doc[^\\n]*$(\\n^(?!(%%* *@end|%%* ?--+$|%%* ?==+$))^%%[^\\n]*$)*(\\n%%* ?(--+|==+)$)' core/ applications/").
 
 %% regex for finding comments written in the same line as `@doc'
 -define(REGEX_IN_DOC_LINE, "ag '%%*\\s*@doc.+$'  core/ applications/").
@@ -86,16 +86,17 @@ edocify([], Ret) ->
     io:format("~nWe had some EDocification! 🤔~n"),
     halt(Ret);
 edocify([{Cmd, Desc, Fun}|Rest], Ret) ->
-    io:format(":: ~s: ", [Desc]),
+    io:format("* ~s: ", [Desc]),
     case check_result(list_to_binary(run_ag(Cmd))) of
         ok -> edocify(Rest, Ret);
         AgResult ->
             _ = Fun(AgResult),
+            io:format(" done~n~n"),
             edocify(Rest, 1)
     end.
 
 check_result(<<>>) ->
-    io:format(" done.~n");
+    io:format(" done~n");
 check_result(<<"ERR:", _/binary>>=Error) ->
     io:put_chars(Error),
     halt(1);
@@ -119,7 +120,7 @@ check_result(Result) ->
 evil_specs(Result) ->
     FilesSpecs = map_specs_to_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], []),
     _ = lists:map(fun process_evil_specs/1, FilesSpecs),
-    io:format(" done~n").
+    'ok'.
 
 map_specs_to_file([], Acc) -> Acc;
 map_specs_to_file([H|T], SpecAcc) ->
@@ -230,7 +231,7 @@ move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length 
 edocify_headers(Result) ->
     Files = [F || F <- binary:split(Result, <<"\n">>, [global]), F =/= <<>>],
     _ = [edocify_header(F) || F <- Files],
-    io:format(" done.~n").
+    'ok'.
 
 edocify_header(File) ->
     io:format("."),
@@ -319,7 +320,7 @@ look_after(_) -> false.
 remove_comment_specs(Result) ->
     CommentSpecs = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun do_remove_comment_specs/2, CommentSpecs),
-    io:format(" done.~n").
+    'ok'.
 
 do_remove_comment_specs(File, Positions) ->
     io:format("."),
@@ -337,7 +338,7 @@ do_remove_comment_specs(File, Positions) ->
 missing_comment_blocks_after_sep(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun add_missing_comment_blocks/2, Positions),
-    io:format(" done.~n").
+    'ok'.
 
 add_missing_comment_blocks(File, Positions) ->
     Lines = read_lines(File, true),
@@ -380,7 +381,7 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
 cb_resource_exists_comments(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun fix_cb_resource_exists_comment/2, Positions),
-    io:format(" done.~n").
+    'ok'.
 
 fix_cb_resource_exists_comment(File, Positions) ->
     io:format("."),
@@ -420,7 +421,7 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
 comment_blocks_with_no_end(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun comment_blocks_with_no_end/2, Positions),
-    io:format(" done.~n").
+    'ok'.
 
 comment_blocks_with_no_end(File, Positions) ->
     io:format("."),
@@ -431,21 +432,12 @@ do_comment_blocks_with_no_end([], _, Formatted) ->
     Formatted;
 do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
     case lists:member(LN, Positions)
-        andalso Line
+        andalso is_seprator(Line)
     of
         false ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line]);
-        <<"%% @doc">> ->
-            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line]);
-        <<"%% @doc ", Rest/binary>> ->
-            LineWithDot = case lists:last(binary_to_list(Rest)) of
-                              [] -> Rest;
-                              [<<".">>|_] -> Rest;
-                              _ -> <<Rest/binary, ".">>
-                          end,
-            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<"%% @doc">>, <<"%% ", LineWithDot/binary>>, <<"%% @end">>]);
-        _ ->
-            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line])
+        true ->
+            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<"%% @end">>, Line])
     end.
 
 %%--------------------------------------------------------------------
@@ -456,7 +448,7 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
 move_in_doc_line(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun move_in_doc_line/2, Positions),
-    io:format(" done.~n").
+    'ok'.
 
 move_in_doc_line(File, Positions) ->
     io:format("."),
@@ -487,7 +479,7 @@ do_move_in_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
 remove_doc_tag_empty_comment(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun remove_doc_tag_empty_comment/2, Positions),
-    io:format(" done.~n").
+    'ok'.
 
 remove_doc_tag_empty_comment(File, Positions) ->
     io:format("."),

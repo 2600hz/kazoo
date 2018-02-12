@@ -82,6 +82,7 @@ relay_amqp(JObj, Props) ->
 %% @private
 %% @doc
 %% Initializes the listener, and sends the init hook
+%% @end
 %%--------------------------------------------------------------------
 -spec init([fun()]) -> {'ok', state()}.
 init([Call, Callback, Args]) ->

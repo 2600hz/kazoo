@@ -100,6 +100,7 @@ update_stats(Server, AccountId, Stats) ->
 %% @private
 %% @doc
 %% Initializes the server
+%% @end
 %%--------------------------------------------------------------------
 -spec init(any()) -> {'ok', state()} |
                      {'stop', state()}.

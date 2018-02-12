@@ -122,6 +122,7 @@ handle_originate_execute(JObj, Props) ->
 %% @private
 %% @doc
 %% Initializes the server
+%% @end
 %%--------------------------------------------------------------------
 -spec init([node() | kz_json:object()]) -> {'stop', 'normal'} |
                                            {'ok', state()}.

@@ -132,6 +132,7 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
 %% 3n) Login
 %%
 %% TODO: a UI bug keeps the hotdesk enabled from ever being true
+%% @end
 %%--------------------------------------------------------------------
 -spec login(hotdesk(), kapps_call:call()) -> kapps_api_std_return().
 %% %login(#hotdesk{enabled=false}, Call) ->

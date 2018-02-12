@@ -71,6 +71,7 @@ check(Account) ->
 %% @private
 %% @doc
 %% Initializes the server
+%% @end
 %%--------------------------------------------------------------------
 -spec init([]) -> {ok, state()}.
 init([]) ->
