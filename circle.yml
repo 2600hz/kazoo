@@ -38,7 +38,7 @@ test:
     - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
     - make docs
-    - . ~/.kerl/$OTP_VERSION/activate && scripts/evil_specs_remover.escript -k
+    - . ~/.kerl/$OTP_VERSION/activate && scripts/edocify.escript
     - make validate-schemas
     # - |
     #   if [[ ! -z "$($CHANGED_SWAGGER)" ]]; then
