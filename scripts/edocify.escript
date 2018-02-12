@@ -32,11 +32,11 @@
 %% regex for finding comment block with no @end
 -define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '^%%*[ ]*@doc[^\\n]*$(\\n^(?!(%%* *@end|%%* ?--+$|%%* ?==+$))^%%[^\\n]*$)*(\\n%%* ?(--+|==+)$)' core/ applications/").
 
-%% regex for finding comments written in the same line as `@doc'
--define(REGEX_IN_DOC_LINE, "ag '%%*\\s*@doc$\\n%%*\\s*[^@\\n]+$'  core/ applications/").
+%% regex for finding first comment line after `@doc'
+-define(REGEX_TO_DOC_LINE, "ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/").
 
 %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
--define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc.*(\\n%%*$)+' core/ applications/").
+-define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc[^\\n]*$(\\n%%*$)+' core/ applications/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
@@ -52,7 +52,7 @@ main(_) ->
           ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
-          ,{?REGEX_IN_DOC_LINE, "move first comment line to the same line as @doc", fun move_in_doc_line/1}
+          ,{?REGEX_TO_DOC_LINE, "move first comment line to the same line as @doc", fun move_to_doc_line/1}
            %% must be last thing to run
           ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
           ],
@@ -246,7 +246,7 @@ edocify_header([<<"@contributors", _/binary>>], Header) ->
 edocify_header([<<"@contributors", _/binary>>|T], Header) ->
     Authors = [<<"%%% @author ", Author/binary>>
                    || A <- T,
-                      Author <- [strip_left_space(A)],
+                      Author <- [strip_left_spaces(A)],
                       Author =/= <<>>
               ],
     edocify_header([], Header ++ [<<"%%%">>] ++ Authors);
@@ -374,8 +374,8 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Escape codes in comment block for `resource_exists' function crossbar modules.
-%% Ag regex will match the comments before resource_exists function with last line
-%% is `%% @end' line. We then formats those lines accordingly.
+%% Ag regex will match the comments before resource_exists function and last line
+%% is `%% @end'. We then formats those lines accordingly.
 %% @end
 %%--------------------------------------------------------------------
 cb_resource_exists_comments(Result) ->
@@ -414,8 +414,7 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Fix comment block before `start_link` which doesn't end properly with
-%% with `@end' tag.
+%% Fix comment block which doesn't end properly with `@end' tag.
 %% @end
 %%--------------------------------------------------------------------
 comment_blocks_with_no_end(Result) ->
@@ -442,45 +441,54 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Move first comment line to the same line as @doc.
+%% Move first comment line to the same line as `@doc'. So EDoc is not
+%% adding extra new line character and spaces to beginning of the
+%% paragraph. (Not particularly necessary but it makes better
+%% looking HTML code at the end).
+%%
+%% CAUTION: This code also makes sure there is no empty comment line
+%% between `@doc' line and separator to avoid inclusion of separator line
+%% in the documentation.
 %% @end
 %%--------------------------------------------------------------------
-move_in_doc_line(Result) ->
+move_to_doc_line(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
-    _ = maps:map(fun move_in_doc_line/2, Positions),
+    _ = maps:map(fun move_to_doc_line/2, Positions),
     'ok'.
 
-move_in_doc_line(File, Positions) ->
+move_to_doc_line(File, Positions) ->
     io:format("."),
     Lines = read_lines(File, true),
-    save_lines(File, do_move_in_doc_line(Lines, Positions, [])).
+    save_lines(File, do_move_to_doc_line(Lines, Positions, [])).
 
-do_move_in_doc_line([], _, Formatted) ->
+do_move_to_doc_line([], _, Formatted) ->
     Formatted;
-do_move_in_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
+do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
     case lists:member(LN, Positions)
         andalso Line
     of
         false ->
-            do_move_in_doc_line(Lines, Positions, Formatted ++ [Line]);
+            do_move_to_doc_line(Lines, Positions, Formatted ++ [Line]);
+        <<"%%">> ->
+            io:format("empty~n"),
+            %% remove empty comment line
+            do_move_to_doc_line(Lines, Positions, Formatted);
+        <<"%%%">> ->
+            io:format("empty~n"),
+            %% remove empty comment line
+            do_move_to_doc_line(Lines, Positions, Formatted);
         <<"%% @doc">> ->
-            case Lines of
-                [{_, Comment}|T] ->
-                    do_move_in_doc_line(T, Positions, Formatted ++ [<<Line/binary, " ", (strip_left_space(strip_comment(Comment)))/binary>>]);
-                _ ->
-                    do_move_in_doc_line(Lines, Positions, Formatted ++ [Line])
-            end;
-        <<"%% @doc", _/binary>> ->
-            do_move_in_doc_line(Lines, Positions, Formatted ++ [Line]);
+            io:format("doc~n"),
+            do_move_to_doc_line(Lines, Positions, Formatted);
         <<"%%% @doc">> ->
-            case Lines of
-                [{_, Comment}|T] ->
-                    do_move_in_doc_line(T, Positions, Formatted ++ [<<Line/binary, " ", (strip_left_space(strip_comment(Comment)))/binary>>]);
-                _ ->
-                    do_move_in_doc_line(Lines, Positions, Formatted ++ [Line])
-            end;
-        <<"%%% @doc", _/binary>> ->
-            do_move_in_doc_line(Lines, Positions, Formatted ++ [Line])
+            io:format("doc~n"),
+            do_move_to_doc_line(Lines, Positions, Formatted ++ [Line]);
+        <<"%%", _/binary>> ->
+            io:format("comment~n"),
+            do_move_to_doc_line(Lines, Positions, Formatted ++ [<<"%% @doc ", (strip_left_spaces(strip_comment(Line)))/binary>>]);
+        <<"%%%", _/binary>> ->
+            io:format("comment~n"),
+            do_move_to_doc_line(Lines, Positions, Formatted ++ [<<"%%% @doc ", (strip_left_spaces(strip_comment(Line)))/binary>>])
     end.
 
 %%--------------------------------------------------------------------
@@ -567,8 +575,8 @@ strip_comment(<<$%, B/binary>>) -> strip_comment(B);
 strip_comment(<<$\s, B/binary>>) -> B;
 strip_comment(A) -> A.
 
-strip_left_space(<<$\s, B/binary>>) -> strip_left_space(B);
-strip_left_space(A) -> A.
+strip_left_spaces(<<$\s, B/binary>>) -> strip_left_spaces(B);
+strip_left_spaces(A) -> A.
 
 empty_block() ->
     [<<"%%--------------------------------------------------------------------">>
