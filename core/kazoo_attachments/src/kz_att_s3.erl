@@ -18,6 +18,11 @@
 
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 
+-type s3_error() :: {'aws_error'
+                    ,{'socket_error', binary()} |
+                     {'http_error', pos_integer(), string(), binary()}
+                    }.
+
 %% ====================================================================
 %% `gen_attachment' behaviour callbacks (API)
 %% ====================================================================
@@ -28,7 +33,7 @@
                     ,gen_attachment:contents()
                     ,gen_attachment:options()
                     ) -> gen_attachment:put_response().
-put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
+put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     {Bucket, FilePath, Config} = aws_bpc(Params, {DbName, DocId, AName}),
     case put_object(Bucket, FilePath, Contents, Config) of
         {'ok', Props} ->
@@ -39,7 +44,12 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
                                    ]}
                    ,{'headers', Props}
                    ]};
-        _E -> _E
+        {'error', FilePath, Error} ->
+            Routines = [{fun kz_att_error:set_req_url/2, FilePath}
+                        | kz_att_error:put_routines(Params, DbName, DocId, AName,
+                                                    Contents, Options)
+                       ],
+            handle_s3_error(Error, Routines)
     end.
 
 -spec fetch_attachment(gen_attachment:handler_props()
@@ -49,13 +59,18 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
                       ) -> gen_attachment:fetch_response().
 fetch_attachment(Conn, DbName, DocId, AName) ->
     HandlerProps = kz_json:get_value(<<"handler_props">>, Conn, 'undefined'),
+    Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
     case kz_json:get_value(<<"S3">>, Conn) of
-        'undefined' -> gen_attachment:error_response(400, 'invalid_data');
+        'undefined' ->
+            kz_att_error:new('invalid_data', Routines);
         S3 ->
             {Bucket, FilePath, Config} = aws_bpc(S3, HandlerProps, {DbName, DocId, AName}),
             case get_object(Bucket, FilePath, Config) of
-                {'ok', Props} -> {'ok', props:get_value('content', Props)};
-                _E -> _E
+                {'ok', Props} ->
+                    {'ok', props:get_value('content', Props)};
+                {'error', FilePath, Error} ->
+                    NewRoutines = [{fun kz_att_error:set_req_url/2, FilePath} | Routines],
+                    handle_s3_error(Error, NewRoutines)
             end
     end.
 
@@ -187,8 +202,9 @@ convert_kv({<<"etag">> = K, V}) ->
     {K, binary:replace(V, <<$">>, <<>>, ['global'])};
 convert_kv(KV) -> KV.
 
--spec put_object(string(), string() | kz_term:ne_binary(), binary(), aws_config()) -> {ok, kz_term:proplist()} |
-                                                                                      gen_attachment:error_response().
+-spec put_object(string(), string() | kz_term:ne_binary(), binary(), aws_config()) ->
+                    {ok, kz_term:proplist()} |
+                    {'error', string() | kz_term:ne_binary(), s3_error()}.
 put_object(Bucket, FilePath, Contents,Config)
   when is_binary(FilePath) ->
     put_object(Bucket, kz_term:to_list(FilePath), Contents,Config);
@@ -198,11 +214,12 @@ put_object(Bucket, FilePath, Contents, #aws_config{s3_host=Host} = Config) ->
     try erlcloud_s3:put_object(Bucket, FilePath, Contents, Options, [], Config) of
         Headers -> {ok, Headers}
     catch
-        error : Error -> handle_s3_error(Error, Host, FilePath)
+        error : Error -> {'error', FilePath, Error}
     end.
 
--spec get_object(string(), string() | kz_term:ne_binary(), aws_config()) -> {ok, kz_term:proplist()} |
-                                                                            gen_attachment:error_response().
+-spec get_object(string(), string() | kz_term:ne_binary(), aws_config()) ->
+                    {ok, kz_term:proplist()} |
+                    {'error', string() | kz_term:ne_binary(), s3_error()}.
 get_object(Bucket, FilePath, Config)
   when is_binary(FilePath) ->
     get_object(Bucket, kz_term:to_list(FilePath), Config);
@@ -212,23 +229,28 @@ get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
     try erlcloud_s3:get_object(Bucket, FilePath, Options, Config) of
         Headers -> {ok, Headers}
     catch
-        error : Error -> handle_s3_error(Error, Host, FilePath)
+        error : Error -> {'error', FilePath, Error}
     end.
 
--spec handle_s3_error({'aws_error'
-                      ,{'socket_error', binary()} |
-                       {'http_error', pos_integer(), string(), binary()}
-                      }
-                     ,string()
-                     ,string() | kz_term:ne_binary()
-                     ) -> gen_attachment:error_response().
-handle_s3_error({'aws_error', {'http_error', RespCode, _RespStatusLine, RespBody} = Reason}
-               ,Host
-               ,FilePath
+%% Handle response from `erlcloud_s3:s3_request/8' function, this error objects are built
+%% within `erlcloud_aws:request_to_return/1'.
+-spec handle_s3_error(s3_error(), kz_att_error:update_routines()) -> kz_att_error:error().
+handle_s3_error({'aws_error',
+                 {'http_error', RespCode, RespStatusLine, RespBody, RespHeaders} = _E}
+               ,Routines
                ) ->
-    lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
-    gen_attachment:error_response(RespCode, RespBody);
-handle_s3_error({'aws_error', {'socket_error', RespBody} = Reason}, Host, FilePath) ->
-    lager:debug("error saving attachment to ~s/~s : ~p", [Host, FilePath, Reason]),
-    Error = <<"Socket error: ", (io_lib:format("~p", [RespBody]))/binary>>,
-    gen_attachment:error_response(400, Error).
+    lager:debug("S3 request error: ~p", [_E]),
+    %% Reason = get_reason(RespBody),
+    Reason = <<"test">>,
+    io:format("resp body: ~p~n", [RespBody]),
+    NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
+                  ,{fun kz_att_error:set_resp_headers/2, RespHeaders}
+                  ,{fun kz_att_error:set_resp_body/2, RespBody}
+                   | Routines
+                  ],
+    lager:error("S3 error ~p (~p)", [Reason, RespCode]),
+    kz_att_error:new(Reason, NewRoutines);
+handle_s3_error({'aws_error', {'socket_error', RespBody} = _E}, Routines) ->
+    lager:debug("S3 request error: ~p", [_E]),
+    Reason = <<"Socket error: ", (io_lib:format("~p", [RespBody]))/binary>>,
+    kz_att_error:new(Reason, Routines).

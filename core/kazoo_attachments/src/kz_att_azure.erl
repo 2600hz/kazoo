@@ -50,7 +50,8 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
                 handle_erlazure_error_response(Resp, Routines)
         end
     catch
-        %_:{{{'case_clause', {'error', {'failed_connect', _}}}, _StackTrace}, _FnFailing} ->
+        %% Next line left just for reference (cause it's not easy to see them in the code)
+        %%_:{{{'case_clause', {'error', {'failed_connect', _}}}, _StackTrace}, _FnFailing} ->
         _:{{{'case_clause', ErrorResp}, _StackTrace}, _FnFailing} ->
             lager:debug("Failed to put the attachment.~nStackTrace: ~p~nFnFailing: ~p",
                         [_StackTrace, _FnFailing]),

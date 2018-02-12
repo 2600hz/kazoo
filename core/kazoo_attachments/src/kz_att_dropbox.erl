@@ -127,9 +127,9 @@ resolve_path(Settings, AttInfo) ->
 -spec dropbox_default_fields() -> kz_term:proplist().
 dropbox_default_fields() ->
     [{'group', [{'arg', <<"id">>}
-             ,<<"_">>
-             ,{'arg', <<"attachment">>}
-             ]}
+               ,<<"_">>
+               ,{'arg', <<"attachment">>}
+               ]}
     ].
 
 -spec dropbox_format_url(map(), attachment_info()) -> kz_term:ne_binary().
@@ -138,7 +138,7 @@ dropbox_format_url(Map, AttInfo) ->
 
 -spec dropbox_post(binary(), kz_term:proplist(), binary()) ->
                           {'ok', binary(), [{binary(), binary()}]} |
-                         {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+                          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 dropbox_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->

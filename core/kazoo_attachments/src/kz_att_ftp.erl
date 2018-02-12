@@ -71,7 +71,7 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
 %% Internal functions
 %% ====================================================================
 -spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            'ok' | {'error', binary(), binary() | atom() | term()}.
+                          'ok' | {'error', binary(), binary() | atom() | term()}.
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
         {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
@@ -80,7 +80,7 @@ send_request(Url, Contents) ->
     end.
 
 -spec send_request(string(), integer(), string(), string(), binary()) ->
-                            'ok' | {'error', binary() | atom() | term()}.
+                          'ok' | {'error', binary() | atom() | term()}.
 send_request(Host, Port, UserPass, FullPath, Contents) ->
     {User, Pass} = case string:tokens(UserPass, ":") of
                        [U, P] -> {U, P};
