@@ -565,8 +565,8 @@ handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
     lager:info("federator for ~p is consuming, waiting on: ~p", [Broker, State#state.waiting_federators]),
 
     Filter = fun(X) ->
-        kz_amqp_connections:broker_available_connections(X) > 0
-    end,
+                     kz_amqp_connections:broker_available_connections(X) > 0
+             end,
 
     Waiting = lists:filter(Filter, State#state.waiting_federators),
 
