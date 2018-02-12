@@ -9,6 +9,9 @@
 -define(SEP, <<"%%%-------------------------------------------------------------------">>).
 -define(SEP_2, <<"%%%===================================================================">>).
 
+%% regex for evil spec+specs
+-define(REGEX_SPECSPEC, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '^\\-spec[^.]+\\.$(\\n+\\-spec[^.]+\\.$)+' core/ applications/").
+
 %% regex to find contributors tag.
 -define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl)$' -l '%%%+\\s*@?([Cc]ontributors|[Cc]ontributions)'").
 
@@ -33,7 +36,7 @@
 -define(REGEX_IN_DOC_LINE, "ag '%%*\\s*@doc.+$'  core/ applications/").
 
 %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
--define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc(\\n%%*$)+'  core/ applications/").
+-define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc(\\n%%*$)+' core/ applications/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
@@ -43,7 +46,8 @@ main(_) ->
 
     io:format("Edocify Kazoo...~n~n"),
 
-    Run = [{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
+    Run = [{?REGEX_SPECSPEC, "removing evil sepc+specs", fun evil_specs/1}
+          ,{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
           ,{?REGEX_COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
           ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
@@ -82,7 +86,7 @@ edocify([], Ret) ->
     io:format("~nWe had some EDocification! 🤔~n"),
     halt(Ret);
 edocify([{Cmd, Desc, Fun}|Rest], Ret) ->
-    io:format(":: ~s ", [Desc]),
+    io:format(":: ~s: ", [Desc]),
     case check_result(list_to_binary(run_ag(Cmd))) of
         ok -> edocify(Rest, Ret);
         AgResult ->
@@ -97,6 +101,124 @@ check_result(<<"ERR:", _/binary>>=Error) ->
     halt(1);
 check_result(Result) ->
     Result.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Moving grouped `spec' attributes to line before their own function
+%% header. Ag regex matches the lines starts with `-spec' to end of
+%% the it (by a single `.') including multi line spec.
+%%
+%% For  multi line we accumulate it for that specific `spec' in a map
+%% and then first we read source file AST to find spec functions name
+%% and arity. Then we remove the evil specs from the file.
+%%
+%% Then we read AST again to find the function/arity position in the file
+%% then adding spec to line before appropriate function header.
+%% @end
+%%--------------------------------------------------------------------
+evil_specs(Result) ->
+    FilesSpecs = map_specs_to_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], []),
+    _ = lists:map(fun process_evil_specs/1, FilesSpecs),
+    io:format(" done~n").
+
+map_specs_to_file([], Acc) -> Acc;
+map_specs_to_file([H|T], SpecAcc) ->
+    FirstLine = {File, _, _, true} = parse_ag_line(H),
+    {NewTail, FileSpecs} = get_specs_for_file(File, T, [FirstLine]),
+    FilePath = binary_to_list(File),
+    {ok, Forms} = epp_dodger:quick_parse_file(FilePath, [{no_fail, true}]),
+    SpecMaps = get_specs_info(Forms, FileSpecs, []),
+    map_specs_to_file(NewTail, [{FilePath, SpecMaps}|SpecAcc]).
+
+%% Get all specs for this file.
+get_specs_for_file(_, [], Acc) -> {[], Acc};
+get_specs_for_file(File, [H|T], Acc) ->
+    case parse_ag_line(H) of
+        {File, _, _, _}=Line ->
+            get_specs_for_file(File, T, Acc ++ [Line]);
+        {_, _, _, _} ->
+            {[H|T], Acc}
+    end.
+
+%% Find spec function name/arity from AST.
+get_specs_info(_, [], Acc) -> Acc;
+get_specs_info(Forms, [{_, Pos, Line, true}|T], Acc) ->
+    %% {attribute, line, {{fun_name, arity}, func_type_ast}}
+    {_, _, _, {{FunName, Arity}, _}} = lists:keyfind(Pos, 2, Forms),
+    {NewTail, SpecLines} = get_multi_line_spec(T, [Line]),
+    SpecMap = #{spec => SpecLines
+               ,spec_pos => Pos
+               ,spec_length => length(SpecLines)
+               ,fun_name => FunName
+               ,arity => Arity
+               },
+    get_specs_info(Forms, NewTail, Acc ++ [SpecMap]).
+
+%% Accumulate lines until next spec definition.
+get_multi_line_spec([{_, _, Line, false}|T], Acc) ->
+    get_multi_line_spec(T, Acc ++ [Line]);
+get_multi_line_spec(Lines, Acc) ->
+    {Lines, Acc}.
+
+%% Removing evil specs first then get functions new position from AST
+%% and add specs to position right before their function's position.
+process_evil_specs({File, SpecMaps}) ->
+    io:format("."),
+    remove_evil_specs(File, SpecMaps),
+    {ok, Forms} = epp_dodger:quick_parse_file(File, [{no_fail, true}]),
+    Lines = read_lines(File, false),
+    save_lines(File, move_file_specs(Lines, 0, functions_new_position(Forms, SpecMaps, []))).
+
+%% First read files and create tupleList of {LineNumber, String}
+%% Then loop over SpecMaps and get the position of all lines that the spec
+%% is occupied.
+remove_evil_specs(File, SpecMaps) ->
+    Lines = read_lines(File, true),
+    Positions = lists:foldl(fun fetch_specs_pos/2, [], SpecMaps),
+    save_lines(File, [L || {LN, L} <- Lines, not lists:member(LN, Positions)]).
+
+%% Extract specs positions (if it's multi line spec, add number of all lines it occupied).
+fetch_specs_pos(#{spec_pos := Pos, spec_length := Length}, Acc) ->
+    Acc ++ [Pos + I - 1 || I <- lists:seq(1, Length)].
+
+%% Find out the new position of the functions by looking fun/arity in AST.
+functions_new_position(_, [], Acc) ->
+    lists:sort(fun sort_by_fun_position/2, Acc);
+functions_new_position(Forms, [#{fun_name := FunName, arity := Arity}=H|T], Acc) ->
+    Functions = lists:filter(fun(Form) -> fun_arity_filter(Form, FunName, Arity) end, Forms),
+    functions_new_position(Forms, T, Acc ++ is_test_or_regular_function(Functions, H, [])).
+
+fun_arity_filter({function, _Line, FName, Arity, _Clauses}, FName, Arity) ->
+    true;
+fun_arity_filter(_, _, _) ->
+    false.
+
+%% When there are two implementations for function, one normal and one guarded by `?TEST',
+%% save position of both functions to move spec to both positions.
+is_test_or_regular_function([], #{fun_name := FunName, arity := Arity}, []) ->
+    io:format("~ncan't find function '~s/~b'~n", [FunName, Arity]),
+    halt(1);
+is_test_or_regular_function([], _, Acc) -> Acc;
+is_test_or_regular_function([{_, FunLine, _, _, _}|T], Map, Acc) ->
+    is_test_or_regular_function(T, Map, [Map#{fun_pos => FunLine}|Acc]).
+
+%% This important since we are adding function starting from top line to last line.
+sort_by_fun_position(#{fun_pos := Pos1}, #{fun_pos := Pos2}) ->
+    Pos1 < Pos2.
+
+%% Split file lines list at the position
+%% of the function + number of lines that we have added to file so far,
+%% then subtract it by one to get the function line in the right hand side list.
+%% For adding spec, first add an empty line before spec if it's necessary and adds everything together.
+%% At the end sum the number of added lines so far with current spec number of the line and possible empty line.
+move_file_specs(Lines, _, []) -> Lines;
+move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length := Length}|T]) ->
+    {Left, [Fun|Right]} = lists:split(Pos + LinesAdded - 1, Lines),
+    EmptyLine = maybe_add_empty_line_before_spec(lists:last(Left)),
+    move_file_specs(Left ++ EmptyLine ++ Spec ++ [Fun] ++ Right
+                   ,LinesAdded + Length + length(EmptyLine)
+                   ,T
+                   ).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -182,12 +304,6 @@ find_header([<<"%%", _/binary>>=Line | Lines], Header) ->
     end;
 find_header([Line | Lines], Header) ->
     find_header(Lines ++ [Line], Header).
-
-is_seprator(<<"%%--", _/binary>>) -> true;
-is_seprator(<<"%%==", _/binary>>) -> true;
-is_seprator(<<"%% --", _/binary>>) -> true;
-is_seprator(<<"%% ==", _/binary>>) -> true;
-is_seprator(_) -> false.
 
 look_after([<<"%%%", _/binary>>|_]) -> true;
 look_after([<<"%%%%", _/binary>>|_]) -> true;
@@ -399,6 +515,20 @@ do_remove_doc_tag_empty_comment([{LN, Line}|Lines], Positions, Formatted) ->
 
 maybe_add_empty_line(<<>>) -> [];
 maybe_add_empty_line(_) -> [<<>>].
+
+maybe_add_empty_line_before_spec(<<>>) -> [];
+%% don't add empty line if it's a comment block, maybe it has some corner case,
+%% e.g. the separator belongs to function comment block or not. But most of the
+%% time we're good to go this way.
+maybe_add_empty_line_before_spec(<<"%%--", _/binary>>) -> [];
+maybe_add_empty_line_before_spec(<<"%% --", _/binary>>) -> [];
+maybe_add_empty_line_before_spec(_) -> [<<>>].
+
+is_seprator(<<"%%--", _/binary>>) -> true;
+is_seprator(<<"%%==", _/binary>>) -> true;
+is_seprator(<<"%% --", _/binary>>) -> true;
+is_seprator(<<"%% ==", _/binary>>) -> true;
+is_seprator(_) -> false.
 
 collect_positions_per_file([], Map) -> Map;
 collect_positions_per_file([Line | Lines], Map) ->
