@@ -262,9 +262,9 @@ format_query_option(Name) -> Name.
 %% @end
 %%--------------------------------------------------------------------
 -spec search(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist()) -> cb_context:context().
-search(Context, Type, Query, Value, Opts) ->
+search(Context, Type, Query, Val, Opts) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
-    Value = cb_modules_util:normalize_alphanum_name(Value),
+    Value = cb_modules_util:normalize_alphanum_name(Val),
     Options =
         [{'startkey', get_start_key(Context, Type, Value)}
         ,{'endkey', get_end_key(Context, Type, Value)}
