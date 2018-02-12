@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz inc
 %%% @doc
-%%% @author Peter DEfebvre
+%%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
 -module(blackhole_tracking).
