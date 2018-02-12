@@ -4,7 +4,7 @@
 %%% Listing of all expected v1 callbacks
 %%%
 %%%
-%%% @author PEter Defebvre
+%%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
 -module(cb_alerts).
