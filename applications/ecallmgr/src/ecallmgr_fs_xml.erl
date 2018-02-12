@@ -584,6 +584,13 @@ get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
 get_channel_vars({<<"SIP-Invite-Parameters">>, V}, Vars) ->
     [list_to_binary(["sip_invite_params='", kz_util:iolist_join(<<";">>, V), "'"]) | Vars];
 
+get_channel_vars({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
+    [list_to_binary(["conference_utils_auto_outcall_flags="
+                    ,participant_flags_to_var(Flags)
+                    ])
+     | Vars
+    ];
+
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
@@ -592,6 +599,18 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
             [encode_fs_val(Prefix, Val) | Vars]
     end;
 get_channel_vars(_, Vars) -> Vars.
+
+-spec participant_flags_to_var(kz_term:ne_binaries()) -> kz_term:ne_binary().
+participant_flags_to_var(Flags) ->
+    kz_binary:join(lists:foldl(fun participant_flag_to_var/1, [], Flags), <<"|">>).
+
+-spec participant_flag_to_var(kz_term:ne_binary()) -> kz_term:ne_binary().
+participant_flag_to_var(<<"distribute_dtmf">>) -> <<"dist-dtmf">>;
+participant_flag_to_var(<<"is_moderator">>) -> <<"moderator">>;
+participant_flag_to_var(<<"disable_moh">>) -> <<"nomoh">>;
+participant_flag_to_var(<<"join_existing">>) -> <<"join-only">>;
+participant_flag_to_var(<<"video_mute">>) -> <<"vmute">>;
+participant_flag_to_var(Flag) -> Flag.
 
 -spec sip_headers_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 sip_headers_fold(<<"Diversions">>, Vs, Vars0) ->

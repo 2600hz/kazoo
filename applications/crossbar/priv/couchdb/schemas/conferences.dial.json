@@ -27,6 +27,24 @@
             "minItems": 1,
             "type": "array"
         },
+        "participant_flags": {
+            "description": "Participant flags applied to each endpoint when it joins the conference",
+            "items": {
+                "description": "Participant flag",
+                "enum": [
+                    "mute",
+                    "deaf",
+                    "distribute_dtmf",
+                    "is_moderator",
+                    "disable_moh",
+                    "ghost",
+                    "join_existing",
+                    "video_mute"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
         "target_call_id": {
             "description": "Existing UUID to use as a hint for where to start the conference",
             "type": "string"

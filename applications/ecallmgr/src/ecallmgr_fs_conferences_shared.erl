@@ -51,7 +51,6 @@ start_link() ->
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ], []).
 
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -467,6 +466,7 @@ add_participant(JObj, CallId, ControlQueue, ChannelProps) ->
                                  ,{<<"Call-ID">>, CallId}
                                  ,{<<"Control-Queue">>, ControlQueue}
                                  ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"Account-ID">>, JObj)}
+                                 ,{<<"Participant-Flags">>, kz_json:get_list_value(<<"Participant-Flags">>, JObj)}
                                  ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)}
                                  ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"Caller-ID-Number">>, JObj)}
                                   | kz_api:default_headers(<<"conference">>, <<"add_participant">>, ?APP_NAME, ?APP_VERSION)
