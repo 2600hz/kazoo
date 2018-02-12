@@ -22,8 +22,7 @@
 -type discounts() :: bt_discounts().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Contert the given XML to a customer record
+%% @doc Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -42,8 +41,7 @@ xml_to_record(Xml, Base) ->
                 }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Contert the given XML to a customer record
+%% @doc Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -67,8 +65,7 @@ record_to_xml(Discount, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given record into a json object
+%% @doc Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_discount()) -> kz_json:object().
@@ -80,8 +77,7 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= 'undefined']).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given json obj into a record
+%% @doc Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record(kz_term:api_object()) -> bt_discount() | 'undefined'.

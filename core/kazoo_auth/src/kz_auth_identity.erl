@@ -23,8 +23,7 @@
 -define(PVT_SIGNING_SECRET, <<"pvt_signature_secret">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Sign the identity (a user_id or an account_id).
+%% @doc Sign the identity (a user_id or an account_id).
 %% Secret is consist of identity secrect and a provider secret.
 %% (Kazoo is the only provider for signing)
 %% @end
@@ -60,8 +59,7 @@ sign(Claims) ->
     sign(kz_json:to_map(Claims)).
 
 %% @private
-%% @doc
-%% Find the identity based on Provider and Claims, return the secret
+%% @doc Find the identity based on Provider and Claims, return the secret
 -spec identity_secret(map()) -> map() | {'error', any()}.
 identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                  ,payload := #{<<"account_id">> := AccountId
@@ -119,8 +117,7 @@ identity_secret(#{auth_provider := #{jwt_user_id_claim := IdentityField
 identity_secret(#{}) -> {'error', {500, 'invalid_identity_provider'}}.
 
 %% @private
-%% @doc
-%% Fetch the identity from DB or profile (if it's an OAuth provider)
+%% @doc Fetch the identity from DB or profile (if it's an OAuth provider)
 -spec get_identity_secret(map()) -> map() | {'error', any()}.
 get_identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                      ,auth_db := Db
@@ -146,8 +143,7 @@ get_identity_secret(Token) ->
     get_identity(Token).
 
 %% @private
-%% @doc
-%% Fetch the identity profile from DB cache
+%% @doc Fetch the identity profile from DB cache
 -spec get_identity(map()) -> map() | {'error', any()}.
 get_identity(#{auth_db := Db
               ,auth_db_id := Key
@@ -158,8 +154,7 @@ get_identity(#{auth_db := Db
     end.
 
 %% @private
-%% @doc
-%% Check if cached doc is expired or not, if it is read from profile
+%% @doc Check if cached doc is expired or not, if it is read from profile
 %% to force refershing.
 -spec check_cache_expiration(map(), kz_json:object()) -> map() | {'error', any()}.
 check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
@@ -181,8 +176,7 @@ check_cache_expiration(#{}=Token, JObj) ->
     check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)}).
 
 %% @private
-%% @doc
-%% Read the identity secret from profile (Only third-party OAuth provider)
+%% @doc Read the identity secret from profile (Only third-party OAuth provider)
 -spec check_secret(map()) -> map() | {'error', any()}.
 check_secret(#{auth_provider := #{profile_signature_secret_field := Field}
               ,user_doc := JObj
@@ -198,8 +192,7 @@ check_secret(#{auth_provider := #{name := Name}}) ->
     {'error', {500, 'invalid_identity_provider'}}.
 
 %% @private
-%% @doc
-%% Get the identity profile from the third-party OAuth provider
+%% @doc Get the identity profile from the third-party OAuth provider
 -spec from_profile(map()) -> map() | {'error', any()}.
 from_profile(Token) ->
     case kz_auth_profile:token(Token) of
@@ -210,8 +203,7 @@ from_profile(Token) ->
     end.
 
 %% @private
-%% @doc
-%% Get the identity secret from doc. (Only Kazoo provider)
+%% @doc Get the identity secret from doc. (Only Kazoo provider)
 %% Create it if it's not present.
 -spec check_kazoo_secret(map()) -> map() | {'error', any()}.
 check_kazoo_secret(#{user_doc := JObj}=Token) ->
@@ -244,8 +236,7 @@ update_kazoo_secret(#{auth_db := Db
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Verify the identity signature from a Token map.
+%% @doc Verify the identity signature from a Token map.
 %% Returns the map with `identify_verified' is set to result of verification
 %% @end
 %%--------------------------------------------------------------------
@@ -305,8 +296,7 @@ verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
     Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns a boolean of the Token map's verification result
+%% @doc Returns a boolean of the Token map's verification result
 %% @end
 %%--------------------------------------------------------------------
 -spec verify(map()) -> boolean().
@@ -315,8 +305,7 @@ verify(Token) ->
     Verified.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Reset system_key (provider identity secret).
+%% @doc Reset system_key (provider identity secret).
 %% @end
 %%--------------------------------------------------------------------
 -spec reset_system_secret() -> {'ok', kz_json:object()} | {'error', any()}.
@@ -325,8 +314,7 @@ reset_system_secret() ->
     kapps_config:set_string(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Reset account/user identity secret
+%% @doc Reset account/user identity secret
 %% @end
 %%--------------------------------------------------------------------
 -spec reset_secret(map() | kz_term:proplist() | kz_json:object()) -> 'ok' | {'error', any()}.
@@ -355,8 +343,7 @@ reset_secret(Claims) ->
     reset_secret(kz_json:to_map(Claims)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set a new ?PVT_SIGNING_SECRET value on supplied doc
+%% @doc Set a new ?PVT_SIGNING_SECRET value on supplied doc
 %% @end
 %%--------------------------------------------------------------------
 -spec reset_doc_secret(kz_json:object()) -> kz_json:object().
@@ -369,8 +356,7 @@ reset_doc_secret(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Read identity secret from DB first and update it
+%% @doc Read identity secret from DB first and update it
 %% @end
 %%--------------------------------------------------------------------
 -spec reset_identity_secret(map()) -> 'ok' | {'error', any()}.
@@ -391,8 +377,7 @@ reset_identity_secret(#{auth_db := Db
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generate a new Kazoo signing secret
+%% @doc Generate a new Kazoo signing secret
 %% @end
 %%--------------------------------------------------------------------
 -spec generate_new_kazoo_signing_secret() -> kz_term:ne_binary().

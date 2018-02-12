@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Util functions used by kazoo_couch.
-%%%
+%%% @doc Util functions used by kazoo_couch.
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -27,8 +25,7 @@
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc
-%% Send the query function in an anon fun with arity 0; if it returns 504, retry
+%% @doc Send the query function in an anon fun with arity 0; if it returns 504, retry
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
@@ -192,8 +189,7 @@ db_url(#server{}=Conn, DbName) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc
-%% returns the #db{} record
+%% @doc returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_db(kz_data:connection(), kz_term:ne_binary()) -> db().

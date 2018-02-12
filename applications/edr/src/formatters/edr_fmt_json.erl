@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016, Conversant Ltd
-%%% @doc
-%%% JSON formatter module
-%%%
+%%% @doc JSON formatter module
 %%% @author Max Lay
 %%% @end
 %%%-------------------------------------------------------------------

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2016, 2600Hz
-%%% @doc
-%%% Kazoo API Helpers.
-%%%
+%%% @doc Kazoo API Helpers.
 %%% Most API functions take a proplist, filter it against required headers
 %%% and optional headers, and return either the JSON string if all
 %%% required headers (default AND API-call-specific) are present, or an
@@ -148,8 +146,7 @@ reply_to(JObj) ->
     kz_json:get_value(?KEY_REPLY_TO_PID, JObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Default Headers in all messages - see wiki
+%% @doc Default Headers in all messages - see wiki
 %% Creates the seed proplist for the eventual message to be sent
 %% All fields are required general headers.
 %% @end
@@ -201,8 +198,7 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set any missing defaults with the values defined in the by the
+%% @doc Set any missing defaults with the values defined in the by the
 %% validation definitions and remove any empty values
 %% @end
 %%--------------------------------------------------------------------
@@ -231,8 +227,7 @@ prepare_api_payload(JObj, HeaderValues, Options) ->
     prepare_api_payload(kz_json:to_proplist(JObj), HeaderValues, Options).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set any missing defaults with the values defined in the by the
+%% @doc Set any missing defaults with the values defined in the by the
 %% validation definitions
 %% @end
 %%--------------------------------------------------------------------
@@ -250,8 +245,7 @@ set_missing_values(JObj, HeaderValues) ->
     kz_json:from_list(set_missing_values(kz_json:to_proplist(JObj), HeaderValues)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Recursively cleans a proplist or json object, returning the same
+%% @doc Recursively cleans a proplist or json object, returning the same
 %% type given
 %% @end
 %%--------------------------------------------------------------------
@@ -295,8 +289,7 @@ is_empty(<<>>) -> 'true';
 is_empty(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Extract just the default headers from a message
+%% @doc Extract just the default headers from a message
 %% @end
 %%--------------------------------------------------------------------
 -spec extract_defaults(kz_term:api_terms()) -> kz_term:proplist().
@@ -319,8 +312,7 @@ remove_defaults(JObj) ->
                        ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Format an error event
+%% @doc Format an error event
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

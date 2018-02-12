@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Conferences module
-%%%
+%%% @doc Conferences module
 %%% Handle client requests for conference documents
 %%%
 %%% URI schema:
@@ -312,8 +310,7 @@ add_realtime_fold(Conference, RunningConferences) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new conference document with the data provided, if it is valid
+%% @doc Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_numbers(kz_term:api_binary(), cb_context:context()) -> cb_context:context().

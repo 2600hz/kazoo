@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Sends request to start the call to recipient when he's available.
-%%%
+%%% @doc Sends request to start the call to recipient when he's available.
 %%% ```
 %%% data: {
 %%%   "timeout": "_minutes_timeout"
@@ -130,8 +128,7 @@ do(Monad, Actions) ->
     lists:foldl(fun(Action, Acc) -> '>>='(Acc, Action) end, Monad, Actions).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, creates the parameters and branches
+%% @doc Entry point for this module, creates the parameters and branches
 %% to cf_group_pickup.
 %% @end
 %%--------------------------------------------------------------------

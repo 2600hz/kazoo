@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz, INC
-%%% @doc
-%%% A generic Kazoo service module
-%%%
+%%% @doc A generic Kazoo service module
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------

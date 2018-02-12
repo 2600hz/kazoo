@@ -30,8 +30,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -46,8 +45,7 @@ init() ->
                          ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -75,9 +73,7 @@ allowed_methods(?AVAILABLE, _PlanId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -98,8 +94,7 @@ resource_exists(_) -> 'true'.
 resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /service_plans mights load a list of service_plan objects
 %% /service_plans/123 might load the service_plan object 123
@@ -178,8 +173,7 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
     maybe_allow_change(Context, PlanId).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -253,8 +247,7 @@ post(Context, PlanId, ?OVERRIDE) ->
     end.
 
 %%----------------------------------- ---------------------------------
-%% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -307,9 +300,7 @@ pipe_services(AccountId, Routines) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%% @doc Add content types accepted and provided by this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -336,8 +327,7 @@ content_types_provided(Context, ?AVAILABLE, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
@@ -347,8 +337,7 @@ normalize_view_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check if you have the permission to update or delete service plans
+%% @doc Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
 -spec is_allowed(cb_context:context()) -> {'ok', kz_term:ne_binary()} | 'false'.
@@ -363,8 +352,7 @@ is_allowed(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check if you have the permission to update or delete service plans
+%% @doc Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
 

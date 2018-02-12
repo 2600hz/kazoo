@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -23,8 +20,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.

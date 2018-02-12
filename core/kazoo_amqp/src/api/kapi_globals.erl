@@ -1,7 +1,6 @@
 %%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Globals API
+%%% @doc Globals API
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kapi_globals).
@@ -324,8 +323,7 @@ query_resp_v(JObj) ->
     query_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

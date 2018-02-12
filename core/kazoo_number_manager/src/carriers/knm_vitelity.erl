@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for phone_number documents
-%%%
-%%%
+%%% @doc Handle client requests for phone_number documents
 %%% @author James Aimonetti
 %%% @author Pierre Fenoll
 %%% @end
@@ -34,8 +31,7 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Is this carrier handling numbers local to the system?
+%% @doc Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
 %%--------------------------------------------------------------------
@@ -43,8 +39,7 @@ info() ->
 is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
@@ -52,8 +47,7 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Query the Vitelity system for a quanity of available numbers
+%% @doc Query the Vitelity system for a quanity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -71,8 +65,7 @@ find_numbers(Prefix, Quantity, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Acquire a given number from the carrier
+%% @doc Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
@@ -90,8 +83,7 @@ acquire_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Release a number from the routing table
+%% @doc Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Looks for the account's initial call
-%%%
+%%% @doc Looks for the account's initial call
 %%% @author Harenson Henao
 %%% @end
 %%%-------------------------------------------------------------------

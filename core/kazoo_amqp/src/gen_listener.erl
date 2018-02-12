@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Behaviour for setting up an AMQP listener.
-%%%
+%%% @doc Behaviour for setting up an AMQP listener.
 %%% Add/remove responders for Event-Cat/Event-Name pairs. Each responder
 %%% corresponds to a module that has defined a `handle/1' function, receiving
 %%% the {@link kz_json:object()} from the AMQP request.
@@ -260,8 +258,7 @@ ack(Srv, Delivery) -> gen_server:cast(Srv, {'ack', Delivery}).
 nack(Srv, Delivery) -> gen_server:cast(Srv, {'nack', Delivery}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% API functions that mirror `gen_server:call,cast,reply'.
+%% @doc API functions that mirror `gen_server:call,cast,reply'.
 %% @end
 %%--------------------------------------------------------------------
 -spec call(kz_types:server_ref(), any()) -> any().
@@ -312,8 +309,7 @@ add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {'add_responder', Responder, Keys}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Removes responder from queue.
+%% @doc Removes responder from queue.
 %% Empty list removes all.
 %% @end
 %%--------------------------------------------------------------------
@@ -357,8 +353,7 @@ b_add_binding(Srv, Binding, Props) when is_binary(Binding)
     gen_server:call(Srv, {'add_binding', kz_term:to_binary(Binding), Props}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Add responder to a queue.
+%% @doc Add responder to a queue.
 %% It is expected that responders have been set up already, prior to binding the new queue
 %% @end
 %%--------------------------------------------------------------------
@@ -406,8 +401,7 @@ execute(Srv, Function) when is_function(Function) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes an existing process and turns it into a `gen_listener'.
+%% @doc Takes an existing process and turns it into a `gen_listener'.
 %% @end
 %%--------------------------------------------------------------------
 -spec init_state(list()) -> {'ok', state()} |
@@ -454,9 +448,7 @@ init(Module, Params, ModuleState, TimeoutRef) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling call messages
-%%
+%% @doc Handling call messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> handle_call_return().
@@ -485,9 +477,7 @@ handle_call(Request, From, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling cast messages
-%%
+%% @doc Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_return().
@@ -640,9 +630,7 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
+%% @doc Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
@@ -714,8 +702,7 @@ handle_info(Message, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handles the AMQP messages prior to the spawning a handler.
+%% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers
 %%
 %% @end
@@ -732,8 +719,7 @@ handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handles the AMQP messages prior to the spawning a handler.
+%% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers
 %%
 %% @end
@@ -789,9 +775,7 @@ terminate(Reason, #state{module=Module
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert process state when code is changed.
-%%
+%% @doc Convert process state when code is changed.
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

@@ -1,7 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @doc
-%%% Logs a user in or out of a ring group
-%%%
+%%% @doc Logs a user in or out of a ring group
 %%% @author Max Lay
 %%% @end
 %%%-------------------------------------------------------------------
@@ -21,8 +19,7 @@
 -define(MAX_SAVE_RETRIES, 3).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end

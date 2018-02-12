@@ -26,8 +26,7 @@
 -define(SMTP_CLIENT_DOC, <<"smtp_client">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns whether an account's initial call notification has been sent
+%% @doc Returns whether an account's initial call notification has been sent
 %% @end
 %%--------------------------------------------------------------------
 -spec check_initial_call(kz_term:ne_binary()) -> 'ok'.
@@ -44,8 +43,7 @@ check_initial_call(Account) when is_binary(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns whether the initial_registration notification has been sent
+%% @doc Returns whether the initial_registration notification has been sent
 %% @end
 %%--------------------------------------------------------------------
 -spec check_initial_registration(kz_term:ne_binary()) -> 'ok'.
@@ -61,8 +59,7 @@ check_initial_registration(Account) when is_binary(Account) ->
             io:format("unable to open account doc ~s: ~p", [AccountId, _R])
     end.
 %%--------------------------------------------------------------------
-%% @doc
-%% Configures the Relay key of the SMTP_Client System Config document.
+%% @doc Configures the Relay key of the SMTP_Client System Config document.
 %% @end
 %%---------------------------------------------------------------------
 -spec configure_smtp_relay(kz_term:ne_binary()) -> 'ok' | 'failed'.
@@ -74,8 +71,7 @@ configure_smtp_relay(Value) ->
             'failed'
     end.
 %%--------------------------------------------------------------------
-%% @doc
-%% Configures the username key of the SMTP_Client System Config document.
+%% @doc Configures the username key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
 -spec configure_smtp_username(kz_term:ne_binary()) -> 'ok' | 'failed'.
@@ -88,8 +84,7 @@ configure_smtp_username(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Configures the password key of the SMTP_Client System Config document.
+%% @doc Configures the password key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
 -spec configure_smtp_password(kz_term:ne_binary()) -> 'ok' | 'failed'.
@@ -102,8 +97,7 @@ configure_smtp_password(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Configures the username key of the SMTP_Client System Config document.
+%% @doc Configures the username key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
 -spec configure_smtp_auth(kz_term:ne_binary()) -> 'ok' | 'failed'.
@@ -116,8 +110,7 @@ configure_smtp_auth(Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Configures the port key of the SMTP_Client System Config document.
+%% @doc Configures the port key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
 -spec configure_smtp_port(kz_term:ne_binary()) -> 'ok' | 'failed'.

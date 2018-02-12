@@ -16,8 +16,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
-%%% @doc
-%%% The amqp_cron module provides a distrubuted task scheduler for
+%%% @doc The amqp_cron module provides a distrubuted task scheduler for
 %%% executing tasks periodically. The connected nodes elect a leader
 %%% to manage task scheduling and execution. Should the current leader
 %%% become unavailable a new leader node is elected who resumes task
@@ -92,8 +91,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates a linked process to manage scheduled tasks in coordination
+%% @doc Creates a linked process to manage scheduled tasks in coordination
 %% with the given nodes. The current node must be part of the node
 %% list. Each amqp_cron node must be working with the same list of
 %% nodes to coordinate correctly.
@@ -106,9 +104,7 @@ start_link(Nodes) ->
     amqp_leader:start_link(?SERVER, Nodes, Opts, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Gets the status of this scheduler.
-%%
+%% @doc Gets the status of this scheduler.
 %% @end
 %%--------------------------------------------------------------------
 -spec status() -> Status when
@@ -130,8 +126,7 @@ schedule_task(Schedule, Exec) ->
     amqp_leader_proc:leader_call(?SERVER, {'schedule', {'undefined', Schedule, Exec}}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Schedules a named task. There cannot be more than one task with
+%% @doc Schedules a named task. There cannot be more than one task with
 %% a given name at any one time. See {@link amqp_cron_task} for
 %% scheduling details.
 %%
@@ -149,9 +144,7 @@ schedule_task(Name, Schedule, Exec) when
     amqp_leader_proc:leader_call(?SERVER, {'schedule', {Name, Schedule, Exec}}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Cancels a task.
-%%
+%% @doc Cancels a task.
 %% @end
 %%--------------------------------------------------------------------
 -spec cancel_task(ident()) -> 'ok' | {'error', Reason} when
@@ -160,9 +153,7 @@ cancel_task(Ident) ->
     amqp_leader_proc:leader_call(?SERVER, {'cancel', Ident}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Gets the status of a task.
-%%
+%% @doc Gets the status of a task.
 %% @end
 %%--------------------------------------------------------------------
 -spec task_status(ident()) -> {Status, ScheduleTime, TaskPid} when
@@ -173,9 +164,7 @@ task_status(Ident) ->
     amqp_leader_proc:leader_call(?SERVER, {'task_status', Ident}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Gets the list of tasks.
-%%
+%% @doc Gets the list of tasks.
 %% @end
 %%--------------------------------------------------------------------
 -spec task_list() -> [task()].
@@ -183,9 +172,7 @@ task_list() ->
     amqp_leader_proc:leader_call(?SERVER, 'task_list').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Remove tasks with a status of done.
-%%
+%% @doc Remove tasks with a status of done.
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_done_tasks() -> 'ok'.

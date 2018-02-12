@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Various utilities - a veritable cornicopia
-%%%
+%%% @doc Various utilities - a veritable cornicopia
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -95,8 +93,7 @@
 -export_type([account_format/0]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Standardized way of logging the stacktrace.
+%% @doc Standardized way of logging the stacktrace.
 %% @end
 %%--------------------------------------------------------------------
 -spec log_stacktrace() -> 'ok'.
@@ -167,8 +164,7 @@ change_syslog_log_level(L) ->
     change_syslog_log_level(kz_term:to_atom(L)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a representation of an account return it in a `encoded',
+%% @doc Given a representation of an account return it in a `encoded',
 %% `unencoded' or `raw' format.
 %% Note: accepts MODbs as well as account IDs/DBs
 %% Note: if given (Account, GregorianSeconds), it will return
@@ -255,8 +251,7 @@ raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a representation of an account resource_selectors return it in a `encoded',
+%% @doc Given a representation of an account resource_selectors return it in a `encoded',
 %% `unencoded' or `raw' format.
 %% @end
 %%--------------------------------------------------------------------
@@ -311,8 +306,7 @@ raw_resource_selectors_id(Other) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a representation of an account resource_selectors return it in a `encoded'.
+%% @doc Given a representation of an account resource_selectors return it in a `encoded'.
 %% @end
 %%--------------------------------------------------------------------
 -spec format_resource_selectors_db(kz_term:api_binary()) -> kz_term:api_binary().
@@ -320,8 +314,7 @@ format_resource_selectors_db(AccountId) ->
     format_resource_selectors_id(AccountId, 'encoded').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a representation of an account, build an MODb in an `encoded' format.
+%% @doc Given a representation of an account, build an MODb in an `encoded' format.
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
@@ -338,8 +331,7 @@ format_account_id(Account, Year, Month) when is_integer(Year),
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year), kz_date:pad_month(Month)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a representation of an account, build an MODb in an `encoded' format.
+%% @doc Given a representation of an account, build an MODb in an `encoded' format.
 %% Note: accepts MODbs as well as account IDs/DBs.
 %% @end
 %%--------------------------------------------------------------------
@@ -362,8 +354,7 @@ format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a representation of an account return it in a `encoded' format.
+%% @doc Given a representation of an account return it in a `encoded' format.
 %% Note: accepts MODbs as well as account IDs/DBs
 %% @end
 %%--------------------------------------------------------------------
@@ -372,8 +363,7 @@ format_account_db(AccountId) ->
     format_account_id(AccountId, 'encoded').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a representation of an MODb return the MODb in the specified format.
+%% @doc Given a representation of an MODb return the MODb in the specified format.
 %% Note: crashes if given anything but an MODb (in any format).
 %% @end
 %%--------------------------------------------------------------------
@@ -392,8 +382,7 @@ format_account_modb(AccountId, 'encoded') ->
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Normalize the account name by converting the name to lower case
+%% @doc Normalize the account name by converting the name to lower case
 %% and then removing all non-alphanumeric characters.
 %%
 %% This can possibly return an empty binary.
@@ -419,8 +408,7 @@ is_alphanumeric(_) ->
     false.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Determine if the given account id/db exists in the hierarchy of
+%% @doc Determine if the given account id/db exists in the hierarchy of
 %% the provided account id/db. Optionally consider the account in
 %% its own hierarchy.
 %% @end
@@ -473,8 +461,7 @@ is_system_admin(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Checks the `pvt_enabled' flag and returns `false' only if the flag is
+%% @doc Checks the `pvt_enabled' flag and returns `false' only if the flag is
 %% specifically set to `false'.  If it is missing or set to anything else
 %% return `true'.  However, if we cant find the account doc then return
 %% `false'.
@@ -582,8 +569,7 @@ account_update(Account, UpdateFun) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a module name try to verify its existence, loading it into the
+%% @doc Given a module name try to verify its existence, loading it into the
 %% the Erlang VM if possible.
 %% @end
 %%--------------------------------------------------------------------
@@ -604,8 +590,7 @@ try_load_module(Name) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given an JSON Object extracts the Call-ID into the processes
+%% @doc Given an JSON Object extracts the Call-ID into the processes
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
@@ -649,8 +634,7 @@ kz_log_md_clear() ->
     lager:md([]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
+%% @doc Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
 %% If time is elapsed, the sub-process is killed and returns `timeout'.
 %% @end
 %%--------------------------------------------------------------------
@@ -718,8 +702,7 @@ startup() ->
     get('$startup').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given an object, extract the category and name into a tuple.
+%% @doc Given an object, extract the category and name into a tuple.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_event_type(kz_term:api_terms()) -> {kz_term:api_binary(), kz_term:api_binary()}.
@@ -788,8 +771,7 @@ uri(BaseUrl, Tokens) ->
     <<Pro/binary, "://", Uri/binary>>.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% fetch and cache the kazoo version from the VERSION file in kazoo's root folder
+%% @doc fetch and cache the kazoo version from the VERSION file in kazoo's root folder
 %% @end
 %%--------------------------------------------------------------------
 -spec kazoo_version() -> kz_term:ne_binary().
@@ -926,8 +908,7 @@ process_fold(App, App, _, Others) ->
 process_fold(App, _, M, _) -> {App, M}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% For core applications that want to know which app is calling.
+%% @doc For core applications that want to know which app is calling.
 %% @end
 %%--------------------------------------------------------------------
 -spec calling_app() -> kz_term:ne_binary().
@@ -988,8 +969,7 @@ application_version(Application) ->
     kz_term:to_binary(Vsn).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Like `lists:usort/1' but preserves original ordering.
+%% @doc Like `lists:usort/1' but preserves original ordering.
 %% Time: `O(nlog(n))'
 %% @end
 %%--------------------------------------------------------------------

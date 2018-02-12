@@ -61,8 +61,7 @@ stop_trie('undefined') -> 'ok';
 stop_trie(Name) -> stop_trie(whereis(Name)).
 
 
-%% @doc
-%% Add processes if necessary.
+%% @doc Add processes if necessary.
 %% @end
 -spec upgrade() -> 'ok'.
 upgrade() ->

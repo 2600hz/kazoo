@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @Copyright (C) 2010-2016, 2600Hz
-%%% @doc
-%%% Test utilities for manipulating Kazoo/Kazoo documents
-%%%
+%%% @doc Test utilities for manipulating Kazoo/Kazoo documents
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------

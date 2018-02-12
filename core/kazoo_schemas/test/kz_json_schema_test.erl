@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%% Module for interacting with JSON schema docs
-%%%
+%%% @doc Module for interacting with JSON schema docs
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

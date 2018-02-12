@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle e911 provisioning
-%%%
-%%%
+%%% @doc Handle e911 provisioning
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -34,8 +31,7 @@
        ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
@@ -58,8 +54,7 @@ save(Number, _State) ->
     delete(Number).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted, and will
+%% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
@@ -284,8 +279,7 @@ remove_number(Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Make a REST request to dash e911 emergency provisiong API to preform
+%% @doc Make a REST request to dash e911 emergency provisiong API to preform
 %% the given verb (validatelocation, addlocation, ect).
 %% @end
 %%--------------------------------------------------------------------

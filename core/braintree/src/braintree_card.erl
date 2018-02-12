@@ -28,8 +28,7 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create the partial url for this module
+%% @doc Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -46,8 +45,7 @@ url(Token, _) ->
     "/payment_methods/credit_card/" ++ kz_term:to_list(Token).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a list of #bt_cards{} find the current default payment token.
+%% @doc Given a list of #bt_cards{} find the current default payment token.
 %% @end
 %%--------------------------------------------------------------------
 -spec default_payment_token(bt_cards()) -> kz_term:api_binary().
@@ -72,8 +70,7 @@ payment_tokens(Cards) ->
     [payment_token(Card) || Card <- Cards].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find a credit card by id
+%% @doc Find a credit card by id
 %% @end
 %%--------------------------------------------------------------------
 -spec find(kz_term:ne_binary() | bt_card()) -> bt_card().
@@ -89,8 +86,7 @@ find(Token) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates a new credit card using the given record
+%% @doc Creates a new credit card using the given record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -106,8 +102,7 @@ create(CustomerId, Card) ->
     create(Card#bt_card{customer_id=CustomerId}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Updates a credit card with the given record
+%% @doc Updates a credit card with the given record
 %% @end
 %%--------------------------------------------------------------------
 -spec update(bt_card()) -> bt_card().
@@ -118,8 +113,7 @@ update(#bt_card{token=Token}=Card) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Deletes a credit card id from braintree's system
+%% @doc Deletes a credit card id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(bt_card() | binary() | string()) -> bt_card().
@@ -129,8 +123,7 @@ delete(Token) ->
     #bt_card{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Finds the tokens of credit cards that have all expired
+%% @doc Finds the tokens of credit cards that have all expired
 %% @end
 %%--------------------------------------------------------------------
 -spec expired() -> [bt_xml()].
@@ -144,8 +137,7 @@ expired() ->
 expired(#bt_card{expired=Expired}) -> Expired.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Finds the tokens of credit cards expiring between the given
+%% @doc Finds the tokens of credit cards expiring between the given
 %% start and end dates. Dates are given as MMYYYY
 %% @end
 %%--------------------------------------------------------------------
@@ -162,8 +154,7 @@ expiring(Start, End) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Accessors for field 'make_default'.
+%% @doc Accessors for field 'make_default'.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -176,8 +167,7 @@ make_default(#bt_card{}=Card, Value) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert the given XML to a record
+%% @doc Convert the given XML to a record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -207,8 +197,7 @@ xml_to_record(Xml, Base) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert the given record to XML
+%% @doc Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
 
@@ -284,8 +273,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given json object into a record
+%% @doc Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record(kz_term:api_object()) -> bt_card().
@@ -308,8 +296,7 @@ json_to_record(JObj) ->
             }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given record into a json object
+%% @doc Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_card()) -> kz_json:object().
@@ -336,8 +323,7 @@ record_to_json(#bt_card{}=Card) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the object exists in but no id has been provided then generate
+%% @doc If the object exists in but no id has been provided then generate
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% A really simple escript to accept RPC request and push them
+%%% @doc A really simple escript to accept RPC request and push them
 %%% into a running kazoo virtual machine.
 %%%
 %%% @author Karl Anderson

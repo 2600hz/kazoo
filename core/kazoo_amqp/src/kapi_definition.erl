@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2017-2018, 2600Hz
-%%% @doc
-%%% Kazoo API Definition Helpers.
-%%%
+%%% @doc Kazoo API Definition Helpers.
 %%% @author Hesaam Farhang
 %%% @end
 %%%-------------------------------------------------------------------

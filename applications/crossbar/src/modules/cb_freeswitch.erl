@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Handle CRUD operations for Directories
-%%%
-%%%
+%%% @doc Handle CRUD operations for Directories
 %%% @author James Aimonetti
 %%% @author Luis Azedo
 %%% @end
@@ -100,8 +97,7 @@ content_types_provided(Context) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', ?MIME_TYPES}]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -112,9 +108,7 @@ allowed_methods() ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -122,8 +116,7 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.

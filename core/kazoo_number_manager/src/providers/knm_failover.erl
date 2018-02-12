@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Handle failover provisioning
-%%%
+%%% @doc Handle failover provisioning
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -17,8 +15,7 @@
 -define(KEY, ?FEATURE_FAILOVER).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% add the failover route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
@@ -32,8 +29,7 @@ save(N, ?NUMBER_STATE_IN_SERVICE) -> update_failover(N);
 save(N, _) -> delete(N).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted, and will
+%% @doc This function is called each time a number is deleted, and will
 %% remove the failover route
 %% @end
 %%--------------------------------------------------------------------

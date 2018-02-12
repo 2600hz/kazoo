@@ -750,8 +750,7 @@ master_account_id() -> kapps_util:get_master_account_id().
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Throws an error if the billing account is not in "good_standing",
+%% @doc Throws an error if the billing account is not in "good_standing",
 %% used when update requests are made to kill them if there are
 %% accounting issues.
 %% @end
@@ -1069,8 +1068,7 @@ reset_category(CategoryId, #kz_services{updates = JObj}=Services) ->
                         }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Helper function to know if an account is a reseller or not.
+%% @doc Helper function to know if an account is a reseller or not.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_reseller(kz_term:ne_binary() | services() | kz_json:object()) -> boolean().
@@ -1364,8 +1362,7 @@ cascade_results(View, AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% determine the billing id as it is currently set on the account
+%% @doc determine the billing id as it is currently set on the account
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
@@ -1381,8 +1378,7 @@ depreciated_billing_id(JObj, AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% determine if pvt_reseller is currently set on the account
+%% @doc determine if pvt_reseller is currently set on the account
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
@@ -1392,8 +1388,7 @@ depreciated_is_reseller(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% determine what service plans are currently set on the account
+%% @doc determine what service plans are currently set on the account
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------

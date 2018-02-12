@@ -79,8 +79,7 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Send a freeform ASR request to iSpeech
+%% @doc Send a freeform ASR request to iSpeech
 %% @end
 %%--------------------------------------------------------------------
 -spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
@@ -104,8 +103,7 @@ exec_freeform(Content, ContentType, Locale, Options) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Send a command list ASR request to iSpeech
+%% @doc Send a command list ASR request to iSpeech
 %% @end
 %%--------------------------------------------------------------------
 -spec exec_commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
@@ -136,8 +134,7 @@ exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert audio file/content-type if initial format not supported
+%% @doc Convert audio file/content-type if initial format not supported
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_convert_content(binary(), kz_term:ne_binary()) -> conversion_return().

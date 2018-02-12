@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Ubiquiti SSO auth module
-%%%
+%%% @doc Ubiquiti SSO auth module
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -66,8 +64,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -77,9 +74,7 @@ init() ->
 allowed_methods() -> [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -110,8 +105,7 @@ authenticate_nouns([{<<"ubiquiti_auth">>, [<<"recovery">>]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.

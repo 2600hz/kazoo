@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Various utilities - a veritable cornicopia
-%%%
+%%% @doc Various utilities - a veritable cornicopia
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Pierre Fenoll

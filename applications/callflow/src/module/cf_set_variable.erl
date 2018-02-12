@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "variable":{{var_name}},
 %%%   "value:{{value}},
 %%%   "channel": "a", "both"
@@ -24,8 +23,7 @@ name_mapping() ->
     [{<<"call_priority">>, <<"Call-Priority">>}].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Execute call commands
-%%%
+%%% @doc Execute call commands
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -63,8 +61,7 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% return the app name and data (as a binary string) to send to
+%% @doc return the app name and data (as a binary string) to send to
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
@@ -639,8 +636,7 @@ maybe_multi_set(Node, UUID, Vars) -> ecallmgr_util:multi_set_args(Node, UUID, Va
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Redirect command helpers
+%% @doc Redirect command helpers
 %% @end
 %%--------------------------------------------------------------------
 
@@ -666,8 +662,7 @@ maybe_add_redirect_header(Node, UUID, RedirectServer) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Eavesdrop command helpers
+%% @doc Eavesdrop command helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec eavesdrop(atom(), kz_term:ne_binary(), kz_json:object()) ->
@@ -684,8 +679,7 @@ eavesdrop(Node, UUID, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Call pickup command helpers
+%% @doc Call pickup command helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec call_pickup(atom(), kz_term:ne_binary(), kz_json:object()) ->
@@ -968,8 +962,7 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Conference command helpers
+%% @doc Conference command helpers
 %% @end
 %%--------------------------------------------------------------------
 get_conf_id_and_profile(JObj) ->
@@ -1078,8 +1071,7 @@ wait_for_conference(ConfName) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Store command helpers
+%% @doc Store command helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec stream_over_http(atom(), kz_term:ne_binary(), file:filename_all(), 'put' | 'post', 'store'| 'store_vm' | 'fax', kz_json:object()) -> any().
@@ -1299,8 +1291,7 @@ base_fetch_call_event_props(UUID, ChannelProps) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Execute extension helpers
+%% @doc Execute extension helpers
 %% @end
 %%--------------------------------------------------------------------
 execute_exten_handle_reset(DP, Node, UUID, JObj) ->
@@ -1404,8 +1395,7 @@ tts(Node, UUID, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Playback command helpers
+%% @doc Playback command helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec play(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_apps().

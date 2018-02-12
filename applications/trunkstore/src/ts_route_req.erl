@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Handle route requests off AMQP
-%%%
+%%% @doc Handle route requests off AMQP
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

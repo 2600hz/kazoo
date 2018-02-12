@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for phone_number at Simwood (UK based provider)
+%%% @doc Handle client requests for phone_number at Simwood (UK based provider)
 %%% https://www.simwood.com/services/api
 %%%
 %%%
@@ -47,8 +46,7 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Is this carrier handling numbers local to the system?
+%% @doc Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
 %%--------------------------------------------------------------------
@@ -56,8 +54,7 @@ info() ->
 is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
@@ -65,8 +62,7 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Query Simwood.com for available numbers
+%% @doc Query Simwood.com for available numbers
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
@@ -77,8 +73,7 @@ find_numbers(Prefix, Quantity, Options) ->
     process_response(kz_json:decode(Body), Options).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Acquire a given number from Simwood.com
+%% @doc Acquire a given number from Simwood.com
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
@@ -93,8 +88,7 @@ acquire_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return number back to Simwood.com
+%% @doc Return number back to Simwood.com
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->
@@ -164,8 +158,7 @@ query_simwood(URL, Verb) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%  Simwood number query supports only 1|10|100 search amount
+%% @doc Simwood number query supports only 1|10|100 search amount
 %% @end
 %%--------------------------------------------------------------------
 -spec sw_quantity(pos_integer()) -> kz_term:ne_binary().

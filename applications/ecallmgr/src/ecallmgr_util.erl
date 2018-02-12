@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc
-%%% Various utilities specific to ecallmgr. More general utilities go
+%%% @doc Various utilities specific to ecallmgr. More general utilities go
 %%% in kazoo_util.erl
 %%%
 %%%
@@ -89,8 +88,7 @@
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% send the SendMsg proplist to the freeswitch node
+%% @doc send the SendMsg proplist to the freeswitch node
 %% @end
 %%--------------------------------------------------------------------
 -spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
@@ -483,8 +481,7 @@ is_node_up(Node, UUID) ->
         andalso ecallmgr_fs_channel:exists(UUID).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% set channel and call variables in FreeSWITCH
+%% @doc set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
 -spec multi_set_args(atom(), kz_term:ne_binary(), kz_term:proplist()) -> binary().
@@ -646,8 +643,7 @@ maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
 maybe_sanitize_fs_value(_, Val) -> Val.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
+%% @doc takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
 %% and create the dial string ([origination_caller_id_name=Name
 %%                              ,origination_caller_id_number=Num]Endpoint)
 %% joined by the optional seperator.  Saves time by not spawning

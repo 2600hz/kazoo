@@ -32,8 +32,7 @@ balance(Account, Year, Month) ->
     wht_util:units_to_dollars(Balance).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Enable tauto top up
+%% @doc Enable tauto top up
 %% @end
 %%--------------------------------------------------------------------
 -spec enable_top_up() -> 'ok'.
@@ -42,8 +41,7 @@ enable_top_up() ->
     io:format("auto top up enabled ~n").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Disable tauto top up
+%% @doc Disable tauto top up
 %% @end
 %%--------------------------------------------------------------------
 -spec disable_top_up() -> 'ok'.

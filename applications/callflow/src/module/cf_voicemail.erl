@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "action":"compose"|"check"
 %%%   // optional
 %%%   ,"id":"vmbox_id"
@@ -167,8 +166,7 @@
 -type mailbox() :: #mailbox{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, based on the payload will either
+%% @doc Entry point for this module, based on the payload will either
 %% connect a caller to check_voicemail or compose_voicemail.
 %% @end
 %%--------------------------------------------------------------------
@@ -326,8 +324,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
+%% @doc find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
 %% caller is the owner, and the pin is not required then we skip requesting the pin
 %%
 %% Note: Check mailbox existence here to properly updating Loop in find_mailbox/4
@@ -777,8 +774,7 @@ message_count_prompts(New, Saved) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns the message audio prompt
+%% @doc Returns the message audio prompt
 %% @end
 %%--------------------------------------------------------------------
 -spec message_prompt(kz_json:objects(), binary(), non_neg_integer(), mailbox()) ->
@@ -804,8 +800,7 @@ message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Plays back a message then the menu, and continues to loop over the
+%% @doc Plays back a message then the menu, and continues to loop over the
 %% menu utill
 %% @end
 %%--------------------------------------------------------------------
@@ -875,8 +870,7 @@ play_prev_message(Messages, [H|T], Count, Box, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Main function for forwarding a message to another vmbox of this account
+%% @doc Main function for forwarding a message to another vmbox of this account
 %% @end
 %%--------------------------------------------------------------------
 -spec forward_message(kz_json:object(), mailbox(), kapps_call:call()) -> 'ok'.
@@ -1008,8 +1002,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Loops over the message menu after the first play back util the
+%% @doc Loops over the message menu after the first play back util the
 %% user provides a valid option
 %% @end
 %%--------------------------------------------------------------------
@@ -1176,8 +1169,7 @@ handle_config_selection(#mailbox{}=Box
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Recording the temporary greeting to override the common greeting
+%% @doc Recording the temporary greeting to override the common greeting
 %% @end
 %%--------------------------------------------------------------------
 -spec record_temporary_unavailable_greeting(kz_term:ne_binary(), mailbox(), kapps_call:call()) ->
@@ -1199,8 +1191,7 @@ record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Overwrites current media document of the temporary greeting
+%% @doc Overwrites current media document of the temporary greeting
 %% by a new recorded version.
 %% @end
 %%--------------------------------------------------------------------
@@ -1251,8 +1242,7 @@ overwrite_temporary_unavailable_greeting(AttachmentName
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Deletes current temporary greeting.
+%% @doc Deletes current temporary greeting.
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_temporary_unavailable_greeting(mailbox(), kapps_call:call()) ->
@@ -1526,8 +1516,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Fetches the mailbox parameters from the data store and loads the
+%% @doc Fetches the mailbox parameters from the data store and loads the
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
@@ -2007,8 +1996,7 @@ tmp_file(Ext) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Accepts Universal Coordinated Time (UTC) and convert it to binary
+%% @doc Accepts Universal Coordinated Time (UTC) and convert it to binary
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%--------------------------------------------------------------------

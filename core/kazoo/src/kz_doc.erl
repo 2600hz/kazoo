@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Utilities for manipulating Kazoo/Kazoo documents
-%%%
+%%% @doc Utilities for manipulating Kazoo/Kazoo documents
 %%% @author Edouard Swiac
 %%% @author James Aimonetti
 %%% @end
@@ -91,8 +89,7 @@
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function is used to update the private timestamps, and db
+%% @doc This function is used to update the private timestamps, and db
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
@@ -197,8 +194,7 @@ add_pvt_document_hash(JObj, _, _) ->
     set_document_hash(JObj, Hash).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will filter any private fields out of the provided
+%% @doc This function will filter any private fields out of the provided
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
@@ -227,8 +223,7 @@ get_public_keys(JObj) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will return a boolean, true if the provided key is
+%% @doc This function will return a boolean, true if the provided key is
 %% considered private; otherwise false
 %% @end
 %%--------------------------------------------------------------------
@@ -238,8 +233,7 @@ is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will filter any public fields out of the provided
+%% @doc This function will filter any public fields out of the provided
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
@@ -328,8 +322,7 @@ latest_attachment_id(Doc) ->
             Name
     end.
 
-%% @doc
-%% Gets a random attachment from JObj (no order is imposed!)
+%% @doc Gets a random attachment from JObj (no order is imposed!)
 
 -spec attachment(kz_json:object()) -> kz_term:api_object().
 attachment(JObj) ->

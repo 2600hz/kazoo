@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% A singular call is as an entire conversation as dialed by the caller,
+%%% @doc A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
 %%% This module is called by cf_exe at the init and destroy points of a call, in order to
 %%% identify the conversation in a singular manner and send out hooks to external URLs.
@@ -41,8 +40,7 @@
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% First we check if this feature is enabled - if not, we return false.
+%% @doc First we check if this feature is enabled - if not, we return false.
 %% Next we check if the call is an indicator for the start of a singular call (A-leg),
 %% and if so, then we know the call should be hooked.
 %% We then can start the event listener, which will send init and end hooks.
@@ -62,8 +60,7 @@ maybe_hook_call(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Sends an initial request signifying the start of this entire conversation
+%% @doc Sends an initial request signifying the start of this entire conversation
 %% in a hook to a preconfigured URL.
 %%
 %% @end
@@ -103,8 +100,7 @@ send_init_hook(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Sends a request signifying the end of this entire conversation in a
+%% @doc Sends a request signifying the end of this entire conversation in a
 %% hook to a preconfigured URL.
 %%
 %% @end
@@ -158,8 +154,7 @@ send_end_hook(Call, Event) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Checks if there is a non-empty hook url and that the call is singular (or a transfer)
+%% @doc Checks if there is a non-empty hook url and that the call is singular (or a transfer)
 %% @end
 %%--------------------------------------------------------------------
 -spec should_hook(kapps_call:call()) -> boolean().
@@ -169,8 +164,7 @@ should_hook(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Checks if the singular call hook is enabled in the callflow system config.
+%% @doc Checks if the singular call hook is enabled in the callflow system config.
 %% The call hook is enabled if the URL in the system_config / callflows / singular_call_hook_url
 %% field is not set to disabled.
 %%
@@ -182,8 +176,7 @@ is_enabled() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function identifies if a call is the first of the conversation by checking if it
+%% @doc This function identifies if a call is the first of the conversation by checking if it
 %% has an existing bridge. We also check the presence of referredby and
 %% want to send the hook if it is a call transfer
 %%
@@ -200,9 +193,7 @@ call_is_singular(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Gets where the call was started. If kapps_call returns undefined, it was on net.
-%%
+%% @doc Gets where the call was started. If kapps_call returns undefined, it was on net.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_inception(kapps_call:call()) -> kz_term:ne_binary().
@@ -214,9 +205,7 @@ get_inception(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Gets the singular call hook URL from the configuration (may be cached).
-%%
+%% @doc Gets the singular call hook URL from the configuration (may be cached).
 %% @end
 %%--------------------------------------------------------------------
 -spec get_hook_url() -> kz_term:ne_binary().

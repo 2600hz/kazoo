@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Handle route requests from carrier resources
+%%% @doc Handle route requests from carrier resources
 %%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_inbound).
@@ -28,8 +27,7 @@ handle_req(JObj, _Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% handle a request inbound from offnet
+%% @doc handle a request inbound from offnet
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_relay_request(kz_json:object()) -> 'ok'.
@@ -64,8 +62,7 @@ maybe_relay_request(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% determine the e164 format of the inbound number
+%% @doc determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
 -spec set_account_id(knm_number_options:extra_options(), kz_json:object()) ->
@@ -186,8 +183,7 @@ maybe_set_ringback(NumberProps, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% determine the e164 format of the inbound number
+%% @doc determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_set_transfer_media(knm_number_options:extra_options(), kz_json:object()) ->
@@ -201,8 +197,7 @@ maybe_set_transfer_media(NumberProps, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% build the JSON to set the custom channel vars with the calls
+%% @doc build the JSON to set the custom channel vars with the calls
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
@@ -261,8 +256,7 @@ should_block_anonymous(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% relay a route request once populated with the new properties
+%% @doc relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
 -spec relay_request(kz_json:object()) -> kz_json:object().

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Utils shared by the various proxy servers
-%%%
+%%% @doc Utils shared by the various proxy servers
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

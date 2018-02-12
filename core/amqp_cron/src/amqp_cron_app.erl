@@ -16,8 +16,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
-%%% @doc
-%%% Starts the amqp_cron application using the currently connected
+%%% @doc Starts the amqp_cron application using the currently connected
 %%% nodes as the node list (see {@link amqp_cron}). In general it
 %%% is probably more useful to add {@link amqp_cron} or
 %%% {@link amqp_cron_sup} to your own supervision tree where you

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Mailbox message document manipulation
-%%%
+%%% @doc Mailbox message document manipulation
 %%% @author Hesaam Farhang
 %%% @end
 %%%-------------------------------------------------------------------
@@ -64,9 +62,7 @@
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Generate a mailbox message doc with the given properties.
-%%
+%% @doc Generate a mailbox message doc with the given properties.
 %% Options are:
 %%
 %% <dl>
@@ -168,8 +164,7 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
                    ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Build message metadata.
+%% @doc Build message metadata.
 %% @end
 %%--------------------------------------------------------------------
 -spec build_metadata_object(pos_integer(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:gregorian_seconds()) ->
@@ -196,8 +191,7 @@ get_msg_id(JObj) ->
     kz_json:get_first_defined(Paths, JObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Accessors methods.
+%% @doc Accessors methods.
 %% @end
 %%--------------------------------------------------------------------
 -spec type() -> kz_term:ne_binary().
@@ -228,9 +222,7 @@ set_folder_deleted(Metadata) ->
     kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, Metadata).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set folder in metadata of message's document.
-%%
+%% @doc Set folder in metadata of message's document.
 %% Folder can be `{kz_term:ne_binary(), boolean()}' which the `boolean()'
 %% controls whether documents should marked as soft-deleted or not.
 %% @end
@@ -320,8 +312,7 @@ set_source_id(SourceId, JObj) ->
     kz_json:set_value(?KEY_SOURCE_ID, SourceId, JObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Filter messages based on specific folder.
+%% @doc Filter messages based on specific folder.
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_folder(kz_json:objects(), kz_term:ne_binary()) -> kz_json:objects().
@@ -329,8 +320,7 @@ filter_folder(Messages, Folder) ->
     [M || M <- Messages, folder(M) =:= Folder].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Count message list in specific folder(s).
+%% @doc Count message list in specific folder(s).
 %% @end
 %%--------------------------------------------------------------------
 -spec count_folder(kz_json:objects(), kz_term:ne_binary() | kz_term:ne_binaries()) -> non_neg_integer().

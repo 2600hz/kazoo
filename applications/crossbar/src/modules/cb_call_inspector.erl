@@ -30,8 +30,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -58,8 +57,7 @@ to_response(Context, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -70,9 +68,7 @@ allowed_methods() -> [?HTTP_GET].
 allowed_methods(_CallId) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -89,8 +85,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /call_inspector mights load a list of skel objects
 %% /call_inspector/123 might load the skel object 123
@@ -170,8 +165,7 @@ sanitize(JObjs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generate specific view options for the path.
+%% @doc Generate specific view options for the path.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
@@ -188,8 +182,7 @@ get_view_options(_) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Loads CDR docs from database and normalized the them.
+%% @doc Loads CDR docs from database and normalized the them.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -219,8 +212,7 @@ get_cdr_ids(JObjs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Send a filter request to call_inspector application to filter
+%% @doc Send a filter request to call_inspector application to filter
 %% which cdr_id is on call_inspector data store
 %% @end
 %%--------------------------------------------------------------------

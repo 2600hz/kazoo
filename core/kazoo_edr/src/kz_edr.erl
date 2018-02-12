@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% EDR in-core API
-%%%
+%%% @doc EDR in-core API
 %%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%% @author Conversant Ltd (Max Lay)
 %%% @end

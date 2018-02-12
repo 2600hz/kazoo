@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Simple and efficient operations on CSV binaries.
-%%%
+%%% @doc Simple and efficient operations on CSV binaries.
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------
@@ -50,8 +48,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return count of rows minus the first one.
+%% @doc Return count of rows minus the first one.
 %% Returns 0 if a row is longer/smaller than the header row.
 %% @end
 %%--------------------------------------------------------------------
@@ -177,8 +174,7 @@ verify(Verifier, Header, Row, I, Map) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns an unordered list of the name of columns that did not pass validation.
+%% @doc Returns an unordered list of the name of columns that did not pass validation.
 %% @end
 %%--------------------------------------------------------------------
 -type mapped_row_verifier() :: fun((kz_term:ne_binary(), cell()) -> boolean()).
@@ -211,8 +207,7 @@ mapped_row_to_iolist(HeaderRow, Map) ->
     row_to_iolist([maps:get(Header, Map, ?ZILCH) || Header <- HeaderRow]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Converts JSON-represented CSV data to binary.
+%% @doc Converts JSON-represented CSV data to binary.
 %% We assume fields for first record are defined in all other records.
 %% @end
 %%--------------------------------------------------------------------

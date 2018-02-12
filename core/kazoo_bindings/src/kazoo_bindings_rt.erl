@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% runtime options for bindings
+%%% @doc runtime options for bindings
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings_rt).

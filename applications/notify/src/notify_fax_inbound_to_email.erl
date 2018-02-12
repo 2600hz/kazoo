@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Renders a custom account email template, or the system default,
+%%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with fax attachment to the user.
 %%%
 %%%
@@ -76,8 +75,7 @@ handle_req(JObj, _Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% create the props used by the template render function
+%% @doc create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:objects(), kz_json:object()) -> kz_term:proplist().
@@ -121,8 +119,7 @@ fax_values(Event) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% process the AMQP requests
+%% @doc process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
@@ -161,4 +158,3 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
              ]
             },
     notify_util:send_email(From, To, Email).
-

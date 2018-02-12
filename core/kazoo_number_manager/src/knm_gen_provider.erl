@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% When implementing provider modules, these callbacks are a must!
-%%%
-%%%
+%%% @doc When implementing provider modules, these callbacks are a must!
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------

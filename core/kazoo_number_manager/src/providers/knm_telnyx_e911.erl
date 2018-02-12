@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Handle e911 provisioning
-%%%
-%%%
+%%% @doc Handle e911 provisioning
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------
@@ -24,8 +21,7 @@
        ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
@@ -46,8 +42,7 @@ save(Number, _State) ->
     delete(Number).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted, and will
+%% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------

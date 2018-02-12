@@ -11,8 +11,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
@@ -57,8 +56,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempts to build the endpoints to reach this device
+%% @doc Attempts to build the endpoints to reach this device
 %% @end
 %%--------------------------------------------------------------------
 -spec build_endpoint(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->

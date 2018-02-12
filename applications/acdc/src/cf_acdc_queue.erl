@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Handles changing an agent's status
-%%%
+%%% @doc Handles changing an agent's status
 %%% "data":{
 %%%   "action":["login","logout"] // one of these
 %%%   ,"id":"queue_id" // which queue to login/logout the caller

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% data:{
+%%% @doc data:{
 %%%   "duration":2 // how long to delay for
 %%%   "unit":"s" // optional unit of time, defaults to seconds
 %%% }
@@ -21,8 +20,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

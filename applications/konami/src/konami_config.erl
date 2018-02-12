@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handles Konami code configs
-%%%
+%%% @doc Handles Konami code configs
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

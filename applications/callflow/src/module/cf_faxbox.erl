@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Instructs the switch to receive a fax from the caller
+%%% @doc Instructs the switch to receive a fax from the caller
 %%% Stores the fax in the database and optionally emails a configured
 %%% user(s).
 %%%
@@ -21,8 +20,7 @@
 -define(FAX_OPTION, [<<"media">>, <<"fax_option">>]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

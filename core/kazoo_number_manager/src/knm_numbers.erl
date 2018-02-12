@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz INC
-%%% @doc
-%%% Bulk operations on numbers.
+%%% @doc Bulk operations on numbers.
 %%% Note: functions should not throw, instead return {@link ret()}.
 %%%
 %%% @author Peter Defebvre
@@ -120,8 +119,7 @@ num(N) ->
 todo(#{todo := ToDo}) -> ToDo.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set of numbers' `assigned_to' fields.
+%% @doc Set of numbers' `assigned_to' fields.
 %% @end
 %%--------------------------------------------------------------------
 -spec assigned_to(t()) -> kz_term:api_ne_binary().
@@ -138,8 +136,7 @@ assigned_to(#{todo := Ns}) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set of numbers' `prev_assigned_to' fields.
+%% @doc Set of numbers' `prev_assigned_to' fields.
 %% @end
 %%--------------------------------------------------------------------
 -spec prev_assigned_to(t()) -> kz_term:api_ne_binary().
@@ -225,8 +222,7 @@ ko(N, Reason, T) ->
     ko(Num, Reason, T).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to get numbers from DB.
+%% @doc Attempts to get numbers from DB.
 %% Note: each number in `Nums' has to be normalized.
 %% @end
 %%--------------------------------------------------------------------
@@ -285,8 +281,7 @@ from_jobjs(JObjs) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to create new numbers in DB or modify existing ones.
+%% @doc Attempts to create new numbers in DB or modify existing ones.
 %% Note: `assign_to' number option MUST be set.
 %% Note: creating numbers with `ported_in' option set to true will
 %%   attempt to create them with state `in_service'.
@@ -340,8 +335,7 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     ret(do(fun move_to/1, T)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to update some phone_number fields.
+%% @doc Attempts to update some phone_number fields.
 %% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
@@ -399,8 +393,7 @@ release(Nums, Options) ->
              ])).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Remove numbers from the system without doing any state checking.
+%% @doc Remove numbers from the system without doing any state checking.
 %% Sounds too harsh for you? You are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
@@ -418,8 +411,7 @@ delete(Nums, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Note: option `assign_to' needs to be set.
+%% @doc Note: option `assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
@@ -435,8 +427,7 @@ reconcile(Nums, Options0) ->
     ret(merge_okkos(Ta, Tb)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fetches then transitions existing numbers to the reserved state.
+%% @doc Fetches then transitions existing numbers to the reserved state.
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
@@ -465,8 +456,7 @@ assign_to_app(Nums, App, Options) ->
              ])).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Release all of an account's numbers
+%% @doc Release all of an account's numbers
 %% @end
 %%--------------------------------------------------------------------
 -spec free(kz_term:ne_binary()) -> 'ok'.
@@ -482,8 +472,7 @@ free(Account=?NE_BINARY) ->
                  ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find an account's phone numbers that have emergency services enabled
+%% @doc Find an account's phone numbers that have emergency services enabled
 %% @end
 %%--------------------------------------------------------------------
 -spec emergency_enabled(kz_term:ne_binary()) -> kz_term:ne_binaries().
@@ -495,8 +484,7 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% List an account's phone numbers and statuses.
+%% @doc List an account's phone numbers and statuses.
 %% Does not go through sub accounts.
 %% @end
 %%--------------------------------------------------------------------
@@ -550,8 +538,7 @@ new(Options, ToDos, KOs, Reason) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Apply something to `todo' if not empty
+%% @doc Apply something to `todo' if not empty
 %% If empty use `ok' as the new `todo'.
 %% If `ok' is empty, return.
 %% Exported ONLY for inside-app use.
@@ -585,8 +572,7 @@ do(F, T) ->
     NewT#{todo => []}.
 
 %% @private
-%% @doc
-%% Exported ONLY for `knm_number_states' use.
+%% @doc Exported ONLY for `knm_number_states' use.
 %% @end
 -spec do_in_wrap(applier(t_pn()), t()) -> t().
 do_in_wrap(_, T=#{todo := [], ok := []}) -> T;

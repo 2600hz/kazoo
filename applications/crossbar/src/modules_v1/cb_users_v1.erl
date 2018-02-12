@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Users module
-%%%
+%%% @doc Users module
 %%% Handle client requests for user documents
 %%%
 %%%
@@ -67,8 +65,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -110,9 +107,7 @@ content_types_provided(Context, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -128,8 +123,7 @@ resource_exists(_, ?CHANNELS) -> 'true';
 resource_exists(_, ?VCARD) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with userId
 %%
 %% Failure here returns 404.
@@ -175,8 +169,7 @@ validate_user_id(UserId, Context, Doc) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Ensure we will be able to bill for users
+%% @doc Ensure we will be able to bill for users
 %% @end
 %%--------------------------------------------------------------------
 -spec billing(cb_context:context()) -> cb_context:context().
@@ -217,8 +210,7 @@ authorize_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
 authorize_users(_Nouns, _Verb) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -519,8 +511,7 @@ merge_user_channels_fold(Channel, D) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized. Or a specific
+%% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
@@ -530,8 +521,7 @@ load_user_summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a user document from the database
+%% @doc Load a user document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_user(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -697,8 +687,7 @@ rehash_creds(_UserId, Username, Password, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will determine if the username in the request is
+%% @doc This function will determine if the username in the request is
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
@@ -719,8 +708,7 @@ username_doc_id(Username, Context, _AccountDb) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec(normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects()).

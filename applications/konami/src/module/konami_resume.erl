@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Reconnect the two legs of the call, if possible
+%%% @doc Reconnect the two legs of the call, if possible
 %%% Data = {
 %%% }
 %%%

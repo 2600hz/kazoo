@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Allow resellers directly below the master account to find
+%%% @doc Allow resellers directly below the master account to find
 %%% manually-added `available' numbers.
 %%%
 %%%
@@ -33,8 +32,7 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Is this carrier handling numbers local to the system?
+%% @doc Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
 %%--------------------------------------------------------------------
@@ -42,8 +40,7 @@ info() ->
 is_local() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
@@ -51,8 +48,7 @@ is_local() -> 'true'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Query the local system for a quantity of available numbers
+%% @doc Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -125,16 +121,14 @@ format_numbers(QID, JObjs) ->
 is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Acquire a given number from the carrier
+%% @doc Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
 acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Release a number from the routing table
+%% @doc Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
 

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Ratedeck document accessors
+%%% @doc Ratedeck document accessors
 %%%   Every account can be assigned a ratedeck
 %%%
 %%%

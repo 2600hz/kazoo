@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Kazoo authentication configuration API endpoint
-%%%
+%%% @doc Kazoo authentication configuration API endpoint
 %%% @end
 %%%-------------------------------------------------------------------
 -module(cb_security).
@@ -44,8 +42,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -61,8 +58,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.security">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -89,8 +85,7 @@ authorize_list_available_module(_Context, _Nouns, _Verb) ->
     'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -107,9 +102,7 @@ allowed_methods(?ATTEMPTS, _AttemptId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -130,8 +123,7 @@ resource_exists(_ConfigId) -> 'false'.
 resource_exists(?ATTEMPTS, _AttemptId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /security mights load a list of auth objects
 %% /security/123 might load the auth object 123
@@ -175,8 +167,7 @@ validate_auth_configs(Context, ?HTTP_DELETE) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -193,8 +184,7 @@ post(Context) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%% @doc If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -210,8 +200,7 @@ patch(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
@@ -227,8 +216,7 @@ maybe_flush_config(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -241,8 +229,7 @@ summary_available(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
@@ -314,8 +301,7 @@ set_as_system(AuthConfig, Path) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -327,8 +313,7 @@ update(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update-merge an existing menu document with the data provided, if it is
+%% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -382,8 +367,7 @@ has_account_id_or_db(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Only allow to set the configuration id if the account who has the configuration is
+%% @doc Only allow to set the configuration id if the account who has the configuration is
 %% in the tree
 %% * if master is setting the config, allow
 %% * if the account is the same authenticated account, allow
@@ -422,8 +406,7 @@ failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a login attempt log from MODB
+%% @doc Load a login attempt log from MODB
 %% @end
 %%--------------------------------------------------------------------
 -spec read_attempt_log(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().

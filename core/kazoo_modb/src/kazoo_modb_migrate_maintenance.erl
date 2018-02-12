@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% The Great Kazoo Migration (TM)
+%%% @doc The Great Kazoo Migration (TM)
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kazoo_modb_migrate_maintenance).

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Provides a similar interface to the SUP command-line utility. Maps to SUP
+%%% @doc Provides a similar interface to the SUP command-line utility. Maps to SUP
 %%% commands most are familiar with already.
 %%%
 %%% /sup/module/function/arg1/arg2/...
@@ -122,8 +121,7 @@ format_path_tokens([_Module, _Function]=L) -> L;
 format_path_tokens([Module, Function | Args]) -> [Module, Function, Args].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to..
+%% @doc Initializes the bindings this module will respond to..
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> supervisor:startchild_ret().
@@ -136,8 +134,7 @@ init() ->
     Ret.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -159,8 +156,7 @@ authorize(Context, _Module, _Function, _Args) ->
     cb_context:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -178,9 +174,7 @@ allowed_methods(_Module, _Function, _Args) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -230,8 +224,7 @@ module_name(ModuleBin) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /sup mights load a list of system_stat objects
 %% /sup/123 might load the system_stat object 123

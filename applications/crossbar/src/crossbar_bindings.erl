@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Store routing keys or PID bindings.
-%%%
+%%% @doc Store routing keys or PID bindings.
 %%% When a binding is fired, pass the payload to the PID for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
@@ -65,8 +63,7 @@
                        ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns `[{Result, Payload1}]', a list of tuples, the first element
+%% @doc Returns `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified.
 %% @end
@@ -84,8 +81,7 @@ pmap(Routing, Payload) ->
 -type fold_results() :: payload().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns the modified Payload after it has been threaded through
+%% @doc Returns the modified Payload after it has been threaded through
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
@@ -95,8 +91,7 @@ fold(Routing, Payload) ->
     kazoo_bindings:fold(Routing, Payload).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Helper functions for working on a result set of bindings.
+%% @doc Helper functions for working on a result set of bindings.
 %% @end
 %%--------------------------------------------------------------------
 -spec any(kz_term:proplist()) -> boolean().
@@ -127,8 +122,7 @@ matches([R|Restrictions], Tokens) ->
         orelse matches(Restrictions, Tokens).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Helpers for the result set helpers
+%% @doc Helpers for the result set helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec check_bool({boolean(), any()} | boolean()) -> boolean().

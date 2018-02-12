@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Detects if a call is fax
+%%% @doc Detects if a call is fax
 %%% user(s).
 %%%
 %%% @author James Aimonetti
@@ -21,8 +20,7 @@
 -define(FAX_DETECT_DURATION, kapps_config:get_integer(?CF_CONFIG_CAT, <<"fax_detect_duration_s">>, ?DEFAULT_FAX_DETECT_DURATION)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

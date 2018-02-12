@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018 2600Hz
-%%% @doc
-%%% FS passthrough API
+%%% @doc FS passthrough API
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kapi_fs).
@@ -25,8 +24,7 @@
                                                 end}]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% FS Request
+%% @doc FS Request
 %%     Pass-through of FS dialplan commands
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -47,8 +45,7 @@ req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

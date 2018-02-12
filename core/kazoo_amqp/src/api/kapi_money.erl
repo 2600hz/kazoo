@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% APIs for events concerning money (like credits, debits, and others)
-%%%
+%%% @doc APIs for events concerning money (like credits, debits, and others)
 %%% Types of events known:
 %%%   credit - a credit has been added to account-id
 %%%   debit - a debit has been applied to account-id
@@ -59,8 +57,7 @@
 -define(BALANCE_RESP_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Credit Update - see wiki
+%% @doc Credit Update - see wiki
 %% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -80,8 +77,7 @@ credit_v(JObj) ->
     credit_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Debit Update - see wiki
+%% @doc Debit Update - see wiki
 %% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -101,8 +97,7 @@ debit_v(JObj) ->
     debit_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Balance Request - see wiki
+%% @doc Balance Request - see wiki
 %% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -122,8 +117,7 @@ balance_req_v(JObj) ->
     balance_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Balance Response - see wiki
+%% @doc Balance Response - see wiki
 %% Takes kz_term:proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -153,8 +147,7 @@ unbind_q(Queue, Props) ->
     amqp_util:unbind_q_from_configuration(Queue, Routing).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

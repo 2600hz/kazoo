@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Display various informations
-%%%
-%%%
+%%% @doc Display various informations
 %%% @author Edouard Swiac
 %%% @author James Aimonetti
 %%% @end
@@ -23,8 +20,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -34,8 +30,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.about">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -43,9 +38,7 @@ init() ->
 allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -53,8 +46,7 @@ allowed_methods() -> [?HTTP_GET].
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -69,8 +61,7 @@ validate(Context) ->
 %%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Display the current version of kazoo
+%% @doc Display the current version of kazoo
 %% @end
 %%--------------------------------------------------------------------
 -spec display_version(cb_context:context()) -> cb_context:context().

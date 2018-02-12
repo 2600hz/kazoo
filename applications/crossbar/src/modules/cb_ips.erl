@@ -27,8 +27,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -51,8 +50,7 @@ authorize(Context, [{<<"ips">>, []}]) ->
 authorize(_Context, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -72,9 +70,7 @@ allowed_methods(_IPAddress) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -92,8 +88,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /dedicated_ips mights load a list of skel objects
 %% /dedicated_ips/123 might load the skel object 123

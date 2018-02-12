@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handlers for various AMQP payloads
+%%% @doc Handlers for various AMQP payloads
 %%% @end
 %%%-------------------------------------------------------------------
 -module(j5_channel_destroy).

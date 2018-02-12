@@ -32,8 +32,7 @@
 
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a non-empty configuration key for a given category and cast it as a binary
+%% @doc Get a non-empty configuration key for a given category and cast it as a binary
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -50,8 +49,7 @@ get_ne_binary(Account, Category, Path, Default) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a non-empty configuration key for a given category and cast it as
+%% @doc Get a non-empty configuration key for a given category and cast it as
 %% a list of binary
 %% @end
 %%-----------------------------------------------------------------------------
@@ -69,8 +67,7 @@ get_ne_binaries(Account, Category, Path, Default) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a pos_integer
+%% @doc Get a configuration key for a given category and cast it as a pos_integer
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_pos_integer(api_account(), kz_term:ne_binary(), kz_json:path()) -> pos_integer().
@@ -92,8 +89,7 @@ to_pos_integer(Value, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Will search the account db first, then system_config for values.
+%% @doc Will search the account db first, then system_config for values.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -127,8 +123,7 @@ get_global(Account, Category) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get global starting from reseller config.
+%% @doc Get global starting from reseller config.
 %% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
 %% @end
 %%--------------------------------------------------------------------
@@ -160,8 +155,7 @@ maybe_load_config_from_reseller(Account, Category) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Same as get_hierarchy/4 with Default set to undefined
+%% @doc Same as get_hierarchy/4 with Default set to undefined
 %% @end
 %%--------------------------------------------------------------------
 -spec get_hierarchy(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:json_term().
@@ -169,8 +163,7 @@ get_hierarchy(Account, Category, Key) ->
     get_hierarchy(Account, Category, Key, undefined).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Same as get_with_strategy/5 with Strategy "hierarchy_merge"
+%% @doc Same as get_with_strategy/5 with Strategy "hierarchy_merge"
 %% @end
 %%--------------------------------------------------------------------
 -spec get_hierarchy(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:json_term().
@@ -178,9 +171,7 @@ get_hierarchy(Account, Category, Key, Default) ->
     get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category with a given strategy.
-%%
+%% @doc Get a configuration key for a given category with a given strategy.
 %% Strategies are:
 %%   * global: get from account db if found, otherwise from reseller.
 %%             In both cases if not found or there is no account id
@@ -237,8 +228,7 @@ get_from_strategy_cache(Strategy, AccountId, Category, Key, false) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get Key's value from account db document if defined, otherwise get
+%% @doc Get Key's value from account db document if defined, otherwise get
 %% from system_config
 %% @end
 %%--------------------------------------------------------------------
@@ -297,8 +287,7 @@ load_config_from_account(AccountId, Category) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%  Get Accounts parent configuration for the Category
+%% @doc Get Accounts parent configuration for the Category
 %%  1. Read account definition
 %%      1.1. If failed to read account definition, find its reseller
 %%  2. Fold over ancestor Ids and fetch config doc from their db
@@ -331,8 +320,7 @@ get_account_ancestors_or_reseller(AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get accounts config and walk the account up to accounts reseller
+%% @doc Get accounts config and walk the account up to accounts reseller
 %% @end
 %%--------------------------------------------------------------------
 -spec load_config_from_ancestors_fold(kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:objects()) ->
@@ -379,8 +367,7 @@ get_account_tree(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the Value for the Key in account db
+%% @doc Set the Value for the Key in account db
 %% @end
 %%--------------------------------------------------------------------
 -spec set(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
@@ -398,8 +385,7 @@ maybe_set_account(AccountId, Category, Key, Value) ->
     JObj2.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the Value for the Key in account db if found, otherwise get
+%% @doc Set the Value for the Key in account db if found, otherwise get
 %% system_config value then save in account db.
 %% @end
 %%--------------------------------------------------------------------
@@ -429,8 +415,7 @@ update_config_for_saving(AccountId, JObj) ->
                                  ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Flush accounts specific config cache
+%% @doc Flush accounts specific config cache
 %% @end
 %%--------------------------------------------------------------------
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
@@ -568,8 +553,7 @@ strategy_funs(<<"hierarchy_merge">>) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find AccountId from binary, Call object or JObj.
+%% @doc Find AccountId from binary, Call object or JObj.
 %% @end
 %%--------------------------------------------------------------------
 -spec account_id(api_account()) -> account_or_not().

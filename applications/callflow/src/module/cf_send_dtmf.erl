@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "digits":"#123" // what sequence to send
 %%%   ,"duration_ms":2000 // optional duration, in milliseconds, to send dtmf
 %%% }
@@ -16,8 +15,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

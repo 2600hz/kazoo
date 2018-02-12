@@ -17,8 +17,7 @@
 -define(PLAN_CATEGORY, <<"ui_apps">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get allowed applications from service plans.
+%% @doc Get allowed applications from service plans.
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_apps(kz_term:ne_binary()) -> kz_json:objects().
@@ -41,8 +40,7 @@ authorized_apps(AccountId, UserId) ->
     allowed_apps(AccountId, UserId).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get a application object if allowed.
+%% @doc Get a application object if allowed.
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_app(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
@@ -96,8 +94,7 @@ get_apps_store_doc(Account) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Find the first Service plan in Account or Account's reseller
+%% @doc Find the first Service plan in Account or Account's reseller
 %% hierarchy which has `ui_apps' or has `ui_apps._all'
 %% @end
 %%--------------------------------------------------------------------

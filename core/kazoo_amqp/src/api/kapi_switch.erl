@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Switch events messages
-%%%
+%%% @doc Switch events messages
 %%% @author Eduoard Swiac
 %%% @end
 %%%-------------------------------------------------------------------
@@ -244,8 +242,7 @@ unbind_q_from(Q, ['command'|T], Props) ->
 unbind_q_from(_Q, [], _Props) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

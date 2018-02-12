@@ -79,8 +79,7 @@
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Normalize then query the various providers for available numbers.
+%% @doc Normalize then query the various providers for available numbers.
 %% @end
 %%--------------------------------------------------------------------
 -spec check(kz_term:ne_binaries()) -> kz_json:object().
@@ -111,8 +110,7 @@ check_numbers(Module, Nums) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a list of all carrier modules available to a subaccount.
+%% @doc Create a list of all carrier modules available to a subaccount.
 %% @end
 %%--------------------------------------------------------------------
 -spec available_carriers(options()) -> kz_term:atoms().
@@ -148,8 +146,7 @@ default_carrier() ->
     ?DEFAULT_CARRIER_MODULE.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% List all carrier modules.
+%% @doc List all carrier modules.
 %% @end
 %%--------------------------------------------------------------------
 -spec all_modules() -> kz_term:ne_binaries().
@@ -171,8 +168,7 @@ all_modules() ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get information on the available carriers
+%% @doc Get information on the available carriers
 %% @end
 %%--------------------------------------------------------------------
 -spec info(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
@@ -224,8 +220,7 @@ allowed_creation_states(AccountId) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Buy a number from its carrier module
+%% @doc Buy a number from its carrier module
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire(knm_number:knm_number()) -> knm_number:knm_number();
@@ -322,8 +317,7 @@ reseller_id(Options) ->
     props:get_value('reseller_id', Options).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns whether carrier handles numbers local to the system.
+%% @doc Returns whether carrier handles numbers local to the system.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
@@ -340,8 +334,7 @@ is_number_billable(PhoneNumber) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns whether carrier handles numbers local to the system.
+%% @doc Returns whether carrier handles numbers local to the system.
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
 %%--------------------------------------------------------------------

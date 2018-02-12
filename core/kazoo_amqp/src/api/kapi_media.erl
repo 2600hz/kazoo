@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Media requests, responses, and errors
-%%%
+%%% @doc Media requests, responses, and errors
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -63,8 +61,7 @@
 -define(MEDIA_ERROR_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Request media - see wiki
+%% @doc Request media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -84,8 +81,7 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Response with media - see wiki
+%% @doc Response with media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -105,8 +101,7 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Media error - see wiki
+%% @doc Media error - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -134,8 +129,7 @@ unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_kapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

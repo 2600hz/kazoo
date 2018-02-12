@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Handlers for various AMQP payloads
-%%%
+%%% @doc Handlers for various AMQP payloads
 %%% @author Dinkor (Sergey Korobkov)
 %%% @end
 %%%-------------------------------------------------------------------
@@ -33,4 +31,3 @@ build_resp(RespAccounts, ReqJObj) ->
       ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
-

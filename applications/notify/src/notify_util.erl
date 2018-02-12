@@ -218,8 +218,7 @@ do_render_template(Template, DefaultTemplate, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% determine the service name, provider, and url. Hunts (in order)
+%% @doc determine the service name, provider, and url. Hunts (in order)
 %% in the event, parent account notification object, and then default.
 %% @end
 %%--------------------------------------------------------------------
@@ -288,8 +287,7 @@ maybe_find_deprecated_settings(<<"fax_inbound_error_to_email">>, JObj) ->
 maybe_find_deprecated_settings(_, _) -> kz_json:new().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Try to find the email address of a sub_account_rep for a given
+%% @doc Try to find the email address of a sub_account_rep for a given
 %% account object
 %% @end
 %%--------------------------------------------------------------------
@@ -315,8 +313,7 @@ find_rep_email(JObj) ->
     kzd_user:email(Admin).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% try to find the first user with admin privileges and an email given
+%% @doc try to find the first user with admin privileges and an email given
 %% a sub account object or sub account db name.
 %% @end
 %%--------------------------------------------------------------------
@@ -357,8 +354,7 @@ find_admin(Account) ->
                ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% given a notification event try to open the account definition doc
+%% @doc given a notification event try to open the account definition doc
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_doc(kz_json:object()) ->

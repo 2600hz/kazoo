@@ -13,8 +13,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
@@ -54,8 +53,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Loop over the provided endpoints for the callflow and build the
+%% @doc Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------

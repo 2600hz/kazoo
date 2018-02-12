@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for phone_number documents
-%%%
-%%%
+%%% @doc Handle client requests for phone_number documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -100,8 +97,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -120,8 +116,7 @@ maybe_authenticate(_Verb, _Nouns) ->
     'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -140,8 +135,7 @@ maybe_authorize(_Verb, _Nouns) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -188,9 +182,7 @@ allowed_methods(_PhoneNumber, ?IDENTIFY) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -217,8 +209,7 @@ resource_exists(?CLASSIFIERS, _PhoneNumber) -> 'true';
 resource_exists(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Ensure we will be able to bill for phone_numbers
+%% @doc Ensure we will be able to bill for phone_numbers
 %% @end
 %%--------------------------------------------------------------------
 -spec billing(cb_context:context()) -> cb_context:context().
@@ -238,8 +229,7 @@ maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], _Verb) ->
 maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -478,8 +468,7 @@ delete(Context, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Lists number on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{DID}}
+%% @doc Lists number on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{DID}}
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -531,8 +520,7 @@ normalize_port_number(JObj, Num, AuthBy) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Lists numbers on GET /v2/accounts/{ACCOUNT_ID}/phone_numbers.
+%% @doc Lists numbers on GET /v2/accounts/{ACCOUNT_ID}/phone_numbers.
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
@@ -636,8 +624,7 @@ normalize_port_view_result(Number, Properties) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Search for numbers, requesting carrier module.
+%% @doc Search for numbers, requesting carrier module.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_find_numbers(cb_context:context()) -> cb_context:context().
@@ -739,8 +726,7 @@ find_prefix(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Validates a collection-type numbers field..
+%% @doc Validates a collection-type numbers field..
 %% @end
 %%--------------------------------------------------------------------
 
@@ -794,8 +780,7 @@ get_prefix(City) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Tries to fill [Number,locality] field with info from phonebook.
+%% @doc Tries to fill [Number,locality] field with info from phonebook.
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_locality(cb_context:context()) -> cb_context:context().
@@ -917,8 +902,7 @@ validate_request(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Always validate DELETEs.
+%% @doc Always validate DELETEs.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().

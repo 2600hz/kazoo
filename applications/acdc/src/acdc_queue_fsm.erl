@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Controls how a queue process progresses a member_call
-%%%
+%%% @doc Controls how a queue process progresses a member_call
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -100,8 +98,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates a gen_statem process which calls Module:init/1 to
+%% @doc Creates a gen_statem process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %% @end
@@ -147,8 +144,7 @@ member_connect_retry(ServerRef, RetryJObj) ->
     gen_statem:cast(ServerRef, {'retry', RetryJObj}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%%   When a queue is processing a call, it will receive call events.
+%% @doc When a queue is processing a call, it will receive call events.
 %%   Pass the call event to the statem to see if action is needed (usually
 %%   for hangup events).
 %% @end
@@ -186,8 +182,7 @@ cdr_url(ServerRef) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Whenever a gen_statem is started using
+%% @doc Whenever a gen_statem is started using
 %% gen_statem:start_link/[3,4], this function is called by the new
 %% process to initialize.
 %%
@@ -641,8 +636,7 @@ handle_sync_event(_Event, From, StateName, State) ->
     }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called by a gen_statem when it is about to
+%% @doc This function is called by a gen_statem when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_statem terminates with
 %% Reason. The return value is ignored.
@@ -654,9 +648,7 @@ terminate(_Reason, _StateName, _State) ->
     lager:debug("acdc queue statem terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.
@@ -764,8 +756,7 @@ elapsed(Time) -> kz_time:elapsed_s(Time).
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If some agents are busy, the manager will tell us to delay our
+%% @doc If some agents are busy, the manager will tell us to delay our
 %% connect reqs
 %%
 %% @end
@@ -803,8 +794,7 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Abort a queue call between connect_reqs if agents have left the
+%% @doc Abort a queue call between connect_reqs if agents have left the
 %% building
 %%
 %% @end

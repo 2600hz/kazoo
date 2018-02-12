@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data": {
+%%% @doc "data": {
 %%%   "action": "activate" | "deactivate" | *"toggle",
 %%%   "scope": "device" | *"user"
 %%% }
@@ -36,8 +35,7 @@ actions() ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end

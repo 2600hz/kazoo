@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Devices module
-%%%
+%%% @doc Devices module
 %%% Handle client requests for device documents
 %%%
 %%%

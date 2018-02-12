@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Call-related messages, like switch events, status requests, etc
-%%%
+%%% @doc Call-related messages, like switch events, status requests, etc
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -65,8 +63,7 @@ optional_call_event_headers() ->
     ?OPTIONAL_CALL_EVENT_HEADERS.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Format a call event from the switch for the listener
+%% @doc Format a call event from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -84,8 +81,7 @@ event_v(Prop) when is_list(Prop) ->
 event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a channel
+%% @doc Inquire into the status of a channel
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -103,8 +99,7 @@ channel_status_req_v(Prop) when is_list(Prop) ->
 channel_status_req_v(JObj) -> channel_status_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Respond with status of a channel, either active or nonexistent
+%% @doc Respond with status of a channel, either active or nonexistent
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -122,8 +117,7 @@ channel_status_resp_v(Prop) when is_list(Prop) ->
 channel_status_resp_v(JObj) -> channel_status_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -141,8 +135,7 @@ query_auth_id_req_v(Prop) when is_list(Prop) ->
 query_auth_id_req_v(JObj) -> query_auth_id_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -160,8 +153,7 @@ query_auth_id_resp_v(Prop) when is_list(Prop) ->
 query_auth_id_resp_v(JObj) -> query_auth_id_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -179,8 +171,7 @@ query_user_channels_req_v(Prop) when is_list(Prop) ->
 query_user_channels_req_v(JObj) -> query_user_channels_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -198,8 +189,7 @@ query_user_channels_resp_v(Prop) when is_list(Prop) ->
 query_user_channels_resp_v(JObj) -> query_user_channels_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -217,8 +207,7 @@ query_account_channels_req_v(Prop) when is_list(Prop) ->
 query_account_channels_req_v(JObj) -> query_account_channels_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -236,8 +225,7 @@ query_account_channels_resp_v(Prop) when is_list(Prop) ->
 query_account_channels_resp_v(JObj) -> query_account_channels_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -255,8 +243,7 @@ query_channels_req_v(Prop) when is_list(Prop) ->
 query_channels_req_v(JObj) -> query_channels_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Inquire into the status of a call
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -274,8 +261,7 @@ query_channels_resp_v(Prop) when is_list(Prop) ->
 query_channels_resp_v(JObj) -> query_channels_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Format a call id update from the switch for the listener
+%% @doc Format a call id update from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -293,8 +279,7 @@ usurp_control_v(Prop) when is_list(Prop) ->
 usurp_control_v(JObj) -> usurp_control_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Format a call id update from the switch for the listener
+%% @doc Format a call id update from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -334,8 +319,7 @@ unbind_q(Q, [Event|T], CallId) ->
 unbind_q(_Q, [], _CallId) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

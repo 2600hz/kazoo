@@ -27,9 +27,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
+%% @doc Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:sup_startchild_ret().
@@ -37,8 +35,7 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Start an announcements child if either position or wait time
+%% @doc Start an announcements child if either position or wait time
 %% announcements are enabled
 %%
 %% @end
@@ -51,9 +48,7 @@ maybe_start_announcements(Manager, Call, Props) ->
         andalso supervisor:start_child(?SERVER, [Manager, Call, Props]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Stop an announcements child process
-%%
+%% @doc Stop an announcements child process
 %% @end
 %%--------------------------------------------------------------------
 -spec stop_announcements(pid()) -> 'ok' | {'error', atom()}.
@@ -66,8 +61,7 @@ stop_announcements(Pid) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% @doc Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart intensity, and child
 %% specifications.

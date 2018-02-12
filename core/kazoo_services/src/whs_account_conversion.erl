@@ -18,8 +18,7 @@
 -include("services.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the reseller status on the provided account and update all
+%% @doc Set the reseller status on the provided account and update all
 %% sub accounts
 %% @end
 %%--------------------------------------------------------------------
@@ -48,8 +47,7 @@ do_promote(AccountId) ->
     cascade_reseller_id(AccountId, AccountId).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Remove reseller status from an account and set all its sub accounts
+%% @doc Remove reseller status from an account and set all its sub accounts
 %% to the next higher reseller
 %% @end
 %%--------------------------------------------------------------------
@@ -79,8 +77,7 @@ do_demote(AccountId) ->
     cascade_reseller_id(ResellerId, AccountId).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the reseller_id to the provided value on all the sub-accounts
+%% @doc Set the reseller_id to the provided value on all the sub-accounts
 %% of the provided account
 %% @end
 %%--------------------------------------------------------------------
@@ -104,8 +101,7 @@ cascade_reseller_id(Reseller, Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set teh reseller_id to the provided value on the provided account
+%% @doc Set teh reseller_id to the provided value on the provided account
 %% @end
 %%--------------------------------------------------------------------
 -spec set_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.

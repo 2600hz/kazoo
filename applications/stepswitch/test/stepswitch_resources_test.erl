@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Account document
-%%%
+%%% @doc Account document
 %%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_resources_test).
@@ -61,4 +59,3 @@ validate(Schema, Object) ->
                            ,Object
                            ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
                            ).
-

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @Copyright (C) 2010-2016, 2600Hz
-%%% @doc
-%%% Test utilities for manipulating maps
+%%% @doc Test utilities for manipulating maps
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_maps_tests).

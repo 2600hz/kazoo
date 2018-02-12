@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Behaviour of backend modules
-%%%
+%%% @doc Behaviour of backend modules
 %%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%% @author Conversant Ltd (Max Lay)
 %%% @end
@@ -121,9 +119,7 @@ terminate(Reason, #state{module_state=ModState, module=Mod}) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', any()} | {'error', any()}.

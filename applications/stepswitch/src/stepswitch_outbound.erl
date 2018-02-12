@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Handle offnet requests, including rating them
-%%%
+%%% @doc Handle offnet requests, including rating them
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Ben Wann
@@ -17,8 +15,7 @@
 -include_lib("kazoo/include/kz_api_literals.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% process an offnet resource request (outbound)
+%% @doc process an offnet resource request (outbound)
 %% route
 %% @end
 %%--------------------------------------------------------------------

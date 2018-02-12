@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Intra-whapp comm
-%%%
+%%% @doc Intra-whapp comm
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -60,8 +58,7 @@
 -define(RESET_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Subscribing for updates
+%% @doc Subscribing for updates
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -88,8 +85,7 @@ publish_subscribe(Req, ContentType) ->
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% notifying subscribers
+%% @doc notifying subscribers
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -178,8 +174,7 @@ unbind_q(Queue, [_|Restrict], Props) ->
 unbind_q(_, _, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

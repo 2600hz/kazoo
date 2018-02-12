@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Simple authorization module
-%%%
+%%% @doc Simple authorization module
 %%% Authenticates tokens if they are accessing the parent or
 %%% child account only
 %%%
@@ -84,8 +82,7 @@ should_ignore(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns true if the requested account id is a descendant or the same
+%% @doc Returns true if the requested account id is a descendant or the same
 %% as the account id that has been authorized to make the request.
 %% @end
 %%--------------------------------------------------------------------
@@ -139,8 +136,7 @@ account_is_descendant('false', Context, AuthAccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns true the request is not for a system admin module (as defined
+%% @doc Returns true the request is not for a system admin module (as defined
 %% by the list above) or if it is and the account is a superduper admin.
 %% @end
 %%--------------------------------------------------------------------
@@ -164,8 +160,7 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns true if the request contains a system admin module.
+%% @doc Returns true if the request contains a system admin module.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_sys_admin_mod(cb_context:context()) -> boolean().

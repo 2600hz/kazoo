@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%%  Delegate job from one app to another app.
-%%%
+%%% @doc Delegate job from one app to another app.
 %%%  App/Key combo used to send messages.
 %%%
 %%%
@@ -41,8 +39,7 @@
 -define(DELEGATE_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Resume a callflow's flow
+%% @doc Resume a callflow's flow
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -84,8 +81,7 @@ unbind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
     amqp_util:unbind_q_from_kapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -93,8 +89,7 @@ declare_exchanges() ->
     amqp_util:kapps_exchange().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Publish the JSON iolist() to the proper Exchange
+%% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
 

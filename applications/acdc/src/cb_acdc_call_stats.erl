@@ -1,7 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @doc
-%%% Read only access to ACDC stats docs
-%%%
+%%% @doc Read only access to ACDC stats docs
 %%% This code is VERY similar to that in cb_cdrs. At some point code
 %%% that is used by both should be re-factored into a MODB utility
 %%% module.
@@ -74,8 +72,7 @@ to_csv({Req, Context}) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/acdc_call_stats/' can only accept GET
 %%
 %% Failure here returns 405
@@ -87,9 +84,7 @@ allowed_methods() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
@@ -98,9 +93,7 @@ resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%% @doc Add content types accepted and provided by this module
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
@@ -111,8 +104,7 @@ content_types_provided(Context) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400
@@ -124,8 +116,7 @@ validate(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
+%% @doc Attempt to load list of accounts, each summarized.  Or a specific
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------

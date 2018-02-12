@@ -84,8 +84,7 @@
                           kz_datamgr:data_error().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fetches a endpoint defintion from the database or cache
+%% @doc Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
 
@@ -594,8 +593,7 @@ create_endpoint_name('undefined', Last, _, _) -> Last;
 create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Flush the callflow cache
+%% @doc Flush the callflow cache
 %% @end
 %%--------------------------------------------------------------------
 
@@ -631,8 +629,7 @@ flush(Db, Id) ->
     'ok' = kz_amqp_worker:cast(Props, Fun).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates one or more kazoo API endpoints for use in a bridge string.
+%% @doc Creates one or more kazoo API endpoints for use in a bridge string.
 %% Takes into account settings on the callflow, the endpoint, call
 %% forwarding, and ringtones.  More functionality to come, but as it is
 %% added it will be implicit in all functions that 'ring an endpoing'
@@ -842,8 +839,7 @@ maybe_exclude_from_queues(Endpoint, _Properties, Call) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% creates the actual endpoint json objects for use in the kazoo
+%% @doc creates the actual endpoint json objects for use in the kazoo
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
@@ -1041,8 +1037,7 @@ guess_endpoint_type(Endpoint, []) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Creates the kazoo API endpoint for a bridge call command. This
+%% @doc Creates the kazoo API endpoint for a bridge call command. This
 %% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
@@ -1268,8 +1263,7 @@ get_custom_sip_interface(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Creates the kazoo API endpoint for a bridge call command. This
+%% @doc Creates the kazoo API endpoint for a bridge call command. This
 %% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
@@ -1288,11 +1282,10 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Creates the Kazoo API endpoint for a bridge call command when
+%% @doc Creates the Kazoo API endpoint for a bridge call command when
 %% the device (or owner) has forwarded their phone.  This endpoint
 %% is comprised of a route based on CallFwd, the relevant settings
-%% from the actuall endpoint, and the properties of this endpoint in
+%% from the actually endpoint, and the properties of this endpoint in
 %% the callflow.
 %% @end
 %%--------------------------------------------------------------------
@@ -1415,8 +1408,7 @@ maybe_add_mobile_path(Route) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will return the sip headers that should be set for
+%% @doc This function will return the sip headers that should be set for
 %% the endpoint
 %% @end
 %%--------------------------------------------------------------------
@@ -1518,8 +1510,7 @@ maybe_add_aor(JObj, _, Username, Realm) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will return the custom channel vars that should be
+%% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.
 %% @end
@@ -1890,8 +1881,7 @@ build_mobile_sms_amqp_route_options(JObj) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get the sip realm
+%% @doc Get the sip realm
 %% @end
 %%--------------------------------------------------------------------
 -spec get_sip_realm(kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
@@ -1911,8 +1901,7 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will return the custom channel vars that should be
+%% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.
 %% @end

@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Represent a date, and perform various manipulations on it.
-%%%
-%%%
+%%% @doc Represent a date, and perform various manipulations on it.
 %%% @author Mark Magnusson
 %%% @author Karl Anderson
 %%% @end
@@ -37,8 +34,7 @@
         ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a Gregorian seconds integer to kz_date taking into consideration timezone
+%% @doc Convert a Gregorian seconds integer to kz_date taking into consideration timezone
 %% @end
 %%--------------------------------------------------------------------
 -spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) -> kz_time:date().
@@ -49,8 +45,7 @@ from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
     Date.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Calculates the date of a given ISO 8601 week
+%% @doc Calculates the date of a given ISO 8601 week
 %% @end
 %%--------------------------------------------------------------------
 -spec from_iso_week(kz_time:iso_week()) -> kz_time:date().
@@ -77,8 +72,7 @@ to_iso_week({_Year, _Month, _Day}=Date) ->
     calendar:iso_week_number(Date).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Normalizes dates, for example corrects for months that are given
+%% @doc Normalizes dates, for example corrects for months that are given
 %% with more days then they have (i.e.: {2011, 1, 36} -> {2011, 2, 5}).
 %% I have been referring to this as 'spanning a month/year border'
 %% @end
@@ -99,8 +93,7 @@ normalize({Y, M, D}=Date) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Calculate when the second date is in time, relative to the first
+%% @doc Calculate when the second date is in time, relative to the first
 %% calendar:time_difference/2 is obsolete. Convert to gregorian seconds instead
 %% @end
 %%--------------------------------------------------------------------
@@ -116,8 +109,7 @@ relative_difference(Date1, Date2) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Calculates the date of the next occurrence of a weekday from the given
+%% @doc Calculates the date of the next occurrence of a weekday from the given
 %% start date.
 %%
 %% NOTICE!
@@ -179,8 +171,7 @@ to_iso8601_extended(Timestamp) ->
     to_iso8601_extended(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert the ordinal words to cardinal numbers representing
+%% @doc Convert the ordinal words to cardinal numbers representing
 %% the position
 %% @end
 %%--------------------------------------------------------------------
@@ -192,8 +183,7 @@ ordinal_to_position(<<"fourth">>) -> 3;
 ordinal_to_position(<<"fifth">>) -> 4.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Map the days of the week to cardinal numbers representing the
+%% @doc Map the days of the week to cardinal numbers representing the
 %% position, in accordance with ISO 8601
 %% @end
 %%--------------------------------------------------------------------
@@ -208,8 +198,7 @@ wday_to_dow(<<"saturday">>) -> 6;
 wday_to_dow(<<"sunday">>) -> 7.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Map the position of a week day to its textual representation.
+%% @doc Map the position of a week day to its textual representation.
 %% @end
 %%--------------------------------------------------------------------
 -spec dow_to_wday(kz_time:daynum()) -> kz_term:ne_binary().

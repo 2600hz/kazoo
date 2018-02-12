@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Handle authn_req messages
+%%% @doc Handle authn_req messages
 %%% @end
 %%%-------------------------------------------------------------------
 -module(conf_authn_req).

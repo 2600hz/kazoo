@@ -456,8 +456,7 @@ owner_ids(ObjectId, Call) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will return the precense id for the endpoint
+%% @doc This function will return the precense id for the endpoint
 %% @end
 %%--------------------------------------------------------------------
 -spec presence_id(kapps_call:call()) -> kz_term:api_binary().

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Base module for callflow action
+%%% @doc Base module for callflow action
 %%% @end
 %%%-------------------------------------------------------------------
 -module(cf_skel).
@@ -13,8 +12,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

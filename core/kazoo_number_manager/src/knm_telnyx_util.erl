@@ -47,8 +47,7 @@
 -define(URL(Path), "https://" ?DOMAIN "/origination/" ++ filename:join(Path)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Turns +13129677542 into %2B13129677542.
+%% @doc Turns +13129677542 into %2B13129677542.
 %% @end
 %%--------------------------------------------------------------------
 -spec did(knm_number:knm_number()) -> nonempty_string().

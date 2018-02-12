@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Account module
-%%%
+%%% @doc Account module
 %%% Store/retrieve media files
 %%%
 %%%
@@ -80,8 +78,7 @@ init() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -109,9 +106,7 @@ allowed_methods(_MediaId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -166,9 +161,7 @@ authorize_media(_Context, _Nouns, _AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%% @doc Add content types accepted and provided by this module
 %% @end
 %%--------------------------------------------------------------------
 -spec acceptable_content_types() -> kz_term:proplist().
@@ -213,8 +206,7 @@ content_types_accepted_for_upload(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If you provide alternative languages, return a list of languages and optional
+%% @doc If you provide alternative languages, return a list of languages and optional
 %% quality value:
 %% `[<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]'
 %% @end
@@ -234,8 +226,7 @@ languages_provided(Context, _Id, _Path) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request.
 %%
 %% Failure here returns 400.
@@ -506,8 +497,7 @@ delete(Context, MediaId, ?BIN_DATA) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized list of media
+%% @doc Attempt to load a summarized list of media
 %% @end
 %%--------------------------------------------------------------------
 
@@ -649,8 +639,7 @@ normalize_language_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load prompt listing
+%% @doc Load prompt listing
 %% @end
 %%--------------------------------------------------------------------
 -spec load_available_prompts(cb_context:context()) ->
@@ -765,8 +754,7 @@ fix_prompt_start_keys_fold(Key, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a media document from the database
+%% @doc Load a media document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_media_meta(cb_context:context(), kz_term:ne_binary()) ->
@@ -852,8 +840,7 @@ maybe_add_prompt_fields(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
@@ -863,8 +850,7 @@ normalize_view_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load the binary attachment of a media doc
+%% @doc Load the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
 -spec load_media_binary(cb_context:context(), path_token()) -> cb_context:context().
@@ -891,8 +877,7 @@ load_media_binary(Context, MediaId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update the binary attachment of a media doc
+%% @doc Update the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
 -spec update_media_binary(cb_context:context(), path_token()) ->
@@ -928,8 +913,7 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Delete the binary attachment of a media doc
+%% @doc Delete the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_media_binary(path_token(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().

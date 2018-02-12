@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Look up IP for authorization/replaying of route_req
-%%%
+%%% @doc Look up IP for authorization/replaying of route_req
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -53,8 +51,7 @@ maybe_replay_route_req(JObj, CCVs, IP) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% lookup auth by IP in cache/database and return the result
+%% @doc lookup auth by IP in cache/database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_account_by_ip(kz_term:ne_binary()) ->

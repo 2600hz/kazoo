@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for phone_number documents
-%%%
-%%%
+%%% @doc Handle client requests for phone_number documents
 %%% @author Karl Anderson
 %%% @end
 %%%-------------------------------------------------------------------
@@ -80,8 +77,7 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Is this carrier handling numbers local to the system?
+%% @doc Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
 %%--------------------------------------------------------------------
@@ -89,8 +85,7 @@ info() ->
 is_local() -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
@@ -98,8 +93,7 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Query the Bandwidth.com system for a quanity of available numbers
+%% @doc Query the Bandwidth.com system for a quanity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -146,8 +140,7 @@ found_number_to_KNM(Found, QID) ->
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Acquire a given number from the carrier
+%% @doc Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
@@ -201,8 +194,7 @@ acquire_and_provision_number(Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Release a number from the routing table
+%% @doc Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
@@ -228,8 +220,7 @@ should_lookup_cnam() -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Make a REST request to Bandwidth.com Numbers API to preform the
+%% @doc Make a REST request to Bandwidth.com Numbers API to preform the
 %% given verb (purchase, search, provision, ect).
 %% @end
 %%--------------------------------------------------------------------
@@ -311,8 +302,7 @@ make_numbers_request(Verb, Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert a number order response to json.
+%% @doc Convert a number order response to json.
 %% @end
 %%--------------------------------------------------------------------
 -spec number_order_response_to_json(any()) -> kz_json:object().
@@ -337,8 +327,7 @@ number_order_response_to_json(Xml) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert a number search response XML entity to json
+%% @doc Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
 -spec number_search_response_to_json(kz_types:xml_el() | kz_types:xml_els()) -> kz_json:object().
@@ -366,8 +355,7 @@ get_cleaned(Path, Xml) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert a rate center XML entity to json
+%% @doc Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
 -spec rate_center_to_json(list()) -> kz_json:object().
@@ -384,8 +372,7 @@ rate_center_to_json(Xml) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Determine if the request was successful, and if not extract any
+%% @doc Determine if the request was successful, and if not extract any
 %% error text
 %% @end
 %%--------------------------------------------------------------------

@@ -128,8 +128,7 @@ update(ServiceItem, ServiceItems) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Nasty conditional logging (but functional).... bleh...
+%% @doc Nasty conditional logging (but functional).... bleh...
 %% @end
 %%--------------------------------------------------------------------
 -spec log_update(kz_service_item:item()) -> 'ok'.

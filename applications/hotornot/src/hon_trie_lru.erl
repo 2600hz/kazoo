@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Trie LRU.
-%%%
+%%% @doc Trie LRU.
 %%% ```
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix
 %%% (1127494 * 8) div 78009 = 115

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2017, Conversant Ltd
-%%% @doc
-%%% Note: edr_be_amqp must be running, otherwise no events will come
+%%% @doc Note: edr_be_amqp must be running, otherwise no events will come
 %%% through. You can request events with a verbosity or severity
 %%% greater than what edr_be_amqp has bound to, however you won't
 %%% receive any of them.

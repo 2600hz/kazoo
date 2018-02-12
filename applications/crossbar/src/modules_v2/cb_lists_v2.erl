@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Match list module
-%%%
+%%% @doc Match list module
 %%% Handle client requests for match list documents, api v2
 %%%
 %%%
@@ -61,8 +59,7 @@ migrate(AccountDb, [List | Lists]) ->
 migrate(_AccountDb, []) ->
     'ok'.
 
-%% @doc
-%% Migrate old entry documents to the new format
+%% @doc Migrate old entry documents to the new format
 %% @end
 -spec migrate_old_entry_docs(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 migrate_old_entry_docs(AccountDb, ListJObj) ->
@@ -75,8 +72,7 @@ migrate_old_entry_docs(AccountDb, ListJObj) ->
             lager:debug("failed to fetch and migrate old entries to new format: ~p", [_Reason])
     end.
 
-%% @doc
-%% Migrate old entry document to the new format, e.g. set capture_group_length (old length value),
+%% @doc Migrate old entry document to the new format, e.g. set capture_group_length (old length value),
 %% capture_group_key (old cid_key) and move cid_name/cid_number to name/number
 %% @end
 -spec migrate_old_entry_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().

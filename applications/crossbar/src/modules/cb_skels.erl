@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -40,8 +37,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -67,8 +63,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.finish_request">>, ?MODULE, 'finish_request').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -76,8 +71,7 @@ init() ->
 authenticate(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -85,8 +79,7 @@ authenticate(_) -> 'false'.
 authorize(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -100,9 +93,7 @@ allowed_methods(_Thing) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -120,8 +111,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% What content-types will the module be using to respond (matched against
+%% @doc What content-types will the module be using to respond (matched against
 %% client's accept header).
 %% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
@@ -131,8 +121,7 @@ content_types_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% What content-types will the module be requiring (matched to the client's
+%% @doc What content-types will the module be requiring (matched to the client's
 %% Content-Type header.
 %% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
@@ -142,8 +131,7 @@ content_types_accepted(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If you provide alternative languages, return a list of languages and optional
+%% @doc If you provide alternative languages, return a list of languages and optional
 %% quality value.
 %%
 %% e.g.: `[<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]'
@@ -154,8 +142,7 @@ languages_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If you provide alternative charsets, return a list of charsets and optional
+%% @doc If you provide alternative charsets, return a list of charsets and optional
 %% quality value.
 %%  e.g. `[<<"iso-8859-5">>, <<"unicode-1-1;q=0.8">>]'
 %% @end
@@ -165,8 +152,7 @@ charsets_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If you provide alternative encodings, return a list of encodings and optional
+%% @doc If you provide alternative encodings, return a list of encodings and optional
 %% quality value.
 %% e.g. : `[<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]'
 %% @end
@@ -176,8 +162,7 @@ encodings_provided(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /skels mights load a list of skel objects
 %% /skels/123 might load the skel object 123
@@ -210,8 +195,7 @@ validate_skel(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If you handle billing-related calls, this callback will allow you to
+%% @doc If you handle billing-related calls, this callback will allow you to
 %% execute those.
 %% @end
 %%--------------------------------------------------------------------
@@ -220,8 +204,7 @@ billing(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -229,8 +212,7 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -239,8 +221,7 @@ post(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%% @doc If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -249,8 +230,7 @@ patch(Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -258,8 +238,7 @@ delete(Context, _) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If you want to manipulate the etag header, change it here in the cb_context{}
+%% @doc If you want to manipulate the etag header, change it here in the cb_context{}
 %% @end
 %%--------------------------------------------------------------------
 -spec etag(cb_context:context()) -> cb_context:context().
@@ -267,8 +246,7 @@ etag(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the expires header
+%% @doc Set the expires header
 %% @end
 %%--------------------------------------------------------------------
 -spec expires(cb_context:context()) -> cb_context:context().
@@ -276,8 +254,7 @@ expires(Context) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% The response has gone out, do some cleanup of your own here.
+%% @doc The response has gone out, do some cleanup of your own here.
 %% @end
 %%--------------------------------------------------------------------
 -spec finish_request(cb_context:context()) -> cb_context:context().
@@ -286,8 +263,7 @@ finish_request(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
@@ -297,8 +273,7 @@ create(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -307,8 +282,7 @@ read(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -319,8 +293,7 @@ update(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update-merge an existing menu document with the data provided, if it is
+%% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -330,8 +303,7 @@ validate_patch(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -352,8 +324,7 @@ on_successful_validation(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

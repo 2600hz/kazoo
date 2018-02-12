@@ -52,8 +52,7 @@ api_version_constraint('forward', NotVersion) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the app for inclusion in a supervisor tree.
+%% @doc Starts the app for inclusion in a supervisor tree.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -65,8 +64,7 @@ start_link() ->
     'ignore'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Load a crossbar module's bindings into the bindings server.
+%% @doc Load a crossbar module's bindings into the bindings server.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_versioned_module(binary()) -> boolean().
@@ -118,8 +116,7 @@ start_mod_version(Version, Mod) ->
             'false'
     end.
 %%--------------------------------------------------------------------
-%% @doc
-%% Load a crossbar module's bindings into the bindings server.
+%% @doc Load a crossbar module's bindings into the bindings server.
 %% @end
 %%--------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> 'ok'.
@@ -167,8 +164,7 @@ stop_mod_version(Version, Mod) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Functions for `onrequest' and `onresponse' callbacks
+%% @doc Functions for `onrequest' and `onresponse' callbacks
 %% @end
 %%--------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().

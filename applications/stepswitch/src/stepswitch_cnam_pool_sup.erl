@@ -27,8 +27,7 @@
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor.
+%% @doc Starts the supervisor.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -36,8 +35,7 @@ start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% @doc Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.

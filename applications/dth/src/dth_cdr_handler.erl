@@ -1,8 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @doc
-%%% Send a CDR payload to DTH
+%%% @doc Send a CDR payload to DTH
 %%% @end
 %%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -153,4 +152,3 @@ get_account_code(JObj) ->
         'undefined' -> AccountID;
         _Else -> << AccountID/binary, "-IN">>
     end.
-

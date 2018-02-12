@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%% Handle e911 provisioning
-%%%
-%%%
+%%% @doc Handle e911 provisioning
 %%% @author James Aimonetti
 %%% @author Peter Defebvre
 %%% @end
@@ -21,8 +18,7 @@
 -define(CUSTOMER_NAME, <<"customer_name">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
@@ -43,8 +39,7 @@ save(Number, _State) ->
     delete(Number).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted, and will
+%% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------

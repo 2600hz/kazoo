@@ -109,8 +109,7 @@ call_charges(Ledger, CallId, Event, 'false') ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Filter list of transactions by reason
+%% @doc Filter list of transactions by reason
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_by_reason(kz_term:ne_binary(), kz_transactions()) -> kz_transactions().
@@ -149,8 +148,7 @@ is_from_braintree(Transaction) ->
     kz_transaction:description(Transaction) =:= <<"braintree transaction">>.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Keep only per minute transactions
+%% @doc Keep only per minute transactions
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_for_per_minute(kz_transactions()) -> kz_transactions().
@@ -169,8 +167,7 @@ is_per_minute(Transaction) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% fetch last transactions
+%% @doc fetch last transactions
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_last(kz_term:ne_binary(), pos_integer()) ->
@@ -183,8 +180,7 @@ fetch_last(Account, Count) ->
     fetch_local(Account, [ViewOptions]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% fetch last transactions from From to To
+%% @doc fetch last transactions from From to To
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
@@ -225,8 +221,7 @@ get_range(Account, From, To) ->
     ].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% fetch last local transactions from From to To
+%% @doc fetch last local transactions from From to To
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_local(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
@@ -282,8 +277,7 @@ do_fetch_bookkeeper(_Account, [], Transactions) ->
     {'ok', Transactions}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% fetch last bookkeeper transactions from From to To
+%% @doc fetch last bookkeeper transactions from From to To
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_bookkeeper(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
@@ -333,8 +327,7 @@ transaction_to_prop_fold(Transaction, Acc) ->
     [{{Date, Amount}, Transaction}|Acc].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Save list of record
+%% @doc Save list of record
 %% @end
 %%--------------------------------------------------------------------
 -type save_acc() :: [{'ok' | 'error', kz_transaction:transaction()}].

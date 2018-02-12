@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handles setup/initialization of Konami
-%%%
+%%% @doc Handles setup/initialization of Konami
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Handlers for various AMQP payloads
-%%%
+%%% @doc Handlers for various AMQP payloads
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

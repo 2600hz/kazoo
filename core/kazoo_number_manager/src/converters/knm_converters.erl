@@ -166,8 +166,7 @@ to_1npan(Num) ->
     (?CONVERTER_MOD):to_1npan(Num).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a number determine the database name it belongs to..
+%% @doc Given a number determine the database name it belongs to..
 %% @end
 %%--------------------------------------------------------------------
 -spec to_db(<<_:40,_:_*8>>) -> kz_term:api_binary().
@@ -176,8 +175,7 @@ to_db(<<NumPrefix:5/binary, _/binary>>) ->
 to_db(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns `{Reconcilables, NotReconcilables}'.
+%% @doc Returns `{Reconcilables, NotReconcilables}'.
 %% @end
 %%--------------------------------------------------------------------
 -spec are_reconcilable(kz_term:ne_binaries()) -> {kz_term:ne_binaries(), kz_term:ne_binaries()}.

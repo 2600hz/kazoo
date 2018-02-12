@@ -176,8 +176,7 @@ maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Update `pvt_signature_secret' for user
+%% @doc Update `pvt_signature_secret' for user
 %% @end
 %%--------------------------------------------------------------------
 -spec reset_identity_secret(cb_context:context()) -> cb_context:context().
@@ -187,8 +186,7 @@ reset_identity_secret(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get merge result of account and its parents, reseller and system
+%% @doc Get merge result of account and its parents, reseller and system
 %% authentication configuration.
 %% @end
 %%--------------------------------------------------------------------
@@ -210,8 +208,7 @@ get_inherited_config(AccountId, 'false') ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Utility func to generate method's config path
+%% @doc Utility func to generate method's config path
 %% @end
 %%--------------------------------------------------------------------
 -spec method_config_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
@@ -219,8 +216,7 @@ method_config_path(Method, Key) -> [Method, Key].
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Utility func to generate method's multi-factor config path
+%% @doc Utility func to generate method's multi-factor config path
 %% @end
 %%--------------------------------------------------------------------
 -spec method_mfa_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
@@ -242,8 +238,7 @@ token_auth_expiry(Method, AuthConfig) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check if is authenticator module is enabled or not.
+%% @doc Check if is authenticator module is enabled or not.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_auth_module_enabled(kz_term:ne_binary(), kz_json:object()) -> boolean().
@@ -252,8 +247,7 @@ is_auth_module_enabled(Method, Config) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Checks if authenticator module is configured to do multi factor auth.
+%% @doc Checks if authenticator module is configured to do multi factor auth.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_multi_factor_enabled(kz_term:proplist(), kz_json:object()) -> boolean().
@@ -269,9 +263,7 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Checks if multi factor is enabled by looking at system, account and hierarchy.
-%%
+%% @doc Checks if multi factor is enabled by looking at system, account and hierarchy.
 %% If the configuration comes from a parent account
 %% then we should look for property `multi_factor.include_subaccounts'.
 %% If it's `false' then authentication should to proceed normally
@@ -299,8 +291,7 @@ master_account_id() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Log successful authentication if configured to do so.
+%% @doc Log successful authentication if configured to do so.
 %% @end
 %%--------------------------------------------------------------------
 -spec log_success_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.
@@ -328,8 +319,7 @@ log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) -
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Log failed authentication if configured to do so.
+%% @doc Log failed authentication if configured to do so.
 %% @end
 %%--------------------------------------------------------------------
 -spec log_failed_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Manage data connections.
+%%% @doc Manage data connections.
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_datamgr).
@@ -114,8 +113,7 @@
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Overwrite the existing contents of a document with the contents of
+%% @doc Overwrite the existing contents of a document with the contents of
 %% a file.
 %% @end
 %%--------------------------------------------------------------------
@@ -144,8 +142,7 @@ update_doc_from_file(DbName, App, File) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create or overwrite the existing contents of a document with the
+%% @doc Create or overwrite the existing contents of a document with the
 %% contents of a file.
 %% @end
 %%--------------------------------------------------------------------
@@ -163,8 +160,7 @@ revise_doc_from_file(DbName, App, File) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Loads all `.json' files in an applications `priv/couchdb/views/' folder
+%% @doc Loads all `.json' files in an applications `priv/couchdb/views/' folder
 %% into a given database.
 %% @end
 %%--------------------------------------------------------------------
@@ -173,8 +169,7 @@ revise_views_from_folder(DbName, App) ->
     revise_docs_from_folder(DbName, App, "views").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Loads all `.json' files in an applications folder, relative to
+%% @doc Loads all `.json' files in an applications folder, relative to
 %% `priv/couchdb/' into a given database
 %% @end
 %%--------------------------------------------------------------------
@@ -226,8 +221,7 @@ should_update(DbName, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Replaces multi-line Javascript into single line, on the fly
+%% @doc Replaces multi-line Javascript into single line, on the fly
 %% while loading views from files.
 %% @end
 %%--------------------------------------------------------------------
@@ -252,8 +246,7 @@ inline_js_fun(Type, Code, Acc) ->
     kz_json:set_value(Type, Code, Acc).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Load fixture files from a folder into a database, only if the ID
+%% @doc Load fixture files from a folder into a database, only if the ID
 %% isn't already exists.
 %% @end
 %%--------------------------------------------------------------------
@@ -285,8 +278,7 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
     do_load_fixtures_from_folder(DbName, Fs).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Determines if a database exists.
+%% @doc Determines if a database exists.
 %% @end
 %%--------------------------------------------------------------------
 -spec db_exists(kz_term:text()) -> boolean().
@@ -316,8 +308,7 @@ db_exists(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Determines if a database exists, also checks other connections.
+%% @doc Determines if a database exists, also checks other connections.
 %% @end
 %%--------------------------------------------------------------------
 -spec db_exists_all(kz_term:text()) -> boolean().
@@ -330,8 +321,7 @@ db_exists_all(DbName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Retrieve information regarding all databases.
+%% @doc Retrieve information regarding all databases.
 %% @end
 %%--------------------------------------------------------------------
 -spec db_info() -> {'ok', kz_term:ne_binaries()} |
@@ -340,8 +330,7 @@ db_info() ->
     kzs_db:db_info(kzs_plan:plan()).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Retrieve information regarding a database.
+%% @doc Retrieve information regarding a database.
 %% @end
 %%--------------------------------------------------------------------
 -spec db_info(kz_term:text()) -> {'ok', kz_json:object()} |
@@ -355,8 +344,7 @@ db_info(DbName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Retrieve information regarding a database design doc.
+%% @doc Retrieve information regarding a database design doc.
 %% @end
 %%--------------------------------------------------------------------
 -spec design_info(kz_term:text(), kz_term:ne_binary()) ->
@@ -414,9 +402,7 @@ db_view_update(DbName, Views, Remove) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Replicate a DB from one host to another.
-%%
+%% @doc Replicate a DB from one host to another.
 %% IMPORTANT: Use the atom true, not binary `<<"true">>' (though it may be changing in couch to allow `<<"true">>')
 %%
 %% Proplist description:
@@ -452,8 +438,7 @@ db_replicate(JObj) ->
     kzs_db:db_replicate(kzs_plan:plan(), JObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Determines if a database exists.
+%% @doc Determines if a database exists.
 %% @end
 %%--------------------------------------------------------------------
 -spec db_create(kz_term:text()) -> boolean().
@@ -470,8 +455,7 @@ db_create(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Compact a database.
+%% @doc Compact a database.
 %% @end
 %%--------------------------------------------------------------------
 -spec db_compact(kz_term:text()) -> boolean().
@@ -485,8 +469,7 @@ db_compact(DbName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Delete a database (takes an `encoded' DbName).
+%% @doc Delete a database (takes an `encoded' DbName).
 %% @end
 %%--------------------------------------------------------------------
 -spec db_delete(kz_term:text()) -> boolean().
@@ -503,8 +486,7 @@ db_delete(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Archive a database (takes an `encoded' DbName).
+%% @doc Archive a database (takes an `encoded' DbName).
 %% @end
 %%--------------------------------------------------------------------
 -spec db_archive(kz_term:ne_binary()) -> 'ok' | data_error().
@@ -535,8 +517,7 @@ db_import(DbName, ArchiveFile) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% fetch a cached doc or open it if not available.
+%% @doc fetch a cached doc or open it if not available.
 %% @end
 %%--------------------------------------------------------------------
 -spec open_cache_doc(kz_term:text(), docid()) ->
@@ -633,8 +614,7 @@ flush_cache_docs(DbName) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% open a document given a doc id returns an error tuple or the json.
+%% @doc open a document given a doc id returns an error tuple or the json.
 %% @end
 %%--------------------------------------------------------------------
 -spec open_doc(kz_term:text(), docid()) ->
@@ -662,8 +642,7 @@ open_doc(DbName, DocId, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Open documents given doc ids returns an error tuple or the json.
+%% @doc Open documents given doc ids returns an error tuple or the json.
 %% Each returned JObj contains either an `<<"doc">>' or `<<"error">>' field.
 %% So: match both error tuple and each JSON of the list.
 %% @end
@@ -717,8 +696,7 @@ read_chunked_results(DocIds, {error, Reason}, Acc) ->
     ] ++ Acc.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Open documents given doc ids returns an error tuple or the json.
+%% @doc Open documents given doc ids returns an error tuple or the json.
 %% Attempts to fetch from cache before making an ad-hoc bulk read.
 %% Each returned JObj contains either an `<<"doc">>' or `<<"error">>' field.
 %% So: match both error tuple and each JSON of the list.
@@ -791,8 +769,7 @@ all_design_docs(DbName, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get the revision of a document (much faster than requesting the whole document).
+%% @doc Get the revision of a document (much faster than requesting the whole document).
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_doc_rev(kz_term:text(), docid()) ->
@@ -816,8 +793,7 @@ lookup_doc_rev(DbName, DocId, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Save document to database.
+%% @doc Save document to database.
 %% @end
 %%--------------------------------------------------------------------
 -spec save_doc(kz_term:text(), kz_json:object() | kz_json:objects()) ->
@@ -829,8 +805,7 @@ save_doc(DbName, Doc) ->
     save_doc(DbName, Doc, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Save a document. If it fails because of conflict, pulls latest
+%% @doc Save a document. If it fails because of conflict, pulls latest
 %% revision and tries saving again. Otherwise return.
 %% @end
 %%--------------------------------------------------------------------
@@ -908,8 +883,7 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fetch, update and save a doc (creating if not present).
+%% @doc Fetch, update and save a doc (creating if not present).
 %% @end
 %%--------------------------------------------------------------------
 -type update_props() :: [{kz_json:path(), kz_json:json_term()}].
@@ -951,8 +925,7 @@ update_doc(DbName, Id, UpdateProps, CreateProps, ExtraUpdateProps)
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Remove document from the db.
+%% @doc Remove document from the db.
 %% @end
 %%--------------------------------------------------------------------
 -spec del_doc(kz_term:text(), kz_json:object() | kz_json:objects() | kz_term:ne_binary()) ->
@@ -975,8 +948,7 @@ del_doc(DbName, Doc, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Remove documents from the db.
+%% @doc Remove documents from the db.
 %% @end
 %%--------------------------------------------------------------------
 -spec del_docs(kz_term:text(), kz_json:objects() | kz_term:ne_binaries()) ->
@@ -1002,8 +974,7 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fetch attachment with `AName' from document `DocId'.
+%% @doc Fetch attachment with `AName' from document `DocId'.
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary()) ->
@@ -1055,9 +1026,7 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fetch attachment with `AName' from document `DocId'.
-%%
+%% @doc Fetch attachment with `AName' from document `DocId'.
 %% Options:
 %% <dl>
 %%   <dt>`{content_type, kz_term:ne_binary()}'</dt><dd>Content type of attachment.</dd>
@@ -1218,8 +1187,7 @@ add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get the results of the view.
+%% @doc Get the results of the view.
 %% Returns `{Total, Offset, Meta, Rows}'
 %% @end
 %%--------------------------------------------------------------------
@@ -1305,8 +1273,7 @@ get_result_ids(JObjs) ->
     [kz_doc:id(JObj) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Gets the only result of a view.
+%% @doc Gets the only result of a view.
 %% If no result is found: returns `{error, not_found}'.
 %% If more than one result is found, either:
 %% - if `Options' contains `first_when_multiple'
@@ -1400,9 +1367,7 @@ change_notice() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to correct the database name.
-%%
+%% @doc Attempt to correct the database name.
 %% NOTE: The attempt to correct the dbname is not very Erlang like, but
 %%  since there are more places that expect an error and do not
 %%  handle a crash appropriately/gracefully this is a quick solution...
@@ -1464,8 +1429,7 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
     kzs_doc:move_doc(Src, Dst, CopySpec, Options).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% How many documents are chunked when doing a bulk save.
+%% @doc How many documents are chunked when doing a bulk save.
 %% @end
 %%------------------------------------------------------------------------------
 -spec max_bulk_insert() -> pos_integer().
@@ -1473,8 +1437,7 @@ max_bulk_insert() ->
     kazoo_data_config:get_pos_integer(<<"max_bulk_insert">>, 2000).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% How many documents are chunked when doing a bulk read.
+%% @doc How many documents are chunked when doing a bulk read.
 %% @end
 %%------------------------------------------------------------------------------
 -spec max_bulk_read() -> pos_integer().

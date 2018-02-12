@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Metaflows execute on top of a call
+%%% @doc Metaflows execute on top of a call
 %%% /accounts/{account_id}/metaflows - manip account metaflows
 %%% /accounts/{account_id}/users/{user_id}/metaflows - manip user's metaflows
 %%% /accounts/{account_id}/devices/{device_id}/metaflows - manip user's metaflows
@@ -30,8 +29,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -43,8 +41,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.metaflows">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -53,9 +50,7 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -69,8 +64,7 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /metaflows mights load a list of metaflow objects
 %% /metaflows/123 might load the metaflow object 123
@@ -143,8 +137,7 @@ validate_set_metaflows(Context, Metaflows, Doc) ->
     crossbar_util:response(Metaflows, cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
@@ -173,8 +166,7 @@ after_post(Context, _DocType, _RespStatus) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().

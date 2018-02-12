@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle AMQP requests to write system configuration data.
+%%% @doc Handle AMQP requests to write system configuration data.
 %%% Support nested keys like key#subkey#subsubkey
 %%%
 %%% @author Edouard Swiac

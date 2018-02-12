@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Accept third-party dialplan
+%%% @doc Accept third-party dialplan
 %%% "data":{
 %%%   "voice_url":"http://your.pivot.server/path/to/pivot/dialplan"
 %%%   ,"cdr_url":"http://your.pivot.server/path/to/cdr/receiver"
@@ -25,8 +24,7 @@
 -define(DEFAULT_EVENT_WAIT, 10000).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %%

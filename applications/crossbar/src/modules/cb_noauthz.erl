@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% NoAuthZ module
-%%%
+%%% @doc NoAuthZ module
 %%% Authorizes everyone! PARTY TIME!
 %%%
 %%%

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Functions shared between crossbar modules
-%%%
+%%% @doc Functions shared between crossbar modules
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -86,8 +84,7 @@ cavs_from_request(ReqData, QueryString) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
+%% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------
@@ -253,8 +250,7 @@ apply_assignment_updates(Updates, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Split a list of assignment updates into a 2-element tuple; element
+%% @doc Split a list of assignment updates into a 2-element tuple; element
 %% 1 is a list of port requests, element 2 is a list of numbers that
 %% are already active.
 %%

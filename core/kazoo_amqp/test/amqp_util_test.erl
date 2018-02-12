@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Utilities to facilitate AMQP interaction
-%%%
+%%% @doc Utilities to facilitate AMQP interaction
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Edouard Swiac

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "id":"menu_id"
 %%%   // optional after here
 %%%   "interdigit_timeout":2000
@@ -46,8 +45,7 @@
 -type menu() :: #cf_menu_data{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -58,8 +56,7 @@ handle(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% The main auto-attendant loop, will execute for the number
+%% @doc The main auto-attendant loop, will execute for the number
 %% of retries playing the greeting and collecting digits till the
 %% digits are routable
 %% @end
@@ -142,8 +139,7 @@ menu_handle_no_digits(#cf_menu_data{retries=Retries}=Menu, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% The primary sequence logic to route the collected digits
+%% @doc The primary sequence logic to route the collected digits
 %% @end
 %%--------------------------------------------------------------------
 -spec try_match_digits(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
@@ -158,8 +154,7 @@ try_match_digits(Digits, Menu, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check if the digits are a exact match for the auto-attendant children
+%% @doc Check if the digits are a exact match for the auto-attendant children
 %% @end
 %%--------------------------------------------------------------------
 -spec is_callflow_child(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
@@ -173,8 +168,7 @@ is_callflow_child(Digits, _, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check if hunting is enabled
+%% @doc Check if hunting is enabled
 %% @end
 %%--------------------------------------------------------------------
 -spec is_hunt_enabled(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
@@ -183,8 +177,7 @@ is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check whitelist hunt digit patterns
+%% @doc Check whitelist hunt digit patterns
 %% @end
 %%--------------------------------------------------------------------
 -spec is_hunt_allowed(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
@@ -207,8 +200,7 @@ is_hunt_allowed(Digits, #cf_menu_data{hunt_allow=RegEx}, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check blacklisted hunt digit patterns
+%% @doc Check blacklisted hunt digit patterns
 %% @end
 %%--------------------------------------------------------------------
 -spec is_hunt_denied(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().
@@ -231,8 +223,7 @@ is_hunt_denied(Digits, #cf_menu_data{hunt_deny=RegEx}, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Hunt for a callflow with these numbers
+%% @doc Hunt for a callflow with these numbers
 %% @end
 %%--------------------------------------------------------------------
 -spec hunt_for_callflow(kz_term:ne_binary(), menu(), kapps_call:call()) -> boolean().

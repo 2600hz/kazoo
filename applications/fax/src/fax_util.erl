@@ -51,8 +51,7 @@ collect_channel_prop(Key, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
+%% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------

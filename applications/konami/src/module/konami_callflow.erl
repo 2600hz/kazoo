@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Overlay a callflow onto the caller
+%%% @doc Overlay a callflow onto the caller
 %%% data:{
 %%%   "id":"callflow_id"
 %%% }

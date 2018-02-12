@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% set [park|transfer|hangup]_after_bridge variable
-%%%
+%%% @doc set [park|transfer|hangup]_after_bridge variable
 %%% "data":{
 %%%   "action": "park" | "transfer" | "hangup",
 %%%   "data":"some_extension_number" // number to transfer to or bool
@@ -42,4 +40,3 @@ build_action(<<"transfer">>, ToExtension) when is_binary(ToExtension) ->
 build_action(_Cmd, _Data) ->
     lager:info("unknown command: ~s(~p)", [_Cmd, _Data]),
     kz_json:new().
-

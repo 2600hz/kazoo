@@ -43,8 +43,7 @@ bind_q(_, _) -> 'ok'.
 unbind_q(_, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -52,8 +51,7 @@ declare_exchanges() ->
     amqp_util:targeted_exchange().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Publish to the participant
+%% @doc Publish to the participant
 %% @end
 %%--------------------------------------------------------------------
 

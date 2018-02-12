@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%% Module for interacting with JSON schema docs
-%%%
+%%% @doc Module for interacting with JSON schema docs
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -651,8 +649,7 @@ error_to_jobj(Other, _Options) ->
     throw({'schema_error', Other}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Add a validation error to the list of request errors
+%% @doc Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
 -spec validation_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
@@ -870,4 +867,3 @@ fix_path(Path) ->
 -spec fix_el(kz_json:key() | non_neg_integer()) -> kz_json:key() | non_neg_integer().
 fix_el(I) when is_integer(I) -> I+1;
 fix_el(El) -> El.
-

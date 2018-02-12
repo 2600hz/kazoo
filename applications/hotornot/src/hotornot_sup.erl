@@ -34,8 +34,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-%% @doc
-%% Add processes if necessary.
+%% @doc Add processes if necessary.
 %% @end
 -spec upgrade() -> 'ok'.
 upgrade() ->

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Utilities to facilitate AMQP interaction
-%%%
+%%% @doc Utilities to facilitate AMQP interaction
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Edouard Swiac
@@ -175,8 +173,7 @@
 -type amqp_properties() :: [amqp_property()].
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Publish AMQP messages
+%% @doc Publish AMQP messages
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -518,8 +515,7 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Create AMQP exchanges
+%% @doc Create AMQP exchanges
 %% @end
 %%------------------------------------------------------------------------------
 -spec kapps_exchange() -> 'ok'.
@@ -623,8 +619,7 @@ declare_exchange(Exchange, Type, Options) ->
                        }.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Create AMQP queues
+%% @doc Create AMQP queues
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -836,8 +831,7 @@ message_ttl(Args, Acc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Delete AMQP queue
+%% @doc Delete AMQP queue
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -905,8 +899,7 @@ queue_delete(Queue, Prop) ->
     kz_amqp_channel:command(QD).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Bind a Queue to an Exchange (with optional Routing Key)
+%% @doc Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1062,8 +1055,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     kz_amqp_channel:command(QB).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Unbind a Queue from an Exchange
+%% @doc Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1171,8 +1163,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
     kz_amqp_channel:command(UB).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Bind a Queue to an Exchange (with optional Routing Key)
+%% @doc Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
@@ -1192,8 +1183,7 @@ basic_consume(Queue, Options) ->
     kz_amqp_channel:command(BC).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% This method cancels a consumer. This does not affect already delivered messages,
+%% @doc This method cancels a consumer. This does not affect already delivered messages,
 %% but it does mean the server will not send any more messages for that consumer.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1205,16 +1195,14 @@ basic_cancel() -> kz_amqp_channel:command(#'basic.cancel'{}).
 basic_cancel(ConsumerTag) -> kz_amqp_channel:command(#'basic.cancel'{consumer_tag=ConsumerTag}).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% This method sets confirmation from server
+%% @doc This method sets confirmation from server
 %% @end
 %%------------------------------------------------------------------------------
 -spec confirm_select() -> 'ok'.
 confirm_select() -> kz_amqp_channel:command(#'confirm.select'{}).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% This method sets flow control
+%% @doc This method sets flow control
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1247,16 +1235,14 @@ access_request(Options) ->
                      }.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Determines if the content is flaged as type JSON
+%% @doc Determines if the content is flaged as type JSON
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_json(#'P_basic'{}) -> boolean().
 is_json(#'P_basic'{content_type=CT}) -> CT =:= ?DEFAULT_CONTENT_TYPE.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% When sent by the client, this method acknowledges one or more messages
+%% @doc When sent by the client, this method acknowledges one or more messages
 %% delivered via the Deliver or Get-'Ok' methods.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1265,8 +1251,7 @@ basic_ack(#'basic.deliver'{delivery_tag=DTag}) -> basic_ack(DTag);
 basic_ack(DTag) -> kz_amqp_channel:command(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% NOTE: THIS METHOD IS A RABBITMQ-SPECIFIC EXTENSION OF AMQP
+%% @doc NOTE: THIS METHOD IS A RABBITMQ-SPECIFIC EXTENSION OF AMQP
 %% Reject one or more incoming messages.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1275,16 +1260,14 @@ basic_nack(#'basic.deliver'{delivery_tag=DTag}) -> basic_nack(DTag);
 basic_nack(DTag) -> kz_amqp_channel:command(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Determine if the AMQP host is currently reachable
+%% @doc Determine if the AMQP host is currently reachable
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_host_available() -> boolean().
 is_host_available() -> kz_amqp_connections:is_available().
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Specify quality of service
+%% @doc Specify quality of service
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_qos(non_neg_integer()) -> 'ok'.
@@ -1292,8 +1275,7 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
     kz_amqp_channel:command(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Encode a key so characters like dot won't interfere with routing separator
+%% @doc Encode a key so characters like dot won't interfere with routing separator
 %% @end
 %%------------------------------------------------------------------------------
 -spec encode(binary()) -> binary().

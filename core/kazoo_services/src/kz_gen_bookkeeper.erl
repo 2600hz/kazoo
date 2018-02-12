@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz, INC
-%%% @doc
-%%% A generic Kazoo bookkeeper
-%%%
+%%% @doc A generic Kazoo bookkeeper
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------

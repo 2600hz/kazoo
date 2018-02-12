@@ -355,8 +355,7 @@ per_minute_cost(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% R :: rate, per minute, in units (0.01, 1 cent per minute)
+%% @doc R :: rate, per minute, in units (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
 %% RM :: rate minimum, in seconds, minimum number of seconds to bill for
 %% Sur :: surcharge, in units, (0.05, 5 cents to connect the call)

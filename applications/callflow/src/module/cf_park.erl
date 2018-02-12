@@ -36,8 +36,7 @@
 -define(PARKING_APP_NAME, <<"park">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
@@ -49,8 +48,7 @@ update_presence(SlotNumber, _PresenceId, AccountDb) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
@@ -129,8 +127,7 @@ direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Determine the appropriate action to retrieve a parked call
+%% @doc Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
 -spec retrieve(kz_term:ne_binary(), kapps_call:call()) ->
@@ -223,8 +220,7 @@ pickup_event(Call, _Type, _Evt) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Determine the appropriate action to park the current call scenario
+%% @doc Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
 -spec park_call(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:api_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -286,8 +282,7 @@ wait_for_hangup(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Builds the json object representing the call in the parking slot
+%% @doc Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
 -spec create_slot(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), boolean(), kapps_call:call()) -> kz_json:object().
@@ -348,8 +343,7 @@ maybe_custom_presence_id(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns the provided slot number or the next available if none
+%% @doc Returns the provided slot number or the next available if none
 %% was provided
 %% @end
 %%--------------------------------------------------------------------
@@ -373,8 +367,7 @@ find_slot_number([A|[B|_]=Slots]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Save the slot data in the parked calls object at the slot number.
+%% @doc Save the slot data in the parked calls object at the slot number.
 %% If, on save, it conflicts then it gets the new instance
 %% and tries again, determining the new slot.
 %% @end
@@ -441,8 +434,7 @@ maybe_add_slot_doc_rev(JObj, AccountDb) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% After an attended transfer we need to find the callid that we stored
+%% @doc After an attended transfer we need to find the callid that we stored
 %% because it was the "C-Leg" of a transfer and now we have the
 %% actuall "A-Leg".  Find the old callid and update it with the new one.
 %% @end
@@ -524,8 +516,7 @@ maybe_get_ringback_id(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempts to retrieve the parked calls list from the datastore, if
+%% @doc Attempts to retrieve the parked calls list from the datastore, if
 %% the list does not exist then it returns an new empty instance
 %% @end
 %%--------------------------------------------------------------------
@@ -734,8 +725,7 @@ slot_configuration(Data, SlotNumber) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Ringback the device that parked the call
+%% @doc Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
 -spec get_endpoint_id(kz_term:api_binary(), kapps_call:call()) -> kz_term:api_binary().
@@ -749,8 +739,7 @@ get_endpoint_id(Username, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Ringback the device that parked the call
+%% @doc Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
 -type ringback_parker_result() :: 'answered' | 'intercepted' | 'failed' | 'channel_hungup'.

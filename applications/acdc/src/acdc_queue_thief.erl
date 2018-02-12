@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Caller calls in and gets the first available call from the queue
-%%%
+%%% @doc Caller calls in and gets the first available call from the queue
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

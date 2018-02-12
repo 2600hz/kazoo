@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Upload a rate deck, query rates for a given DID
-%%%
+%%% @doc Upload a rate deck, query rates for a given DID
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -79,8 +77,7 @@ authorize(_Context, _Nouns) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -100,9 +97,7 @@ allowed_methods(?NUMBER, _PhoneNumber) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -139,8 +134,7 @@ content_types_provided_by_verb(Context, _Verb) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -222,8 +216,7 @@ validate_number(Phonenumber, Context) ->
 %%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
@@ -233,8 +226,7 @@ create(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -243,8 +235,7 @@ read(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -255,8 +246,7 @@ update(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update-merge an existing menu document with the data provided, if it is
+%% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -306,8 +296,7 @@ add_default_route(Doc, Prefix) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -317,8 +306,7 @@ summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check the uploaded file for CSV
+%% @doc Check the uploaded file for CSV
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -348,8 +336,7 @@ error_no_file(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -358,8 +345,7 @@ normalize_view_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert the file, based on content-type, to rate documents
+%% @doc Convert the file, based on content-type, to rate documents
 %% @end
 %%--------------------------------------------------------------------
 -spec upload_csv(cb_context:context()) -> 'ok'.

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% NoAuthN module
-%%%
+%%% @doc NoAuthN module
 %%% Authenticates everyone! PARTY TIME!
 %%%
 %%%

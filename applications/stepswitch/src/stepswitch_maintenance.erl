@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Preforms maintenance operations against the stepswitch dbs
-%%%
+%%% @doc Preforms maintenance operations against the stepswitch dbs
 %%% @author Karl Anderson
 %%% @end
 %%%-------------------------------------------------------------------
@@ -47,8 +45,7 @@ pretty_print_lookup([{Key, Value}|Props]) ->
     pretty_print_lookup(Props).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Displays account tree when given a DID
+%% @doc Displays account tree when given a DID
 %% @end
 %%--------------------------------------------------------------------
 -spec number_tree(kz_term:ne_binary()) -> 'ok'.
@@ -106,8 +103,7 @@ pretty_print_resource([{Key, Value}|Props]) ->
     pretty_print_resource(Props).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Flush the stepswitch local cache
+%% @doc Flush the stepswitch local cache
 %% @end
 %%--------------------------------------------------------------------
 -spec flush() -> 'ok'.
@@ -118,8 +114,7 @@ cnam_flush() ->
     io:format("flushed ~p entries from cnam cache~n", [stepswitch_cnam:flush()]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Lookup a number in the route db and return the account ID if known
+%% @doc Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh() -> 'ok'.
@@ -129,8 +124,7 @@ refresh() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Lookup a number in the route db and return the account ID if known
+%% @doc Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_number(kz_term:text()) -> 'ok'.
@@ -153,8 +147,7 @@ pretty_print_number_props([{Key, Value}|Props]) ->
     pretty_print_number_props(Props).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Instructs stepswitch_outbound to re-scan the resource db and
+%% @doc Instructs stepswitch_outbound to re-scan the resource db and
 %% refresh the cache.
 %% @end
 %%--------------------------------------------------------------------

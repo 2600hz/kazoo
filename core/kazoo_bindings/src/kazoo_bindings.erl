@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Store routing keys/pid bindings. When a binding is fired,
+%%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
@@ -125,8 +124,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Map Payload over bound handlers.
+%% @doc Map Payload over bound handlers.
 %% Return `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified
@@ -179,8 +177,7 @@ get_binding_candidates(Vsn, Action) ->
                             }]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fold over bound handlers.
+%% @doc Fold over bound handlers.
 %% Return the modified Payload after it has been threaded through
 %% all matching bindings.
 %% @end
@@ -194,8 +191,7 @@ fold(Routing, Payload, Options) ->
     fold_processor(Routing, Payload, rt_options(Options)).
 
 %%-------------------------------------------------------------------
-%% @doc
-%% Helper functions for working on a result set of bindings.
+%% @doc Helper functions for working on a result set of bindings.
 %% @end
 %%-------------------------------------------------------------------
 -spec any(kz_term:proplist(), function()) -> boolean().
@@ -223,9 +219,7 @@ succeeded(Res, F) when is_list(Res),
     [R || R <- Res, F(R)].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Match routing patterns. `*' matches `1' slot, `#' `0' or more.
-%%
+%% @doc Match routing patterns. `*' matches `1' slot, `#' `0' or more.
 %% `<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>'
 %%
 %% Note: matching only accepts wild-cards on first argument (asymmetric).
@@ -289,8 +283,7 @@ matches([B | Bs], [B | Rs]) ->
 matches(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
+%% @doc Starts the server
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -382,9 +375,7 @@ gift_data() -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server.
-%%
+%% @doc Initializes the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
@@ -395,9 +386,7 @@ init([]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling call messages.
-%%
+%% @doc Handling call messages.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -498,9 +487,7 @@ add_binding(Binding, Responder, Pieces, Prefix) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling cast messages
-%%
+%% @doc Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -579,9 +566,7 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
+%% @doc Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -594,8 +579,7 @@ handle_info(_Info, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
+%% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
@@ -608,9 +592,7 @@ terminate(_Reason, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -623,8 +605,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If a binding_result uses 'eoq' for its response, the payload is
+%% @doc If a binding_result uses 'eoq' for its response, the payload is
 %% ignored and the subscriber is re-inserted into the queue, with the
 %% previous payload being passed to the next invocation.
 %% @end

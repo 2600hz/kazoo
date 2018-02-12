@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% General schema manipulation
-%%%
+%%% @doc General schema manipulation
 %%% @author Hesaam Farhang
 %%% @end
 %%%-------------------------------------------------------------------

@@ -328,8 +328,7 @@ erlint(MPInts) when is_list(MPInts) -> [erlint(X) || X <- MPInts ];
 erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Reset Kazoo private key, first get KeyId by from config.
+%% @doc Reset Kazoo private key, first get KeyId by from config.
 %% * Check if the document exists, if not create it,
 %% * generate a new private key and put it in cache
 %% @end

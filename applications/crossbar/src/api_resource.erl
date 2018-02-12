@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% API resource
-%%%
+%%% @doc API resource
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Jon Blanton
@@ -48,8 +46,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Init a REST request.
+%% @doc Init a REST request.
 %% @end
 %%--------------------------------------------------------------------
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
@@ -287,8 +284,7 @@ pretty_metric(N, 'true') ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set `allow' and `allowed' parameters.
+%% @doc Set `allow' and `allowed' parameters.
 %% @end
 %%--------------------------------------------------------------------
 -spec known_methods(cowboy_req:req(), cb_context:context()) ->
@@ -699,8 +695,7 @@ previously_existed(Req, State) ->
     {'false', Req, State}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If we're tunneling PUT through POST,
+%% @doc If we're tunneling PUT through POST,
 %% we need to allow POST to create a nonexistent resource
 %% AKA, 201 Created header set.
 %% @end
@@ -999,9 +994,7 @@ next_chunk_fold(#{chunking_started := StartedChunk
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check folded `to_json' response and send this chunk result.
-%%
+%% @doc Check folded `to_json' response and send this chunk result.
 %% === Sending chunk response from the module directly ===
 %%
 %% If module is sending the chunked response in its own `to_json' function,
@@ -1081,8 +1074,7 @@ send_chunk_response(<<"to_csv">>, Req, Context) ->
     api_util:create_csv_chunk_response(Req, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If chunked is started close data array and send envelope as the last chunk.
+%% @doc If chunked is started close data array and send envelope as the last chunk.
 %% Otherwise return `{Req, Context}' to allow {@link api_util} or {@link api_resource}
 %% handling  the errors in the Context.
 %% @end

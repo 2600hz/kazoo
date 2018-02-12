@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% storage
-%%%
+%%% @doc storage
 %%% @end
 %%%-------------------------------------------------------------------
 -module(cb_storage).
@@ -49,8 +47,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -67,8 +64,7 @@ init() ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -114,8 +110,7 @@ do_authorize(Context, {'user', UserId, AccountId}) ->
                ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -132,9 +127,7 @@ allowed_methods(?PLANS_TOKEN, _StoragePlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -154,8 +147,7 @@ resource_exists(?PLANS_TOKEN) -> 'true'.
 resource_exists(?PLANS_TOKEN, _PlanId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /storage mights load a list of storage objects
 %% /storage/123 might load the storage object 123
@@ -206,8 +198,7 @@ validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
     read(Context, PlanId).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -219,8 +210,7 @@ put(Context, ?PLANS_TOKEN) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -241,8 +231,7 @@ patch(Context, ?PLANS_TOKEN, PlanId) ->
     post(Context, ?PLANS_TOKEN, PlanId).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
@@ -255,8 +244,7 @@ delete(Context, ?PLANS_TOKEN, _PlanId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
@@ -266,8 +254,7 @@ create(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
@@ -280,8 +267,7 @@ read(Context, PlanId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -307,8 +293,7 @@ patch_update(Context, PlanId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -357,8 +342,7 @@ on_successful_validation(Id, ?HTTP_PATCH, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

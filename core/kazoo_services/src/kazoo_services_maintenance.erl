@@ -35,8 +35,7 @@ flush() ->
     kz_services:flush_services().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Add arbitrary credit to an account, without charging the accounts
+%% @doc Add arbitrary credit to an account, without charging the accounts
 %% credit card
 %% @end
 %%--------------------------------------------------------------------
@@ -53,8 +52,7 @@ credit(AccountId, Amount) ->
     'no_return'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Add arbitrary debit to an account, without charging the accounts
+%% @doc Add arbitrary debit to an account, without charging the accounts
 %% debit card
 %% @end
 %%--------------------------------------------------------------------
@@ -98,8 +96,7 @@ admin_description(T) ->
     kz_transaction:set_description(<<"system administrator credit modification">>, T).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% maintenance function for the services db
+%% @doc maintenance function for the services db
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh() -> 'ok'.
@@ -108,8 +105,7 @@ refresh() ->
     kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% scheduals an eventual sync with the bookkeeper and will dirty the
+%% @doc scheduals an eventual sync with the bookkeeper and will dirty the
 %% full reseller tree (as it normally does when changes occur)
 %% @end
 %%--------------------------------------------------------------------
@@ -138,8 +134,7 @@ reconcile(Account) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% runs an immediate sync with a bookkeeper without dirting the
+%% @doc runs an immediate sync with a bookkeeper without dirting the
 %% reseller tree (only the one account is affected)
 %% @end
 %%--------------------------------------------------------------------
@@ -166,8 +161,7 @@ do_sync_descendants([Descendant|Descendants]) ->
     do_sync_descendants(Descendants).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the reseller_id to the provided value on the provided account
+%% @doc Set the reseller_id to the provided value on the provided account
 %% @end
 %%--------------------------------------------------------------------
 -spec set_reseller_id(kz_term:text(), kz_term:text()) -> 'ok'.
@@ -179,8 +173,7 @@ set_reseller_id(Reseller, Account) ->
     whs_account_conversion:set_reseller_id(Reseller, Account).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the reseller_id to the provided value on all the sub-accounts
+%% @doc Set the reseller_id to the provided value on all the sub-accounts
 %% of the provided account
 %% @end
 %%--------------------------------------------------------------------
@@ -193,8 +186,7 @@ cascade_reseller_id(Reseller, Account) ->
     whs_account_conversion:cascade_reseller_id(Reseller, Account).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Remove reseller status from an account and set all its sub accounts
+%% @doc Remove reseller status from an account and set all its sub accounts
 %% to the next higher reseller
 %% @end
 %%--------------------------------------------------------------------
@@ -205,8 +197,7 @@ demote_reseller(Account) ->
     whs_account_conversion:demote(Account).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set the reseller status on the provided account and update all
+%% @doc Set the reseller status on the provided account and update all
 %% sub accounts
 %% @end
 %%--------------------------------------------------------------------

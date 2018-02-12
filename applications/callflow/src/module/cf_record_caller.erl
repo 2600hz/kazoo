@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Handles starting/stopping a call recording
-%%%
+%%% @doc Handles starting/stopping a call recording
 %%% "data":{
 %%%   "time_limit":600 // in seconds, how long to record the call
 %%%   ,"format":["mp3","wav"] // what format to store the recording in

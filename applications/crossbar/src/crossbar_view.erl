@@ -127,8 +127,7 @@ load(Context, View) ->
     load(Context, View, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to load the context with the results of a view
+%% @doc This function attempts to load the context with the results of a view
 %% run against the accounts database.
 %% @end
 %%--------------------------------------------------------------------
@@ -142,8 +141,7 @@ load_range(Context, View) ->
     load_range(Context, View, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to load the context with the timestamped
+%% @doc This function attempts to load the context with the timestamped
 %% results of a view run against the accounts database.
 %% @end
 %%--------------------------------------------------------------------
@@ -157,8 +155,7 @@ load_modb(Context, View) ->
     load_modb(Context, View, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to load the context with the results of a view
+%% @doc This function attempts to load the context with the results of a view
 %% run against the account's MODBs.
 %% @end
 %%--------------------------------------------------------------------
@@ -230,8 +227,7 @@ build_load_range_params(Context, View, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Generates corssbar_view options map for querying MODBs view.
+%% @doc Generates corssbar_view options map for querying MODBs view.
 %% @end
 %%--------------------------------------------------------------------
 -spec build_load_modb_params(cb_context:context(), kz_term:ne_binary(), options()) ->
@@ -247,8 +243,7 @@ build_load_modb_params(Context, View, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Build CouchDB view options. It sets start/end keys,
+%% @doc Build CouchDB view options. It sets start/end keys,
 %% direction and `include_docs' (if it's not using reduce) and removes
 %% CrossbarView Options.
 %%
@@ -290,8 +285,7 @@ start_end_keys(Context, Options) ->
     start_end_keys(Context, Options, direction(Context, Options)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find start/end keys based on direction.
+%% @doc Find start/end keys based on direction.
 %% If `start_key' or `end_key' is present in the request they will be
 %% used used instead.
 %%
@@ -331,8 +325,7 @@ ranged_start_end_keys(Context, Options) ->
     ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find start/end keys based on requested time range and direction.
+%% @doc Find start/end keys based on requested time range and direction.
 %% If `start_key' or `end_key' is present in the request it will be
 %% used used instead. Otherwise the keys will built by key map options.
 %%
@@ -359,8 +352,7 @@ ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Suffix the Timestamp to the provided key map option. Useful to use
+%% @doc Suffix the Timestamp to the provided key map option. Useful to use
 %% generate the keys like `[TS, InteractionId]' for the end key in
 %% {@link cb_cdrs} for example.
 %% @end
@@ -380,8 +372,7 @@ direction(Context) ->
     direction(Context, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find view sort direction from Options or request
+%% @doc Find view sort direction from Options or request
 %% query string. Default to `descending'.
 %% @end
 %%--------------------------------------------------------------------
@@ -405,8 +396,7 @@ time_range(Context, Options) ->
     time_range(Context, Options, props:get_ne_binary_value('range_key_name', Options, <<"created">>)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get view lookup time range from request or Options or
+%% @doc Get view lookup time range from request or Options or
 %% return default range based on system configuration(maximum range).
 %%
 %% Start time, `created_from', should always be prior to end time `created_to'.
@@ -429,8 +419,7 @@ time_range(Context, Options, Key) ->
     time_range(Context, MaxRange, Key, RangeFrom, RangeTo).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Checks whether or not end time is prior to start time. Returns a ranged
+%% @doc Checks whether or not end time is prior to start time. Returns a ranged
 %% tuple `{start_time, end_time}' or `context' with validation error.
 %% @end
 %%--------------------------------------------------------------------
@@ -465,8 +454,7 @@ map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] 
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load view results based on options. If the request is chunked
+%% @doc Load view results based on options. If the request is chunked
 %% finish the chunk if it's started and set is_chunked or return
 %% the {@link cb_cowboy_payload()} back to {@link api_resource} and {@link api_util}.
 %% @end
@@ -500,8 +488,7 @@ load_view(ContextError, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check page size is exhausted or shall we continue querying same
+%% @doc Check page size is exhausted or shall we continue querying same
 %% database (if query is chunk), otherwise go to next database.
 %% It sets `total_queried' after figure out what to do.
 %% @end
@@ -590,8 +577,7 @@ chunk_map_roll_in(#{last_key := OldLastKey}=ChunkMap
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Fold over databases and fetch result from each and count total result.
+%% @doc Fold over databases and fetch result from each and count total result.
 %% If pagination is requested keeps track of last key.
 %% If `page_size' is not in the options, make unlimited get_results.
 %%
@@ -671,8 +657,7 @@ get_results(#{databases := [Db|RestDbs]=Dbs
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Apply filter to result, find last key.
+%% @doc Apply filter to result, find last key.
 %% Then based on page_size, limit, result length and last key see
 %% we're done or shall we continue.
 %% @end
@@ -711,8 +696,7 @@ handle_query_result(#{last_key := LastKey
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check page size is exhausted or not.
+%% @doc Check page size is exhausted or not.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_page_size_and_length(load_params(), non_neg_integer(), kz_json:objects(), last_key()) ->
@@ -746,8 +730,7 @@ check_page_size_and_length(#{total_queried := TotalQueried
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Find out db request limit to use based on chunk size and remaining
+%% @doc Find out db request limit to use based on chunk size and remaining
 %% amount to satisfy page_size.
 %% @end
 %%--------------------------------------------------------------------
@@ -774,8 +757,7 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Apply filter function if provided while keep maintaining the result
+%% @doc Apply filter function if provided while keep maintaining the result
 %% order.
 %% Filter function can be arity 1 (operating on list of JObjs) and
 %% arity 2 (classical Erlang foldl function, e.g. (JObj, Acc)).
@@ -798,8 +780,7 @@ apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Figure out the last key if we have some result and page size is not
+%% @doc Figure out the last key if we have some result and page size is not
 %% exhausted yet.
 %% @end
 %%--------------------------------------------------------------------
@@ -817,8 +798,7 @@ last_key(_LastKey, JObjs, Limit, Returned) when Returned == Limit ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If the last key is known set as the `next_start_key' in the
+%% @doc If the last key is known set as the `next_start_key' in the
 %% response envelope.
 %% @end
 %%--------------------------------------------------------------------
@@ -848,8 +828,7 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Generates general corssbar_view options map for querying view.
+%% @doc Generates general corssbar_view options map for querying view.
 %% @end
 %%--------------------------------------------------------------------
 -spec build_general_load_params(cb_context:context(), kz_term:ne_binary(), options()) -> load_params() | cb_context:context().
@@ -882,8 +861,7 @@ is_chunked(Context, Options) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create ranged view lookup database list using start/end time and
+%% @doc Create ranged view lookup database list using start/end time and
 %% direction.
 %% @end
 %%--------------------------------------------------------------------
@@ -931,9 +909,7 @@ maybe_set_start_end_keys(LoadMap, StartKey, EndKey) -> LoadMap#{start_key => Sta
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If pagination available, returns page size.
-%%
+%% @doc If pagination available, returns page size.
 %% Note: DO NOT ADD ONE (1) TO PAGE_SIZE/LIMIT! Load function will add it.
 %% @end
 %%--------------------------------------------------------------------
@@ -970,8 +946,7 @@ get_page_size_from_request(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get time key value from options or request.
+%% @doc Get time key value from options or request.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_time_key(cb_context:context(), kz_term:ne_binary(), options(), pos_integer()) -> pos_integer().
@@ -987,8 +962,7 @@ get_time_key(Context, Key, Options, Default) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get `max_range' from option or system config.
+%% @doc Get `max_range' from option or system config.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_max_range(options()) -> pos_integer().
@@ -1000,8 +974,7 @@ get_max_range(Options) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Build customized start/end key mapper.
+%% @doc Build customized start/end key mapper.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_start_end_keys(cb_context:context(), options()) -> {api_range_key(), api_range_key()}.
@@ -1024,8 +997,7 @@ map_keymap(_, _, ApiRangeKey) -> ApiRangeKey.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Build customized start/end key mapper for ranged query.
+%% @doc Build customized start/end key mapper for ranged query.
 %% If a map option is not present in the options, the timestamp
 %% will be used as the key.
 %%

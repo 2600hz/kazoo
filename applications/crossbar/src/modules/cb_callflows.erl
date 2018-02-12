@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Callflow gen server for CRUD
-%%%
-%%%
+%%% @doc Callflow gen server for CRUD
 %%% @author Vladimir Darmin
 %%% @author James Aimonetti
 %%% @end
@@ -55,8 +52,7 @@ init() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -72,9 +68,7 @@ allowed_methods(_CallflowId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -86,8 +80,7 @@ resource_exists() -> 'true'.
 resource_exists(_CallflowId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -153,8 +146,7 @@ delete(Context, _CallflowId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized. Or a specific
+%% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
@@ -164,8 +156,7 @@ load_callflow_summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a callflow document from the database
+%% @doc Load a callflow document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_callflow(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -348,8 +339,7 @@ on_successful_validation(CallflowId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
@@ -431,8 +421,7 @@ filter_callflow_list(CallflowId, JObjs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% collect addional informat about the objects referenced in the flow
+%% @doc collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
 
@@ -484,8 +473,7 @@ get_metadata(Flow, Db, Metadata) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Given the metadata json object, an ID and a db find the document
+%% @doc Given the metadata json object, an ID and a db find the document
 %% and add the fields to the metadata.  However, skip if the ID already
 %% exists in metadata.
 %% @end

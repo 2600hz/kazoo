@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "action":"activate" | "deactivate" | "update" | "toggle" | "menu"
 %%% }
 %%%
@@ -43,8 +42,7 @@
 -type callfwd() :: #callfwd{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
@@ -75,8 +73,7 @@ handle(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function provides a menu with the call forwarding options
+%% @doc This function provides a menu with the call forwarding options
 %% @end
 %%--------------------------------------------------------------------
 -spec cf_menu(callfwd(), kz_term:ne_binary(), kapps_call:call()) -> callfwd().
@@ -118,8 +115,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will update the call forwarding enabling it if it is
+%% @doc This function will update the call forwarding enabling it if it is
 %% not, and disabling it if it is
 %% @end
 %%--------------------------------------------------------------------
@@ -141,8 +137,7 @@ cf_toggle(CF, _, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will udpate the call forwarding object on the owner
+%% @doc This function will udpate the call forwarding object on the owner
 %% document to enable call forwarding
 %% @end
 %%--------------------------------------------------------------------
@@ -169,8 +164,7 @@ cf_activate(CF, CaptureGroup, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will udpate the call forwarding object on the owner
+%% @doc This function will udpate the call forwarding object on the owner
 %% document to disable call forwarding
 %% @end
 %%--------------------------------------------------------------------
@@ -182,8 +176,7 @@ cf_deactivate(CF, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will udpate the call forwarding object on the owner
+%% @doc This function will udpate the call forwarding object on the owner
 %% document with a new number
 %% @end
 %%--------------------------------------------------------------------
@@ -219,8 +212,7 @@ cf_update_number(CF, CaptureGroup, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This is a helper function to update a document, and corrects the
+%% @doc This is a helper function to update a document, and corrects the
 %% rev tag if the document is in conflict
 %% @end
 %%--------------------------------------------------------------------
@@ -257,8 +249,7 @@ update_callfwd(#callfwd{doc_id=Id
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will load the call forwarding record
+%% @doc This function will load the call forwarding record
 %% @end
 %%--------------------------------------------------------------------
 -spec get_call_forward(kapps_call:call()) ->

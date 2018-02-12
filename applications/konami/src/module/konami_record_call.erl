@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Record something
+%%% @doc Record something
 %%% "data":{
 %%%   "action":["start","stop"] // one of these
 %%%   ,"time_limit":600 // in seconds, how long to record the call

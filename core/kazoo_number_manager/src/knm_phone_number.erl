@@ -234,8 +234,7 @@ bulk_fetch(T0, JObjs) ->
         end,
     lists:foldl(F, T0, JObjs).
 
-%% @doc
-%% Works the same with the output of save_docs and del_docs
+%% @doc Works the same with the output of save_docs and del_docs
 %% @end
 handle_bulk_change(Db, JObjs, PNsMap, T0, ErrorF)
   when is_map(PNsMap) ->
@@ -506,8 +505,7 @@ log_why_not_to_save(false, _Num) ->
     lager:debug("deleted, skip saving ~s", [_Num]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% To call only from knm_numbers:delete/2 (only for sysadmins).
+%% @doc To call only from knm_numbers:delete/2 (only for sysadmins).
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_numbers:collection()) -> knm_numbers:collection().
@@ -536,8 +534,7 @@ set_state_deleted(T) ->
     setters(T, [{fun set_state/2, ?NUMBER_STATE_DELETED}]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns same fields view phone_numbers.json returns.
+%% @doc Returns same fields view phone_numbers.json returns.
 %% @end
 %%--------------------------------------------------------------------
 -spec to_public_json(knm_phone_number()) -> kz_json:object().
@@ -1557,8 +1554,7 @@ list_attachments(PN, AuthBy) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Sanitize phone number docs fields and remove deprecated fields
+%% @doc Sanitize phone number docs fields and remove deprecated fields
 %% @end
 %%--------------------------------------------------------------------
 -spec sanitize_public_fields(kz_json:object()) -> kz_json:object().
@@ -1677,8 +1673,7 @@ save_to_number_db(T0) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Makes sure number is assigned to assigned_to by creating number doc
+%% @doc Makes sure number is assigned to assigned_to by creating number doc
 %% that may not yet exist in AssignedTo DB.
 %% @end
 %%--------------------------------------------------------------------
@@ -1687,8 +1682,7 @@ assign(T0) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Makes sure number is unassigned from prev_assigned_to by removing
+%% @doc Makes sure number is unassigned from prev_assigned_to by removing
 %% number doc that may still exist in PrevAssignedTo DB.
 %% @end
 %%--------------------------------------------------------------------

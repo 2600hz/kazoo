@@ -27,8 +27,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -43,8 +42,7 @@ init() ->
                          ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -58,9 +56,7 @@ allowed_methods(_UUID) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -78,8 +74,7 @@ resource_exists() -> 'true'.
 resource_exists(_UUID) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% What content-types will the module be using to respond (matched against
+%% @doc What content-types will the module be using to respond (matched against
 %% client's accept header).
 %% Of the form `{atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
@@ -92,8 +87,7 @@ content_types_provided(Context) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /channels mights load a list of channel objects
 %% /channels/123 might load the channel object 123
@@ -122,8 +116,7 @@ validate_channel(Context, Id, ?HTTP_PUT) ->
     validate_action(Context, Id).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -132,8 +125,7 @@ post(Context, _UUID) ->
     cb_context:set_resp_status(Context, 'success').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -149,8 +141,7 @@ put(Context, UUID) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -203,8 +194,7 @@ find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -254,8 +244,7 @@ validate_action(Context, _UUID, _Action) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------

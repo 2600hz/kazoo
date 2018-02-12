@@ -21,8 +21,7 @@
 -include("kazoo_config.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return a section of the config file
+%% @doc Return a section of the config file
 %% @end
 %%--------------------------------------------------------------------
 -spec get(section()) -> kz_term:proplist().
@@ -41,8 +40,7 @@ get(Section, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return values of the config file
+%% @doc Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
 -spec get_atom(section(), atom()) -> [atom(),...] | ?DEFAULT_DEFAULTS.
@@ -71,8 +69,7 @@ get_boolean(Section, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return values of the config file
+%% @doc Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
 -spec get_integer(section(), atom()) -> [integer(),...] | ?DEFAULT_DEFAULTS.
@@ -88,8 +85,7 @@ get_integer(Section, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return values of the config file
+%% @doc Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
 -spec get_string(section(), atom()) -> [string(),...] | ?DEFAULT_DEFAULTS.
@@ -129,8 +125,7 @@ get_node_section_name() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Set or unset enviroment variables
+%% @doc Set or unset enviroment variables
 %% @end
 %%--------------------------------------------------------------------
 

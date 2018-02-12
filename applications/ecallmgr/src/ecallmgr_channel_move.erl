@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Handle channel move logic
-%%%
+%%% @doc Handle channel move logic
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end

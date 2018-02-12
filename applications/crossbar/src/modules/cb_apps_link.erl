@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -27,8 +24,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -40,8 +36,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.get.apps_link">>, ?MODULE, 'get').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -54,8 +49,7 @@ authorize_nouns([{<<"apps_link">>, _}]) -> 'true';
 authorize_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -64,9 +58,7 @@ allowed_methods(?AUTHORIZE) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -81,8 +73,7 @@ resource_exists(?AUTHORIZE) -> 'true'.
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /apps_link mights load a list of skel objects
 %% /apps_link/123 might load the skel object 123

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (c) 2010-2018, 2600Hz
-%%% @doc
-%%% Utility module for CDR operations
-%%%
+%%% @doc Utility module for CDR operations
 %%% @author Ben Wann
 %%% @end
 %%%-------------------------------------------------------------------

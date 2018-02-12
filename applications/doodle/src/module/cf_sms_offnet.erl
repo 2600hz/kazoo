@@ -14,8 +14,7 @@
 -define(DEFAULT_EVENT_WAIT, 10 * ?MILLISECONDS_IN_SECOND).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

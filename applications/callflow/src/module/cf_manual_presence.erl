@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "presence_id":"foo" // for "foo@bar.com"
 %%%   ,"status":"idle" //"idle", "ringing", "busy"
 %%% }

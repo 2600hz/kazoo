@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% A Number Manager module for carrier: telnyx.com
-%%%
-%%%
+%%% @doc A Number Manager module for carrier: telnyx.com
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------
@@ -42,8 +39,7 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Is this carrier handling numbers local to the system?
+%% @doc Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
 %%--------------------------------------------------------------------
@@ -54,8 +50,7 @@ is_local() -> 'false'.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
@@ -64,8 +59,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Query the system for a quantity of available numbers in a rate center
+%% @doc Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
@@ -89,8 +83,7 @@ find_numbers(<<"+",_/binary>>=_InternationalNum, Quantity, Options) ->
     {'ok', international_numbers(Results, Options)}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Acquire a given number from the carrier
+%% @doc Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
@@ -121,8 +114,7 @@ acquire_number(Number) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Release a number from the routing table
+%% @doc Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().

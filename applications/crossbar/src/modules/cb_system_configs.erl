@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -30,8 +27,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -49,8 +45,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.system_configs">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -72,8 +67,7 @@ authorize(Context, _Id) -> authorize(Context).
 authorize(Context, _Id, _Node) -> authorize(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -91,9 +85,7 @@ allowed_methods(_SystemConfigId, _Node) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -114,8 +106,7 @@ resource_exists(_Id) -> 'true'.
 resource_exists(_Id, _Node) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /system_configs mights load a list of system_config objects
 %% /system_configs/123 might load the system_config object 123
@@ -213,8 +204,7 @@ validate_node_request(Context, Id, Node, FullConfig) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -222,8 +212,7 @@ put(Context, _Id) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -250,8 +239,7 @@ patch(Context, Id, Node) ->
     post(Context, Id, Node).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 
@@ -279,8 +267,7 @@ delete(Context, Id, Node, Doc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read_for_delete(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -295,8 +282,7 @@ read_for_delete(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -307,8 +293,7 @@ summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().

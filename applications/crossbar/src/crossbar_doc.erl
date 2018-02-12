@@ -82,8 +82,7 @@
 -type load_view_params() :: #load_view_params{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns the version number attached to created/updated documents.
+%% @doc Returns the version number attached to created/updated documents.
 %% Indicates what pvt fields are created/updated when saving.
 %%
 %% Failure here returns 410, 500, or 503
@@ -93,8 +92,7 @@
 current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to load the context with account details,
+%% @doc This function attempts to load the context with account details,
 %% including the account db name and the account doc.
 %%
 %% Failure here returns 410, 500, or 503
@@ -166,8 +164,7 @@ maybe_open_cache_docs(DbName, DocIds, Options) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns `true' or `false' if the requested document type is matched
+%% @doc Returns `true' or `false' if the requested document type is matched
 %% against the actual document type or the name of the last resource
 %% that request it. It first checks expected type is matched with document
 %% type, if it fails it checks document type with the name of the
@@ -242,8 +239,7 @@ handle_successful_load(Context, JObj, 'false') ->
     cb_context:store(handle_datamgr_success(JObj, Context), 'db_doc', JObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to merge the submitted data with the private
+%% @doc This function attempts to merge the submitted data with the private
 %% fields of an existing account document, if successful it will
 %% load the context with the account details.
 %%
@@ -308,8 +304,7 @@ patch_the_doc(RequestData, ExistingDoc) ->
     kz_json:merge(fun kz_json:merge_left/2, PubJObj, ExistingDoc).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to load the context with the results of a view
+%% @doc This function attempts to load the context with the results of a view
 %% run against the accounts database.
 %%
 %% Failure here returns 500 or 503.
@@ -484,8 +479,7 @@ start_key_fun(Options, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to load the context with the results of all the
+%% @doc This function attempts to load the context with the results of all the
 %% docs in the supplied Db, with the fold function weeding out those not
 %% desired by returning `undefined' or not adding it to the Accumulator.
 %%
@@ -511,8 +505,7 @@ load_docs(Context, Filter)
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to load the context with the binary payload
+%% @doc This function attempts to load the context with the binary payload
 %% stored as an attachment.
 %%
 %% Failure here returns 500 or 503.
@@ -540,8 +533,7 @@ load_attachment(Doc, AName, Options, Context) ->
     load_attachment({kz_doc:type(Doc), kz_doc:id(Doc)}, AName, Options, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to save the provided document to the accounts
+%% @doc This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
 %%
 %% Failure here returns 500 or 503.
@@ -587,8 +579,7 @@ save(Context, JObj, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function attempts to save the provided document to the accounts
+%% @doc This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
 %%
 %% Failure here returns 500 or 503.
@@ -620,9 +611,7 @@ ensure_saved(Context, JObj, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Save the Contents as an attachment on the document.
-%%
+%% @doc Save the Contents as an attachment on the document.
 %% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
@@ -631,9 +620,7 @@ save_attachment(DocId, AName, Contents, Context) ->
     save_attachment(DocId, AName, Contents, Context, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Save the Contents as an attachment on the document with options.
-%%
+%% @doc Save the Contents as an attachment on the document with options.
 %% Failure here returns 500 or 503.
 %% @end
 %%--------------------------------------------------------------------
@@ -703,8 +690,7 @@ maybe_delete_doc(Context, DocId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will attempt to remove an account document from the
+%% @doc This function will attempt to remove an account document from the
 %% account database.
 %% This is preformed as a soft-delete and enforced
 %% by the views.  Clean up process remove old data based on the delete
@@ -766,8 +752,7 @@ do_delete(Context, JObj, CouchFun) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will attempt to remove an attachment from a document.
+%% @doc This function will attempt to remove an attachment from a document.
 %% Unlike the delete function, this is NOT a soft-delete.
 %%
 %% Failure here returns 500 or 503.
@@ -789,8 +774,7 @@ delete_attachment(DocId, AName, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will attempt to convert a revision tag on the provided
+%% @doc This function will attempt to convert a revision tag on the provided
 %% document into a usable ETag for the response.
 %% @end
 %%--------------------------------------------------------------------
@@ -1116,8 +1100,7 @@ handle_datamgr_errors(Else, _View, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function is used to update the private timestamps, and db
+%% @doc This function is used to update the private timestamps, and db
 %% parameters on all crossbar documents.
 %% @end
 %%--------------------------------------------------------------------

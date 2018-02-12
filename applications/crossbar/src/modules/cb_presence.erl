@@ -88,8 +88,7 @@ authorize(_Context, _Nouns, _Verb) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -108,9 +107,7 @@ allowed_methods(_Extension) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -123,9 +120,7 @@ resource_exists(_Extension) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function allows report to be downloaded.
-%%
+%% @doc This function allows report to be downloaded.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
@@ -143,8 +138,7 @@ content_types_provided_for_report(Context, Report) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.

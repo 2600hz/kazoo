@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handle client requests for phone_number documents using new bandwidth api
-%%%
-%%%
+%%% @doc Handle client requests for phone_number documents using new bandwidth api
 %%% @author Karl Anderson
 %%% @author Mark Magnusson
 %%% @author Pierre Fenoll
@@ -109,8 +106,7 @@ info() ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Is this carrier handling numbers local to the system?
+%% @doc Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
 %%--------------------------------------------------------------------
@@ -121,8 +117,7 @@ is_local() -> 'false'.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check with carrier if these numbers are registered with it.
+%% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
@@ -130,8 +125,7 @@ is_number_billable(_Number) -> 'true'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Query the Bandwidth.com system for a quantity of available numbers
+%% @doc Query the Bandwidth.com system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -191,8 +185,7 @@ process_search_response(Result, Options) ->
     {'ok', Found}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Acquire a given number from the carrier
+%% @doc Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
@@ -274,8 +267,7 @@ from_bandwidth2(Number) -> <<"+1", Number/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Release a number from the routing table
+%% @doc Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
@@ -379,8 +371,7 @@ api_post("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders", 
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Make a REST request to Bandwidth.com Numbers API to perform the
+%% @doc Make a REST request to Bandwidth.com Numbers API to perform the
 %% given verb (purchase, search, provision, etc).
 %% @end
 %%--------------------------------------------------------------------
@@ -436,8 +427,7 @@ handle_response({'error', _}=E) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert a number order response to json
+%% @doc Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
 -spec number_order_response_to_json(kz_types:xml_els() | kz_types:xml_el()) -> kz_json:object().
@@ -477,8 +467,7 @@ tollfree_search_response_to_KNM(Xml, QID) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert a rate center XML entity to json
+%% @doc Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
 -spec rate_center_to_json(kz_types:xml_els() | kz_types:xml_el()) -> kz_json:object().
@@ -498,8 +487,7 @@ rate_center_to_json(Xml) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Determine if the request was successful, and if not extract any
+%% @doc Determine if the request was successful, and if not extract any
 %% error text
 %% @end
 %%--------------------------------------------------------------------

@@ -1,10 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Account IP auth module
-%%%
-%%%
-%%%
+%%% @doc Account IP auth module
 %%% @author Karl Anderson
 %%% @author Peter Defebvre
 %%% @end
@@ -44,8 +40,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -56,9 +51,7 @@ allowed_methods() ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -174,8 +167,7 @@ on_successful_load(Context, _Status, _Doc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to create a token
+%% @doc Attempt to create a token
 %% @end
 %%--------------------------------------------------------------------
 

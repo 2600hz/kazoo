@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Handle prepend feature
-%%%
+%%% @doc Handle prepend feature
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -17,8 +15,7 @@
 -define(KEY, ?FEATURE_PREPEND).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% add the prepend route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
@@ -35,8 +32,7 @@ save(Number, _State) ->
     delete(Number).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted, and will
+%% @doc This function is called each time a number is deleted, and will
 %% remove the prepend route
 %% @end
 %%--------------------------------------------------------------------

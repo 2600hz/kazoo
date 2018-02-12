@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for phone_number documents
-%%%
+%%% @doc Handle client requests for phone_number documents
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------
@@ -42,8 +40,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -62,8 +59,7 @@ init() ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -77,8 +73,7 @@ authenticate(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -94,8 +89,7 @@ authorize(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -117,9 +111,7 @@ allowed_methods(_TaskId, ?PATH_OUTPUT) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -141,8 +133,7 @@ resource_exists(_TaskId, ?PATH_INPUT) -> 'true';
 resource_exists(_TaskId, ?PATH_OUTPUT) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% What content-types will the module be requiring (matched to the client's
+%% @doc What content-types will the module be requiring (matched to the client's
 %% Content-Type header.
 %% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
@@ -164,8 +155,7 @@ cta(Context, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% What content-types will the module be using to respond (matched against
+%% @doc What content-types will the module be using to respond (matched against
 %% client's Accept header).
 %% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
@@ -231,8 +221,7 @@ download_filename(_Context, Name) ->
     Name.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /tasks mights load a list of task objects
 %% /tasks/123 might load the task object 123
@@ -319,8 +308,7 @@ validate_new_attachment(Context, 'false') ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -358,8 +346,7 @@ task_account_id(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%% @doc If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -404,8 +391,7 @@ patch(Context, TaskId, ?PATH_STOP) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -440,8 +426,7 @@ set_db(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 
@@ -555,8 +540,7 @@ read_attachment_file(TaskId, Context, AttachmentName) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------

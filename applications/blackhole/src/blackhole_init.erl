@@ -26,8 +26,7 @@ api_path() ->
     {'_', [], 'blackhole_socket_handler', []}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the app for inclusion in a supervisor tree.
+%% @doc Starts the app for inclusion in a supervisor tree.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -42,8 +41,7 @@ start_link() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Functions for onrequest and onresponse callbacks.
+%% @doc Functions for onrequest and onresponse callbacks.
 %% @end
 %%--------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().

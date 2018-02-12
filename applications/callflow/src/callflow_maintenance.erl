@@ -170,8 +170,7 @@ do_recorded_name_migration(Db, MediaId, OwnerId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will migrate all the menus mailbox documents to
+%% @doc This function will migrate all the menus mailbox documents to
 %% the latest version.
 %% @end
 %%--------------------------------------------------------------------
@@ -252,8 +251,7 @@ update_doc(Key, Value, Id, Db) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%%        Set call_restriction flag on account level
+%% @doc Set call_restriction flag on account level
 %%        Usage: sup callflow_maintenance account_set_classifier_inherit international accountname
 %%        Usage: sup callflow_maintenance account_set_classifier_deny international accountname
 %%        Usage: sup callflow_maintenance all_accounts_set_classifier_inherit international
@@ -307,8 +305,7 @@ all_accounts_set_classifier(Action, Classifier) ->
                   end, kapps_util:get_all_accounts()).
 
 %%--------------------------------------------------------------------
-%% @doc
-%%        Set call_restriction flag on device level
+%% @doc Set call_restriction flag on device level
 %%        Usage: sup callflow_maintenance device_classifier_inherit international  username@realm.tld
 %%        Usage: sup callflow_maintenance device_classifier_deny international username@realm.tld
 %% @end
@@ -340,8 +337,7 @@ set_device_classifier_action(Action, Classifier, Uri) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%           Checks if classifier defined in system_config -> number_manager doc
+%% @doc Checks if classifier defined in system_config -> number_manager doc
 %% @end
 %%--------------------------------------------------------------------
 -spec is_classifier(kz_term:ne_binary()) -> boolean().
@@ -355,8 +351,7 @@ is_classifier(Classifier) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%%        Lists call restrictions on all levels of an account
+%% @doc Lists call restrictions on all levels of an account
 %%        Usage: sup callflow_maintenance list_account_restrictions accountname
 %% @end
 %%--------------------------------------------------------------------
@@ -426,8 +421,7 @@ print_trunkstore_call_restrictions(DbName) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Update certain patterns matching feature codes (see KAZOO-3122)
+%% @doc Update certain patterns matching feature codes (see KAZOO-3122)
 %% @end
 %%--------------------------------------------------------------------
 

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listener for reg_success, and reg_query AMQP requests
-%%%
+%%% @doc Listener for reg_success, and reg_query AMQP requests
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

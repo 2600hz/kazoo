@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Helpers for manipulating the `#cb_context{}' record.
-%%%
+%%% @doc Helpers for manipulating the `#cb_context{}' record.
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -230,8 +228,7 @@ is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns true if the request contains a system admin module.
+%% @doc Returns true if the request contains a system admin module.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_superduper_admin(kz_term:api_ne_binary() | context()) -> boolean().
@@ -451,8 +448,7 @@ resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 resp_error_msg(#cb_context{resp_error_msg=Msg}) -> Msg.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Loop over a list of functions and values to set `cb_context()' parameters.
+%% @doc Loop over a list of functions and values to set `cb_context()' parameters.
 %% @end
 %%--------------------------------------------------------------------
 -spec setters(context(), setters()) -> context().
@@ -736,8 +732,7 @@ maybe_add_content_type_provided(Context, AttachmentId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Sets a value in the crossbar context for later retrieval during this request.
+%% @doc Sets a value in the crossbar context for later retrieval during this request.
 %% @end
 %%--------------------------------------------------------------------
 -spec store(context(), any(), any()) -> context().
@@ -745,8 +740,7 @@ store(#cb_context{storage=Storage}=Context, Key, Data) ->
     Context#cb_context{storage=[{Key, Data} | props:delete(Key, Storage)]}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fetches a previously stored value from the current request.
+%% @doc Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(context(), any()) -> any().
@@ -761,8 +755,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function extracts the request ID and sets it as `call_id' in
+%% @doc This function extracts the request ID and sets it as `call_id' in
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
@@ -814,8 +807,7 @@ response(#cb_context{resp_error_code=Code
 -type after_fun() :: fun((context()) -> context()) | 'undefined'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Validate the request data with schema.
+%% @doc Validate the request data with schema.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context()) ->
@@ -1050,8 +1042,7 @@ build_system_error(Code, Error, JObj, Context) ->
                       }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Add a validation error to the list of request errors.
+%% @doc Add a validation error to the list of request errors.
 %% @end
 %%--------------------------------------------------------------------
 -spec add_validation_error(kz_json:path(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->

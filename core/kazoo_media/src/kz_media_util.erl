@@ -49,8 +49,7 @@
 -define(USE_ACCOUNT_OVERRIDES, kapps_config:get_is_true(?CONFIG_CAT, <<"support_account_overrides">>, 'true')).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Normalize audio file to the system default or specified sample rate.
+%% @doc Normalize audio file to the system default or specified sample rate.
 %% Accepts media file content binary as input.
 %%
 %% By default it returns result as binary, if you want file path to the
@@ -88,8 +87,7 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Normalize audio file to the system default or specified sample rate.
+%% @doc Normalize audio file to the system default or specified sample rate.
 %% Accept a path to the media file as input.
 %%
 %% By default it returns result as binary, if you want file path to the
@@ -143,8 +141,7 @@ return_command_result({'error', _}=Error, _FileName, _) -> Error.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Run normalizer command
+%% @doc Run normalizer command
 %% @end
 %%--------------------------------------------------------------------
 -spec run_command(kz_term:ne_binary()) -> normalized_media().
@@ -160,8 +157,7 @@ run_command(Command) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Synthesize a tone, returns as binary or a path to the generated file
+%% @doc Synthesize a tone, returns as binary or a path to the generated file
 %% @end
 %%--------------------------------------------------------------------
 -spec synthesize_tone(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> normalized_media().
@@ -176,8 +172,7 @@ synthesize_tone(SampleRate, Frequency, Length) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Synthesize a tone, returns as binary or a path to the generated file
+%% @doc Synthesize a tone, returns as binary or a path to the generated file
 %% @end
 %%--------------------------------------------------------------------
 -spec synthesize_tone(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> normalized_media().
@@ -192,8 +187,7 @@ synthesize_tone(SampleRate, Frequency, Length, FileName) ->
     run_command(Command).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Detect sample rate of a media file
+%% @doc Detect sample rate of a media file
 %% @end
 %%--------------------------------------------------------------------
 -spec detect_file_sample_rate(kz_term:ne_binary()) -> normalized_media().
@@ -218,8 +212,7 @@ detect_file_sample_rate(FileName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Detect media format of a media file
+%% @doc Detect media format of a media file
 %% @end
 %%--------------------------------------------------------------------
 -spec detect_file_format(kz_term:ne_binary()) -> normalized_media().
@@ -244,8 +237,7 @@ detect_file_format(FileName) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Join multiple Audio file together. It detects file format, sample rate
+%% @doc Join multiple Audio file together. It detects file format, sample rate
 %% of each file and will try to convert sample rate if it different from the
 %% requested sample rate or the default value of 16kHz.
 %% @end
@@ -298,8 +290,7 @@ do_join_media_files(Files, Options) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Based on detected format options, normalize the files if
+%% @doc Based on detected format options, normalize the files if
 %% sample rate are different of desire sample rate, otherwise
 %% copy the files to a temporary place to join them together.
 %% @end
@@ -335,8 +326,7 @@ maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Detect file format options(sample_rate, file format) and return
+%% @doc Detect file format options(sample_rate, file format) and return
 %% a tuple of detect options
 %% @end
 %%--------------------------------------------------------------------

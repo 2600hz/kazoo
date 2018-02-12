@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Fax Box API
-%%%
-%%%
+%%% @doc Fax Box API
 %%% @author Luis Azedo
 %%% @end
 %%%-------------------------------------------------------------------
@@ -64,8 +61,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -80,8 +76,7 @@ init() ->
     crossbar_bindings:bind(<<"*.execute.delete.faxboxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -95,9 +90,7 @@ allowed_methods(_FaxboxId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -125,8 +118,7 @@ validate_resource(Context, FaxboxId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /faxes mights load a list of fax objects
 %% /faxes/123 might load the fax object 123
@@ -204,8 +196,7 @@ validate_patch(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -219,8 +210,7 @@ put(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -235,8 +225,7 @@ post(Context, _Id) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PATCH, execute the actual action, usually a db save
+%% @doc If the HTTP verb is PATCH, execute the actual action, usually a db save
 %% (after a merge).
 %% @end
 %%--------------------------------------------------------------------
@@ -245,8 +234,7 @@ patch(Context, Id) ->
     post(Context, Id).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -264,8 +252,7 @@ delete_faxbox(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -316,8 +303,7 @@ remove_private_fields_fold(<<"pvt_", K1/binary>>, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
+%% @doc Update an existing instance with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -356,8 +342,7 @@ generate_email_address(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------

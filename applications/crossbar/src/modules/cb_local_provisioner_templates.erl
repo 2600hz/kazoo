@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Provision template module
-%%%
+%%% @doc Provision template module
 %%% Handle client requests for provisioner template documents
 %%%
 %%% Note regarding storing the template as an attachment:
@@ -66,8 +64,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Add content types provided by this module
+%% @doc Add content types provided by this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -90,8 +87,7 @@ content_types_provided_for_provisioner(Context, _, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Add content types accepted by this module
+%% @doc Add content types accepted by this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -108,8 +104,7 @@ content_types_accepted(Context, _, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -129,9 +124,7 @@ allowed_methods(_TemplateId, ?IMAGE_REQ) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -146,8 +139,7 @@ resource_exists(_) -> 'true'.
 resource_exists(_, ?IMAGE_REQ) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -301,8 +293,7 @@ upload_template_image(Context, [_|_]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load list of provision templates, each summarized.  Or a specific
+%% @doc Attempt to load list of provision templates, each summarized.  Or a specific
 %% provision template summary.
 %% @end
 %%--------------------------------------------------------------------
@@ -312,8 +303,7 @@ load_provisioner_template_summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new provision template document with the data provided, if it is valid
+%% @doc Create a new provision template document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create_provisioner_template(cb_context:context()) -> cb_context:context().
@@ -323,8 +313,7 @@ create_provisioner_template(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a provision template document from the database
+%% @doc Load a provision template document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_provisioner_template(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -345,8 +334,7 @@ load_provisioner_template(DocId, Context) ->
     end.
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing provision template document with the data provided, if it is
+%% @doc Update an existing provision template document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -373,8 +361,7 @@ on_successful_validation(DocId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

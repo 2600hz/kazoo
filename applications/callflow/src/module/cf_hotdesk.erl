@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "action":"logout" | "login" | "toggle" | "bridge"
 %%%   "id":"user_id"
 %%%   // optional after here
@@ -36,8 +35,7 @@
 -type hotdesk() :: #hotdesk{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -94,8 +92,7 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempts to bridge to the endpoints created to reach this device
+%% @doc Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_endpoints(hotdesk(), kapps_call:call()) ->
@@ -122,8 +119,7 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Conditions that this needs to handle:
+%% @doc Conditions that this needs to handle:
 %% 0) sanity check the authorizing id
 %% 1) Has there been to many attempts to enter a valid pwd/id
 %% 2) Do we know the user id? if not ask for the hotdesk id...
@@ -217,8 +213,7 @@ logged_in(_, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Logout process
+%% @doc Logout process
 %% 0) sanity check the authorizing id
 %%
 %% Do Logout process
@@ -267,8 +262,7 @@ logged_out(_, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Fetches the hotdesk parameters from the datastore and loads the
+%% @doc Fetches the hotdesk parameters from the datastore and loads the
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------

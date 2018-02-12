@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz
-%%% @doc
-%%% HML helper functions for Kazoo
-%%%
-%%%
+%%% @doc HML helper functions for Kazoo
 %%% @author Mark Magnusson
 %%% @end
 %%%-------------------------------------------------------------------
@@ -12,8 +9,7 @@
 -export([escape/1]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Escapes an HTML string.
+%% @doc Escapes an HTML string.
 %% @end
 %%--------------------------------------------------------------------
 -spec escape(binary()) -> binary().

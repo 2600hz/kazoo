@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% handler for route wins, bootstraps callflow execution
-%%%
+%%% @doc handler for route wins, bootstraps callflow execution
 %%% @author Karl Anderson
 %%% @end
 %%%-------------------------------------------------------------------
@@ -244,8 +242,7 @@ get_incoming_security(Call) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% executes the found call flow by starting a new doodle_exe process under the
+%% @doc executes the found call flow by starting a new doodle_exe process under the
 %% doodle_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------

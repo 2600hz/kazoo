@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Account module
-%%%
+%%% @doc Account module
 %%% Handle client requests for account documents
 %%%
 %%%
@@ -83,8 +81,7 @@ init() ->
     cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -124,9 +121,7 @@ allowed_methods(_AccountId, ?TREE) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -151,8 +146,7 @@ resource_exists(_, Path) ->
     lists:member(Path, Paths).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with account data
 %%
 %% Failure here returns 404.
@@ -172,8 +166,7 @@ validate_resource(Context, AccountId, _Path) ->
     load_account_db(Context, AccountId).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -669,8 +662,7 @@ maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an account document from the database
+%% @doc Load an account document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_delete_request(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -696,8 +688,7 @@ validate_patch_request(AccountId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an account document from the database
+%% @doc Load an account document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_account(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -870,8 +861,7 @@ leak_trial_time_left(Context, JObj, _Expiration) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a summary of the children of this account
+%% @doc Load a summary of the children of this account
 %% @end
 %%--------------------------------------------------------------------
 -spec load_children(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -908,8 +898,7 @@ load_paginated_children(AccountId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a summary of the descendants of this account
+%% @doc Load a summary of the descendants of this account
 %% @end
 %%--------------------------------------------------------------------
 -spec load_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -947,8 +936,7 @@ load_paginated_descendants(AccountId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a summary of the siblngs of this account
+%% @doc Load a summary of the siblngs of this account
 %% @end
 %%--------------------------------------------------------------------
 -spec load_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -1139,8 +1127,7 @@ account_from_tree(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -1149,8 +1136,7 @@ normalize_view_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function returns the private fields to be added to a new account
+%% @doc This function returns the private fields to be added to a new account
 %% document
 %% @end
 %%--------------------------------------------------------------------
@@ -1252,8 +1238,7 @@ create_new_tree(Context, _Verb, _Nouns) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will attempt to load the context with the db name of
+%% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
@@ -1284,8 +1269,7 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will create a new account and corresponding database
+%% @doc This function will create a new account and corresponding database
 %% then spawn a short initial function
 %% @end
 %%--------------------------------------------------------------------
@@ -1433,8 +1417,7 @@ replicate_account_definition(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will determine if the realm in the request is
+%% @doc This function will determine if the realm in the request is
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
@@ -1450,8 +1433,7 @@ is_unique_realm(AccountId, Realm) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will determine if the account name is unique
+%% @doc This function will determine if the account name is unique
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_is_unique_account_name(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
@@ -1476,8 +1458,7 @@ is_unique_account_name(AccountId, Name) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Send a notification that the account has been created
+%% @doc Send a notification that the account has been created
 %% @end
 %%--------------------------------------------------------------------
 -spec notify_new_account(cb_context:context()) -> 'ok'.
@@ -1502,8 +1483,7 @@ notify_new_account(Context, _AuthDoc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Support the depreciated billing id on the account definition, will
+%% @doc Support the depreciated billing id on the account definition, will
 %% be phased out shortly
 %% @end
 %%--------------------------------------------------------------------

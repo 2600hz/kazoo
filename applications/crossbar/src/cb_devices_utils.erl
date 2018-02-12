@@ -13,8 +13,7 @@
 -define(AUTHZ_ID, <<"authorizing_id">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check if the device SIP IP is unique.
+%% @doc Check if the device SIP IP is unique.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_ip_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().

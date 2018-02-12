@@ -183,8 +183,7 @@ new(Ledger, Amount, Type) ->
                    }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create transaction record of type credit (with Amount and Reason).
+%% @doc Create transaction record of type credit (with Amount and Reason).
 %% @end
 %%--------------------------------------------------------------------
 -spec credit(kz_term:ne_binary(), units()) -> transaction().
@@ -192,8 +191,7 @@ credit(Ledger, Amount) ->
     new(Ledger, Amount, <<"credit">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create transaction record of type debit (with Amount and Reason).
+%% @doc Create transaction record of type debit (with Amount and Reason).
 %% @end
 %%--------------------------------------------------------------------
 -spec debit(kz_term:ne_binary(), units()) -> transaction().
@@ -297,8 +295,7 @@ is_reason([_ | Reasons], Transaction) ->
 is_reason(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Transform transaction record to Json object
+%% @doc Transform transaction record to Json object
 %% @end
 %%--------------------------------------------------------------------
 -spec to_json(transaction()) -> kz_json:object().
@@ -331,8 +328,7 @@ to_json(#kz_transaction{}=T) ->
         ])).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Transform Json Object to transaction record
+%% @doc Transform Json Object to transaction record
 %% @end
 %%--------------------------------------------------------------------
 -spec to_public_json(transaction()) -> kz_json:object().
@@ -395,8 +391,7 @@ clean_jobj(JObj) ->
     kz_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Transform Json Object to transaction record
+%% @doc Transform Json Object to transaction record
 %% @end
 %%--------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> transaction().

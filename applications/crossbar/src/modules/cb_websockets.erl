@@ -49,8 +49,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -62,8 +61,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.websockets">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -72,8 +70,7 @@ authenticate(Context) ->
     authenticate_req(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -82,8 +79,7 @@ authorize(Context) ->
     authorize_req(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -97,9 +93,7 @@ allowed_methods(_SocketId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -117,8 +111,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /websockets mights load a list of websocket objects
 %% /websockets/123 might load the websocket object 123
@@ -162,8 +155,7 @@ authorize_req(_Verb, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load running web sockets
+%% @doc Load running web sockets
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_websockets(cb_context:context(), http_method()) -> cb_context:context().
@@ -175,8 +167,7 @@ validate_websockets(Context, ?HTTP_GET) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a web socket info
+%% @doc Load a web socket info
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_websocket(cb_context:context(), path_token(), http_method()) -> cb_context:context().
@@ -185,8 +176,7 @@ validate_websocket(Context, Id, ?HTTP_GET) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -199,8 +189,7 @@ summary_available(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -210,8 +199,7 @@ summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().

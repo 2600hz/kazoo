@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% The queue process manages two queues
+%%% @doc The queue process manages two queues
 %%%   1. a private one that Agents will send member_connect_* messages
 %%%      and such
 %%%   2. a shared queue that member_call messages will be published to,
@@ -99,8 +98,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server.
+%% @doc Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
@@ -200,8 +198,7 @@ delivery(Srv) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the listener.
+%% @doc Initializes the listener.
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
@@ -220,9 +217,7 @@ init([WorkerSup, MgrPid, AccountId, QueueId]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling call messages
-%%
+%% @doc Handling call messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -238,9 +233,7 @@ handle_call(_Request, _From, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling cast messages
-%%
+%% @doc Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
 find_pid_from_supervisor({'ok', P}) when is_pid(P) ->
@@ -477,9 +470,7 @@ handle_cast(_Msg, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
+%% @doc Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -489,9 +480,7 @@ handle_info(_Info, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling all messages from the message bus
-%%
+%% @doc Handling all messages from the message bus
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
@@ -500,8 +489,7 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function is called by a gen_listener when it is about to
+%% @doc This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
@@ -514,9 +502,7 @@ terminate(_Reason, _State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

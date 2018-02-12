@@ -26,8 +26,7 @@
 -export_type([filter_fun/0]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Build filter function if filter is requested by the client.
+%% @doc Build filter function if filter is requested by the client.
 %% @end
 %%--------------------------------------------------------------------
 -spec build(cb_context:context()) -> filter_fun().
@@ -44,8 +43,7 @@ build_with_mapper(Context, UserMapper) ->
     build_with_mapper(Context, UserMapper, is_defined(Context)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Build a function with arity 2 if filter is requested by the client.
+%% @doc Build a function with arity 2 if filter is requested by the client.
 %% This function will filter documents and then applies caller map function
 %% on the view result.
 %% @end
@@ -60,8 +58,7 @@ build_with_mapper(Context, UserMapper, 'true') ->
     build_filter_map_fun(Context, FilterFun, UserMapper).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check if there is any filter request in query string.
+%% @doc Check if there is any filter request in query string.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_defined(cb_context:context()) -> boolean().
@@ -70,8 +67,7 @@ is_defined(Context) ->
         andalso kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check if only time filters are defined in query string, useful to
+%% @doc Check if only time filters are defined in query string, useful to
 %% crossbar_view to not add `include_docs' if only they are defined.
 %% @end
 %%--------------------------------------------------------------------
@@ -95,8 +91,7 @@ is_only_time_filter(Context, FilterKey) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns `true' if all of the requested props are found, `false' if one is not found
+%% @doc Returns `true' if all of the requested props are found, `false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
 -spec by_doc(kz_term:api_object(), cb_context:context()) -> boolean().
@@ -119,8 +114,7 @@ by_doc(Doc, Context, 'true') ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Build filter function if filter is requested by the client.
+%% @doc Build filter function if filter is requested by the client.
 %% @end
 %%--------------------------------------------------------------------
 -spec build(cb_context:context(), boolean()) -> filter_fun().
@@ -132,8 +126,7 @@ build(Context, 'true') ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Build a function with arity 2 if filter is requested by the client.
+%% @doc Build a function with arity 2 if filter is requested by the client.
 %% This function will filter documents and then applies caller map function
 %% on the view result.
 %% @end
@@ -170,8 +163,7 @@ build_filter_map_fun(Context, FilterFun, UserMapper) when is_function(UserMapper
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return `true' if key is a filter key.
+%% @doc Return `true' if key is a filter key.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_filter_key({binary(), any()}) -> boolean().
@@ -209,8 +201,7 @@ should_filter_doc(Doc, K, V) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns `true' or `false' if the prop is found inside the doc.
+%% @doc Returns `true' or `false' if the prop is found inside the doc.
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_prop(kz_json:object(), kz_term:ne_binary(), any()) -> kz_term:api_boolean().

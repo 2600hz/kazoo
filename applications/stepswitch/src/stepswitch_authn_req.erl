@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle authn_req messages
-%%%
+%%% @doc Handle authn_req messages
 %%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_authn_req).
@@ -38,8 +36,7 @@ maybe_send_auth_resp(JObj) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% extract the auth realm from the API request, using the requests to domain
+%% @doc extract the auth realm from the API request, using the requests to domain
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------

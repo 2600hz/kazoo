@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for local resource documents
-%%%
-%%%
+%%% @doc Handle client requests for local resource documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end

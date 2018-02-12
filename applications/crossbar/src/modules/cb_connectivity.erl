@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for connectivity documents
-%%%
-%%%
+%%% @doc Handle client requests for connectivity documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -44,8 +41,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -61,9 +57,7 @@ allowed_methods(_ConnectivityId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -75,8 +69,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -199,8 +192,7 @@ get_numbers_fold(Server, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
@@ -216,8 +208,7 @@ create(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -226,8 +217,7 @@ read(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
+%% @doc Update an existing instance with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -244,8 +234,7 @@ update(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update-merge an existing instance partially with the data provided, if it is
+%% @doc Update-merge an existing instance partially with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -266,8 +255,7 @@ on_successful_validation(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -281,8 +269,7 @@ summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

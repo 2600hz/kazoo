@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handle client requests for template documents
-%%%
-%%%
+%%% @doc Handle client requests for template documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -42,8 +39,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -56,9 +52,7 @@ allowed_methods() -> [?HTTP_GET].
 allowed_methods(_TemplateName) -> [?HTTP_PUT, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -69,8 +63,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -125,8 +118,7 @@ account_created(Context) ->
 %%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -143,8 +135,7 @@ summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will attempt to load the context with the db name of
+%% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
@@ -167,8 +158,7 @@ load_template_db(TemplateName, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Format the template/db name into a raw, unencoded or encoded form.
+%% @doc Format the template/db name into a raw, unencoded or encoded form.
 %% @end
 %%--------------------------------------------------------------------
 -spec format_template_name(kz_term:ne_binary(), 'encoded' | 'raw') -> kz_term:ne_binary().
@@ -187,8 +177,7 @@ format_template_name(TemplateName, 'raw') ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new template database and load it with views so it can be
+%% @doc Create a new template database and load it with views so it can be
 %% used as an 'account'
 %% @end
 %%--------------------------------------------------------------------
@@ -208,8 +197,7 @@ create_template_db(TemplateName, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If a valid template database is provided import the non-design
+%% @doc If a valid template database is provided import the non-design
 %% documents into the account
 %% @end
 %%--------------------------------------------------------------------
@@ -236,8 +224,7 @@ is_design_doc_id(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Given a list of IDs in the template database, import them into the
+%% @doc Given a list of IDs in the template database, import them into the
 %% account database, correcting the pvt fields.
 %% @end
 %%--------------------------------------------------------------------

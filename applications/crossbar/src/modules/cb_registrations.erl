@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Registration viewer / creator
-%%%
+%%% @doc Registration viewer / creator
 %%% GET /v1/accounts/{account_id}/registrations :
 %%%   Get a list of account registrations
 %%% GET /v1/accounts/{account_id}/registrations/count :
@@ -44,8 +42,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -57,8 +54,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.registrations">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -74,8 +70,7 @@ allowed_methods(_Username) ->
     [?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
+%% @doc Does the path point to a valid resource.
 %% '''
 %% @end
 %%--------------------------------------------------------------------
@@ -102,8 +97,7 @@ authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
     cb_context:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.

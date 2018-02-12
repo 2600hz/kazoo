@@ -13,8 +13,7 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create the partial url for this module
+%% @doc Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec url() -> string().
@@ -23,8 +22,7 @@ url() ->
     "/client_token/".
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create client Token
+%% @doc Create client Token
 %% @end
 %%--------------------------------------------------------------------
 -spec get_client_token(kz_term:ne_binary()) -> kz_term:api_ne_binary().

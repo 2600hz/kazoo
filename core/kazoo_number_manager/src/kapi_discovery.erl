@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Routing requests, responses, and wins!
-%%%
+%%% @doc Routing requests, responses, and wins!
 %%% @author Luis Azedo
 %%% @end
 %%%-------------------------------------------------------------------
@@ -97,8 +95,7 @@
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Number Request
+%% @doc Number Request
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -118,8 +115,7 @@ number_req_v(Prop) when is_list(Prop) ->
 number_req_v(JObj) -> number_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Discovery Request
+%% @doc Discovery Request
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -140,8 +136,7 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Discovery Response
+%% @doc Discovery Response
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -162,8 +157,7 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Discovery Flush
+%% @doc Discovery Flush
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -183,8 +177,7 @@ flush_v(Prop) when is_list(Prop) ->
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Bind AMQP Queue for routing requests
+%% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -196,8 +189,7 @@ unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

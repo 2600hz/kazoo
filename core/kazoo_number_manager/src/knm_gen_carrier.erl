@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% When implementing carrier modules, these callbacks are a must!
-%%%
-%%%
+%%% @doc When implementing carrier modules, these callbacks are a must!
 %%% @author Karl Anderson
 %%% @author Pierre Fenoll
 %%% @end

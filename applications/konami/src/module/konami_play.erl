@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Play a media file
+%%% @doc Play a media file
 %%% Data = {
 %%%   "id":"media_id"
 %%%   ,"leg":["self", "peer", "both"] // which leg to play the media to

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Mailbox maintenance
-%%%
+%%% @doc Mailbox maintenance
 %%% @author Hesaam Farhang
 %%% @end
 %%%-------------------------------------------------------------------
@@ -24,8 +22,7 @@
 -define(VIEW_MISSING_METADATA, <<"mailbox_messages/missing_metadata">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Migrate all messages in vmbox into the new modb format
+%% @doc Migrate all messages in vmbox into the new modb format
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate() -> 'ok'.

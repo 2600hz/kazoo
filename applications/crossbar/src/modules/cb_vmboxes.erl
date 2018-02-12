@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% VMBoxes module
-%%%
+%%% @doc VMBoxes module
 %%% Handle client requests for vmbox documents
 %%%
 %%%
@@ -73,8 +71,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT.
 %%
 %% Failure here returns 405.
@@ -106,9 +103,7 @@ allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -130,9 +125,7 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted by this module
-%%
+%% @doc Add content types accepted by this module
 %% @end
 %%--------------------------------------------------------------------
 -spec acceptable_content_types() -> kz_term:proplist().
@@ -165,9 +158,7 @@ maybe_add_types_accepted(Context, _, _) -> Context.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types provided by this module
-%%
+%% @doc Add content types provided by this module
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -194,8 +185,7 @@ maybe_add_types_provided(Context, ?BIN_DATA, ?HTTP_GET) ->
 maybe_add_types_provided(Context, _, _) -> Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -449,8 +439,7 @@ add_pvt_auth_funs(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% disallow vmbox messages array changing.
+%% @doc disallow vmbox messages array changing.
 %% Also check if vmbox has still message array
 %% and inform client to do migrate their vmbox
 %% @end
@@ -518,8 +507,7 @@ get_folder_filter(Context, Default) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Filter messages(JObjs) based on Folder or Ids and
+%% @doc Filter messages(JObjs) based on Folder or Ids and
 %% apply query strings filters on them as well.
 %%
 %% Note: Filter can be `<<"all">>' which return all messages.
@@ -698,8 +686,7 @@ on_successful_validation(VMBoxId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%  Support PATCH - merge vmbox document with request data
+%% @doc Support PATCH - merge vmbox document with request data
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_patch(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -708,8 +695,7 @@ validate_patch(Context, DocId)->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load list of vmboxes, each summarized.
+%% @doc Attempt to load list of vmboxes, each summarized.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
@@ -745,8 +731,7 @@ merge_summary_fold(BoxSummary, CountMap) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a vmbox document from the database
+%% @doc Load a vmbox document from the database
 %% @end
 %%--------------------------------------------------------------------
 -type source_id() :: kz_term:api_binary() | kz_term:api_binaries().
@@ -787,8 +772,7 @@ empty_source_id(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get messages summary for a given mailbox
+%% @doc Get messages summary for a given mailbox
 %% @end
 %%--------------------------------------------------------------------
 -spec load_message_summary(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -842,8 +826,7 @@ message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% For Backward compatibility with voicemail box `messages' array, set
+%% @doc For Backward compatibility with voicemail box `messages' array, set
 %% `max_range' to retention seconds to get all messages which are in
 %% retention duration range *only* if request doesn't have
 %% `created_from' in the query string.
@@ -861,8 +844,7 @@ get_max_range(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get message by its media ID and its context
+%% @doc Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
 -spec load_message(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -931,8 +913,7 @@ create_new_message_document(Context, BoxJObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get message binary content so it can be downloaded
+%% @doc Get message binary content so it can be downloaded
 %% VMBoxId is the doc id for the voicemail box document
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
@@ -1094,8 +1075,7 @@ del_all_files(Dir) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% generate a media name based on CallerID and creation date
+%% @doc generate a media name based on CallerID and creation date
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%--------------------------------------------------------------------

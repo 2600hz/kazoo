@@ -69,8 +69,7 @@ modb_id() ->
     modb_id(Year, Month, kz_binary:rand_hex(16)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Generates MODB prefix document ID.
+%% @doc Generates MODB prefix document ID.
 %% If argument is a timestamp, generates will convert it to date time and
 %% then calls `modb_id(Year, Month, kz_binary:rand_hex(16))'.
 %%
@@ -91,8 +90,7 @@ modb_id(Year, Month) ->
     modb_id(Year, Month, kz_binary:rand_hex(16)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Format a document id prefix with year and month
+%% @doc Format a document id prefix with year and month
 %% @end
 %%--------------------------------------------------------------------
 -spec modb_id(kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month(), kz_term:ne_binary()) -> kz_term:ne_binary().

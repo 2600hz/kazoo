@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Bindings and JSON APIs for dealing with agents, as part of ACDc
-%%%
-%%%
+%%% @doc Bindings and JSON APIs for dealing with agents, as part of ACDc
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -444,8 +441,7 @@ unbind_q(Q, Ids, [_|T]) -> unbind_q(Q, Ids, T);
 unbind_q(_, _, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

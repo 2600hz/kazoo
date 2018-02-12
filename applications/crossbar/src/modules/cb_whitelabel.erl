@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Account module
-%%%
-%%%
+%%% @doc Account module
 %%% @author Jon Blanton <jon@2600hz.com>
 %%% @end
 %%%-------------------------------------------------------------------
@@ -70,8 +67,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -103,9 +99,7 @@ allowed_methods(_WhitelabelDomain, ?WELCOME_REQ) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -173,9 +167,7 @@ authenticate(_Nouns, _Verb) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%% @doc Add content types accepted and provided by this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -258,8 +250,7 @@ content_types_accepted(Context, _AttachType, _Verb) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -629,8 +620,7 @@ delete(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load the binary attachment of a whitelabel doc (based on a domain)
+%% @doc Load the binary attachment of a whitelabel doc (based on a domain)
 %% @end
 %%--------------------------------------------------------------------
 -spec find_whitelabel(cb_context:context(), kz_term:ne_binary()) ->
@@ -662,8 +652,7 @@ find_whitelabel(Context, Domain) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a whitelabel document from the database
+%% @doc Load a whitelabel document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_whitelabel_meta(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -680,8 +669,7 @@ find_whitelabel_meta(Context, Domain) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a whitelabel binary attachment from the database
+%% @doc Load a whitelabel binary attachment from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_whitelabel_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -805,8 +793,7 @@ on_successful_validation(Context, WhitelabelId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update the binary attachment of a whitelabel doc
+%% @doc Update the binary attachment of a whitelabel doc
 %% @end
 %%--------------------------------------------------------------------
 -spec update_whitelabel_binary(kz_term:ne_binary(), path_token(), cb_context:context()) ->
@@ -834,8 +821,7 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
+%% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------

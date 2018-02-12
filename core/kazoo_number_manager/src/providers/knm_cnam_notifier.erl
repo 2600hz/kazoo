@@ -13,8 +13,7 @@
 -include("knm.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
@@ -35,8 +34,7 @@ save(Number, _State) ->
     Number.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted
+%% @doc This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().

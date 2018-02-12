@@ -108,8 +108,7 @@ maybe_use_app_connection(#{options := Options}=Server, DbName) ->
             Server
     end.
 
-%% @doc
-%% For using kazoo_fixturedb directly without starting up kazoo_data, returns a dummy plan
+%% @doc For using kazoo_fixturedb directly without starting up kazoo_data, returns a dummy plan
 %% @end
 -spec get_dummy_plan() -> map().
 get_dummy_plan() ->

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% CDR
+%%% @doc CDR
 %%% Read only access to CDR docs
 %%%
 %%%
@@ -127,8 +126,7 @@ to_response(Context, _, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/cdr/' can only accept GET
 %%
 %% Failure here returns 405.
@@ -153,9 +151,7 @@ allowed_methods(?PATH_LEGS, _InteractionId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -172,9 +168,7 @@ resource_exists(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%% @doc Add content types accepted and provided by this module
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
@@ -197,8 +191,7 @@ provided_types(Context) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -250,8 +243,7 @@ load_chunk_view(Context, ViewName, Options0) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to CDRs summary.
+%% @doc Attempt to CDRs summary.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_cdr_summary(cb_context:context()) -> cb_context:context().
@@ -286,8 +278,7 @@ normalize_summary_results(JObj, Acc) -> [JObj|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generate specific view options for the path.
+%% @doc Generate specific view options for the path.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
@@ -330,8 +321,7 @@ maybe_add_stale_to_options('false') ->[].
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Loads CDR docs from database and normalized the them.
+%% @doc Loads CDR docs from database and normalized the them.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -384,8 +374,7 @@ normalize_cdrs(Context, <<"csv">>, JObjs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalize CDR in JSON
+%% @doc Normalize CDR in JSON
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_cdr_to_jobj(kz_json:object(), cb_context:context()) -> kz_json:object().
@@ -396,8 +385,7 @@ normalize_cdr_to_jobj(JObj, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalize CDR in CSV
+%% @doc Normalize CDR in CSV
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_cdr_to_csv(kz_json:object(), cb_context:context()) -> binary().
@@ -516,8 +504,7 @@ reseller_cost(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a CDR document from the database
+%% @doc Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_cdr(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -532,8 +519,7 @@ load_cdr(CDRId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load Legs for a cdr interaction from the database
+%% @doc Load Legs for a cdr interaction from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_legs(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().

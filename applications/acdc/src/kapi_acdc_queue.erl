@@ -713,8 +713,7 @@ unbind_q(Q, AcctId, QID, CallId, [_|T]) ->
 unbind_q(_, _, _, _, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

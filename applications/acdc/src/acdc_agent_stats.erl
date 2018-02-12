@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% Collector of stats for agents
-%%%
+%%% @doc Collector of stats for agents
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

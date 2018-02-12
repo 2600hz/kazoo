@@ -395,8 +395,7 @@ from_channel_create(JObj, Call) ->
     from_json(JObj, Call).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% READ THIS CAVEAT!!
+%% @doc READ THIS CAVEAT!!
 %% custom publisher and helper functions are not maintained when
 %% converting to/from json
 %% @end
@@ -462,8 +461,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% READ THIS CAVEAT!!
+%% @doc READ THIS CAVEAT!!
 %% custom publisher and helper functions are not maintained when
 %% converting to/from json
 %% @end

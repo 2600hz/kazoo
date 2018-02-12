@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Sends a notification for missed call
-%%%
+%%% @doc Sends a notification for missed call
 %%% @end
 %%%-------------------------------------------------------------------
 -module(cf_missed_call_alert).
@@ -17,8 +15,7 @@
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".missed_call_alert">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% maybe add termination handler then unconditionally
+%% @doc maybe add termination handler then unconditionally
 %%      continue the flow
 %% @end
 %%--------------------------------------------------------------------
@@ -28,8 +25,7 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% only add handler if the call is coming from another account or
+%% @doc only add handler if the call is coming from another account or
 %%      from a resource external to kazoo
 %% @end
 %%--------------------------------------------------------------------
@@ -48,8 +44,7 @@ maybe_add_handle(_Data, Call, _Wat) ->
     Call.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% handles call termination, only handle if neither the bridged
+%% @doc handles call termination, only handle if neither the bridged
 %%      or voicemail message left flags are set
 %% @end
 %%--------------------------------------------------------------------
@@ -103,8 +98,7 @@ send_missed_alert(Call, Notify, Emails) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Try to find email addressed using module's data object
+%% @doc Try to find email addressed using module's data object
 %% @end
 %%--------------------------------------------------------------------
 -spec find_email_addresses(kapps_call:call(), kz_json:objects()) -> kz_term:ne_binaries().
@@ -121,8 +115,7 @@ find_email_addresses(Call, Recipients) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Possible values for recipient type can be:
+%% @doc Possible values for recipient type can be:
 %%      * email: an email or a list of emails
 %%      * user: a user id or a list of user ids to read their email
 %%              addresses from
@@ -138,8 +131,7 @@ find_email_addresses_by_type(_AccountDb, _JObj, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% an email or a list of emails
+%% @doc an email or a list of emails
 %% @end
 %%--------------------------------------------------------------------
 -spec get_email_addresses(kz_term:ne_binary(), kz_term:api_binary() | kz_term:ne_binaries()) -> kz_term:ne_binaries().
@@ -151,8 +143,7 @@ get_email_addresses(_AccountDb, _) -> [].
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% a user id or a list of user ids to read their email
+%% @doc a user id or a list of user ids to read their email
 %%      addresses from
 %% @end
 %%--------------------------------------------------------------------

@@ -88,8 +88,7 @@
 -type fails() :: 'error' | 'fatal'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function set the response status to success, and load the provided
+%% @doc This function set the response status to success, and load the provided
 %% data.
 %% @end
 %%--------------------------------------------------------------------
@@ -123,8 +122,7 @@ response_402(Data, Context) ->
     create_response('error', <<"accept charges">>, 402, Data, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function load the error message into a 500 response, of type
+%% @doc This function load the error message into a 500 response, of type
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
@@ -136,8 +134,7 @@ response('fatal', Msg, Context) ->
     create_response('fatal', Msg, 500, kz_json:new(), Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function load the error message into a specific code response,
+%% @doc This function load the error message into a specific code response,
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
@@ -149,8 +146,7 @@ response('fatal', Msg, Code, Context) ->
     create_response('fatal', Msg, Code, kz_json:new(), Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function load the error message into a specific code response,
+%% @doc This function load the error message into a specific code response,
 %% of type fatal or error with additional data.
 %% @end
 %%--------------------------------------------------------------------
@@ -161,8 +157,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
     create_response('fatal', Msg, Code, JTerm, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function loads the response vars in Context, soon it will
+%% @doc This function loads the response vars in Context, soon it will
 %% make smarter choices about formating resp_data and filtering
 %% other parameters.
 %% @end
@@ -179,8 +174,7 @@ create_response(Status, Msg, Code, JTerm, Context) ->
                        ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the request is faulty (doesn't have a
+%% @doc Create a standard response if the request is faulty (doesn't have a
 %% match in validation, or some other issue with it keeps it from being
 %% processed, like nonsensical chains).
 %% @end
@@ -190,8 +184,7 @@ response_faulty_request(Context) ->
     response('error', <<"faulty request">>, 404, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% When a module is no longer valid, alert the client of the deprecated status
+%% @doc When a module is no longer valid, alert the client of the deprecated status
 %% by either sending a 410 Gone or a 301 Redirect (when using the arity
 %% 3 version.
 %%
@@ -234,8 +227,7 @@ response_redirect(Context, RedirectUrl, JObj, Redirect) ->
                    ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the requested ID did not match a
+%% @doc Create a standard response if the requested ID did not match a
 %% data record. Using 404 as 410 is a permanent Gone, while 404 is
 %% a softer not found now.
 %% @end
@@ -248,8 +240,7 @@ response_bad_identifier(?NE_BINARY = Id, Context) ->
     response('error', <<"bad identifier">>, 404, [Id], Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the requested resource update fails
+%% @doc Create a standard response if the requested resource update fails
 %% because of a conflict in the DB.
 %% @end
 %%--------------------------------------------------------------------
@@ -259,8 +250,7 @@ response_conflicting_docs(Context) ->
     response('error', <<"conflicting documents">>, 409, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the requested data query was missing.
+%% @doc Create a standard response if the requested data query was missing.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_missing_view(cb_context:context()) ->
@@ -269,8 +259,7 @@ response_missing_view(Context) ->
     response('fatal', <<"datastore missing view">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the datastore timed out.
+%% @doc Create a standard response if the datastore timed out.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_datastore_timeout(cb_context:context()) ->
@@ -279,8 +268,7 @@ response_datastore_timeout(Context) ->
     response('error', <<"datastore timeout">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the datastore timed out.
+%% @doc Create a standard response if the datastore timed out.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_datastore_conn_refused(cb_context:context()) ->
@@ -289,8 +277,7 @@ response_datastore_conn_refused(Context) ->
     response('error', <<"datastore connection refused">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the provided data did not validate.
+%% @doc Create a standard response if the provided data did not validate.
 %% @end
 %%--------------------------------------------------------------------
 -spec response_invalid_data(kz_json:json_term(), cb_context:context()) ->
@@ -299,8 +286,7 @@ response_invalid_data(JTerm, Context) ->
     response('error', <<"invalid data">>, 400, JTerm, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the datastore does not have the requested
+%% @doc Create a standard response if the datastore does not have the requested
 %% record collection.
 %% @end
 %%--------------------------------------------------------------------
@@ -309,8 +295,7 @@ response_db_missing(Context) ->
     response('fatal', <<"data collection missing: database not found">>, 503, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a standard response if the datastore does not have the requested
+%% @doc Create a standard response if the datastore does not have the requested
 %% record collection.
 %% @end
 %%--------------------------------------------------------------------
@@ -532,8 +517,7 @@ move_service(AccountId, NewTree, NewResellerId, Dirty) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return all descendants of the account id.
+%% @doc Return all descendants of the account id.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_descendants(kz_term:ne_binary()) -> kz_term:ne_binaries().
@@ -568,8 +552,7 @@ replicate_account_definition(JObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Flag all descendants of the account id as disabled.
+%% @doc Flag all descendants of the account id as disabled.
 %% @end
 %%--------------------------------------------------------------------
 -spec disable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
@@ -588,8 +571,7 @@ disable_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Flag all descendants of the account id as enabled.
+%% @doc Flag all descendants of the account id as enabled.
 %% @end
 %%--------------------------------------------------------------------
 -spec enable_account(kz_term:api_binary()) -> 'ok' | {'error', any()}.
@@ -608,8 +590,7 @@ enable_account(AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Helper to set data for all auth type.
+%% @doc Helper to set data for all auth type.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -679,8 +660,7 @@ format_app(Lang, AppJObj) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Update all descendants of the account id pvt_enabled flag with State.
+%% @doc Update all descendants of the account id pvt_enabled flag with State.
 %% @end
 %%--------------------------------------------------------------------
 -spec change_pvt_enabled(boolean(), kz_term:api_ne_binary()) -> ok | {error, any()}.
@@ -708,8 +688,7 @@ change_pvt_enabled(State, AccountId) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get user/account language
+%% @doc Get user/account language
 %% @end
 %%--------------------------------------------------------------------
 

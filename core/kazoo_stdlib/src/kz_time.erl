@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Various utilities - a veritable cornucopia
+%%% @doc Various utilities - a veritable cornucopia
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_time).

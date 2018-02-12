@@ -33,10 +33,10 @@
 -define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '^%%*[ ]*@doc[^\\n]*$(\\n^(?!(%%* *@end|%%* ?--+$|%%* ?==+$))^%%[^\\n]*$)*(\\n%%* ?(--+|==+)$)' core/ applications/").
 
 %% regex for finding comments written in the same line as `@doc'
--define(REGEX_IN_DOC_LINE, "ag '%%*\\s*@doc.+$'  core/ applications/").
+-define(REGEX_IN_DOC_LINE, "ag '%%*\\s*@doc$\\n%%*\\s*[^@\\n]+$'  core/ applications/").
 
 %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
--define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc(\\n%%*$)+' core/ applications/").
+-define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc.*(\\n%%*$)+' core/ applications/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
@@ -52,7 +52,7 @@ main(_) ->
           ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
-          ,{?REGEX_IN_DOC_LINE, "move comments written in the same line as @doc", fun move_in_doc_line/1}
+          ,{?REGEX_IN_DOC_LINE, "move first comment line to the same line as @doc", fun move_in_doc_line/1}
            %% must be last thing to run
           ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
           ],
@@ -91,7 +91,7 @@ edocify([{Cmd, Desc, Fun}|Rest], Ret) ->
         ok -> edocify(Rest, Ret);
         AgResult ->
             _ = Fun(AgResult),
-            io:format(" done~n~n"),
+            io:format(" done~n"),
             edocify(Rest, 1)
     end.
 
@@ -442,7 +442,7 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Move comments written in the same line as @doc to their own line
+%% Move first comment line to the same line as @doc.
 %% @end
 %%--------------------------------------------------------------------
 move_in_doc_line(Result) ->
@@ -463,10 +463,24 @@ do_move_in_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
     of
         false ->
             do_move_in_doc_line(Lines, Positions, Formatted ++ [Line]);
-        <<"%% @doc", Rest/binary>> ->
-            do_move_in_doc_line(Lines, Positions, Formatted ++ [<<"%% @doc">>, <<"%%", Rest/binary>>]);
-        <<"%%% @doc", Rest/binary>> ->
-            do_move_in_doc_line(Lines, Positions, Formatted ++ [<<"%%% @doc">>, <<"%%%", Rest/binary>>])
+        <<"%% @doc">> ->
+            case Lines of
+                [{_, Comment}|T] ->
+                    do_move_in_doc_line(T, Positions, Formatted ++ [<<Line/binary, " ", (strip_left_space(strip_comment(Comment)))/binary>>]);
+                _ ->
+                    do_move_in_doc_line(Lines, Positions, Formatted ++ [Line])
+            end;
+        <<"%% @doc", _/binary>> ->
+            do_move_in_doc_line(Lines, Positions, Formatted ++ [Line]);
+        <<"%%% @doc">> ->
+            case Lines of
+                [{_, Comment}|T] ->
+                    do_move_in_doc_line(T, Positions, Formatted ++ [<<Line/binary, " ", (strip_left_space(strip_comment(Comment)))/binary>>]);
+                _ ->
+                    do_move_in_doc_line(Lines, Positions, Formatted ++ [Line])
+            end;
+        <<"%%% @doc", _/binary>> ->
+            do_move_in_doc_line(Lines, Positions, Formatted ++ [Line])
     end.
 
 %%--------------------------------------------------------------------
@@ -490,15 +504,18 @@ do_remove_doc_tag_empty_comment([], _, Formatted) ->
     Formatted;
 do_remove_doc_tag_empty_comment([{LN, Line}|Lines], Positions, Formatted) ->
     case lists:member(LN, Positions)
-        andalso reverse_binary(Line)
+        andalso Line
     of
         false ->
             do_remove_doc_tag_empty_comment(Lines, Positions, Formatted ++ [Line]);
-        <<"cod@", _/binary>> ->
-            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted ++ [Line]);
-        _ ->
+        <<"%%">> ->
             %% remove empty comment line
-            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted)
+            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted);
+        <<"%%%">> ->
+            %% remove empty comment line
+            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted);
+        _ ->
+            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted ++ [Line])
     end.
 
 %%%===================================================================
@@ -559,11 +576,6 @@ empty_block() ->
     ,<<"%% @end">>
     ,<<"%%--------------------------------------------------------------------">>
     ].
-
-reverse_binary(Binary) ->
-    Size = erlang:size(Binary)*8,
-    <<X:Size/integer-little>> = Binary,
-    <<X:Size/integer-big>>.
 
 read_lines(File, WithLineNumber) ->
     case file:read_file(File) of

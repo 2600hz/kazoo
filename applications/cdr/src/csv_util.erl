@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (c) 2010-2018, 2600Hz
-%%% @doc
-%%% Utility module for V3 Kazoo Migration
-%%%
+%%% @doc Utility module for V3 Kazoo Migration
 %%% @author Ben Wann
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -25,8 +23,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% TODO: change name...
+%% @doc TODO: change name...
 %% @end
 %%--------------------------------------------------------------------
 -spec json_objs_to_csv(kz_json:objects()) -> iolist().

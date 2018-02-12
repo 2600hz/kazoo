@@ -13,8 +13,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------

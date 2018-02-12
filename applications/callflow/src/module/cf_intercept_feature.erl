@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Intercept a call in the specified device/user/extension
-%%%
+%%% @doc Intercept a call in the specified device/user/extension
 %%% data: {
 %%%   "type" : "user | device | extension"
 %%% }
@@ -49,8 +47,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, creates the parameters and branches
+%% @doc Entry point for this module, creates the parameters and branches
 %% to cf_intercept.
 %% @end
 %%--------------------------------------------------------------------

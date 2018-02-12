@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Renders a custom account email template, or the system default,
+%%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%%
 %%%
@@ -25,8 +24,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% initialize the module
+%% @doc initialize the module
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -56,8 +54,7 @@ handle_req(JObj, _Props) ->
                                  ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% process the AMQP requests
+%% @doc process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
 -spec send(integer(), kz_json:object()) -> any().
@@ -79,8 +76,7 @@ send(CurrentBalance, Account) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% create the props used by the template render function
+%% @doc create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props(integer(), kz_json:object()) -> kz_term:proplist().
@@ -103,8 +99,7 @@ pretty_print_dollars(Amount) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% process the AMQP requests
+%% @doc process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Tracks the agent's state, responds to messages from the corresponding
+%%% @doc Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.
 %%%
 %%% @author James Aimonetti
@@ -124,8 +123,7 @@
 %%% API
 %%%===================================================================
 %%--------------------------------------------------------------------
-%% @doc
-%%   When a queue receives a call and needs an agent, it will send a
+%% @doc When a queue receives a call and needs an agent, it will send a
 %%   member_connect_req. The agent will respond (if possible) with a
 %%   member_connect_resp payload or ignore the request
 %% @end
@@ -135,8 +133,7 @@ member_connect_req(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'member_connect_req', JObj}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%%   When a queue receives a call and needs an agent, it will send a
+%% @doc When a queue receives a call and needs an agent, it will send a
 %%   member_connect_req. The agent will respond (if possible) with a
 %%   member_connect_resp payload or ignore the request
 %% @end
@@ -150,8 +147,7 @@ agent_timeout(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'agent_timeout', JObj}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%%   When an agent is involved in a call, it will receive call events.
+%% @doc When an agent is involved in a call, it will receive call events.
 %%   Pass the call event to the statem to see if action is needed (usually
 %%   for bridge and hangup events).
 %% @end
@@ -277,8 +273,7 @@ end_wrapup(ServerRef) ->
     gen_statem:cast(ServerRef, {'end_wrapup'}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Request the agent listener bind to queue and conditionally send an
+%% @doc Request the agent listener bind to queue and conditionally send an
 %% availability update depending on agent state
 %% @end
 %%--------------------------------------------------------------------
@@ -287,8 +282,7 @@ add_acdc_queue(ServerRef, QueueId) ->
     gen_statem:cast(ServerRef, {'add_acdc_queue', QueueId}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Request the agent listener unbind from queue and send an
+%% @doc Request the agent listener unbind from queue and send an
 %% unavailability update
 %% @end
 %%--------------------------------------------------------------------
@@ -326,8 +320,7 @@ current_call(ServerRef) -> gen_statem:call(ServerRef, 'current_call').
 status(ServerRef) -> gen_statem:call(ServerRef, 'status').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates a gen_statem process which calls Module:init/1 to
+%% @doc Creates a gen_statem process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %% @end
@@ -388,8 +381,7 @@ deleted_endpoint(ServerRef, EP) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Whenever a gen_statem is started using
+%% @doc Whenever a gen_statem is started using
 %% gen_statem:start_link/[3,4], this function is called by the new
 %% process to initialize.
 %%
@@ -1484,8 +1476,7 @@ handle_info(_Info, StateName, State) ->
     {'next_state', StateName, State}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called by a gen_statem when it is about to
+%% @doc This function is called by a gen_statem when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_statem terminates with
 %% Reason. The return value is ignored.
@@ -1499,9 +1490,7 @@ terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.

@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for braintree documents
-%%%
-%%%
+%%% @doc Handle client requests for braintree documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -52,8 +49,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -83,9 +79,7 @@ allowed_methods(?TRANSACTIONS_PATH_TOKEN, _TransactionId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -104,8 +98,7 @@ resource_exists(?ADDRESSES_PATH_TOKEN, _) -> 'true';
 resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -475,8 +468,7 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Creates an empty customer in braintree
+%% @doc Creates an empty customer in braintree
 %% @end
 %%--------------------------------------------------------------------
 -spec create_braintree_customer(cb_context:context()) -> cb_context:context().

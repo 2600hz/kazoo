@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% ACLs from 7 to 77
-%%%
-%%%
+%%% @doc ACLs from 7 to 77
 %%% @author James Aimonetti
 %%% @author Edouard Swiac
 %%% @end
@@ -25,8 +22,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -36,8 +32,7 @@ init() ->
     crossbar_bindings:bind(<<"*.validate.acls">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -45,9 +40,7 @@ init() ->
 allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -61,8 +54,7 @@ allowed_methods() -> [?HTTP_GET].
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /acls mights load a list of skel objects
 %% /acls/123 might load the skel object 123
@@ -78,8 +70,7 @@ validate_summary(Context, ?HTTP_GET) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------

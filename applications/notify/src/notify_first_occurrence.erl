@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Notification for 'first' registration and call
-%%%
+%%% @doc Notification for 'first' registration and call
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @author Hesaam Farhang
 %%% @end
@@ -72,8 +70,7 @@ handle_req(JObj, _Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% create the props used by the template render function
+%% @doc create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_term:ne_binary()) -> kz_term:proplist().
@@ -87,8 +84,7 @@ create_template_props(Account, Occurrence) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% process the AMQP requests
+%% @doc process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:api_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().

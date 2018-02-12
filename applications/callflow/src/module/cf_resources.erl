@@ -35,8 +35,7 @@
 -define(RES_CONFIG_CAT, <<?CF_CONFIG_CAT/binary, ".resources">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -312,8 +311,7 @@ get_inception(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Consume Erlang messages and return on offnet response
+%% @doc Consume Erlang messages and return on offnet response
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_stepswitch(kapps_call:call()) -> {kz_term:ne_binary(), kz_term:api_binary()}.

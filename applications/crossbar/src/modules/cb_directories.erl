@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Handle CRUD operations for Directories
-%%%
-%%%
+%%% @doc Handle CRUD operations for Directories
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -52,8 +49,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -69,9 +65,7 @@ allowed_methods(_DirectoryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -83,8 +77,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% What content-types will the module be requiring (matched to the client's
+%% @doc What content-types will the module be requiring (matched to the client's
 %% Content-Type header.
 %% Of the form `{atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
@@ -117,8 +110,7 @@ to_pdf({Req, Context}) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -183,8 +175,7 @@ validate_directories(Context, ?HTTP_PUT) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_directory(cb_context:context(), kz_term:ne_binary(), path_token()) -> cb_context:context().
@@ -290,8 +281,7 @@ pdf_callflow(AccountDb, CallflowId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
@@ -301,8 +291,7 @@ create(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -331,8 +320,7 @@ load_directory_users(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing conference document with the data provided, if it is
+%% @doc Update an existing conference document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -343,8 +331,7 @@ update(DocId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update-merge an existing conference document partially with the data provided, if it is
+%% @doc Update-merge an existing conference document partially with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -367,8 +354,7 @@ on_successful_validation(DocId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -378,8 +364,7 @@ summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

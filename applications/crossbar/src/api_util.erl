@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Crossbar REST-related functions.
-%%%
+%%% @doc Crossbar REST-related functions.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Jon Blanton
@@ -81,8 +79,7 @@
              ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to determine if this is a cross origin resource preflight request
+%% @doc Attempts to determine if this is a cross origin resource preflight request
 %% @end
 %%--------------------------------------------------------------------
 -spec is_cors_preflight(cowboy_req:req()) -> boolean().
@@ -91,8 +88,7 @@ is_cors_preflight(Req) ->
         andalso ?HTTP_OPTIONS =:= cowboy_req:method(Req).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to determine if this is a cross origin resource sharing request
+%% @doc Attempts to determine if this is a cross origin resource sharing request
 %% @end
 %%--------------------------------------------------------------------
 -spec is_cors_request(cowboy_req:req()) -> boolean().
@@ -517,8 +513,7 @@ decode_json_body(ReqBody, Req) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes envelope keys, sets envelope keys to lowercase.
+%% @doc Normalizes envelope keys, sets envelope keys to lowercase.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_envelope_keys(kz_json:object()) -> kz_json:object().
@@ -531,8 +526,7 @@ normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Determines if the request envelope is valid.
+%% @doc Determines if the request envelope is valid.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_valid_request_envelope(kz_json:object(), cb_context:context()) -> 'true' | validation_errors().
@@ -563,8 +557,7 @@ get_http_verb(Method, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will loop over the Tokens in the request path and return
+%% @doc This function will loop over the Tokens in the request path and return
 %% a proplist with keys being the module and values a list of parameters
 %% supplied to that module.  If the token order is improper a empty list
 %% is returned.
@@ -644,8 +637,7 @@ is_cb_module_version(Context, Elem) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will find the intersection of the allowed methods
+%% @doc This function will find the intersection of the allowed methods
 %% among event responses.  The responses can only veto the list of
 %% methods, they can not add.
 %%
@@ -680,8 +672,7 @@ uppercase_all(L) when is_list(L) ->
     [kz_term:to_upper_binary(kz_term:to_binary(I)) || I <- L].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Insert `POST' if Verb is in allowed, otherwise remove `POST'.
+%% @doc Insert `POST' if Verb is in allowed, otherwise remove `POST'.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_add_post_method(kz_term:ne_binary(), http_method(), http_methods()) -> http_methods().
@@ -698,8 +689,7 @@ maybe_add_post_method(_, _, Allowed) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will use event bindings to determine if the client has
+%% @doc This function will use event bindings to determine if the client has
 %% provided a valid authentication token.
 %% @end
 %%--------------------------------------------------------------------
@@ -848,8 +838,7 @@ get_authorization_token_type(<<"Bearer ", Token/binary>>) -> {Token, 'oauth'};
 get_authorization_token_type(Token) -> {Token, 'unknown'}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will try to find pretty print option inside the headers
+%% @doc This function will try to find pretty print option inside the headers
 %% if not found will look into the request to find the options
 %% otherwise will result in false.
 %% @end
@@ -870,8 +859,7 @@ get_pretty_print(Req, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will use event bindings to determine if the client is
+%% @doc This function will use event bindings to determine if the client is
 %% authorized for this request.
 %% @end
 %%--------------------------------------------------------------------
@@ -1010,8 +998,7 @@ ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
 ensure_content_type(CT) -> CT.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will use event bindings to determine if the target noun
+%% @doc This function will use event bindings to determine if the target noun
 %% (the final module in the chain) accepts this verb parameter pair.
 %% @end
 %%--------------------------------------------------------------------
@@ -1028,8 +1015,7 @@ does_resource_exist(_Context, _ReqNouns) ->
     'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function gives each `{Mod, Params}' pair a chance to determine if
+%% @doc This function gives each `{Mod, Params}' pair a chance to determine if
 %% it is valid and returns the status, and any errors.
 %%
 %% validate_resource for each `{Mod, Params}' pair
@@ -1079,8 +1065,7 @@ validate_resources_fold({Mod, Params}, ContextAcc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function will use event bindings to determine if the client is
+%% @doc This function will use event bindings to determine if the client is
 %% authorized for this request.
 %% @end
 %%--------------------------------------------------------------------
@@ -1100,8 +1085,7 @@ process_billing_response(Context, NewContext) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the response is of type success.
+%% @doc This function determines if the response is of type success.
 %% @end
 %%--------------------------------------------------------------------
 -spec succeeded(cb_context:context()) -> boolean().
@@ -1159,8 +1143,7 @@ execute_request_results(Req, Context, _RespStatus) ->
     ?MODULE:stop(Req, Context).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function runs the request terminated bindings at the conclusion
+%% @doc This function runs the request terminated bindings at the conclusion
 %% of all requests.
 %% @end
 %%--------------------------------------------------------------------
@@ -1176,8 +1159,7 @@ finish_request(_Req, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will create the content for the response body.
+%% @doc This function will create the content for the response body.
 %% @end
 %%--------------------------------------------------------------------
 -spec create_resp_content(cowboy_req:req(), cb_context:context()) ->
@@ -1239,8 +1221,7 @@ create_resp_file(Req, Context) ->
     {{Len, Fun}, Req}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Encode the JObj and send it as a chunk. Start chunk response if is
+%% @doc Encode the JObj and send it as a chunk. Start chunk response if is
 %% not started yet.
 %% @end
 %%--------------------------------------------------------------------
@@ -1295,8 +1276,7 @@ create_csv_chunk_response(Req, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns the `x-file-name' from the request header if available.
+%% @doc Returns the `x-file-name' from the request header if available.
 %% If its not then check URL params for `file_name'. If neither are present
 %% then return the default defined value.
 %% @end
@@ -1344,8 +1324,7 @@ map_empty_json_value_to_binary(Key, Value) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will create response expected for a request that
+%% @doc This function will create response expected for a request that
 %% is pushing data (like PUT).
 %% @end
 %%--------------------------------------------------------------------
@@ -1365,8 +1344,7 @@ create_push_response(Req0, Context, Fun) ->
 -type pull_response() :: kz_term:text() | resp_file().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will create response expected for a request that
+%% @doc This function will create response expected for a request that
 %% is pulling data (like GET).
 %% @end
 %%--------------------------------------------------------------------
@@ -1396,8 +1374,7 @@ maybe_set_pull_response_stream(Other) ->
     Other.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function extracts the response fields and puts them in a proplist.
+%% @doc This function extracts the response fields and puts them in a proplist.
 %% @end
 %%--------------------------------------------------------------------
 -spec create_resp_envelope(cb_context:context()) -> kz_json:object().

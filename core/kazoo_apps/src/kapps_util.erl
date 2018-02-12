@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Utilities shared by a subset of kapps
-%%%
+%%% @doc Utilities shared by a subset of kapps
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -76,8 +74,7 @@
 -define(GET_BY_CACHE_ORIGIN, [{'origin', [{'db', ?KZ_ACCOUNTS_DB, <<"account">>}]}]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Update a document in each crossbar account database with the
+%% @doc Update a document in each crossbar account database with the
 %% file contents.  This is intended for _design docs....
 %%
 %% @end
@@ -90,8 +87,7 @@ update_all_accounts(File) ->
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will import every .json file found in the given
+%% @doc This function will import every .json file found in the given
 %% application priv/couchdb/views/ folder into every account
 %% @end
 %%--------------------------------------------------------------------
@@ -103,8 +99,7 @@ revise_whapp_views_in_accounts(App) ->
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will replicate the results of the filter from each
+%% @doc This function will replicate the results of the filter from each
 %% account db into the target database
 %% @end
 %%--------------------------------------------------------------------
@@ -116,8 +111,7 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will replicate the results of the filter from the
+%% @doc This function will replicate the results of the filter from the
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
@@ -143,8 +137,7 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find the system admin from the system_config if set, if not
+%% @doc Find the system admin from the system_config if set, if not
 %% set it to the oldest acccount and return that.
 %% @end
 %%--------------------------------------------------------------------
@@ -197,8 +190,7 @@ account_depth(Account) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% List an account's descendants (including the provided AccountId).
+%% @doc List an account's descendants (including the provided AccountId).
 %% @end
 %%--------------------------------------------------------------------
 -spec account_descendants(kz_term:ne_binary()) -> kz_term:ne_binaries().
@@ -224,8 +216,7 @@ account_has_descendants(Account) ->
     [] =/= (account_descendants(AccountId) -- [AccountId]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a list of accounts this returns the id of the oldest
+%% @doc Given a list of accounts this returns the id of the oldest
 %% @end
 %%--------------------------------------------------------------------
 -spec find_oldest_doc(kz_json:objects()) ->
@@ -246,8 +237,7 @@ find_oldest_doc([First|Docs]) ->
     {'ok', OldestDocID}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will return a list of all account database names
+%% @doc This function will return a list of all account database names
 %% in the requested encoding
 %% @end
 %%--------------------------------------------------------------------
@@ -348,8 +338,7 @@ is_account_db(Db) ->
                         {'error', 'not_found'}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Realms are one->one with accounts.
+%% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_by_realm(kz_term:ne_binary()) -> getby_return().
@@ -454,8 +443,7 @@ is_enabled(AccountId, {<<"account">>, AccountId}) ->
 is_enabled(_AccountId, {_Type, _Thing}) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Names are one->many with accounts since account names are not
+%% @doc Names are one->many with accounts since account names are not
 %% unique.
 %% @end
 %%--------------------------------------------------------------------
@@ -496,8 +484,7 @@ cache(Key, AccountDbs) ->
     kz_cache:store_local(?KAPPS_GETBY_CACHE, Key, AccountDbs, ?GET_BY_CACHE_ORIGIN).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given an JSON Object for a hangup event, or bridge completion
+%% @doc Given an JSON Object for a hangup event, or bridge completion
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
@@ -648,8 +635,7 @@ amqp_pool_collect(Api, PubFun, Until, Timeout) ->
     kz_amqp_worker:call_collect(Api, PubFun, Until, Timeout).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Extracts the User and Realm from either the Request or To field, configured
+%% @doc Extracts the User and Realm from either the Request or To field, configured
 %% in the system_config DB. Defaults to Request (To is the other option)
 %% @end
 %%--------------------------------------------------------------------

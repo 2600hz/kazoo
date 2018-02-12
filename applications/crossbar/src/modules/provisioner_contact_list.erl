@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Common functions for the provisioner modules
-%%%
-%%%
+%%% @doc Common functions for the provisioner modules
 %%% @author Karl Anderson
 %%% @end
 %%%-------------------------------------------------------------------

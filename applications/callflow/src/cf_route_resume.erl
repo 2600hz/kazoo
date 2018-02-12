@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Starts a cf_exe and processes the "flow" sans DB
-%%%
+%%% @doc Starts a cf_exe and processes the "flow" sans DB
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

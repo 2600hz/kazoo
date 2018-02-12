@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Text To Speech
+%%% @doc Text To Speech
 %%% Data = {
 %%%   "text":"text to say"
 %%%   ,"voice":"female"

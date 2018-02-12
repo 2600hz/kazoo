@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% The basic flow of a directory call:
+%%% @doc The basic flow of a directory call:
 %%% 1) Prompt: Please enter the first few letters of the person's
 %%%  a) First entry in sort order (first or last name)
 %%% 2) Receive MIN_DTMF dtmf tones
@@ -98,8 +97,7 @@
 -type dtmf_action() :: 'route' | 'next' | 'start_over' | 'invalid' | 'continue'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Helpers for bridging in FreeSWITCH
-%%%
+%%% @doc Helpers for bridging in FreeSWITCH
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -77,8 +75,7 @@ unbridge(UUID, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Bridge command helpers
+%% @doc Bridge command helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_ringback(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.

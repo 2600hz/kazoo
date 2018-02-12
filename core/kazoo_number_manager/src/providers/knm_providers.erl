@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016-2018, 2600Hz INC
-%%% @doc
-%%% Handle prepend feature
-%%%
+%%% @doc Handle prepend feature
 %%% @author Peter Defebvre
 %%% @author Pierre Fenoll
 %%% @author Karl Anderson
@@ -70,8 +68,7 @@ delete(Number) ->
     do_exec(Number, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% List features a number is allowed by its reseller to enable.
+%% @doc List features a number is allowed by its reseller to enable.
 %% @end
 %%--------------------------------------------------------------------
 -spec available_features(knm_phone_number:knm_phone_number()) -> kz_term:ne_binaries().
@@ -83,8 +80,7 @@ available_features(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
     list_available_features(feature_parameters(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% The name of the billable service associated with a feature.
+%% @doc The name of the billable service associated with a feature.
 %% @end
 %%--------------------------------------------------------------------
 -spec service_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -105,8 +101,7 @@ service_name(Feature, _) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Util function to get E911 caller name defaults.
+%% @doc Util function to get E911 caller name defaults.
 %% @end
 %%--------------------------------------------------------------------
 -spec e911_caller_name(knm_number:knm_number(), kz_term:api_ne_binary()) -> kz_term:ne_binary().

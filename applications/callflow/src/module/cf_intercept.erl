@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz, INC
-%%% @doc
-%%% Intercept a call
-%%%
+%%% @doc Intercept a call
 %%% data: {
 %%%   "user_id":"_user_id_"
 %%%   ,"device_id":"_device_id_"
@@ -29,8 +27,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------

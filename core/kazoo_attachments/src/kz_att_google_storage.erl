@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Google Storage for attachments
-%%%
+%%% @doc Google Storage for attachments
 %%% @author Luis Azedo
 %%% @end
 %%%-------------------------------------------------------------------

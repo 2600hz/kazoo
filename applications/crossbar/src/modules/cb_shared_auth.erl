@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Shared token auth module, this module validates the token
+%%% @doc Shared token auth module, this module validates the token
 %%% against a trusted central token server.  If the token
 %%% is valid then it will create a local token.  It will
 %%% also import the account/user from the central server.
@@ -55,8 +54,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -67,9 +65,7 @@ allowed_methods() ->
     [?HTTP_PUT, ?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -103,9 +99,7 @@ authenticate(?HTTP_PUT, [{<<"shared_auth">>, []}]) -> 'true';
 authenticate(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function runs for each side of the shared auth request
-%%
+%% @doc This function runs for each side of the shared auth request
 %% The Requestor (PUT):
 %%     IE: Create (PUT) a local auth token
 %% This request bypasses authentication, test the 'shared_token' against our
@@ -200,8 +194,7 @@ put(Context) ->
 %%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
+%% @doc Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
 -spec create_local_token(cb_context:context()) -> cb_context:context().
@@ -228,8 +221,7 @@ create_local_token(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Make a crossbar request to the authoritative server to authorize
+%% @doc Make a crossbar request to the authoritative server to authorize
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
@@ -253,8 +245,7 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If a remote host authenticates the shared token it will return
+%% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure those exist locally.
 %% @end
 %%--------------------------------------------------------------------
@@ -273,8 +264,7 @@ import_missing_data(Account, User) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If a remote host authenticates the shared token it will return
+%% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
@@ -333,8 +323,7 @@ import_missing_account(AccountId, Account) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If a remote host authenticates the shared token it will return
+%% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------

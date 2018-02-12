@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Look up caller id number for spam score
+%%% @doc Look up caller id number for spam score
 %%% "data":{
 %%%   "username":"nomorobo_username"
 %%%   ,"password":"nomorobo_password"
@@ -48,8 +47,7 @@
 -define(URL, <<"https://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().

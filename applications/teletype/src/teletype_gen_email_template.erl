@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% When implementing template modules, these callbacks are a must!
-%%%
-%%%
+%%% @doc When implementing template modules, these callbacks are a must!
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------

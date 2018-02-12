@@ -44,8 +44,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the amqp_cron supervisor with the given node list. See
+%% @doc Starts the amqp_cron supervisor with the given node list. See
 %% {@link amqp_cron:start_link/1}.
 %%
 %% @end

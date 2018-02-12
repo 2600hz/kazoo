@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% XML-formatter for FreeSWITCH XML responses
+%%% @doc XML-formatter for FreeSWITCH XML responses
 %%% Copy of xmerl/src/xmerl_xml.erl
 %%%
 %%% @author James Aimonetti

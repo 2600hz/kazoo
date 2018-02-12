@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle authn_req messages
-%%%
+%%% @doc Handle authn_req messages
 %%% @author James Aimonetti
 %%% @author Luis Azedo
 %%% @end
@@ -192,8 +190,7 @@ get_tel_uri(Number) -> <<"<tel:", Number/binary,">">>.
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% look up the user and realm in the database and return the result
+%% @doc look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_auth_user(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->

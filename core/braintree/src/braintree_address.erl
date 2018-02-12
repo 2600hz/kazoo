@@ -19,8 +19,7 @@
 -include("bt.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create the partial url for this module
+%% @doc Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -33,8 +32,7 @@ url(CustomerId, AddressId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses/", kz_term:to_list(AddressId)]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find a customer by id
+%% @doc Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
 -spec find(kz_term:ne_binary() | nonempty_string(), kz_term:ne_binary() | nonempty_string()) -> bt_address().
@@ -44,8 +42,7 @@ find(CustomerId, AddressId) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates a new customer using the given record
+%% @doc Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -61,8 +58,7 @@ create(CustomerId, Address) ->
     create(Address#bt_address{customer_id=CustomerId}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Updates a customer with the given record
+%% @doc Updates a customer with the given record
 %% @end
 %%--------------------------------------------------------------------
 -spec update(bt_address()) -> bt_address().
@@ -75,8 +71,7 @@ update(#bt_address{id=AddressId
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Deletes a customer id from braintree's system
+%% @doc Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
 
@@ -93,8 +88,7 @@ delete(CustomerId, AddressId) ->
     #bt_address{}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Contert the given XML to a customer record
+%% @doc Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -123,8 +117,7 @@ xml_to_record(Xml, Base) ->
                }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Contert the given XML to a customer record
+%% @doc Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -158,8 +151,7 @@ record_to_xml(Address, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given json object into a record
+%% @doc Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record(kz_term:api_object()) -> bt_address() | 'undefined'.
@@ -182,8 +174,7 @@ json_to_record(JObj) ->
                }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given record into a json object
+%% @doc Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_address() | 'undefined') -> kz_term:api_object().
@@ -209,8 +200,7 @@ record_to_json(#bt_address{}=Address) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the object exists in but no id has been provided then generate
+%% @doc If the object exists in but no id has been provided then generate
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------

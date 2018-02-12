@@ -22,8 +22,7 @@
 -type patterns() :: [pattern()].
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% lookup the callflow based on the requested number in the account
+%% @doc lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
 -type lookup_ret() :: {'ok', kzd_callflow:doc(), boolean()} | {'error', any()}.

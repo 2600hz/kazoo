@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -32,8 +29,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -49,8 +45,7 @@ init() ->
     crossbar_bindings:bind(<<"*.execute.delete.apps_store">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -74,8 +69,7 @@ allowed_methods(_AppId, ?SCREENSHOT, _AppScreenshotIndex) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
+%% @doc Does the path point to a valid resource.
 %% '''
 %% @end
 %%--------------------------------------------------------------------
@@ -470,8 +464,7 @@ bad_app_error(Context, AppId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% install a new app on the account
+%% @doc install a new app on the account
 %% @end
 %%--------------------------------------------------------------------
 -spec install(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -495,8 +488,7 @@ install(Context, Id) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Remove app from account
+%% @doc Remove app from account
 %% valid
 %% @end
 %%--------------------------------------------------------------------

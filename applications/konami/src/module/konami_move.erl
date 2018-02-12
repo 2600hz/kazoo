@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% data:
+%%% @doc data:
 %%%   owner_id: User-ID to fetch devices for
 %%%
 %%% @author Peter Defebvre

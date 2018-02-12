@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Ecallmgr module (statem) for disconnecting calls when account
+%%% @doc Ecallmgr module (statem) for disconnecting calls when account
 %%% balance drops below zero
 %%%
 %%% @author Dinkor (Sergey Korobkov)
@@ -43,8 +42,7 @@
 %% API
 %%====================================================================
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server.
+%% @doc Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().

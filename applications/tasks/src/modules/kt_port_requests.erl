@@ -39,8 +39,7 @@ init() ->
 
 %%% Triggerables
 
-%% @doc
-%% Cleanup expired port requests
+%% @doc Cleanup expired port requests
 %% @end
 -spec cleanup(kz_term:ne_binary()) -> 'ok'.
 cleanup(?KZ_PORT_REQUESTS_DB = Db) ->

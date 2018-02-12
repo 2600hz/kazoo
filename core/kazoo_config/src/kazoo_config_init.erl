@@ -14,8 +14,7 @@
 -export([read_cookie/1]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the app for inclusion in a supervisor tree.
+%% @doc Starts the app for inclusion in a supervisor tree.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -114,8 +113,7 @@ cleanup_zone_prop({'amqp_uri', URI}) ->
 cleanup_zone_prop(Prop) -> Prop.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Reads config.ini without starting the kazoo_config application.
+%% @doc Reads config.ini without starting the kazoo_config application.
 %% @end
 %%--------------------------------------------------------------------
 -spec read_cookie(atom()) -> [atom()].

@@ -145,8 +145,7 @@ publish_search_resp(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Subscribing for updates
+%% @doc Subscribing for updates
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -312,8 +311,7 @@ probe_routing_key(JObj) ->
     probe_routing_key(kz_json:get_value(<<"Event-Package">>, JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% MWI - Update the Message Waiting Indicator on a device - see wiki
+%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -409,8 +407,7 @@ mwi_unsolicited_update_routing_key(JObj) ->
     mwi_unsolicited_update_routing_key(kz_json:get_value(<<"To">>, JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% MWI - Query the Message Waiting Indicator on a device - see wiki
+%% @doc MWI - Query the Message Waiting Indicator on a device - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -444,8 +441,7 @@ mwi_query_routing_key(JObj) ->
     mwi_query_routing_key(kz_json:get_value(<<"Realm">>, JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Register_Overwrite (unregister is a key word) - see wiki
+%% @doc Register_Overwrite (unregister is a key word) - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -745,8 +741,7 @@ is_valid_state(JObj) ->
     is_valid_state(kz_json:get_value(<<"State">>, JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

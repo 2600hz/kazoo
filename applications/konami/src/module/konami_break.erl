@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Hang up the call
+%%% @doc Hang up the call
 %%% Data = {}
 %%%
 %%% @author Michal Tesar

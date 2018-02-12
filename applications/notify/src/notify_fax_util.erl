@@ -15,8 +15,7 @@
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% create a friendly file name
+%% @doc create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
 -spec get_file_name(kz_term:proplist(), string()) -> kz_term:ne_binary().

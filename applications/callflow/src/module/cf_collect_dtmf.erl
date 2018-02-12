@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Collect DTMF into an optional key for later retrieval
+%%% @doc Collect DTMF into an optional key for later retrieval
 %%% "data":{
 %%%   "max_digits":4
 %%%   ,"timeout":5000 // milliseconds, how long to wait for first DTMF
@@ -25,8 +24,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

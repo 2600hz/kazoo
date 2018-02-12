@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -28,8 +25,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -39,8 +35,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.pivot">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -54,9 +49,7 @@ allowed_methods(?DEBUG_PATH_TOKEN, _UUID) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -74,8 +67,7 @@ resource_exists(?DEBUG_PATH_TOKEN) -> 'true'.
 resource_exists(?DEBUG_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /pivot mights load a list of pivot objects
 %% /pivot/123 might load the pivot object 123
@@ -92,9 +84,7 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
-%%
+%% @doc Load an instance from the database
 %% Proper pagination is merely impossible for this API since we debugs
 %% are in two documents, setting limit to 2 * PagSize is a bad choice.
 %% What if the response or even the request debug document is not exists?
@@ -110,8 +100,7 @@ debug_summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Pivot debugs are store in two documents, request debug and response
+%% @doc Pivot debugs are store in two documents, request debug and response
 %% debug. If page_size is requested set limit accordingly to return
 %% both documents.
 %% @end
@@ -126,8 +115,7 @@ limit_by_page_size(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec debug_read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -185,8 +173,7 @@ normalize_debug_results(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Since view key is Call-ID, we're sure debug docs for the same Call-ID
+%% @doc Since view key is Call-ID, we're sure debug docs for the same Call-ID
 %% are adjacent to each other. If we previously visited the Call-ID
 %% the next doc with the same Call-ID are merged with list's head.
 %% @end

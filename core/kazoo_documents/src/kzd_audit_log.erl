@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Audit Log document manipulation
-%%%
+%%% @doc Audit Log document manipulation
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

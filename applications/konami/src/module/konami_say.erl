@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Say something
+%%% @doc Say something
 %%% Data = {
 %%%   "text":"text to say"
 %%%   ,"type":"name_spelled"

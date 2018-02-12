@@ -57,8 +57,7 @@ is_empty_text(_El) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generic helper to get the text value of a XML path
+%% @doc Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
 -spec get_value(kz_term:deeplist(), kz_types:xml_el() | string()) -> kz_term:api_binary().

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Pickup a call in the specified group/device/user/extension
-%%%
+%%% @doc Pickup a call in the specified group/device/user/extension
 %%% data: {
 %%%   "type" : "group | user | device | extension"
 %%% }
@@ -50,8 +48,7 @@
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module, creates the parameters and branches
+%% @doc Entry point for this module, creates the parameters and branches
 %% to cf_group_pickup.
 %% @end
 %%--------------------------------------------------------------------

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Parse and manipulate SIP URIs
-%%%
+%%% @doc Parse and manipulate SIP URIs
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

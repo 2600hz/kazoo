@@ -43,8 +43,7 @@
 -define(QUERY_RESP_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes proplist, creates JSON string or error
+%% @doc Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
 -spec query_req(kz_term:api_terms()) ->
@@ -63,8 +62,7 @@ query_req_v(Prop) when is_list(Prop) ->
 query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes proplist, creates JSON string or error
+%% @doc Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
 -spec query_resp(kz_term:api_terms()) ->

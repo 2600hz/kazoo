@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%% Module for extending schema validation
+%%% @doc Module for extending schema validation
 %%% @end
 %%%-------------------------------------------------------------------
 -module(kz_json_schema_extensions).

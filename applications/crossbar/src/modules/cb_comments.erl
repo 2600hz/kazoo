@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -31,8 +28,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -48,8 +44,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.finish_request.*.comments">>, ?MODULE, 'finish_request').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -57,8 +52,7 @@ init() ->
 authenticate(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -66,8 +60,7 @@ authenticate(_) -> 'false'.
 authorize(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -81,9 +74,7 @@ allowed_methods(_CommentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -101,8 +92,7 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /comments mights load a list of skel objects
 %% /comments/123 might load the skel object 123
@@ -119,8 +109,7 @@ validate(Context, Id) ->
     validate_comment(set_resource(Context), Id, cb_context:req_verb(Context)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -132,8 +121,7 @@ put(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -146,8 +134,7 @@ post(Context, Id) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 
@@ -168,8 +155,7 @@ delete(Context, Id) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% The response has gone out, do some cleanup of your own here.
+%% @doc The response has gone out, do some cleanup of your own here.
 %% @end
 %%--------------------------------------------------------------------
 -spec finish_request(cb_context:context()) -> 'ok'.

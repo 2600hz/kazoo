@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% User auth module
-%%%
+%%% @doc User auth module
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -60,8 +58,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -76,9 +73,7 @@ allowed_methods(?RECOVERY) -> [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(_AuthToken) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -142,8 +137,7 @@ authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _ResetId]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -263,8 +257,7 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the credentials are valid based on the
+%% @doc This function determines if the credentials are valid based on the
 %% provided hash method
 %%
 %% Attempt to lookup and compare the user creds in the provided accounts.

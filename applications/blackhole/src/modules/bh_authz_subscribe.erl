@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Subscribe authz module
-%%%
+%%% @doc Subscribe authz module
 %%% This is a simple authz mechanism, it checks if a subscribe
 %%% action is allowed by looking at auth_account_id tree
 %%% @end

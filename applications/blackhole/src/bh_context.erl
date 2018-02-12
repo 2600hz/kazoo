@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Helpers for manipulating the #bh_context{} record
-%%%
+%%% @doc Helpers for manipulating the #bh_context{} record
 %%% @author Ben Wann
 %%% @end
 %%%-------------------------------------------------------------------

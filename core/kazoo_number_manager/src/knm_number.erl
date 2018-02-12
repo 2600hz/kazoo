@@ -111,8 +111,7 @@ is_number(#knm_number{}) -> 'true';
 is_number(_) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to get a number from DB.
+%% @doc Attempts to get a number from DB.
 %% Note: Number parameter has to be normalized.
 %% Note: get/1,2 should not throw, instead returns: {ok,_} | {error,_} | ...
 %% @end
@@ -130,8 +129,7 @@ get(Num, Options) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to create a new number in DB or modify an existing one.
+%% @doc Attempts to create a new number in DB or modify an existing one.
 %% Note: `assign_to' number option MUST be set.
 %% @end
 %%--------------------------------------------------------------------
@@ -211,8 +209,7 @@ ensure_state(PN, AllowedStates) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fetches then transitions an existing number to the reserved state.
+%% @doc Fetches then transitions an existing number to the reserved state.
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve(kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
@@ -297,8 +294,7 @@ move(Num, MoveTo, Options) ->
     ?TRY3(move, Num, MoveTo, Options).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Attempts to update some phone_number fields.
+%% @doc Attempts to update some phone_number fields.
 %% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
@@ -313,8 +309,7 @@ update(Num, Routines, Options) ->
     ?TRY3(update, Num, Routines, Options).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Note: option 'assign_to' needs to be set.
+%% @doc Note: option 'assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
@@ -335,8 +330,7 @@ release(Num, Options) ->
     ?TRY2(release, Num, Options).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Remove a number from the system without doing any state checking.
+%% @doc Remove a number from the system without doing any state checking.
 %% Sounds too harsh for you? You are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------

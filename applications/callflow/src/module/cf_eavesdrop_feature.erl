@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz, INC
-%%% @doc
-%%% Eacesdrop feature code
-%%%
+%%% @doc Eacesdrop feature code
 %%% data: {
 %%%   "group_id":"_group_id_"
 %%%   ,"approved_device_id":"_user_id_"
@@ -32,8 +30,7 @@
 -export_type([target/0]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------

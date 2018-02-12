@@ -158,8 +158,7 @@ create_account_doc(Realm, AcctID, AcctDB) ->
             'ignore'
     end.
 
-%% @doc
-%% Some calls get stuck if they miss the CDR. This clears them out.
+%% @doc Some calls get stuck if they miss the CDR. This clears them out.
 %%@end
 -spec clear_old_calls() -> 'ok'.
 clear_old_calls() ->

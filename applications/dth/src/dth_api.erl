@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Builder and validator, much like kz_api.erl, of the AMQP APIs
+%%% @doc Builder and validator, much like kz_api.erl, of the AMQP APIs
 %%% exposed by this WhApp
 %%%
 %%% @author James Aimonetti
@@ -16,8 +15,7 @@
 -include("dth.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Blacklist Request - see wiki
+%% @doc Blacklist Request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -38,8 +36,7 @@ blacklist_req_v(JObj) ->
     blacklist_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Blacklist Response - see wiki
+%% @doc Blacklist Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

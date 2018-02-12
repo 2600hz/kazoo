@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Notification messages, like voicemail left
-%%%
+%%% @doc Notification messages, like voicemail left
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -1292,8 +1290,7 @@ unbind_q_from(_Q, []) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -1374,8 +1371,7 @@ headers(Name) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generic function to build API payload
+%% @doc Generic function to build API payload
 %% @end
 %%--------------------------------------------------------------------
 -spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
@@ -1393,8 +1389,7 @@ build_message(JObj, Definition) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Generic function to validate API payload
+%% @doc Generic function to validate API payload
 %% @end
 %%--------------------------------------------------------------------
 validate(Prop, #kapi_definition{required_headers = ReqH
@@ -1411,8 +1406,7 @@ validate(JObj, Definition) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Notify Status notification
+%% @doc Notify Status notification
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
@@ -1435,8 +1429,7 @@ publish_notify_update(RespQ, API, ContentType) ->
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Skeleton notification
+%% @doc Skeleton notification
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
@@ -1467,8 +1460,7 @@ publish_skel(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec account_zone_change(kz_term:api_terms()) -> api_formatter_return().
@@ -1492,8 +1484,7 @@ publish_account_zone_change(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec low_balance(kz_term:api_terms()) -> api_formatter_return().
@@ -1517,8 +1508,7 @@ publish_low_balance(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec new_account(kz_term:api_terms()) -> api_formatter_return().
@@ -1542,8 +1532,7 @@ publish_new_account(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec service_added(kz_term:api_terms()) -> api_formatter_return().
@@ -1567,8 +1556,7 @@ publish_service_added(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec topup(kz_term:api_terms()) -> api_formatter_return().
@@ -1592,8 +1580,7 @@ publish_topup(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec transaction(kz_term:api_terms()) -> api_formatter_return().
@@ -1623,8 +1610,7 @@ publish_transaction(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec fax_inbound(kz_term:api_terms()) -> api_formatter_return().
@@ -1648,8 +1634,7 @@ publish_fax_inbound(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec fax_inbound_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1673,8 +1658,7 @@ publish_fax_inbound_error(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec fax_outbound(kz_term:api_terms()) -> api_formatter_return().
@@ -1698,8 +1682,7 @@ publish_fax_outbound(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec fax_outbound_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1723,8 +1706,7 @@ publish_fax_outbound_error(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec fax_outbound_smtp_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1754,8 +1736,7 @@ publish_fax_outbound_smtp_error(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec cnam_request(kz_term:api_terms()) -> api_formatter_return().
@@ -1779,8 +1760,7 @@ publish_cnam_request(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec port_cancel(kz_term:api_terms()) -> api_formatter_return().
@@ -1804,8 +1784,7 @@ publish_port_cancel(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec port_comment(kz_term:api_terms()) -> api_formatter_return().
@@ -1829,8 +1808,7 @@ publish_port_comment(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec port_pending(kz_term:api_terms()) -> api_formatter_return().
@@ -1854,8 +1832,7 @@ publish_port_pending(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec port_rejected(kz_term:api_terms()) -> api_formatter_return().
@@ -1879,8 +1856,7 @@ publish_port_rejected(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec port_request(kz_term:api_terms()) -> api_formatter_return().
@@ -1904,8 +1880,7 @@ publish_port_request(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec port_scheduled(kz_term:api_terms()) -> api_formatter_return().
@@ -1929,8 +1904,7 @@ publish_port_scheduled(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec port_unconfirmed(kz_term:api_terms()) -> api_formatter_return().
@@ -1954,8 +1928,7 @@ publish_port_unconfirmed(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec ported(kz_term:api_terms()) -> api_formatter_return().
@@ -1985,8 +1958,7 @@ publish_ported(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec denied_emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
@@ -2016,8 +1988,7 @@ publish_denied_emergency_bridge(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec deregister(kz_term:api_terms()) -> api_formatter_return().
@@ -2041,8 +2012,7 @@ publish_deregister(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec first_occurrence(kz_term:api_terms()) -> api_formatter_return().
@@ -2066,8 +2036,7 @@ publish_first_occurrence(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec missed_call(kz_term:api_terms()) -> api_formatter_return().
@@ -2091,8 +2060,7 @@ publish_missed_call(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec register(kz_term:api_terms()) -> api_formatter_return().
@@ -2122,8 +2090,7 @@ publish_register(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec system_alert(kz_term:api_terms()) -> api_formatter_return().
@@ -2153,8 +2120,7 @@ publish_system_alert(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec customer_update(kz_term:api_terms()) -> api_formatter_return().
@@ -2178,8 +2144,7 @@ publish_customer_update(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec new_user(kz_term:api_terms()) -> api_formatter_return().
@@ -2203,8 +2168,7 @@ publish_new_user(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec password_recovery(kz_term:api_terms()) -> api_formatter_return().
@@ -2234,8 +2198,7 @@ publish_password_recovery(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec voicemail_full(kz_term:api_terms()) -> api_formatter_return().
@@ -2259,8 +2222,7 @@ publish_voicemail_full(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec voicemail_new(kz_term:api_terms()) -> api_formatter_return().
@@ -2284,8 +2246,7 @@ publish_voicemail_new(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec voicemail_saved(kz_term:api_terms()) -> api_formatter_return().
@@ -2315,8 +2276,7 @@ publish_voicemail_saved(API, ContentType) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec webhook(kz_term:api_terms()) -> api_formatter_return().
@@ -2340,8 +2300,7 @@ publish_webhook(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec webhook_disabled(kz_term:api_terms()) -> api_formatter_return().

@@ -64,8 +64,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server.
+%% @doc Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(kapps_call:call()) -> kz_types:startlink_ret().
@@ -241,9 +240,7 @@ send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
+%% @doc Initializes the server
 %% @end
 %%--------------------------------------------------------------------
 -spec init([kapps_call:call()]) -> {'ok', state()}.
@@ -256,9 +253,7 @@ init([Call]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling call messages
-%%
+%% @doc Handling call messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -305,9 +300,7 @@ handle_call(_Request, _From, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling cast messages
-%%
+%% @doc Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -402,9 +395,7 @@ event_listener_name(Call, Module) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
+%% @doc Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -530,8 +521,7 @@ get_pid(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function is called by a gen_listener when it is about to
+%% @doc This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
@@ -565,9 +555,7 @@ hangup_call(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -634,8 +622,7 @@ cf_module_skip(CFModule, _Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% helper function to spawn a linked callflow module, from the entry
+%% @doc helper function to spawn a linked callflow module, from the entry
 %% point 'handle' having set the callid on the new process first
 %% @end
 %%--------------------------------------------------------------------
@@ -664,8 +651,7 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% unlike the kapps_call_command this send command does not call the
+%% @doc unlike the kapps_call_command this send command does not call the
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send
 %% a hangup command without relying on the (now terminated) doodle_exe.

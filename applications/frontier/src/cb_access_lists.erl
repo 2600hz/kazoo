@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Acess lists
+%%% @doc Acess lists
 %%% /accounts/{account_id}/access_lists - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/access_lists - manip user's access lists
 %%%
@@ -26,8 +25,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -39,8 +37,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.access_lists">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -49,9 +46,7 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %% ```
 %%    /access_lists => []
@@ -64,8 +59,7 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /access_lists mights load a list of metaflow objects
 %% /access_lists/123 might load the metaflow object 123
@@ -170,8 +164,7 @@ validate_set_acls(Context, AccessLists, Doc) ->
     Context1.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
@@ -191,8 +184,7 @@ after_post(Context, _RespStatus) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016-2018, 2600Hz INC
-%%% @doc
-%%% Utilities for tasks validation and stuff.
-%%%
+%%% @doc Utilities for tasks validation and stuff.
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------
@@ -144,8 +142,7 @@ read(TaskId=?NE_BINARY) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Verify a task previous to its creation in DB.
+%% @doc Verify a task previous to its creation in DB.
 %% @end
 %%--------------------------------------------------------------------
 -spec new(kz_term:ne_binary(), kz_term:ne_binary()
@@ -400,8 +397,7 @@ to_public_json(Task) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Whether task has been started and is still running.
+%% @doc Whether task has been started and is still running.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_processing(task()) -> boolean().

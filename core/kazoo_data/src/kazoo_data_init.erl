@@ -11,8 +11,7 @@
 -export([start_link/0]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the app for inclusion in a supervisor tree.
+%% @doc Starts the app for inclusion in a supervisor tree.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
@@ -22,8 +21,7 @@ start_link() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Ensures that all exchanges used are declared.
+%% @doc Ensures that all exchanges used are declared.
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

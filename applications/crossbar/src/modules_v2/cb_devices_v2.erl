@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Devices module
-%%%
+%%% @doc Devices module
 %%% Handle client requests for device documents
 %%%
 %%%
@@ -72,8 +70,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -98,9 +95,7 @@ allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -115,8 +110,7 @@ resource_exists(_DeviceId) -> 'true'.
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Ensure we will be able to bill for devices.
+%% @doc Ensure we will be able to bill for devices.
 %% @end
 %%--------------------------------------------------------------------
 -spec billing(cb_context:context()) -> cb_context:context().
@@ -164,8 +158,7 @@ authorize(_Verb, _Nouns) ->
     'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with deviceId
 %%
 %% Failure here returns 404.
@@ -196,8 +189,7 @@ error_no_entity(Context, DeviceId) ->
                                ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -326,8 +318,7 @@ delete(Context, DeviceId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized. Or a specific
+%% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
@@ -370,8 +361,7 @@ validate_request(DeviceId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Validate payloads for actions on a device.
+%% @doc Validate payloads for actions on a device.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
@@ -660,8 +650,7 @@ on_successful_validation(DeviceId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a device document from the database.
+%% @doc Load a device document from the database.
 %% @end
 %%--------------------------------------------------------------------
 -spec load_device(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -670,8 +659,7 @@ load_device(DeviceId, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Retrieve the status of the devices linked to the account/
+%% @doc Retrieve the status of the devices linked to the account/
 %% Reads registered devices in registrations, then map to devices of the account/
 %% @end
 %%--------------------------------------------------------------------
@@ -684,8 +672,7 @@ load_device_status(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the results of a view.
+%% @doc Normalizes the results of a view.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -694,8 +681,7 @@ normalize_view_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Returns the complete list of registrations in a the first registrar
+%% @doc Returns the complete list of registrations in a the first registrar
 %% to respond for a given account realm.  This is not 100% accurate
 %% as an endpoint might be stored in another registrar, but it is
 %% accurate enough for the status icons.
@@ -741,8 +727,7 @@ extract_device_registrations([JObj|JObjs], Set) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check if the device sip credentials are unique.
+%% @doc Check if the device sip credentials are unique.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_sip_creds_unique(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
@@ -822,8 +807,7 @@ maybe_remove_aggregate(_, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Perform actions on a device.
+%% @doc Perform actions on a device.
 %% @end
 %%--------------------------------------------------------------------
 -spec put_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
@@ -846,8 +830,7 @@ put_action(Context, DeviceId, <<"notify">>) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Looks for device_type from DB but if it is undefined there,
+%% @doc Looks for device_type from DB but if it is undefined there,
 %% gets the one from request data.
 %% @end
 %%--------------------------------------------------------------------

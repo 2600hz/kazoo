@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Helpers for mod_flite
-%%%
+%%% @doc Helpers for mod_flite
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -16,8 +14,7 @@
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% TTS command helpers
+%% @doc TTS command helpers
 %% @end
 %%--------------------------------------------------------------------
 -spec call_command(atom(), kz_term:ne_binary(), kz_json:object()) ->

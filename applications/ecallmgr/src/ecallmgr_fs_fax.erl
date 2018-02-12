@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018 2600Hz INC
-%%% @doc
-%%% Dialplan API commands
-%%%
+%%% @doc Dialplan API commands
 %%% @author James Aimonetti
 %%% @author Ben Wann
 %%% @end

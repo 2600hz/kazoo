@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "action": "manual" | "list"
 %%%   "media_id":"id_of_media"
 %%%   "id":"{LIST_ID}" // the list referenced above is kept in a couchdb document with this id
@@ -52,8 +51,7 @@
 -type cid() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -82,8 +80,7 @@ handle(Data, Call, _Manual, CaptureGroup) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handle manual mode of dynamic cid
+%% @doc Handle manual mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_manual(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
@@ -95,8 +92,7 @@ handle_manual(Data, Call, CaptureGroup) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handle static mode of dynamic cid
+%% @doc Handle static mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_static(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
@@ -107,8 +103,7 @@ handle_static(Data, Call, CaptureGroup) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Read CID info from a list of CID defined in database
+%% @doc Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
 -type list_cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), binary()} |
@@ -138,8 +133,7 @@ proceed_with_call(CIDName, CIDNumber, Destination, Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update caller id number. If call
+%% @doc Update caller id number. If call
 %% has a capture group, strip the non capture group digits from
 %% request, to and callee_number
 %% @end
@@ -157,8 +151,7 @@ update_call(Call, CIDNumber, Destination) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Same as update_call/3, but also sets caller id name
+%% @doc Same as update_call/3, but also sets caller id name
 %% @end
 %%--------------------------------------------------------------------
 -spec update_call(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
@@ -179,8 +172,7 @@ update_call(Call, CIDNumber, CIDName, Destination) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If Destination exists correct "request", "to" and "callee_id_number"
+%% @doc If Destination exists correct "request", "to" and "callee_id_number"
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_strip_features_code(kapps_call:call(), kz_term:api_binary()) -> 'ok'.
@@ -203,8 +195,7 @@ maybe_strip_features_code(Call, Destination) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Lookup callflow and continue with the call if we have a destination number
+%% @doc Lookup callflow and continue with the call if we have a destination number
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_route_to_callflow(kz_json:object(), kapps_call:call(), binary()) -> 'ok'.
@@ -270,8 +261,7 @@ should_restrict_call(Call, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Collect CID number from user
+%% @doc Collect CID number from user
 %% @end
 %%--------------------------------------------------------------------
 -spec collect_cid_number(kz_json:object(), kapps_call:call()) -> kz_term:ne_binary().
@@ -325,8 +315,7 @@ collect_cid_number(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get static CID from callflow data
+%% @doc Get static CID from callflow data
 %% @end
 %%--------------------------------------------------------------------
 -spec get_static_cid_entry(kz_json:object(), kapps_call:call()) -> cid().
@@ -342,8 +331,7 @@ get_static_cid_entry(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Pull in document from database with the caller id switching information inside
+%% @doc Pull in document from database with the caller id switching information inside
 %% @end
 %%--------------------------------------------------------------------
 
@@ -448,8 +436,7 @@ get_cid_length_from_list_document(Call, ListId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Play reject prompt if any of the caller id are empty
+%% @doc Play reject prompt if any of the caller id are empty
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_set_default_cid(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> cid().
@@ -469,8 +456,7 @@ maybe_set_default_cid(Name, Number, _Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% play reject prompts when caller id number is empty or invalid
+%% @doc play reject prompts when caller id number is empty or invalid
 %% @end
 %%--------------------------------------------------------------------
 -spec play_reject_prompt(kapps_call:call()) -> 'ok'.

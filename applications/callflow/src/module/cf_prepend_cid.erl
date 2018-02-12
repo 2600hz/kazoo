@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% This callflow module can be used to prepend a value (or values) to the caller-id-name and caller-id-number of a call.
-%%%
-%%%
+%%% @doc This callflow module can be used to prepend a value (or values) to the caller-id-name and caller-id-number of a call.
 %%% @author Jon Blanton
 %%% @author Mark Magnusson
 %%% @end

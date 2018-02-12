@@ -19,8 +19,7 @@
 -define(FS_CMD_SET_MULTIVAR, 'kz_uuid_setvar_multi').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% set channel and call variables in FreeSWITCH
+%% @doc set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
 -spec set(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
@@ -36,8 +35,7 @@ set(Node, UUID, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% set channel and call variables in FreeSWITCH (in background)
+%% @doc set channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
 -spec bg_set(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
@@ -53,8 +51,7 @@ bg_set(Node, UUID, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% unset channel and call variables in FreeSWITCH
+%% @doc unset channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
 -spec unset(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
@@ -66,8 +63,7 @@ unset(Node, UUID, Props) ->
     api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% unset channel and call variables in FreeSWITCH (in background)
+%% @doc unset channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
 -spec bg_unset(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
@@ -79,8 +75,7 @@ bg_unset(Node, UUID, Props) ->
     bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% export channel and call variables in FreeSWITCH
+%% @doc export channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
 -spec export(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().

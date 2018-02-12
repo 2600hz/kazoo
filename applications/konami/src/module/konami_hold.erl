@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% Put the call on hold
+%%% @doc Put the call on hold
 %%% Data = {
 %%%   "moh_aleg":"media_id"
 %%%   ,"moh_bleg":"media_id"

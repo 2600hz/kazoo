@@ -226,8 +226,7 @@ save_fun('false') -> fun kz_datamgr:save_doc/3;
 save_fun('true') -> fun kz_datamgr:ensure_saved/3.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Move a document from source to destination with attachments,
+%% @doc Move a document from source to destination with attachments,
 %% optionally applies a transform function on the document
 %% Note: Caller is responsible to format both source and destination
 %% databases!
@@ -274,8 +273,7 @@ move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Copy a document from source to destination with attachments,
+%% @doc Copy a document from source to destination with attachments,
 %% optionally applies a transform function on the document
 %% Note: Caller is responsible to format both source and destination
 %% databases!
@@ -534,8 +532,7 @@ should_archive(AccountMODb, Year, Month) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Delete an modb if it is no longer associated with its account.
+%% @doc Delete an modb if it is no longer associated with its account.
 %% (That is: orphaned).
 %% AccountMODb must be 'encoded' otherwise kz_datamgr:db_delete/1 will fail.
 %% AccountIds should be kapps_util:get_all_accounts('raw').

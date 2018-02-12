@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016-2018, 2600Hz INC
-%%% @doc
-%%% Store routing keys/pid bindings. When a binding is fired,
+%%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
@@ -69,8 +68,7 @@ apply(API, Action, Args) ->
     map(Route, Args).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Map over bound handlers.
+%% @doc Map over bound handlers.
 %% Return `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified
@@ -90,8 +88,7 @@ pmap(Routing, Payload, Options) ->
     kazoo_bindings:pmap(Routing, Payload, Options).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Fold over bound handlers.
+%% @doc Fold over bound handlers.
 %% Return the modified Payload after it has been threaded through
 %% all matching bindings
 %% @end
@@ -102,8 +99,7 @@ fold(Routing, Payload) ->
     kazoo_bindings:fold(Routing, Payload).
 
 %%-------------------------------------------------------------------
-%% @doc
-%% Helper functions for working on a result set of bindings.
+%% @doc Helper functions for working on a result set of bindings.
 %% @end
 %%-------------------------------------------------------------------
 -spec any(map_results()) -> boolean().
@@ -123,8 +119,7 @@ succeeded(Res) when is_list(Res) ->
     kazoo_bindings:succeeded(Res, fun filter_out_failed/1).
 
 %%-------------------------------------------------------------------------
-%% @doc
-%% Helpers for the result set helpers.
+%% @doc Helpers for the result set helpers.
 %% @end
 %%-------------------------------------------------------------------------
 -spec check_bool({boolean(), any()} | boolean()) -> boolean().

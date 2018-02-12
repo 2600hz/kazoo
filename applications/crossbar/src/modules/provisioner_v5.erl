@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Common functions for the provisioner modules
-%%%
-%%%
+%%% @doc Common functions for the provisioner modules
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -186,8 +183,7 @@ save_device(AccountId, Device, Request, AuthToken) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Use before a POST or PUT to a device.
+%% @doc Use before a POST or PUT to a device.
 %% Return the account id a MAC address belongs to, `false' otherwise.
 %% @end
 %%--------------------------------------------------------------------
@@ -466,8 +462,7 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Send provisioning request
+%% @doc Send provisioning request
 %% @end
 %%--------------------------------------------------------------------
 -spec send_req(atom(), kz_term:api_object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.

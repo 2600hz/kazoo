@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% CRUD for call queues
+%%% @doc CRUD for call queues
 %%% /queues
 %%%   GET: list all known queues
 %%%   PUT: create a new queue
@@ -85,8 +84,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -110,8 +108,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.queues">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -135,9 +132,7 @@ allowed_methods(_QueueId, ?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %% ```
 %%    /queues => []
@@ -159,9 +154,7 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%% @doc Add content types accepted and provided by this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -178,8 +171,7 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
                                           ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /queues mights load a list of queue objects
 %% /queues/123 might load the queue object 123
@@ -387,8 +379,7 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -457,8 +448,7 @@ filter_response_fields(JObj) ->
                      ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verib is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -481,8 +471,7 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
 patch(Context, Id) ->
     post(Context, Id).
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 
@@ -508,8 +497,7 @@ delete_account(Context, AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -752,8 +740,7 @@ fetch_from_amqp(Context, Req) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -767,8 +754,7 @@ summary(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalizes the resuts of a view
+%% @doc Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -780,8 +766,7 @@ normalize_agents_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Creates an entry in the acdc db of the account's participation in acdc
+%% @doc Creates an entry in the acdc db of the account's participation in acdc
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_account_for_acdc(cb_context:context()) -> 'ok'.

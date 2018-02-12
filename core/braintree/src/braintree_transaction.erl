@@ -28,8 +28,7 @@
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create the partial url for this module
+%% @doc Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -50,8 +49,7 @@ url(TransactionId, Options) ->
                  ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find a transaction by id
+%% @doc Find a transaction by id
 %% @end
 %%--------------------------------------------------------------------
 -spec find(kz_term:ne_binary()) -> bt_transaction().
@@ -61,8 +59,7 @@ find(TransactionId) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find transactions by customer id
+%% @doc Find transactions by customer id
 %% @end
 %%--------------------------------------------------------------------
 -spec find_by_customer(kz_term:ne_binary()) -> bt_transactions().
@@ -97,8 +94,7 @@ find_by_customer(CustomerId, Min, Max) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates a new transaction using the given record
+%% @doc Creates a new transaction using the given record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -119,8 +115,7 @@ create(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{customer_id=CustomerId}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a sale transaction
+%% @doc Create a sale transaction
 %% @end
 %%--------------------------------------------------------------------
 
@@ -151,8 +146,7 @@ quick_sale(CustomerId, Amount, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create a credit transaction
+%% @doc Create a credit transaction
 %% @end
 %%--------------------------------------------------------------------
 
@@ -174,8 +168,7 @@ quick_credit(CustomerId, Amount) ->
                                       }).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Void transactions that have a status:authorized or submitted_for_settlement
+%% @doc Void transactions that have a status:authorized or submitted_for_settlement
 %% @end
 %%--------------------------------------------------------------------
 -spec void(bt_transaction() | kz_term:ne_binary()) -> bt_transaction().
@@ -187,8 +180,7 @@ void(TransactionId) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Refund a transaction with status: settled or settling
+%% @doc Refund a transaction with status: settled or settling
 %% @end
 %%--------------------------------------------------------------------
 
@@ -206,8 +198,7 @@ refund(TransactionId, Amount) ->
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Contert the given XML to a transaction record
+%% @doc Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -294,8 +285,7 @@ get_transaction_sources([Element|Elements], Sources) ->
     get_transaction_sources(Elements, [Source|Sources]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Contert the given XML to a transaction record
+%% @doc Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
 
@@ -387,8 +377,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given record into a json object
+%% @doc Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_transaction()) -> kz_json:object().

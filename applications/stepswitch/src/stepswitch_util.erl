@@ -70,8 +70,7 @@ get_outbound_destination(OffnetReq) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% if the given number is shorter then a known caller id then try
+%% @doc if the given number is shorter then a known caller id then try
 %% to pad the front of the dialed number with values from the
 %% callerid.
 %% @end

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Process dynamicly generated callflow "flow"
-%%%
+%%% @doc Process dynamicly generated callflow "flow"
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

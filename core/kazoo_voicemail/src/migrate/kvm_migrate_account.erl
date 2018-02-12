@@ -49,8 +49,7 @@
              }).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Start worker for a migration cycle
+%% @doc Start worker for a migration cycle
 %% @end
 %%--------------------------------------------------------------------
 -spec start_worker(next_account(), pid()) -> 'ok'.
@@ -65,8 +64,7 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
                   ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Start a manual migration for all mailboxes in an Account
+%% @doc Start a manual migration for all mailboxes in an Account
 %% @end
 %%--------------------------------------------------------------------
 -spec manual_account_migrate(kz_term:ne_binary()) -> kz_term:proplist().
@@ -80,8 +78,7 @@ manual_account_migrate(Account) ->
                   ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Start a manual migration for specified mailboxes in an Account
+%% @doc Start a manual migration for specified mailboxes in an Account
 %% @end
 %%--------------------------------------------------------------------
 -spec manual_vmbox_migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_term:proplist().
@@ -98,8 +95,7 @@ manual_vmbox_migrate(Account, BoxIds) ->
                   ).
 
 %% @private
-%% @doc
-%% Main migration loop
+%% @doc Main migration loop
 %% @end
 -spec migration_loop(#ctx{}) -> 'ok' | kz_term:proplist().
 migration_loop(#ctx{account_id = _AccountId, retries = Retries, last_error = LastError}=Ctx) when Retries > 3 ->
@@ -113,8 +109,7 @@ migration_loop(Ctx) ->
     handle_result(Ctx, get_messages(Ctx)).
 
 %% @private
-%% @doc
-%% Get legacy messages from DB
+%% @doc Get legacy messages from DB
 %% @end
 -spec get_messages(#ctx{}) -> db_ret().
 get_messages(#ctx{mode = <<"worker">>, account_db = AccountDb
@@ -136,8 +131,7 @@ get_messages(#ctx{mode = <<"vmboxes">>, account_db = AccountDb, manual_vmboxes =
     get_messages_from_vmboxes(AccountDb, BoxIds).
 
 %% @private
-%% @doc
-%% Do action on get_messages result. If we have something to process, reset context first.
+%% @doc Do action on get_messages result. If we have something to process, reset context first.
 %% @end
 -spec handle_result(#ctx{}, db_ret()) -> 'ok' | kz_term:proplist().
 handle_result(#ctx{account_id = _AccountId}=Ctx, {'ok', []}) ->
@@ -172,8 +166,7 @@ handle_result(#ctx{account_id = _AccountId, retries = Retries}=Ctx, {'error', Re
                   ).
 
 %% @private
-%% @doc
-%% Check first to see we're hit the oldest MODB, if not and we're in manual account mode
+%% @doc Check first to see we're hit the oldest MODB, if not and we're in manual account mode
 %% go to next loop, otherwise report summary and go down.
 %% @end
 -spec maybe_next_cycle(#ctx{}) -> 'ok' | kz_term:proplist().
@@ -195,8 +188,7 @@ maybe_next_cycle(#ctx{mode = <<"vmboxes">>}=Ctx) ->
     account_is_done(Ctx).
 
 %% @private
-%% @doc
-%% Last cycle was hit MODB
+%% @doc Last cycle was hit MODB
 %% @end
 -spec hit_last_modb(#ctx{}) -> 'ok' | kz_term:proplist().
 hit_last_modb(#ctx{mode = <<"worker">>, account_id = AccountId
@@ -209,8 +201,7 @@ hit_last_modb(Ctx) ->
     account_is_done(Ctx).
 
 %% @private
-%% @doc
-%% Migration finished, going down
+%% @doc Migration finished, going down
 %% @end
 -spec account_is_done(#ctx{}) -> 'ok' | kz_term:proplist().
 account_is_done(#ctx{mode = <<"worker">>, account_id = AccountId
@@ -222,8 +213,7 @@ account_is_done(#ctx{account_id = _AccountId, total_stats = TotalStats}) ->
     total_stats_to_prop(TotalStats).
 
 %% @private
-%% @doc
-%% If this manual migration, check tries and maybe retry again.
+%% @doc If this manual migration, check tries and maybe retry again.
 %% @end
 -spec account_is_failed(#ctx{}, kz_term:ne_binary()) -> 'ok' | kz_term:proplist().
 account_is_failed(#ctx{mode = <<"worker">>, account_id = AccountId
@@ -239,8 +229,7 @@ account_is_failed(Ctx, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Process messages and do migrate
+%% @doc Process messages and do migrate
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate_messages(#ctx{}, kz_json:objects()) -> #ctx{}.
@@ -250,8 +239,7 @@ migrate_messages(#ctx{account_id = _AccountId}=Ctx, ViewResults) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check Db existence and process with migration
+%% @doc Check Db existence and process with migration
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_migrate(#ctx{}, kz_term:ne_binaries(), map(), kz_term:ne_binaries() | non_neg_integer()) -> #ctx{}.
@@ -361,8 +349,7 @@ update_vmbox_message(Message, MODbFailed, Failed, _, Id, Timestamp) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get messages from mailbox arrays and generate lagecy_msg listing view
+%% @doc Get messages from mailbox arrays and generate lagecy_msg listing view
 %% fake message_doc result for manual migration
 %% @end
 %%--------------------------------------------------------------------
@@ -411,8 +398,7 @@ create_legacy_view_result(BoxJObj, Message) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check Db existence and remove messages that non exists dbs
+%% @doc Check Db existence and remove messages that non exists dbs
 %% @end
 %%--------------------------------------------------------------------
 -spec check_dbs_existence(#ctx{}, kz_term:ne_binaries(), map()) -> {#ctx{}, map()}.
@@ -431,8 +417,7 @@ check_dbs_existence(Ctx, [Db | Dbs], MsgMap) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalize bulk save results and update stats accordingly
+%% @doc Normalize bulk save results and update stats accordingly
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_bulk_result(#ctx{}, kz_term:ne_binary(), kz_json:objects()) -> #ctx{}.
@@ -454,8 +439,7 @@ normalize_bulk_result(#ctx{account_id = _AccountId}=Ctx, Db, [S | Saved]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% process legacy message view result, generate a new message doc
+%% @doc process legacy message view result, generate a new message doc
 %% for them and map them to proper modb.
 %%
 %% Note: We are moving metadata only, attachment still remains in AccountDb,
@@ -552,8 +536,7 @@ create_message(#ctx{account_id = AccountId
         ],
     kz_json:set_values(UpdateProps, Msg).
 
-%% @doc
-%% try to get private_media to read its create/modified timestamp to set as
+%% @doc try to get private_media to read its create/modified timestamp to set as
 %% voice mail message timestamp.
 %% @end
 -spec maybe_get_timestamp(#ctx{}, kz_json:objects()) -> {#ctx{}, kz_json:objects()}.

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handles inspection of incoming caller id and branching to a child
+%%% @doc Handles inspection of incoming caller id and branching to a child
 %%% callflow node accordingly.
 %%%
 %%% "data":{
@@ -42,8 +41,7 @@
 -include("callflow.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -60,8 +58,7 @@ handle(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handle a caller id "match" condition
+%% @doc Handle a caller id "match" condition
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_match(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
@@ -87,8 +84,7 @@ maybe_branch_on_regex(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handle a caller id "no match" condition
+%% @doc Handle a caller id "no match" condition
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_no_match(kapps_call:call()) -> 'ok'.
@@ -100,8 +96,7 @@ handle_no_match(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check if the given node name is a callflow child
+%% @doc Check if the given node name is a callflow child
 %% @end
 %%--------------------------------------------------------------------
 -spec is_callflow_child(kz_term:ne_binary(), kapps_call:call()) -> boolean().
@@ -118,8 +113,7 @@ is_callflow_child(Name, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% update the caller id and owner information for this call
+%% @doc update the caller id and owner information for this call
 %% @end
 %%--------------------------------------------------------------------
 -spec update_caller_identity(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -142,8 +136,7 @@ update_caller_identity(Data, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% validate that all required parameters are defined
+%% @doc validate that all required parameters are defined
 %% @end
 %%--------------------------------------------------------------------
 -spec is_valid_caller_identity(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().

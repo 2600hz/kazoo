@@ -12,8 +12,7 @@
 -include("services.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a vendor database and service plan id, fetch the document.
+%% @doc Given a vendor database and service plan id, fetch the document.
 %% Merge any plan overrides into the plan property.
 %% @end
 %%--------------------------------------------------------------------
@@ -232,8 +231,7 @@ get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If tiered flate rates are provided, find the value to use given the
+%% @doc If tiered flate rates are provided, find the value to use given the
 %% current quantity.
 %% @end
 %%--------------------------------------------------------------------
@@ -251,8 +249,7 @@ get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If tiered flate rates are provided, find the value to use given the
+%% @doc If tiered flate rates are provided, find the value to use given the
 %% current quantity.
 %% @end
 %%--------------------------------------------------------------------
@@ -268,8 +265,7 @@ get_flat_rate(Quantity, ItemPlan) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If tiered rates are provided, find the value to use given the current
+%% @doc If tiered rates are provided, find the value to use given the current
 %% quantity.  If no rates are viable attempt to use the "rate" property.
 %% @end
 %%--------------------------------------------------------------------
@@ -286,8 +282,7 @@ get_quantity_rate(Quantity, ItemPlan) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get the item quantity, drawing solely from the provided account or
+%% @doc Get the item quantity, drawing solely from the provided account or
 %% (when the service plan dictates) the summed (cascaded) decendants.
 %% Also handle the special case were we should sum all items in a
 %% given category, except a list of item names to ignore during

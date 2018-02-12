@@ -278,8 +278,7 @@ fix_account_numbers(Account = ?NE_BINARY) ->
 log_alien(_AccountDb, _DID) ->
     ?SUP_LOG_DEBUG("########## found alien [~s] doc: ~s ##########", [_AccountDb, _DID]).
 
-%% @doc
-%% This function will get a list of all account's DBs and will try to
+%% @doc This function will get a list of all account's DBs and will try to
 %% create each account's numbers in number DBs
 %% @end
 -spec copy_accounts_to_number_dbs() -> 'ok'.
@@ -287,16 +286,14 @@ copy_accounts_to_number_dbs() ->
     AccountDbs = kapps_util:get_all_accounts('encoded'),
     foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun copy_account_to_number_dbs/1, AccountDbs).
 
-%% @doc
-%% This function will try to create each account's numbers in number DBs
+%% @doc This function will try to create each account's numbers in number DBs
 %% @end
 -spec copy_accounts_to_number_dbs(kz_term:ne_binaries()) -> 'ok'.
 copy_accounts_to_number_dbs(Accounts) ->
     AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
     foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun copy_account_to_number_dbs/1, AccountDbs).
 
-%% @doc
-%% This function will try to create the account's numbers in number DBs
+%% @doc This function will try to create the account's numbers in number DBs
 %% @end
 -spec copy_account_to_number_dbs(kz_term:ne_binary()) -> 'ok'.
 copy_account_to_number_dbs(?MATCH_ACCOUNT_ENCODED(_, _, _)=AccountDb) ->

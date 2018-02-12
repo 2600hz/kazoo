@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Configuration updates (like DB doc changes) can be communicated across
+%%% @doc Configuration updates (like DB doc changes) can be communicated across
 %%% the AMQP bus so WhApps can flush cache entries, update settings, etc.
 %%%
 %%% @author James Aimonetti
@@ -110,8 +109,7 @@ get_value(JObj, Key) ->
     kz_json:get_value(Key, JObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Format a call event from the switch for the listener
+%% @doc Format a call event from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -133,8 +131,7 @@ doc_update_v(JObj) ->
     doc_update_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Format a call event from the switch for the listener
+%% @doc Format a call event from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -252,8 +249,7 @@ unbind_for_doc_types(Q, Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

@@ -306,8 +306,7 @@ sms_status(_, <<"Success">>) -> <<"completed">>;
 sms_status(_, _) -> <<"pending">>.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Look for children branches to handle the failure replies of
+%% @doc Look for children branches to handle the failure replies of
 %% certain actions, like cf_sms_offnet and cf_sms_resources
 %% @end
 %%--------------------------------------------------------------------

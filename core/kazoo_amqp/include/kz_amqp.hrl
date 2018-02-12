@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
-%%% @doc
-%%% AMQP-specific things for Kazoo
-%%%
+%%% @doc AMQP-specific things for Kazoo
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Common functions for the provisioner modules
-%%%
-%%%
+%%% @doc Common functions for the provisioner modules
 %%% @author Karl Anderson
 %%% @end
 %%%-------------------------------------------------------------------
@@ -257,8 +254,7 @@ should_build_contact_list(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This doesn't belong here, needs to be in an external library. Make request to
+%% @doc This doesn't belong here, needs to be in an external library. Make request to
 %% get provisioning defaults
 %% @end
 %%--------------------------------------------------------------------
@@ -312,8 +308,7 @@ is_mac_address_in_use(Context, MacAddress) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% post data to a provisiong server
+%% @doc post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
 -spec do_simple_provision(kz_term:ne_binary(), cb_context:context()) -> boolean().
@@ -341,8 +336,7 @@ do_simple_provision(MACAddress, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% post data to a provisiong server
+%% @doc post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_account(kz_term:ne_binary() | cb_context:context()) -> boolean().
@@ -474,8 +468,7 @@ get_owner(OwnerId, AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Do awesome provisioning
+%% @doc Do awesome provisioning
 %% @end
 %%--------------------------------------------------------------------
 send_provisioning_template(JObj, Context) ->
@@ -504,8 +497,7 @@ send_provisioning_template(JObj, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If the device specifies a local template id then return that
+%% @doc If the device specifies a local template id then return that
 %% template
 %% @end
 %%--------------------------------------------------------------------
@@ -529,8 +521,7 @@ get_template(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% add the account_id to the root of the provisioning json
+%% @doc add the account_id to the root of the provisioning json
 %% @end
 %%--------------------------------------------------------------------
 -spec set_account_id(cb_context:context()) ->
@@ -541,8 +532,7 @@ set_account_id(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% get the settings from the account doc that should be used in the
+%% @doc get the settings from the account doc that should be used in the
 %% base properties for the line
 %% @end
 %%--------------------------------------------------------------------
@@ -569,8 +559,7 @@ set_account_line_defaults(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% get the settings from the device doc that should be used in the
+%% @doc get the settings from the device doc that should be used in the
 %% base properties for the line
 %% @end
 %%--------------------------------------------------------------------
@@ -612,8 +601,7 @@ set_device_line_defaults(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% merge in any overrides from the global provisioning db
+%% @doc merge in any overrides from the global provisioning db
 %% @end
 %%--------------------------------------------------------------------
 -spec set_global_overrides(cb_context:context()) ->
@@ -633,8 +621,7 @@ set_global_overrides(_) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% merge in any overrides from the account doc
+%% @doc merge in any overrides from the account doc
 %% @end
 %%--------------------------------------------------------------------
 -spec set_account_overrides(cb_context:context()) ->
@@ -654,8 +641,7 @@ set_account_overrides(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% merge in any overrides from the user doc
+%% @doc merge in any overrides from the user doc
 %% @end
 %%--------------------------------------------------------------------
 -spec set_user_overrides(cb_context:context()) ->
@@ -678,8 +664,7 @@ set_user_overrides(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% merge in any overrides from the device doc
+%% @doc merge in any overrides from the device doc
 %% @end
 %%--------------------------------------------------------------------
 -spec set_device_overrides(cb_context:context()) ->
@@ -697,8 +682,7 @@ set_device_overrides(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Send awesome provisioning request
+%% @doc Send awesome provisioning request
 %% @end
 %%--------------------------------------------------------------------
 -spec send_provisioning_request(kz_json:object(), kz_term:ne_binary()) -> 'ok'.

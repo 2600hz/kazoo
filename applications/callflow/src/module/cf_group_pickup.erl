@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Pickup a call in the specified group
-%%%
+%%% @doc Pickup a call in the specified group
 %%% data: {
 %%%   "group_id":"_group_id_"
 %%%   ,"user_id":"_user_id_"
@@ -31,8 +29,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------

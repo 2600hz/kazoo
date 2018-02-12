@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Listing of all expected v1 callbacks
-%%%
-%%%
+%%% @doc Listing of all expected v1 callbacks
 %%% @author Luis Azedo
 %%% @end
 %%%-------------------------------------------------------------------
@@ -30,8 +27,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -42,8 +38,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -57,9 +52,7 @@ allowed_methods(?MULTI) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -90,8 +83,7 @@ authorize(Context, ?MULTI) ->
     cb_context:auth_account_id(Context) =/= 'undefined'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /skels mights load a list of skel objects
 %% /skels/123 might load the skel object 123
@@ -255,8 +247,7 @@ format_query_option(Name) -> Name.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -274,8 +265,7 @@ search(Context, Type, Query, Val, Opts) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -314,8 +304,7 @@ get_start_key(Context, Type, Value) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% resource.
+%% @doc resource.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_end_key(cb_context:context(), kz_term:ne_binary(), binary()) -> kz_term:ne_binaries().
@@ -326,8 +315,7 @@ get_end_key(_, Type, Value) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% replaces last character in binary with next character
+%% @doc replaces last character in binary with next character
 %% @end
 %%--------------------------------------------------------------------
 -spec next_binary_key(binary()) -> kz_term:ne_binary().

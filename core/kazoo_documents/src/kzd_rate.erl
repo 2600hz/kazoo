@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Rate document accessors
-%%%
-%%%
+%%% @doc Rate document accessors
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

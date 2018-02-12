@@ -82,8 +82,7 @@ make_name({'parser_args', Filename, _IP, _Port}) ->
 call_id(Data) ->
     sip_field([<<"Call-ID">>, <<"i">>], Data).
 
-%% @doc
-%% Gets the CSeq field from SIP transaction data.
+%% @doc Gets the CSeq field from SIP transaction data.
 %%   To use with HEP or FreeSwitch data; Kamailio has another format!
 -spec c_seq(kz_term:ne_binaries()) -> kz_term:ne_binary().
 c_seq(Data) ->

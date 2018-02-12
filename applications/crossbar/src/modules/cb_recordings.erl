@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Provides access to stored call recordings.
-%%%
-%%%
+%%% @doc Provides access to stored call recordings.
 %%% Original <a href="https://github.com/2600hz/kazoo/pull/1218">pull request</a>
 %%%
 %%% @author OnNet (Kirill Sysoev [github.com/onnet])
@@ -35,8 +32,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -50,8 +46,7 @@ init() ->
     cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -63,8 +58,7 @@ allowed_methods() -> [?HTTP_GET].
 allowed_methods(_RecordingId) -> [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
+%% @doc Does the path point to a valid resource.
 %% @end
 %%--------------------------------------------------------------------
 
@@ -75,8 +69,7 @@ resource_exists() -> 'true'.
 resource_exists(_RecordingId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% What content-types will the module be using to respond (matched against
+%% @doc What content-types will the module be using to respond (matched against
 %% client's Accept header).
 %% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
@@ -95,8 +88,7 @@ content_types_provided_for_download(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end

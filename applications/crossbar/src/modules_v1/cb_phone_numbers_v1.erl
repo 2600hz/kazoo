@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle client requests for phone_number documents
-%%%
-%%%
+%%% @doc Handle client requests for phone_number documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -78,8 +75,7 @@ init() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -112,9 +108,7 @@ allowed_methods(?COLLECTION, ?ACTIVATE) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -133,8 +127,7 @@ resource_exists(_, ?IDENTIFY) -> 'true';
 resource_exists(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Ensure we will be able to bill for phone_numbers
+%% @doc Ensure we will be able to bill for phone_numbers
 %% @end
 %%--------------------------------------------------------------------
 
@@ -155,8 +148,7 @@ billing(Context, _Verb, _Nouns) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
+%% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -169,8 +161,7 @@ authenticate(Context) ->
 authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
+%% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
@@ -183,8 +174,7 @@ authorize(Context) ->
 authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -342,8 +332,7 @@ normalize_view_results(JObj, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -369,8 +358,7 @@ identify(Context, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database.
+%% @doc Load an instance from the database.
 %% @end
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -435,8 +423,7 @@ validate_request(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().

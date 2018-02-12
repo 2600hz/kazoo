@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Try to branch based on the value of a variable.
-%%%
+%%% @doc Try to branch based on the value of a variable.
 %%% "data":{
 %%%   "variable":{{var_name}}
 %%%   //optional
@@ -26,8 +24,7 @@
 -type variable_key() :: kz_term:api_ne_binary() | kz_term:api_ne_binaries().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -48,8 +45,7 @@ maybe_branch_to_named_child(ChildName, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Try to find callflow branch name out of variable's value in the Scope.
+%% @doc Try to find callflow branch name out of variable's value in the Scope.
 %% If scope sets to other values than custome_channel_vars, account,
 %% user and device, it search in merged attributes in endpoint.
 %% @end
@@ -94,8 +90,7 @@ find_child_in_scope(<<"merged">>, Variable, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Open the document DocId to find the value of the variable which is the
+%% @doc Open the document DocId to find the value of the variable which is the
 %% name of the callflow branch.
 %% @end
 %%--------------------------------------------------------------------
@@ -114,8 +109,7 @@ find_child_in_doc(DocId, Variable, Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Look into the defined children in the callflow to see if the child name
+%% @doc Look into the defined children in the callflow to see if the child name
 %% that was found is there, if yes we found the child, otherwise
 %% fall back to the default children '_'.
 %% @end
@@ -156,8 +150,7 @@ device_owner(Call) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Normalize variable. Variable is a json path, so we should accept
+%% @doc Normalize variable. Variable is a json path, so we should accept
 %% binary, or a path and ignore others,
 %% So if ones wants to look into a deep json object, path `[<<"v1">>, <<"v2">>]'
 %% can be used to get the value.

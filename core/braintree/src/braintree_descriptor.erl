@@ -22,8 +22,7 @@ get_name(#bt_descriptor{name=Name}) ->
     Name.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert the given XML to a descriptor record
+%% @doc Convert the given XML to a descriptor record
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record(bt_xml()) -> bt_descriptor().
@@ -38,8 +37,7 @@ xml_to_record(Xml, Base) ->
                   }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert the given XML to a descriptor record
+%% @doc Convert the given XML to a descriptor record
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_xml(bt_descriptor()) -> kz_term:proplist() | bt_xml() | 'undefined'.
@@ -59,8 +57,7 @@ record_to_xml(Descriptor, ToString) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given record into a json object
+%% @doc Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_json(bt_descriptor()) -> kz_json:object().
@@ -71,8 +68,7 @@ record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
                       ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a given json obj into a record
+%% @doc Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record(kz_term:api_object()) -> bt_descriptor() | 'undefined'.

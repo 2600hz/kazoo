@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
+%%% @doc "data":{
 %%%   "pin":"1234"
 %%%   ,"retries":3
 %%%   // optional after here
@@ -117,8 +116,7 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check collect digits to be not empty, if empty collect again
+%% @doc Check collect digits to be not empty, if empty collect again
 %% (e.g. if previous callflow crashed during collecting digits before recieving pound
 %%  FreeSwitch still thinks it's collecting for the previous callflow, and collect_digits
 %%  for this module will be resulted to an empty binary)

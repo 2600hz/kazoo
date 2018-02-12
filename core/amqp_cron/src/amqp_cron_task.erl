@@ -16,8 +16,7 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
-%%% @doc
-%%% The amqp_cron_task module provides different methods for scheduling
+%%% @doc The amqp_cron_task module provides different methods for scheduling
 %%% a task to be executed periodically in the future. The supported methods
 %%% are one shot, sleeper, and cron mode.
 %%%
@@ -155,8 +154,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Creates a linked process which schedules the function in the
+%% @doc Creates a linked process which schedules the function in the
 %% specified module with the given arguments to be run according
 %% to the given schedule.
 %%
@@ -170,8 +168,7 @@ start_link(Schedule, Exec) ->
     gen_server:start_link(?SERVER, [{Schedule, Exec}], []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Gets the current status of the task and the trigger time. If running
+%% @doc Gets the current status of the task and the trigger time. If running
 %% the trigger time denotes the time the task started. If waiting the
 %% time denotes the next time the task will run. If done the time the
 %% task ran. If error the cause of the error.
@@ -188,9 +185,7 @@ status(Pid) ->
     gen_server:call(Pid, 'status').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Stops the task.
-%%
+%% @doc Stops the task.
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(pid()) -> 'ok'.
@@ -203,9 +198,7 @@ stop(Pid) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
+%% @doc Initializes the server
 %% @end
 %%--------------------------------------------------------------------
 -spec init([{schedule(), execargs()}]) -> {'ok', state()}.
@@ -226,9 +219,7 @@ init([{Schedule, Exec}]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling call messages
-%%
+%% @doc Handling call messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -240,9 +231,7 @@ handle_call('status', _From, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling cast messages
-%%
+%% @doc Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -259,9 +248,7 @@ handle_cast('stop', State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
+%% @doc Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -280,9 +267,7 @@ terminate(_Reason, State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

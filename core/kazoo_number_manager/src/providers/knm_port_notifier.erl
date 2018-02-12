@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Handle publishing notification events for new port requests
-%%%
-%%%
+%%% @doc Handle publishing notification events for new port requests
 %%% @author Peter Defebvre
 %%% @end
 %%%-------------------------------------------------------------------
@@ -18,8 +15,7 @@
 -define(KEY, ?FEATURE_PORT).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% produce notifications if the porting object changes
 %% @end
 %%--------------------------------------------------------------------
@@ -44,8 +40,7 @@ save(Number, _CurrentState, _State) ->
     Number.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted
+%% @doc This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().

@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Renders a custom account email template, or the system default,
+%%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%%
 %%%
@@ -111,8 +110,7 @@ get_owner(AccountDb, _VMBox, OwnerId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% create the props used by the template render function
+%% @doc create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
@@ -165,8 +163,7 @@ magic_hash(Event) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% process the AMQP requests
+%% @doc process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
@@ -234,8 +231,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% create a friendly file name
+%% @doc create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
 -spec get_file_name(kz_json:object(), kz_term:proplist()) -> kz_term:ne_binary().

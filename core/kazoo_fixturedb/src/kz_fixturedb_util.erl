@@ -90,8 +90,7 @@ view_path(#{server := #{url := Url}, name := DbName}, Design, Options) ->
                  ,["views/", encode_query_filename(Design, Options)]
                  ).
 
-%% @doc
-%% The idea is to encode file name based on view options so you can
+%% @doc The idea is to encode file name based on view options so you can
 %% write JSON file specifically for each of your view queries
 -spec encode_query_filename(kz_term:ne_binary(), kz_data:options()) -> kz_term:text().
 encode_query_filename(Design, Options) ->

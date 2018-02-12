@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% handler for route requests, responds if callflows match
-%%%
+%%% @doc handler for route requests, responds if callflows match
 %%% @author Karl Anderson
 %%% @end
 %%%-------------------------------------------------------------------
@@ -126,8 +124,7 @@ bucket_cost(Flow) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% Should this call be able to use outbound resources, the exact opposite
+%% @doc Should this call be able to use outbound resources, the exact opposite
 %% exists in the handoff module.  When updating this one make sure to sync
 %% the change with that module
 %% @end
@@ -149,8 +146,7 @@ allow_no_match_type(Call) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% determine if callflows should respond to a route request
+%% @doc determine if callflows should respond to a route request
 %% @end
 %%-----------------------------------------------------------------------------
 -spec callflow_should_respond(kapps_call:call()) -> boolean().
@@ -175,8 +171,7 @@ callflow_should_respond(Call) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% send a route response for a route request that can be fulfilled by this
+%% @doc send a route response for a route request that can be fulfilled by this
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
@@ -245,8 +240,7 @@ pre_park_action(Call) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% process
+%% @doc process
 %% @end
 %%-----------------------------------------------------------------------------
 -spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
@@ -271,8 +265,7 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% process
+%% @doc process
 %% @end
 %%-----------------------------------------------------------------------------
 -spec maybe_referred_call(kapps_call:call()) -> kapps_call:call().

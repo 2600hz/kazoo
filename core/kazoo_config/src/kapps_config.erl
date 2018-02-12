@@ -67,8 +67,7 @@
 -define(KEY_DEFAULT, <<"default">>).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a list
+%% @doc Get a configuration key for a given category and cast it as a list
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -90,8 +89,7 @@ get_string(Category, Key, Default, Node) ->
     kz_term:to_list(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a binary
+%% @doc Get a configuration key for a given category and cast it as a binary
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -111,8 +109,7 @@ get_binary(Category, Key, Default, Node) ->
     kz_term:to_binary(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a json
+%% @doc Get a configuration key for a given category and cast it as a json
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -168,8 +165,7 @@ get_jsons(Category, Key, Default, Node) ->
     as_jsons_value(V, Default).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a atom
+%% @doc Get a configuration key for a given category and cast it as a atom
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -189,8 +185,7 @@ get_atom(Category, Key, Default, Node) ->
     kz_term:to_atom(get(Category, Key, Default, Node), 'true').
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a integer
+%% @doc Get a configuration key for a given category and cast it as a integer
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -213,8 +208,7 @@ get_integer(Category, Key, Default, Node) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a pos_integer
+%% @doc Get a configuration key for a given category and cast it as a pos_integer
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -241,8 +235,7 @@ to_pos_integer(Value, Default) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a pos_integer
+%% @doc Get a configuration key for a given category and cast it as a pos_integer
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -269,8 +262,7 @@ to_non_neg_integer(Value, Default) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a float
+%% @doc Get a configuration key for a given category and cast it as a float
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -290,8 +282,7 @@ get_float(Category, Key, Default, Node) ->
     kz_term:to_float(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a is_false
+%% @doc Get a configuration key for a given category and cast it as a is_false
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -311,8 +302,7 @@ get_is_false(Category, Key, Default, Node) ->
     kz_term:is_false(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category and cast it as a is_true
+%% @doc Get a configuration key for a given category and cast it as a is_true
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -396,8 +386,7 @@ get_ne_binaries(Category, Key, Default, Node) ->
 
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category but only if its configured
+%% @doc Get a configuration key for a given category but only if its configured
 %%  explicitly for the node
 %% @end
 %%-----------------------------------------------------------------------------
@@ -428,9 +417,7 @@ get_node_value(Category, Keys, Default, Node) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get a configuration key for a given category
-%%
+%% @doc Get a configuration key for a given category
 %% Also, when looking up the key see if there is a value specific to this
 %% node but if there is not then use the default value.
 %% @end
@@ -526,8 +513,7 @@ get_default_value(Category, Keys, Default, JObj) ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Get all Key-Value pairs for a given category
+%% @doc Get all Key-Value pairs for a given category
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_all_kvs(kz_term:ne_binary()) -> kz_term:proplist().
@@ -582,8 +568,7 @@ set_json(Category, Key, Value) ->
     set(Category, Key, kz_json:decode(Value)).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Set the key to the value in the given category but specific to this node
+%% @doc Set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set(config_category(), config_key(), any()) ->
@@ -741,8 +726,7 @@ update_pvt_fields(Category, JObj, PvtFields) ->
     kz_json:merge_jobjs(Base, PvtFields).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Lock configuration document
+%% @doc Lock configuration document
 %% @end
 %%-----------------------------------------------------------------------------
 
@@ -761,8 +745,7 @@ lock_db(Value) ->
     lager:warning("wrong parameter ~p. use either 'true' or 'false'", [Value]).
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Check if configuration document locked or not
+%% @doc Check if configuration document locked or not
 %% @end
 %%-----------------------------------------------------------------------------
 -spec is_locked() -> boolean().
@@ -773,8 +756,7 @@ is_locked() ->
     end.
 
 %%-----------------------------------------------------------------------------
-%% @doc
-%% Flush the configuration cache
+%% @doc Flush the configuration cache
 %% @end
 %%-----------------------------------------------------------------------------
 -spec flush() -> 'ok'.
@@ -812,8 +794,7 @@ flush(Category, Keys, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @private
-%% @doc
-%% Fetch a given configuration category from (in order):
+%% @doc Fetch a given configuration category from (in order):
 %% 1. from the cache
 %% 2. from the db
 %% 3. from a flat file
@@ -848,8 +829,7 @@ get_category(Category, 'false') ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function will move a system config setting from one location
+%% @doc This function will move a system config setting from one location
 %%  to another.  It will create the document if it does not already
 %%  exist and will move per-node settings if they exist.
 %%  In the event that both the source and destination exist but

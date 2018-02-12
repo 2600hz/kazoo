@@ -23,9 +23,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the announcements process
-%%
+%% @doc Starts the announcements process
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), kapps_call:call(), kz_term:proplist()) -> kz_types:startlink_ret().
@@ -33,9 +31,7 @@ start_link(Manager, Call, Props) ->
     {'ok', kz_util:spawn_link(fun ?MODULE:init/3, [Manager, Call, Props])}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the announcements process
-%%
+%% @doc Initializes the announcements process
 %% @end
 %%--------------------------------------------------------------------
 -spec init(pid(), kapps_call:call(), kz_term:proplist()) -> 'no_return'.
@@ -50,9 +46,7 @@ init(Manager, Call, Props) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Load config from props into map
-%%
+%% @doc Load config from props into map
 %% @end
 %%--------------------------------------------------------------------
 -spec get_config(kz_term:proplist()) -> map().
@@ -64,9 +58,7 @@ get_config(Props) ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get media file configuration from props
-%%
+%% @doc Get media file configuration from props
 %% @end
 %%--------------------------------------------------------------------
 -spec announcements_media(kz_term:proplist()) -> kz_term:proplist().
@@ -79,9 +71,7 @@ announcements_media(Props) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initialize state for the announcements process
-%%
+%% @doc Initialize state for the announcements process
 %% @end
 %%--------------------------------------------------------------------
 -spec init_state(pid(), kapps_call:call(), map()) -> map().
@@ -93,9 +83,7 @@ init_state(Manager, Call, Config) ->
      }.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Loop entry point
-%%
+%% @doc Loop entry point
 %% @end
 %%--------------------------------------------------------------------
 -spec loop(map()) -> 'no_return'.
@@ -103,9 +91,7 @@ loop(State) ->
     maybe_announce_position(State).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Conditionally add position announcements prompts to playlist
-%%
+%% @doc Conditionally add position announcements prompts to playlist
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_announce_position(map()) -> 'no_return'.
@@ -124,9 +110,7 @@ maybe_announce_position(#{manager := Manager
     maybe_announce_wait_time(Prompts, State).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Conditionally add wait time announcements prompts to playlist
-%%
+%% @doc Conditionally add wait time announcements prompts to playlist
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_announce_wait_time(kapps_call_command:audio_macro_prompts(), map()) -> 'no_return'.
@@ -154,8 +138,7 @@ maybe_announce_wait_time(PromptAcc, #{call := Call
     play_announcements(PromptAcc2, State#{last_average_wait_time := AverageWaitTime}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Play the prompts on the playlist, sleep till the next execution,
+%% @doc Play the prompts on the playlist, sleep till the next execution,
 %% repeat
 %%
 %% @end
@@ -171,9 +154,7 @@ play_announcements(Prompts, #{call := Call
     loop(State).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Get the average wait time from stats via AMQP
-%%
+%% @doc Get the average wait time from stats via AMQP
 %% @end
 %%--------------------------------------------------------------------
 -spec get_average_wait_time(kapps_call:call()) -> kz_term:api_non_neg_integer().
@@ -197,9 +178,7 @@ get_average_wait_time(Call) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Structure for time prompt entries
-%%
+%% @doc Structure for time prompt entries
 %% @end
 %%--------------------------------------------------------------------
 -spec time_prompt(pos_integer(), binary()) -> {'prompt', kz_term:ne_binary(), binary(), kz_term:ne_binary()}.
@@ -207,9 +186,7 @@ time_prompt(Time, Language) ->
     {'prompt', time_prompt2(Time), Language, <<"A">>}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Returns the appropriate prompt name for the given average wait time
-%%
+%% @doc Returns the appropriate prompt name for the given average wait time
 %% @end
 %%--------------------------------------------------------------------
 -spec time_prompt2(pos_integer()) -> kz_term:ne_binary().
@@ -231,9 +208,7 @@ time_prompt2(_) ->
     <<"queue-at_least_1_hour">>.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return the time interval between announcements
-%%
+%% @doc Return the time interval between announcements
 %% @end
 %%--------------------------------------------------------------------
 -spec announcements_interval(map()) -> non_neg_integer().
@@ -241,9 +216,7 @@ announcements_interval(#{announcements_interval := Interval}) ->
     Interval.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return the media file of a given name from the config
-%%
+%% @doc Return the media file of a given name from the config
 %% @end
 %%--------------------------------------------------------------------
 -spec announcements_media_file(kz_term:ne_binary(), map()) -> kz_term:api_ne_binary().

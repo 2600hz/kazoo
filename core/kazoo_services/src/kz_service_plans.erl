@@ -45,8 +45,7 @@
        ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Create an empty service plans data structure.
+%% @doc Create an empty service plans data structure.
 %% @end
 %%--------------------------------------------------------------------
 -spec empty() -> plans().
@@ -258,8 +257,7 @@ activation_charges(Category, Item, ServicePlans) ->
       ]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given a the services on an account (and descedants) as well as the
+%% @doc Given a the services on an account (and descedants) as well as the
 %% service plans the account is subscribed to create a list of items
 %% suitable for use with the bookkeepers.
 %% @end
@@ -289,8 +287,7 @@ create_items(ServiceJObj, ServicePlans) ->
                ).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Return a json object with all the items for an account
+%% @doc Return a json object with all the items for an account
 %% @end
 %%--------------------------------------------------------------------
 -spec public_json_items(kzd_services:doc()) -> kz_json:object().

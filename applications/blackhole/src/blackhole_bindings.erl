@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Store routing keys/pid bindings. When a binding is fired,
+%%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
@@ -64,8 +63,7 @@
 %% is the payload, possibly modified
 
 %%--------------------------------------------------------------------
-%% @doc
-%% return the modified Payload after it has been threaded through
+%% @doc return the modified Payload after it has been threaded through
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
@@ -75,8 +73,7 @@ fold(Routing, Payload) ->
     kazoo_bindings:fold(Routing, Payload).
 
 %%-------------------------------------------------------------------
-%% @doc
-%% Helper functions for working on a result set of bindings
+%% @doc Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
 -spec any(kz_term:proplist()) -> boolean().
@@ -98,8 +95,7 @@ succeeded(Res) when is_list(Res) ->
 succeeded(Res)-> succeeded([Res]).
 
 %%-------------------------------------------------------------------------
-%% @doc
-%% Helpers for the result set helpers
+%% @doc Helpers for the result set helpers
 %% @end
 %%-------------------------------------------------------------------------
 -spec check_bool({boolean(), any()} | boolean()) -> boolean().
@@ -241,8 +237,7 @@ bindings(Routing) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Match routing patterns. * matches 1 slot, # 0 or more.
+%% @doc Match routing patterns. * matches 1 slot, # 0 or more.
 %% Note: matching only accepts wilcards on first argument (asymetric).
 %% @end
 %%

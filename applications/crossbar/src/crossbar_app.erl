@@ -15,8 +15,7 @@
 -include("crossbar.hrl").
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Implement the application start behaviour.
+%% @doc Implement the application start behaviour.
 %% @end
 %%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
@@ -28,8 +27,7 @@ start(_StartType, _StartArgs) ->
     crossbar_sup:start_link().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Implement the application stop behaviour.
+%% @doc Implement the application stop behaviour.
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
@@ -43,8 +41,7 @@ stop(_State) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Ensures that all exchanges used are declared.
+%% @doc Ensures that all exchanges used are declared.
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

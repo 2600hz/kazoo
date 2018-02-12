@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle a host's connection/channels
-%%%
+%%% @doc Handle a host's connection/channels
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -37,8 +35,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server.
+%% @doc Starts the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(kz_amqp_connection()) -> kz_types:startlink_ret().
@@ -67,9 +64,7 @@ disconnect(Srv) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
+%% @doc Initializes the server
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', kz_amqp_connection()}.
@@ -80,9 +75,7 @@ init([#kz_amqp_connection{}=Connection]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling call messages
-%%
+%% @doc Handling call messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -104,9 +97,7 @@ handle_call(_Msg, _From, Connection) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling cast messages
-%%
+%% @doc Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -140,9 +131,7 @@ handle_cast(_Msg, Connection) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
+%% @doc Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -178,8 +167,7 @@ handle_info(_Info, Connection) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
+%% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
@@ -198,9 +186,7 @@ terminate(_Reason, #kz_amqp_connection{broker=_Broker}=Connection) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert process state when code is changed
-%%
+%% @doc Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

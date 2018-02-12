@@ -39,8 +39,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -51,9 +50,7 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -61,8 +58,7 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Ensure we will be able to bill for devices
+%% @doc Ensure we will be able to bill for devices
 %% @end
 %%--------------------------------------------------------------------
 -spec billing(cb_context:context()) ->
@@ -115,8 +111,7 @@ is_allowed(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -145,8 +140,7 @@ post(Context) ->
 %%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load a Limit document from the database
+%% @doc Load a Limit document from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_limit(cb_context:context()) -> cb_context:context().

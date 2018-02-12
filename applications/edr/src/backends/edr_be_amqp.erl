@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2017 Conversant Ltd
-%%% @doc
-%%% Relays EDR messages to amqp via kapi_edr_amqp
-%%%
-%%%
+%%% @doc Relays EDR messages to amqp via kapi_edr_amqp
 %%% @author Max Lay
 %%% @end
 %%%-------------------------------------------------------------------

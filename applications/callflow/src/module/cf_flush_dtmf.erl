@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2017 Voxter Communications
-%%% @doc
-%%% Flush DTMF collection on a call
+%%% @doc Flush DTMF collection on a call
 %%% "data":{
 %%%   "collection_name":"your_name_here" // the collection to flush
 %%% }
@@ -16,8 +15,7 @@
 -export([handle/2]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Entry point for this module
+%% @doc Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

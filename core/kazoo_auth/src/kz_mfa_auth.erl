@@ -18,8 +18,7 @@
 -export_type([result/0]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Read configuration and do authentication with configured MFA provider
+%% @doc Read configuration and do authentication with configured MFA provider
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(kz_term:proplist()) -> result().
@@ -41,8 +40,7 @@ authenticate(Claims) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get MFA provider and checks it's enabled or not
+%% @doc Get MFA provider and checks it's enabled or not
 %% @end
 %%--------------------------------------------------------------------
 -spec provider(kz_term:api_object()) -> kz_term:ne_binary() | {'disabled', kz_term:ne_binary()} | {'error', 'no_provider'}.
@@ -57,8 +55,7 @@ provider(Configs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Get MFA config from Account, if there was no config account
+%% @doc Get MFA config from Account, if there was no config account
 %% get system default configuration
 %% @end
 %%--------------------------------------------------------------------

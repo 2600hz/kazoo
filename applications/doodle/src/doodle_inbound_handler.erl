@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handler for sms inbound AMQP payload
-%%%
+%%% @doc Handler for sms inbound AMQP payload
 %%% @author Luis Azedo
 %%% @end
 %%%-------------------------------------------------------------------
@@ -93,8 +91,7 @@ send_route_win(FetchId, CallId, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% determine the e164 format of the inbound number
+%% @doc determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
 -spec set_account_id(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Handlers for various AMQP payloads
-%%%
+%%% @doc Handlers for various AMQP payloads
 %%% @end
 %%%-------------------------------------------------------------------
 -module(doodle_doc_handler).

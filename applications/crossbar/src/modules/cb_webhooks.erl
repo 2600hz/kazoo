@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle CRUD operations for WebHooks
-%%%
-%%%
+%%% @doc Handle CRUD operations for WebHooks
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------
@@ -136,8 +133,7 @@ authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
 authenticate(_Context, _Verb, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -159,9 +155,7 @@ allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -176,8 +170,7 @@ resource_exists(_WebhookId) -> 'true'.
 resource_exists(_WebhookId, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the parameters and content are correct
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
@@ -283,8 +276,7 @@ delete_account_hooks(JObjs) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
@@ -317,8 +309,7 @@ reenable_validation_error(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -337,8 +328,7 @@ maybe_leak_pvt_fields(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -349,8 +339,7 @@ update(Id, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -516,8 +505,7 @@ get_hook_definition(HookEvent, MasterDb) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% If a hook was auto-disabled and is being re-enabled, cleanup the private
+%% @doc If a hook was auto-disabled and is being re-enabled, cleanup the private
 %% fields related to the auto-disabling
 %% @end
 %%--------------------------------------------------------------------

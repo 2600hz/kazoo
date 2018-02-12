@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Account API auth module
-%%%
+%%% @doc Account API auth module
 %%% This is a non-standard module:
 %%% * it authenticates and authorizes itself
 %%% * it has a completely unique role
@@ -50,8 +48,7 @@ init() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
@@ -61,9 +58,7 @@ init() ->
 allowed_methods() -> [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
+%% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
 %%--------------------------------------------------------------------
@@ -119,8 +114,7 @@ put(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% This function determines if the credentials are valid based on the
+%% @doc This function determines if the credentials are valid based on the
 %% provided hash method
 %%
 %% Failure here returns 401

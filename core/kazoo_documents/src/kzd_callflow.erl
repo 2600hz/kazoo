@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% Callflow document manipulation
-%%%
+%%% @doc Callflow document manipulation
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

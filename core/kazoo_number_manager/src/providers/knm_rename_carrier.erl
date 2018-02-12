@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Handle renaming module_name for admins
-%%%
+%%% @doc Handle renaming module_name for admins
 %%% @author Pierre Fenoll
 %%% @end
 %%%-------------------------------------------------------------------
@@ -17,8 +15,7 @@
 -define(KEY, ?FEATURE_RENAME_CARRIER).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is saved, and will
+%% @doc This function is called each time a number is saved, and will
 %% add the prepend route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
@@ -42,8 +39,7 @@ save(N) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% This function is called each time a number is deleted, and will
+%% @doc This function is called each time a number is deleted, and will
 %% remove the prepend route
 %% @end
 %%--------------------------------------------------------------------

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% proplists-like interface to json objects
-%%%
+%%% @doc proplists-like interface to json objects
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
@@ -237,8 +235,7 @@ is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Finds out whether 2 JSON objects are recursively identical.
+%% @doc Finds out whether 2 JSON objects are recursively identical.
 %% @end
 %%--------------------------------------------------------------------
 -spec are_equal(kz_term:api_object(), kz_term:api_object()) -> boolean().
@@ -249,8 +246,7 @@ are_equal(JObj1, JObj2) ->
     to_map(JObj1) =:= to_map(JObj2).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Converts top-level proplist to json object, but only if sub-proplists have been converted
+%% @doc Converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
 %%
 %% For example:
@@ -374,8 +370,7 @@ merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_right/2, Left, Right)};
 merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 
-%% @doc
-%% Only a top-level merge.
+%% @doc Only a top-level merge.
 %% Merges JObj1 into JObj2
 %% @end
 -spec merge_jobjs(object(), object()) -> object().
@@ -426,8 +421,7 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Sum two (deep) JSON objects.
+%% @doc Sum two (deep) JSON objects.
 %% Default sumer function only sums numbers. For other kinds of values,
 %% the value from JObj1 is kept untouched. If it is undefined it's the one from JObj2.
 %% @end
@@ -463,8 +457,7 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
     set_value(Syek, Sumer(V, Value), JObj1).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Sum (deep) JSON objects.
+%% @doc Sum (deep) JSON objects.
 %% Default sumer function only sums numbers. For other kinds of values,
 %% the value from JObj1 is kept untouched. If it is undefined it takes the value from the other JObjs.
 %% @end
@@ -483,8 +476,7 @@ sum_jobjs([FirstJObj|JObjs], Sumer)
     lists:foldl(F, FirstJObj, JObjs).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Reorder JSON objects according to the given list of binaries.
+%% @doc Reorder JSON objects according to the given list of binaries.
 %% Given Path MUST resolve to all distinct values in the given objects.
 %% These resolved values MUST all be in the list of binaries too.
 %% List of binaries MUST NOT contain duplicates.
@@ -521,8 +513,7 @@ recursive_to_proplist(Props) when is_list(Props) ->
 recursive_to_proplist(Else) -> Else.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a json object to a map
+%% @doc Convert a json object to a map
 %% @end
 %%--------------------------------------------------------------------
 
@@ -549,8 +540,7 @@ recursive_to_map(List) when is_list(List) ->
 recursive_to_map(Else) -> Else.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Convert a map to a json object
+%% @doc Convert a map to a json object
 %% @end
 %%--------------------------------------------------------------------
 -spec from_map(map()) -> object().
@@ -808,8 +798,7 @@ get_ne_value(Key, JObj, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find first json object that has a non_empty value for Key.
+%% @doc Find first json object that has a non_empty value for Key.
 %% Returns the value at Key
 %% @end
 %%--------------------------------------------------------------------
@@ -843,8 +832,7 @@ find_first_defined([Key|Keys], JObjs, Default) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Find first json object that has a Value for Key.
+%% @doc Find first json object that has a Value for Key.
 %% Returns the json object or 'undefined'
 %% @end
 %%--------------------------------------------------------------------
@@ -1047,8 +1035,7 @@ delete_key(Key, JObj) ->
     delete_key([Key], JObj, 'no_prune').
 
 %%--------------------------------------------------------------------
-%% @doc
-%%  No `prune' leaves the parent intact (default).
+%% @doc No `prune' leaves the parent intact (default).
 %%  With `prune': removes the parent key if the result of the delete is an empty list.
 %%  So, `` delete_key([<<"k1">>, <<"k1.1">>], {[{<<"k1">>, {[{<<"k1.1">>, <<"v1.1">>}]}}]}) '' would result in:
 %%
@@ -1167,8 +1154,7 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Read a json fixture file from the filesystem into memory
+%% @doc Read a json fixture file from the filesystem into memory
 %% @end
 %%--------------------------------------------------------------------
 
@@ -1211,8 +1197,7 @@ fixture(App, Path) when is_atom(App) ->
 -endif.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Normalize a JSON object for storage as a Document
+%% @doc Normalize a JSON object for storage as a Document
 %% All dashes are replaced by underscores, all upper case character are
 %% converted to lower case
 %%

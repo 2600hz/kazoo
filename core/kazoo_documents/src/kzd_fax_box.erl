@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% Device document manipulation
-%%%
+%%% @doc Device document manipulation
 %%% @author James Aimonetti
 %%% @end
 %%%-------------------------------------------------------------------

@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handles authorization requests, responses, queue bindings
-%%%
+%%% @doc Handles authorization requests, responses, queue bindings
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -89,8 +87,7 @@
 -define(BALANCE_CHECK_RESP_TYPES, [{<<"Balances">>, fun kz_json:is_json_object/1}]).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorization Request - see wiki
+%% @doc Authorization Request - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -125,8 +122,7 @@ balance_check_req_v(JObj) ->
     balance_check_req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Authorization Response - see wiki
+%% @doc Authorization Response - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
@@ -162,8 +158,7 @@ balance_check_resp_v(JObj) ->
     balance_check_resp_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Setup and tear down bindings for authz gen_listeners
+%% @doc Setup and tear down bindings for authz gen_listeners
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -201,8 +196,7 @@ unbind_q_from(Q, ['balance_check'|T]) ->
 unbind_q_from(_Q, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%% @doc declare the exchanges used by this API
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -210,8 +204,7 @@ declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Publish the JSON iolist() to the proper Exchange
+%% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
 

@@ -1249,8 +1249,7 @@ endpoint_options(_, _) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Build the sip url of a resource gateway
+%% @doc Build the sip url of a resource gateway
 %% @end
 %%--------------------------------------------------------------------
 -spec gateway_dialstring(gateway(), kz_term:ne_binary()) -> kz_term:ne_binary().

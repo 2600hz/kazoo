@@ -40,8 +40,7 @@
 -type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Publish notification and collect notify update messages from
+%% @doc Publish notification and collect notify update messages from
 %% teletype. Useful if you want to make sure teletype processed
 %% the notification completely (e.g. new voicemail)
 %% @end
@@ -54,8 +53,7 @@ call_collect(Req, PublishFun) ->
     CallResp.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Publish notification asynchronous, and save the payload to db
+%% @doc Publish notification asynchronous, and save the payload to db
 %% if it failed.
 %% @end
 %%--------------------------------------------------------------------
@@ -78,8 +76,7 @@ cast(Req, PublishFun) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% handle AMQP worker responses.
+%% @doc handle AMQP worker responses.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_resp(kz_term:api_ne_binary(), kz_term:api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
@@ -97,8 +94,7 @@ handle_resp(NotifyType, Req, {'timeout', _}=Resp) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% check for notify update messages from teletype/notify apps.
+%% @doc check for notify update messages from teletype/notify apps.
 %% @end
 %%--------------------------------------------------------------------
 -spec check_for_failure(kz_term:api_ne_binary(), kz_term:api_terms(), {'ok' | 'returned' | 'timeout', kz_json:object() | kz_json:objects()}) -> 'ok'.
@@ -134,8 +130,7 @@ maybe_handle_error(NotifyType, Req, Reason) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% create document with notification payload to save in db.
+%% @doc create document with notification payload to save in db.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_error(kz_term:ne_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
@@ -177,8 +172,7 @@ save_pending_notification(NotifyType, JObj, Loop) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Collect responses until failed or completed messages are received.
+%% @doc Collect responses until failed or completed messages are received.
 %% @end
 %%--------------------------------------------------------------------
 -spec collecting(kz_json:objects()) -> boolean().
@@ -195,8 +189,7 @@ collecting([JObj|_]) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check responses from teletype and see if request is completed or not.
+%% @doc Check responses from teletype and see if request is completed or not.
 %% If it failed check the reason to see should it be handled.
 %% @end
 %%--------------------------------------------------------------------
@@ -227,8 +220,7 @@ is_completed(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Check the reason to see if this failure should be saved or not.
+%% @doc Check the reason to see if this failure should be saved or not.
 %% @end
 %%--------------------------------------------------------------------
 -spec should_ignore_failure(kz_term:api_ne_binary()) -> boolean().
@@ -251,8 +243,7 @@ should_ignore_failure(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert `kz_amqp_worker' errors to friendly string.
+%% @doc Convert `kz_amqp_worker' errors to friendly string.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_amqp_worker_error(any()) -> failure_reason().
@@ -272,8 +263,7 @@ handle_amqp_worker_error(Error) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Convert JObj errors to friendly string (responses from teletype or
+%% @doc Convert JObj errors to friendly string (responses from teletype or
 %% `kz_amqp_worker' errors in JObj).
 %%
 %% For now we just only get the first failed response.
@@ -311,8 +301,7 @@ json_to_reason(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Categorize Responses based on status.
+%% @doc Categorize Responses based on status.
 %% @end
 %%--------------------------------------------------------------------
 find_reason_from_jsons(Reason, JObjs, Map) ->
@@ -333,8 +322,7 @@ cast_to_binary(Error) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Find notification type from the publish function.
+%% @doc Find notification type from the publish function.
 %% @end
 %%--------------------------------------------------------------------
 -spec notify_type(kz_amqp_worker:publish_fun() | kz_term:ne_binary()) -> kz_term:api_ne_binary().

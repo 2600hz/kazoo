@@ -57,8 +57,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Initializes the bindings this module will respond to.
+%% @doc Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
@@ -74,8 +73,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.notifications">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
@@ -118,9 +116,7 @@ authorize(_Context, _, _Nouns) ->
     'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Does the path point to a valid resource.
-%%
+%% @doc Does the path point to a valid resource.
 %% For example:
 %%
 %% ```
@@ -145,9 +141,7 @@ resource_exists(?CUSTOMER_UPDATE, ?MESSAGE) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%% @doc Add content types accepted and provided by this module
 %% @end
 %%--------------------------------------------------------------------
 
@@ -227,8 +221,7 @@ content_types_accepted_for_upload(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /notifications mights load a list of skel objects
 %% /notifications/123 might load the skel object 123
@@ -347,8 +340,7 @@ sender_account_id(_Context, AccountId) ->
     AccountId.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
@@ -364,8 +356,7 @@ put(Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -605,8 +596,7 @@ preview_fold(Header, {Props, ReqData}) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -654,8 +644,7 @@ maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
@@ -665,8 +654,7 @@ create(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Load an instance from the database
+%% @doc Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec accept_values(cb_context:context()) -> media_values().
@@ -1073,8 +1061,7 @@ read_account_attachment(Context, AttachmentsDb, DocId, Name) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Update an existing menu document with the data provided, if it is
+%% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
@@ -1156,8 +1143,7 @@ template_module_name(Id, Context, CT) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
@@ -1438,8 +1424,7 @@ maybe_update_db(Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Remove Template Customization from an account
+%% @doc Remove Template Customization from an account
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_account_customizations(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -1470,8 +1455,7 @@ remove_customization(AccountId, Ids) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Forcing System's Templates to an account by first removing
+%% @doc Forcing System's Templates to an account by first removing
 %% account's customization and then copy the templates from
 %% system_config to account's db.
 %% @end
