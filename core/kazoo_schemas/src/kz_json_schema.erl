@@ -134,6 +134,12 @@ add_defaults(JObj, SchemaJObj) ->
 validate(SchemaJObj, DataJObj) ->
     validate(SchemaJObj, DataJObj, ?DEFAULT_OPTIONS).
 
+-ifdef(TEST).
+-define(DEFAULT_LOADER, fun fload/1).
+-else.
+-define(DEFAULT_LOADER, fun load/1).
+-endif.
+
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
     Fun = props:get_value('schema_loader_fun', Options, fun load/1),
     {'ok', SchemaJObj} = Fun(Schema),
