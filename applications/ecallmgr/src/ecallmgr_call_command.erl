@@ -1395,8 +1395,8 @@ tts(Node, UUID, JObj) ->
             TTS = <<"tts://", TTSId/binary>>,
             case ecallmgr_util:media_path(TTS, UUID, JObj) of
                 TTS ->
-                    lager:debug("failed to fetch a playable media, reverting to flite"),
-                    get_fs_app(Node, UUID, kz_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
+                    lager:info("failed to fetch a playable media, reverting to flite"),
+                    ecallmgr_fs_flite:call_command(Node, UUID, JObj);
                 MediaPath ->
                     lager:debug("got media path ~s", [MediaPath]),
                     play(Node, UUID, kz_json:set_value(<<"Media-Name">>, MediaPath, JObj))
