@@ -470,24 +470,18 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
         false ->
             do_move_to_doc_line(Lines, Positions, Formatted ++ [Line]);
         <<"%%">> ->
-            io:format("empty~n"),
             %% remove empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
         <<"%%%">> ->
-            io:format("empty~n"),
             %% remove empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
         <<"%% @doc">> ->
-            io:format("doc~n"),
             do_move_to_doc_line(Lines, Positions, Formatted);
         <<"%%% @doc">> ->
-            io:format("doc~n"),
             do_move_to_doc_line(Lines, Positions, Formatted ++ [Line]);
         <<"%%", _/binary>> ->
-            io:format("comment~n"),
             do_move_to_doc_line(Lines, Positions, Formatted ++ [<<"%% @doc ", (strip_left_spaces(strip_comment(Line)))/binary>>]);
         <<"%%%", _/binary>> ->
-            io:format("comment~n"),
             do_move_to_doc_line(Lines, Positions, Formatted ++ [<<"%%% @doc ", (strip_left_spaces(strip_comment(Line)))/binary>>])
     end.
 
