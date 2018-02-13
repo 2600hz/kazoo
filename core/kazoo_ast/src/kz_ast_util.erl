@@ -218,10 +218,18 @@ schema_to_table(Schema=?NE_BINARY) ->
             throw({'error', 'no_schema'})
     end;
 schema_to_table(SchemaJObj) ->
-    [Table|RefTables] = schema_to_table(SchemaJObj, []),
-    [?SCHEMA_SECTION, Table, "\n\n"
-    ,cb_api_endpoints:ref_tables_to_doc(RefTables), "\n\n"
-    ].
+    try schema_to_table(SchemaJObj, []) of
+        [Table|RefTables] ->
+            [?SCHEMA_SECTION, Table, "\n\n"
+            ,cb_api_endpoints:ref_tables_to_doc(RefTables), "\n\n"
+            ]
+    catch
+        'throw':'no_type' ->
+            ST = erlang:get_stacktrace(),
+            io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
+            io:format("~p~n", [ST]),
+            throw('no_type')
+    end.
 
 schema_to_table(SchemaJObj, BaseRefs) ->
     Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),
@@ -435,7 +443,9 @@ maybe_schema_type_from_oneof(Settings) ->
 
 maybe_schema_type_from_anyof(Settings) ->
     case kz_json:get_list_value(<<"anyOf">>, Settings) of
-        'undefined' -> throw('no_type');
+        'undefined' ->
+            io:format("no type: ~p~n", [Settings]),
+            throw('no_type');
         AnyOf ->
             SchemaTypes = [schema_type(AnyOfJObj, get_type(AnyOfJObj))
                            || AnyOfJObj <- AnyOf
@@ -514,11 +524,13 @@ maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, {Table, Re
                                        ,{Table, Refs}
                                        );
         <<"string">> ->
-            EnumedType = maybe_schema_type_from_enum(kz_json:get_json_value(<<"items">>, Settings)),
+            ?LOG_DEBUG("getting array item types for ~p", [Names]),
+            Items = kz_json:get_json_value(<<"items">>, Settings),
+            EnumedType = schema_type(Items, get_type(Items)),
             ?LOG_DEBUG("array(~s)", [EnumedType]),
             {[?TABLE_ROW(cell_wrap(kz_binary:join(Names ++ ["[]"], <<".">>))
                         ,<<" ">>
-                        ,cell_wrap(<<EnumedType/binary, "()">>)
+                        ,cell_wrap(EnumedType)
                         ,<<" ">>
                         ,cell_wrap(is_row_required(Names, SchemaJObj))
                         ,cell_wrap(support_level(Names, SchemaJObj))
@@ -560,6 +572,7 @@ maybe_array_composite_types(Names, Settings, {Table, Refs}) ->
     end.
 
 array_composite_types(Names, Schemas, {Table, Refs}) ->
+    ?LOG_DEBUG("getting schema types for ~p~n", [Names]),
     EnumedType = kz_binary:join([schema_type(Schema, get_type(Schema)) || Schema <- Schemas], <<"|">>),
     ?LOG_DEBUG("array oneOf: ~p", [EnumedType]),
     {[?TABLE_ROW(cell_wrap(kz_binary:join(Names ++ ["[]"], <<".">>))
