@@ -193,6 +193,253 @@ another_schema_test_() ->
     }">>,
     build_tests(Data).
 
+yas_test_() ->
+    Data = <<"{
+  \"macros\": [
+             {
+      \"macro\": \"tts\",
+      \"text\": \"one to 4\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"one to 4\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"one to 4\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"one to 4\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"one to 4\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"one to 4\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    },
+    {
+      \"macro\": \"tts\",
+      \"text\": \"1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28\",
+      \"language\": \"en-US\",
+      \"voice\": \"male\",
+      \"terminators\": [
+        \"1\",
+        \"2\",
+        \"3\",
+        \"4\",
+        \"5\",
+        \"6\",
+        \"7\",
+        \"8\",
+        \"9\",
+        \"*\",
+        \"0\",
+        \"#\"
+      ]
+    }
+  ]
+}">>,
+    build_tests(Data).
+
 build_tests(Data) ->
     lists:foldl(fun(TestF, Tests) ->
                         TestF(Data) ++ Tests
@@ -206,7 +453,17 @@ build_tests(Data) ->
 build_macro_command(DataBin) ->
     Data = kz_json:decode(DataBin),
     M = get_macro(Data, kapps_call:new()),
-    [?_assert(is_list(M))].
+
+    Call = kapps_call:exec([{fun kapps_call:set_call_id/2, <<"call_id">>}
+                           ]
+                          ,kapps_call:new()
+                          ),
+    Queue = kapps_call_command:macros_to_commands(M, Call, <<"group_id">>),
+    
+    [{"build macros from callflow data", ?_assert(is_list(M))}
+    ,{"build api queue from macros", ?_assert(kz_json:are_json_objects(Queue))}
+    ,{"macros and api queue are same length", ?_assertEqual(length(M), length(Queue))}
+    ].
 
 validate(Data) ->
     Validated = kz_json_schema:validate(<<"callflows.audio_macro">>, kz_json:decode(Data)),

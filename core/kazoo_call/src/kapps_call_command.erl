@@ -27,6 +27,10 @@
         ]).
 
 -export([audio_macro/2, audio_macro/3]).
+-ifdef(TEST).
+-export([macros_to_commands/3]).
+-endif.
+
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
         ,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
@@ -464,7 +468,7 @@ audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, kz_binary:rand_hex(3)).
 -spec audio_macro(audio_macro_prompts(), kapps_call:call(), kz_term:ne_binary()) ->
                          binary().
 audio_macro(Prompts, Call, GroupId) ->
-    {_, _, Queue} = lists:foldl(fun build_macro/2, {Call, GroupId, []}, Prompts),
+    Queue = macros_to_commands(Prompts, Call, GroupId),
 
     NoopId = noop_id(),
     Commands = [kz_json:from_list(
@@ -479,6 +483,12 @@ audio_macro(Prompts, Call, GroupId) ->
               ],
     send_command(Command, Call),
     NoopId.
+
+-spec macros_to_commands(audio_macro_prompts(), kapps_call:call(), kz_term:ne_binary()) ->
+                                kz_json:objects().
+macros_to_commands(Prompts, Call, GroupId) ->
+    {_, _, Queue} = lists:foldl(fun build_macro/2, {Call, GroupId, []}, Prompts),
+    Queue.
 
 -type build_acc() :: {kapps_call:call(), kz_term:ne_binary(), kz_json:objects()}.
 -spec build_macro(audio_macro_prompt(), build_acc()) -> build_acc().
