@@ -37,15 +37,6 @@
 %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
 -define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc[^\\n]*$(\\n%%*$)+' core/ applications/").
 
-main(["df"]) ->
-    _ = io:setopts(user, [{encoding, unicode}]),
-    ScriptsDir = filename:dirname(escript:script_name()),
-    ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
-
-    io:format("Edocify Kazoo...~n~n"),
-
-    Run = [{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}],
-    edocify(Run, 0);
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
     check_ag_available(),
