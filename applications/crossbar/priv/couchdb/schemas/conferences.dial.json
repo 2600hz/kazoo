@@ -12,6 +12,7 @@
             "type": "string"
         },
         "endpoints": {
+            "description": "Endpoints to dial out to and join to the conference",
             "items": {
                 "oneOf": [
                     {

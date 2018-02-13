@@ -13,38 +13,38 @@ Schema for conferences
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`bridge_password` | the password used for a conference bridge | `string()` |   | `false` |  
-`bridge_username` | the username used for a conference bridge | `string()` |   | `false` |  
-`caller_controls` | caller controls (config settings) | `string()` |   | `false` |  
-`conference_numbers.[]` |   | `string()` |   | `false` |  
-`conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |  
-`focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |  
-`max_members_media` | Media to play when the conference is full | `string()` |   | `false` |  
-`max_participants` | The maximum number of participants that can join | `integer()` |   | `false` |  
-`member.join_deaf` | Determines if a member will join deaf | `boolean()` | `false` | `false` |  
-`member.join_muted` | Determines if a member will join muted | `boolean()` | `true` | `false` |  
-`member.numbers.[]` |   | `string()` |   | `false` |  
-`member.numbers` | Defines the conference (call in) number(s) for members | `array(string())` | `[]` | `false` |  
-`member.pins.[]` |   | `string()` |   | `false` |  
-`member.pins` | Defines the pin number(s) for members | `array(string())` | `[]` | `false` |  
-`member` | Defines the discovery (call in) properties for a member | `object()` | `{}` | `false` |  
-`moderator.join_deaf` | Determines if a moderator will join deaf | `boolean()` | `false` | `false` |  
-`moderator.join_muted` | Determines if a moderator will join muted | `boolean()` | `false` | `false` |  
-`moderator.numbers.[]` |   | `string()` |   | `false` |  
-`moderator.numbers` | Defines the conference (call in) number(s) for moderators | `array(string())` | `[]` | `false` |  
-`moderator.pins.[]` |   | `string()` |   | `false` |  
-`moderator.pins` | Defines the pin number(s) for moderators | `array(string())` | `[]` | `false` |  
-`moderator` | Defines the discovery (call in) properties for a moderator | `object()` | `{}` | `false` |  
-`moderator_controls` | profile on the switch for controlling the conference as a moderator | `string()` |   | `false` |  
-`name` | A friendly name for the conference | `string(1..128)` |   | `false` |  
-`owner_id` | The user ID who manages this conference | `string(32)` |   | `false` |  
-`play_entry_tone` | Whether to play an entry tone, or the entry tone to play | `boolean() | string()` |   | `false` |  
-`play_exit_tone` | Whether to play an exit tone, or the exit tone to play | `boolean() | string()` |   | `false` |  
-`play_name` | Do we need to announce new conference members? | `boolean()` | `false` | `false` |  
-`play_welcome` | Whether to play the welcome prompt | `boolean()` |   | `false` |  
-`profile` | The XML profile name used to configure the conference | `string()` |   | `false` |  
-`require_moderator` | does the conference require a moderator | `boolean()` |   | `false` |  
-`wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false` |  
+`bridge_password` | the password used for a conference bridge | `string()` |   | `false` |
+`bridge_username` | the username used for a conference bridge | `string()` |   | `false` |
+`caller_controls` | caller controls (config settings) | `string()` |   | `false` |
+`conference_numbers.[]` |   | `string()` |   | `false` |
+`conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |
+`focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |
+`max_members_media` | Media to play when the conference is full | `string()` |   | `false` |
+`max_participants` | The maximum number of participants that can join | `integer()` |   | `false` |
+`member.join_deaf` | Determines if a member will join deaf | `boolean()` | `false` | `false` |
+`member.join_muted` | Determines if a member will join muted | `boolean()` | `true` | `false` |
+`member.numbers.[]` |   | `string()` |   | `false` |
+`member.numbers` | Defines the conference (call in) number(s) for members | `array(string())` | `[]` | `false` |
+`member.pins.[]` |   | `string()` |   | `false` |
+`member.pins` | Defines the pin number(s) for members | `array(string())` | `[]` | `false` |
+`member` | Defines the discovery (call in) properties for a member | `object()` | `{}` | `false` |
+`moderator.join_deaf` | Determines if a moderator will join deaf | `boolean()` | `false` | `false` |
+`moderator.join_muted` | Determines if a moderator will join muted | `boolean()` | `false` | `false` |
+`moderator.numbers.[]` |   | `string()` |   | `false` |
+`moderator.numbers` | Defines the conference (call in) number(s) for moderators | `array(string())` | `[]` | `false` |
+`moderator.pins.[]` |   | `string()` |   | `false` |
+`moderator.pins` | Defines the pin number(s) for moderators | `array(string())` | `[]` | `false` |
+`moderator` | Defines the discovery (call in) properties for a moderator | `object()` | `{}` | `false` |
+`moderator_controls` | profile on the switch for controlling the conference as a moderator | `string()` |   | `false` |
+`name` | A friendly name for the conference | `string(1..128)` |   | `false` |
+`owner_id` | The user ID who manages this conference | `string(32)` |   | `false` |
+`play_entry_tone` | Whether to play an entry tone, or the entry tone to play | `boolean() | string()` |   | `false` |
+`play_exit_tone` | Whether to play an exit tone, or the exit tone to play | `boolean() | string()` |   | `false` |
+`play_name` | Do we need to announce new conference members? | `boolean()` | `false` | `false` |
+`play_welcome` | Whether to play the welcome prompt | `boolean()` |   | `false` |
+`profile` | The XML profile name used to configure the conference | `string()` |   | `false` |
+`require_moderator` | does the conference require a moderator | `boolean()` |   | `false` |
+`wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false` |
 
 
 
@@ -81,14 +81,16 @@ Schema for conference dial API command
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false`
-`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
-`endpoints.[]` |   | `string()` |   | `true`
-`endpoints` |   | `array(string() | device())` |   | `true`
-`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false`
-`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false` |
+`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false` |
+`endpoints.[]` |   | `string()|[./devices.md#schema](#devices)` |   |   |
+`endpoints` | Endpoints to dial out to and join to the conference | `array()` |   | `true` |
+`participant_flags.[]` |   | `string('mute' | 'deaf' | 'distribute_dtmf' | 'is_moderator' | 'disable_moh' | 'ghost' | 'join_existing' | 'video_mute')()` |   | `false` |
+`participant_flags` | Participant flags applied to each endpoint when it joins the conference | `array(string('mute' | 'deaf' | 'distribute_dtmf' | 'is_moderator' | 'disable_moh' | 'ghost' | 'join_existing' | 'video_mute'))` |   | `false` |
+`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false` |
+`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false` |
 
 
 
