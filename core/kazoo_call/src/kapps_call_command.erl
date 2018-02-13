@@ -538,8 +538,8 @@ build_macro({'tts', Text, Voice}, {Call, GroupId, Queue}) ->
 build_macro({'tts', Text, Voice, Lang}, {Call, GroupId, Queue}) ->
     Command = tts_command(Text, Voice, Lang, Call),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
-build_macro({'tts', Text, Voice, Lang, Engine}, {Call, GroupId, Queue}) ->
-    Command = tts_command(Text, Voice, Lang, ?ANY_DIGIT, Engine, Call),
+build_macro({'tts', Text, Voice, Lang, Terminators}, {Call, GroupId, Queue}) ->
+    Command = tts_command(Text, Voice, Lang, Terminators, Call),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]}.
 
 %%--------------------------------------------------------------------

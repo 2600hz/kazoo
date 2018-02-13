@@ -25,7 +25,14 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    NoopId = kapps_call_command:audio_macro(get_macro(Data, Call), Call),
+    handle_macros(Call, get_macro(Data, Call)).
+
+-spec handle_macros(kapps_call:call(), kapps_call_command:audio_macro_prompts()) -> 'ok'.
+handle_macros(Call, []) ->
+    lager:info("no audio macros were built"),
+    cf_exe:continue(Call);
+handle_macros(Call, Macros) ->
+    NoopId = kapps_call_command:audio_macro(Macros, Call),
     case cf_util:wait_for_noop(Call, NoopId) of
         {'ok', Call1} -> cf_exe:continue(Call1);
         {'error', 'channel_hungup'} ->
@@ -55,6 +62,7 @@ get_macro(Data, Call) ->
 
 -spec get_macro_entry(kz_json:object(), acc()) -> acc().
 get_macro_entry(Macro, Acc) ->
+    lager:debug("building macro ~s", [kz_json:get_ne_binary_value(<<"macro">>, Macro)]),
     get_macro_entry(Macro, Acc, kz_json:get_ne_binary_value(<<"macro">>, Macro)).
 
 -spec get_macro_entry(kz_json:object(), acc(), kz_term:ne_binary()) -> acc().
@@ -87,21 +95,24 @@ get_macro_entry(Macro, {Macros, Data, AccountId}=Acc, <<"say">>) ->
     Language = kz_json:find(<<"language">>, [Macro, Data]),
     Gender = kz_json:get_ne_binary_value(<<"gender">>, Macro),
 
-    case say_macro([Say, Type, Method, Language, Gender]) of
+    SayData = [Say, Type, Method, Language, Gender],
+    case say_macro(SayData) of
         'undefined' ->
-            lager:info("invalid say macro '~p'", [Say]),
+            lager:info("invalid say macro ~p", [SayData]),
             Acc;
         SayMacro ->
             {[SayMacro | Macros], Data, AccountId}
     end;
 get_macro_entry(Macro, {Macros, Data, AccountId}=Acc, <<"tts">>) ->
-    TTSData = [kz_json:get_binary_value(<<"text">>, Data)
-              ,kz_json:get_binary_value(<<"voice">>, Data)
+    TTSData = [kz_json:get_binary_value(<<"text">>, Macro)
+              ,kz_json:get_binary_value(<<"voice">>, Macro)
               ,kz_json:find(<<"language">>, [Macro, Data])
               ,kz_json:find(<<"terminators">>, [Macro, Data], ?ANY_DIGIT)
               ],
     case tts_macro(TTSData) of
-        'undefined' -> Acc;
+        'undefined' ->
+            lager:info("invalid TTS macro ~p", [TTSData]),
+            Acc;
         TTSMacro ->
             {[TTSMacro | Macros], Data, AccountId}
     end;
