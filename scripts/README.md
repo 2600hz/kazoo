@@ -87,6 +87,10 @@ Done
 If there are any calls to non-existant modules, or non-exported functions, you will get errors listed here.
 
 
+## check-whitespace.sh
+
+Removes trailing whitespaces from files
+
 ## circleci-build-erlang.sh
 
 Fetches kerl and installs configured Erlang version (used in CircleCI)
