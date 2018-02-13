@@ -2033,4 +2033,4 @@ send_mwi_update(#mailbox{mailbox_id='undefined'}) -> 'ok';
 send_mwi_update(#mailbox{account_db=AccountDb
                         ,mailbox_id=BoxId
                         }) ->
-    kvm_mwi:notify(BoxId, AccountDb).
+    kvm_mwi:notify_vmbox(AccountDb, BoxId).
