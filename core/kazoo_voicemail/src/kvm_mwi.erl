@@ -19,6 +19,9 @@
 
 -define(VM_NO_NEW_MESSAGES, <<"terminated">>).
 -define(VM_HAS_NEW_MESSAGES, <<"confirmed">>).
+
+-define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Generate database name based on DocId
@@ -95,7 +98,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
                          ,JObjs
              ),
             'ok';
-        {'error', _R}=E ->
+        {'error', _R} ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R])
     end.
 
@@ -147,7 +150,7 @@ maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     Username = kzd_devices:sip_username(JObj),
-    Realm = get_sip_realm(JObj, AccountId),
+    Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),
     case <<"password">> =:= kzd_devices:sip_method(JObj)
         andalso 'undefined' =/= Username
@@ -179,13 +182,13 @@ send_unsolicited_mwi_update(New, Saved, Username, Realm, JObj) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("sending unsolicited mwi update for ~s@~s (~p/~p)", [Username, Realm, New, Saved]),
-    kz_amqp_worker(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
+    kz_amqp_worker:cast(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
 
 
 -spec is_unsolicited_mwi_enabled(kz_term:ne_binary()) -> boolean().
 is_unsolicited_mwi_enabled(AccountId) ->
-    kapps_config:get_is_true(?VM_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
-        andalso kz_term:is_true(kapps_account_config:get(AccountId, ?VM_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+    kapps_config:get_is_true(?VM_CONFIG_CAT, ?MWI_SEND_UNSOLICITED_UPDATES, 'true')
+        andalso kz_term:is_true(kapps_account_config:get(AccountId, ?VM_CONFIG_CAT, ?MWI_SEND_UNSOLICITED_UPDATES, 'true')).
 
 -spec vm_count_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
