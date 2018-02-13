@@ -357,7 +357,7 @@ get_privacy_prefs(Call) ->
 get_privacy_prefs_from_endpoint(Call) ->
     lager:debug("Call is outbound, checking caller_id_outbound_privacy value"),
     {'ok', Endpoint} = kz_endpoint:get(Call),
-    case kz_json:get_value(<<"caller_id_outbound_privacy">>, Endpoint) of
+    case kz_json:get_value([<<"caller_id_options">>, <<"outbound_privacy">>], Endpoint) of
         'undefined' ->
             [];
         %% can't call kapps_call_command:privacy/2 with Mode = <<"none">>
