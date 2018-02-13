@@ -14,6 +14,9 @@
 %% regex to find contributors tag.
 -define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/").
 
+%% regex to find `@public' tag.
+-define(REGEX_PUBLIC_TAG, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%+ *@public' core/ applications/").
+
 %% regex to spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
 %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
 %% multi line regex won't work). For multi line the first line should end with `|' followed by same regex until exhausted.
@@ -47,6 +50,7 @@ main(_) ->
 
     Run = [{?REGEX_SPECSPEC, "removing evil sepc+specs", fun evil_specs/1}
           ,{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
+          ,{?REGEX_PUBLIC_TAG, "remove @public tag", fun remove_public_tag/1}
           ,{?REGEX_COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
           ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
@@ -312,6 +316,31 @@ find_header_comments([<<>>,  <<"-module", _/binary>>=Mod| Lines], _, Header) ->
 
 find_header_comments(Lines, Module, Header) ->
     {Module, Header, Lines}.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Removing `@public' from comments.
+%% Ad regex will match line with `@public'.
+%% So we can simply get file and positions for each file and remove the lines.
+%%
+%% Ag sample output:
+%% ```
+%% applications/skel/src/skel_listener.erl:111:%% @public
+%% '''
+%%
+%% Expected outcome:
+%% * all found lines should be removed.
+%% @end
+%%--------------------------------------------------------------------
+remove_public_tag(Result) ->
+    CommentSpecs = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
+    _ = maps:map(fun do_remove_public_tag/2, CommentSpecs),
+    'ok'.
+
+do_remove_public_tag(File, Positions) ->
+    io:format("."),
+    Lines = read_lines(File, true),
+    save_lines(File, [L || {LN, L} <- Lines, not lists:member(LN, Positions)]).
 
 %%--------------------------------------------------------------------
 %% @doc
