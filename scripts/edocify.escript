@@ -6,14 +6,13 @@
 
 -export([main/1]).
 
--define(SEP, <<"%%%-------------------------------------------------------------------">>).
--define(SEP_2, <<"%%%===================================================================">>).
+-define(SEP(I, C), <<(binary:copy(<<$%>>, I))/binary, (binary:copy(C, 67))/binary>>).
 
 %% regex for evil spec+specs
 -define(REGEX_SPECSPEC, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '^\\-spec[^.]+\\.$(\\n+\\-spec[^.]+\\.$)+' core/ applications/").
 
 %% regex to find contributors tag.
--define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%%+\\s*@?([Cc]ontributors|[Cc]ontributions)'").
+-define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/").
 
 %% regex to spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
 %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
@@ -38,6 +37,15 @@
 %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
 -define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc[^\\n]*$(\\n%%*$)+' core/ applications/").
 
+main(["df"]) ->
+    _ = io:setopts(user, [{encoding, unicode}]),
+    ScriptsDir = filename:dirname(escript:script_name()),
+    ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
+
+    io:format("Edocify Kazoo...~n~n"),
+
+    Run = [{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}],
+    edocify(Run, 0);
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),
     check_ag_available(),
@@ -105,8 +113,8 @@ check_result(Result) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Moving grouped `spec' attributes to line before their own function
-%% header. Ag regex matches the lines starts with `-spec' to end of
+%% Moving grouped `spec' attributes to their own function header.
+%% Ag regex matches the lines starts with `-spec' to end of
 %% the it (by a single `.') including multi line spec.
 %%
 %% For  multi line we accumulate it for that specific `spec' in a map
@@ -115,6 +123,19 @@ check_result(Result) ->
 %%
 %% Then we read AST again to find the function/arity position in the file
 %% then adding spec to line before appropriate function header.
+%%
+%% Ag sample output:
+%% ```
+%% core/kazoo_apps/src/kapps_util.erl:313:-spec get_account_mods(kz_term:ne_binary()) -> kz_term:ne_binaries().
+%% core/kazoo_apps/src/kapps_util.erl:314:-spec get_account_mods(kz_term:ne_binary(), kz_util:account_format()) -> kz_term:ne_binaries().
+%% core/kazoo_apps/src/kapps_util.erl:608:-spec amqp_pool_request(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun()) ->
+%% core/kazoo_apps/src/kapps_util.erl:609:                               kz_amqp_worker:request_return().
+%% core/kazoo_apps/src/kapps_util.erl:610:-spec amqp_pool_request(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), timeout()) ->
+%% core/kazoo_apps/src/kapps_util.erl:611:                               kz_amqp_worker:request_return().
+%% '''
+%%
+%% Expected outcome:
+%% move spec to appropriate function header.
 %% @end
 %%--------------------------------------------------------------------
 evil_specs(Result) ->
@@ -226,6 +247,21 @@ move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length 
 %% Edocify Header by rename @contributors to @author.
 %% Ag will return a list of files and then we open each file and fix their
 %% header comment.
+%% * `-module' line should be immediately after header comment
+%%
+%% Ag sample output:
+%% ```
+%% core/kazoo_apps/src/kapps_util.erl
+%% core/kazoo_voicemail/src/kvm_message.erl
+%% '''
+%%
+%% Expected outcome:
+%% * create an `@author' tag for all names after `@contributors'
+%% or `@contributors'. (if any name at all)
+%% * all header comment lines (all comment lines before `-module' line or
+%% non comment line (non empty)) will start with `%%%'
+%% * header separator character will be `='
+%% * will add `@end' tag if it's not there
 %% @end
 %%--------------------------------------------------------------------
 edocify_headers(Result) ->
@@ -236,85 +272,73 @@ edocify_headers(Result) ->
 edocify_header(File) ->
     io:format("."),
     Lines = read_lines(File, false),
-    {Header, OtherLines} = find_header(Lines, []),
-    save_lines(File, edocify_header(Header, []) ++ OtherLines).
+    {Module, Header, OtherLines} = find_header_comments(Lines, [], []),
+    save_lines(File, edocify_header(Module, Header, []) ++ OtherLines).
 
-edocify_header([], Header) ->
-    [?SEP] ++ Header ++ [<<"%%% @end">>, ?SEP];
-edocify_header([<<"@contributors", _/binary>>], Header) ->
-    edocify_header([], Header);
-edocify_header([<<"@contributors", _/binary>>|T], Header) ->
+edocify_header(Module, [], Header) ->
+    [?SEP(3, <<$=>>)] ++ Header ++ [<<"%%% @end">>, ?SEP(3, <<$=>>)] ++ Module;
+edocify_header(Module, [<<"@contributors", _/binary>>|T], Header) ->
     Authors = [<<"%%% @author ", Author/binary>>
                    || A <- T,
-                      Author <- [strip_left_spaces(A)],
-                      Author =/= <<>>
+                      Author <- [strip_right_spaces(strip_left_spaces(A))],
+                      Author =/= <<>>,
+                      <<"@end">> =/= Author,
+                      not is_seprator_char(Author, <<$->>),
+                      not is_seprator_char(Author, <<$=>>)
               ],
-    edocify_header([], Header ++ [<<"%%%">>] ++ Authors);
-edocify_header([<<>>|T], Header) ->
-    edocify_header(T, Header ++ [<<"%%%">>]);
-edocify_header([<<"@contributions", Rest/binary>>|T], Header) ->
+    edocify_header(Module, [], Header ++ [<<"%%%">>] ++ Authors);
+edocify_header(Module, [<<"Contributors", Rest/binary>>|T], Header) ->
+    %% it's capital `C'
+    edocify_header(Module, [<<"@contributors", " ", Rest/binary>>|T], Header);
+edocify_header(Module, [<<"@contributions", Rest/binary>>|T], Header) ->
     %% mind you it is `contributions' not `contributors'
-    edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
-edocify_header([<<"@Contributions", Rest/binary>>|T], Header) ->
+    edocify_header(Module, [<<"@contributors", " ", Rest/binary>>|T], Header);
+edocify_header(Module, [<<"@Contributions", Rest/binary>>|T], Header) ->
     %% mind you it is `Contributions' not `Contributors'
-    edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
-edocify_header([<<"Contributors", Rest/binary>>|T], Header) ->
-    edocify_header([<<"@contributors", " ", Rest/binary>>|T], Header);
-edocify_header([H|T], Header) ->
-    edocify_header(T, Header ++ [<<"%%% ", H/binary>>]).
+    edocify_header(Module, [<<"@contributors", " ", Rest/binary>>|T], Header);
+edocify_header(Module, [H|T], Header) ->
+    case is_seprator_chars(strip_right_spaces(strip_left_spaces(H)), [<<$=>>, <<$->>]) of
+        {true, _} ->
+            %% removing separator to replace later
+            edocify_header(Module, T, Header);
+        {false, _} when H =:= <<>> ->
+            edocify_header(Module, T, Header ++ [<<"%%%">>]);
+        {false, _} ->
+            edocify_header(Module, T, Header ++ [<<"%%% ", H/binary>>])
+    end.
 
-find_header([], Header) ->
-    {Header, []};
-find_header([<<"-module", _/binary>>=ModLine | Lines], Header) ->
-    {Header, [ModLine | Lines]};
-find_header([<<"%%% --", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%% ==", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%%% --", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%%% ==", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%%--", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%%==", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%%%--", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%%%==", _/binary>> | Lines], Header) ->
-    %% remove separator
-    find_header(Lines, Header);
-find_header([<<"%%% @end", _/binary>> | Lines], Header) ->
-    %% remove @end
-    find_header(Lines, Header);
-find_header([<<"%%%", _/binary>>=Comment | Lines], Header) ->
-    find_header(Lines, Header ++ [strip_comment(Comment)]);
-find_header([<<"%%", _/binary>>=Line | Lines], Header) ->
-    case is_seprator(Line)
-        andalso look_after(Lines)
-    of
-        true -> find_header(Lines, Header ++ [strip_comment(Line)]);
-        false ->  find_header(Lines ++ [Line], Header)
-    end;
-find_header([Line | Lines], Header) ->
-    find_header(Lines ++ [Line], Header).
+find_header_comments([], Module, Header) ->
+    {Module, Header};
 
-look_after([<<"%%%", _/binary>>|_]) -> true;
-look_after([<<"%%%%", _/binary>>|_]) -> true;
-look_after(_) -> false.
+find_header_comments([<<"%", _/binary>>=H | Lines], Module, Header) ->
+    find_header_comments(Lines, Module, Header ++ [strip_right_spaces(strip_comment(H))]);
+
+find_header_comments([<<"-module", _/binary>>=Mod | Lines], _, Header) ->
+    find_header_comments(Lines, [Mod], Header);
+
+find_header_comments([<<>>,  <<"-module", _/binary>>=Mod| Lines], _, Header) ->
+    find_header_comments(Lines, [Mod], Header);
+
+find_header_comments(Lines, Module, Header) ->
+    {Module, Header, Lines}.
 
 %%--------------------------------------------------------------------
 %% @doc
 %% Removing @spec from comments.
 %% Ad regex will match line starts with `@spec' and the line it ends. So
 %% we can simply get file and positions for each file and remove the lines.
+%%
+%% Ag sample output:
+%% ```
+%% applications/skel/src/skel_listener.erl:111:%% @spec handle_info(Info, State) -> {noreply, State} |
+%% applications/skel/src/skel_listener.erl:112:%%                                   {noreply, State, Timeout} |
+%% applications/skel/src/skel_listener.erl:113:%%                                   {stop, Reason, State}
+%% applications/skel/src/skel_listener.erl:122:%% @spec handle_event(JObj, State) -> {reply, Options}
+%% applications/skel/src/skel_listener.erl:136:%% @spec terminate(Reason, State) -> void()
+%% '''
+%%
+%% Expected outcome:
+%% * all found lines should be removed.
 %% @end
 %%--------------------------------------------------------------------
 remove_comment_specs(Result) ->
@@ -333,6 +357,20 @@ do_remove_comment_specs(File, Positions) ->
 %% Ad regex will match lines which starts with comment separator and ends with
 %% the line which has a `-spec' attribute or function head. We then go to those
 %% positions and format those lines.
+%%
+%% Ag sample output:
+%% ```
+%% core/kazoo_media/src/kz_media_file_cache.erl:243:%%%===================================================================
+%% core/kazoo_media/src/kz_media_file_cache.erl:244:-spec start_timer() -> reference().
+%% core/kazoo_media/src/kz_media_map.erl:311:%%%===================================================================
+%% core/kazoo_media/src/kz_media_map.erl:312:
+%% core/kazoo_media/src/kz_media_map.erl:313:-spec init_map() -> 'ok'.
+%% '''
+%%
+%% Expected outcome:
+%% * an empty comment block before the spec line or function header (func without spec line).
+%% * maybe an empty comment line after the separator line if it's not exists.
+%% * any extra line between separator and `spec' line will be removed.
 %% @end
 %%--------------------------------------------------------------------
 missing_comment_blocks_after_sep(Result) ->
@@ -365,6 +403,8 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
                 _ -> do_add_missing_comment_blocks(Lines, Positions, Formatted ++ [Line, <<>>])
             end;
         <<"-", _/binary>> ->
+            %% the idea was the regex should match any attribute line before `spec' but it change to match only spec
+            %% so this is just left over from previous version and should not be run anyway.
             do_add_missing_comment_blocks(Lines, Positions, Formatted ++ [Line]);
         _ ->
             %% add empty comment block
@@ -376,6 +416,27 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
 %% Escape codes in comment block for `resource_exists' function crossbar modules.
 %% Ag regex will match the comments before resource_exists function and last line
 %% is `%% @end'. We then formats those lines accordingly.
+%%
+%% Ag sample output:
+%% ```
+%% applications/acdc/src/cb_queues.erl:143:%% Does the path point to a valid resource
+%% applications/acdc/src/cb_queues.erl:144:%% So /queues => []
+%% applications/acdc/src/cb_queues.erl:145:%%    /queues/foo => [<<"foo">>]
+%% applications/acdc/src/cb_queues.erl:146:%%    /queues/foo/bar => [<<"foo">>, <<"bar">>]
+%% applications/acdc/src/cb_queues.erl:147:%% @end
+%% '''
+%%
+%% Expected outcome:
+%% %% Does the path point to a valid resource.
+%% %%
+%% %% For example:
+%% %%
+%% %% ```
+%% %%    /queues => []
+%% %%    /queues/foo => [<<"foo">>]
+%% %%    /queues/foo/bar => [<<"foo">>, <<"bar">>]
+%% %% '''
+%% %% @end
 %% @end
 %%--------------------------------------------------------------------
 cb_resource_exists_comments(Result) ->
@@ -402,7 +463,10 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
         <<"%% @end">> ->
             Formatted ++ [Line] ++ [L || {_, L} <- Lines];
         <<"%% So ", Rest/binary>> ->
-            do_cb_resource_exists_comment(Lines, Positions, Formatted ++ [<<"%%">>, <<"%% For example:">>, <<"%%">>, <<"%% ```">>, <<"%%    ", Rest/binary, ".">>]);
+            do_cb_resource_exists_comment(Lines
+                                         ,Positions
+                                         ,Formatted ++ [<<"%%">>, <<"%% For example:">>, <<"%%">>, <<"%% ```">>, <<"%%    ", Rest/binary, ".">>]
+                                         );
         _ ->
             case Lines of
                 [{_, <<"%% @end">>}|_] ->
@@ -415,6 +479,18 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Fix comment block which doesn't end properly with `@end' tag.
+%%
+%% Ag sample output:
+%% ```
+%% applications/ecallmgr/src/ecallmgr_originate.erl:67:%% @doc Starts the server
+%% applications/ecallmgr/src/ecallmgr_originate.erl:68:%%--------------------------------------------------------------------
+%% applications/ecallmgr/src/ecallmgr_originate.erl:128:%% @doc
+%% applications/ecallmgr/src/ecallmgr_originate.erl:129:%% Initializes the server
+%% applications/ecallmgr/src/ecallmgr_originate.erl:130:%%--------------------------------------------------------------------
+%% '''
+%%
+%% Expected outcome:
+%% * an `@end' tag should be added before the separator line.
 %% @end
 %%--------------------------------------------------------------------
 comment_blocks_with_no_end(Result) ->
@@ -430,13 +506,14 @@ comment_blocks_with_no_end(File, Positions) ->
 do_comment_blocks_with_no_end([], _, Formatted) ->
     Formatted;
 do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
+    {PerCount, {IsSeprator, _}} = analyze_separator(Line, [<<$=>>, <<$->>]),
     case lists:member(LN, Positions)
-        andalso is_seprator(Line)
+        andalso IsSeprator
     of
         false ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line]);
         true ->
-            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<"%% @end">>, Line])
+            do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @end">>, Line])
     end.
 
 %%--------------------------------------------------------------------
@@ -449,6 +526,21 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
 %% CAUTION: This code also makes sure there is no empty comment line
 %% between `@doc' line and separator to avoid inclusion of separator line
 %% in the documentation.
+%%
+%% Ag sample output:
+%% ``
+%% applications/konami/src/konami_listener.erl:3:%%% @doc
+%% applications/konami/src/konami_listener.erl:4:%%%
+%% applications/konami/src/konami_listener.erl:149:%% @doc
+%% applications/konami/src/konami_listener.erl:150:%% Initializes the server
+%% applications/konami/src/konami_listener.erl:164:%% @doc
+%% applications/konami/src/konami_listener.erl:165:%% Handling call messages
+%% '''
+%%
+%% Expected outcome:
+%% * for example,
+%% %% @doc Initializes the server
+%% * also removes empty comment lines after `@doc' and before first non empty comment line
 %% @end
 %%--------------------------------------------------------------------
 move_to_doc_line(Result) ->
@@ -465,24 +557,20 @@ do_move_to_doc_line([], _, Formatted) ->
     Formatted;
 do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
     case lists:member(LN, Positions)
-        andalso Line
+        andalso strip_right_spaces(strip_left_spaces(strip_comment(Line)))
     of
         false ->
             do_move_to_doc_line(Lines, Positions, Formatted ++ [Line]);
-        <<"%%">> ->
+        <<>> ->
             %% remove empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
-        <<"%%%">> ->
-            %% remove empty comment line
+        <<"@doc">> ->
+            %% remove empty `@doc' line, adding later after we found the first non empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
-        <<"%% @doc">> ->
-            do_move_to_doc_line(Lines, Positions, Formatted);
-        <<"%%% @doc">> ->
-            do_move_to_doc_line(Lines, Positions, Formatted ++ [Line]);
-        <<"%%", _/binary>> ->
-            do_move_to_doc_line(Lines, Positions, Formatted ++ [<<"%% @doc ", (strip_left_spaces(strip_comment(Line)))/binary>>]);
-        <<"%%%", _/binary>> ->
-            do_move_to_doc_line(Lines, Positions, Formatted ++ [<<"%%% @doc ", (strip_left_spaces(strip_comment(Line)))/binary>>])
+        Rest ->
+            %% this clause should only match once for the first non empty comment line
+            PerCount = count_precent(Line),
+            do_move_to_doc_line(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @doc ", Rest/binary>>])
     end.
 
 %%--------------------------------------------------------------------
@@ -490,6 +578,17 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
 %% Remove empty comment lines after `@doc' to avoid empty paragraph
 %% or dot in summary. Regex only returns the line with `@doc' and
 %% empty comment line.
+%%
+%% Ag sample output:
+%% ```
+%% applications/stepswitch/src/stepswitch_util.erl:3:%%% @doc
+%% applications/stepswitch/src/stepswitch_util.erl:4:%%%
+%% applications/stepswitch/src/stepswitch_util.erl:25:%% @doc
+%% applications/stepswitch/src/stepswitch_util.erl:26:%%
+%% '''
+%%
+%% Expected outcome:
+%% * removes all those empty comment line after `@doc'.
 %% @end
 %%--------------------------------------------------------------------
 remove_doc_tag_empty_comment(Result) ->
@@ -506,14 +605,11 @@ do_remove_doc_tag_empty_comment([], _, Formatted) ->
     Formatted;
 do_remove_doc_tag_empty_comment([{LN, Line}|Lines], Positions, Formatted) ->
     case lists:member(LN, Positions)
-        andalso Line
+        andalso strip_right_spaces(strip_left_spaces(strip_comment(Line)))
     of
         false ->
             do_remove_doc_tag_empty_comment(Lines, Positions, Formatted ++ [Line]);
-        <<"%%">> ->
-            %% remove empty comment line
-            do_remove_doc_tag_empty_comment(Lines, Positions, Formatted);
-        <<"%%%">> ->
+        <<>> ->
             %% remove empty comment line
             do_remove_doc_tag_empty_comment(Lines, Positions, Formatted);
         _ ->
@@ -535,11 +631,31 @@ maybe_add_empty_line_before_spec(<<"%%--", _/binary>>) -> [];
 maybe_add_empty_line_before_spec(<<"%% --", _/binary>>) -> [];
 maybe_add_empty_line_before_spec(_) -> [<<>>].
 
-is_seprator(<<"%%--", _/binary>>) -> true;
-is_seprator(<<"%%==", _/binary>>) -> true;
-is_seprator(<<"%% --", _/binary>>) -> true;
-is_seprator(<<"%% ==", _/binary>>) -> true;
-is_seprator(_) -> false.
+analyze_separator(<<"%", _/binary>>=Line, SepChars) ->
+    analyze_separator(Line, SepChars, 0);
+analyze_separator(_, _) ->
+    {0, {false, []}}.
+
+analyze_separator(<<>>, _, _) ->
+    {0, {false, []}};
+analyze_separator(<<"%", Rest/binary>>, Chars, PerCount) ->
+    analyze_separator(Rest, Chars, PerCount + 1);
+analyze_separator(Rest, Chars, PerCount) ->
+    {PerCount, is_seprator_chars(strip_right_spaces(strip_left_spaces(Rest)), Chars)}.
+
+is_seprator_chars(_, []) -> {false, []};
+is_seprator_chars(Line, [H|T]) ->
+    case is_seprator_char(Line, H) of
+        true -> {true, H};
+        false -> is_seprator_chars(Line, T)
+    end.
+
+is_seprator_char(C, C) ->
+    true;
+is_seprator_char(<<C:1/binary, B/binary>>, C) ->
+    is_seprator_char(B, C);
+is_seprator_char(_, _) ->
+    false.
 
 collect_positions_per_file([], Map) -> Map;
 collect_positions_per_file([Line | Lines], Map) ->
@@ -569,8 +685,24 @@ strip_comment(<<$%, B/binary>>) -> strip_comment(B);
 strip_comment(<<$\s, B/binary>>) -> B;
 strip_comment(A) -> A.
 
+count_precent(A) ->
+    count_precent(A, 0).
+
+count_precent(<<$%, B/binary>>, Count) -> count_precent(B, Count + 1);
+count_precent(_, Count) -> Count.
+
 strip_left_spaces(<<$\s, B/binary>>) -> strip_left_spaces(B);
 strip_left_spaces(A) -> A.
+
+strip_right_spaces(<<$\s>>) -> <<>>;
+strip_right_spaces(<<$\s, B/binary>>) ->
+    case strip_right_spaces(B) of
+        <<>> -> <<>>;
+        T -> <<$\s, T/binary>>
+    end;
+strip_right_spaces(<<A, B/binary>>) ->
+    <<A, (strip_right_spaces(B))/binary>>;
+strip_right_spaces(<<>>) -> <<>>.
 
 empty_block() ->
     [<<"%%--------------------------------------------------------------------">>
