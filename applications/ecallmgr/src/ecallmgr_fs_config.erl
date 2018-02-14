@@ -444,7 +444,7 @@ maybe_fix_conference_controls({'ok', JObj}, KZName, FSName) ->
     {'ok', fix_conference_controls(JObj, KZName, FSName)};
 maybe_fix_conference_controls(Resp, _, _) -> Resp.
 
--spec fix_conference_controls(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec fix_conference_controls(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 fix_conference_controls(JObj, KZName, FSName) ->
     case kz_json:get_value([<<"Caller-Controls">>, KZName], JObj) of
         'undefined' -> JObj;
