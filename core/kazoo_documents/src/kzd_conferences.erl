@@ -10,7 +10,10 @@
 -export([bridge_username/1, bridge_username/2, set_bridge_username/2]).
 -export([caller_controls/1, caller_controls/2, set_caller_controls/2]).
 -export([conference_numbers/1, conference_numbers/2, set_conference_numbers/2]).
+-export([controls/1, controls/2, set_controls/2]).
+-export([domain/1, domain/2, set_domain/2]).
 -export([focus/1, focus/2, set_focus/2]).
+-export([language/1, language/2, set_language/2]).
 -export([max_members_media/1, max_members_media/2, set_max_members_media/2]).
 -export([max_participants/1, max_participants/2, set_max_participants/2]).
 -export([member/1, member/2, set_member/2]).
@@ -31,6 +34,7 @@
 -export([play_name/1, play_name/2, set_play_name/2]).
 -export([play_welcome/1, play_welcome/2, set_play_welcome/2]).
 -export([profile/1, profile/2, set_profile/2]).
+-export([profile_name/1, profile_name/2, set_profile_name/2]).
 -export([require_moderator/1, require_moderator/2, set_require_moderator/2]).
 -export([wait_for_moderator/1, wait_for_moderator/2, set_wait_for_moderator/2]).
 
@@ -94,6 +98,30 @@ conference_numbers(Doc, Default) ->
 set_conference_numbers(Doc, ConferenceNumbers) ->
     kz_json:set_value([<<"conference_numbers">>], ConferenceNumbers, Doc).
 
+-spec controls(doc()) -> kz_term:api_object().
+controls(Doc) ->
+    controls(Doc, 'undefined').
+
+-spec controls(doc(), Default) -> kz_json:object() | Default.
+controls(Doc, Default) ->
+    kz_json:get_json_value([<<"controls">>], Doc, Default).
+
+-spec set_controls(doc(), kz_json:object()) -> doc().
+set_controls(Doc, Controls) ->
+    kz_json:set_value([<<"controls">>], Controls, Doc).
+
+-spec domain(doc()) -> kz_term:api_binary().
+domain(Doc) ->
+    domain(Doc, 'undefined').
+
+-spec domain(doc(), Default) -> binary() | Default.
+domain(Doc, Default) ->
+    kz_json:get_binary_value([<<"domain">>], Doc, Default).
+
+-spec set_domain(doc(), binary()) -> doc().
+set_domain(Doc, Domain) ->
+    kz_json:set_value([<<"domain">>], Domain, Doc).
+
 -spec focus(doc()) -> kz_term:api_binary().
 focus(Doc) ->
     focus(Doc, 'undefined').
@@ -105,6 +133,18 @@ focus(Doc, Default) ->
 -spec set_focus(doc(), binary()) -> doc().
 set_focus(Doc, Focus) ->
     kz_json:set_value([<<"focus">>], Focus, Doc).
+
+-spec language(doc()) -> kz_term:api_binary().
+language(Doc) ->
+    language(Doc, 'undefined').
+
+-spec language(doc(), Default) -> binary() | Default.
+language(Doc, Default) ->
+    kz_json:get_binary_value([<<"language">>], Doc, Default).
+
+-spec set_language(doc(), binary()) -> doc().
+set_language(Doc, Language) ->
+    kz_json:set_value([<<"language">>], Language, Doc).
 
 -spec max_members_media(doc()) -> kz_term:api_binary().
 max_members_media(Doc) ->
@@ -334,17 +374,29 @@ play_welcome(Doc, Default) ->
 set_play_welcome(Doc, PlayWelcome) ->
     kz_json:set_value([<<"play_welcome">>], PlayWelcome, Doc).
 
--spec profile(doc()) -> kz_term:api_binary().
+-spec profile(doc()) -> kz_term:api_object().
 profile(Doc) ->
     profile(Doc, 'undefined').
 
--spec profile(doc(), Default) -> binary() | Default.
+-spec profile(doc(), Default) -> kz_json:object() | Default.
 profile(Doc, Default) ->
-    kz_json:get_binary_value([<<"profile">>], Doc, Default).
+    kz_json:get_json_value([<<"profile">>], Doc, Default).
 
--spec set_profile(doc(), binary()) -> doc().
+-spec set_profile(doc(), kz_json:object()) -> doc().
 set_profile(Doc, Profile) ->
     kz_json:set_value([<<"profile">>], Profile, Doc).
+
+-spec profile_name(doc()) -> kz_term:api_binary().
+profile_name(Doc) ->
+    profile_name(Doc, 'undefined').
+
+-spec profile_name(doc(), Default) -> binary() | Default.
+profile_name(Doc, Default) ->
+    kz_json:get_binary_value([<<"profile_name">>], Doc, Default).
+
+-spec set_profile_name(doc(), binary()) -> doc().
+set_profile_name(Doc, ProfileName) ->
+    kz_json:set_value([<<"profile_name">>], ProfileName, Doc).
 
 -spec require_moderator(doc()) -> kz_term:api_boolean().
 require_moderator(Doc) ->
