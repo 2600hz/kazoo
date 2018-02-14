@@ -256,7 +256,7 @@ format_query_option(Name) -> Name.
 -spec search(cb_context:context(), ne_binary(), ne_binary(), binary()) -> cb_context:context().
 search(Context, Type, Query, Val) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
-    Value = maybe_normalize_value(Type, Val),
+    Value = cb_modules_util:normalize_alphanum_name(Val),
     ViewOptions =
         [{'startkey', get_start_key(Context, Type, Value)}
         ,{'endkey', get_end_key(Context, Type, Value)}
@@ -289,18 +289,6 @@ multi_search(Context, Type, [{<<"by_", Query/binary>>, Val}|Props], Acc) ->
     end;
 multi_search(Context, Type, [_|Props], Acc) ->
     multi_search(Context, Type, Props, Acc).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalize search term for using in accounts search view
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_normalize_value(ne_binary(), ne_binary()) -> ne_binary().
-maybe_normalize_value(<<"account">>, Value) ->
-    cb_modules_util:normalize_alphanum_name(Value);
-maybe_normalize_value(_, Value) ->
-    Value.
 
 %%--------------------------------------------------------------------
 %% @private
