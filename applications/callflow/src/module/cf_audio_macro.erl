@@ -470,7 +470,7 @@ build_macro_command(DataBin) ->
                           ,kapps_call:new()
                           ),
     Queue = kapps_call_command:macros_to_commands(M, Call, <<"group_id">>),
-    
+
     [{"build macros from callflow data", ?_assert(is_list(M))}
     ,{"build api queue from macros", ?_assert(kz_json:are_json_objects(Queue))}
     ,{"macros and api queue are same length", ?_assertEqual(length(M), length(Queue))}
