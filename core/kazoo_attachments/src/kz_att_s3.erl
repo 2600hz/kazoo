@@ -35,6 +35,7 @@
                     ) -> gen_attachment:put_response().
 put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     {Bucket, FilePath, Config} = aws_bpc(Params, {DbName, DocId, AName}),
+    lager:debug("FilePath: ~p", [FilePath]),
     case put_object(Bucket, FilePath, Contents, Config) of
         {'ok', Props} ->
             Metadata = [ convert_kv(KV) || KV <- Props, filter_kv(KV)],
@@ -44,7 +45,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
                                    ]}
                    ,{'headers', Props}
                    ]};
-        {'error', FilePath, Error} ->
+        {'error', _FilePath, Error} ->
             Routines = [{fun kz_att_error:set_req_url/2, FilePath}
                         | kz_att_error:put_routines(Params, DbName, DocId, AName,
                                                     Contents, Options)
@@ -232,25 +233,31 @@ get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
         error : Error -> {'error', FilePath, Error}
     end.
 
+%% S3 REST API errors reference: https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingRESTError.html
 %% Handle response from `erlcloud_s3:s3_request/8' function, this error objects are built
-%% within `erlcloud_aws:request_to_return/1'.
+%% within `erlcloud_aws:request_to_return/1' and the return is also modified at
+%% `erlcloud_s3:s3_request2/8'.
 -spec handle_s3_error(s3_error(), kz_att_error:update_routines()) -> kz_att_error:error().
 handle_s3_error({'aws_error',
-                 {'http_error', RespCode, RespStatusLine, RespBody, RespHeaders} = _E}
+                 {'http_error', RespCode, RespStatusLine, RespBody}} = _E
                ,Routines
                ) ->
-    lager:debug("S3 request error: ~p", [_E]),
-    %% Reason = get_reason(RespBody),
-    Reason = <<"test">>,
-    io:format("resp body: ~p~n", [RespBody]),
+    Reason = get_reason(RespCode, RespBody),
     NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
-                  ,{fun kz_att_error:set_resp_headers/2, RespHeaders}
                   ,{fun kz_att_error:set_resp_body/2, RespBody}
                    | Routines
                   ],
-    lager:error("S3 error ~p (~p)", [Reason, RespCode]),
+    lager:error("S3 error: ~p (code: ~p)", [_E, RespCode]),
     kz_att_error:new(Reason, NewRoutines);
-handle_s3_error({'aws_error', {'socket_error', RespBody} = _E}, Routines) ->
-    lager:debug("S3 request error: ~p", [_E]),
+handle_s3_error({'aws_error', {'socket_error', RespBody}} = _E, Routines) ->
+    lager:error("S3 request error: ~p", [_E]),
     Reason = <<"Socket error: ", (io_lib:format("~p", [RespBody]))/binary>>,
     kz_att_error:new(Reason, Routines).
+
+-spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_reason(RespCode, RespBody) when RespCode >= 400 ->
+    %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
+    [_, Message, _] = binary:split(RespBody, [<<"<Message>">>, <<"</Message>">>], [global]),
+    Message;
+get_reason(RespCode, _RespBody) ->
+    kz_att_util:http_code_to_status_line(RespCode).

@@ -452,7 +452,7 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     Random = kz_binary:rand_hex(16),
     Content = <<"some random content: ", Random/binary>>,
     AName = <<Random/binary, "_test_credentials_file.txt">>,
-    DbName = cb_context:account_db(ContextAcc),
+    DbName = kz_util:format_account_db(cb_context:account_id(ContextAcc)),
     DocId = doc_id(ContextAcc),
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
     Settings = kz_json:get_json_value(<<"settings">>, Att),

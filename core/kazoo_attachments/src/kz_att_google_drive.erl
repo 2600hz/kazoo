@@ -63,7 +63,8 @@ do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
             handle_put_attachment_resp(Resp, Routines);
         Resp -> handle_put_attachment_resp(Resp, Routines)
     end;
-do_put_attachment({'error', _}, Settings, DbName, DocId, AName, Contents, Options) ->
+do_put_attachment({'error', Reason}, Settings, DbName, DocId, AName, Contents, Options) ->
+    lager:debug("oauth_failure reason: ~p", [Reason]),
     Routines = kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options),
     kz_att_error:new('oauth_failure', Routines).
 
@@ -114,7 +115,8 @@ do_fetch_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
                        ],
             handle_http_error_response(Resp, Routines)
     end;
-do_fetch_attachment({'error', _}, _, HandlerProps, DbName, DocId, AName) ->
+do_fetch_attachment({'error', Reason}, _, HandlerProps, DbName, DocId, AName) ->
+    lager:debug("oauth_failure reason: ~p", [Reason]),
     Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
     kz_att_error:new('oauth_failure', Routines).
 
@@ -268,25 +270,31 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
         Else -> Else
     end.
 
+%% GoogleDrive REST API errors reference: https://developers.google.com/drive/v3/web/handle-errors
 -spec handle_http_error_response(kz_http:req(), kz_att_error:update_routines()) -> kz_att_error:error().
-handle_http_error_response({'ok', RespCode, RespHeaders, RespBody}, Routines) ->
-    %% Reason = get_reason(RespBody),
-    Reason = <<"test">>,
-    io:format("resp body: ~p~n", [RespBody]),
+handle_http_error_response({'ok', RespCode, RespHeaders, RespBody} = _E, Routines) ->
+    Reason = get_reason(RespCode, RespBody),
     NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
                   ,{fun kz_att_error:set_resp_headers/2, RespHeaders}
                   ,{fun kz_att_error:set_resp_body/2, RespBody}
                    | Routines
                   ],
-    lager:error("google drive error ~p (~p)", [Reason, RespCode]),
+    lager:error("google drive error: ~p (code: ~p)", [_E, RespCode]),
     kz_att_error:new(Reason, NewRoutines);
-handle_http_error_response({'error', {'failed_connect', Reason}}, Routines) ->
-    lager:error("google drive failed to connect ~p", [Reason]),
+handle_http_error_response({'error', {'failed_connect', Reason}} = _E, Routines) ->
+    lager:error("google drive failed to connect: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
-handle_http_error_response({'error', {Reason, _}}, Routines)
+handle_http_error_response({'error', {Reason, _}} = _E, Routines)
   when is_atom(Reason) ->
-    lager:error("google drive request error ~p", [Reason]),
+    lager:error("google drive request error: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_http_error_response(_E, Routines) ->
-    lager:error("google drive request error ~p", [_E]),
+    lager:error("google drive request error: ~p", [_E]),
     kz_att_error:new('request_error', Routines).
+
+-spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_reason(RespCode, RespBody) when RespCode >= 400 ->
+    %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
+    kz_json:get_ne_binary_value([<<"error">>, <<"message">>], kz_json:decode(RespBody));
+get_reason(RespCode, _RespBody) ->
+    kz_att_util:http_code_to_status_line(RespCode).
