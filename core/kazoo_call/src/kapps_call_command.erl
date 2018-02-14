@@ -1555,21 +1555,21 @@ b_play(Media, Terminators, Leg, Endless, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec tts(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Call) -> tts(SayMe, kazoo_tts:default_voice(), Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Call) -> tts(SayMe, Voice, kapps_call:language(Call), Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators, kazoo_tts:default_provider(Call), Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
-tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+tts(?NE_BINARY = SayMe, Voice, Lang, Terminators, Engine, Call) ->
     NoopId = noop_id(),
 
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
@@ -1617,11 +1617,11 @@ tts_terminators('undefined') -> ?ANY_DIGIT;
 tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
 
--spec tts_voice(kz_term:api_ne_binaries()) -> kz_term:ne_binary().
+-spec tts_voice(kz_term:api_binary()) -> kz_term:ne_binary().
 tts_voice('undefined') -> kazoo_tts:default_voice();
 tts_voice(Voice) -> Voice.
 
--spec tts_language(kz_term:api_ne_binaries(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts_language(kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts_language('undefined', Call) -> kapps_call:language(Call);
 tts_language(Language, _Call) -> Language.
 
