@@ -292,8 +292,7 @@ multi_search(Context, Type, [_|Props], Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% resource.
+%% @doc resource.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_start_key(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
