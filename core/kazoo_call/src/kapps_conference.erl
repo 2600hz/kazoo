@@ -351,7 +351,7 @@ set_account_id(AccountId, Conference) when is_binary(AccountId) ->
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec controls(conference(), ne_binary()) -> kz_json:object().
+-spec controls(conference(), kz_term:ne_binary()) -> kz_json:object().
 controls(#kapps_conference{controls=Controls}, _) when Controls =/= 'undefined' -> Controls;
 controls(#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME) ->
     kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
@@ -375,7 +375,7 @@ controls(#kapps_conference{account_id=AccountId}=Conference, ControlsName) ->
         Controls -> Controls
     end.
 
--spec raw_controls(conference()) -> api_object().
+-spec raw_controls(conference()) -> kz_term:api_object().
 raw_controls(#kapps_conference{controls=Controls}) -> Controls.
 
 -spec set_controls(kz_term:api_object(), conference()) -> conference().
@@ -398,14 +398,14 @@ set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
--spec profile_name(conference()) -> api_binary().
+-spec profile_name(conference()) -> kz_term:api_binary().
 profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
 
 -spec set_profile_name(kz_term:api_binary(), conference()) -> conference().
 set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
     Conference#kapps_conference{profile_name=P}.
 
--spec profile(conference()) -> {ne_binary(), kz_json:object()}.
+-spec profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
 profile(#kapps_conference{profile=Profile}=Conference) when Profile /= 'undefined' ->
     case profile_name(Conference) of
         'undefined' -> {id(Conference), Profile};
@@ -495,8 +495,8 @@ set_focus(Focus, Conference) when is_binary(Focus) ->
 -spec language(conference()) -> kz_term:api_binary().
 language(#kapps_conference{language='undefined', account_id=AccountId}) ->
     Default = kz_media_util:default_prompt_language(),
-    case kz_account:fetch(AccountId) of
-        {'ok', Account} -> kz_account:language(Account, Default);
+    case kzd_accounts:fetch(AccountId) of
+        {'ok', Account} -> kzd_accounts:language(Account, Default);
         {'error', _} -> Default
     end;
 language(#kapps_conference{language=Language}) ->
@@ -512,8 +512,8 @@ set_language(Language, Conference) when is_binary(Language) ->
 
 -spec domain(conference()) -> kz_term:api_binary().
 domain(#kapps_conference{domain='undefined', account_id=AccountId}) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', Account} -> kz_account:realm(Account);
+    case kzd_accounts:fetch(AccountId) of
+        {'ok', Account} -> kzd_accounts:realm(Account);
         {'error', _} -> 'undefined'
     end;
 domain(#kapps_conference{domain=Domain}) ->
@@ -684,7 +684,7 @@ conference_doc(#kapps_conference{conference_doc=JObj}) -> JObj.
 set_conference_doc(JObj, Conference) ->
     Conference#kapps_conference{conference_doc=JObj}.
 
--spec discovery_request(conference()) -> api_object().
+-spec discovery_request(conference()) -> kz_term:api_object().
 discovery_request(#kapps_conference{discovery_request=JObj}) -> JObj.
 
 -spec set_discovery_request(kz_json:object(), conference()) -> conference().
@@ -790,19 +790,19 @@ call(#kapps_conference{call=Call}) -> Call.
 set_call(Call, Conference) ->
     Conference#kapps_conference{call=Call}.
 
--spec entry_tone(conference()) -> ne_binary().
+-spec entry_tone(conference()) -> kz_term:ne_binary().
 entry_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_ENTRY_TONE;
 entry_tone(#kapps_conference{account_id=AccountId}) -> ?ENTRY_TONE(AccountId).
 
--spec moderator_entry_tone(conference()) -> ne_binary().
+-spec moderator_entry_tone(conference()) -> kz_term:ne_binary().
 moderator_entry_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_ENTRY_TONE;
 moderator_entry_tone(#kapps_conference{account_id=AccountId}) -> ?MOD_ENTRY_TONE(AccountId).
 
--spec exit_tone(conference()) -> ne_binary().
+-spec exit_tone(conference()) -> kz_term:ne_binary().
 exit_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_EXIT_TONE;
 exit_tone(#kapps_conference{account_id=AccountId}) -> ?EXIT_TONE(AccountId).
 
--spec moderator_exit_tone(conference()) -> ne_binary().
+-spec moderator_exit_tone(conference()) -> kz_term:ne_binary().
 moderator_exit_tone(#kapps_conference{account_id='undefined'}) -> ?DEFAULT_EXIT_TONE;
 moderator_exit_tone(#kapps_conference{account_id=AccountId}) -> ?MOD_EXIT_TONE(AccountId).
 

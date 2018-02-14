@@ -39,7 +39,7 @@ create_conference(JObj) ->
             kapps_conference:update(Routines, Conference)
     end.
 
--spec handle_request(ne_binary(), kz_json:object(), kapps_conference:conference()) -> 'ok'.
+-spec handle_request(kz_term:ne_binary(), kz_json:object(), kapps_conference:conference()) -> 'ok'.
 handle_request(<<"Conference">>, JObj, Conference) ->
     handle_profile_request(JObj, Conference);
 handle_request(<<"Controls">>, JObj, Conference) ->
@@ -59,16 +59,16 @@ handle_profile_request(JObj, Conference) ->
     lager:debug("returning conference profile ~s", [ProfileName]),
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
 
--spec requested_profile_name(kz_json:object()) -> ne_binary().
+-spec requested_profile_name(kz_json:object()) -> kz_term:ne_binary().
 requested_profile_name(JObj) ->
     kz_json:get_ne_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME).
 
--spec profiles(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec profiles(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 profiles(ProfileName, Profile) ->
     kz_json:from_list([{ProfileName, Profile}]).
 
--spec advertise(ne_binary()) -> api_object().
--spec advertise(ne_binary(), api_object()) -> api_object().
+-spec advertise(kz_term:ne_binary()) -> kz_term:api_object().
+-spec advertise(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
 advertise(?DEFAULT_PROFILE_NAME = ProfileName) ->
     advertise(ProfileName, ?ADVERTISE(ProfileName, ?DEFAULT_ADVERTISE_CONFIG));
 advertise(?PAGE_PROFILE_NAME = ProfileName) ->
@@ -79,8 +79,8 @@ advertise(ProfileName) ->
 advertise(_ProfileName, 'undefined') -> 'undefined';
 advertise(ProfileName, Advertise) -> kz_json:from_list([{ProfileName, Advertise}]).
 
--spec chat_permissions(ne_binary()) -> api_object().
--spec chat_permissions(ne_binary(), api_object()) -> api_object().
+-spec chat_permissions(kz_term:ne_binary()) -> kz_term:api_object().
+-spec chat_permissions(kz_term:ne_binary(), kz_term:api_object()) -> kz_term:api_object().
 chat_permissions(?DEFAULT_PROFILE_NAME = ProfileName) ->
     chat_permissions(ProfileName, ?CHAT_PERMISSIONS(ProfileName, ?DEFAULT_CHAT_CONFIG));
 chat_permissions(?PAGE_PROFILE_NAME= ProfileName) ->
@@ -123,7 +123,7 @@ fix_exit_tones(Conference, Profile) ->
         'false' -> remove_tone(Key, Profile)
     end.
 
--spec ensure_tone(ne_binary(), kz_json:object(), ne_binary()) -> kz_json:object().
+-spec ensure_tone(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 ensure_tone(Key, Profile, Tone) ->
     case kz_json:get_ne_value(Key, Profile) of
         'undefined' ->
@@ -173,15 +173,15 @@ handle_controls_request(JObj, Conference) ->
                ),
     kapi_conference:publish_config_resp(ServerId, Resp).
 
--spec requested_controls_name(kz_json:object()) -> ne_binary().
+-spec requested_controls_name(kz_json:object()) -> kz_term:ne_binary().
 requested_controls_name(JObj) ->
     kz_json:get_ne_value(<<"Controls">>, JObj).
 
--spec controls(ne_binary(), kz_json:object()) -> kz_json:object().
+-spec controls(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 controls(ControlsName, Controls) ->
     kz_json:from_list([{ControlsName, Controls}]).
 
--spec get_conference_controls_name(ne_binary(), kapps_conference:conference()) -> ne_binary().
+-spec get_conference_controls_name(kz_term:ne_binary(), kapps_conference:conference()) -> kz_term:ne_binary().
 get_conference_controls_name(<<"caller-controls">>, Conference) ->
     kapps_conference:caller_controls(Conference);
 get_conference_controls_name(<<"moderator-controls">>, Conference) ->

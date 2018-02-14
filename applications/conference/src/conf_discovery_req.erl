@@ -31,7 +31,7 @@ create_conference(JObj, Call) ->
     ConferenceId = kz_json:get_value(<<"Conference-ID">>, JObj),
     create_conference(ConferenceId, JObj, Call).
 
--spec create_conference(api_binary(), kz_json:object(), kapps_call:call()) -> kapps_conference:conference().
+-spec create_conference(kz_term:api_binary(), kz_json:object(), kapps_call:call()) -> kapps_conference:conference().
 create_conference('undefined', JObj, Call) ->
     kapps_conference:set_call(Call, kapps_conference:from_json(JObj));
 create_conference(ConferenceId, JObj, Call) ->
@@ -341,7 +341,7 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
 -spec discovery_failed(kapps_call:call(), pid() | 'undefined') -> 'ok'.
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
--spec validate_conference_pin(api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_pin(kz_term:api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
                                      {'ok', kapps_conference:conference()} |
                                      {'error', any()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
