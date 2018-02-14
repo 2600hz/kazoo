@@ -13,38 +13,38 @@ Schema for conferences
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`bridge_password` | the password used for a conference bridge | `string()` |   | `false` |  
-`bridge_username` | the username used for a conference bridge | `string()` |   | `false` |  
-`caller_controls` | caller controls (config settings) | `string()` |   | `false` |  
-`conference_numbers.[]` |   | `string()` |   | `false` |  
-`conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |  
-`focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |  
-`max_members_media` | Media to play when the conference is full | `string()` |   | `false` |  
-`max_participants` | The maximum number of participants that can join | `integer()` |   | `false` |  
-`member.join_deaf` | Determines if a member will join deaf | `boolean()` | `false` | `false` |  
-`member.join_muted` | Determines if a member will join muted | `boolean()` | `true` | `false` |  
-`member.numbers.[]` |   | `string()` |   | `false` |  
-`member.numbers` | Defines the conference (call in) number(s) for members | `array(string())` | `[]` | `false` |  
-`member.pins.[]` |   | `string()` |   | `false` |  
-`member.pins` | Defines the pin number(s) for members | `array(string())` | `[]` | `false` |  
-`member` | Defines the discovery (call in) properties for a member | `object()` | `{}` | `false` |  
-`moderator.join_deaf` | Determines if a moderator will join deaf | `boolean()` | `false` | `false` |  
-`moderator.join_muted` | Determines if a moderator will join muted | `boolean()` | `false` | `false` |  
-`moderator.numbers.[]` |   | `string()` |   | `false` |  
-`moderator.numbers` | Defines the conference (call in) number(s) for moderators | `array(string())` | `[]` | `false` |  
-`moderator.pins.[]` |   | `string()` |   | `false` |  
-`moderator.pins` | Defines the pin number(s) for moderators | `array(string())` | `[]` | `false` |  
-`moderator` | Defines the discovery (call in) properties for a moderator | `object()` | `{}` | `false` |  
-`moderator_controls` | profile on the switch for controlling the conference as a moderator | `string()` |   | `false` |  
-`name` | A friendly name for the conference | `string(1..128)` |   | `false` |  
-`owner_id` | The user ID who manages this conference | `string(32)` |   | `false` |  
-`play_entry_tone` | Whether to play an entry tone, or the entry tone to play | `boolean() | string()` |   | `false` |  
-`play_exit_tone` | Whether to play an exit tone, or the exit tone to play | `boolean() | string()` |   | `false` |  
-`play_name` | Do we need to announce new conference members? | `boolean()` | `false` | `false` |  
-`play_welcome` | Whether to play the welcome prompt | `boolean()` |   | `false` |  
-`profile` | The XML profile name used to configure the conference | `string()` |   | `false` |  
-`require_moderator` | does the conference require a moderator | `boolean()` |   | `false` |  
-`wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false` |  
+`bridge_password` | the password used for a conference bridge | `string()` |   | `false` |
+`bridge_username` | the username used for a conference bridge | `string()` |   | `false` |
+`caller_controls` | caller controls (config settings) | `string()` |   | `false` |
+`conference_numbers.[]` |   | `string()` |   | `false` |
+`conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |
+`focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |
+`max_members_media` | Media to play when the conference is full | `string()` |   | `false` |
+`max_participants` | The maximum number of participants that can join | `integer()` |   | `false` |
+`member.join_deaf` | Determines if a member will join deaf | `boolean()` | `false` | `false` |
+`member.join_muted` | Determines if a member will join muted | `boolean()` | `true` | `false` |
+`member.numbers.[]` |   | `string()` |   | `false` |
+`member.numbers` | Defines the conference (call in) number(s) for members | `array(string())` | `[]` | `false` |
+`member.pins.[]` |   | `string()` |   | `false` |
+`member.pins` | Defines the pin number(s) for members | `array(string())` | `[]` | `false` |
+`member` | Defines the discovery (call in) properties for a member | `object()` | `{}` | `false` |
+`moderator.join_deaf` | Determines if a moderator will join deaf | `boolean()` | `false` | `false` |
+`moderator.join_muted` | Determines if a moderator will join muted | `boolean()` | `false` | `false` |
+`moderator.numbers.[]` |   | `string()` |   | `false` |
+`moderator.numbers` | Defines the conference (call in) number(s) for moderators | `array(string())` | `[]` | `false` |
+`moderator.pins.[]` |   | `string()` |   | `false` |
+`moderator.pins` | Defines the pin number(s) for moderators | `array(string())` | `[]` | `false` |
+`moderator` | Defines the discovery (call in) properties for a moderator | `object()` | `{}` | `false` |
+`moderator_controls` | profile on the switch for controlling the conference as a moderator | `string()` |   | `false` |
+`name` | A friendly name for the conference | `string(1..128)` |   | `false` |
+`owner_id` | The user ID who manages this conference | `string(32)` |   | `false` |
+`play_entry_tone` | Whether to play an entry tone, or the entry tone to play | `boolean() | string()` |   | `false` |
+`play_exit_tone` | Whether to play an exit tone, or the exit tone to play | `boolean() | string()` |   | `false` |
+`play_name` | Do we need to announce new conference members? | `boolean()` | `false` | `false` |
+`play_welcome` | Whether to play the welcome prompt | `boolean()` |   | `false` |
+`profile` | The XML profile name used to configure the conference | `string()` |   | `false` |
+`require_moderator` | does the conference require a moderator | `boolean()` |   | `false` |
+`wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean()` |   | `false` |
 
 
 
@@ -71,11 +71,11 @@ curl -v -X PUT \
  `dial` | Dial an endpoint (user/device/DID)
  `play` | Play media to the conference (all participants)
 
-##### Dialing an endpoint
+#### Dialing an endpoint
 
 Sometimes you want to dial out from a conference to an endpoint (versus waiting for the caller to dial into the conference). Similar to how the `group` callflow works, you can include device and user IDs; unlike groups, you can include DIDs as well (similar to quickcall/click2call).
 
-###### Schema
+##### Schema
 
 Schema for conference dial API command
 
@@ -94,7 +94,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-###### Endpoints
+##### Endpoints
 
 Dial-able endpoints are
 1. Devices (by device id or [device JSON](./devices.md))
@@ -104,13 +104,13 @@ Dial-able endpoints are
 
 Note: Phone numbers will involve some internal legs being generated (loopback legs) to process the number as if it was a call coming in for the desired number. This means billing and limits will be applied just the same as if a user dialed the number from their device.
 
-###### Examples
+##### Examples
 
 ```json
 {
     "action":"dial"
     ,"data":{
-        ,"data":{
+        "data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
@@ -125,10 +125,10 @@ As when making [quickcalls](./quickcall.md), you can include `custom_application
 {
     "action":"dial"
     ,"data":{
-        ,"custom_application_vars":{
+        "custom_application_vars":{
             "foo":"bar"
         }
-        "data":{
+        ,"data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
@@ -143,10 +143,10 @@ You can also include the outbound call id you'd like the leg to use:
 {
     "action":"dial"
     ,"data":{
-        ,"custom_application_vars":{
+        "custom_application_vars":{
             "foo":"bar"
         }
-        "data":{
+        ,"data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212",
@@ -155,6 +155,21 @@ You can also include the outbound call id you'd like the leg to use:
     }
 }
 ```
+
+##### Participant Flags
+
+You can specify how a participant will enter a conference with a list of attributes:
+
+Value | Description
+----- | -----------
+`deaf` | Participant joins unable to hear conference audio
+`disable_moh` | Disable music on hold when the participant is the only one in the conference
+`distribute_dtmf` | Send DTMF from participant's leg to all other participants
+`ghost` | Uncounted in conference membership total
+`is_moderator` | Participant will join as a moderator
+`join_existing` | Participant may only join a running conference (won't start a conference)
+`mute` | Participant joins muted
+`video_mute` | Participant joins with video stream muted
 
 ##### Dialing out to a dynamic conference
 
@@ -203,7 +218,7 @@ Playing a media file to everyone in a conference:
 
 ```json
 {
-    action":"play"
+    "action":"play"
     ,"data"{
         "data":{"media_id":"{MEDIA_ID}"}
     }
@@ -309,7 +324,7 @@ curl -v -X PUT \
 Playing a media file to everyone in a conference:
 
 ```json
-{"data"{
+{"data":{
     "action":"play",
     "data":{"media_id":"{MEDIA_ID}"}
  }
@@ -422,7 +437,7 @@ Actions are JSON objects in format:
 
 ```json
 {
-    "action": {action}
+    "action": "{ACTION}"
 }
 ```
 
