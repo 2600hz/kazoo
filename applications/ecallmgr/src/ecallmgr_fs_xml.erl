@@ -585,8 +585,8 @@ get_channel_vars({<<"SIP-Invite-Parameters">>, V}, Vars) ->
     [list_to_binary(["sip_invite_params='", kz_util:iolist_join(<<";">>, V), "'"]) | Vars];
 
 get_channel_vars({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
-    [list_to_binary(["conference_utils_auto_outcall_flags="
-                    ,participant_flags_to_var(Flags)
+    [list_to_binary(["conference_member_flags="
+                    ,"'^^!", participant_flags_to_var(Flags), "'"
                     ])
      | Vars
     ];
@@ -602,7 +602,7 @@ get_channel_vars(_, Vars) -> Vars.
 
 -spec participant_flags_to_var(kz_term:ne_binaries()) -> kz_term:ne_binary().
 participant_flags_to_var(Flags) ->
-    kz_binary:join(lists:foldl(fun participant_flag_to_var/1, [], Flags), <<"|">>).
+    kz_binary:join(lists:map(fun participant_flag_to_var/1, Flags), <<"!">>).
 
 -spec participant_flag_to_var(kz_term:ne_binary()) -> kz_term:ne_binary().
 participant_flag_to_var(<<"distribute_dtmf">>) -> <<"dist-dtmf">>;
