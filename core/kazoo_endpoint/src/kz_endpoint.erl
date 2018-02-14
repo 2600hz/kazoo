@@ -222,7 +222,6 @@ merge_attributes(Endpoint, Type) ->
            ,<<"ringtones">>
            ,<<"caller_id">>
            ,<<"caller_id_options">>
-           ,<<"caller_id_outbound_privacy">>
            ,<<"do_not_disturb">>
            ,<<"call_forward">>
            ,<<"dial_plan">>
@@ -317,8 +316,6 @@ merge_attribute(<<"caller_id">> = Key, Account, Endpoint, Owner) ->
             CallerId = kz_json:set_value(L, Number, Merged),
             kz_json:set_value(Key, CallerId, Endpoint)
     end;
-merge_attribute(<<"caller_id_outbound_privacy">> = Key, Account, Endpoint, Owner) ->
-    merge_value(Key, Account, Endpoint, Owner);
 merge_attribute(<<"do_not_disturb">> = Key, Account, Endpoint, Owner) ->
     L = [Key, <<"enabled">>],
     AccountAttr = kz_json:is_true(L, Account, 'false'),
