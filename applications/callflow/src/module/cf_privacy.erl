@@ -43,23 +43,5 @@ update_call(CaptureGroup, {'ok', Call}, Mode) ->
     cf_exe:set_call(kapps_call:exec(Routines, Call)).
 
 -spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
-ccvs_by_privacy_mode('undefined') ->
-    ccvs_by_privacy_mode(<<"full">>);
-ccvs_by_privacy_mode(<<"full">>) ->
-    [{<<"Caller-Screen-Bit">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
-    ];
-ccvs_by_privacy_mode(<<"yes">>) ->
-    ccvs_by_privacy_mode(<<"full">>);
-ccvs_by_privacy_mode(<<"name">>) ->
-    [{<<"Caller-Screen-Bit">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
-    ];
-ccvs_by_privacy_mode(<<"number">>) ->
-    [{<<"Caller-Screen-Bit">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
-    ];
-ccvs_by_privacy_mode(_Else) ->
-    lager:debug("unsupported privacy mode ~s, forcing full privacy", [_Else]),
-    ccvs_by_privacy_mode(<<"full">>).
+ccvs_by_privacy_mode(Mode) ->
+    cf_util:ccvs_by_privacy_mode(Mode).

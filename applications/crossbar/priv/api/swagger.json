@@ -402,6 +402,22 @@
                     "$ref": "#/definitions/caller_id",
                     "description": "The account default caller ID parameters"
                 },
+                "caller_id_options": {
+                    "description": "custom properties for configuring caller_id",
+                    "properties": {
+                        "outbound_privacy": {
+                            "description": "Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing",
+                            "enum": [
+                                "full",
+                                "name",
+                                "number",
+                                "none"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
                     "description": "A list of default rules used to modify dialed numbers"
@@ -4423,6 +4439,22 @@
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
                     "description": "The device caller ID parameters"
+                },
+                "caller_id_options": {
+                    "description": "custom properties for configuring caller_id",
+                    "properties": {
+                        "outbound_privacy": {
+                            "description": "Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing",
+                            "enum": [
+                                "full",
+                                "name",
+                                "number",
+                                "none"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 },
                 "contact_list": {
                     "default": {},
@@ -32367,6 +32399,22 @@
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
                     "description": "The device caller ID parameters"
+                },
+                "caller_id_options": {
+                    "description": "custom properties for configuring caller_id",
+                    "properties": {
+                        "outbound_privacy": {
+                            "description": "Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing",
+                            "enum": [
+                                "full",
+                                "name",
+                                "number",
+                                "none"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 },
                 "contact_list": {
                     "default": {},

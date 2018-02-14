@@ -25,6 +25,7 @@
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
+-export([ccvs_by_privacy_mode/1]).
 
 -export([sip_users_from_device_ids/2]).
 
@@ -733,6 +734,30 @@ vm_count(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     BoxId = kz_doc:id(JObj),
     kvm_messages:count_non_deleted(AccountId, BoxId).
+
+-spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
+ccvs_by_privacy_mode('undefined') ->
+    ccvs_by_privacy_mode(<<"full">>);
+ccvs_by_privacy_mode(<<"full">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ];
+ccvs_by_privacy_mode(<<"yes">>) ->
+    ccvs_by_privacy_mode(<<"full">>);
+ccvs_by_privacy_mode(<<"name">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ];
+ccvs_by_privacy_mode(<<"number">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ];
+%% returns empty list so that callflow settings override
+ccvs_by_privacy_mode(<<"none">>) -> [];
+ccvs_by_privacy_mode(_Else) ->
+    lager:debug("unsupported privacy mode ~s, forcing full privacy", [_Else]),
+    ccvs_by_privacy_mode(<<"full">>).
 
 %%--------------------------------------------------------------------
 %% @private
