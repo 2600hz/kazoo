@@ -31,6 +31,8 @@ For outbound (to the carrier) formatters, you can see the fields available by lo
 
 Inbound (from the carrier) fields are found in the [kapi_route request schema](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/kapi_route.req.json).
 
+In both of the above cases the request, to and from fields are tracked outside of the mentioned schemas. 
+
 #### Devices, users, accounts
 
 It can be desirable to control the format of fields going to registered devices. You can place the `formatters` object on a device, user, or account, to have it be used when processing calls to endpoints. The `formatter` object(s) will be merged before being applied to the endpoint.

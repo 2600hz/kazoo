@@ -117,6 +117,7 @@
                ,module_timeout_ref :: kz_term:api_reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
                ,other_queues = [] :: [{kz_term:ne_binary(), {kz_term:proplist(), kz_term:proplist()}}] %% {QueueName, {kz_term:proplist(), kz_term:proplist()}}
                ,federators = [] :: federator_listeners()
+               ,waiting_federators = [] :: list()
                ,self = self() :: pid()
                ,consumer_key = kz_amqp_channel:consumer_pid()
                ,consumer_tags = [] :: kz_term:binaries()
@@ -575,6 +576,27 @@ handle_cast({'resume_consumers'}, #state{is_consuming='false'
          || {Q1, {_, P}} <- OtherQueues
         ],
     {'noreply', State};
+
+handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
+    lager:info("federator for ~p is consuming, waiting on: ~p", [Broker, State#state.waiting_federators]),
+
+    Filter = fun(X) ->
+                     kz_amqp_connections:broker_available_connections(X) > 0
+             end,
+
+    Waiting = lists:filter(Filter, State#state.waiting_federators),
+
+    lager:info("available waiting brokers: ~p", [Waiting]),
+
+    case lists:subtract(Waiting, [Broker]) of
+        [] ->
+            lager:info("all waiting federators are available!"),
+            handle_module_cast({?MODULE, {'federators_consuming', 'true'}}, State);
+
+        Remaining ->
+            lager:info("still waiting for federators: ~p", [Remaining]),
+            {'noreply', State#state{waiting_federators = Remaining}}
+    end;
 
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
@@ -1146,7 +1168,7 @@ update_federated_bindings(#state{bindings=[{Binding, Props}|_]
             {_Existing, New} = broker_connections(Fs, FederatedBrokers),
             'ok' = update_existing_listeners_bindings(Fs, Binding, NonFederatedProps),
             {'ok', NewListeners} = start_new_listeners(New, Binding, NonFederatedProps, State),
-            State#state{federators=NewListeners ++ Fs}
+            State#state{federators=NewListeners ++ Fs, waiting_federators=New ++ State#state.waiting_federators}
     end.
 
 -spec broker_connections(federator_listeners(), kz_term:ne_binaries()) ->

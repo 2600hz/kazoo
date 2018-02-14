@@ -1199,13 +1199,14 @@ record_temporary_unavailable_greeting(AttachmentName
                                      ) ->
     lager:info("no temporary greetings was recorded before so new media document should be created"),
     MediaId = recording_media_doc(<<"temporary unavailable greeting">>, Box, Call),
-    record_temporary_unavailable_greeting(AttachmentName
-                                         ,Box#mailbox{temporary_unavailable_media_id=MediaId}
-                                         ,Call
-                                         );
+    overwrite_temporary_unavailable_greeting(AttachmentName
+                                            ,Box#mailbox{temporary_unavailable_media_id=MediaId}
+                                            ,Call
+                                            ,'new'
+                                            );
 record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
     lager:info("record new temporary greetings use existing media document"),
-    overwrite_temporary_unavailable_greeting(AttachmentName, Box, Call).
+    overwrite_temporary_unavailable_greeting(AttachmentName, Box, Call, 'update').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1214,13 +1215,14 @@ record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
 %% by a new recorded version.
 %% @end
 %%--------------------------------------------------------------------
--spec overwrite_temporary_unavailable_greeting(kz_term:ne_binary(), mailbox(), kapps_call:call()) ->
+-spec overwrite_temporary_unavailable_greeting(kz_term:ne_binary(), mailbox(), kapps_call:call(), 'new' | 'update') ->
                                                       'ok' | mailbox().
 overwrite_temporary_unavailable_greeting(AttachmentName
                                         ,#mailbox{temporary_unavailable_media_id=MediaId
                                                  ,media_extension=Ext
                                                  }=Box
                                         ,Call
+                                        ,UpdateOrNew
                                         ) ->
     lager:info("overwriting temporary unavailable greeting  as ~s", [AttachmentName]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
@@ -1244,6 +1246,7 @@ overwrite_temporary_unavailable_greeting(AttachmentName
                     Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
                     _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
                     'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], MediaId, Box, Call),
+                    maybe_update_recording_media_doc(AttachmentName, Box, Call, MediaId, UpdateOrNew),
                     _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
                     Box;
                 {'ok', 'no_selection'} ->
@@ -1275,11 +1278,11 @@ delete_temporary_unavailable_greeting(Box, Call) ->
                                          'ok' | mailbox().
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id='undefined'}=Box, Call) ->
     MediaId = recording_media_doc(<<"unavailable greeting">>, Box, Call),
-    record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id=MediaId}, Call);
+    overwrite_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id=MediaId}, Call, MediaId, 'new');
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), MediaId) of
         {'ok', JObj} -> check_media_source(AttachmentName, Box, Call, JObj);
-        _ -> overwrite_unavailable_greeting(AttachmentName, Box, Call)
+        _ -> overwrite_unavailable_greeting(AttachmentName, Box, Call, MediaId, 'update')
     end.
 
 -spec check_media_source(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_json:object()) ->
@@ -1288,18 +1291,18 @@ check_media_source(AttachmentName, Box, Call, JObj) ->
     case kz_json:get_ne_binary_value(<<"media_source">>, JObj) of
         <<"upload">> ->
             lager:debug("The voicemail greeting media is a web upload, let's not touch it,"
-                        ++ " it may be in use in some other maibox. We create new media document."
+                        ++ " it may be in use in some other mailbox. We create new media document."
                        ),
             record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id='undefined'}, Call);
         _ ->
-            overwrite_unavailable_greeting(AttachmentName, Box, Call)
+            overwrite_unavailable_greeting(AttachmentName, Box, Call, JObj, 'update')
     end.
 
--spec overwrite_unavailable_greeting(kz_term:ne_binary(), mailbox(), kapps_call:call()) ->
+-spec overwrite_unavailable_greeting(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_json:object() | kz_term:ne_binary(), 'new' | 'update') ->
                                             'ok' | mailbox().
 overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId
                                                        ,media_extension=Ext
-                                                       }=Box, Call) ->
+                                                       }=Box, Call, JObjOrID, UpdateOrNew) ->
     lager:info("overwriting unavailable greeting  as ~s", [AttachmentName]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                              ,{<<"Duration-ON">>, <<"500">>}
@@ -1319,6 +1322,7 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
                     Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
                     _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
                     'ok' = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
+                    maybe_update_recording_media_doc(AttachmentName, Box, Call, JObjOrID, UpdateOrNew),
                     _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
                     Box;
                 {'ok', 'no_selection'} ->
@@ -1341,32 +1345,33 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
                          'ok' | mailbox().
 record_name(AttachmentName, #mailbox{owner_id='undefined'
                                     ,name_media_id='undefined'
+                                    ,mailbox_id=BoxId
                                     }=Box, Call) ->
     lager:info("no recorded name media id nor owner id"),
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
-    lager:info("created recorded name media doc: ~s", [MediaId]),
-    record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call);
+    lager:info("created recorded name media doc: ~s , saving recorded name id into mailbox", [MediaId]),
+    record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call, BoxId, 'new');
 record_name(AttachmentName, #mailbox{owner_id='undefined'
                                     ,mailbox_id=BoxId
                                     }=Box, Call) ->
     lager:info("no owner_id set on mailbox, saving recorded name id into mailbox"),
-    record_name(AttachmentName, Box, Call, BoxId);
+    record_name(AttachmentName, Box, Call, BoxId, 'update');
 record_name(AttachmentName, #mailbox{owner_id=OwnerId
                                     ,name_media_id='undefined'
                                     }=Box, Call) ->
     lager:info("no recorded name media id for owner"),
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
     lager:info("created recorded name media doc: ~s", [MediaId]),
-    record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call, OwnerId);
+    record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call, OwnerId, 'new');
 record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
     lager:info("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
-    record_name(AttachmentName, Box, Call, OwnerId).
+    record_name(AttachmentName, Box, Call, OwnerId, 'update').
 
--spec record_name(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_term:ne_binary()) ->
+-spec record_name(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_term:ne_binary(), 'new' | 'update') ->
                          'ok' | mailbox().
 record_name(AttachmentName, #mailbox{name_media_id=MediaId
                                     ,media_extension=Ext
-                                    }=Box, Call, DocId) ->
+                                    }=Box, Call, DocId, UpdateOrNew) ->
     lager:info("recording name as ~s in ~s", [AttachmentName, MediaId]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                              ,{<<"Duration-ON">>, <<"500">>}
@@ -1384,6 +1389,7 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId
                     Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
                     _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
                     'ok' = update_doc(?RECORDED_NAME_KEY, MediaId, DocId, Call),
+                    maybe_update_recording_media_doc(AttachmentName, Box, Call, MediaId, UpdateOrNew),
                     _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
                     Box;
                 {'ok', 'no_selection'} ->
@@ -1930,24 +1936,49 @@ min_recording_length(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec recording_media_doc(kz_term:ne_binary(), mailbox(), kapps_call:call()) -> kz_term:ne_binary().
-recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
-                                       ,mailbox_id=Id
-                                       ,owner_id=OwnerId
-                                       }, Call) ->
+recording_media_doc(Recording, Box, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    Name = list_to_binary(["mailbox ", BoxNum, " ", Recording]),
-    Props = props:filter_undefined(
-              [{<<"name">>, Name}
-              ,{<<"description">>, <<"voicemail recorded/prompt media">>}
-              ,{<<"source_type">>, ?KEY_VOICEMAIL}
-              ,{<<"source_id">>, Id}
-              ,{<<"owner_id">>, OwnerId}
-              ,{<<"media_source">>, <<"recording">>}
-              ,{<<"streamable">>, 'true'}
-              ]),
-    Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
-    {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Doc),
+    {'ok', JObj} = kz_datamgr:save_doc(AccountDb, set_recording_media_doc(Recording, Box, AccountDb, kz_json:new())),
     kz_doc:id(JObj).
+
+-spec maybe_update_recording_media_doc(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_json:object() | kz_term:ne_binary(), 'new' | 'update') -> 'ok'.
+maybe_update_recording_media_doc(_, _, _, _, 'new') ->
+    'ok';
+maybe_update_recording_media_doc(AttachmentName, Box, Call, ?NE_BINARY=MediaId, 'update') ->
+    update_recording_media_doc(AttachmentName, Box, Call, MediaId);
+maybe_update_recording_media_doc(AttachmentName, Box, Call, JObj, 'update') ->
+    update_recording_media_doc(AttachmentName, Box, Call, kz_doc:id(JObj)).
+
+-spec update_recording_media_doc(kz_term:ne_binary(), mailbox(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
+update_recording_media_doc(AttachmentName, Box, Call, MediaId) ->
+    AccountDb = kapps_call:account_db(Call),
+    case kz_datamgr:open_doc(AccountDb, MediaId) of
+        {'ok', JObj} ->
+            case kz_datamgr:save_doc(AccountDb, set_recording_media_doc(AttachmentName, Box, AccountDb, JObj)) of
+                {'ok', _} -> 'ok';
+                {'error', _Reason} ->
+                    lager:info("unable to update media_source for media doc ~s in ~s: ~p", [MediaId, AccountDb, _Reason])
+            end;
+        {'error', _Reason} ->
+            lager:info("unable to update media_source for media doc ~s in ~s: ~p", [MediaId, AccountDb, _Reason])
+    end.
+
+-spec set_recording_media_doc(kz_term:ne_binary(), mailbox(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+set_recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
+                                           ,mailbox_id=Id
+                                           ,owner_id=OwnerId
+                                           }, AccountDb, JObj) ->
+    Name = list_to_binary(["mailbox ", BoxNum, " ", Recording]),
+    Doc = kz_json:set_values(
+            [{<<"name">>, Name}
+            ,{<<"description">>, <<"voicemail recorded/prompt media">>}
+            ,{<<"source_type">>, ?KEY_VOICEMAIL}
+            ,{<<"source_id">>, Id}
+            ,{<<"owner_id">>, OwnerId}
+            ,{<<"media_source">>, <<"recording">>}
+            ,{<<"streamable">>, 'true'}
+            ], JObj),
+    kz_doc:update_pvt_parameters(Doc, AccountDb, [{'type', <<"media">>}]).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -25,6 +25,7 @@
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
+-export([ccvs_by_privacy_mode/1]).
 
 -export([sip_users_from_device_ids/2]).
 
@@ -645,7 +646,7 @@ process_event(Call, NoopId, JObj) ->
             lager:debug("noop ~s received", [NoopId]),
             {'ok', Call};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-            case kz_json:get_value(<<"Application-Response">>, JObj) of
+            case kz_json:get_ne_binary_value(<<"Application-Response">>, JObj) of
                 NoopId ->
                     lager:debug("noop ~s received", [NoopId]),
                     {'ok', Call};
@@ -716,6 +717,30 @@ get_mailbox(AccountDb, VMNumber) ->
             lager:warning("unable to lookup voicemail number ~b in account ~s: ~p", [VMNumber, AccountDb, _R]),
             E
     end.
+
+-spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
+ccvs_by_privacy_mode('undefined') ->
+    ccvs_by_privacy_mode(<<"full">>);
+ccvs_by_privacy_mode(<<"full">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ];
+ccvs_by_privacy_mode(<<"yes">>) ->
+    ccvs_by_privacy_mode(<<"full">>);
+ccvs_by_privacy_mode(<<"name">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ];
+ccvs_by_privacy_mode(<<"number">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ];
+%% returns empty list so that callflow settings override
+ccvs_by_privacy_mode(<<"none">>) -> [];
+ccvs_by_privacy_mode(_Else) ->
+    lager:debug("unsupported privacy mode ~s, forcing full privacy", [_Else]),
+    ccvs_by_privacy_mode(<<"full">>).
 
 -spec flush_control_queue(kapps_call:call()) -> 'ok'.
 flush_control_queue(Call) ->

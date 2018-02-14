@@ -136,7 +136,7 @@ handle_call('single', _From, #state{meta=Meta
                                    ,timer_ref=TRef
                                    }=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
-    lager:debug("returning media contents"),
+    lager:debug("returning media contents ~p", [kz_util:pretty_print_bytes(byte_size(Contents))]),
     _ = stop_timer(TRef),
     {'reply', {Meta, Contents}, State#state{timer_ref=start_timer()}};
 handle_call('single', From, #state{reqs=Reqs
@@ -182,7 +182,7 @@ handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) -
 handle_info({'http', {ReqID, 'stream_start', Hdrs}}, #state{kz_http_req_id=ReqID
                                                            ,timer_ref=TRef
                                                            }=State) ->
-    lager:debug("start retrieving audio file for tts"),
+    lager:debug("start retrieving audio file for tts: ~p", [Hdrs]),
     _ = stop_timer(TRef),
     {'noreply', State#state{meta=kz_json:normalize(kz_json:from_list(kv_to_bin(Hdrs)))
                            ,timer_ref=start_timer()
@@ -195,7 +195,8 @@ handle_info({'http', {ReqID, 'stream', Bin}}, #state{kz_http_req_id=ReqID
                                                     }=State) ->
     _ = stop_timer(TRef),
     case kz_json:get_value(<<"content_type">>, Meta) of
-        <<"audio/", _/binary>> ->
+        <<"audio/", _/binary>>=_CT ->
+            lager:debug("adding ~p bytes of ~s", [byte_size(Bin), _CT]),
             {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>
                                    ,timer_ref=start_timer()
                                    }};
@@ -221,7 +222,7 @@ handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_i
     Res = {Meta, Contents},
     _ = [gen_server:reply(From, Res) || From <- Reqs],
 
-    lager:debug("finished receiving file contents"),
+    lager:debug("finished receiving file contents: ~p", [kz_util:pretty_print_bytes(byte_size(Contents))]),
     {'noreply', State#state{status=ready
                            ,timer_ref=start_timer()
                            }

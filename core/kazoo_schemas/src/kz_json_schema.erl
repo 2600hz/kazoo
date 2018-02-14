@@ -121,61 +121,15 @@ add_defaults(JObj, <<_/binary>> = Schema) ->
     {'ok', SchemaJObj} = load(Schema),
     add_defaults(JObj, SchemaJObj);
 add_defaults(JObj, SchemaJObj) ->
-    kz_json:foldl(fun defaults_foldl/3
-                 ,JObj
-                 ,kz_json:get_json_value(<<"properties">>, SchemaJObj, kz_json:new())
-                 ).
-
--spec defaults_foldl(kz_json:path(), kz_json:object(), kz_term:api_object()) -> kz_term:api_object().
-defaults_foldl(SchemaKey, SchemaValue, JObj) ->
-    case kz_json:get_value(<<"default">>, SchemaValue) of
-        'undefined' ->
-            maybe_sub_properties(SchemaKey, SchemaValue, JObj);
-        Default ->
-            maybe_sub_properties(SchemaKey
-                                ,SchemaValue
-                                ,maybe_default(SchemaKey, Default, JObj)
-                                )
-    end.
-
--spec maybe_sub_properties(kz_json:path(), kz_json:object(), kz_term:api_object()) -> kz_term:api_object().
-maybe_sub_properties(SchemaKey, SchemaValue, JObj) ->
-    case kz_json:get_ne_binary_value(<<"type">>, SchemaValue) of
-        <<"object">> ->
-            maybe_update_data_with_sub(SchemaKey, SchemaValue, JObj);
-        <<"array">> ->
-            {_, JObj1} = lists:foldl(fun(SubJObj, Acc) ->
-                                             maybe_sub_properties_foldl(SchemaKey, SchemaValue, SubJObj, Acc)
-                                     end
-                                    ,{1, JObj}
-                                    ,kz_json:get_list_value(SchemaKey, JObj, [])
-                                    ),
-            JObj1;
-        _Type -> JObj
-    end.
-
--spec maybe_sub_properties_foldl(kz_json:path(), kz_json:object(), kz_json:json_term(), {pos_integer(), kz_json:object()}) ->
-                                        {pos_integer(), kz_json:object()}.
-maybe_sub_properties_foldl(SchemaKey, SchemaValue, SubJObj, {Idx, JObj}) ->
-    case add_defaults(SubJObj, kz_json:get_json_value(<<"items">>, SchemaValue, kz_json:new())) of
-        'undefined' -> {Idx+1, JObj};
-        NewSubJObj -> {Idx+1, kz_json:set_value([SchemaKey, Idx], NewSubJObj, JObj)}
-    end.
-
--spec maybe_update_data_with_sub(kz_json:path(), kz_json:object(), kz_json:object()) -> kz_json:object().
-maybe_update_data_with_sub(SchemaKey, SchemaValue, JObj) ->
-    case add_defaults(kz_json:get_value(SchemaKey, JObj), SchemaValue) of
-        'undefined' -> JObj;
-        SubJObj ->  kz_json:set_value(SchemaKey, SubJObj, JObj)
-    end.
-
--spec maybe_default(kz_json:path(), kz_json:json_term(), kz_term:api_object()) -> kz_term:api_object().
-maybe_default(Key, Default, 'undefined') ->
-    kz_json:set_value(Key, Default, kz_json:new());
-maybe_default(Key, Default, JObj) ->
-    case kz_json:is_defined(Key, JObj) of
-        'false' -> kz_json:set_value(Key, Default, JObj);
-        'true' -> JObj
+    try validate(SchemaJObj, JObj) of
+        {'ok', WithDefaultsJObj} -> WithDefaultsJObj;
+        {'error', Err} ->
+            lager:debug("schema has errors : ~p ", [Err]),
+            JObj
+    catch
+        _Ex:_Err ->
+            lager:debug("exception getting schema default ~p : ~p", [_Ex, _Err]),
+            JObj
     end.
 
 -spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object()) ->
@@ -196,7 +150,7 @@ validate(SchemaJObj, DataJObj) ->
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
     Fun = props:get_value('schema_loader_fun', Options, ?DEFAULT_LOADER),
     {'ok', SchemaJObj} = Fun(Schema),
-    validate(SchemaJObj, DataJObj, Options);
+    validate(SchemaJObj, DataJObj, props:insert_values([{'schema_loader_fun', ?DEFAULT_LOADER}], Options));
 validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->
     Options = props:insert_values(?DEFAULT_OPTIONS, Options0),
     jesse:validate_with_schema(SchemaJObj, DataJObj, Options).
@@ -867,8 +821,7 @@ flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
     case lists:last(Path) of
         <<"default">> -> [{Path, Value}];
         _ -> [{Path ++ [K], V} || {K,V} <- L]
-    end;
-flatten_prop(Path, V) -> [{Path, V}].
+    end.
 
 -spec default_object(string() | kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
 default_object([_|_]=SchemaId) ->
@@ -877,19 +830,16 @@ default_object(?NE_BINARY=SchemaId) ->
     {'ok', Schema} = load(SchemaId),
     default_object(Schema);
 default_object(Schema) ->
-    Flat = flatten(Schema),
-
-    FlatDefault = default_properties(Flat),
-    kz_json:expand(FlatDefault).
-
--spec default_properties(kz_json:flat_object()) -> kz_json:flat_object().
-default_properties(Flat) ->
-    kz_json:filtermap(fun(Keys, Value) ->
-                              <<"default">> =:= lists:last(Keys)
-                                  andalso {'true', {lists:droplast(Keys), Value}}
-                      end
-                     ,Flat
-                     ).
+    try validate(Schema, kz_json:new()) of
+        {'ok', JObj} -> JObj;
+        {'error', Err} ->
+            lager:debug("schema has errors : ~p ", [Err]),
+            kz_json:new()
+    catch
+        _Ex:_Err ->
+            lager:debug("exception getting schema default ~p : ~p", [_Ex, _Err]),
+            kz_json:new()
+    end.
 
 -spec filtering_list(kz_json:object()) -> list(kz_json:keys() | []).
 filtering_list(Schema) ->
