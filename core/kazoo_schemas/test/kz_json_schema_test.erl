@@ -52,7 +52,7 @@ add_defaults_array_test_() ->
     ].
 
 add_sub_defaults_array_test_() ->
-    SchemaJObj = kz_json:decode(<<"{\"properties\":{\"enabled\":{\"name\":\"Enabled\",\"description\":\"Determines if the resource is currently enabled\",\"type\":\"boolean\",\"default\":true},\"emergency\":{\"name\":\"Emergency\",\"description\":\"Determines if the resource represents emergency services\",\"type\":\"boolean\",\"default\":false},\"grace_period\":{\"name\":\"Grace Period\",\"description\":\"The amount of time, in seconds, to wait before starting another resource\",\"type\":\"integer\",\"default\":5,\"minimum\":3,\"maximum\":20},\"weight_cost\":{\"name\":\"Weight Cost\",\"description\":\"A value between 0 and 100 that determines the order of resources when multiple can be used\",\"type\":\"integer\",\"default\":50,\"minimum\":0,\"maximum\":100},\"flags\":{\"name\":\"Flags\",\"description\":\"A list of flags that can be provided on the request and must match for the resource to be eligible\",\"type\":\"array\",\"default\":[]},\"gateways\":{\"description\":\"A list of gateways avaliable for this resource\",\"type\":\"array\",\"items\":{\"properties\":{\"enabled\":{\"name\":\"Enabled (gateways)\",\"description\":\"Determines if the resource gateway is currently enabled\",\"type\":\"boolean\",\"default\":true},\"prefix\":{\"name\":\"Prefix (gateways)\",\"description\":\"A string to prepend to the dialed number or capture group of the matching rule\",\"type\":\"string\",\"default\":\"+1\",\"minLength\":1,\"maxLength\":64},\"suffix\":{\"name\":\"Suffix (gateways)\",\"description\":\"A string to append to the dialed number or capture group of the matching rule\",\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"codecs\":{\"name\":\"Codecs (gateways)\",\"description\":\"A list of audio codecs supported by this gateway\",\"type\":\"array\",\"enum\":[\"G729\",\"PCMU\",\"PCMA\",\"G722_16\",\"G722_32\",\"CELT_48\",\"CELT_64\",\"Speex\",\"GSM\",\"OPUS\",\"H261\",\"H263\",\"H264\"],\"default\":[\"PCMU\",\"PCMA\" ]},\"media\":{\"description\":\"The media parameters for the device\",\"type\":\"object\",\"properties\":{\"fax_option\":{\"description\":\"The fax mode to option\",\"type\":\"string\",\"enum\":[\"true\",\"false\",\"auto\"],\"default\":\"auto\"},\"codecs\":{\"name\":\"Codecs (gateways)\",\"description\":\"A list of audio codecs supported by this gateway\",\"type\":\"array\",\"enum\":[\"G729\",\"PCMU\",\"PCMA\",\"G722_16\",\"G722_32\",\"CELT_48\",\"CELT_64\",\"Speex\",\"GSM\",\"OPUS\",\"H261\",\"H263\",\"H264\",\"VP8\"],\"default\":[\"PCMU\",\"PCMA\" ]}}},\"custom_sip_headers\":{\"name\":\"Custom SIP Header (gateways)\",\"type\":\"object\",\"default\":{}},\"bypass_media\":{\"name\":\"Bypass Media (gateways)\",\"description\":\"The device bypass media mode\",\"type\":\"string\",\"enum\":[\"true\",\"false\",\"auto\"],\"default\":\"auto\"},\"progress_timeout\":{\"name\":\"Progress Timeout (gateways)\",\"description\":\"The progress timeout to apply to the device\",\"type\":\"integer\"},\"endpoint_type\":{\"name\":\"Endpoint Type (gateways)\",\"description\":\"What type of endpoint is this gateway.\",\"type\":\"string\",\"enum\":[\"sip\",\"freetdm\",\"skype\"],\"default\":\"sip\"},\"invite_format\":{\"name\":\"Invite Format (gateways)\",\"description\":\"The format of the DID needed by the underlying hardware/gateway\",\"type\":\"string\",\"enum\":[\"route\",\"username\",\"e164\",\"npan\",\"1npan\"],\"default\":\"route\"}}}}}}">>),
+    {ok, SchemaJObj} = kz_json:fixture(?APP, "fixtures/schemav3_sub_defaults_array.json"),
 
     JObj = kz_json:decode(<<"{\"gateways\":[{\"name\":\"gateway1\",\"media\":{}}]}">>),
 
@@ -76,6 +76,19 @@ add_sub_defaults_array_test_() ->
     ,?_assertEqual(kz_json:new(), kz_json:get_value(<<"custom_sip_headers">>, Gateway))
     ,?_assertEqual(<<"auto">>, kz_json:get_value(<<"bypass_media">>, Gateway))
     ,?_assertEqual(<<"sip">>, kz_json:get_value(<<"endpoint_type">>, Gateway))
+    ].
+
+validate_sub_array_test_() ->
+    {ok, SchemaJObj} = kz_json:fixture(?APP, "fixtures/schemav3_sub_defaults_array.json"),
+
+    JObj = kz_json:decode(<<"{\"gateways\":[{\"name\":\"gateway1\",\"media\":{}, \"codecs\": [\"G999\"]}, {\"name\":\"gateway2\", \"codecs\": [\"G999\"]}, {\"name\":\"gateway3\", \"codecs\": [\"PCMU\", \"G999\"]}]}">>),
+
+    [?_assertMatch({error,[{data_invalid,_, not_in_enum,<<"G999">>,[<<"gateways">>,0,<<"codecs">>,0]}
+                          ,{data_invalid,_, not_in_enum,<<"G999">>,[<<"gateways">>,1,<<"codecs">>,0]}
+                          ,{data_invalid,_, not_in_enum,<<"G999">>,[<<"gateways">>,2,<<"codecs">>,1]}
+                          ]}
+                  ,kz_json_schema:validate(SchemaJObj, JObj)
+                  )
     ].
 
 valid_task_data() ->

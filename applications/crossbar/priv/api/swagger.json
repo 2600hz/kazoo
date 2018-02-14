@@ -402,6 +402,22 @@
                     "$ref": "#/definitions/caller_id",
                     "description": "The account default caller ID parameters"
                 },
+                "caller_id_options": {
+                    "description": "custom properties for configuring caller_id",
+                    "properties": {
+                        "outbound_privacy": {
+                            "description": "Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing",
+                            "enum": [
+                                "full",
+                                "name",
+                                "number",
+                                "none"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
                     "description": "A list of default rules used to modify dialed numbers"
@@ -4424,6 +4440,22 @@
                     "$ref": "#/definitions/caller_id",
                     "description": "The device caller ID parameters"
                 },
+                "caller_id_options": {
+                    "description": "custom properties for configuring caller_id",
+                    "properties": {
+                        "outbound_privacy": {
+                            "description": "Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing",
+                            "enum": [
+                                "full",
+                                "name",
+                                "number",
+                                "none"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "contact_list": {
                     "default": {},
                     "description": "Contect List Parameters",
@@ -7301,6 +7333,9 @@
                     "enum": [
                         "status_req"
                     ],
+                    "type": "string"
+                },
+                "Limit": {
                     "type": "string"
                 },
                 "Start-Range": {
@@ -12672,6 +12707,9 @@
                         "feminine",
                         "neuter"
                     ],
+                    "type": "string"
+                },
+                "Group-ID": {
                     "type": "string"
                 },
                 "Insert-At": {
@@ -23079,6 +23117,7 @@
                 }
             },
             "required": [
+                "media_source",
                 "name"
             ],
             "type": "object"
@@ -26414,6 +26453,11 @@
                     "default": 5,
                     "description": "acdc queue worker count",
                     "type": "integer"
+                },
+                "stats_query_limits_enabled": {
+                    "default": true,
+                    "description": "When enabled, prevent stats queries with limits greater than max_result_set",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -32355,6 +32399,22 @@
                 "caller_id": {
                     "$ref": "#/definitions/caller_id",
                     "description": "The device caller ID parameters"
+                },
+                "caller_id_options": {
+                    "description": "custom properties for configuring caller_id",
+                    "properties": {
+                        "outbound_privacy": {
+                            "description": "Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing",
+                            "enum": [
+                                "full",
+                                "name",
+                                "number",
+                                "none"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 },
                 "contact_list": {
                     "default": {},

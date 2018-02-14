@@ -29,10 +29,10 @@
                       ecallmgr_util:send_cmd_ret() |
                       [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
-    exec_cmd(Node, UUID, JObj, ControlPID, kz_json:get_value(<<"Call-ID">>, JObj)).
+    exec_cmd(Node, UUID, JObj, ControlPID, kz_api:call_id(JObj)).
 
 exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
-    App = kz_json:get_value(<<"Application-Name">>, JObj),
+    App = kapi_dialplan:application_name(JObj),
     case get_fs_app(Node, UUID, JObj, App) of
         {'error', Msg} -> throw({'msg', Msg});
         {'return', Result} -> Result;
@@ -46,12 +46,14 @@ exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
             [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
     end;
 exec_cmd(_Node, _UUID, JObj, _ControlPid, _DestId) ->
-    lager:debug("command ~s not meant for us but for ~s", [kz_json:get_value(<<"Application-Name">>, JObj), _DestId]),
+    lager:debug("command ~s not meant for us but for ~s"
+               ,[kapi_dialplan:application_name(JObj), _DestId]
+               ),
     throw(<<"call command provided with a command for a different call id">>).
 
 -spec fetch_dialplan(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:api_pid()) -> fs_apps().
 fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
-    App = kz_json:get_value(<<"Application-Name">>, JObj),
+    App = kapi_dialplan:application_name(JObj),
     case get_fs_app(Node, UUID, JObj, App) of
         {'error', Msg} -> throw({'msg', Msg});
         {'return', _Result} -> [];
@@ -77,7 +79,7 @@ get_fs_app(Node, UUID, JObj, <<"noop">>) ->
             {'error', <<"noop failed to execute as JObj did not validate">>};
         'true' ->
             _ = ecallmgr_fs_bridge:maybe_b_leg_events(Node, UUID, JObj),
-            Args = case kz_json:get_value(<<"Msg-ID">>, JObj) of
+            Args = case kz_api:msg_id(JObj) of
                        'undefined' ->
                            <<"Event-Subclass=kazoo::noop,Event-Name=CUSTOM"
                              ,",kazoo_event_name=CHANNEL_EXECUTE_COMPLETE"
@@ -139,13 +141,14 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
             Max = kz_json:get_value(<<"Maximum-Digits">>, JObj),
             Timeout = kz_json:get_value(<<"Timeout">>, JObj),
             Terminators = kz_json:get_value(<<"Terminators">>, JObj),
-            Media = <<$', (ecallmgr_util:media_path(kz_json:get_value(<<"Media-Name">>, JObj), 'new', UUID, JObj))/binary, $'>>,
-            InvalidMedia = <<$', (ecallmgr_util:media_path(kz_json:get_value(<<"Failed-Media-Name">>, JObj), 'new', UUID, JObj))/binary, $'>>,
-            Tries = kz_json:get_value(<<"Media-Tries">>, JObj),
-            Regex = kz_json:get_value(<<"Digits-Regex">>, JObj),
+            Media = <<$', (ecallmgr_util:media_path(kz_json:get_ne_binary_value(<<"Media-Name">>, JObj), 'new', UUID, JObj))/binary, $'>>,
+            InvalidMedia = <<$', (ecallmgr_util:media_path(kz_json:get_ne_binary_value(<<"Failed-Media-Name">>, JObj), 'new', UUID, JObj))/binary, $'>>,
+            Tries = kz_json:get_ne_binary_value(<<"Media-Tries">>, JObj),
+            Regex = kz_json:get_ne_binary_value(<<"Digits-Regex">>, JObj),
             Storage = <<"collected_digits">>,
             Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
-                                  ,Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
+                                  ,Media, " ", InvalidMedia, " ", Storage, " ", Regex
+                                  ]),
             {<<"play_and_get_digits">>, Data}
     end;
 
@@ -498,7 +501,9 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
                           end,
 
             {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj
-                                                       ,kz_json:get_value(<<"Application-Name">>, SuccessJObj)) of
+                                                       ,kapi_dialplan:application_name(SuccessJObj)
+                                                       )
+                                        of
                                             %% default to park if passed app isn't right
                                             {'error', _Str} ->
                                                 {<<"park">>, <<>>};
@@ -1272,7 +1277,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
                                           kz_term:proplist().
 base_fetch_error_event_props(UUID, JObj, Type) ->
     props:filter_undefined(
-      [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+      [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
       ,{<<"Error-Message">>, <<"failed to construct or publish fetch call event">>}
       ,{<<"Call-ID">>, UUID}
       ,{<<"Application-Name">>, <<"fetch">>}
@@ -1301,7 +1306,7 @@ base_fetch_call_event_props(UUID, ChannelProps) ->
 %%--------------------------------------------------------------------
 execute_exten_handle_reset(DP, Node, UUID, JObj) ->
     case kz_json:is_true(<<"Reset">>, JObj) of
-        'false' -> ok;
+        'false' -> 'ok';
         'true' ->
             create_dialplan_move_ccvs(Node, UUID, DP)
     end.
@@ -1347,45 +1352,42 @@ create_dialplan_move_ccvs(Node, UUID, DP) ->
 
 -spec create_dialplan_move_ccvs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 create_dialplan_move_ccvs(DP, Props) ->
-    lists:foldr(
-      fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
-              [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
-              ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
-               |Acc
-              ];
-         ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
-              [{"application", <<"unset ", Key/binary>>}
-              ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT, K/binary, "=", Val/binary>>}
-               |Acc
-              ];
-         ({<<"variable_sip_h_X-", Key/binary>>, Val}, Acc) ->
-              [{"application", <<"unset sip_h_X-", Key/binary>>}
-              ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
-               |Acc
-              ];
-         ({<<"sip_h_X-", Key/binary>>, Val}, Acc) ->
-              [{"application", <<"unset sip_h_X-", Key/binary>>}
-              ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
-               |Acc
-              ];
-         (_, Acc) -> Acc
-      end
-               ,DP
-               ,Props
-     ).
+    lists:foldr(fun create_dialplan_move_ccvs_fold/2, DP, Props).
+
+create_dialplan_move_ccvs_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
+    [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
+    ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
+     |Acc
+    ];
+create_dialplan_move_ccvs_fold({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
+    [{"application", <<"unset ", Key/binary>>}
+    ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT, K/binary, "=", Val/binary>>}
+     |Acc
+    ];
+create_dialplan_move_ccvs_fold({<<"variable_sip_h_X-", Key/binary>>, Val}, Acc) ->
+    [{"application", <<"unset sip_h_X-", Key/binary>>}
+    ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
+     |Acc
+    ];
+create_dialplan_move_ccvs_fold({<<"sip_h_X-", Key/binary>>, Val}, Acc) ->
+    [{"application", <<"unset sip_h_X-", Key/binary>>}
+    ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
+     |Acc
+    ];
+create_dialplan_move_ccvs_fold(_, Acc) -> Acc.
 
 -spec tts(atom(), kz_term:ne_binary(), kz_json:object()) ->
                  {kz_term:ne_binary(), kz_term:ne_binary()}.
 tts(Node, UUID, JObj) ->
     'ok' = set_terminators(Node, UUID, kz_json:get_value(<<"Terminators">>, JObj)),
 
-    case kz_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
+    case kz_json:get_ne_binary_value(<<"Engine">>, JObj, <<"flite">>) of
         <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
         _Engine ->
-            SayMe = kz_json:get_value(<<"Text">>, JObj),
+            SayMe = kz_json:get_ne_binary_value(<<"Text">>, JObj),
 
-            Voice = kz_json:get_value(<<"Voice">>, JObj, kazoo_tts:default_voice()),
-            Language = kz_json:get_value(<<"Language">>, JObj, kazoo_tts:default_language()),
+            Voice = kz_json:get_ne_binary_value(<<"Voice">>, JObj, kazoo_tts:default_voice()),
+            Language = kz_json:get_ne_binary_value(<<"Language">>, JObj, kazoo_tts:default_language()),
             TTSId = kz_binary:md5(<<SayMe/binary, "/", Voice/binary, "/", Language/binary>>),
 
             lager:debug("using engine ~s to say: ~s (tts_id: ~s)", [_Engine, SayMe, TTSId]),
@@ -1415,28 +1417,17 @@ play(Node, UUID, JObj) ->
 
 -spec play_app(kz_term:ne_binary(), kz_json:object()) -> fs_app().
 play_app(UUID, JObj) ->
-    MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
+    MediaName = kz_json:get_ne_binary_value(<<"Media-Name">>, JObj),
     F = ecallmgr_util:media_path(MediaName, 'new', UUID, JObj),
     %% if Leg is set, use uuid_broadcast; otherwise use playback
     case ecallmgr_fs_channel:is_bridged(UUID) of
-        'false' -> {playback_app(JObj), F};
+        'false' -> {<<"playback">>, F};
         'true' -> play_bridged(UUID, JObj, F)
-    end.
-
--spec playback_app(kz_json:object()) -> kz_term:ne_binary().
-playback_app(JObj) ->
-    case kz_json:is_true(<<"Endless-Playback">>, JObj, 'false')
-        orelse kz_json:get_integer_value(<<"Loop-Count">>, JObj)
-    of
-        'true' -> <<"endless_playback">>;
-        Count when is_integer(Count), Count > 0 ->
-            <<"loop_playback +", (kz_term:to_binary(Count))/binary>>;
-        _ -> <<"playback">>
     end.
 
 -spec play_bridged(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> fs_app().
 play_bridged(UUID, JObj, F) ->
-    case kz_json:get_value(<<"Leg">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"Leg">>, JObj) of
         <<"self">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' aleg">>])};
         <<"A">> ->     {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' aleg">>])};
         <<"peer">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' bleg">>])};
@@ -1447,22 +1438,26 @@ play_bridged(UUID, JObj, F) ->
 
 -spec play_vars(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_app().
 play_vars(Node, UUID, JObj) ->
-    Routines = [fun(V) ->
-                        case kz_json:get_value(<<"Group-ID">>, JObj) of
-                            'undefined' -> V;
-                            GID -> [{<<"media_group_id">>, GID}|V]
-                        end
-                end
-               ,fun(V) ->
-                        case get_terminators(JObj) of
-                            'undefined' -> V;
-                            Terminators -> [Terminators|V]
-                        end
-                end
+    Routines = [fun maybe_add_group_id/2
+               ,fun maybe_add_terminators/2
                ],
-    Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
+    Vars = lists:foldl(fun(F, V) -> F(V, JObj) end, [], Routines),
     Args = ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set'),
     {<<"kz_multiset">>, ecallmgr_util:fs_args_to_binary(Args)}.
+
+-spec maybe_add_group_id(kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+maybe_add_group_id(Acc, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Group-ID">>, JObj) of
+        'undefined' -> Acc;
+        GID -> [{<<"media_group_id">>, GID}|Acc]
+    end.
+
+-spec maybe_add_terminators(kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
+maybe_add_terminators(Acc, JObj) ->
+    case get_terminators(JObj) of
+        'undefined' -> Acc;
+        Terminators -> [Terminators|Acc]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1509,7 +1504,7 @@ maybe_set_park_timeout(Node, UUID, JObj) ->
         'undefined' -> 'ok';
         Timeout ->
             ParkTimeout =
-                case kz_json:get_value(<<"Hangup-Cause">>, JObj) of
+                case kz_json:get_ne_binary_value(<<"Hangup-Cause">>, JObj) of
                     'undefined' -> kz_term:to_binary(Timeout);
                     Cause ->
                         [kz_term:to_binary(Timeout), ":", Cause]
@@ -1519,7 +1514,7 @@ maybe_set_park_timeout(Node, UUID, JObj) ->
 
 -spec record_call(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_app().
 record_call(Node, UUID, JObj) ->
-    Action = kz_json:get_value(<<"Record-Action">>, JObj),
+    Action = kz_json:get_ne_binary_value(<<"Record-Action">>, JObj),
     record_call(Node, UUID, Action, JObj).
 
 -spec record_call(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> fs_app().
@@ -1528,10 +1523,10 @@ record_call(Node, UUID, <<"start">>, JObj) ->
     Args = ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set'),
     AppArgs = ecallmgr_util:fs_args_to_binary(Args),
 
-    MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
+    MediaName = kz_json:get_ne_binary_value(<<"Media-Name">>, JObj),
     RecordingName = ecallmgr_util:recording_filename(MediaName),
     RecodingBaseName = filename:basename(RecordingName),
-    RecordingId = kz_json:get_value(<<"Media-Recording-ID">>, JObj),
+    RecordingId = kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj),
 
     [{<<"kz_multiset">>, AppArgs}
     ,{<<"unshift">>, <<"media_recordings,", RecordingName/binary>>}
@@ -1540,7 +1535,7 @@ record_call(Node, UUID, <<"start">>, JObj) ->
     ,{<<"record_session">>, RecordingName}
     ];
 record_call(_Node, _UUID, <<"stop">>, JObj) ->
-    RecordingName = case kz_json:get_value(<<"Media-Name">>, JObj) of
+    RecordingName = case kz_json:get_ne_binary_value(<<"Media-Name">>, JObj) of
                         'undefined' -> <<"${media_recordings[0]}">>;
                         MediaName -> ecallmgr_util:recording_filename(MediaName)
                     end,
@@ -1568,9 +1563,9 @@ record_call_vars(JObj) ->
                 ,{<<"Media-Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
                 ,{<<"Time-Limit">>, kz_json:get_value(<<"Time-Limit">>, JObj)}
                 ,{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
-                ,{<<"Media-Recording-ID">>, kz_json:get_value(<<"Media-Recording-ID">>, JObj)}
-                ,{<<"Media-Recording-Endpoint-ID">>, kz_json:get_value(<<"Media-Recording-Endpoint-ID">>, JObj)}
-                ,{<<"Media-Recording-Origin">>, kz_json:get_value(<<"Media-Recording-Origin">>, JObj)}
+                ,{<<"Media-Recording-ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj)}
+                ,{<<"Media-Recording-Endpoint-ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-Endpoint-ID">>, JObj)}
+                ,{<<"Media-Recording-Origin">>, kz_json:get_ne_binary_value(<<"Media-Recording-Origin">>, JObj)}
                 ]
                ,Routines
                ).
@@ -1647,7 +1642,7 @@ tone_repeat(Tone) ->
 -spec tone_frequencies(kz_json:object()) -> kz_term:ne_binary().
 tone_frequencies(Tone) ->
     Freqs = [kz_term:to_binary(V)
-             || V <- kz_json:get_value(<<"Frequencies">>, Tone, [])
+             || V <- kz_json:get_list_value(<<"Frequencies">>, Tone, [])
             ],
     kz_binary:join(Freqs, <<",">>).
 
@@ -1667,7 +1662,7 @@ transfer(Node, UUID, JObj) ->
 
 -spec transfer(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
-    CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
+    CCVs = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
     CCVList = [<<"Account-ID">>
               ,<<"Authorizing-ID">>
               ,<<"Authorizing-Type">>
@@ -1737,14 +1732,14 @@ transfer_referred(UUID, _) ->
 
 -spec transfer_leg(kz_json:object()) -> binary().
 transfer_leg(JObj) ->
-    case kz_json:get_value(<<"Transfer-Leg">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"Transfer-Leg">>, JObj) of
         'undefined' -> <<>>;
         TransferLeg -> <<"-", TransferLeg/binary>>
     end.
 
 -spec transfer_context(kz_json:object()) -> binary().
 transfer_context(JObj) ->
-    kz_json:get_value(<<"Transfer-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
+    kz_json:get_binary_value(<<"Transfer-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
 
 -spec sound_touch(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 sound_touch(UUID, <<"start">>, JObj) ->

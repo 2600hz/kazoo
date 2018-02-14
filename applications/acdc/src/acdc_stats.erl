@@ -545,7 +545,7 @@ is_valid_call_status(S) ->
         'false' -> 'false'
     end.
 
--spec query_calls(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
+-spec query_calls(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer() | 'no_limit') -> 'ok'.
 query_calls(RespQ, MsgId, Match, _Limit) ->
     case ets:select(call_table_id(), Match) of
         [] ->

@@ -45,12 +45,22 @@ caller_id_number(_, JObj) ->
 queue_id(_, JObj) ->
     kz_json:get_value(<<"Queue-ID">>, JObj).
 
--spec get_query_limit(kz_json:object()) -> pos_integer().
+-spec get_query_limit(kz_json:object()) -> pos_integer() | 'no_limit'.
 get_query_limit(JObj) ->
+    get_query_limit(JObj, ?STATS_QUERY_LIMITS_ENABLED).
+
+-spec get_query_limit(kz_json:object(), boolean()) -> pos_integer() | 'no_limit'.
+get_query_limit(JObj, 'true') ->
     Max = ?MAX_RESULT_SET,
     case kz_json:get_integer_value(<<"Limit">>, JObj) of
         'undefined' -> Max;
         N when N > Max -> Max;
+        N when N < 1 -> 1;
+        N -> N
+    end;
+get_query_limit(JObj, 'false') ->
+    case kz_json:get_integer_value(<<"Limit">>, JObj) of
+        'undefined' -> 'no_limit';
         N when N < 1 -> 1;
         N -> N
     end.

@@ -25,6 +25,7 @@
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
+-export([ccvs_by_privacy_mode/1]).
 
 -export([sip_users_from_device_ids/2]).
 
@@ -656,7 +657,7 @@ process_event(Call, NoopId, JObj) ->
             lager:debug("noop ~s received", [NoopId]),
             {'ok', Call};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-            case kz_json:get_value(<<"Application-Response">>, JObj) of
+            case kz_json:get_ne_binary_value(<<"Application-Response">>, JObj) of
                 NoopId ->
                     lager:debug("noop ~s received", [NoopId]),
                     {'ok', Call};
@@ -667,7 +668,9 @@ process_event(Call, NoopId, JObj) ->
         {<<"call_event">>, <<"DTMF">>, _} ->
             DTMF = kz_json:get_value(<<"DTMF-Digit">>, JObj),
             lager:debug("recv DTMF ~s, adding to default", [DTMF]),
-            wait_for_noop(kapps_call:add_to_dtmf_collection(DTMF, Call), NoopId);
+            Call1 = kapps_call:add_to_dtmf_collection(DTMF, Call),
+            cf_exe:set_call(Call1),
+            wait_for_noop(Call1, NoopId);
         _Ignore ->
             wait_for_noop(Call, NoopId)
     end.
@@ -731,6 +734,30 @@ vm_count(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     BoxId = kz_doc:id(JObj),
     kvm_messages:count_non_deleted(AccountId, BoxId).
+
+-spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
+ccvs_by_privacy_mode('undefined') ->
+    ccvs_by_privacy_mode(<<"full">>);
+ccvs_by_privacy_mode(<<"full">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ];
+ccvs_by_privacy_mode(<<"yes">>) ->
+    ccvs_by_privacy_mode(<<"full">>);
+ccvs_by_privacy_mode(<<"name">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ];
+ccvs_by_privacy_mode(<<"number">>) ->
+    [{<<"Caller-Screen-Bit">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ];
+%% returns empty list so that callflow settings override
+ccvs_by_privacy_mode(<<"none">>) -> [];
+ccvs_by_privacy_mode(_Else) ->
+    lager:debug("unsupported privacy mode ~s, forcing full privacy", [_Else]),
+    ccvs_by_privacy_mode(<<"full">>).
 
 %%--------------------------------------------------------------------
 %% @private

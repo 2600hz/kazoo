@@ -76,7 +76,7 @@ dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1b
 ### https://github.com/benoitc/couchbeam/pull/166
 ### https://github.com/benoitc/couchbeam/pull/174
 
-dep_jesse = git https://github.com/2600hz/jesse 1.5-rc6
+dep_jesse = git https://github.com/2600hz/jesse 1.5-rc7
 ##dep_jesse = git https://github.com/for-GET/jesse 1.5.0-rc2
 
 dep_lager = git https://github.com/erlang-lager/lager 3.5.2

@@ -25,8 +25,16 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    kapps_call_command:play_macro(get_macro(Data, Call), Call),
-    cf_exe:continue(Call).
+    NoopId = kapps_call_command:audio_macro(get_macro(Data, Call), Call),
+    case cf_util:wait_for_noop(Call, NoopId) of
+        {'ok', Call1} -> cf_exe:continue(Call1);
+        {'error', 'channel_hungup'} ->
+            lager:info("channel hungup waiting for noop ~s", [NoopId]),
+            cf_exe:stop(Call);
+        {'error', _E} ->
+            lager:info("waiting for noop ~s errored: ~p", [NoopId, _E]),
+            cf_exe:continue(Call)
+    end.
 
 -spec get_macro(kz_json:object(), kapps_call:call()) ->
                        kapps_call_command:audio_macro_prompts().
@@ -123,33 +131,87 @@ macro(Args, Type) ->
 -ifdef(TEST).
 
 schema_test_() ->
-    Data = kz_json:decode(
-             <<"{\"macros\":[
+    Data = <<"{\"macros\":[
                {\"macro\":\"play\"
                 ,\"id\":\"play_me\"
                }
-               ,{\"macro\":\"tts\"
+             ,{\"macro\":\"tts\"
                 ,\"text\":\"this can be said\"
                 ,\"language\":\"en-us\"
                }
-               ,{\"macro\":\"prompt\"
+             ,{\"macro\":\"prompt\"
                 ,\"id\":\"vm-enter_pin\"
                }
-               ,{\"macro\":\"say\"
+             ,{\"macro\":\"say\"
                 ,\"text\":\"123\"
                 ,\"method\":\"pronounced\"
                 ,\"type\":\"number\"
                }
-               ,{\"macro\":\"tone\"
+             ,{\"macro\":\"tone\"
                 ,\"frequencies\":[400,450]
                 ,\"duration_on\":400
                 ,\"duration_off\":200
                }
-               ]
-              }">>
-            ),
-    Validated = kz_json_schema:validate(<<"callflows.audio_macro">>, Data),
-    ?LOG_DEBUG("validated: ~p", [Validated]),
-    ?_assertMatch({'ok', _}, Validated).
+             ]
+              }">>,
+
+    build_tests(Data).
+
+another_schema_test_() ->
+    Data = <<"{
+        \"macros\": [
+            {
+                \"macro\": \"play\",
+                \"id\": \"http://server.com/you-pressed-1.wav\",
+                \"endless_playback\": false
+            },
+            {
+                \"macro\": \"play\",
+                \"id\": \"http://server.com/you-pressed-2.wav\",
+                \"endless_playback\": false
+            },
+            {
+                \"macro\": \"play\",
+                \"id\": \"http://server.com/something.mp3\",
+                \"endless_playback\": false
+            }
+        ],
+        \"terminators\": [
+            \"1\",
+            \"2\",
+            \"3\",
+            \"4\",
+            \"5\",
+            \"6\",
+            \"7\",
+            \"8\",
+            \"9\",
+            \"*\",
+            \"0\",
+            \"#\"
+        ]
+    }">>,
+    build_tests(Data).
+
+build_tests(Data) ->
+    lists:foldl(fun(TestF, Tests) ->
+                        TestF(Data) ++ Tests
+                end
+               ,[]
+               ,[fun validate/1
+                 ,fun build_macro_command/1
+                ]
+               ).
+
+build_macro_command(DataBin) ->
+    Data = kz_json:decode(DataBin),
+    M = get_macro(Data, kapps_call:new()),
+    [?_assert(is_list(M))].
+
+validate(Data) ->
+    Validated = kz_json_schema:validate(<<"callflows.audio_macro">>, kz_json:decode(Data)),
+    'error' =:= element(1, Validated)
+        andalso ?LOG_DEBUG("validated: ~p", [Validated]),
+    [?_assertMatch({'ok', _}, Validated)].
 
 -endif.
