@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Luis Azedo
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_endpoint).
 
 -export([get/1, get/2]).
@@ -83,10 +83,10 @@
                           {'error', 'invalid_endpoint_id'} |
                           kz_datamgr:data_error().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Fetches a endpoint defintion from the database or cache
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get(kapps_call:call()) -> api_std_return().
 get(Call) -> get(kapps_call:authorizing_id(Call), Call).
@@ -592,10 +592,10 @@ create_endpoint_name(First, 'undefined', _, _) -> First;
 create_endpoint_name('undefined', Last, _, _) -> Last;
 create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Flush the callflow cache
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec flush_account(kz_term:ne_binary()) -> 'ok'.
 flush_account(AccountDb) ->
@@ -628,14 +628,14 @@ flush(Db, Id) ->
 
     'ok' = kz_amqp_worker:cast(Props, Fun).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Creates one or more kazoo API endpoints for use in a bridge string.
 %% Takes into account settings on the callflow, the endpoint, call
 %% forwarding, and ringtones.  More functionality to come, but as it is
 %% added it will be implicit in all functions that 'ring an endpoing'
 %% like devices, ring groups, and resources.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type build_errors() :: 'db_not_reachable' | 'endpoint_disabled'
                       | 'endpoint_called_self' | 'endpoint_id_undefined'
                       | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
@@ -838,11 +838,11 @@ maybe_exclude_from_queues(Endpoint, _Properties, Call) ->
         'true' -> {'error', 'exclude_from_queues'}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc creates the actual endpoint json objects for use in the kazoo
 %% bridge API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_endpoints(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                               {'ok', kz_json:objects()} |
                               {'error', 'no_endpoints'}.
@@ -1035,13 +1035,13 @@ guess_endpoint_type(Endpoint, []) ->
         _Else -> <<"sip">>
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Creates the kazoo API endpoint for a bridge call command. This
 %% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -record(clid, {caller_number :: kz_term:api_binary()
               ,caller_name :: kz_term:api_binary()
               ,callee_name :: kz_term:api_binary()
@@ -1228,11 +1228,11 @@ push_headers(PushJObj) ->
                         {<<"X-KAZOO-PUSHER-", K/binary>>, V}
                 end, PushJObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_sip_transport(kz_json:object()) -> kz_term:api_binary().
 get_sip_transport(SIPJObj) ->
     case validate_sip_transport(kz_json:get_value(<<"transport">>, SIPJObj)) of
@@ -1248,11 +1248,11 @@ validate_sip_transport(<<"tls">>) -> <<"tls">>;
 validate_sip_transport(<<"sctp">>) -> <<"sctp">>;
 validate_sip_transport(_) -> 'undefined'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_custom_sip_interface(kz_json:object()) -> kz_term:api_ne_binary().
 get_custom_sip_interface(JObj) ->
     case kz_json:get_value(<<"custom_sip_interface">>, JObj) of
@@ -1261,13 +1261,13 @@ get_custom_sip_interface(JObj) ->
         Else -> Else
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Creates the kazoo API endpoint for a bridge call command. This
 %% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_skype_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                    kz_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->
@@ -1280,7 +1280,7 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
       ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
       ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Creates the Kazoo API endpoint for a bridge call command when
 %% the device (or owner) has forwarded their phone.  This endpoint
@@ -1288,7 +1288,7 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
 %% from the actually endpoint, and the properties of this endpoint in
 %% the callflow.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_call_fwd_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                       kz_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, Call) ->
@@ -1325,11 +1325,11 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
       ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_mobile_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                     kz_json:object() |
                                     {'error', kz_term:ne_binary()}.
@@ -1406,12 +1406,12 @@ maybe_add_mobile_path(Route) ->
         'true' -> Route
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function will return the sip headers that should be set for
 %% the endpoint
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec generate_sip_headers(kz_json:object(), kapps_call:call()) ->
                                   kz_json:object().
 generate_sip_headers(Endpoint, Call) ->
@@ -1508,13 +1508,13 @@ maybe_add_aor(JObj, _, 'undefined', _Realm) -> JObj;
 maybe_add_aor(JObj, _, Username, Realm) ->
     kz_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec generate_ccvs(kz_json:object(), kapps_call:call()) -> kz_json:object().
 generate_ccvs(Endpoint, Call) ->
@@ -1880,10 +1880,10 @@ build_mobile_sms_amqp_route_options(JObj) ->
     ,{<<"Exchange-Options">>, kz_json:get_json_value(<<"options">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS)}
     ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get the sip realm
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_sip_realm(kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
 get_sip_realm(SIPJObj, AccountId) ->
     get_sip_realm(SIPJObj, AccountId, 'undefined').
@@ -1899,13 +1899,13 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
         Realm -> Realm
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec endpoint_actions(kz_json:object(), kapps_call:call()) -> kz_json:object().
 endpoint_actions(Endpoint, Call) ->

@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handles inspection of incoming caller id and branching to a child
 %%% callflow node accordingly.
@@ -13,7 +13,7 @@
 %%%
 %%% @author Kozlov Yakov
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_cidlistmatch).
 
 -behaviour(gen_cf_action).
@@ -22,10 +22,10 @@
 
 -include("callflow.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerIdNumber = kapps_call:caller_id_number(Call),
@@ -81,11 +81,11 @@ build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
     build_keys(Rest, <<Prefix/binary, D/binary>>, [<<Prefix/binary, D/binary>> | Acc]);
 build_keys(<<>>, _, Acc) -> Acc.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handle a caller id "match" condition
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_match(kapps_call:call()) -> 'ok'.
 handle_match(Call) ->
     case is_callflow_child(<<"match">>, Call) of
@@ -93,11 +93,11 @@ handle_match(Call) ->
         'false' -> cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handle a caller id "no match" condition
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_no_match(kapps_call:call()) -> 'ok'.
 handle_no_match(Call) ->
     case is_callflow_child(<<"nomatch">>, Call) of
@@ -105,11 +105,11 @@ handle_no_match(Call) ->
         'false' -> cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Check if the given node name is a callflow child
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_callflow_child(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 is_callflow_child(Name, Call) ->
     lager:debug("Looking for callflow child ~s", [Name]),

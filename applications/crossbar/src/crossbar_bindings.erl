@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc Store routing keys or PID bindings.
 %%% When a binding is fired, pass the payload to the PID for evaluation, accumulating
@@ -19,7 +19,7 @@
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(crossbar_bindings).
 
 %% API
@@ -53,21 +53,21 @@
                    {kz_time:datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
 -type map_results() :: [boolean() |
                         http_methods() |
                         {boolean() | 'stop', cb_context:context()}
                        ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Returns `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     lager:debug("mapping ~s", [Routing]),
@@ -80,20 +80,20 @@ pmap(Routing, Payload) ->
 
 -type fold_results() :: payload().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Returns the modified Payload after it has been threaded through
 %% all matching bindings
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     lager:debug("folding ~s", [Routing]),
     kazoo_bindings:fold(Routing, Payload).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Helper functions for working on a result set of bindings.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec any(kz_term:proplist()) -> boolean().
 any(Res) when is_list(Res) ->
     kazoo_bindings:any(Res, fun check_bool/1).
@@ -121,10 +121,10 @@ matches([R|Restrictions], Tokens) ->
     kazoo_bindings:matches(Restriction, Tokens)
         orelse matches(Restrictions, Tokens).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Helpers for the result set helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_bool({boolean(), any()} | boolean()) -> boolean().
 check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';

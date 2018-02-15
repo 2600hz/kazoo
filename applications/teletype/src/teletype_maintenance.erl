@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(teletype_maintenance).
 
 -export([receipts/0
@@ -124,10 +124,10 @@ list_templates_from_db(Db) ->
             []
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Remove Template Customization from an account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_customization(kz_term:ne_binary()) -> 'no_return'.
 remove_customization(Account) ->
     remove_customization(Account, list_templates_from_db(kz_util:format_account_db(Account))).
@@ -151,12 +151,12 @@ remove_customization(Account, Ids) ->
             'no_return'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Forcing System's Templates to an account by first removing
 %% account's customization and then copy the templates from
 %% system_config to account's db.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec force_system_default(kz_term:ne_binary()) -> 'no_return'.
 force_system_default(Account) ->
     force_system_default(Account, list_templates_from_db(?KZ_CONFIG_DB)).

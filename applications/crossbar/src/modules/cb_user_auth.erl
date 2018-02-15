@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc User auth module
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_user_auth).
 
 -export([init/0
@@ -38,14 +38,14 @@
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -57,13 +57,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.user_auth">>, ?MODULE, 'post'),
     ok.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
@@ -72,11 +72,11 @@ allowed_methods() -> [?HTTP_PUT].
 allowed_methods(?RECOVERY) -> [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(_AuthToken) -> [?HTTP_GET].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -85,10 +85,10 @@ resource_exists() -> 'true'.
 resource_exists(?RECOVERY) -> 'true';
 resource_exists(_AuthToken) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
@@ -123,10 +123,10 @@ authorize_nouns(Context, _, ?HTTP_PUT) ->
 authorize_nouns(_, [{<<"user_auth">>, _}], _) -> 'true';
 authorize_nouns(_, _Nouns, _) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
@@ -136,13 +136,13 @@ authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _ResetId]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -219,15 +219,15 @@ post(Context, ?RECOVERY) ->
     Context2 = cb_context:set_doc(Context1, DocForCreation),
     crossbar_auth:create_auth_token(Context2, ?MODULE).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_get_auth_token(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_get_auth_token(Context, AuthToken) ->
     case AuthToken =:= cb_context:auth_token(Context) of
@@ -238,11 +238,11 @@ maybe_get_auth_token(Context, AuthToken) ->
         'false' -> cb_context:add_system_error('invalid_credentials', Context)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_auth_resp(cb_context:context(), kz_term:ne_binary(),  kz_term:ne_binary()) ->
                               cb_context:context().
 create_auth_resp(Context, AccountId, AccountId) ->
@@ -255,7 +255,7 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
                ,[_AccountId, _AuthAccountId]),
     cb_context:add_system_error('forbidden', Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function determines if the credentials are valid based on the
 %% provided hash method
@@ -264,7 +264,7 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
 %%
 %% Failure here returns 401
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 maybe_authenticate_user(Context) ->
@@ -568,11 +568,11 @@ create_resetid_doc(ResetId, UserId) ->
       ,{<<"pvt_type">>, ?RESET_PVT_TYPE}
       ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_account(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
                           {'ok', kz_term:ne_binary() | kz_term:ne_binaries()} |
                           {'error', cb_context:context()}.

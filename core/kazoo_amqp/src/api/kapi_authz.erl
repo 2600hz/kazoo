@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handles authorization requests, responses, queue bindings
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_authz).
 
 -export([authz_req/1, authz_req_v/1
@@ -86,11 +86,11 @@
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}]).
 -define(BALANCE_CHECK_RESP_TYPES, [{<<"Balances">>, fun kz_json:is_json_object/1}]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authorization Request - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authz_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 authz_req(Prop) when is_list(Prop) ->
     case authz_req_v(Prop) of
@@ -121,11 +121,11 @@ balance_check_req_v(Prop) when is_list(Prop) ->
 balance_check_req_v(JObj) ->
     balance_check_req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authorization Response - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authz_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 authz_resp(Prop) when is_list(Prop) ->
     case authz_resp_v(Prop) of
@@ -157,10 +157,10 @@ balance_check_resp_v(Prop) when is_list(Prop) ->
 balance_check_resp_v(JObj) ->
     balance_check_resp_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authz gen_listeners
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
@@ -195,18 +195,18 @@ unbind_q_from(Q, ['balance_check'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) -> 'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_authz_req(kz_term:api_terms()) -> 'ok'.
 publish_authz_req(JObj) ->

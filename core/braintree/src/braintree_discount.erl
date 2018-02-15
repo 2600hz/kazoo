@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @doc
 %%% @end
 %%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(braintree_discount).
 
 -export([xml_to_record/1, xml_to_record/2]).
@@ -21,10 +21,10 @@
 -type discount() :: bt_discount().
 -type discounts() :: bt_discounts().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Contert the given XML to a customer record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml()) -> bt_discount().
 xml_to_record(Xml) ->
@@ -40,10 +40,10 @@ xml_to_record(Xml, Base) ->
                 ,quantity = kz_term:to_integer(kz_xml:get_value([Base, "/quantity/text()"], Xml))
                 }.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Contert the given XML to a customer record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_discount()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Discount) ->
@@ -64,10 +64,10 @@ record_to_xml(Discount, ToString) ->
         false -> Props
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Convert a given record into a json object
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec record_to_json(bt_discount()) -> kz_json:object().
 record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
@@ -76,10 +76,10 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
             ],
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= 'undefined']).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Convert a given json obj into a record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec json_to_record(kz_term:api_object()) -> bt_discount() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->

@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handle a host's connection/channels
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_amqp_connection).
 -behaviour(gen_server).
 
@@ -30,14 +30,14 @@
 -define(MAX_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 -define(MAX_REMOTE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link(kz_amqp_connection()) -> kz_types:startlink_ret().
 start_link(#kz_amqp_connection{}=Connection) ->
     gen_server:start_link(?SERVER, [Connection], []).
@@ -58,26 +58,26 @@ create_prechannel(Srv) ->
 disconnect(Srv) ->
     gen_server:cast(Srv, 'disconnect').
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Initializes the server
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', kz_amqp_connection()}.
 init([#kz_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {'ok', disconnected(Connection#kz_amqp_connection{manager=self()})}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling call messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('get_connection', _, Connection) ->
     {'reply', Connection, Connection};
@@ -95,11 +95,11 @@ handle_call({'new_exchange', Exchange}
 handle_call(_Msg, _From, Connection) ->
     {'reply', {'error', 'not_implemented'}, Connection}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('disconnect'
            ,#kz_amqp_connection{available='false'}=Connection) ->
@@ -129,11 +129,11 @@ handle_cast({'new_exchange', Exchange}
 handle_cast(_Msg, Connection) ->
     {'noreply', Connection}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling all non call/cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='false'}=Connection
@@ -165,7 +165,7 @@ handle_info(_Info, Connection) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', Connection, 'hibernate'}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
@@ -173,7 +173,7 @@ handle_info(_Info, Connection) ->
 %% with Reason. The return value is ignored.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), kz_amqp_connection()) -> any().
 terminate('shutdown', #kz_amqp_connection{broker=_Broker}=Connection) ->
     shutdown(Connection),
@@ -184,23 +184,23 @@ terminate(_Reason, #kz_amqp_connection{broker=_Broker}=Connection) ->
                ),
     disconnected(Connection).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert process state when code is changed
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, Connection, _Extra) ->
     {'ok', Connection}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec connected(kz_amqp_connection()) -> kz_amqp_connection().
 connected(#kz_amqp_connection{reconnect_ref=Ref}=Connection)
   when is_reference(Ref) ->
@@ -231,11 +231,11 @@ connected(#kz_amqp_connection{broker=_Broker}=Connection) ->
     lager:info("successfully connected to '~s'", [_Broker]),
     Connection.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disconnected(kz_amqp_connection()) -> kz_amqp_connection().
 disconnected(#kz_amqp_connection{manager=Manager}=State) ->
     case Manager =:= self() of
@@ -306,11 +306,11 @@ shutdown_connection(ConnectionPid) when is_pid(ConnectionPid) ->
     'ok';
 shutdown_connection(_ConnectionPid) -> 'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec next_timeout(pos_integer(), pos_integer()) -> pos_integer().
 next_timeout(MaxTimeout, MaxTimeout) -> MaxTimeout;
 next_timeout(Timeout, MaxTimeout) when Timeout * 2 > MaxTimeout ->
@@ -329,11 +329,11 @@ zone_timeout(#kz_amqp_connection{broker=Broker}) ->
             ?MAX_REMOTE_TIMEOUT
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_connect(kz_amqp_connection(), ?START_TIMEOUT..?MAX_TIMEOUT) -> kz_amqp_connection().
 maybe_connect(#kz_amqp_connection{broker=_Broker
                                  ,available='false'
@@ -364,11 +364,11 @@ maybe_connect(#kz_amqp_connection{broker=_Broker
             disconnected(Connection, Timeout)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_control_channel(kz_amqp_connection()) -> kz_amqp_connection().
 create_control_channel(#kz_amqp_connection{channel_ref=Ref}=Connection)
   when is_reference(Ref) ->
@@ -393,11 +393,11 @@ create_control_channel(#kz_amqp_connection{broker=Broker}=Connection) ->
                                          }
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec initialize_prechannels(kz_amqp_connection()) -> kz_amqp_connection().
 initialize_prechannels(#kz_amqp_connection{}=Connection) ->
     initialize_prechannels(Connection, 10).
@@ -429,11 +429,11 @@ establish_prechannel(#kz_amqp_connection{broker=Broker
             Connection
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec open_channel(kz_amqp_connection()) -> {'ok', pid()} | {'error', any()}.
 open_channel(#kz_amqp_connection{connection=Pid}) ->
     try amqp_connection:open_channel(Pid) of
@@ -461,11 +461,11 @@ open_channel(#kz_amqp_connection{connection=Pid}) ->
             {'error', 'not_connected'}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges(kz_amqp_connection()) -> kz_amqp_connection().
 declare_exchanges(#kz_amqp_connection{tags=Tags}=Connection) ->
     maybe_add_all_exchanges(Connection, lists:member(?AMQP_HIDDEN_TAG, Tags)).

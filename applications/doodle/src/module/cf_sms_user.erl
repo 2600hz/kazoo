@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Luis Azedo
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_sms_user).
 
 -include("doodle.hrl").
@@ -12,12 +12,12 @@
         ,get_endpoints/3
         ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call1) ->
     UserId = kz_doc:id(Data),
@@ -66,13 +66,13 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
         'ok' -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API
 %% Send to endpoint in determined order
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_endpoints(kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
                            {kz_json:objects(), non_neg_integer()}.
 get_endpoints('undefined', _, _) -> {[], 0};

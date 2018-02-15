@@ -36,20 +36,20 @@ get_req(Prop) when is_list(Prop) ->
 get_req(JObj) ->
     get_req(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_req_v(kz_term:api_terms()) -> boolean().
 get_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBSOCKETS_GET_REQ_HEADERS, ?WEBSOCKETS_GET_REQ_VALUES, ?WEBSOCKETS_TYPES);
 get_req_v(JObj) ->
     get_req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
@@ -59,10 +59,10 @@ get_resp(Prop) when is_list(Prop) ->
 get_resp(JObj) ->
     get_resp(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_resp_v(kz_term:api_terms()) -> boolean().
 get_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?WEBSOCKETS_GET_RESP_HEADERS, ?WEBSOCKETS_GET_RESP_VALUES, ?WEBSOCKETS_TYPES);
@@ -151,10 +151,10 @@ publish_module_resp(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MODULE_RESP_VALUES, fun module_resp/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_get_req(kz_term:api_terms()) -> 'ok'.
 publish_get_req(JObj) ->
@@ -165,10 +165,10 @@ publish_get_req(Api, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?WEBSOCKETS_GET_REQ_VALUES, fun get_req/1),
     amqp_util:sysconf_publish(?KEY_WEBSOCKETS_GET_REQ, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_get_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_get_resp(RespQ, JObj) ->

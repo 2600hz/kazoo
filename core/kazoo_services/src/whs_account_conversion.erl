@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(whs_account_conversion).
 
 -export([promote/1
@@ -17,11 +17,11 @@
 
 -include("services.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Set the reseller status on the provided account and update all
 %% sub accounts
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 promote(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -46,11 +46,11 @@ do_promote(AccountId) ->
     io:format("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
     cascade_reseller_id(AccountId, AccountId).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Remove reseller status from an account and set all its sub accounts
 %% to the next higher reseller
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 demote(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -76,11 +76,11 @@ do_demote(AccountId) ->
     io:format("demoting reseller status for account ~s, and now belongs to reseller ~s~n", [AccountId, ResellerId]),
     cascade_reseller_id(ResellerId, AccountId).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Set the reseller_id to the provided value on all the sub-accounts
 %% of the provided account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cascade_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.
 cascade_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -100,10 +100,10 @@ cascade_reseller_id(Reseller, Account) ->
             'ok'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Set teh reseller_id to the provided value on the provided account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.
 set_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -112,11 +112,11 @@ set_reseller_id(Reseller, Account) ->
     _ = kz_util:account_update(AccountId, fun(JObj) -> kzd_accounts:set_reseller_id(JObj, ResellerId) end),
     maybe_update_services(AccountId, ?SERVICES_PVT_RESELLER_ID, ResellerId).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update_services(kz_term:ne_binary(), kz_term:ne_binary(), any()) -> {'error', _} | 'ok'.
 maybe_update_services(AccountId, Key, Value) ->
     case kz_services:fetch_services_doc(AccountId, true) of

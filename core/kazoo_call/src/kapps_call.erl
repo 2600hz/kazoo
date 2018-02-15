@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018 2600Hz Inc
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapps_call).
 
 -export([new/0, put_callid/1]).
@@ -394,12 +394,12 @@ from_channel_create(JObj) ->
 from_channel_create(JObj, Call) ->
     from_json(JObj, Call).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc READ THIS CAVEAT!!
 %% custom publisher and helper functions are not maintained when
 %% converting to/from json
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec from_json(kz_json:object()) -> call().
 from_json(JObj) ->
@@ -460,12 +460,12 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    ,is_recording = kz_json:is_true(<<"Is-Recording">>, JObj, is_recording(Call))
                    }.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc READ THIS CAVEAT!!
 %% custom publisher and helper functions are not maintained when
 %% converting to/from json
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec to_json(call()) -> kz_json:object().
 to_json(#kapps_call{}=Call) ->
     Props = to_proplist(Call),

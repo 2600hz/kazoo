@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Account, user, device level privacy.
 %%% "data":{
@@ -22,7 +22,7 @@
 %%% @author Karl Anderson
 %%% @author Sponsored by Raffel Internet B.V. Implemented by Voyager Internet Ltd.
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_resources).
 -behaviour(gen_cf_action).
 
@@ -34,10 +34,10 @@
 -define(DEFAULT_EVENT_WAIT, 10000).
 -define(RES_CONFIG_CAT, <<?CF_CONFIG_CAT/binary, ".resources">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     'ok' = kapi_offnet_resource:publish_req(build_offnet_request(Data, Call)),
@@ -67,11 +67,11 @@ handle_bridge_failure(Cause, Code, Call) ->
             cf_exe:stop(Call, Cause)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_offnet_request(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
 build_offnet_request(Data, Call) ->
     {ECIDNum, ECIDName} = kz_attributes:caller_id(<<"emergency">>, Call),
@@ -309,11 +309,11 @@ get_flow_dynamic_flags(Data, Call, Flags) ->
 get_inception(Call) ->
     kz_json:get_value(<<"Inception">>, kapps_call:custom_channel_vars(Call)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Consume Erlang messages and return on offnet response
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wait_for_stepswitch(kapps_call:call()) -> {kz_term:ne_binary(), kz_term:api_binary()}.
 wait_for_stepswitch(Call) ->
     case kapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of

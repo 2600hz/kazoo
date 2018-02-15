@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
@@ -40,7 +40,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_call_control).
 -behaviour(gen_listener).
 
@@ -102,14 +102,14 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
                         kz_types:startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
@@ -184,15 +184,15 @@ fs_nodeup(Srv, Node) ->
 fs_nodedown(Srv, Node) ->
     gen_server:cast(Srv, {'fs_nodedown', Node}).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_listener callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Initializes the server
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([atom() | kz_term:ne_binary() | kz_json:object()]) -> {'ok', state()}.
 init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     kz_util:put_callid(CallId),
@@ -212,11 +212,11 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
                  ,initial_ccvs=CCVs
                  }}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling call messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
@@ -227,11 +227,11 @@ handle_call('other_legs', _From, #state{other_legs=Legs}=State) ->
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('init', State) ->
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
@@ -287,11 +287,11 @@ handle_cast({'fs_nodeup', Node}, #state{node=Node
 handle_cast(_, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling all non call/cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'event', [CallId | Props]}, #state{call_id=CallId}=State) ->
     handle_event_info(CallId, Props, State);
@@ -341,11 +341,11 @@ handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Allows listener to pass options to handlers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{fetch_id=FetchId}) ->
     _ = case kz_util:get_event_type(JObj) of
@@ -375,7 +375,7 @@ handle_call_events(JObj, FetchId) ->
         _Else -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
@@ -383,7 +383,7 @@ handle_call_events(JObj, FetchId) ->
 %% with Reason. The return value is ignored.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{start_time=StartTime
                          ,sanity_check_tref=SCTRef
@@ -394,23 +394,23 @@ terminate(_Reason, #state{start_time=StartTime
     lager:debug("control queue was up for ~p microseconds", [timer:now_diff(os:timestamp(), StartTime)]),
     'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert process state when code is changed
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
 call_control_ready(#state{call_id=CallId
                          ,controller_q=ControllerQ
@@ -436,11 +436,11 @@ call_control_ready(#state{call_id=CallId
     lager:debug("sending control usurp for ~s", [FetchId]),
     kapi_call:publish_usurp_control(CallId, Usurp).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec handle_channel_destroyed(kz_json:object(), state()) -> state().
 handle_channel_destroyed(JObj, State) ->
@@ -534,11 +534,11 @@ force_queue_advance(#state{call_id=CallId
                        }
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_execute_complete(kz_term:api_binary(), kz_json:object(), state()) -> state().
 handle_execute_complete('undefined', _, State) -> State;
 handle_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
@@ -647,11 +647,11 @@ forward_queue(#state{call_id = CallId
                        }
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_sofia_replaced(kz_term:ne_binary(), state()) -> state().
 handle_sofia_replaced(<<_/binary>> = CallId, #state{call_id=CallId}=State) ->
     lager:debug("call id hasn't changed, no replacement necessary"),
@@ -680,11 +680,11 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
                ,command_q=queue:from_list(Commands)
                }.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_channel_create(kz_term:proplist(), state()) -> state().
 handle_channel_create(Props, #state{call_id=CallId}=State) ->
     LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
@@ -769,11 +769,11 @@ replace_call_id([{Key, Call1}|T], Call1, Call2, Swap) ->
 replace_call_id([Prop|T], Call1, Call2, Swap) ->
     replace_call_id(T, Call1, Call2, [Prop|Swap]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_channel_destroy(kz_term:proplist(), state()) -> state().
 handle_channel_destroy(Props, #state{call_id=CallId}=State) ->
     LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
@@ -810,11 +810,11 @@ publish_leg_removal(Props) ->
                                              ,ecallmgr_call_events:swap_call_legs(Props)),
     ecallmgr_call_events:publish_event(Event).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_dialplan(kz_json:object(), state()) -> state().
 handle_dialplan(JObj, #state{call_id=CallId
                             ,is_node_up=INU
@@ -977,11 +977,11 @@ queue_insert_fun('head') ->
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
 -spec maybe_filter_queue(kz_json:api_objects(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
@@ -1041,11 +1041,11 @@ get_module(Category, Name) ->
             kz_term:to_atom(ModuleName, 'true')
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec execute_control_request(kz_json:object(), state()) -> 'ok'.
 execute_control_request(Cmd, #state{node=Node
                                    ,call_id=CallId
@@ -1163,11 +1163,11 @@ error_ccvs('undefined') -> 'undefined';
 error_ccvs(Channel) ->
     kz_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_keep_alive_ref(state()) -> kz_term:api_reference().
 get_keep_alive_ref(#state{is_call_up='true'}) -> 'undefined';
 get_keep_alive_ref(#state{keep_alive_ref='undefined'
@@ -1187,11 +1187,11 @@ get_keep_alive_ref(#state{keep_alive_ref=TRef
     lager:debug("reset post hangup keep alive timer"),
     erlang:send_after(?KEEP_ALIVE, self(), 'keep_alive_expired').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_to_events(atom(), kz_term:ne_binary()) -> 'true'.
 bind_to_events(Node, CallId) ->
     lager:debug("binding to call ~s events on node ~s", [CallId, Node]),
@@ -1199,11 +1199,11 @@ bind_to_events(Node, CallId) ->
     'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)}),
     'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec unbind_from_events(atom(), kz_term:ne_binary()) -> 'true'.
 unbind_from_events(Node, CallId) ->
     lager:debug("unbinding from call ~s events on node ~s", [CallId, Node]),

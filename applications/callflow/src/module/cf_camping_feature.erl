@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc Sends request to start the call to recipient when he's available.
 %%% ```
@@ -24,7 +24,7 @@
 %%%
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_camping_feature).
 
 -behaviour(gen_cf_action).
@@ -127,11 +127,11 @@ send_request(#state{channels = Channels} = S, Call) ->
 do(Monad, Actions) ->
     lists:foldl(fun(Action, Acc) -> '>>='(Acc, Action) end, Monad, Actions).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module, creates the parameters and branches
 %% to cf_group_pickup.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Ok = do(just([Data, Call]),[fun init/1

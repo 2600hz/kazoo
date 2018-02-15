@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(braintree_transaction).
 
 -export([url/0, url/1, url/2]).
@@ -27,10 +27,10 @@
 -include("bt.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Create the partial url for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec url() -> string().
 url() ->
@@ -48,20 +48,20 @@ url(TransactionId, Options) ->
                  ,kz_term:to_list(Options)
                  ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Find a transaction by id
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find(kz_term:ne_binary()) -> bt_transaction().
 find(TransactionId) ->
     Url = url(TransactionId),
     Xml = braintree_request:get(Url),
     xml_to_record(Xml).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Find transactions by customer id
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_by_customer(kz_term:ne_binary()) -> bt_transactions().
 find_by_customer(CustomerId) ->
     Url = url(<<"advanced_search">>),
@@ -93,10 +93,10 @@ find_by_customer(CustomerId, Min, Max) ->
 
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Creates a new transaction using the given record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec create(bt_transaction()) -> bt_transaction().
 create(#bt_transaction{amount=Amount}=Transaction) ->
@@ -114,10 +114,10 @@ create(#bt_transaction{amount=Amount}=Transaction) ->
 create(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{customer_id=CustomerId}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Create a sale transaction
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec sale(bt_transaction()) -> bt_transaction().
 sale(Transaction) ->
@@ -145,10 +145,10 @@ quick_sale(CustomerId, Amount, Props) ->
             sale(CustomerId, Transaction#bt_transaction{amount=kz_term:to_binary(Amount)})
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Create a credit transaction
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec credit(bt_transaction()) -> bt_transaction().
 credit(Transaction) ->
@@ -167,10 +167,10 @@ quick_credit(CustomerId, Amount) ->
                                       ,tax_exempt='false'
                                       }).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Void transactions that have a status:authorized or submitted_for_settlement
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec void(bt_transaction() | kz_term:ne_binary()) -> bt_transaction().
 void(#bt_transaction{id=TransactionId}) ->
     void(TransactionId);
@@ -179,10 +179,10 @@ void(TransactionId) ->
     Xml = braintree_request:put(Url, <<>>),
     xml_to_record(Xml).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Refund a transaction with status: settled or settling
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec refund(bt_transaction() | kz_term:ne_binary()) -> bt_transaction().
 refund(TransactionId) ->
@@ -197,10 +197,10 @@ refund(TransactionId, Amount) ->
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Contert the given XML to a transaction record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml()) -> bt_transaction().
 xml_to_record(Xml) ->
@@ -284,10 +284,10 @@ get_transaction_sources([Element|Elements], Sources) ->
     Source = kz_xml:get_value("transaction-source/text()", Element),
     get_transaction_sources(Elements, [Source|Sources]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Contert the given XML to a transaction record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_transaction()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Transaction) ->
@@ -376,10 +376,10 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
         'false' -> Props1
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Convert a given record into a json object
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec record_to_json(bt_transaction()) -> kz_json:object().
 record_to_json(#bt_transaction{}=Transaction) ->
     kz_json:from_list(

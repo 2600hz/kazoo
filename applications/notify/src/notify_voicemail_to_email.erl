@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
@@ -7,7 +7,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_voicemail_to_email).
 
 -export([init/0
@@ -108,11 +108,11 @@ get_owner(AccountDb, _VMBox, OwnerId) ->
         {'error', _} -> {'ok', kz_json:new()}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 create_template_props(Event, Timezone, Account) ->
     CIDName = kz_json:get_value(<<"Caller-ID-Name">>, Event),
@@ -161,11 +161,11 @@ magic_hash(Event) ->
         _:_ -> 'undefined'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
@@ -229,11 +229,11 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
              ],
     [notify_util:send_email(From, T, Email) || {T, Email} <- Emails].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc create a friendly file name
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_file_name(kz_json:object(), kz_term:proplist()) -> kz_term:ne_binary().
 get_file_name(MediaJObj, Props) ->
     %% CallerID_Date_Time.mp3
@@ -280,11 +280,11 @@ attachment_to_extension(_Id, Meta) ->
 mime_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
 mime_to_extension(_) -> <<"wav">>.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec preaty_print_length(integer() | kz_term:api_object()) -> kz_term:ne_binary().
 preaty_print_length('undefined') ->
     <<"00:00">>;

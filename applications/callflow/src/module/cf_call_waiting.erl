@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc "data": {
 %%%   "action": "activate" | "deactivate" | *"toggle",
@@ -10,7 +10,7 @@
 %%%
 %%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_call_waiting).
 
 -behaviour(gen_cf_action).
@@ -34,12 +34,12 @@ actions() ->
     ,{<<"deactivate">>, fun (_Enabled) -> 'false' end}
     ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case maybe_build_call_waiting_record(Data, Call) of

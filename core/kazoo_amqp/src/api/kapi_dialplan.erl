@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Dialplan API commands
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_dialplan).
 
 -compile({'no_auto_import', [error/1]}).
@@ -130,11 +130,11 @@ v(Prop, DPApp) ->
             throw({R, Prop})
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Bridge a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bridge(kz_term:api_terms()) -> api_formatter_return().
 bridge(Prop) when is_list(Prop) ->
     EPs = [begin
@@ -158,11 +158,11 @@ bridge_v(Prop) when is_list(Prop) ->
 bridge_v(JObj) ->
     bridge_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Unbridge a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec unbridge(kz_term:api_terms()) -> api_formatter_return().
 unbridge(Prop) when is_list(Prop) ->
     case unbridge_v(Prop) of
@@ -178,11 +178,11 @@ unbridge_v(Prop) when is_list(Prop) ->
 unbridge_v(JObj) ->
     unbridge_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Endpoints for bridging a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bridge_endpoint(kz_term:api_terms()) ->
                              {'ok', kz_term:proplist()} |
                              {'error', string()}.
@@ -208,11 +208,11 @@ bridge_endpoint_v(Prop) when is_list(Prop) ->
 bridge_endpoint_v(JObj) ->
     bridge_endpoint_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Page a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec page(kz_term:api_terms()) -> api_formatter_return().
 page(Prop) when is_list(Prop) ->
     EPs = [begin
@@ -280,11 +280,11 @@ store_media_content_v(V) ->
     is_binary(V)
         orelse V =:= 'eof'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Create a DTMF (or DTMFs) on the channel - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_dtmf(kz_term:api_terms()) -> api_formatter_return() .
 send_dtmf(Prop) when is_list(Prop) ->
     case send_dtmf_v(Prop) of
@@ -311,11 +311,11 @@ recv_dtmf_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECV_DTMF_HEADERS, ?RECV_DTMF_VALUES, ?RECV_DTMF_TYPES);
 recv_dtmf_v(JObj) -> recv_dtmf_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tones(kz_term:api_terms()) -> api_formatter_return() .
 tones(Prop) when is_list(Prop) ->
     Tones = [begin
@@ -346,11 +346,11 @@ tone_timeout_v(Timeout) ->
         _:_ -> 'false'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc A Tone within a Tones request - see wiki
 %% Takes proplist and returns a proplist
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tones_req_tone(kz_term:api_terms()) -> api_formatter_return().
 tones_req_tone(Prop) when is_list(Prop) ->
     case tones_req_tone_v(Prop) of
@@ -371,11 +371,11 @@ tones_req_tone_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
 tones_req_tone_headers(JObj) -> tones_req_tone_headers(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Detect tones on the line
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tone_detect(kz_term:api_terms()) -> api_formatter_return().
 tone_detect(Prop) when is_list(Prop) ->
     case tone_detect_v(Prop) of
@@ -389,11 +389,11 @@ tone_detect_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TONE_DETECT_REQ_HEADERS, ?TONE_DETECT_REQ_VALUES, ?TONE_DETECT_REQ_TYPES);
 tone_detect_v(JObj) -> tone_detect_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Send a list of dialplan applications in bulk - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec queue(kz_term:api_terms()) -> api_formatter_return().
 queue(Prop) when is_list(Prop) ->
     case queue_v(Prop) of
@@ -407,11 +407,11 @@ queue_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES);
 queue_v(JObj) -> queue_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Play media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec play(kz_term:api_terms()) -> api_formatter_return().
 play(Prop) when is_list(Prop) ->
     case play_v(Prop) of
@@ -425,11 +425,11 @@ play_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES);
 play_v(JObj) -> play_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Moves to the next step in callflow - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec break(kz_term:api_terms()) -> api_formatter_return().
 break(Prop) when is_list(Prop) ->
     case break_v(Prop) of
@@ -444,11 +444,11 @@ break_v(Prop) when is_list(Prop) ->
 break_v(JObj) -> break_v(kz_json:to_proplist(JObj)).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Stop media from playing - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec playstop(kz_term:api_terms()) -> api_formatter_return().
 playstop(Prop) when is_list(Prop) ->
     case playstop_v(Prop) of
@@ -462,11 +462,11 @@ playstop_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
 playstop_v(JObj) -> playstop_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc TTS - Text-to-speech - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tts(kz_term:api_terms()) -> api_formatter_return().
 tts(Prop) when is_list(Prop) ->
     case tts_v(Prop) of
@@ -480,11 +480,11 @@ tts_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TTS_REQ_HEADERS, ?TTS_REQ_VALUES, ?TTS_REQ_TYPES);
 tts_v(JObj) -> tts_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Record media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec record(kz_term:api_terms()) -> api_formatter_return().
 record(Prop) when is_list(Prop) ->
     case record_v(Prop) of
@@ -498,11 +498,11 @@ record_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES);
 record_v(JObj) -> record_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Record call media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec record_call(kz_term:api_terms()) -> api_formatter_return().
 record_call(Prop) when is_list(Prop) ->
     case record_call_v(Prop) of
@@ -516,11 +516,11 @@ record_call_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECORD_CALL_REQ_HEADERS, ?RECORD_CALL_REQ_VALUES, ?RECORD_CALL_REQ_TYPES);
 record_call_v(JObj) -> record_call_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Answer a session - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec answer(kz_term:api_terms()) -> api_formatter_return().
 answer(Prop) when is_list(Prop) ->
     case answer_v(Prop) of
@@ -534,11 +534,11 @@ answer_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES);
 answer_v(JObj) -> answer_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Echo a session - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec echo(kz_term:api_terms()) -> api_formatter_return().
 echo(Prop) when is_list(Prop) ->
     case echo_v(Prop) of
@@ -552,10 +552,10 @@ echo_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ECHO_REQ_HEADERS, ?ECHO_REQ_VALUES, ?ECHO_REQ_TYPES);
 echo_v(JObj) -> echo_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Privacy
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec privacy(kz_term:api_terms()) -> api_formatter_return().
 privacy(Prop) when is_list(Prop) ->
     case privacy_v(Prop) of
@@ -569,11 +569,11 @@ privacy_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PRIVACY_REQ_HEADERS, ?PRIVACY_REQ_VALUES, ?PRIVACY_REQ_TYPES);
 privacy_v(JObj) -> privacy_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Progress a session - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec progress(kz_term:api_terms()) -> api_formatter_return().
 progress(Prop) when is_list(Prop) ->
     case progress_v(Prop) of
@@ -587,11 +587,11 @@ progress_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PROGRESS_REQ_HEADERS, ?PROGRESS_REQ_VALUES, ?PROGRESS_REQ_TYPES);
 progress_v(JObj) -> progress_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Ring a session - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec ring(kz_term:api_terms()) -> api_formatter_return().
 ring(Prop) when is_list(Prop) ->
     case ring_v(Prop) of
@@ -605,11 +605,11 @@ ring_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RING_REQ_HEADERS, ?RING_REQ_VALUES, ?RING_REQ_TYPES);
 ring_v(JObj) -> ring_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Receive a fax, storing it to local disk - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec receive_fax(kz_term:api_terms()) -> api_formatter_return().
 receive_fax(Prop) when is_list(Prop) ->
     case receive_fax_v(Prop) of
@@ -623,11 +623,11 @@ receive_fax_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RECV_FAX_HEADERS, ?RECV_FAX_VALUES, ?RECV_FAX_TYPES);
 receive_fax_v(JObj) -> receive_fax_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Store a fax, storing it to the DB - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec store_fax(kz_term:api_terms()) -> api_formatter_return().
 store_fax(Prop) when is_list(Prop) ->
     case store_fax_v(Prop) of
@@ -643,11 +643,11 @@ store_fax_v(Prop) when is_list(Prop) ->
 store_fax_v(JObj) ->
     store_fax_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Hangup a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec hangup(kz_term:api_terms()) -> api_formatter_return().
 hangup(Prop) when is_list(Prop) ->
     case hangup_v(Prop) of
@@ -678,11 +678,11 @@ soft_hold_v(Prop) when is_list(Prop) ->
 soft_hold_v(JObj) ->
     soft_hold_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Hold a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec hold(kz_term:api_terms()) -> api_formatter_return().
 hold(Prop) when is_list(Prop) ->
     case hold_v(Prop) of
@@ -713,11 +713,11 @@ hold_control_v(Prop) when is_list(Prop) ->
 hold_control_v(JObj) ->
     hold_control_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Park a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec park(kz_term:api_terms()) -> api_formatter_return().
 park(Prop) when is_list(Prop) ->
     case park_v(Prop) of
@@ -751,7 +751,7 @@ audio_level_v(JObj) ->
 %% @doc Set Custom Channel variables - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set(kz_term:api_terms()) -> api_formatter_return().
 set(Prop) when is_list(Prop) ->
     case set_v(Prop) of
@@ -767,11 +767,11 @@ set_v(Prop) when is_list(Prop) ->
 set_v(JObj) ->
     set_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Set Terminators for playback/record
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_terminators(kz_term:api_terms()) -> api_formatter_return().
 set_terminators(Prop) when is_list(Prop) ->
     case set_terminators_v(Prop) of
@@ -787,11 +787,11 @@ set_terminators_v(Prop) when is_list(Prop) ->
 set_terminators_v(JObj) ->
     set_terminators_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Fetch Custom Channel variables - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch(kz_term:api_terms()) -> api_formatter_return().
 fetch(Prop) when is_list(Prop) ->
     case fetch_v(Prop) of
@@ -807,11 +807,11 @@ fetch_v(Prop) when is_list(Prop) ->
 fetch_v(JObj) ->
     fetch_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Play media and record digits - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec play_and_collect_digits(kz_term:api_terms()) -> api_formatter_return().
 play_and_collect_digits(Prop) when is_list(Prop) ->
     case play_and_collect_digits_v(Prop) of
@@ -827,11 +827,11 @@ play_and_collect_digits_v(Prop) when is_list(Prop) ->
 play_and_collect_digits_v(JObj) ->
     play_and_collect_digits_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Pickup a call - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_pickup(kz_term:api_terms()) -> api_formatter_return().
 call_pickup(Prop) when is_list(Prop) ->
     case call_pickup_v(Prop) of
@@ -847,11 +847,11 @@ call_pickup_v(Prop) when is_list(Prop) ->
 call_pickup_v(JObj) ->
     call_pickup_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Connect a leg to the current leg - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec connect_leg(kz_term:api_terms()) -> api_formatter_return().
 connect_leg(Prop) when is_list(Prop) ->
     case connect_leg_v(Prop) of
@@ -867,11 +867,11 @@ connect_leg_v(Prop) when is_list(Prop) ->
 connect_leg_v(JObj) ->
     connect_leg_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Eavesdrop - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec eavesdrop(kz_term:api_terms()) -> api_formatter_return().
 eavesdrop(Prop) when is_list(Prop) ->
     case eavesdrop_v(Prop) of
@@ -887,11 +887,11 @@ eavesdrop_v(Prop) when is_list(Prop) ->
 eavesdrop_v(JObj) ->
     eavesdrop_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Say - convert text to speech - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec say(kz_term:api_terms()) -> api_formatter_return().
 say(Prop) when is_list(Prop) ->
     case say_v(Prop) of
@@ -907,11 +907,11 @@ say_v(Prop) when is_list(Prop) ->
 say_v(JObj) ->
     say_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Respond a session - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec respond(kz_term:api_terms()) -> api_formatter_return().
 respond(Prop) when is_list(Prop) ->
     case respond_v(Prop) of
@@ -927,11 +927,11 @@ respond_v(Prop) when is_list(Prop) ->
 respond_v(JObj) ->
     respond_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Redirect a session - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec redirect(kz_term:api_terms()) -> api_formatter_return().
 redirect(Prop) when is_list(Prop) ->
     case redirect_v(Prop) of
@@ -947,11 +947,11 @@ redirect_v(Prop) when is_list(Prop) ->
 redirect_v(JObj) ->
     redirect_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Execute_Extension a session - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec execute_extension(kz_term:api_terms()) -> api_formatter_return().
 execute_extension(Prop) when is_list(Prop) ->
     case execute_extension_v(Prop) of
@@ -967,11 +967,11 @@ execute_extension_v(Prop) when is_list(Prop) ->
 execute_extension_v(JObj) ->
     execute_extension_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Sleep - Pauses execution - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sleep(kz_term:api_terms()) -> api_formatter_return().
 sleep(Prop) when is_list(Prop) ->
     case sleep_v(Prop) of
@@ -987,11 +987,11 @@ sleep_v(Prop) when is_list(Prop) ->
 sleep_v(JObj) ->
     sleep_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Format a Dialplan:noop API call
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec noop(kz_term:api_terms()) -> api_formatter_return().
 noop(Prop) when is_list(Prop) ->
     case noop_v(Prop) of
@@ -1007,11 +1007,11 @@ noop_v(Prop) when is_list(Prop) ->
 noop_v(JObj) ->
     noop_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Conference - Sends caller to a conference - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec conference(kz_term:api_terms()) -> api_formatter_return().
 conference(Prop) when is_list(Prop) ->
     case conference_v(Prop) of
@@ -1025,12 +1025,12 @@ conference_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES);
 conference_v(JObj) -> conference_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Originate Ready/Execute
 %% Send Requestor a message that the originate is ready to execute and
 %% wait for the Requestor to respond to execute the origination
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec originate_ready(kz_term:api_terms()) -> api_formatter_return().
 originate_ready(Prop) when is_list(Prop) ->
     case originate_ready_v(Prop) of
@@ -1061,11 +1061,11 @@ originate_execute_v(Prop) when is_list(Prop) ->
 originate_execute_v(JObj) ->
     originate_execute_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Error - Sends error to Queue - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec error(kz_term:api_terms()) -> api_formatter_return().
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
@@ -1174,10 +1174,10 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_callctl(Queue).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:callctl_exchange().
@@ -1202,11 +1202,11 @@ offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
 offsite_store_url(Url, MediaName) ->
     iolist_to_binary([kz_binary:strip_right(Url, $/), "/", MediaName]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Detect fax on the line
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fax_detection(kz_term:api_terms()) -> api_formatter_return().
 fax_detection(Prop) when is_list(Prop) ->
     case fax_detection_v(Prop) of

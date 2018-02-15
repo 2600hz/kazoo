@@ -890,10 +890,10 @@ low_balance_threshold(Doc, Default) ->
 set_low_balance_threshold(Doc, Threshold) ->
     set_notifications_low_balance_threshold(Doc, Threshold).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec low_balance_sent(doc()) -> boolean().
 low_balance_sent(Doc) ->
     LowBalance = notifications_low_balance(Doc, kz_json:new()),
@@ -907,10 +907,10 @@ set_low_balance_sent(Doc) ->
 reset_low_balance_sent(Doc) ->
     set_notifications_low_balance_sent_low_balance(Doc, 'false').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec low_balance_enabled(doc()) -> boolean().
 low_balance_enabled(Doc) ->
     LowBalance = notifications_low_balance(Doc, kz_json:new()),
@@ -929,10 +929,10 @@ low_balance_enabled_exists(Doc) ->
     LowBalance = notifications_low_balance(Doc, kz_json:new()),
     'undefined' =/= kz_json:get_value(<<"enabled">>, LowBalance).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec low_balance_tstamp(doc()) -> kz_term:api_number().
 low_balance_tstamp(Doc) ->
     LowBalance = notifications_low_balance(Doc, kz_json:new()),

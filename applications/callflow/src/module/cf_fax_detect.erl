@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Detects if a call is fax
 %%% user(s).
@@ -7,7 +7,7 @@
 %%% @author Ben Wann
 %%% @author Luis Azedo
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_fax_detect).
 
 -behaviour(gen_cf_action).
@@ -19,10 +19,10 @@
 -define(DEFAULT_FAX_DETECT_DURATION, 5).
 -define(FAX_DETECT_DURATION, kapps_config:get_integer(?CF_CONFIG_CAT, <<"fax_detect_duration_s">>, ?DEFAULT_FAX_DETECT_DURATION)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     lager:info("detecting fax"),

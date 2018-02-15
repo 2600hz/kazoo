@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc Manages queue processes:
 %%%   starting when a queue is created
@@ -9,7 +9,7 @@
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @author Daniel Finke
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(acdc_queue_manager).
 -behaviour(gen_listener).
 
@@ -110,14 +110,14 @@
                                               ]).
 -define(SECONDARY_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Super, QueueJObj) ->
     AccountId = kz_doc:account_id(QueueJObj),
@@ -280,15 +280,15 @@ agents_available(Srv) -> gen_listener:call(Srv, 'agents_available').
                          {kz_json:objects(), kz_json:objects()}.
 pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Srv)).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([pid() | kz_json:object() | kz_term:ne_binary()]) -> {'ok', mgr_state()}.
 init([Super, QueueJObj]) ->
     AccountId = kz_doc:account_id(QueueJObj),
@@ -328,11 +328,11 @@ init(Super, AccountId, QueueId, QueueJObj) ->
                                               ,strategy_state=StrategyState
                                               })}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling call messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), mgr_state()) -> kz_types:handle_call_ret_state(mgr_state()).
 handle_call({'should_ignore_member_call', {AccountId, QueueId, CallId}=K}, _, #state{ignored_member_calls=Dict
                                                                                     ,account_id=AccountId
@@ -398,11 +398,11 @@ handle_call({'queue_position', CallId}, _, #state{current_member_calls=CurrentCa
 handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), mgr_state()) -> kz_types:handle_cast_ret_state(mgr_state()).
 handle_cast({'update_strategy', StrategyState}, State) ->
     {'noreply', State#state{strategy_state=StrategyState}, 'hibernate'};
@@ -594,11 +594,11 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling all non call/cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), mgr_state()) -> kz_types:handle_info_ret_state(mgr_state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -612,7 +612,7 @@ handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty
               ,{'moh', MOH}
               ]}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
@@ -620,28 +620,28 @@ handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty
 %% with Reason. The return value is ignored.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), mgr_state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("queue manager terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert process state when code is changed
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), mgr_state(), any()) -> {'ok', mgr_state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 start_secondary_queue(AccountId, QueueId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),

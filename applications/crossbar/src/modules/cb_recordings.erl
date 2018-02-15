@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Provides access to stored call recordings.
 %%% Original <a href="https://github.com/2600hz/kazoo/pull/1218">pull request</a>
@@ -7,7 +7,7 @@
 %%% @author Dinkor (Andrew Korniliv [github.com/dinkor])
 %%% @author Lazedo (Luis Azedo [github.com/2600hz])
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_recordings).
 
 -export([init/0
@@ -27,14 +27,14 @@
                           ,{<<"audio">>, <<"mp3">>}
                           ]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     Bindings = [{<<"*.allowed_methods.recordings">>, 'allowed_methods'}
@@ -45,11 +45,11 @@ init() ->
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_GET].
@@ -57,10 +57,10 @@ allowed_methods() -> [?HTTP_GET].
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_RecordingId) -> [?HTTP_GET, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Does the path point to a valid resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -68,12 +68,12 @@ resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_RecordingId) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc What content-types will the module be using to respond (matched against
 %% client's Accept header).
 %% Of the form `{atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(Context, _RecordingId) ->
     content_types_provided_for_download(Context, cb_context:req_verb(Context)).
@@ -87,12 +87,12 @@ content_types_provided_for_download(Context, ?HTTP_GET) ->
 content_types_provided_for_download(Context, _Verb) ->
     Context.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     recording_summary(Context).
@@ -111,10 +111,10 @@ validate_recording(Context, RecordingId, ?HTTP_GET) ->
 validate_recording(Context, RecordingId, ?HTTP_DELETE) ->
     load_recording_doc(Context, RecordingId).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _RecordingId) ->
     crossbar_doc:delete(Context).
@@ -177,10 +177,10 @@ do_load_recording_binary_attachment(Context, DocId) ->
             set_resp_headers(LoadedContext, AName)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_resp_headers(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 set_resp_headers(Context, AName) ->
     Headers = #{<<"content-disposition">> => get_disposition(AName, Context)},

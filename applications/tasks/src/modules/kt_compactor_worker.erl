@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc Runs the compaction job which consists of:
 %%%   1. The node to run it on (and API/Admin connections directly to the node
@@ -10,7 +10,7 @@
 %%% The list of shards on the node and the design documents in the db will be generated
 %%% and compaction will begin on those shards.
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kt_compactor_worker).
 
 -export([run_compactor/1]).

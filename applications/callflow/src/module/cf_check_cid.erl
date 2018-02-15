@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handles inspection of incoming caller id and branching to a child
 %%% callflow node accordingly.
@@ -31,7 +31,7 @@
 %%%
 %%% @author Brian Davis
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_check_cid).
 
 -behaviour(gen_cf_action).
@@ -40,10 +40,10 @@
 
 -include("callflow.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerIdNumber = kapps_call:caller_id_number(Call),
@@ -56,11 +56,11 @@ handle(Data, Call) ->
         'nomatch' -> handle_no_match(Call)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handle a caller id "match" condition
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_match(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 handle_match(Data, Call, CallerIdNumber) ->
     case kz_json:is_true(<<"use_absolute_mode">>, Data, 'false') of
@@ -82,11 +82,11 @@ maybe_branch_on_regex(Data, Call) ->
         'false' -> cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handle a caller id "no match" condition
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_no_match(kapps_call:call()) -> 'ok'.
 handle_no_match(Call) ->
     case is_callflow_child(<<"nomatch">>, Call) of
@@ -94,11 +94,11 @@ handle_no_match(Call) ->
         'false' -> cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Check if the given node name is a callflow child
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_callflow_child(kz_term:ne_binary(), kapps_call:call()) -> boolean().
 is_callflow_child(Name, Call) ->
     lager:debug("Looking for callflow child ~s", [Name]),
@@ -111,11 +111,11 @@ is_callflow_child(Name, Call) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc update the caller id and owner information for this call
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_caller_identity(kz_json:object(), kapps_call:call()) -> 'ok'.
 update_caller_identity(Data, Call) ->
     Name = kz_json:get_ne_binary_value([<<"caller_id">>, <<"external">>, <<"name">>], Data),
@@ -134,11 +134,11 @@ update_caller_identity(Data, Call) ->
         'false' -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc validate that all required parameters are defined
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_valid_caller_identity(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
 is_valid_caller_identity('undefined', _Number, _UserId) -> 'false';
 is_valid_caller_identity(_Name, 'undefined', _UserId) -> 'false';

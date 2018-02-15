@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Daniel Finke
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_auth).
 
 -export([init/0
@@ -39,14 +39,14 @@
 
 -define(PUBLIC_KEY_MIME, [{<<"application">>, <<"x-pem-file">>}]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate.auth">>, ?MODULE, 'authenticate'),
@@ -61,13 +61,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.auth">>, ?MODULE, 'delete'),
     ok.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
 
@@ -86,11 +86,11 @@ allowed_methods(?KEYS_PATH, _KeyId) -> [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(?LINKS_PATH, _LinkId) -> [?HTTP_GET , ?HTTP_PUT , ?HTTP_DELETE];
 allowed_methods(?PROVIDERS_PATH, _ProviderId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> boolean().
 resource_exists() -> 'true'.
 
@@ -109,11 +109,11 @@ resource_exists(?KEYS_PATH, _KeyId) -> 'true';
 resource_exists(?LINKS_PATH, _LinkId) -> 'true';
 resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) -> Context.
 
@@ -127,10 +127,10 @@ content_types_provided(Context, ?KEYS_PATH, _KeyId) ->
                                                    ]);
 content_types_provided(Context, _, _) ->
     Context.
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_nouns(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
@@ -187,10 +187,10 @@ authorize_action(C, <<"reset_signature_secret">>) -> cb_context:is_superduper_ad
 authorize_action(_, <<"refresh_token">>) -> 'true';
 authorize_action(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(_) -> 'false'.
 
@@ -214,13 +214,13 @@ validate_resource(Context, _Path) -> cb_context:set_account_db(Context, ?KZ_AUTH
 -spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
 validate_resource(Context, _Path, _Id) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_action(Context, cb_context:req_value(Context, <<"action">>), cb_context:req_verb(Context)).
@@ -419,14 +419,14 @@ delete(Context, ?PROVIDERS_PATH, _Id) ->
     crossbar_doc:delete(Context).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_authenticate(cb_context:context()) -> cb_context:context().
 maybe_authenticate(Context) ->
     case kz_auth:authenticate(cb_context:doc(Context)) of

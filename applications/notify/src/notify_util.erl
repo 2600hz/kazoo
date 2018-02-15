@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_util).
 
 -export([send_email/3
@@ -27,11 +27,11 @@
 -include("notify.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_email(kz_term:ne_binary(), kz_term:api_binary(), any()) -> 'ok' | {'error', any()}.
 send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
@@ -103,21 +103,21 @@ maybe_send_update([LastResp|_]=Responses, RespQ, MsgId) ->
     end.
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec json_to_template_props(kz_term:api_object() | kz_json:objects()) -> 'undefined' | kz_term:proplist().
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(kz_json:recursive_to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_proplist(kz_term:proplist()) -> kz_term:proplist().
 normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
@@ -134,10 +134,10 @@ normalize_proplist_element(Else) ->
 normalize_value(Value) ->
     binary:replace(kz_term:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec compile_default_text_template(atom(), kz_term:ne_binary()) -> {'ok', atom()}.
 compile_default_text_template(TemplateModule, Category) ->
@@ -176,10 +176,10 @@ get_default_template(Category, Key) ->
             'undefined'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec render_template(kz_term:api_binary(), atom(), kz_term:proplist()) ->
                              {'ok', string()} |
                              {'error', any()}.
@@ -217,11 +217,11 @@ do_render_template(Template, DefaultTemplate, Props) ->
             do_render_template('undefined', DefaultTemplate, Props)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc determine the service name, provider, and url. Hunts (in order)
 %% in the event, parent account notification object, and then default.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get_service_props(kz_json:object(), kz_term:ne_binary()) -> kz_term:proplist().
 get_service_props(Account, ConfigCat) ->
@@ -286,11 +286,11 @@ maybe_find_deprecated_settings(<<"fax_inbound_error_to_email">>, JObj) ->
     kz_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, kz_json:new());
 maybe_find_deprecated_settings(_, _) -> kz_json:new().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Try to find the email address of a sub_account_rep for a given
 %% account object
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_rep_email(kz_json:object()) -> kz_term:api_binary().
 get_rep_email(JObj) ->
     case kapps_config:get_is_true(?NOTIFY_CONFIG_CAT, <<"search_rep_email">>, 'true') of
@@ -312,11 +312,11 @@ find_rep_email(JObj) ->
         end,
     kzd_user:email(Admin).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc try to find the first user with admin privileges and an email given
 %% a sub account object or sub account db name.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type account_ids() :: kz_term:ne_binaries().
 -spec find_admin(kz_term:api_binary() | account_ids() | kz_json:object()) -> kz_json:object().
 find_admin('undefined') -> kz_json:new();
@@ -353,10 +353,10 @@ find_admin(Account) ->
                 | lists:reverse(kzd_accounts:tree(Account))
                ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc given a notification event try to open the account definition doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_account_doc(kz_json:object()) ->
                              {'ok', kz_json:object()} |
                              {'error', _} |

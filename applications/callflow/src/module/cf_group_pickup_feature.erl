@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc Pickup a call in the specified group/device/user/extension
 %%% data: {
@@ -37,7 +37,7 @@
 %%%
 %%% @author Luis Azedo  <luis.azedo@factorlusitano.com>
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_group_pickup_feature).
 
 -behaviour(gen_cf_action).
@@ -47,11 +47,11 @@
 -export([handle/2]).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module, creates the parameters and branches
 %% to cf_group_pickup.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),

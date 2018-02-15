@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_service_phone_numbers).
 -behaviour(kz_gen_service).
 
@@ -31,10 +31,10 @@
 -type pn() :: knm_phone_number:knm_phone_number().
 -type pns() :: [pn()].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec reconcile(kz_services:services()) -> kz_services:services().
 reconcile(Services) ->
@@ -62,20 +62,20 @@ reset(Services, []) -> Services;
 reset(Services, [Category | Categories]) ->
     reset(kz_services:reset_category(Category, Services), Categories).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec feature_activation_charge(kz_term:ne_binary(), kz_services:services()) -> integer().
 feature_activation_charge(Feature, Services) ->
     Name = knm_providers:service_name(Feature, kz_services:account_id(Services)),
     Charge = kz_services:activation_charges(?NUMBER_SERVICES, Name, Services),
     wht_util:dollars_to_units(Charge).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec phone_number_activation_charge(kz_services:services(), kz_term:ne_binary()) -> integer().
 phone_number_activation_charge(Services, Number) ->
     case knm_converters:classify(Number) of
@@ -85,14 +85,14 @@ phone_number_activation_charge(Services, Number) ->
             wht_util:dollars_to_units(Charge)
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_categories_fold(kz_term:ne_binary(), kz_term:ne_binary(), kz_services:services(), kz_json:object()) -> kz_json:object().
 update_categories_fold(Path, Category, Services, JObj) ->
     kz_json:foldl(fun (SubCat, Count, S) -> update_quantities_fold(SubCat, Count, S, Category) end

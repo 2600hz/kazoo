@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_notifications).
 
 -export([init/0
@@ -52,14 +52,14 @@
 
 -define(PVT_TYPE_SMTPLOG, <<"notify_smtp_log">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.notifications">>, ?MODULE, 'allowed_methods'),
@@ -72,11 +72,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.notifications">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.notifications">>, ?MODULE, 'delete').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -115,7 +115,7 @@ authorize(_Context, _, [{<<"notifications">>, _}, {<<"accounts">>, [?NE_BINARY=_
 authorize(_Context, _, _Nouns) ->
     'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Does the path point to a valid resource.
 %% For example:
 %%
@@ -125,7 +125,7 @@ authorize(_Context, _, _Nouns) ->
 %%    /notifications/foo/bar => [<<"foo">>, <<"bar">>]
 %% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -139,11 +139,11 @@ resource_exists(_Id, ?PREVIEW) -> 'true';
 resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?CUSTOMER_UPDATE, ?MESSAGE) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec acceptable_content_types() -> kz_term:proplist().
 acceptable_content_types() ->
@@ -220,14 +220,14 @@ content_types_accepted_for_upload(Context, ?HTTP_POST) ->
 content_types_accepted_for_upload(Context, _Verb) ->
     Context.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /notifications mights load a list of skel objects
 %% /notifications/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -339,10 +339,10 @@ sender_account_id(Context, 'undefined') ->
 sender_account_id(_Context, AccountId) ->
     AccountId.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     case cb_context:req_value(Context, <<"action">>) of
@@ -355,11 +355,11 @@ put(Context) ->
         _ -> Context
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     case cb_context:req_files(Context) of
@@ -595,10 +595,10 @@ preview_fold(Header, {Props, ReqData}) ->
             {props:set_value(Header, V, Props), ReqData}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Id) ->
     ContentTypes = media_values(cb_context:req_header(Context, <<"content-type">>)),
@@ -642,21 +642,21 @@ maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
             crossbar_doc:delete_attachment(kz_notification:db_id(Id), AttachmentName, Context)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"notifications">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec accept_values(cb_context:context()) -> media_values().
 accept_values(Context) ->
     AcceptValue = cb_context:req_header(Context, <<"accept">>),
@@ -1059,12 +1059,12 @@ read_account_attachment(Context, AttachmentsDb, DocId, Name) ->
             Context1
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_update(Context, Id) ->
     case cb_context:req_files(Context) of
@@ -1141,12 +1141,12 @@ template_module_name(Id, Context, CT) ->
         ,Type/binary
       >>, 'true').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     case cb_context:account_db(Context) of
@@ -1289,11 +1289,11 @@ normalize_available_port(Value, Acc, Context) ->
             Acc
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec system_config_notification_doc(kz_term:ne_binary()) ->
                                             {'ok', kz_json:object()} |
@@ -1378,11 +1378,11 @@ clean_req_doc(Doc) ->
                         ,<<"templates">>
                         ], Doc).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec leak_doc_id(cb_context:context()) -> cb_context:context().
 leak_doc_id(Context) ->
     RespData = cb_context:resp_data(Context),
@@ -1422,11 +1422,11 @@ maybe_update_db(Context) ->
         _AccountId -> Context
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Remove Template Customization from an account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_account_customizations(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 remove_account_customizations(Context, AccountId) ->
     ToRemove = list_templates_from_db(kz_util:format_account_db(AccountId)),
@@ -1453,13 +1453,13 @@ remove_customization(AccountId, Ids) ->
             kz_json:from_list([{<<"message">>, Msg}])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Forcing System's Templates to an account by first removing
 %% account's customization and then copy the templates from
 %% system_config to account's db.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec force_system_templates(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 force_system_templates(Context, AccountId) ->
     ToRemove = list_templates_from_db(kz_util:format_account_db(AccountId)),

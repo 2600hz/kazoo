@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handle e911 provisioning
 %%% @author Peter Defebvre
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_dash_e911).
 -behaviour(knm_gen_provider).
 
@@ -30,11 +30,11 @@
         andalso file:write_file("/tmp/dash_e911.xml", io_lib:format(Fmt, Args))
        ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec save(knm_number:knm_number()) ->
                   knm_number:knm_number().
@@ -53,11 +53,11 @@ save(Number, ?NUMBER_STATE_PORT_IN) ->
 save(Number, _State) ->
     delete(Number).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) ->
                     knm_number:knm_number().
 delete(Number) ->
@@ -70,20 +70,20 @@ delete(Number) ->
             knm_services:deactivate_feature(Number, ?FEATURE_E911)
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
 %% @private
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
     knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
 maybe_update_e911(N) ->
     PN = knm_number:phone_number(N),
@@ -138,11 +138,11 @@ maybe_update_e911(Number, Address) ->
             update_e911(Number, Address)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
 update_e911(Number, Address) ->
@@ -179,11 +179,11 @@ provision_geocoded(E911) ->
             kz_json:set_value(<<"status">>, Status, E911)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type location_response() :: {'geocoded', kz_json:object() | kz_json:objects()} |
                              {'provisioned', kz_json:object() | kz_json:objects()} |
                              {'invalid', binary()} |
@@ -214,11 +214,11 @@ parse_response(<<"ERROR">>, Response) ->
 parse_response(Else, _) ->
     {'error', kz_term:to_binary(Else)}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_location(kz_term:ne_binary(), [xml_location()], kz_term:ne_binary()) ->
                           {'geocoded', kz_json:object()} |
                           {'provisioned', kz_json:object()} |
@@ -235,11 +235,11 @@ add_location(Number, Location, CallerName) ->
         {'error', Reason} -> {'error', kz_term:to_binary(Reason)}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec provision_location(kz_term:ne_binary()) -> kz_term:api_binary().
 provision_location(LocationId) ->
     Props = [{'locationid', [kz_term:to_list(LocationId)]}],
@@ -249,11 +249,11 @@ provision_location(LocationId) ->
             kz_xml:get_value("//LocationStatus/code/text()", Response)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_number(knm_number:knm_number()) -> kz_term:api_binary().
 remove_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
@@ -277,12 +277,12 @@ remove_number(Number) ->
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Make a REST request to dash e911 emergency provisiong API to preform
 %% the given verb (validatelocation, addlocation, ect).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type emergency_provisioning_error() :: 'authentication' |
                                         'authorization' |
                                         'not_found' |
@@ -353,11 +353,11 @@ emergency_provisioning_request(Verb, Props) ->
             {'error', 'unreachable'}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type xml_location_property() :: {'address1', list()} |
                                  {'address2', list()} |
                                  {'community', list()} |
@@ -377,11 +377,11 @@ json_address_to_xml_location(JObj) ->
             ],
     [{'location', [KV || {_, V}=KV <- Props, V =/= ['undefined']]}].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec location_xml_to_json_address(kz_types:xml_el() | kz_types:xml_els()) -> kz_json:object() | kz_json:objects().
 location_xml_to_json_address([]) ->
     kz_json:new();
@@ -408,11 +408,11 @@ location_xml_to_json_address(Xml) ->
       ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
       ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec legacy_data_xml_to_json(term()) -> kz_json:object().
 legacy_data_xml_to_json([]) ->
     kz_json:new();

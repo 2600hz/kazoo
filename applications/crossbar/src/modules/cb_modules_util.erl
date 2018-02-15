@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Functions shared between crossbar modules
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_modules_util).
 
 -export([pass_hashes/2
@@ -82,12 +82,12 @@ cavs_from_request(ReqData, QueryString) ->
     CAVs = kz_json:get_json_value(<<"custom_application_vars">>, ReqData, kz_json:new()),
     kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec attachment_name(binary(), kz_term:text()) -> kz_term:ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
@@ -248,14 +248,14 @@ apply_assignment_updates(Updates, Context) ->
     AssignResults = maybe_assign_to_app(NumUpdates, AccountId),
     PortAssignResults ++ AssignResults.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Split a list of assignment updates into a 2-element tuple; element
 %% 1 is a list of port requests, element 2 is a list of numbers that
 %% are already active.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec split_port_requests(assignment_to_apply(), {port_req_assignments(), assignments_to_apply()}) ->
                                  {port_req_assignments(), assignments_to_apply()}.
 split_port_requests({DID, Assign}=ToApply, {PRUpdates, NumUpdates}) ->

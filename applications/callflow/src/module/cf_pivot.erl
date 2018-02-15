@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Accept third-party dialplan
 %%% "data":{
@@ -12,7 +12,7 @@
 %%%
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_pivot).
 
 -behaviour(gen_cf_action).
@@ -23,7 +23,7 @@
 
 -define(DEFAULT_EVENT_WAIT, 10000).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
@@ -36,7 +36,7 @@
 %%     formats: twiml, kazoo
 %%   cdr_url: string(), url to POST the CDR
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Prop = props:filter_empty(

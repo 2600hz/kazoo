@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Standard interface for client modules to use to get dialplan commands
 %%% translated into 2600Hz-specific commands
 %%%
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kzt_translator).
 
 -export([exec/2, exec/3

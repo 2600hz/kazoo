@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
@@ -6,7 +6,7 @@
 %%% @author James Aimonetti
 %%% @author Daniel Finke
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(acdc_init).
 
 -export([start_link/0

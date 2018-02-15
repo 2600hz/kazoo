@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc The basic flow of a directory call:
 %%% 1) Prompt: Please enter the first few letters of the person's
@@ -33,7 +33,7 @@
 %%%
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_directory).
 
 -behaviour(gen_cf_action).
@@ -96,12 +96,12 @@
 
 -type dtmf_action() :: 'route' | 'next' | 'start_over' | 'invalid' | 'continue'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {'ok', DirJObj} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)

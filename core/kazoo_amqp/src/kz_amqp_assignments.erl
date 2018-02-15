@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_amqp_assignments).
 -behaviour(gen_server).
 
@@ -34,13 +34,13 @@
 -record(state, {}).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%------------------------------------------------------------------------------
 %% @doc Starts the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
@@ -104,15 +104,15 @@ add_channel(Broker, Connection, Channel)
 release(Consumer) ->
     gen_server:call(?SERVER, {'release_handlers', Consumer}, 'infinity').
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Initializes the server
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
@@ -123,11 +123,11 @@ init([]) ->
                       ]),
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling call messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'request_float', Consumer, Broker}, _, State) ->
     _ = import_pending_channels(),
@@ -140,11 +140,11 @@ handle_call({'release_handlers', Consumer}, _, State) ->
 handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_channel_primary_broker', Broker, Connection, Channel}, State) ->
     _ = add_channel_primary_broker(Broker, Connection, Channel),
@@ -173,11 +173,11 @@ handle_cast({'maybe_defer_reassign', #kz_amqp_assignment{timestamp=Timestamp
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling all non call/cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
@@ -187,7 +187,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
@@ -195,28 +195,28 @@ handle_info(_Info, State) ->
 %% with Reason. The return value is ignored.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("AMQP assignments terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert process state when code is changed
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec import_pending_channels() -> 'ok'.
 import_pending_channels() ->
     receive
@@ -231,11 +231,11 @@ import_pending_channels() ->
         0 -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec release_assignments({kz_amqp_assignments(), ets:continuation()} | '$end_of_table') -> 'ok'.
 release_assignments('$end_of_table') -> 'ok';
 release_assignments({[#kz_amqp_assignment{consumer_ref=Ref}=Assignment]
@@ -267,11 +267,11 @@ release_assignments({[#kz_amqp_assignment{timestamp=Timestamp
     _ = ets:delete(?TAB, Timestamp),
     release_assignments(ets:match(Continuation)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_reassign(pid()) -> 'ok' | 'undefined' | kz_amqp_assignment().
 maybe_reassign(Consumer) when is_pid(Consumer) ->
@@ -325,11 +325,11 @@ maybe_reassign(#kz_amqp_assignment{}=ConsumerAssignment, Broker) ->
                                  },
     maybe_reassign(ConsumerAssignment, ets:match_object(?TAB, Pattern, 1)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec assign_or_reserve(pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
 assign_or_reserve(Consumer, 'undefined', Type) ->
     %% When there is no primary broker we will not be able to
@@ -380,11 +380,11 @@ assign_consumer(#kz_amqp_assignment{}=ChannelAssignment, Consumer, Type) ->
             move_channel_to_consumer(ChannelAssignment, ConsumerAssignment)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec move_channel_to_consumer(kz_amqp_assignment(), kz_amqp_assignment()) -> kz_amqp_assignment().
 move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
                                             ,channel=Channel
@@ -413,11 +413,11 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
     _ = maybe_reconnect(Assignment),
     send_notifications(Assignment).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_consumer_to_channel(kz_amqp_assignment(), pid(), kz_amqp_type()) -> kz_amqp_assignment().
 add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
                                            ,broker=_Broker
@@ -441,11 +441,11 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
 
     send_notifications(Assignment).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_channel_primary_broker(kz_term:ne_binary(), pid(), pid()) -> 'true'.
 add_channel_primary_broker(Broker, Connection, Channel) ->
     %% This will find any reservations that require a channel
@@ -590,11 +590,11 @@ reconnect(Assignment, [Command|Commands]) ->
         _:_R -> lager:info("replayed command failed: ~p", [_R])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_notifications(kz_amqp_assignment()) -> kz_amqp_assignment().
 send_notifications(#kz_amqp_assignment{}=Assignment) ->
     notify_connection(Assignment),
@@ -627,11 +627,11 @@ notify_watchers(#kz_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
     Watcher ! Assignment,
     notify_watchers(Assignment, Watchers).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_reserve(kz_term:api_pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
 maybe_reserve(Consumer, Broker, Type) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
@@ -673,11 +673,11 @@ reserve(Consumer, _, 'float') ->
                ,[Consumer]),
     Assignment.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type down_match() :: {'channel' | 'consumer', kz_amqp_assignment()}.
 -type down_matches() :: [down_match()].
 
@@ -754,11 +754,11 @@ reassign_props('sticky') ->
     ,{#kz_amqp_assignment.reconnect, 'true'}
     ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_watcher(pid(), pid()) -> 'ok'.
 add_watcher(Consumer, Watcher) ->
     case find(Consumer) of
@@ -799,11 +799,11 @@ request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
             wait_for_assignment(Timeout)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_reference(reference()) -> down_matches().
 find_reference(Ref) ->
     MatchSpec = [{#kz_amqp_assignment{channel_ref=Ref
@@ -820,11 +820,11 @@ find_reference(Ref) ->
                  }],
     ets:select(?TAB, MatchSpec).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec log_short_lived(kz_amqp_assignment()) -> 'ok'.
 log_short_lived(#kz_amqp_assignment{assigned='undefined'}) -> 'ok';
 log_short_lived(#kz_amqp_assignment{assigned=Timestamp}=Assignment) ->

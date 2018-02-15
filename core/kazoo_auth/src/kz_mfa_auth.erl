@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz, INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_mfa_auth).
 
 -export([authenticate/1
@@ -17,10 +17,10 @@
 
 -export_type([result/0]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Read configuration and do authentication with configured MFA provider
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(kz_term:proplist()) -> result().
 authenticate(Claims) ->
     Configs = get_configs(props:get_value(<<"mfa_options">>, Claims)),
@@ -38,11 +38,11 @@ authenticate(Claims) ->
             {'error', 'no_provider'}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Get MFA provider and checks it's enabled or not
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec provider(kz_term:api_object()) -> kz_term:ne_binary() | {'disabled', kz_term:ne_binary()} | {'error', 'no_provider'}.
 provider(Configs) ->
     Name = kz_json:get_ne_value(<<"provider_name">>, Configs),
@@ -53,12 +53,12 @@ provider(Configs) ->
         _ -> {'error', 'no_provider'}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Get MFA config from Account, if there was no config account
 %% get system default configuration
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_configs('undefined' | kz_term:proplist() | kz_json:object()) -> kz_term:api_object().
 get_configs('undefined') ->
     get_system_configs();

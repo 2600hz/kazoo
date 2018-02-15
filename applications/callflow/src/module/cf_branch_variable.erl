@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz INC
 %%% @doc Try to branch based on the value of a variable.
 %%% "data":{
@@ -12,7 +12,7 @@
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @author Hesaam Farhang
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_branch_variable).
 
 -behaviour(gen_cf_action).
@@ -23,10 +23,10 @@
 
 -type variable_key() :: kz_term:api_ne_binary() | kz_term:api_ne_binaries().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Scope = kz_json:get_ne_binary_value(<<"scope">>, Data, <<"custom_channel_vars">>),
@@ -43,13 +43,13 @@ maybe_branch_to_named_child(ChildName, Call) ->
     lager:info("trying '~s'", [ChildName]),
     cf_exe:continue(ChildName, Call).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Try to find callflow branch name out of variable's value in the Scope.
 %% If scope sets to other values than custome_channel_vars, account,
 %% user and device, it search in merged attributes in endpoint.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_child_in_scope(kz_term:ne_binary(), variable_key(), kapps_call:call()) -> kz_term:api_binary().
 find_child_in_scope(_Scope, 'undefined', _Call) ->
     lager:warning("no variable is specified"),
@@ -88,12 +88,12 @@ find_child_in_scope(<<"merged">>, Variable, Call) ->
             'undefined'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Open the document DocId to find the value of the variable which is the
 %% name of the callflow branch.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_child_in_doc(kz_term:api_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_binary().
 find_child_in_doc('undefined', _Variable, _Call) ->
     lager:debug("could not find document for current scope"),
@@ -107,13 +107,13 @@ find_child_in_doc(DocId, Variable, Call) ->
             'undefined'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Look into the defined children in the callflow to see if the child name
 %% that was found is there, if yes we found the child, otherwise
 %% fall back to the default children '_'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_child_in_branch(any(), kapps_call:call()) -> kz_term:api_binary().
 find_child_in_branch(ChildName, Call) ->
     {'branch_keys', Keys} = cf_exe:get_branch_keys(Call),
@@ -148,14 +148,14 @@ device_owner(Call) ->
             'undefined'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Normalize variable. Variable is a json path, so we should accept
 %% binary, or a path and ignore others,
 %% So if ones wants to look into a deep json object, path `[<<"v1">>, <<"v2">>]'
 %% can be used to get the value.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_variable(variable_key() | kz_json:object()) -> variable_key().
 normalize_variable('undefined') ->
     'undefined';

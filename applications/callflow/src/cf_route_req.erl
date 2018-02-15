@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc handler for route requests, responds if callflows match
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_route_req).
 
 -export([handle_req/2]).
@@ -122,13 +122,13 @@ bucket_cost(Flow) ->
         N -> N
     end.
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Should this call be able to use outbound resources, the exact opposite
 %% exists in the handoff module.  When updating this one make sure to sync
 %% the change with that module
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allow_no_match(kapps_call:call()) -> boolean().
 allow_no_match(Call) ->
     is_valid_endpoint(kapps_call:custom_channel_var(<<"Referred-By">>, Call), Call)
@@ -144,11 +144,11 @@ allow_no_match_type(Call) ->
         _ -> 'true'
     end.
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc determine if callflows should respond to a route request
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec callflow_should_respond(kapps_call:call()) -> boolean().
 callflow_should_respond(Call) ->
     case kapps_call:authorizing_type(Call) of
@@ -169,12 +169,12 @@ callflow_should_respond(Call) ->
         _Else -> 'false'
     end.
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc send a route response for a route request that can be fulfilled by this
 %% process
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_route_response(kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
 send_route_response(Flow, JObj, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
@@ -223,11 +223,11 @@ get_ringback_media(Flow, JObj) ->
         MediaId -> MediaId
     end.
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pre_park_action(kapps_call:call()) -> kz_term:ne_binary().
 pre_park_action(Call) ->
     case kapps_config:get_is_true(?CF_CONFIG_CAT, <<"ring_ready_offnet">>, 'true')
@@ -238,11 +238,11 @@ pre_park_action(Call) ->
         'true' -> <<"ring_ready">>
     end.
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc process
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
                          kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
@@ -263,11 +263,11 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
                ],
     kapps_call:exec(Updaters, Call).
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc process
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_referred_call(kapps_call:call()) -> kapps_call:call().
 maybe_referred_call(Call) ->
     maybe_fix_restrictions(get_referred_by(Call), Call).

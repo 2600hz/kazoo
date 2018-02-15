@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz, INC
 %%% @doc Eacesdrop
 %%% data: {
@@ -17,7 +17,7 @@
 %%% @author SIPLABS LLC (Mikhail Rodionov)
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_eavesdrop).
 
 -behaviour(gen_cf_action).
@@ -28,11 +28,11 @@
         ,no_permission_to_eavesdrop/1
         ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     _ = case maybe_allowed_to_eavesdrop(Data, Call) of

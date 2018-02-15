@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc API resource
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Jon Blanton
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(api_resource).
 
 -export([init/2, rest_init/2
@@ -41,14 +41,14 @@
 
 -include("crossbar.hrl").
 
-%%%===================================================================
+%%%=============================================================================
 %%% Startup and shutdown of request
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Init a REST request.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
                   {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
@@ -279,14 +279,14 @@ pretty_metric(N, 'true') when N < 0 ->
 pretty_metric(N, 'true') ->
     kz_util:pretty_print_bytes(N).
 
-%%%===================================================================
+%%%=============================================================================
 %%% CowboyHTTPRest API Callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Set `allow' and `allowed' parameters.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec known_methods(cowboy_req:req(), cb_context:context()) ->
                            {http_methods(), cowboy_req:req(), cb_context:context()}.
 known_methods(Req, Context) ->
@@ -694,12 +694,12 @@ previously_existed(Req, State) ->
     lager:debug("run: previously_existed"),
     {'false', Req, State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc If we're tunneling PUT through POST,
 %% we need to allow POST to create a nonexistent resource
 %% AKA, 201 Created header set.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allow_missing_post(cowboy_req:req(), cb_context:context()) ->
                                 {boolean(), cowboy_req:req(), cb_context:context()}.
 allow_missing_post(Req, Context) ->
@@ -993,7 +993,7 @@ next_chunk_fold(#{chunking_started := StartedChunk
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Check folded `to_json' response and send this chunk result.
 %% === Sending chunk response from the module directly ===
 %%
@@ -1025,7 +1025,7 @@ next_chunk_fold(#{chunking_started := StartedChunk
 %%       create the header and add it to the first element
 %%       (`<<Headers/binary, "\r\n", FirstRow/binary>>') of you're response.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_chunk(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 process_chunk(#{context := Context
                ,cowboy_req := Req
@@ -1073,12 +1073,12 @@ send_chunk_response(<<"to_json">>, Req, Context) ->
 send_chunk_response(<<"to_csv">>, Req, Context) ->
     api_util:create_csv_chunk_response(Req, Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc If chunked is started close data array and send envelope as the last chunk.
 %% Otherwise return `{Req, Context}' to allow {@link api_util} or {@link api_resource}
 %% handling  the errors in the Context.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec finish_chunked_response(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 finish_chunked_response(#{chunking_started := 'false'
                          ,context := Context

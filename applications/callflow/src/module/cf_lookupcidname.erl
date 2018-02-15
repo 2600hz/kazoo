@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc This module looks up the Caller ID Name by matching
 %%% numbers/patters with the provided lists.
@@ -9,7 +9,7 @@
 %%%
 %%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_lookupcidname).
 
 -behaviour(gen_cf_action).

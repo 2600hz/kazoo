@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_call_inspector).
 
 -export([init/0
@@ -25,14 +25,14 @@
 
 -define(MATCH_CDR_ID(YYYYMM, CallId), <<YYYYMM:6/binary, "-", CallId/binary>>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.call_inspector">>, ?MODULE, 'allowed_methods'),
@@ -56,18 +56,18 @@ to_response(Context, RespType, [{<<"call_inspector">>, []}, {<<"users">>, [_]}|_
 to_response(Context, _, _) ->
     Context.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_GET].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_CallId) -> [?HTTP_GET].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Does the path point to a valid resource.
 %% For example:
 %%
@@ -77,21 +77,21 @@ allowed_methods(_CallId) -> [?HTTP_GET].
 %%    /call_inspector/foo/bar => [<<"foo">>, <<"bar">>]
 %% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /call_inspector mights load a list of skel objects
 %% /call_inspector/123 might load the skel object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     case get_view_options(cb_context:req_nouns(Context)) of
@@ -121,14 +121,14 @@ validate(Context, CallId) ->
             inspect_call_id(CallId, Context)
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec inspect_call_id(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 inspect_call_id(CallId, Context) ->
     Req = [{<<"Call-ID">>, CallId}
@@ -163,11 +163,11 @@ inspect_call_id(CallId, Context) ->
 sanitize(JObjs) ->
     [kz_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Generate specific view options for the path.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
 get_view_options([{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     {?CB_LIST, []};
@@ -180,21 +180,21 @@ get_view_options([{<<"call_inspector">>, []}, {<<"users">>, [OwnerId]}|_]) ->
 get_view_options(_) ->
     {'undefined', []}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Loads CDR docs from database and normalized the them.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_chunked_cdrs(Context, RespType) ->
     Ids = get_cdr_ids(cb_context:resp_data(Context)),
     cb_cdrs:load_chunked_cdr_ids(Context, RespType, Ids).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_cdr_ids(kz_json:objects()) -> kz_term:ne_binaries().
 get_cdr_ids(JObjs) ->
     Ids = [kz_doc:id(JObj) || JObj <- JObjs],
@@ -210,12 +210,12 @@ get_cdr_ids(JObjs) ->
           lists:member(CallId, FilteredCallIds)
     ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Send a filter request to call_inspector application to filter
 %% which cdr_id is on call_inspector data store
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_callids(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 filter_callids([]) -> [];
 filter_callids(CallIds) ->

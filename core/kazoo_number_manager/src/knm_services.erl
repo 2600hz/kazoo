@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% @author Peter Defebvre
 %%% @author Pierre Fenoll
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_services).
 
 -export([activate_feature/2
@@ -21,10 +21,10 @@
 -define(KEY_NUMBER_ACTIVATION_CHARGES, <<"number_activation_charges">>).
 -define(KEY_NUMBERS_ACTIVATION_CHARGES, <<"numbers_activation_charges">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type set_feature() :: {kz_term:ne_binary(), kz_json:object()}.
 
 -spec activate_feature(knm_number:knm_number(), set_feature() | kz_term:ne_binary()) ->
@@ -84,10 +84,10 @@ maybe_create_activation_transaction(Number, Feature, Units, TotalCharges) ->
     knm_number:add_transaction(N, Transaction).
 -endif.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec deactivate_feature(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 deactivate_feature(Number, Feature) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -95,10 +95,10 @@ deactivate_feature(Number, Feature) ->
     PN = knm_phone_number:set_features(PhoneNumber, kz_json:delete_key(Feature, Features)),
     knm_number:set_phone_number(Number, PN).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec deactivate_features(knm_number:knm_number(), kz_term:ne_binaries()) -> knm_number:knm_number().
 deactivate_features(Number, Features) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -106,10 +106,10 @@ deactivate_features(Number, Features) ->
     PN = knm_phone_number:set_features(PhoneNumber, kz_json:delete_keys(Features, ExistingFeatures)),
     knm_number:set_phone_number(Number, PN).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_services(knm_numbers:collection()) -> knm_numbers:collection().
 -ifdef(TEST).
 update_services(T=#{todo := Ns}) -> knm_numbers:ok(Ns, T).
@@ -148,10 +148,10 @@ update_services(T=#{todo := Ns, options := Options}) ->
     end.
 -endif.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec activate_phone_number(knm_numbers:collection()) -> knm_numbers:collection().
 activate_phone_number(T=#{services := undefined}) ->
     Services = do_fetch_services(knm_numbers:assigned_to(T)),
@@ -201,9 +201,9 @@ phone_number_activation_charges(T) ->
 activation_charges(T) ->
     knm_numbers:charge(<<"activation">>, T).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
 -ifdef(TEST).
 do_fetch_services(undefined) -> kz_services:new();

@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(j5_allotments).
 
 -export([authorize/2]).
@@ -10,10 +10,10 @@
 
 -include("jonny5.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     Allotment = find_allotment(Request, Limits),
@@ -58,10 +58,10 @@ maybe_group_consumed([Member|Group], Allotment, Limits, Acc) when is_binary(Memb
         Consumed -> maybe_group_consumed(Group, Allotment, Limits, Acc+Consumed)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(Request, Limits) ->
     case j5_request:billing(Request, Limits) of
@@ -120,11 +120,11 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     _ = kz_datamgr:save_doc(LedgerDb, kz_json:from_list(Props)),
     'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_allotment(j5_request:request(), j5_limits:limits()) -> kz_term:api_object().
 find_allotment(Request, Limits) ->
     case j5_request:classification(Request) of
@@ -154,11 +154,11 @@ find_allotment_by_classification(Classification, Limits) ->
         Allotment -> kz_json:set_value(<<"classification">>, Classification, Allotment)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allotment_consumed_so_far(kz_json:object(), j5_limits:limits()) ->
                                        integer() |
                                        {'error', any()}.
@@ -219,11 +219,11 @@ add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, At
     _ = kz_datamgr:revise_views_from_folder(LedgerDb, 'jonny5'),
     allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cycle_start(kz_term:ne_binary()) -> integer().
 cycle_start(<<"monthly">>) ->
     {{Year, Month, _}, _} = calendar:universal_time(),

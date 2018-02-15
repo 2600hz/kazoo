@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handle CRUD operations for WebHooks
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_webhooks).
 
 -export([init/0
@@ -36,14 +36,14 @@
                                  ,<<"webhook_disabled">>
                                  ]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
@@ -132,13 +132,13 @@ authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
     {'true', Context};
 authenticate(_Context, _Verb, _Nouns) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -154,11 +154,11 @@ allowed_methods(_WebhookId) ->
 allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -169,13 +169,13 @@ resource_exists(_WebhookId) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_WebhookId, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -270,15 +270,15 @@ fetch_account_hooks(AccountId) ->
 delete_account_hooks(JObjs) ->
     kz_datamgr:del_docs(?KZ_WEBHOOKS_DB, [kz_doc:id(J) || J <- JObjs]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
@@ -307,11 +307,11 @@ reenable_validation_error(Context) ->
             ]),
     cb_context:add_validation_error(?REENABLE, <<"enum">>, Msg, Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhook:type())),
@@ -326,23 +326,23 @@ maybe_leak_pvt_fields(Context) ->
     NewDoc = kz_json:set_value(<<"disable_reason">>, kzd_webhook:disabled_message(Doc), Doc),
     cb_context:set_doc(Context, NewDoc).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     Options = [{'startkey', [cb_context:account_id(Context)]}
@@ -410,11 +410,11 @@ normalize_attempt_results(JObj, Acc) ->
      | Acc
     ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
@@ -503,12 +503,12 @@ get_hook_definition(HookEvent, MasterDb) ->
             'undefined'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc If a hook was auto-disabled and is being re-enabled, cleanup the private
 %% fields related to the auto-disabling
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update_hook(cb_context:context()) -> cb_context:context().
 maybe_update_hook(Context) ->
     Doc = cb_context:doc(Context),

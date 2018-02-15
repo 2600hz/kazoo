@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Shared token auth module, this module validates the token
 %%% against a trusted central token server.  If the token
@@ -17,7 +17,7 @@
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_shared_auth).
 
 -export([init/0
@@ -34,14 +34,14 @@
 -define(AUTHORITATIVE_CROSSBAR,
         kapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>)).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     lager:debug("shared auth started up, using ~s as authoritative crossbar", [?AUTHORITATIVE_CROSSBAR]),
@@ -53,29 +53,29 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.shared_auth">>, ?MODULE, 'put'),
     ok.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_PUT, ?HTTP_GET].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
@@ -85,10 +85,10 @@ authorize(Context) ->
 authorize(_, [{<<"shared_auth">>, _}]) ->'true';
 authorize(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
@@ -98,7 +98,7 @@ authenticate(Context) ->
 authenticate(?HTTP_PUT, [{<<"shared_auth">>, []}]) -> 'true';
 authenticate(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function runs for each side of the shared auth request
 %% The Requestor (PUT):
 %%     IE: Create (PUT) a local auth token
@@ -119,7 +119,7 @@ authenticate(_, _) -> 'false'.
 %%
 %% Failure here returns 400 or 401
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -180,23 +180,23 @@ validate_request(Context, ?HTTP_GET, JObj) ->
             cb_context:add_system_error('datastore_fault', Context)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     _ = cb_context:put_reqid(Context),
     create_local_token(Context).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempt to create a token and save it to the token db
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_local_token(cb_context:context()) -> cb_context:context().
 create_local_token(Context) ->
     JObj = cb_context:doc(Context),
@@ -219,12 +219,12 @@ create_local_token(Context) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Make a crossbar request to the authoritative server to authorize
 %% the shared token and get the account/user for the token
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate_shared_token(kz_term:api_binary(), nonempty_string()) ->
                                        {'ok', string() | binary()} |
                                        {'error', atom()} |
@@ -243,12 +243,12 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
         Resp -> {'error', Resp}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure those exist locally.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec import_missing_data(kz_json:object()) -> boolean().
 import_missing_data(RemoteData) ->
     import_missing_data(kz_json:get_json_value(<<"account">>, RemoteData)
@@ -262,12 +262,12 @@ import_missing_data(Account, User) ->
     import_missing_account(AccountId, Account)
         andalso import_missing_user(AccountId, kz_doc:id(User), User).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure the account exists (creating if not)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec import_missing_account(kz_term:api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
@@ -321,12 +321,12 @@ import_missing_account(AccountId, Account) ->
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec import_missing_user(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> boolean().
 import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),

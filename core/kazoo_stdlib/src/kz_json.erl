@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc proplists-like interface to json objects
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_json).
 
 %% don't import the get_keys/1 that fetches keys from the process dictionary
@@ -234,10 +234,10 @@ is_json_term({'json', IOList}) when is_list(IOList) -> 'true';
 is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Finds out whether 2 JSON objects are recursively identical.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec are_equal(kz_term:api_object(), kz_term:api_object()) -> boolean().
 are_equal('undefined', 'undefined') -> 'true';
 are_equal('undefined', _) -> 'false';
@@ -245,7 +245,7 @@ are_equal(_, 'undefined') -> 'false';
 are_equal(JObj1, JObj2) ->
     to_map(JObj1) =:= to_map(JObj2).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
 %%
@@ -261,7 +261,7 @@ are_equal(JObj1, JObj2) ->
 %%
 %% The sub-proplist `[{d,e}]'' needs converting before being passed to the next level.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec from_list(json_proplist()) -> object().
 from_list(L) when is_list(L) ->
     ?JSON_WRAPPER(props:filter_undefined(L)).
@@ -420,12 +420,12 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred
         'true' -> set_value(Syek, Value, JObj1)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Sum two (deep) JSON objects.
 %% Default sumer function only sums numbers. For other kinds of values,
 %% the value from JObj1 is kept untouched. If it is undefined it's the one from JObj2.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sum(object(), object()) -> object().
 sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
     sum(JObj1, JObj2, fun default_sumer/2).
@@ -456,12 +456,12 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
     V = get_value(Syek, JObj1),
     set_value(Syek, Sumer(V, Value), JObj1).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Sum (deep) JSON objects.
 %% Default sumer function only sums numbers. For other kinds of values,
 %% the value from JObj1 is kept untouched. If it is undefined it takes the value from the other JObjs.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sum_jobjs(objects()) -> object().
 sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
 
@@ -475,14 +475,14 @@ sum_jobjs([FirstJObj|JObjs], Sumer)
     F = fun (JObj, Carry) -> sum(Carry, JObj, fun default_sumer/2) end,
     lists:foldl(F, FirstJObj, JObjs).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Reorder JSON objects according to the given list of binaries.
 %% Given Path MUST resolve to all distinct values in the given objects.
 %% These resolved values MUST all be in the list of binaries too.
 %% List of binaries MUST NOT contain duplicates.
 %% Both lists MUST be of same size.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec order_by(path(), kz_term:ne_binaries(), [objects()]) -> objects().
 order_by(Path, Ids, ListOfJObjs)
   when is_list(Ids), is_list(ListOfJObjs) ->
@@ -512,10 +512,10 @@ recursive_to_proplist(Props) when is_list(Props) ->
     [recursive_to_proplist(V) || V <- Props];
 recursive_to_proplist(Else) -> Else.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Convert a json object to a map
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec to_map(object() | objects()) -> map().
 to_map(JObjs) when is_list(JObjs) ->
@@ -539,10 +539,10 @@ recursive_to_map(List) when is_list(List) ->
     [recursive_to_map(Item) || Item <- List];
 recursive_to_map(Else) -> Else.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Convert a map to a json object
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec from_map(map()) -> object().
 from_map(Map) when is_map(Map) ->
     recursive_from_map(Map).
@@ -797,11 +797,11 @@ get_ne_value(Key, JObj, Default) ->
         'false' -> Value
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Find first json object that has a non_empty value for Key.
 %% Returns the value at Key
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec find(path(), objects()) -> api_json_term().
 find(Key, JObjs) ->
@@ -831,11 +831,11 @@ find_first_defined([Key|Keys], JObjs, Default) ->
         'error':'badarg' -> find(Key, JObjs, Default)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Find first json object that has a Value for Key.
 %% Returns the json object or 'undefined'
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec find_value(path(), json_term(), objects()) -> kz_term:api_object().
 find_value(Key, Value, JObjs) ->
@@ -1023,10 +1023,10 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
 %% There are no more keys to iterate through! Override the value here...
 set_value1([], Value, _JObj) -> Value.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec delete_key(path(), object() | objects()) -> object() | objects().
 delete_key(Keys, JObj) when is_list(Keys) ->
@@ -1034,7 +1034,7 @@ delete_key(Keys, JObj) when is_list(Keys) ->
 delete_key(Key, JObj) ->
     delete_key([Key], JObj, 'no_prune').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc No `prune' leaves the parent intact (default).
 %%  With `prune': removes the parent key if the result of the delete is an empty list.
 %%  So, `` delete_key([<<"k1">>, <<"k1.1">>], {[{<<"k1">>, {[{<<"k1.1">>, <<"v1.1">>}]}}]}) '' would result in:
@@ -1044,7 +1044,7 @@ delete_key(Key, JObj) ->
 %%    'prune' -> {[]}
 %% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec delete_key(path(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
 delete_key(Key, JObj, 'prune') when not is_list(Key) ->
@@ -1056,19 +1056,19 @@ delete_key(Keys, JObj, 'prune') ->
 delete_key(Keys, JObj, 'no_prune') ->
     no_prune(Keys, JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete_keys(paths(), object()) -> object().
 delete_keys(Keys, JObj) when is_list(Keys) ->
     %% Figure out how to set the current key among a list of objects
     lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0) end, JObj, Keys).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec prune_keys(paths(), object()) -> object().
 prune_keys(Keys, JObj) when is_list(Keys) ->
     lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0, 'prune') end
@@ -1153,10 +1153,10 @@ replace_in_list(1, V1, [_OldV | Vs], Acc) ->
 replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Read a json fixture file from the filesystem into memory
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec load_fixture_from_file(atom(), nonempty_string() | kz_term:ne_binary()) ->
                                     object() |
@@ -1196,13 +1196,13 @@ fixture(App, Path) when is_atom(App) ->
     fixture(filename:join(code:lib_dir(App, test), Path)).
 -endif.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Normalize a JSON object for storage as a Document
 %% All dashes are replaced by underscores, all upper case character are
 %% converted to lower case
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_jobj(object()) -> object().
 normalize_jobj(JObj) -> normalize(JObj).
 

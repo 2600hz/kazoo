@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Helpers for manipulating the `#cb_context{}' record.
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_context).
 
 -export([store/3
@@ -170,10 +170,10 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 
 %% Accessors
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_id(context()) -> kz_term:api_ne_binary().
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 
@@ -227,10 +227,10 @@ account_doc(#cb_context{account_id = AccountId}) ->
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Returns true if the request contains a system admin module.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_superduper_admin(kz_term:api_ne_binary() | context()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
@@ -447,10 +447,10 @@ resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 -spec resp_error_msg(context()) -> kz_term:api_ne_binary().
 resp_error_msg(#cb_context{resp_error_msg=Msg}) -> Msg.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Loop over a list of functions and values to set `cb_context()' parameters.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec setters(context(), setters()) -> context().
 setters(#cb_context{}=Context, []) -> Context;
 setters(#cb_context{}=Context, [_|_]=Setters) ->
@@ -731,18 +731,18 @@ maybe_add_content_type_provided(Context, AttachmentId) ->
             add_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Sets a value in the crossbar context for later retrieval during this request.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec store(context(), any(), any()) -> context().
 store(#cb_context{storage=Storage}=Context, Key, Data) ->
     Context#cb_context{storage=[{Key, Data} | props:delete(Key, Storage)]}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Fetches a previously stored value from the current request.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch(context(), any()) -> any().
 fetch(#cb_context{}=Context, Key) ->
     fetch(Context, Key, 'undefined').
@@ -754,11 +754,11 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
         Else -> Else
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function extracts the request ID and sets it as `call_id' in
 %% the process dictionary, where the logger expects it.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put_reqid(context()) -> 'ok'.
 put_reqid(#cb_context{req_id=ReqId}) ->
     kz_util:put_callid(ReqId).
@@ -806,10 +806,10 @@ response(#cb_context{resp_error_code=Code
 
 -type after_fun() :: fun((context()) -> context()) | 'undefined'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Validate the request data with schema.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context()) ->
                                    context().
 validate_request_data(SchemaId, Context) ->
@@ -1041,10 +1041,10 @@ build_system_error(Code, Error, JObj, Context) ->
                       ,resp_error_msg=kz_term:to_binary(Error)
                       }.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Add a validation error to the list of request errors.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_validation_error(kz_json:path(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
                                   context().
 add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->

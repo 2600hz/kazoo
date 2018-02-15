@@ -106,7 +106,7 @@ check_result(<<"ERR:", _/binary>>=Error) ->
 check_result(Result) ->
     Result.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Moving grouped `spec' attributes to their own function header.
 %% Ag regex matches the lines starts with `-spec' to end of
@@ -132,7 +132,7 @@ check_result(Result) ->
 %% Expected outcome:
 %% move spec to appropriate function header.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 evil_specs(Result) ->
     FilesSpecs = map_specs_to_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], []),
     _ = lists:map(fun process_evil_specs/1, FilesSpecs),
@@ -237,7 +237,7 @@ move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length 
                    ,T
                    ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Edocify Header by rename @contributors to @author.
 %% Ag will return a list of files and then we open each file and fix their
@@ -258,7 +258,7 @@ move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length 
 %% * header separator character will be `='
 %% * will add `@end' tag if it's not there
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 edocify_headers(Result) ->
     Files = [F || F <- binary:split(Result, <<"\n">>, [global]), F =/= <<>>],
     _ = [edocify_header(F) || F <- Files],
@@ -317,7 +317,7 @@ find_header_comments([<<>>,  <<"-module", _/binary>>=Mod| Lines], _, Header) ->
 find_header_comments(Lines, Module, Header) ->
     {Module, Header, Lines}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Removing `@public' from comments.
 %% Ad regex will match line with `@public'.
@@ -331,7 +331,7 @@ find_header_comments(Lines, Module, Header) ->
 %% Expected outcome:
 %% * all found lines should be removed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 remove_public_tag(Result) ->
     CommentSpecs = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun do_remove_public_tag/2, CommentSpecs),
@@ -342,7 +342,7 @@ do_remove_public_tag(File, Positions) ->
     Lines = read_lines(File, true),
     save_lines(File, [L || {LN, L} <- Lines, not lists:member(LN, Positions)]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Removing @spec from comments.
 %% Ad regex will match line starts with `@spec' and the line it ends. So
@@ -360,7 +360,7 @@ do_remove_public_tag(File, Positions) ->
 %% Expected outcome:
 %% * all found lines should be removed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 remove_comment_specs(Result) ->
     CommentSpecs = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun do_remove_comment_specs/2, CommentSpecs),
@@ -371,7 +371,7 @@ do_remove_comment_specs(File, Positions) ->
     Lines = read_lines(File, true),
     save_lines(File, [L || {LN, L} <- Lines, not lists:member(LN, Positions)]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Missing comment block after separator.
 %% Ad regex will match lines which starts with comment separator and ends with
@@ -380,9 +380,9 @@ do_remove_comment_specs(File, Positions) ->
 %%
 %% Ag sample output:
 %% ```
-%% core/kazoo_media/src/kz_media_file_cache.erl:243:%%%===================================================================
+%% core/kazoo_media/src/kz_media_file_cache.erl:243:%%%=============================================================================
 %% core/kazoo_media/src/kz_media_file_cache.erl:244:-spec start_timer() -> reference().
-%% core/kazoo_media/src/kz_media_map.erl:311:%%%===================================================================
+%% core/kazoo_media/src/kz_media_map.erl:311:%%%=============================================================================
 %% core/kazoo_media/src/kz_media_map.erl:312:
 %% core/kazoo_media/src/kz_media_map.erl:313:-spec init_map() -> 'ok'.
 %% '''
@@ -392,7 +392,7 @@ do_remove_comment_specs(File, Positions) ->
 %% * maybe an empty comment line after the separator line if it's not exists.
 %% * any extra line between separator and `spec' line will be removed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 missing_comment_blocks_after_sep(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun add_missing_comment_blocks/2, Positions),
@@ -431,7 +431,7 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
             do_add_missing_comment_blocks(Lines, Positions, Formatted ++ maybe_add_empty_line(lists:last(Formatted)) ++ empty_block() ++ [Line])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Escape codes in comment block for `resource_exists' function crossbar modules.
 %% Ag regex will match the comments before resource_exists function and last line
@@ -458,7 +458,7 @@ do_add_missing_comment_blocks([{LN, Line}|Lines], Positions, Formatted) ->
 %% %% '''
 %% %% @end
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 cb_resource_exists_comments(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun fix_cb_resource_exists_comment/2, Positions),
@@ -496,7 +496,7 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Fix comment block which doesn't end properly with `@end' tag.
 %%
@@ -512,7 +512,7 @@ do_cb_resource_exists_comment([{LN, Line}|Lines], Positions, Formatted) ->
 %% Expected outcome:
 %% * an `@end' tag should be added before the separator line.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 comment_blocks_with_no_end(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun comment_blocks_with_no_end/2, Positions),
@@ -536,7 +536,7 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @end">>, Line])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Move first comment line to the same line as `@doc'. So EDoc is not
 %% adding extra new line character and spaces to beginning of the
@@ -562,7 +562,7 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
 %% %% @doc Initializes the server
 %% * also removes empty comment lines after `@doc' and before first non empty comment line
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 move_to_doc_line(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun move_to_doc_line/2, Positions),
@@ -593,7 +593,7 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
             do_move_to_doc_line(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @doc ", Rest/binary>>])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Remove empty comment lines after `@doc' to avoid empty paragraph
 %% or dot in summary. Regex only returns the line with `@doc' and
@@ -610,7 +610,7 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
 %% Expected outcome:
 %% * removes all those empty comment line after `@doc'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 remove_doc_tag_empty_comment(Result) ->
     Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
     _ = maps:map(fun remove_doc_tag_empty_comment/2, Positions),
@@ -636,9 +636,9 @@ do_remove_doc_tag_empty_comment([{LN, Line}|Lines], Positions, Formatted) ->
             do_remove_doc_tag_empty_comment(Lines, Positions, Formatted ++ [Line])
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Utilities
-%%%===================================================================
+%%%=============================================================================
 
 maybe_add_empty_line(<<>>) -> [];
 maybe_add_empty_line(_) -> [<<>>].

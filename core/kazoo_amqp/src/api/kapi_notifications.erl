@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Notification messages, like voicemail left
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_notifications).
 
 -export([bind_q/2, unbind_q/2]).
@@ -150,9 +150,9 @@
                              ]).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Notify Update
@@ -200,9 +200,9 @@ skel_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Account Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Account Zone Change
@@ -344,9 +344,9 @@ transaction_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Fax Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Fax Inbound (New Inbound Fax)
@@ -507,9 +507,9 @@ outbound_smtp_fax_error_definition() ->
                              ]
                     }.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Number and Port Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Cnam Request
@@ -695,9 +695,9 @@ ported_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Register Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Denied Emergency Bridge
@@ -725,9 +725,9 @@ denied_emergency_bridge_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% SIP Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Deregister
@@ -858,9 +858,9 @@ register_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% System Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% System Alert
@@ -891,9 +891,9 @@ system_alert_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% User Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Customer Update
@@ -967,9 +967,9 @@ password_recovery_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Voicemail Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Voicemail full
@@ -1045,9 +1045,9 @@ voicemail_saved_definition() ->
                     }.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Webhook Notifications Definitions
-%%%===================================================================
+%%%=============================================================================
 
 
 %% Webhook Callflow
@@ -1090,14 +1090,14 @@ webhook_disabled_definition() ->
                     ,types = []
                     }.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec api_definitions() -> kapi_definition:apis().
 api_definitions() ->
     [notify_update_definition()
@@ -1289,22 +1289,22 @@ unbind_q_from(Q, [RestrictTo|T]) ->
 unbind_q_from(_Q, []) ->
     'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:notifications_exchange().
 
-%%%===================================================================
+%%%=============================================================================
 %%% Helpers
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
 account_id('undefined') -> 'undefined';
 account_id(Req) when is_list(Req) -> find_account_id(Req, fun props:get_first_defined/2);
@@ -1369,11 +1369,11 @@ headers(Name) ->
             []
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Generic function to build API payload
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
 build_message(Prop, #kapi_definition{required_headers = ReqH
                                     ,optional_headers = OptH
@@ -1387,11 +1387,11 @@ build_message(Prop, #kapi_definition{required_headers = ReqH
 build_message(JObj, Definition) ->
     build_message(kz_json:to_proplist(JObj), Definition).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Generic function to validate API payload
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 validate(Prop, #kapi_definition{required_headers = ReqH
                                ,values = Values
                                ,types = Types
@@ -1400,16 +1400,16 @@ validate(Prop, #kapi_definition{required_headers = ReqH
 validate(JObj, Definition) ->
     validate(kz_json:to_proplist(JObj), Definition).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Notify Status notification
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec notify_update(kz_term:api_terms()) -> api_formatter_return().
 notify_update(Prop) ->
     build_message(Prop, notify_update_definition()).
@@ -1428,11 +1428,11 @@ publish_notify_update(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Skeleton notification
 %% Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec skel(kz_term:api_terms()) -> api_formatter_return().
 skel(Prop) ->
     build_message(Prop, skel_definition()).
@@ -1454,15 +1454,15 @@ publish_skel(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Account Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_zone_change(kz_term:api_terms()) -> api_formatter_return().
 account_zone_change(Prop) ->
     build_message(Prop, account_zone_change_definition()).
@@ -1483,10 +1483,10 @@ publish_account_zone_change(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun account_zone_change/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec low_balance(kz_term:api_terms()) -> api_formatter_return().
 low_balance(Prop) ->
     build_message(Prop, low_balance_definition()).
@@ -1507,10 +1507,10 @@ publish_low_balance(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun low_balance/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec new_account(kz_term:api_terms()) -> api_formatter_return().
 new_account(Prop) ->
     build_message(Prop, new_account_definition()).
@@ -1531,10 +1531,10 @@ publish_new_account(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun new_account/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec service_added(kz_term:api_terms()) -> api_formatter_return().
 service_added(Prop) ->
     build_message(Prop, service_added_definition()).
@@ -1555,10 +1555,10 @@ publish_service_added(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun service_added/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec topup(kz_term:api_terms()) -> api_formatter_return().
 topup(Prop) ->
     build_message(Prop, topup_definition()).
@@ -1579,10 +1579,10 @@ publish_topup(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun topup/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec transaction(kz_term:api_terms()) -> api_formatter_return().
 transaction(Prop) ->
     build_message(Prop, transaction_definition()).
@@ -1604,15 +1604,15 @@ publish_transaction(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Fax Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fax_inbound(kz_term:api_terms()) -> api_formatter_return().
 fax_inbound(Prop) ->
     build_message(Prop, inbound_fax_definition()).
@@ -1633,10 +1633,10 @@ publish_fax_inbound(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_inbound/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fax_inbound_error(kz_term:api_terms()) -> api_formatter_return().
 fax_inbound_error(Prop) ->
     build_message(Prop, inbound_fax_error_definition()).
@@ -1657,10 +1657,10 @@ publish_fax_inbound_error(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_inbound_error/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fax_outbound(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound(Prop) ->
     build_message(Prop, outbound_fax_definition()).
@@ -1681,10 +1681,10 @@ publish_fax_outbound(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fax_outbound_error(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound_error(Prop) ->
     build_message(Prop, outbound_fax_error_definition()).
@@ -1705,10 +1705,10 @@ publish_fax_outbound_error(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound_error/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fax_outbound_smtp_error(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound_smtp_error(Prop) ->
     build_message(Prop, outbound_smtp_fax_error_definition()).
@@ -1730,15 +1730,15 @@ publish_fax_outbound_smtp_error(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Number and Port Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cnam_request(kz_term:api_terms()) -> api_formatter_return().
 cnam_request(Prop) ->
     build_message(Prop, cnam_request_definition()).
@@ -1759,10 +1759,10 @@ publish_cnam_request(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun cnam_request/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_cancel(kz_term:api_terms()) -> api_formatter_return().
 port_cancel(Prop) ->
     build_message(Prop, port_cancel_definition()).
@@ -1783,10 +1783,10 @@ publish_port_cancel(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_cancel/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_comment(kz_term:api_terms()) -> api_formatter_return().
 port_comment(Prop) ->
     build_message(Prop, port_comment_definition()).
@@ -1807,10 +1807,10 @@ publish_port_comment(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_comment/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_pending(kz_term:api_terms()) -> api_formatter_return().
 port_pending(Prop) ->
     build_message(Prop, port_pending_definition()).
@@ -1831,10 +1831,10 @@ publish_port_pending(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_pending/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_rejected(kz_term:api_terms()) -> api_formatter_return().
 port_rejected(Prop) ->
     build_message(Prop, port_rejected_definition()).
@@ -1855,10 +1855,10 @@ publish_port_rejected(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_rejected/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_request(kz_term:api_terms()) -> api_formatter_return().
 port_request(Prop) ->
     build_message(Prop, port_request_definition()).
@@ -1879,10 +1879,10 @@ publish_port_request(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_request/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_scheduled(kz_term:api_terms()) -> api_formatter_return().
 port_scheduled(Prop) ->
     build_message(Prop, port_scheduled_definition()).
@@ -1903,10 +1903,10 @@ publish_port_scheduled(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_scheduled/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_unconfirmed(kz_term:api_terms()) -> api_formatter_return().
 port_unconfirmed(Prop) ->
     build_message(Prop, port_unconfirmed_definition()).
@@ -1927,10 +1927,10 @@ publish_port_unconfirmed(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_unconfirmed/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec ported(kz_term:api_terms()) -> api_formatter_return().
 ported(Prop) ->
     build_message(Prop, ported_definition()).
@@ -1952,15 +1952,15 @@ publish_ported(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Register Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec denied_emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
 denied_emergency_bridge(Prop) ->
     build_message(Prop, denied_emergency_bridge_definition()).
@@ -1982,15 +1982,15 @@ publish_denied_emergency_bridge(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Register Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec deregister(kz_term:api_terms()) -> api_formatter_return().
 deregister(Prop) ->
     build_message(Prop, deregister_definition()).
@@ -2011,10 +2011,10 @@ publish_deregister(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun deregister/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec first_occurrence(kz_term:api_terms()) -> api_formatter_return().
 first_occurrence(Prop) ->
     build_message(Prop, first_occurrence_definition()).
@@ -2035,10 +2035,10 @@ publish_first_occurrence(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun first_occurrence/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec missed_call(kz_term:api_terms()) -> api_formatter_return().
 missed_call(Prop) ->
     build_message(Prop, missed_call_definition()).
@@ -2059,10 +2059,10 @@ publish_missed_call(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun missed_call/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec register(kz_term:api_terms()) -> api_formatter_return().
 register(Prop) ->
     build_message(Prop, register_definition()).
@@ -2084,15 +2084,15 @@ publish_register(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% System Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec system_alert(kz_term:api_terms()) -> api_formatter_return().
 system_alert(Prop) ->
     build_message(Prop, system_alert_definition()).
@@ -2114,15 +2114,15 @@ publish_system_alert(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% User Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec customer_update(kz_term:api_terms()) -> api_formatter_return().
 customer_update(Prop) ->
     build_message(Prop, customer_update_definition()).
@@ -2143,10 +2143,10 @@ publish_customer_update(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun customer_update/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec new_user(kz_term:api_terms()) -> api_formatter_return().
 new_user(Prop) ->
     build_message(Prop, new_user_definition()).
@@ -2167,10 +2167,10 @@ publish_new_user(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun new_user/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec password_recovery(kz_term:api_terms()) -> api_formatter_return().
 password_recovery(Prop) ->
     build_message(Prop, password_recovery_definition()).
@@ -2192,15 +2192,15 @@ publish_password_recovery(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Voicemail Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec voicemail_full(kz_term:api_terms()) -> api_formatter_return().
 voicemail_full(Prop) ->
     build_message(Prop, voicemail_full_definition()).
@@ -2221,10 +2221,10 @@ publish_voicemail_full(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_full/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec voicemail_new(kz_term:api_terms()) -> api_formatter_return().
 voicemail_new(Prop) ->
     build_message(Prop, voicemail_new_definition()).
@@ -2245,10 +2245,10 @@ publish_voicemail_new(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_new/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec voicemail_saved(kz_term:api_terms()) -> api_formatter_return().
 voicemail_saved(Prop) ->
     build_message(Prop, voicemail_saved_definition()).
@@ -2270,15 +2270,15 @@ publish_voicemail_saved(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Webhook Notifications Functions
-%%%===================================================================
+%%%=============================================================================
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec webhook(kz_term:api_terms()) -> api_formatter_return().
 webhook(Prop) ->
     build_message(Prop, webhook_definition()).
@@ -2299,10 +2299,10 @@ publish_webhook(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun webhook/1),
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes prop-list, creates JSON string and publish it on AMQP
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec webhook_disabled(kz_term:api_terms()) -> api_formatter_return().
 webhook_disabled(Prop) ->
     build_message(Prop, webhook_disabled_definition()).

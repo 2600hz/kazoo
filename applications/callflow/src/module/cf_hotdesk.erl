@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc "data":{
 %%%   "action":"logout" | "login" | "toggle" | "bridge"
@@ -9,7 +9,7 @@
 %%%
 %%% @author Edouard Swiac
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_hotdesk).
 
 -behaviour(gen_cf_action).
@@ -34,10 +34,10 @@
                  }).
 -type hotdesk() :: #hotdesk{}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Action = kz_json:get_ne_binary_value(<<"action">>, Data),
@@ -90,11 +90,11 @@ handle_action(<<"toggle">>, #hotdesk{endpoint_ids=[]}=Hotdesk, Call) ->
 handle_action(<<"toggle">>, Hotdesk, Call) ->
     handle_action(<<"logout">>, Hotdesk, Call).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempts to bridge to the endpoints created to reach this device
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bridge_to_endpoints(hotdesk(), kapps_call:call()) ->
                                  {'ok', kz_json:object()} |
                                  {'fail', kz_json:object()} |
@@ -117,7 +117,7 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
             build_endpoints(EndpointIds, Endpoints, Call)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Conditions that this needs to handle:
 %% 0) sanity check the authorizing id
@@ -129,7 +129,7 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
 %%
 %% TODO: a UI bug keeps the hotdesk enabled from ever being true
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec login(hotdesk(), kapps_call:call()) -> kapps_api_std_return().
 %% %login(#hotdesk{enabled=false}, Call) ->
 %% %    kapps_call_command:b_prompt(<<"hotdesk-disabled">>, Call);
@@ -211,7 +211,7 @@ logged_in(_, Call) ->
     kapps_call_command:b_prompt(<<"hotdesk-logged_in">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Logout process
 %% 0) sanity check the authorizing id
@@ -222,7 +222,7 @@ logged_in(_, Call) ->
 %% 2n) Remove this owner_id from any devices
 %% 3) Infrom the user
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec logout(hotdesk(), kapps_call:call()) -> kapps_api_std_return().
 logout(Hotdesk, Call) -> maybe_keep_logged_in_elsewhere(Hotdesk, Call).
 
@@ -260,12 +260,12 @@ logged_out(_, Call) ->
     kapps_call_command:b_prompt(<<"hotdesk-logged_out">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Fetches the hotdesk parameters from the datastore and loads the
 %% mailbox record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_hotdesk_profile(kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
                                  hotdesk() |
                                  {'error', any()}.

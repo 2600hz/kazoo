@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc Utilities to facilitate AMQP interaction
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Edouard Swiac
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(amqp_util_test).
 
 -include_lib("eunit/include/eunit.hrl").

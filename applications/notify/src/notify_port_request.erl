@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with port request information to configured email address
@@ -7,7 +7,7 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_port_request).
 
 -export([init/0, handle_req/2]).
@@ -20,10 +20,10 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".port_request">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc initialize the module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
@@ -32,10 +32,10 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:port_request_v(JObj),
@@ -81,11 +81,11 @@ handle_req(JObj, _Props) ->
         end,
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> kz_term:proplist().
 create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(kz_json:get_value(<<"Authorized-By">>, NotifyJObj)),
@@ -191,11 +191,11 @@ find_port_doc(PortRequestId) ->
 normalize_find_numbers({Number, _}) -> Number;
 normalize_find_numbers(Number) -> Number.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist(), list()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) when is_list(To)->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Attachements) || T <- To];
@@ -218,11 +218,11 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
     lager:debug("sending email from ~s to ~s", [From, To]),
     notify_util:send_email(From, To, Email).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type attachment() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist(), kz_term:ne_binary()}.
 -type attachments() :: [attachment()].
 
@@ -282,11 +282,11 @@ create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
     ,[], AttachmentBin
     }.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fix_attachment_name(kz_term:ne_binary() | list()) -> kz_term:ne_binary().
 fix_attachment_name(Name) when is_binary(Name) ->
     fix_attachment_name(kz_term:to_list(Name));

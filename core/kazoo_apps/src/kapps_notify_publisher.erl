@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapps_notify_publisher).
 
 -export([call_collect/2
@@ -39,12 +39,12 @@
 
 -type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish notification and collect notify update messages from
 %% teletype. Useful if you want to make sure teletype processed
 %% the notification completely (e.g. new voicemail)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_collect(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> kz_amqp_worker:request_return().
 call_collect(Req, PublishFun) ->
     NotifyType = notify_type(PublishFun),
@@ -52,11 +52,11 @@ call_collect(Req, PublishFun) ->
     handle_resp(NotifyType, Req, CallResp),
     CallResp.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish notification asynchronous, and save the payload to db
 %% if it failed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cast(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 cast(Req, PublishFun) ->
     CallId = kz_util:get_callid(),
@@ -70,15 +70,15 @@ cast(Req, PublishFun) ->
     _ = erlang:spawn(Fun),
     'ok'.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc handle AMQP worker responses.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_resp(kz_term:api_ne_binary(), kz_term:api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
 handle_resp(NotifyType, Req, {'ok', _}=Resp) ->
     check_for_failure(NotifyType, Req, Resp);
@@ -92,11 +92,11 @@ handle_resp(NotifyType, Req, {'returned', _, Resp}) ->
 handle_resp(NotifyType, Req, {'timeout', _}=Resp) ->
     check_for_failure(NotifyType, Req, Resp).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc check for notify update messages from teletype/notify apps.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_for_failure(kz_term:api_ne_binary(), kz_term:api_terms(), {'ok' | 'returned' | 'timeout', kz_json:object() | kz_json:objects()}) -> 'ok'.
 check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
     Reason = json_to_reason(Resp),
@@ -114,11 +114,11 @@ maybe_log_metadata(NotifyType, {<<"completed">>=Reason, Metadata}) ->
 maybe_log_metadata(_, _) -> 'ok'.
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_handle_error(kz_term:api_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 maybe_handle_error('undefined', _, _) ->
     lager:warning("not saving unknown notification type");
@@ -128,11 +128,11 @@ maybe_handle_error(NotifyType, Req, Reason) ->
         andalso should_handle_notify_type(NotifyType, AccountId)
         andalso handle_error(NotifyType, Req, Reason).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc create document with notification payload to save in db.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_error(kz_term:ne_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 handle_error(NotifyType, Req, {Reason, Metadata}) ->
     lager:warning("attempt to publishing notification ~s was unsuccessful: ~p", [NotifyType, Reason]),
@@ -170,11 +170,11 @@ save_pending_notification(NotifyType, JObj, Loop) ->
             lager:error("failed to save payload for ~s publish attempt: ~p", [NotifyType, _E])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Collect responses until failed or completed messages are received.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec collecting(kz_json:objects()) -> boolean().
 collecting([JObj|_]) ->
     case kapi_notifications:notify_update_v(JObj)
@@ -187,12 +187,12 @@ collecting([JObj|_]) ->
         _ -> 'false'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Check responses from teletype and see if request is completed or not.
 %% If it failed check the reason to see should it be handled.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_completed(kz_json:object() | kz_json:objects()) -> boolean().
 is_completed([]) -> 'false';
 is_completed([JObj|_]) ->
@@ -218,11 +218,11 @@ is_completed([JObj|_]) ->
 is_completed(JObj) ->
     is_completed([JObj]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Check the reason to see if this failure should be saved or not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec should_ignore_failure(kz_term:api_ne_binary()) -> boolean().
 should_ignore_failure(<<"missing_from">>) -> 'true';
 should_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
@@ -241,11 +241,11 @@ should_ignore_failure(<<"no_attachment">>) -> 'false'; %% probably fax or voicem
 should_ignore_failure(<<"badmatch">>) -> 'false'; %% not ignoring it yet (voicemail_new)
 should_ignore_failure(_) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert `kz_amqp_worker' errors to friendly string.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_amqp_worker_error(any()) -> failure_reason().
 handle_amqp_worker_error({'badmatch', {'error', BadMatch}}) ->
     %% maybe it's validation error
@@ -261,14 +261,14 @@ handle_amqp_worker_error(Error) ->
             {<<"sending the amqp resulted in failure: ", (cast_to_binary(Error))/binary>>, 'undefined'}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert JObj errors to friendly string (responses from teletype or
 %% `kz_amqp_worker' errors in JObj).
 %%
 %% For now we just only get the first failed response.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec json_to_reason(any()) -> failure_reason().
 json_to_reason({'returned', JObjs}) when is_list(JObjs) ->
     kz_json:find(<<"message">>, JObjs, <<"unknown broker error">>);
@@ -299,11 +299,11 @@ json_to_reason(JObjs) when is_list(JObjs) ->
 json_to_reason(JObj) ->
     json_to_reason({'error', [JObj]}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Categorize Responses based on status.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 find_reason_from_jsons(Reason, JObjs, Map) ->
     case kz_json:find_value(<<"Status">>, Reason, JObjs, 'undefined') of
         'undefined' -> Map;
@@ -320,11 +320,11 @@ cast_to_binary(Error) ->
             <<"unknown_reason">>
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Find notification type from the publish function.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec notify_type(kz_amqp_worker:publish_fun() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
 notify_type(<<"publish_", NotifyType/binary>>) ->
     NotifyType;

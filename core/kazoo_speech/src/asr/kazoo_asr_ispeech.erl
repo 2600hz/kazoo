@@ -77,11 +77,11 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
     lager:debug("resp: ~s", [Content2]),
     {'error', 'asr_provider_failure', kz_json:decode(Content2)}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Send a freeform ASR request to iSpeech
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                            asr_resp().
 exec_freeform(Content, ContentType, Locale, Options) ->
@@ -101,11 +101,11 @@ exec_freeform(Content, ContentType, Locale, Options) ->
 
     handle_response(make_request(BaseUrl, Headers, Body, Options)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Send a command list ASR request to iSpeech
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec exec_commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                            provider_return().
 exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
@@ -132,11 +132,11 @@ exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
 
     handle_response(make_request(BaseUrl, Headers, Body, Opts)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert audio file/content-type if initial format not supported
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_convert_content(binary(), kz_term:ne_binary()) -> conversion_return().
 maybe_convert_content(Content, ContentType) ->
     case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of

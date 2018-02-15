@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_service_plan).
 
 -export([fetch/2]).
@@ -11,11 +11,11 @@
 
 -include("services.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Given a vendor database and service plan id, fetch the document.
 %% Merge any plan overrides into the plan property.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> kzd_service_plan:api_doc().
 fetch(PlanId, VendorId) ->
     VendorDb = kz_util:format_account_db(VendorId),
@@ -36,10 +36,10 @@ fetch_plan(VendorDb, PlanId) ->
     kz_datamgr:open_cache_doc(VendorDb, PlanId).
 -endif.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec activation_charges(kz_term:ne_binary(), kz_term:ne_binary(), kzd_service_plan:doc()) -> float().
 activation_charges(CategoryId, ItemId, ServicePlan) ->
     case kzd_service_plan:item_activation_charge(ServicePlan, CategoryId, ItemId, 'undefined') of
@@ -48,10 +48,10 @@ activation_charges(CategoryId, ItemId, ServicePlan) ->
         Charge -> Charge
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec create_items(kzd_service_plan:doc(), kz_service_items:items(), kz_services:services()) ->
                           kz_service_items:items().
@@ -197,11 +197,11 @@ cumulative_quantity(Item, CumulativeDiscount, Quantity) ->
         _ -> Quantity
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bookkeeper_jobj(kz_term:ne_binary(), kz_term:ne_binary(), kzd_service_plan:doc()) -> kz_json:object().
 bookkeeper_jobj(CategoryId, ItemId, ServicePlan) ->
     lists:foldl(fun(Bookkeeper, J) ->
@@ -215,11 +215,11 @@ bookkeeper_jobj(CategoryId, ItemId, ServicePlan) ->
                ,kzd_service_plan:bookkeeper_ids(ServicePlan)
                ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_rate_at_quantity(kz_term:ne_binary(), kz_term:ne_binary(), kzd_service_plan:doc(), kz_services:services()) ->
                                   {float(), integer()}.
 get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services) ->
@@ -229,12 +229,12 @@ get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services) ->
         FlatRate -> {FlatRate, 1}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc If tiered flate rates are provided, find the value to use given the
 %% current quantity.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_quantity(kz_term:ne_binary(), kz_term:ne_binary(), kzd_item_plan:doc(), kz_services:services()) -> integer().
 get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     ItemQuantity = get_item_quantity(CategoryId, ItemId, ItemPlan, Services),
@@ -247,12 +247,12 @@ get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
         _ -> ItemQuantity
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc If tiered flate rates are provided, find the value to use given the
 %% current quantity.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_flat_rate(non_neg_integer(), kzd_item_plan:doc()) -> kz_term:api_float().
 get_flat_rate(Quantity, ItemPlan) ->
     Rates = kzd_item_plan:flat_rates(ItemPlan),
@@ -263,12 +263,12 @@ get_flat_rate(Quantity, ItemPlan) ->
             kz_json:get_float_value(kz_term:to_binary(hd(Range)), Rates)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc If tiered rates are provided, find the value to use given the current
 %% quantity.  If no rates are viable attempt to use the "rate" property.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_quantity_rate(non_neg_integer(), kzd_item_plan:doc()) -> kz_term:api_float().
 get_quantity_rate(Quantity, ItemPlan) ->
     Rates = kzd_item_plan:rates(ItemPlan),
@@ -280,7 +280,7 @@ get_quantity_rate(Quantity, ItemPlan) ->
             kz_json:get_float_value(kz_term:to_binary(hd(Range)), Rates)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Get the item quantity, drawing solely from the provided account or
 %% (when the service plan dictates) the summed (cascaded) decendants.
@@ -288,7 +288,7 @@ get_quantity_rate(Quantity, ItemPlan) ->
 %% given category, except a list of item names to ignore during
 %% summation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get_item_quantity(kz_term:ne_binary(), kz_term:ne_binary(), kzd_item_plan:doc(), kz_services:services()) ->
                                integer().

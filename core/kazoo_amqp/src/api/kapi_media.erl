@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Media requests, responses, and errors
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_media).
 
 -compile({no_auto_import, [error/1]}).
@@ -60,11 +60,11 @@
                             ]).
 -define(MEDIA_ERROR_TYPES, []).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Request media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
@@ -80,11 +80,11 @@ req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Response with media - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp(kz_json:object() | kz_term:proplist()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
@@ -100,11 +100,11 @@ resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES);
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Media error - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec error(kz_term:proplist() | kz_json:object()) ->
                    {'ok', iolist()} |
                    {'error', string()}.
@@ -128,10 +128,10 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_kapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:kapps_exchange().

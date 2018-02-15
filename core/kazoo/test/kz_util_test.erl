@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc Various utilities - a veritable cornicopia
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Pierre Fenoll
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_util_test).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").

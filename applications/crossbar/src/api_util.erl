@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc Crossbar REST-related functions.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Jon Blanton
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(api_util).
 
 -export([is_cors_preflight/1
@@ -78,19 +78,19 @@
              ,stop_return/0
              ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Attempts to determine if this is a cross origin resource preflight request
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_cors_preflight(cowboy_req:req()) -> boolean().
 is_cors_preflight(Req) ->
     is_cors_request(Req)
         andalso ?HTTP_OPTIONS =:= cowboy_req:method(Req).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Attempts to determine if this is a cross origin resource sharing request
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_cors_request(cowboy_req:req()) -> boolean().
 is_cors_request(Req) ->
     ReqHdrs = [<<"origin">>, <<"access-control-request-method">>, <<"access-control-request-headers">>],
@@ -102,10 +102,10 @@ is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
     'undefined' =/= cowboy_req:header(ReqHdr, Req)
         orelse is_cors_request(Req, ReqHdrs).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_cors_headers(cowboy_req:req(), cb_context:context()) ->
                               cowboy_req:req().
 add_cors_headers(Req, Context) ->
@@ -511,11 +511,11 @@ decode_json_body(ReqBody, Req) ->
             throw(_R)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Normalizes envelope keys, sets envelope keys to lowercase.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_envelope_keys(kz_json:object()) -> kz_json:object().
 normalize_envelope_keys(JObj) ->
     kz_json:foldl(fun normalize_envelope_keys_foldl/3, kz_json:new(), JObj).
@@ -524,11 +524,11 @@ normalize_envelope_keys(JObj) ->
 normalize_envelope_keys_foldl(_K, 'undefined', JObj) -> JObj;
 normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize_key(K), V, JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Determines if the request envelope is valid.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_valid_request_envelope(kz_json:object(), cb_context:context()) -> 'true' | validation_errors().
 is_valid_request_envelope(Envelope, Context) ->
     case requires_envelope(Context) of
@@ -556,13 +556,13 @@ get_http_verb(Method, Context) ->
             kz_term:to_upper_binary(Verb)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will loop over the Tokens in the request path and return
 %% a proplist with keys being the module and values a list of parameters
 %% supplied to that module.  If the token order is improper a empty list
 %% is returned.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec path_tokens(cb_context:context()) -> kz_term:ne_binaries().
 path_tokens(Context) ->
     Api = cb_context:api_version(Context),
@@ -636,7 +636,7 @@ is_cb_module_version(Context, Elem) ->
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will find the intersection of the allowed methods
 %% among event responses.  The responses can only veto the list of
 %% methods, they can not add.
@@ -650,7 +650,7 @@ is_cb_module_version(Context, Elem) ->
 %% POSTing a `?HTTP_DELETE', and `DELETE' is NOT in the allowed methods, remove
 %% `POST' from the allowed methods.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allow_methods([http_methods(),...], kz_term:ne_binary(), http_method()) -> http_methods().
 allow_methods(Responses, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
@@ -671,10 +671,10 @@ allow_methods_fold(Response, Acc) ->
 uppercase_all(L) when is_list(L) ->
     [kz_term:to_upper_binary(kz_term:to_binary(I)) || I <- L].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Insert `POST' if Verb is in allowed, otherwise remove `POST'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_add_post_method(kz_term:ne_binary(), http_method(), http_methods()) -> http_methods().
 maybe_add_post_method(?HTTP_POST, ?HTTP_POST, Allowed) ->
     Allowed;
@@ -687,12 +687,12 @@ maybe_add_post_method(Verb, ?HTTP_POST, Allowed) ->
 maybe_add_post_method(_, _, Allowed) ->
     Allowed.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function will use event bindings to determine if the client has
 %% provided a valid authentication token.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_early_authentic(cowboy_req:req(), cb_context:context()) ->
                                 {'true', cowboy_req:req(), cb_context:context()} |
                                 stop_return().
@@ -837,12 +837,12 @@ get_authorization_token_type(<<"Basic ", Token/binary>>) -> {Token, 'basic'};
 get_authorization_token_type(<<"Bearer ", Token/binary>>) -> {Token, 'oauth'};
 get_authorization_token_type(Token) -> {Token, 'unknown'}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will try to find pretty print option inside the headers
 %% if not found will look into the request to find the options
 %% otherwise will result in false.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_pretty_print(cowboy_req:req(), cb_context:context()) -> cb_cowboy_payload().
 get_pretty_print(Req, Context) ->
     case cowboy_req:header(<<"x-pretty-print">>, Req) of
@@ -858,11 +858,11 @@ get_pretty_print(Req, Context) ->
             {Req, cb_context:set_pretty_print(Context, kz_term:is_true(Value))}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will use event bindings to determine if the client is
 %% authorized for this request.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_permitted(cowboy_req:req(), cb_context:context()) ->
                           {'true', cowboy_req:req(), cb_context:context()} |
                           stop_return().
@@ -997,11 +997,11 @@ content_type_matches(_CTA, _CTAs) ->
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
 ensure_content_type(CT) -> CT.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will use event bindings to determine if the target noun
 %% (the final module in the chain) accepts this verb parameter pair.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec does_resource_exist(cb_context:context()) -> boolean().
 does_resource_exist(Context) ->
     does_resource_exist(Context, cb_context:req_nouns(Context)).
@@ -1014,14 +1014,14 @@ does_resource_exist(Context, [{Mod, Params}|_]) ->
 does_resource_exist(_Context, _ReqNouns) ->
     'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function gives each `{Mod, Params}' pair a chance to determine if
 %% it is valid and returns the status, and any errors.
 %%
 %% validate_resource for each `{Mod, Params}' pair
 %% validate for LAST `{Mod, Params}' pair
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate(Context, cb_context:req_nouns(Context)).
@@ -1063,12 +1063,12 @@ validate_resources_fold({Mod, Params}, ContextAcc) ->
     Payload = [ContextAcc | Params],
     crossbar_bindings:fold(Event, Payload).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function will use event bindings to determine if the client is
 %% authorized for this request.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_billing(cb_context:context()) -> cb_context:context().
 process_billing(Context)->
     Event = create_event_name(Context, <<"billing">>),
@@ -1084,10 +1084,10 @@ process_billing_response(Context, NewContext) ->
             Context
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the response is of type success.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec succeeded(cb_context:context()) -> boolean().
 succeeded(Context) -> cb_context:resp_status(Context) =:= 'success'.
 
@@ -1142,11 +1142,11 @@ execute_request_results(Req, Context, 'success') ->
 execute_request_results(Req, Context, _RespStatus) ->
     ?MODULE:stop(Req, Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function runs the request terminated bindings at the conclusion
 %% of all requests.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec finish_request(cowboy_req:req(), cb_context:context()) -> 'ok'.
 finish_request(_Req, Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
@@ -1158,10 +1158,10 @@ finish_request(_Req, Context) ->
         _Else -> crossbar_services:reconcile(Context)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_resp_content(cowboy_req:req(), cb_context:context()) ->
                                  {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
 create_resp_content(Req0, Context) ->
@@ -1220,11 +1220,11 @@ create_resp_file(Req, Context) ->
           end,
     {{Len, Fun}, Req}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Encode the JObj and send it as a chunk. Start chunk response if is
 %% not started yet.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_json_chunk_response(cowboy_req:req(), cb_context:context()) ->
                                         {boolean(), cowboy_req:req()}.
 create_json_chunk_response(Req, Context) ->
@@ -1275,12 +1275,12 @@ create_csv_chunk_response(Req, Context) ->
             {'true', Req1}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Returns the `x-file-name' from the request header if available.
 %% If its not then check URL params for `file_name'. If neither are present
 %% then return the default defined value.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec csv_file_name(cb_context:context(), kz_term:binary()) -> kz_term:binary().
 csv_file_name(Context, Default) ->
     case cb_context:req_header(Context, <<"x-file-name">>) of
@@ -1323,11 +1323,11 @@ map_empty_json_value_to_binary(Key, Value) ->
         'false' -> {Key, Value}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will create response expected for a request that
 %% is pushing data (like PUT).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_push_response(cowboy_req:req(), cb_context:context()) ->
                                   {boolean(), cowboy_req:req(), cb_context:context()}.
 create_push_response(Req0, Context) ->
@@ -1343,11 +1343,11 @@ create_push_response(Req0, Context, Fun) ->
 
 -type pull_response() :: kz_term:text() | resp_file().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function will create response expected for a request that
 %% is pulling data (like GET).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_pull_response(cowboy_req:req(), cb_context:context()) ->
                                   {pull_response(), cowboy_req:req(), cb_context:context()} |
                                   stop_return().
@@ -1373,10 +1373,10 @@ maybe_set_pull_response_stream({FileLength, TransportFun})
 maybe_set_pull_response_stream(Other) ->
     Other.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function extracts the response fields and puts them in a proplist.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_resp_envelope(cb_context:context()) -> kz_json:object().
 create_resp_envelope(Context) ->
     do_create_resp_envelope(cb_context:import_errors(Context)).
@@ -1461,11 +1461,11 @@ decode_start_key(Encoded) ->
     catch _:_ -> Encoded
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Iterate through {@link cb_context:resp_headers/1}, setting the headers specified.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_resp_headers(cowboy_req:req(), cb_context:context() | cowboy:http_headers()) ->
                               cowboy_req:req().
 set_resp_headers(Req0, #{}=Headers) ->

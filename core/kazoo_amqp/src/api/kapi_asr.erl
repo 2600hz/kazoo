@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc ASR requests, responses, and errors
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_asr).
 
 -compile({no_auto_import, [error/1]}).
@@ -48,11 +48,11 @@
                           ]).
 -define(ASR_ERROR_TYPES, []).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Request asr - see wiki
 %% Takes kz_term:proplist(), creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
@@ -68,11 +68,11 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Response with asr - see wiki
 %% Takes kz_term:proplist(), creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
@@ -88,11 +88,11 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) ->
     resp_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Asr error - see wiki
 %% Takes kz_term:proplist(), creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec error(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
@@ -108,34 +108,34 @@ error_v(Prop) when is_list(Prop) ->
 error_v(JObj) ->
     error_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc bind to a queue to the asr exchange and events
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc unbind to a queue to the asr exchange and events
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec unbind_q(binary()) -> 'ok'.
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_callctl(Queue).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:callctl_exchange().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc prepare and publish an asr request
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
@@ -146,10 +146,10 @@ publish_req(Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?ASR_REQ_VALUES, fun req/1),
     amqp_util:callctl_publish(?KEY_ASR_REQ, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc prepare and publish an asr response
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(Queue, JObj) ->
@@ -160,10 +160,10 @@ publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Resp, ?ASR_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc prepare and publish an asr error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_error(Queue, JObj) ->

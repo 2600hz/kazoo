@@ -1,11 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Jon Blanton
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(crossbar_init).
 
 -export([start_link/0
@@ -51,10 +51,10 @@ api_version_constraint('forward', NotVersion) ->
         'false' -> {'error', 'not_a_version'}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the app for inclusion in a supervisor tree.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
@@ -63,10 +63,10 @@ start_link() ->
     maybe_start_ssl(Dispatch),
     'ignore'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Load a crossbar module's bindings into the bindings server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_versioned_module(binary()) -> boolean().
 is_versioned_module(Module) ->
     Mod = lists:reverse(binary_to_list(Module)),
@@ -115,10 +115,10 @@ start_mod_version(Version, Mod) ->
             lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
             'false'
     end.
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Load a crossbar module's bindings into the bindings server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> 'ok'.
 stop_mod(CBMod) when not is_atom(CBMod) ->
     stop_mod(kz_term:to_atom(CBMod, 'true'));
@@ -162,11 +162,11 @@ stop_mod_version(Version, Mod) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Functions for `onrequest' and `onresponse' callbacks
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req) -> Req.
 

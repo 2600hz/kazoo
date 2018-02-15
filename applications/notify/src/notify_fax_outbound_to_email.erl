@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with fax attachment to the user.
@@ -6,7 +6,7 @@
 %%%
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_fax_outbound_to_email).
 
 -export([init/0, handle_req/2]).
@@ -89,11 +89,11 @@ process_req(FaxDoc, JObj, _Props) ->
             {'error', Msg}
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:objects(), kz_json:object()) -> kz_term:proplist().
 create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
     Now = kz_time:now_s(),
@@ -133,11 +133,11 @@ fax_values(Event) ->
      || {<<"Fax-", K/binary>>, V} <- kz_json:to_proplist(Event)
     ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist(), kz_term:ne_binary()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, AccountDb) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, AccountDb) || T <- To];

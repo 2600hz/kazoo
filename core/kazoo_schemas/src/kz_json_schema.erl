@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz INC
 %%% @doc Module for interacting with JSON schema docs
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_json_schema).
 
 -export([add_defaults/2
@@ -648,10 +648,10 @@ error_to_jobj({'schema_invalid'
 error_to_jobj(Other, _Options) ->
     throw({'schema_error', Other}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Add a validation error to the list of request errors
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validation_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
                                   validation_error().
 validation_error(Property, <<"type">>=C, Message, Options) ->

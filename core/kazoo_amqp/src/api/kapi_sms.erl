@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @doc Routing requests, responses, and wins!
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_sms).
 
 -export([message/1, message_v/1
@@ -294,10 +294,10 @@ resume_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?RESUME_REQ_HEADERS, ?RESUME_REQ_VALUES, ?RESUME_REQ_TYPES);
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Bind AMQP Queue for routing requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, props:get_value('message_id', Props, <<"*">>)),
@@ -360,10 +360,10 @@ unbind_q(Exchange, Queue, CallId, RouteId, ['outbound'|Restrict]) ->
     unbind_q(Exchange, Queue, CallId, RouteId, Restrict);
 unbind_q(_, _, _, _, []) -> 'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:new_exchange(?SMS_EXCHANGE, <<"topic">>).

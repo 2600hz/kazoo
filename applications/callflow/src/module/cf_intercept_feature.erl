@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc Intercept a call in the specified device/user/extension
 %%% data: {
@@ -37,7 +37,7 @@
 %%% @author SIPLABS LLC (Mikhail Rodionov)
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_intercept_feature).
 
 -behaviour(gen_cf_action).
@@ -46,11 +46,11 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Entry point for this module, creates the parameters and branches
 %% to cf_intercept.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),

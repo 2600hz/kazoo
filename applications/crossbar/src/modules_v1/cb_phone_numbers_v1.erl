@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handle client requests for phone_number documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_phone_numbers_v1).
 
 -export([init/0
@@ -51,14 +51,14 @@
 -define(OFFSET, <<"offset">>).
 -define(QUANTITY, <<"quantity">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
@@ -73,14 +73,14 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete'),
     ok.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -106,12 +106,12 @@ allowed_methods(_, ?IDENTIFY) ->
 allowed_methods(?COLLECTION, ?ACTIVATE) ->
     [?HTTP_PUT].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -126,10 +126,10 @@ resource_exists(_, ?PORT) -> 'true';
 resource_exists(_, ?IDENTIFY) -> 'true';
 resource_exists(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Ensure we will be able to bill for phone_numbers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec billing(cb_context:context()) -> cb_context:context().
 billing(Context) ->
@@ -147,11 +147,11 @@ billing(Context, _, [{<<"phone_numbers">>, _}|_]) ->
 billing(Context, _Verb, _Nouns) ->
     Context.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
@@ -160,11 +160,11 @@ authenticate(Context) ->
 -spec authenticate(http_method(), req_nouns()) -> 'true'.
 authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
@@ -173,13 +173,13 @@ authorize(Context) ->
 -spec authorize(http_method(), req_nouns()) -> 'true'.
 authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -326,16 +326,16 @@ normalize_view_results(JObj, Acc) ->
      | Acc
     ].
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec identify(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 identify(Context, Number) ->
     case knm_number:lookup_account(Number) of
@@ -356,11 +356,11 @@ identify(Context, Number) ->
             set_response({'ok', JObj}, Number, Context)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load an instance from the database.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
@@ -371,11 +371,11 @@ read(Context, Number) ->
              end,
     set_response(Result, Number, Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
@@ -412,31 +412,31 @@ find_numbers(Context) ->
     Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
     cb_context:validate_request_data(<<"phone_numbers">>, Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(Context) ->
     cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
                       ,'undefined'
                       ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_response({'ok', kz_json:object()} |
                    kz_json:object() |
                    knm_number_return() |

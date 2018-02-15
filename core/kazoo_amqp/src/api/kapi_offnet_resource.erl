@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_offnet_resource).
 
 -export([req/1, req_v/1]).
@@ -181,11 +181,11 @@
 -define(OFFNET_RESOURCE_RESP_TYPES, []).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Offnet resource request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
@@ -201,11 +201,11 @@ req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Offnet resource request - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
@@ -229,10 +229,10 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:resource_exchange().

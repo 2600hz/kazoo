@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz INC
 %%% @doc The goal is to model how a token bucket works and, using PropEr,
 %%% generate test scenarios that prove the properties.
@@ -14,7 +14,7 @@
 %%%
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_token_bucket_pqc).
 
 -define(DO_NOT_RUN_QC_TOKEN_BUCKETS, true).

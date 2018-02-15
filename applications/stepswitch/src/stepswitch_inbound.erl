@@ -1,18 +1,18 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Handle route requests from carrier resources
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stepswitch_inbound).
 
 -export([handle_req/2]).
 
 -include("stepswitch.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     _ = kz_util:put_callid(JObj),
@@ -25,11 +25,11 @@ handle_req(JObj, _Props) ->
                        )
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc handle a request inbound from offnet
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_relay_request(kz_json:object()) -> 'ok'.
 maybe_relay_request(JObj) ->
     Number = stepswitch_util:get_inbound_destination(JObj),
@@ -60,53 +60,53 @@ maybe_relay_request(JObj) ->
             'ok'
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc determine the e164 format of the inbound number
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_account_id(knm_number_options:extra_options(), kz_json:object()) ->
                             kz_json:object().
 set_account_id(NumberProps, JObj) ->
     AccountId = knm_number_options:account_id(NumberProps),
     kz_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_ignore_display_updates(knm_number_options:extra_options(), kz_json:object()) ->
                                         kz_json:object().
 set_ignore_display_updates(_, JObj) ->
     kz_json:set_value(?CCV(<<"Ignore-Display-Updates">>), <<"true">>, JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_inception(knm_number_options:extra_options(), kz_json:object()) ->
                            kz_json:object().
 set_inception(_, JObj) ->
     Request = kz_json:get_value(<<"Request">>, JObj),
     kz_json:set_value(?CCV(<<"Inception">>), Request, JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_resource_type(knm_number_options:extra_options(), kz_json:object()) ->
                                kz_json:object().
 set_resource_type(_, JObj) ->
     kz_json:set_value(?CCV(<<"Resource-Type">>), <<"offnet-origination">>, JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_find_resource(knm_number_options:extra_options(), kz_json:object()) ->
                                  kz_json:object().
 maybe_find_resource(_, JObj) ->
@@ -167,11 +167,11 @@ maybe_format_destination(_, JObj) ->
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_set_ringback(knm_number_options:extra_options(), kz_json:object()) ->
                                 kz_json:object().
 maybe_set_ringback(NumberProps, JObj) ->
@@ -181,11 +181,11 @@ maybe_set_ringback(NumberProps, JObj) ->
             kz_json:set_value(?CCV(<<"Ringback-Media">>), MediaId, JObj)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc determine the e164 format of the inbound number
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_set_transfer_media(knm_number_options:extra_options(), kz_json:object()) ->
                                       kz_json:object().
 maybe_set_transfer_media(NumberProps, JObj) ->
@@ -195,12 +195,12 @@ maybe_set_transfer_media(NumberProps, JObj) ->
             kz_json:set_value(?CCV(<<"Transfer-Media">>), MediaId, JObj)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc build the JSON to set the custom channel vars with the calls
 %% account and authorizing  ID
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_lookup_cnam(knm_number_options:extra_options(), kz_json:object()) ->
                                kz_json:object().
 maybe_lookup_cnam(NumberProps, JObj) ->
@@ -209,11 +209,11 @@ maybe_lookup_cnam(NumberProps, JObj) ->
         'true' -> stepswitch_cnam:lookup(JObj)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_add_prepend(knm_number_options:extra_options(), kz_json:object()) ->
                                kz_json:object().
 maybe_add_prepend(NumberProps, JObj) ->
@@ -254,22 +254,22 @@ should_block_anonymous(JObj) ->
                 andalso kz_json:is_true(<<"should_block_anonymous">>, get_blacklist(JObj))
                ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc relay a route request once populated with the new properties
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec relay_request(kz_json:object()) -> kz_json:object().
 relay_request(JObj) ->
     kapi_route:publish_req(JObj),
     lager:debug("relaying route request ~s", [kapi_route:fetch_id(JObj)]),
     JObj.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_transition_port_in(knm_number_options:extra_options(), kz_json:object()) -> any().
 maybe_transition_port_in(NumberProps, JObj) ->
     case knm_number_options:has_pending_port(NumberProps) of
@@ -290,11 +290,11 @@ transition_port_in(Number, JObj) ->
             knm_port_request:transition_to_complete(PortReq, Metadata)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_blacklisted(kz_json:object()) -> boolean().
 is_blacklisted(JObj) ->
     is_number_blacklisted(get_blacklist(JObj), JObj).

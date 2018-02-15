@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_exe).
 -behaviour(gen_listener).
 
@@ -76,14 +76,14 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Starts the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link(kapps_call:call()) -> kz_types:startlink_ret().
 start_link(Call) ->
     CallId = kapps_call:call_id(Call),
@@ -315,15 +315,15 @@ amqp_call(Srv, API, PubFun, VerifyFun) when is_pid(Srv), is_function(PubFun, 1) 
 amqp_call(Call, API, PubFun, VerifyFun) when is_function(PubFun, 1) ->
     amqp_call(kapps_call:kvs_fetch('consumer_pid', Call), API, PubFun, VerifyFun).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_listener callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Initializes the server
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
     process_flag('trap_exit', 'true'),
@@ -334,11 +334,11 @@ init([Call]) ->
                  ,branch_count = ?MAX_BRANCH_COUNT
                  }}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling call messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('is_channel_destroyed', _From, State) ->
     {'reply', State#state.destroyed, State};
@@ -397,11 +397,11 @@ handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
@@ -516,11 +516,11 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling all non call/cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                                            ,call=Call
@@ -569,11 +569,11 @@ handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handle call messages, sometimes forward them on..
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{cf_module_pid=PidRef
                          ,call=Call
@@ -615,7 +615,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
     end,
     'ignore'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
@@ -623,7 +623,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
 %% with Reason. The return value is ignored.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate({'shutdown', 'transfer'}, _) ->
     lager:info("callflow execution has been transferred");
@@ -641,26 +641,26 @@ terminate(_Reason, #state{call=Call
     hangup_call(Call),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert process state when code is changed
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%------------------------------------------------------------------------------
 %% @private
 %% this function determines if the callflow module specified at the
 %% current node is 'available' and attempts to launch it if so.
 %% Otherwise it will advance to the next child in the flow
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec launch_cf_module(state()) -> state().
 launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
     lager:debug("no flow left to launch, maybe stopping"),
@@ -711,12 +711,12 @@ cf_module_not_found(Call) ->
     continue(self()),
     {'undefined', kapps_call:kvs_fetch('cf_last_action', Call)}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc helper function to spawn a linked callflow module, from the entry
 %% point 'handle' having set the callid on the new process first
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, kz_json:object(), kapps_call:call()) ->
                              {kz_term:pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
@@ -739,14 +739,14 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
             throw(R)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc unlike the kapps_call_command this send command does not call the
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec amqp_send_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_term:ne_binary()) -> 'ok'.
 amqp_send_message(API, PubFun, Q) ->
     PubFun(add_server_id(Q, API)).

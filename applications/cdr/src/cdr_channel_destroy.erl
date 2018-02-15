@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Listen for CDR events and record them to the database
 %%% @author James Aimonetti
@@ -6,7 +6,7 @@
 %%% @author Ben Wann
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cdr_channel_destroy).
 
 -export([handle_req/2]).

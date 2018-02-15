@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc CDR
 %%% Read only access to CDR docs
@@ -10,7 +10,7 @@
 %%% @author Ben Wann
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_cdrs).
 
 -export([init/0
@@ -87,14 +87,14 @@
 
 -type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds()) -> kz_term:ne_binary()).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
@@ -124,14 +124,14 @@ to_response(Context, RespType, [{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>,
 to_response(Context, _, _) ->
     Context.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/cdr/' can only accept GET
 %%
 %% Failure here returns 405.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -149,12 +149,12 @@ allowed_methods(_CDRId) ->
 allowed_methods(?PATH_LEGS, _InteractionId) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> boolean().
 resource_exists() -> 'true'.
@@ -166,11 +166,11 @@ resource_exists(_) -> 'true'.
 resource_exists(?PATH_LEGS, _) -> 'true';
 resource_exists(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
     provided_types(Context).
@@ -190,13 +190,13 @@ provided_types(Context) ->
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
                                           ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -237,15 +237,15 @@ load_chunk_view(Context, ViewName, Options0) ->
               ],
     crossbar_view:load_modb(cb_context:store(Context, 'is_reseller', IsReseller), ViewName, Options).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempt to CDRs summary.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_cdr_summary(cb_context:context()) -> cb_context:context().
 load_cdr_summary(Context) ->
     lager:debug("loading cdr summary for account ~s", [cb_context:account_id(Context)]),
@@ -276,11 +276,11 @@ merge_cdr_summary(JObj1, JObj2) ->
 -spec normalize_summary_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_summary_results(JObj, Acc) -> [JObj|Acc].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Generate specific view options for the path.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
 get_view_options([{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     {?CB_LIST, []};
@@ -319,11 +319,11 @@ get_view_options(_) ->
 maybe_add_stale_to_options('true') -> [{'stale', 'ok'}];
 maybe_add_stale_to_options('false') ->[].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Loads CDR docs from database and normalized the them.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_chunked_cdrs(Context, RespType) ->
     Fun = fun(JObj, Acc) -> split_to_modbs(cb_context:account_id(Context), kz_doc:id(JObj), Acc) end,
@@ -372,22 +372,22 @@ normalize_cdrs(Context, <<"json">>, JObjs) ->
 normalize_cdrs(Context, <<"csv">>, JObjs) ->
     [normalize_cdr_to_csv(JObj, Context) || JObj <- JObjs].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Normalize CDR in JSON
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_cdr_to_jobj(kz_json:object(), cb_context:context()) -> kz_json:object().
 normalize_cdr_to_jobj(JObj, Context) ->
     Duration = kz_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
     kz_json:from_list([{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Normalize CDR in CSV
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_cdr_to_csv(kz_json:object(), cb_context:context()) -> binary().
 normalize_cdr_to_csv(JObj, Context) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0),
@@ -502,11 +502,11 @@ reseller_cost(JObj) ->
         _ -> 0
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load a CDR document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_cdr(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
@@ -517,11 +517,11 @@ load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load Legs for a cdr interaction from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_legs(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),

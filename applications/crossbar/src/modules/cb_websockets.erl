@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_websockets).
 
 -export([init/0
@@ -44,14 +44,14 @@
                           ,{<<"object">>, ?OBJECTS}
                           ])).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -60,29 +60,29 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.websockets">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.websockets">>, ?MODULE, 'validate').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authenticates the incoming request, returning true if the requestor is
 %% known, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> {'true', cb_context:context()} | 'false'.
 authenticate(Context) ->
     authenticate_req(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Authorizes the incoming request, returning true if the requestor is
 %% allowed to access the resource, or false if not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize_req(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -92,7 +92,7 @@ allowed_methods() ->
 allowed_methods(_SocketId) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Does the path point to a valid resource.
 %% For example:
 %%
@@ -102,7 +102,7 @@ allowed_methods(_SocketId) ->
 %%    /websockets/foo/bar => [<<"foo">>, <<"bar">>]
 %% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -110,14 +110,14 @@ resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /websockets mights load a list of websocket objects
 %% /websockets/123 might load the websocket object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -127,37 +127,37 @@ validate(Context) ->
 validate(Context, Id) ->
     validate_websocket(Context, Id, cb_context:req_verb(Context)).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate_req(cb_context:context(), http_method(), req_nouns()) -> {'true', cb_context:context()} |'false'.
 authenticate_req(Context, ?HTTP_GET, [{<<"websockets">>, []}]) ->
     lager:debug("authenticating request"),
     {'true', Context};
 authenticate_req(_Context, _Verb, _Nouns) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize_req(http_method(), req_nouns()) -> boolean().
 authorize_req(?HTTP_GET, [{<<"websockets">>, []}]) ->
     lager:debug("authorizing request"),
     'true';
 authorize_req(_Verb, _Nouns) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load running web sockets
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_websockets(cb_context:context(), http_method()) -> cb_context:context().
 validate_websockets(Context, ?HTTP_GET) ->
     case cb_context:req_nouns(Context) of
@@ -165,21 +165,21 @@ validate_websockets(Context, ?HTTP_GET) ->
         _Nouns -> summary(Context)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load a web socket info
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_websocket(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_websocket(Context, Id, ?HTTP_GET) ->
     read(Id, Context).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary_available(cb_context:context()) -> cb_context:context().
 summary_available(Context) ->
     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
@@ -187,30 +187,30 @@ summary_available(Context) ->
                                 ]).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     websockets_req(Context, [{<<"Account-ID">>, cb_context:account_id(Context)}]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     websockets_req(Context, [{<<"Socket-ID">>, Id}]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec websockets_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 websockets_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
@@ -229,11 +229,11 @@ websockets_req(Context, Props) ->
 
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec websockets_resp(cb_context:context(), kz_json:objects()) -> cb_context:context().
 websockets_resp(Context, JObjs) ->

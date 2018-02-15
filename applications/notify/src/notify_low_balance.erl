@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
@@ -6,7 +6,7 @@
 %%%
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_low_balance).
 
 -export([init/0, send/2
@@ -23,10 +23,10 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc initialize the module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
@@ -53,10 +53,10 @@ handle_req(JObj, _Props) ->
                                  ,MsgId
                                  ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send(integer(), kz_json:object()) -> any().
 send(CurrentBalance, Account) ->
     AccountId = kz_doc:id(Account),
@@ -74,11 +74,11 @@ send(CurrentBalance, Account) ->
             build_and_send_email(TxtBody, HTMLBody, Subject, To, Props)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(integer(), kz_json:object()) -> kz_term:proplist().
 create_template_props(CurrentBalance, Account) ->
     Threshold = kzd_accounts:low_balance_threshold(kz_doc:id(Account)),
@@ -88,20 +88,20 @@ create_template_props(CurrentBalance, Account) ->
     ,{<<"threshold">>, pretty_print_dollars(Threshold)}
     ].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pretty_print_dollars(float()) -> kz_term:ne_binary().
 pretty_print_dollars(Amount) ->
     kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
@@ -124,11 +124,11 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
             },
     notify_util:send_email(From, To, Email).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec collect_recipients(kz_term:ne_binary()) -> kz_term:api_binaries() | kz_term:api_binary().
 collect_recipients(AccountId) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),

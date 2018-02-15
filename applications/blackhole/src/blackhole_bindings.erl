@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
@@ -19,7 +19,7 @@
 %%% @author Karl Anderson
 %%% @author Ben Wann
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(blackhole_bindings).
 
 %% API
@@ -48,9 +48,9 @@
 -type payload_el() :: bh_context:context() | kz_term:ne_binary() | map() | kz_json:object().
 -type payload() :: [payload_el()] | payload_el().
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
 -type map_results() :: list().
 %% return `[{Result, Payload1}]', a list of tuples, the first element
@@ -62,20 +62,20 @@
 %% of which is the result of the bound handler, and the second element
 %% is the payload, possibly modified
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc return the modified Payload after it has been threaded through
 %% all matching bindings
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type fold_results() :: payload().
 -spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     kazoo_bindings:fold(Routing, Payload).
 
-%%-------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Helper functions for working on a result set of bindings
 %% @end
-%%-------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec any(kz_term:proplist()) -> boolean().
 any(Res) when is_list(Res) ->
     kazoo_bindings:any(Res, fun check_bool/1).
@@ -94,20 +94,20 @@ succeeded(Res) when is_list(Res) ->
     kazoo_bindings:succeeded(Res, fun filter_out_failed/1);
 succeeded(Res)-> succeeded([Res]).
 
-%%-------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Helpers for the result set helpers
 %% @end
-%%-------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_bool({boolean(), any()} | boolean()) -> boolean().
 check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';
 check_bool(_) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_out_failed({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
 filter_out_failed('true') -> 'true';
@@ -121,11 +121,11 @@ filter_out_failed([#bh_context{}=Ctx]) ->
     not bh_context:success(Ctx);
 filter_out_failed(Term) -> not kz_term:is_empty(Term).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
@@ -236,7 +236,7 @@ bindings(Routing) ->
     kazoo_bindings:bindings(Routing, RTOptions).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Match routing patterns. * matches 1 slot, # 0 or more.
 %% Note: matching only accepts wilcards on first argument (asymetric).
 %% @end
@@ -245,7 +245,7 @@ bindings(Routing) ->
 %%
 %% this is a copy from kazoo_bindings with extra
 %% check for bh_matches([_ | Bs], [<<"*">>|Rs]) ->
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bh_matches(kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean().
 
 %% if both are empty, we made it!

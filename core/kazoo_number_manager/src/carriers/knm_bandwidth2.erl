@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc Handle client requests for phone_number documents using new bandwidth api
 %%% @author Karl Anderson
@@ -6,7 +6,7 @@
 %%% @author Pierre Fenoll
 %%% @author Luis Azedo
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_bandwidth2).
 -behaviour(knm_gen_carrier).
 
@@ -96,39 +96,39 @@
 
 %%% API
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec info() -> map().
 info() ->
     #{?CARRIER_INFO_MAX_PREFIX => 3
      }.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Is this carrier handling numbers local to the system?
 %% Note: a non-local (foreign) carrier module makes HTTP requests.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
                                               {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Query the Bandwidth.com system for a quantity of available numbers
 %% in a rate center
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) -> search_ret().
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
@@ -184,10 +184,10 @@ process_search_response(Result, Options) ->
             ],
     {'ok', Found}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
 acquire_number(Number) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
@@ -265,11 +265,11 @@ to_bandwidth2(Number) -> Number.
 from_bandwidth2(<<"+", _/binary>> = Number) -> Number;
 from_bandwidth2(Number) -> <<"+1", Number/binary>>.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Release a number from the routing table
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
 disconnect_number(_Number) -> _Number.
 
@@ -369,12 +369,12 @@ api_post("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders", 
     handle_response({'ok', 200, [], Resp}).
 -endif.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Make a REST request to Bandwidth.com Numbers API to perform the
 %% given verb (purchase, search, provision, etc).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_response(kz_http:ret()) -> api_res().
 handle_response({Result, Code, Props, Response})
   when is_binary(Response) ->
@@ -425,11 +425,11 @@ handle_response({'error', _}=E) ->
     lager:debug("bandwidth.com request error: ~p", [E]),
     E.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert a number order response to json
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec number_order_response_to_json(kz_types:xml_els() | kz_types:xml_el()) -> kz_json:object().
 number_order_response_to_json([]) ->
     kz_json:new();
@@ -465,11 +465,11 @@ tollfree_search_response_to_KNM(Xml, QID) ->
     Num = from_bandwidth2(kz_xml:get_value("//TelephoneNumber/text()", Xml)),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, kz_json:new()}}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert a rate center XML entity to json
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec rate_center_to_json(kz_types:xml_els() | kz_types:xml_el()) -> kz_json:object().
 rate_center_to_json([]) ->
     kz_json:new();
@@ -485,12 +485,12 @@ rate_center_to_json(Xml) ->
        )
      ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Determine if the request was successful, and if not extract any
 %% error text
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec verify_response(kz_types:xml_el()) -> {'ok', kz_types:xml_el()} |
                                             {'error', any()}.
 verify_response(Xml) ->

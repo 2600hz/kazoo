@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2017, Conversant Ltd
 %%% @doc Note: edr_be_amqp must be running, otherwise no events will come
 %%% through. You can request events with a verbosity or severity
@@ -7,7 +7,7 @@
 %%%
 %%% @author Max Lay
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(bh_edr).
 
 -export([init/0

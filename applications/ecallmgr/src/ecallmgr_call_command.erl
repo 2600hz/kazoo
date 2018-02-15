@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
 %%% @doc Execute call commands
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_call_command).
 
 -export([exec_cmd/4]).
@@ -59,12 +59,12 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
         [_|_]=Apps -> Apps
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc return the app name and data (as a binary string) to send to
 %% the FS ESL via mod_erlang_event
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_fs_app(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
                         fs_app() | fs_apps() |
                         {'return', 'error' | kz_term:ne_binary()} |
@@ -634,11 +634,11 @@ media_macro_to_file_string(Macro) ->
 maybe_multi_set(_Node, _UUID, []) -> 'undefined';
 maybe_multi_set(Node, UUID, Vars) -> ecallmgr_util:multi_set_args(Node, UUID, Vars).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Redirect command helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec lookup_redirect_server(kz_json:object()) -> kz_term:api_binary().
 lookup_redirect_server(JObj) ->
@@ -660,11 +660,11 @@ maybe_add_redirect_header(Node, UUID, RedirectServer) ->
     lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
     ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Eavesdrop command helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec eavesdrop(atom(), kz_term:ne_binary(), kz_json:object()) ->
                        {kz_term:ne_binary(), kz_term:ne_binary()} |
                        {'return', kz_term:ne_binary()} |
@@ -677,11 +677,11 @@ eavesdrop(Node, UUID, JObj) ->
             Other
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Call pickup command helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_pickup(atom(), kz_term:ne_binary(), kz_json:object()) ->
                          {kz_term:ne_binary(), kz_term:ne_binary()} |
                          {'return', kz_term:ne_binary()} |
@@ -960,11 +960,11 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
                                    } | Args
                                   ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Conference command helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 get_conf_id_and_profile(JObj) ->
     ConfName = kz_json:get_value(<<"Conference-ID">>, JObj),
     ProfileName = kz_json:get_ne_value(<<"Profile">>, JObj, <<"default">>),
@@ -1069,11 +1069,11 @@ wait_for_conference(ConfName) ->
             wait_for_conference(ConfName)
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Store command helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec stream_over_http(atom(), kz_term:ne_binary(), file:filename_all(), 'put' | 'post', 'store'| 'store_vm' | 'fax', kz_json:object()) -> any().
 stream_over_http(Node, UUID, File, 'put'=Method, 'store'=Type, JObj) ->
     Url = kz_term:to_list(kz_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
@@ -1235,11 +1235,11 @@ send_store_fax_call_event(UUID, Results) ->
            ],
     kz_amqp_worker:cast(Prop, fun kapi_call:publish_event/1).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_fetch_channel_data(atom(), kz_term:ne_binary(), kz_json:object()) ->
                                      {'ok', kz_term:proplist()}.
 find_fetch_channel_data(Node, UUID, JObj) ->
@@ -1289,11 +1289,11 @@ base_fetch_call_event_props(UUID, ChannelProps) ->
        | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Execute extension helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 execute_exten_handle_reset(DP, Node, UUID, JObj) ->
     case kz_json:is_true(<<"Reset">>, JObj) of
         'false' -> 'ok';
@@ -1393,11 +1393,11 @@ tts(Node, UUID, JObj) ->
             end
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Playback command helpers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec play(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_apps().
 play(Node, UUID, JObj) ->
     [play_vars(Node, UUID, JObj)
@@ -1448,11 +1448,11 @@ maybe_add_terminators(Acc, JObj) ->
         Terminators -> [Terminators|Acc]
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_terminators(kz_term:api_binary() | kz_term:ne_binaries() | kz_json:object()) ->
                              {kz_term:ne_binary(), kz_term:ne_binary()} | 'undefined'.
 get_terminators('undefined') -> {<<"playback_terminators">>, <<"none">>};

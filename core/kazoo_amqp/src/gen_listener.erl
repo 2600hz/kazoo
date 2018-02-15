@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Behaviour for setting up an AMQP listener.
 %%% Add/remove responders for Event-Cat/Event-Name pairs. Each responder
@@ -40,7 +40,7 @@
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(gen_listener).
 -behaviour(gen_server).
 
@@ -156,9 +156,9 @@
              ,callback_data/0
              ]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
 -callback init(any()) -> {'ok', module_state()} |
                          {'ok', module_state(), timeout() | 'hibernate'} |
@@ -203,10 +203,10 @@
 
 -optional_callbacks([handle_event/2, handle_event/3, handle_event/4]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link(atom(), start_params(), list()) -> kz_types:startlink_ret().
 start_link(Module, Params, InitArgs) when is_atom(Module),
                                           is_list(Params),
@@ -257,10 +257,10 @@ ack(Srv, Delivery) -> gen_server:cast(Srv, {'ack', Delivery}).
 -spec nack(kz_types:server_ref(), basic_deliver()) -> 'ok'.
 nack(Srv, Delivery) -> gen_server:cast(Srv, {'nack', Delivery}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc API functions that mirror `gen_server:call,cast,reply'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call(kz_types:server_ref(), any()) -> any().
 call(Name, Request) -> gen_server:call(Name, {'$client_call', Request}).
 
@@ -308,11 +308,11 @@ add_responder(Srv, Responder, {_,_}=Key) ->
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {'add_responder', Responder, Keys}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Removes responder from queue.
 %% Empty list removes all.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec rm_responder(kz_types:server_ref(), responder_callback()) -> 'ok'.
 rm_responder(Srv, Responder) -> rm_responder(Srv, Responder, []).
 
@@ -352,11 +352,11 @@ b_add_binding(Srv, Binding, Props) when is_binary(Binding)
                                         orelse is_atom(Binding) ->
     gen_server:call(Srv, {'add_binding', kz_term:to_binary(Binding), Props}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Add responder to a queue.
 %% It is expected that responders have been set up already, prior to binding the new queue
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_queue(kz_types:server_ref(), binary(), kz_term:proplist(), binding() | bindings()) ->
                        {'ok', kz_term:ne_binary()} |
                        {'error', any()}.
@@ -396,14 +396,14 @@ execute(Srv, Function, Args) ->
 execute(Srv, Function) when is_function(Function) ->
     gen_server:cast(Srv, {'$execute', Function}).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Takes an existing process and turns it into a `gen_listener'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init_state(list()) -> {'ok', state()} |
                             {'stop', any()} |
                             'ignore'.
@@ -446,11 +446,11 @@ init(Module, Params, ModuleState, TimeoutRef) ->
                  ,auto_ack = props:is_true('auto_ack', Params, 'false')
                  }}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling call messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> handle_call_return().
 handle_call({'add_queue', QueueName, QueueProps, Bindings}, _From, State) ->
     {Q, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
@@ -475,11 +475,11 @@ handle_call({'add_binding', _Binding, _Props}=AddBinding, _From, State) ->
 handle_call(Request, From, State) ->
     handle_module_call(Request, From, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_return().
 handle_cast({'ack', Delivery}, State) ->
     _A = (catch amqp_util:basic_ack(Delivery)),
@@ -628,11 +628,11 @@ maybe_remove_binding({B, P}, B, P, Q) ->
     'false';
 maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handling all non call/cast messages
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=Basic
                                              ,payload=Payload
@@ -700,13 +700,13 @@ handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
 handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  state().
 handle_event(Payload, <<"application/json">>, Deliver, State) ->
     JObj = kz_json:decode(Payload),
@@ -717,13 +717,13 @@ handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
     _ = kz_util:put_callid(JObj),
     distribute_event(JObj, Deliver, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) ->  handle_cast_return().
 handle_return(Payload, <<"application/json">>, BR, State) ->
     JObj = kz_json:decode(Payload),
@@ -756,11 +756,11 @@ handle_confirm(Confirm, State) ->
     Msg = {?MODULE, {'confirm', Confirm}},
     handle_module_cast(Msg, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(Reason, #state{module=Module
                         ,module_state=ModuleState
@@ -773,23 +773,23 @@ terminate(Reason, #state{module=Module
     _ = [listener_federator:stop(F) || {_Broker, F} <- Fs],
     lager:debug("~s terminated cleanly, going down", [Module]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVersion, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_callback_info(any(), state()) -> handle_info_return().
 handle_callback_info(Message, #state{module=Module
                                     ,module_state=ModuleState

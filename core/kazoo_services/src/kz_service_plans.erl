@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_service_plans).
 
 -export([empty/0]).
@@ -44,17 +44,17 @@
                              )
        ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Create an empty service plans data structure.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec empty() -> plans().
 empty() -> [].
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec from_service_json(kzd_services:doc()) -> plans().
 from_service_json(ServicesJObj) ->
     Routines = [fun get_services_plan/2
@@ -174,10 +174,10 @@ find_reseller_id(ServicesJObj) ->
         ResellerId -> ResellerId
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec public_json(plans()) -> kz_json:object().
 public_json(ServicePlans) ->
     public_json(ServicePlans, kz_json:new()).
@@ -188,10 +188,10 @@ public_json([ServicesPlan|ServicesPlans], JObj) ->
     #kz_service_plans{plans=NewJObj}=merge_plan(ServicesPlan, JObj),
     public_json(ServicesPlans, NewJObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_service_plan(kz_term:ne_binary(), kz_term:ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 add_service_plan(PlanId, ResellerId, ServicesJObj) ->
     ResellerDb = kz_util:format_account_db(ResellerId),
@@ -218,18 +218,18 @@ open_cache_doc(Db, Id) ->
     kz_datamgr:open_cache_doc(Db, Id).
 -endif.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete_service_plan(kz_term:ne_binary(), kzd_services:doc()) -> kzd_services:doc().
 delete_service_plan(PlanId, ServicesJObj) ->
     kzd_services:set_plan(ServicesJObj, PlanId, 'undefined').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec plan_summary(kzd_services:doc()) -> kz_json:object().
 plan_summary(ServicesJObj) ->
     ResellerId = kzd_services:reseller_id(ServicesJObj),
@@ -244,10 +244,10 @@ plan_summary(ServicesJObj) ->
                ,kz_json:get_keys(kzd_services:plans(ServicesJObj))
                ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec activation_charges(kz_term:ne_binary(), kz_term:ne_binary(), plans()) -> float().
 activation_charges(Category, Item, ServicePlans) ->
     lists:sum(
@@ -256,12 +256,12 @@ activation_charges(Category, Item, ServicePlans) ->
           Plan <- ServicePlan#kz_service_plans.plans
       ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Given a the services on an account (and descedants) as well as the
 %% service plans the account is subscribed to create a list of items
 %% suitable for use with the bookkeepers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_items(kzd_services:doc()) ->
                           {'ok', kz_service_items:items()} |
                           {'error', 'no_plans'}.
@@ -286,10 +286,10 @@ create_items(ServiceJObj, ServicePlans) ->
                ,Plans
                ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Return a json object with all the items for an account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec public_json_items(kzd_services:doc()) -> kz_json:object().
 public_json_items(ServiceJObj) ->
     case create_items(ServiceJObj) of
@@ -297,11 +297,11 @@ public_json_items(ServiceJObj) ->
         {'error', _} -> kz_json:new()
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type merge_strategy_plan() :: {non_neg_integer(), kz_json:object()}.
 -type merge_strategy_plans() :: [merge_strategy_plan()].
 -type merge_strategy_group() :: {kz_term:ne_binary(), merge_strategy_plans()}.

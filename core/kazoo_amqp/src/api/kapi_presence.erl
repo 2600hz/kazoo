@@ -1,9 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_presence).
 
 -export([search_req/1, search_req_v/1
@@ -52,10 +52,10 @@
 -include_lib("kazoo_amqp/src/amqp_util.hrl").
 -include("kapi_presence.hrl").
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec search_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 search_req(Prop) when is_list(Prop) ->
     case search_req_v(Prop) of
@@ -88,10 +88,10 @@ search_req_routing_key(Realm) when is_binary(Realm) ->
 search_req_routing_key(Req) ->
     search_req_routing_key(kz_json:get_value(<<"Realm">>, Req)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec search_partial_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 search_partial_resp(Prop) when is_list(Prop) ->
     case search_partial_resp_v(Prop) of
@@ -116,10 +116,10 @@ publish_search_partial_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_PARTIAL_RESP_VALUES, fun search_partial_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec search_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 search_resp(Prop) when is_list(Prop) ->
     case search_resp_v(Prop) of
@@ -144,11 +144,11 @@ publish_search_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun search_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Subscribing for updates
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec subscribe(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 subscribe(Prop) when is_list(Prop) ->
     case subscribe_v(Prop) of
@@ -183,10 +183,10 @@ subscribe_routing_key(User) when is_binary(User) ->
 subscribe_routing_key(JObj) ->
     subscribe_routing_key(kz_json:get_value(<<"User">>, JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 update(Prop) when is_list(Prop) ->
     case update_v(Prop) of
@@ -234,10 +234,10 @@ realm_from_presence_id(PresenceID) ->
         [Realm] -> Realm
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec dialog(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 dialog(Prop) when is_list(Prop) ->
     case dialog_v(Prop) of
@@ -278,10 +278,10 @@ dialog_routing_key(CallId, PresenceID) ->
                    ,amqp_util:encode(CallId)
                    ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec probe(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 probe(Prop) when is_list(Prop) ->
     case probe_v(Prop) of
@@ -310,11 +310,11 @@ probe_routing_key(SubscriptionType) when is_binary(SubscriptionType) ->
 probe_routing_key(JObj) ->
     probe_routing_key(kz_json:get_value(<<"Event-Package">>, JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec mwi_extended_update(kz_term:proplist()) -> kz_term:proplist().
 mwi_extended_update(Prop) ->
     MessagesNew = props:get_integer_value(<<"Messages-New">>, Prop, 0),
@@ -406,11 +406,11 @@ mwi_unsolicited_update_routing_key(To) when is_binary(To) ->
 mwi_unsolicited_update_routing_key(JObj) ->
     mwi_unsolicited_update_routing_key(kz_json:get_value(<<"To">>, JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc MWI - Query the Message Waiting Indicator on a device - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec mwi_query(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 mwi_query(Prop) when is_list(Prop) ->
     case mwi_query_v(Prop) of
@@ -440,11 +440,11 @@ mwi_query_routing_key(Realm) when is_binary(Realm) ->
 mwi_query_routing_key(JObj) ->
     mwi_query_routing_key(kz_json:get_value(<<"Realm">>, JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Register_Overwrite (unregister is a key word) - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec register_overwrite(kz_term:api_terms()) -> api_formatter_return().
 register_overwrite(Prop) when is_list(Prop) ->
     case register_overwrite_v(Prop) of
@@ -475,10 +475,10 @@ register_overwrite_routing_key(Realm) when is_binary(Realm) ->
 register_overwrite_routing_key(JObj) ->
     register_overwrite_routing_key(kz_json:get_value(<<"Realm">>, JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reset(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 reset(Prop) when is_list(Prop) ->
     case reset_v(Prop) of
@@ -521,10 +521,10 @@ reset_routing_key(Realm, Username) when is_binary(Realm) ->
                    ,amqp_util:encode(Username)
                    ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec flush(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 flush(Prop) when is_list(Prop) ->
     case flush_v(Prop) of
@@ -547,10 +547,10 @@ publish_flush(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FLUSH_VALUES, fun flush/1),
     amqp_util:presence_publish(<<"flush">>, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sync(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 sync(Prop) when is_list(Prop) ->
     case sync_v(Prop) of
@@ -573,10 +573,10 @@ publish_sync(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SYNC_VALUES, fun sync/1),
     amqp_util:presence_publish(<<"sync">>, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
@@ -721,17 +721,17 @@ unbind_q(Queue, [_|Restrict], Props) ->
     unbind_q(Queue, Restrict, Props);
 unbind_q(_, [], _) -> 'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec presence_states() -> kz_term:ne_binaries().
 presence_states() -> ?PRESENCE_STATES.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_valid_state(kz_term:api_binary() | kz_term:api_terms()) -> boolean().
 is_valid_state(State) when is_binary(State) ->
     lists:member(State, ?PRESENCE_STATES);
@@ -740,10 +740,10 @@ is_valid_state(Prop) when is_list(Prop) ->
 is_valid_state(JObj) ->
     is_valid_state(kz_json:get_value(<<"State">>, JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:presence_exchange().

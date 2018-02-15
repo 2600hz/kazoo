@@ -1,14 +1,14 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz, INC
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_auth_identity).
 
 
-%% ====================================================================
+%%==============================================================================
 %% API functions
-%% ====================================================================
+%%==============================================================================
 
 -export([verify/1
         ,sign/1
@@ -22,12 +22,12 @@
 
 -define(PVT_SIGNING_SECRET, <<"pvt_signature_secret">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Sign the identity (a user_id or an account_id).
 %% Secret is consist of identity secrect and a provider secret.
 %% (Kazoo is the only provider for signing)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sign(map() | kz_term:proplist() | kz_json:object()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 sign(Claims)
   when is_map(Claims) ->
@@ -235,11 +235,11 @@ update_kazoo_secret(#{auth_db := Db
             Error
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Verify the identity signature from a Token map.
 %% Returns the map with `identify_verified' is set to result of verification
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec token(map()) -> map().
 token(#{identify_verified := _}=Token) -> Token;
 token(#{auth_provider := #{name := <<"kazoo">>
@@ -295,28 +295,28 @@ verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
     lager:info("provided identity signature (~s) did not match the expected signature", [_IdentitySignature]),
     Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Returns a boolean of the Token map's verification result
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec verify(map()) -> boolean().
 verify(Token) ->
     #{identify_verified := Verified} = token(Token),
     Verified.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Reset system_key (provider identity secret).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reset_system_secret() -> {'ok', kz_json:object()} | {'error', any()}.
 reset_system_secret() ->
     lager:warning("resetting system identity secret"),
     kapps_config:set_string(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Reset account/user identity secret
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reset_secret(map() | kz_term:proplist() | kz_json:object()) -> 'ok' | {'error', any()}.
 reset_secret(#{<<"account_id">> := Account
               ,<<"owner_id">> := OwnerId
@@ -342,23 +342,23 @@ reset_secret(Claims)
 reset_secret(Claims) ->
     reset_secret(kz_json:to_map(Claims)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Set a new ?PVT_SIGNING_SECRET value on supplied doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reset_doc_secret(kz_json:object()) -> kz_json:object().
 reset_doc_secret(JObj) ->
     kz_json:set_value(?PVT_SIGNING_SECRET, generate_new_kazoo_signing_secret(), JObj).
 
-%% ====================================================================
+%%==============================================================================
 %% Internal functions
-%% ====================================================================
+%%==============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Read identity secret from DB first and update it
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reset_identity_secret(map()) -> 'ok' | {'error', any()}.
 reset_identity_secret(#{auth_db := Db
                        ,auth_id := Key
@@ -375,11 +375,11 @@ reset_identity_secret(#{auth_db := Db
             Error
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc Generate a new Kazoo signing secret
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec generate_new_kazoo_signing_secret() -> kz_term:ne_binary().
 generate_new_kazoo_signing_secret() ->
     kz_binary:rand_hex(16).

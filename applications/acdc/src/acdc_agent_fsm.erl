@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.
@@ -6,7 +6,7 @@
 %%% @author James Aimonetti
 %%% @author Daniel Finke
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(acdc_agent_fsm).
 
 -behaviour(gen_statem).
@@ -119,25 +119,25 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%------------------------------------------------------------------------------
 %% @doc When a queue receives a call and needs an agent, it will send a
 %%   member_connect_req. The agent will respond (if possible) with a
 %%   member_connect_resp payload or ignore the request
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec member_connect_req(pid(), kz_json:object()) -> 'ok'.
 member_connect_req(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'member_connect_req', JObj}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc When a queue receives a call and needs an agent, it will send a
 %%   member_connect_req. The agent will respond (if possible) with a
 %%   member_connect_resp payload or ignore the request
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec member_connect_win(pid(), kz_json:object()) -> 'ok'.
 member_connect_win(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'member_connect_win', JObj}).
@@ -146,12 +146,12 @@ member_connect_win(ServerRef, JObj) ->
 agent_timeout(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'agent_timeout', JObj}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc When an agent is involved in a call, it will receive call events.
 %%   Pass the call event to the statem to see if action is needed (usually
 %%   for bridge and hangup events).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_event(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
     gen_statem:cast(ServerRef, {'channel_bridged', call_id(JObj)});
@@ -185,10 +185,10 @@ call_event(ServerRef, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
 call_event(_, _C, _E, _) ->
     lager:info("Unhandled combo: ~s/~s", [_C, _E]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_send_execute_complete(pid(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_send_execute_complete(ServerRef, <<"bridge">>, JObj) ->
     lager:info("Send EXECUTE_COMPLETE,bridge to ~p with ci: ~s, olci: ~s",
@@ -201,10 +201,10 @@ maybe_send_execute_complete(ServerRef, <<"call_pickup">>, JObj) ->
     gen_statem:cast(ServerRef, {'channel_bridged', call_id(JObj)});
 maybe_send_execute_complete(_, _, _) -> 'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec originate_ready(kz_types:server_ref(), kz_json:object()) -> 'ok'.
 originate_ready(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'originate_ready', JObj}).
@@ -224,92 +224,92 @@ originate_uuid(ServerRef, JObj) ->
                                ,kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj)
                                }).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec originate_failed(kz_types:server_ref(), kz_json:object()) -> 'ok'.
 originate_failed(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'originate_failed', JObj}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sync_req(kz_types:server_ref(), kz_json:object()) -> 'ok'.
 sync_req(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'sync_req', JObj}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sync_resp(kz_types:server_ref(), kz_json:object()) -> 'ok'.
 sync_resp(ServerRef, JObj) ->
     gen_statem:cast(ServerRef, {'sync_resp', JObj}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pause(kz_types:server_ref(), timeout()) -> 'ok'.
 pause(ServerRef, Timeout) ->
     gen_statem:cast(ServerRef, {'pause', Timeout}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resume(kz_types:server_ref()) -> 'ok'.
 resume(ServerRef) ->
     gen_statem:cast(ServerRef, {'resume'}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec end_wrapup(kz_types:server_ref()) -> 'ok'.
 end_wrapup(ServerRef) ->
     gen_statem:cast(ServerRef, {'end_wrapup'}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Request the agent listener bind to queue and conditionally send an
 %% availability update depending on agent state
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_acdc_queue(kz_types:server_ref(), kz_term:ne_binary()) -> 'ok'.
 add_acdc_queue(ServerRef, QueueId) ->
     gen_statem:cast(ServerRef, {'add_acdc_queue', QueueId}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Request the agent listener unbind from queue and send an
 %% unavailability update
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec rm_acdc_queue(kz_types:server_ref(), kz_term:ne_binary()) -> 'ok'.
 rm_acdc_queue(ServerRef, QueueId) ->
     gen_statem:cast(ServerRef, {'rm_acdc_queue', QueueId}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_presence(kz_types:server_ref(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_presence(ServerRef, PresenceId, PresenceState) ->
     gen_statem:cast(ServerRef, {'update_presence', PresenceId, PresenceState}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec agent_logout(kz_types:server_ref()) -> 'ok'.
 agent_logout(ServerRef) ->
     gen_statem:cast(ServerRef, {'agent_logout'}).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec refresh(pid(), kz_json:object()) -> 'ok'.
 refresh(ServerRef, AgentJObj) -> gen_statem:cast(ServerRef, {'refresh', AgentJObj}).
 
@@ -319,12 +319,12 @@ current_call(ServerRef) -> gen_statem:call(ServerRef, 'current_call').
 -spec status(pid()) -> kz_term:proplist().
 status(ServerRef) -> gen_statem:call(ServerRef, 'status').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Creates a gen_statem process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
@@ -376,17 +376,17 @@ edited_endpoint(ServerRef, EP) ->
 deleted_endpoint(ServerRef, EP) ->
     lager:debug("sending EP to ~p: ~p", [ServerRef, EP]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_statem callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Whenever a gen_statem is started using
 %% gen_statem:start_link/[3,4], this function is called by the new
 %% process to initialize.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', atom(), state()}.
 init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     StateMCallId = <<"statem_", AccountId/binary, "_", AgentId/binary>>,
@@ -439,18 +439,18 @@ wait_for_listener(Supervisor, ServerRef, Props, IsThief) ->
             gen_statem:cast(ServerRef, {'listener', P, NextState, SyncRef})
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec callback_mode() -> 'state_functions'.
 callback_mode() ->
     'state_functions'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wait(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 wait('cast', {'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountId
                                                                     ,agent_id=AgentId
@@ -474,10 +474,10 @@ wait({'call', From}, 'current_call', State) ->
 wait('info', Evt, State) ->
     handle_event(Evt, wait, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sync(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 sync('cast', 'send_sync_event', #state{agent_listener=AgentListener
                                       ,agent_listener_id=_AProcId
@@ -549,10 +549,10 @@ sync('info', {'timeout', Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=St
 sync('info', Evt, State) ->
     handle_event(Evt, sync, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec ready(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 ready('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Server-ID">>, JObj)]),
@@ -693,10 +693,10 @@ ready({'call', From}, 'current_call', State) ->
 ready('info', Evt, State) ->
     handle_event(Evt, ready, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec ringing(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 ringing('cast', {'member_connect_req', _}, State) ->
     {'next_state', 'ringing', State};
@@ -956,10 +956,10 @@ ringing({'call', From}, 'current_call', #state{member_call=Call
 ringing('info', Evt, State) ->
     handle_event(Evt, ringing, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec answered(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 answered('cast', {'member_connect_req', _}, State) ->
     {'next_state', 'answered', State};
@@ -1125,10 +1125,10 @@ answered({'call', From}, 'current_call', #state{member_call=Call
 answered('info', Evt, State) ->
     handle_event(Evt, answered, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wrapup(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 wrapup('cast', {'pause', Timeout}, #state{account_id=AccountId
                                          ,agent_id=AgentId
@@ -1193,10 +1193,10 @@ wrapup('info', {'timeout', Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
 wrapup('info', Evt, State) ->
     handle_event(Evt, wrapup, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec paused(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 paused('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
                                          ,pause_ref=Ref
@@ -1250,10 +1250,10 @@ paused('info', {'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
 paused('info', Evt, State) ->
     handle_event(Evt, paused, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec outbound(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
 outbound('cast', {'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
                                                           ,outbound_call_ids=OutboundCallIds
@@ -1335,11 +1335,11 @@ outbound('info', {'timeout', WRef, ?WRAPUP_FINISHED}, #state{wrapup_ref=WRef}=St
 outbound('info', Evt, State) ->
     handle_event(Evt, outbound, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_event({'agent_logout'}=Event, StateName, #state{agent_state_updates=Queue}=State) ->
     case valid_state_for_logout(StateName) of
@@ -1415,11 +1415,11 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
 handle_event(Event, StateName, State) ->
     handle_info(Event, StateName, State).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
     gen_statem:cast(self(), Msg),
@@ -1475,36 +1475,36 @@ handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc This function is called by a gen_statem when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_statem terminates with
 %% Reason. The return value is ignored.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
     lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, _Reason]),
     acdc_agent_listener:stop(AgentListener),
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_wrapup_timer(integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout =< 0 -> start_wrapup_timer(1); % send immediately
 start_wrapup_timer(Timeout) -> erlang:start_timer(Timeout*1000, self(), ?WRAPUP_FINISHED).

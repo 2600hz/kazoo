@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_resend_maintenance).
 
 -export([pending/0, pending/1, pending/2
@@ -37,32 +37,32 @@
 -define(FAILED_VIEW, <<"pending_notify/failed_range">>).
 -define(FAILED_TYPE_VIEW, <<"pending_notify/failed_by_type">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Same as {@link pending/2} without showing details and limited to 100 notifications.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pending() -> 'no_return'.
 pending() ->
     pending(<<"100">>, <<"false">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Same as {@link pending/2} without showing details.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pending(kz_term:ne_binary()) -> 'no_return'.
 pending(ShowCount) ->
     pending(ShowCount, <<"false">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Prints a limited amount of notifications publish pending.
 %% Notification that been process is excluded.
 %% Options:
 %%   ShowCount: amount of notifications to show
 %%   Details: Whether or not to show notifications details
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pending(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 pending(ShowCount, <<"true">>) ->
     Total = get_total([{group_level, 0}]),
@@ -91,11 +91,11 @@ pending(ShowCount, _Details) ->
     io:format(" Total: ~b, Running ~b, Pending ~b~n", [Total, RunningIdsLength, PendingLength]),
     'no_return'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Show Pending notification by type, limited to first 100 ready to
 %% process.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pending_by_type(kz_term:ne_binary()) -> 'no_return'.
 pending_by_type(Type) ->
     Total = get_total([{startkey, [Type, 0]}
@@ -112,30 +112,30 @@ pending_by_type(Type) ->
     io:format(" Total: ~b~n", [Total]),
     'no_return'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Same as {@link failed/2} without showing details and limited to 100.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec failed() -> 'no_return'.
 failed() ->
     failed(<<"100">>, <<"false">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Same as failed/2 without showing details
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec failed(kz_term:ne_binary()) -> 'no_return'.
 failed(ShowCount) ->
     failed(ShowCount, <<"false">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Prints a limited amount of notifications publish which maxed their tries.
 %% Options:
 %%   ShowCount: amount of notifications to show
 %%   Details: Whether or not to show notifications details
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec failed(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 failed(ShowCount, <<"true">>) ->
     Total = get_total([{group_level, 0}], ?FAILED_TYPE_VIEW),
@@ -157,10 +157,10 @@ failed(ShowCount, _Details) ->
     io:format(" Total: ~b~n", [Total]),
     'no_return'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Show failed notification by type, limited to first 100.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec failed_by_type(kz_term:ne_binary()) -> 'no_return'.
 failed_by_type(Type) ->
     Total = get_total([{startkey, [Type, 0]}
@@ -177,10 +177,10 @@ failed_by_type(Type) ->
     io:format(" Total: ~b~n", [Total]),
     'no_return'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Send the notification by Id.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_notify(kz_term:ne_binary()) -> 'no_return'.
 send_notify(Id) ->
     case kz_notify_resend:send_single(Id) of
@@ -195,10 +195,10 @@ send_notify(Id) ->
     end,
     'no_return'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Show details for the notification by Id.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec notify_info(kz_term:ne_binary()) -> 'no_return'.
 notify_info(Id) ->
     _ = case kz_datamgr:open_doc(?KZ_PENDING_NOTIFY_DB, Id) of
@@ -261,10 +261,10 @@ bulk_delete(Ids) ->
         {'error', _Reason} -> io:format("failed to delete notifications: ~p~n", [_Reason])
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Prints total pending notification for each type.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec statistics() -> 'no_return'.
 statistics() ->
     ViewOptions = ['reduce'

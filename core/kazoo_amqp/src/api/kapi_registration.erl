@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
 %%% @doc Handle registration-related APIs, like reg_success and reg_lookup.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_registration).
 
 -export([success/1, success_v/1
@@ -117,11 +117,11 @@
 -define(REG_SYNC_TYPES, []).
 -define(REG_SYNC_RK, <<"registration.sync">>).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Registration Success - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec success(kz_term:api_terms()) ->
                      {'ok', iolist()} |
                      {'error', string()}.
@@ -137,11 +137,11 @@ success_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES);
 success_v(JObj) -> success_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Registration Success - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec flush(kz_term:api_terms()) ->
                    {'ok', iolist()} |
                    {'error', string()}.
@@ -173,11 +173,11 @@ sync_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_SYNC_HEADERS, ?REG_SYNC_VALUES, ?REG_SYNC_TYPES);
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Registration Query - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec query_req(kz_term:api_terms()) ->
                        {'ok', iolist()} |
                        {'error', string()}.
@@ -193,11 +193,11 @@ query_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_QUERY_HEADERS, ?REG_QUERY_VALUES, ?REG_QUERY_TYPES);
 query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Registration Query Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec query_resp(kz_term:api_terms()) ->
                         {'ok', iolist()} |
                         {'error', string()}.
@@ -213,11 +213,11 @@ query_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES);
 query_resp_v(JObj) -> query_resp_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Registration Query Response - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec query_err(kz_term:api_terms()) ->
                        {'ok', iolist()} |
                        {'error', string()}.
@@ -233,10 +233,10 @@ query_err_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?REG_QUERY_ERR_HEADERS, ?REG_QUERY_ERR_VALUES, ?REG_QUERY_ERR_TYPES);
 query_err_v(JObj) -> query_err_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authn gen_listeners
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     bind_q(Q, props:get_value('restrict_to', Props), Props).
@@ -277,18 +277,18 @@ unbind_q(Q, ['reg_flush'|T], Props) ->
 unbind_q(Q, [_|T], Props) -> unbind_q(Q, T, Props);
 unbind_q(_, [], _) -> 'ok'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:registrar_exchange().
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_success(kz_term:api_terms()) -> 'ok'.
 publish_success(JObj) ->
@@ -299,10 +299,10 @@ publish_success(Success, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun success/1),
     amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_flush(kz_term:api_terms()) -> 'ok'.
 publish_flush(JObj) ->
@@ -353,10 +353,10 @@ publish_sync(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_SYNC_VALUES, fun sync/1),
     amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Special access to the API keys
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec success_keys() -> kz_term:ne_binaries().
 success_keys() ->
     ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS.
