@@ -31,12 +31,9 @@ handle(Data, Call) ->
 handle(Data, Call, <<"start">>) ->
     lager:debug("starting recording, see you on the other side"),
     kapps_call:start_recording(Data, Call);
-handle(Data, Call, <<"stop">> = Action) ->
-    Format = kzc_recording:get_format(kz_json:get_value(<<"format">>, Data)),
-    MediaName = kzc_recording:get_media_name(kapps_call:call_id(Call), Format),
-
-    _ = kapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
-    lager:debug("sent command to stop recording"),
+handle(_Data, Call, <<"stop">>) ->
+    kapps_call:stop_recording(Call),
+    lager:debug("sent command to stop recording call"),
     Call.
 
 -spec get_action(kz_term:api_ne_binary()) -> kz_term:ne_binary().
