@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
 %%% @end
 %%%-------------------------------------------------------------------
@@ -74,8 +74,7 @@ start_link(Name) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec init([atom()]) -> {'ok', state()}.
@@ -85,8 +84,7 @@ init([Name]) ->
     {'ok', #state{self = self(), name = Name}}.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Handling call messages
+%% @doc Handling call messages.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), {pid(), any()}, state()) -> kz_types:handle_call_ret_state(state()).
@@ -98,8 +96,7 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Handling cast messages
+%% @doc Handling cast messages.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -122,8 +119,7 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Handling all non call/cast messages
+%% @doc Handling all non call/cast messages.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -132,8 +128,7 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Allows listener to pass options to handlers
+%% @doc Allows listener to pass options to handlers.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> {'reply', []}.
@@ -149,10 +144,9 @@ handle_event(JObj, #state{name = Name}) ->
     {'reply', []}.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -162,8 +156,7 @@ terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed/
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

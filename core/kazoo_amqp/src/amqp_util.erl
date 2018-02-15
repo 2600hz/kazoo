@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc Utilities to facilitate AMQP interaction
+%%% @doc Utilities to facilitate AMQP interaction.
+%%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Edouard Swiac
@@ -173,7 +174,7 @@
 -type amqp_properties() :: [amqp_property()].
 
 %%------------------------------------------------------------------------------
-%% @doc Publish AMQP messages
+%% @doc Publish AMQP messages.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -245,7 +246,11 @@ sysconf_publish(Routing, Payload, ContentType) ->
 sysconf_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
 
-%% TODO: The routing key on this function should be the first argument for consistency
+%%------------------------------------------------------------------------------
+%% @doc
+%% @todo The routing key on this function should be the first argument for consistency.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec callmgr_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 callmgr_publish(Payload, ContentType, RoutingKey) ->
@@ -459,6 +464,10 @@ tasks_publish(Routing, Payload, ContentType, Opts) ->
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
+%%------------------------------------------------------------------------------
+%% @doc Publish AMQP messages.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec basic_publish(kz_term:ne_binary(), binary(), amqp_payload()) -> 'ok'.
 basic_publish(Exchange, RoutingKey, Payload) ->

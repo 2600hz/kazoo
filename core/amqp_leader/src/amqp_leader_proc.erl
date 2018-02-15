@@ -1,3 +1,8 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc
+%%% @end
+%%%-------------------------------------------------------------------
 -module(amqp_leader_proc).
 -behaviour(gen_server).
 
@@ -31,7 +36,7 @@
          terminate/2,
          code_change/3]).
 
--record(state, {name                    :: atom()
+-record(state, {name                   :: atom()
                ,leader                 :: sign() | undefined
                ,role                   :: role() | undefined
                ,elected = 0            :: integer()
@@ -42,7 +47,7 @@
                ,candidates = [node()]  :: kz_term:atoms()
                }).
 
--record(sign, {elected                  :: integer()
+-record(sign, {elected                 :: integer()
               ,restarted               :: integer()
               ,node = node()           :: atom()
               ,name                    :: atom()
@@ -131,8 +136,8 @@ reply({From, Tag}, Reply) ->
 
 -spec alive(sign()) -> kz_term:atoms().
 alive(_) -> [node()].
-%alive(#sign{candidates = Candidates}) ->
-%    Candidates.
+%%alive(#sign{candidates = Candidates}) ->
+%%    Candidates.
 
 -spec down(sign()) -> kz_term:atoms().
 down(_) -> [].
@@ -162,8 +167,7 @@ s(Name) ->
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
@@ -176,8 +180,7 @@ init([Name, _CandidateNodes, _OptArgs, Mod, Arg, _Options]) ->
     {'ok', State}.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Handling call messages
+%% @doc Handling call messages.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), {pid(), any()}, state()) -> kz_types:handle_call_ret_state(state()).
@@ -196,8 +199,7 @@ handle_call(Call, From, State) ->
     noreply(State, Routines).
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Handling cast messages
+%% @doc Handling cast messages.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -216,8 +218,7 @@ handle_cast(Msg, State) ->
     noreply(State, Routines).
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Handling all non call/cast messages
+%% @doc Handling all non call/cast messages.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -317,10 +318,9 @@ handle_info(Info, State) ->
     noreply(State, Routines).
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -331,8 +331,7 @@ terminate(_Reason, State) ->
     'ok'.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -605,11 +604,11 @@ node(#sign{node = Node}) when is_atom(Node) -> Node.
 
 -spec sign(state()) -> sign().
 sign(#state{elected = Elected, restarted = Restarted, name = Name
-            %, candidates = Candidates
+           %% ,candidates = Candidates
            } = State) ->
     #sign{elected = Elected
           ,restarted = -Restarted
           ,name = Name
           ,sync = sync(State)
-%          ,candidates = Candidates
+          %% ,candidates = Candidates
          }.

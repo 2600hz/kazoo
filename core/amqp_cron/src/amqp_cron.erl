@@ -1,22 +1,21 @@
-%%==============================================================================
-%% @copyright (C) 2012, Jeremy Raymond
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%%
-%% http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
-%%==============================================================================
-
 %%%-------------------------------------------------------------------
+%%% @copyright (C) 2012, Jeremy Raymond
+%%%
+%%% Licensed under the Apache License, Version 2.0 (the "License");
+%%% you may not use this file except in compliance with the License.
+%%% You may obtain a copy of the License at
+%%%
+%%% http://www.apache.org/licenses/LICENSE-2.0
+%%%
+%%% Unless required by applicable law or agreed to in writing, software
+%%% distributed under the License is distributed on an "AS IS" BASIS,
+%%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%%% See the License for the specific language governing permissions and
+%%% limitations under the License.
+%%%
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
-%%% @doc The amqp_cron module provides a distrubuted task scheduler for
+%%%
+%%% @doc The amqp_cron module provides a distributed task scheduler for
 %%% executing tasks periodically. The connected nodes elect a leader
 %%% to manage task scheduling and execution. Should the current leader
 %%% become unavailable a new leader node is elected who resumes task
@@ -33,9 +32,7 @@
 %%% currently are not supported.
 %%%
 %%% @see amqp_cron_task
-%%%
 %%% @end
-%%% Created : 31 Jan 2012 by Jeremy Raymond <jeraymond@gmail.com>
 %%%-------------------------------------------------------------------
 -module(amqp_cron).
 
@@ -130,7 +127,7 @@ schedule_task(Schedule, Exec) ->
 %% a given name at any one time. See {@link amqp_cron_task} for
 %% scheduling details.
 %%
-%% The name 'undefined' is reserved for all unnamed tasks and cannot
+%% The name `undefined' is reserved for all unnamed tasks and cannot
 %% be used.
 %%
 %% @end
