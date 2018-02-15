@@ -149,24 +149,22 @@ fetch_attachment(Url, Redirects, Debug) ->
     end.
 
 -spec handle_http_error_response(kz_http:req(), kz_att_error:update_routines()) -> kz_att_error:error().
-handle_http_error_response({'ok', RespCode, RespHeaders, RespBody}, Routines) ->
-    %% Reason = get_reason(RespBody),
-    Reason = <<"test">>,
-    io:format("resp body: ~p~n", [RespBody]),
+handle_http_error_response({'ok', RespCode, RespHeaders, RespBody} = _E, Routines) ->
+    Reason = kz_http_util:http_code_to_status_line(RespCode),
     NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
                   ,{fun kz_att_error:set_resp_headers/2, RespHeaders}
                   ,{fun kz_att_error:set_resp_body/2, RespBody}
                    | Routines
                   ],
-    lager:error("http storage error ~p (~p)", [Reason, RespCode]),
+    lager:error("http storage error: ~p (code: ~p)", [_E, RespCode]),
     kz_att_error:new(Reason, NewRoutines);
-handle_http_error_response({'error', {'failed_connect', Reason}}, Routines) ->
-    lager:error("http storage failed to connect ~p", [Reason]),
+handle_http_error_response({'error', {'failed_connect', Reason}} = _E, Routines) ->
+    lager:error("http storage failed to connect: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
-handle_http_error_response({'error', {Reason, _}}, Routines)
+handle_http_error_response({'error', {Reason, _}} = _E, Routines)
   when is_atom(Reason) ->
-    lager:error("http storage request error ~p", [Reason]),
+    lager:error("http storage request error: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_http_error_response(_E, Routines) ->
-    lager:error("http storage request error ~p", [_E]),
+    lager:error("http storage request error: ~p", [_E]),
     kz_att_error:new('request_error', Routines).

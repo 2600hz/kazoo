@@ -10,7 +10,6 @@
         ,headers_as_binaries/1
         ,encode_multipart/2
         ,handle_http_error_response/3
-        ,http_code_to_status_line/1
         ]).
 
 -export_type([format_field/0, format_fields/0]).
@@ -162,66 +161,3 @@ encode_multipart_headers([], Encoded) -> <<Encoded/binary, "\r\n">>;
 encode_multipart_headers([{K, V} | Headers], Encoded) ->
     Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,
     encode_multipart_headers(Headers, Acc).
-
-%% This function will take care for all the HTTP responses with HTTP code /= `200' and
-%% HTTP response errors coming from `kz_http' module.
--spec handle_http_error_response(kz_http:req(), string(), kz_term:ne_binary()) ->
-                                        gen_attachment:error_response().
-handle_http_error_response({'ok', RespCode, _RespHeaders, RespBody} = _E, Msg, _Url) ->
-    lager:error("~p: ~p", [Msg, _E]),
-    gen_attachment:error_response(RespCode, RespBody);
-handle_http_error_response({'error', {ErrorAtom, ErrorBody}} = _E, Msg, _Url)
-  when is_atom(ErrorAtom) ->
-    lager:error("~p: ~p", [Msg, _E]),
-    Body = kz_binary:join([ErrorAtom, ErrorBody], <<": ">>),
-    gen_attachment:error_response(400, Body);
-handle_http_error_response(_E, Msg, Url) ->
-    lager:error("~p: ~p", [Msg, _E]),
-    LowerBinMsg = list_to_binary(string:to_lower(Msg)),
-    gen_attachment:error_response(400, <<LowerBinMsg/binary, " from url: ", Url/binary>>).
-
--spec http_code_to_status_line(atom() | pos_integer()) -> kz_term:ne_binary().
-%% 4×× Client Error
-http_code_to_status_line(400) -> <<"Bad Request">>;
-http_code_to_status_line(401) -> <<"Unauthorized">>;
-http_code_to_status_line(402) -> <<"Payment Required">>;
-http_code_to_status_line(403) -> <<"Forbidden">>;
-http_code_to_status_line(404) -> <<"Not Found">>;
-http_code_to_status_line(405) -> <<"Method Not Allowed">>;
-http_code_to_status_line(406) -> <<"Not Acceptable">>;
-http_code_to_status_line(407) -> <<"Proxy Authentication Required">>;
-http_code_to_status_line(408) -> <<"Request Timeout">>;
-http_code_to_status_line(409) -> <<"Conflict">>;
-http_code_to_status_line(410) -> <<"Gone">>;
-http_code_to_status_line(411) -> <<"Length Required">>;
-http_code_to_status_line(412) -> <<"Precondition Failed">>;
-http_code_to_status_line(413) -> <<"Payload Too Large">>;
-http_code_to_status_line(414) -> <<"Request-URI Too Long">>;
-http_code_to_status_line(415) -> <<"Unsupported Media Type">>;
-http_code_to_status_line(416) -> <<"Requested Range Not Satisfiable">>;
-http_code_to_status_line(417) -> <<"Expectation Failed">>;
-http_code_to_status_line(418) -> <<"I'm a teapot">>;
-http_code_to_status_line(421) -> <<"Misdirected Request">>;
-http_code_to_status_line(422) -> <<"Unprocessable Entity">>;
-http_code_to_status_line(423) -> <<"Locked">>;
-http_code_to_status_line(424) -> <<"Failed Dependency">>;
-http_code_to_status_line(426) -> <<"Upgrade Required">>;
-http_code_to_status_line(428) -> <<"Precondition Required">>;
-http_code_to_status_line(429) -> <<"Too Many Requests">>;
-http_code_to_status_line(431) -> <<"Request Header Fields Too Large">>;
-http_code_to_status_line(444) -> <<"Connection Closed Without Response">>;
-http_code_to_status_line(451) -> <<"Unavailable For Legal Reasons">>;
-http_code_to_status_line(499) -> <<"Client Closed Request">>;
-%% 5×× Server Error
-http_code_to_status_line(500) -> <<"Internal Server Error">>;
-http_code_to_status_line(501) -> <<"Not Implemented">>;
-http_code_to_status_line(502) -> <<"Bad Gateway">>;
-http_code_to_status_line(503) -> <<"Service Unavailable">>;
-http_code_to_status_line(504) -> <<"Gateway Timeout">>;
-http_code_to_status_line(505) -> <<"HTTP Version Not Supported">>;
-http_code_to_status_line(506) -> <<"Variant Also Negotiates">>;
-http_code_to_status_line(507) -> <<"Insufficient Storage">>;
-http_code_to_status_line(508) -> <<"Loop Detected">>;
-http_code_to_status_line(510) -> <<"Not Extended">>;
-http_code_to_status_line(511) -> <<"Network Authentication Required">>;
-http_code_to_status_line(599) -> <<"Network Connect Timeout Error">>.

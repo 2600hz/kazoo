@@ -186,25 +186,31 @@ send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
         Resp -> {'error', Url, Resp}
     end.
 
+%% Google Storage REST API errors reference: https://cloud.google.com/storage/docs/json_api/v1/status-codes#error-response-format
 -spec handle_http_error_response(kz_http:req(), kz_att_error:update_routines()) -> kz_att_error:error().
-handle_http_error_response({'ok', RespCode, RespHeaders, RespBody}, Routines) ->
-    %% Reason = get_reason(RespBody),
-    Reason = <<"test">>,
-    io:format("resp body: ~p~n", [RespBody]),
+handle_http_error_response({'ok', RespCode, RespHeaders, RespBody} = _E, Routines) ->
+    Reason = get_reason(RespCode, RespBody),
     NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
                   ,{fun kz_att_error:set_resp_headers/2, RespHeaders}
                   ,{fun kz_att_error:set_resp_body/2, RespBody}
                    | Routines
                   ],
-    lager:error("google storage error ~p (~p)", [Reason, RespCode]),
+    lager:error("google storage error: ~p (code: ~p)", [_E, RespCode]),
     kz_att_error:new(Reason, NewRoutines);
-handle_http_error_response({'error', {'failed_connect', Reason}}, Routines) ->
-    lager:error("google storage failed to connect ~p", [Reason]),
+handle_http_error_response({'error', {'failed_connect', Reason}} = _E, Routines) ->
+    lager:error("google storage failed to connect: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
-handle_http_error_response({'error', {Reason, _}}, Routines)
+handle_http_error_response({'error', {Reason, _}} = _E, Routines)
   when is_atom(Reason) ->
-    lager:error("google storage request error ~p", [Reason]),
+    lager:error("google storage request error: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_http_error_response(_E, Routines) ->
-    lager:error("google storage request error ~p", [_E]),
+    lager:error("google storage request error: ~p", [_E]),
     kz_att_error:new('request_error', Routines).
+
+-spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_reason(RespCode, RespBody) when RespCode >= 400 ->
+    %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
+    kz_json:get_ne_binary_value([<<"error">>, <<"message">>], kz_json:decode(RespBody));
+get_reason(RespCode, _RespBody) ->
+    kz_http_util:http_code_to_status_line(RespCode).

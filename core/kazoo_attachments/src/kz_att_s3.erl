@@ -257,7 +257,7 @@ handle_s3_error({'aws_error', {'socket_error', RespBody}} = _E, Routines) ->
 -spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_reason(RespCode, RespBody) when RespCode >= 400 ->
     %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
-    [_, Message, _] = binary:split(RespBody, [<<"<Message>">>, <<"</Message>">>], [global]),
-    Message;
+    {Xml, _} = xmerl_scan:string(binary_to_list(RespBody)),
+    kz_xml:get_value("//Message/text()", Xml);
 get_reason(RespCode, _RespBody) ->
-    kz_att_util:http_code_to_status_line(RespCode).
+    kz_http_util:http_code_to_status_line(RespCode).

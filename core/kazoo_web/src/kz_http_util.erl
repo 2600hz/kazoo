@@ -14,6 +14,7 @@
         ,urlunsplit/1
         ,json_to_querystring/1
         ,props_to_querystring/1
+        ,http_code_to_status_line/1
         ]).
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -328,3 +329,49 @@ encode_kv(Prefix, K, [V], Sep, Acc) ->
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
     encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, urlencode(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
+
+-spec http_code_to_status_line(atom() | pos_integer()) -> kz_term:ne_binary().
+%% 4×× Client Error
+http_code_to_status_line(400) -> <<"Bad Request">>;
+http_code_to_status_line(401) -> <<"Unauthorized">>;
+http_code_to_status_line(402) -> <<"Payment Required">>;
+http_code_to_status_line(403) -> <<"Forbidden">>;
+http_code_to_status_line(404) -> <<"Not Found">>;
+http_code_to_status_line(405) -> <<"Method Not Allowed">>;
+http_code_to_status_line(406) -> <<"Not Acceptable">>;
+http_code_to_status_line(407) -> <<"Proxy Authentication Required">>;
+http_code_to_status_line(408) -> <<"Request Timeout">>;
+http_code_to_status_line(409) -> <<"Conflict">>;
+http_code_to_status_line(410) -> <<"Gone">>;
+http_code_to_status_line(411) -> <<"Length Required">>;
+http_code_to_status_line(412) -> <<"Precondition Failed">>;
+http_code_to_status_line(413) -> <<"Payload Too Large">>;
+http_code_to_status_line(414) -> <<"Request-URI Too Long">>;
+http_code_to_status_line(415) -> <<"Unsupported Media Type">>;
+http_code_to_status_line(416) -> <<"Requested Range Not Satisfiable">>;
+http_code_to_status_line(417) -> <<"Expectation Failed">>;
+http_code_to_status_line(418) -> <<"I'm a teapot">>;
+http_code_to_status_line(421) -> <<"Misdirected Request">>;
+http_code_to_status_line(422) -> <<"Unprocessable Entity">>;
+http_code_to_status_line(423) -> <<"Locked">>;
+http_code_to_status_line(424) -> <<"Failed Dependency">>;
+http_code_to_status_line(426) -> <<"Upgrade Required">>;
+http_code_to_status_line(428) -> <<"Precondition Required">>;
+http_code_to_status_line(429) -> <<"Too Many Requests">>;
+http_code_to_status_line(431) -> <<"Request Header Fields Too Large">>;
+http_code_to_status_line(444) -> <<"Connection Closed Without Response">>;
+http_code_to_status_line(451) -> <<"Unavailable For Legal Reasons">>;
+http_code_to_status_line(499) -> <<"Client Closed Request">>;
+%% 5×× Server Error
+http_code_to_status_line(500) -> <<"Internal Server Error">>;
+http_code_to_status_line(501) -> <<"Not Implemented">>;
+http_code_to_status_line(502) -> <<"Bad Gateway">>;
+http_code_to_status_line(503) -> <<"Service Unavailable">>;
+http_code_to_status_line(504) -> <<"Gateway Timeout">>;
+http_code_to_status_line(505) -> <<"HTTP Version Not Supported">>;
+http_code_to_status_line(506) -> <<"Variant Also Negotiates">>;
+http_code_to_status_line(507) -> <<"Insufficient Storage">>;
+http_code_to_status_line(508) -> <<"Loop Detected">>;
+http_code_to_status_line(510) -> <<"Not Extended">>;
+http_code_to_status_line(511) -> <<"Network Authentication Required">>;
+http_code_to_status_line(599) -> <<"Network Connect Timeout Error">>.

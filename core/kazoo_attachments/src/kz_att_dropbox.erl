@@ -178,4 +178,4 @@ get_reason(RespCode, RespBody) when RespCode >= 400 ->
     %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
     kz_json:get_ne_binary_value([<<"error_summary">>], kz_json:decode(RespBody));
 get_reason(RespCode, _RespBody) ->
-    kz_att_util:http_code_to_status_line(RespCode).
+    kz_http_util:http_code_to_status_line(RespCode).
