@@ -4071,6 +4071,7 @@
                     "type": "string"
                 },
                 "endpoints": {
+                    "description": "Endpoints to dial out to and join to the conference",
                     "items": {
                         "oneOf": [
                             {
@@ -4084,6 +4085,24 @@
                         ]
                     },
                     "minItems": 1,
+                    "type": "array"
+                },
+                "participant_flags": {
+                    "description": "Participant flags applied to each endpoint when it joins the conference",
+                    "items": {
+                        "description": "Participant flag",
+                        "enum": [
+                            "mute",
+                            "deaf",
+                            "distribute_dtmf",
+                            "is_moderator",
+                            "disable_moh",
+                            "ghost",
+                            "join_existing",
+                            "video_mute"
+                        ],
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "target_call_id": {
@@ -8955,6 +8974,9 @@
                 "Other-Leg-Direction": {
                     "type": "string"
                 },
+                "Participant-Flags": {
+                    "type": "string"
+                },
                 "Presence-ID": {
                     "type": "string"
                 },
@@ -9190,6 +9212,9 @@
                     "type": "string"
                 },
                 "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Participant-Flags": {
                     "type": "string"
                 },
                 "Target-Call-ID": {

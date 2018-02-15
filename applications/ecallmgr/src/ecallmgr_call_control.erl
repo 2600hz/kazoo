@@ -587,23 +587,25 @@ handle_execute_complete(<<"playback">> = AppName, JObj, #state{current_app=AppNa
     handle_playback_complete(AppName, JObj, State);
 handle_execute_complete(<<"play">> = AppName, JObj, #state{current_app=AppName}=State) ->
     handle_playback_complete(AppName, JObj, State);
+handle_execute_complete(<<"tts">> = AppName, JObj, #state{current_app=AppName}=State) ->
+    handle_playback_complete(AppName, JObj, State);
 handle_execute_complete(AppName, _, #state{current_app=AppName}=State) ->
     lager:debug("~s execute complete, advancing control queue", [AppName]),
     forward_queue(State);
 handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
     RawAppName = kz_json:get_value(<<"Raw-Application-Name">>, JObj, AppName),
-    CurrentAppName = ecallmgr_util:convert_kazoo_app_name(CurrApp),
-    case lists:member(RawAppName, CurrentAppName) of
+    MappedNames = ecallmgr_util:convert_kazoo_app_name(CurrApp),
+
+    case lists:member(RawAppName, MappedNames) of
         'true' -> handle_execute_complete(CurrApp, JObj, State);
         'false' -> State
     end.
 
 -spec handle_playback_complete(kz_term:ne_binary(), kz_json:object(), state()) -> state().
 handle_playback_complete(AppName, JObj, #state{command_q=CmdQ}=State) ->
-    lager:debug("playback finished, checking for group-id/DTMF termination"),
+    lager:debug("~s finished, checking for group-id/DTMF termination", [AppName]),
     case kz_json:get_ne_binary_value(<<"DTMF-Digit">>, JObj) of
-        'undefined' ->
-            handle_playback_looping(State);
+        'undefined' -> handle_playback_looping(State);
         _DTMF ->
             GroupId = kz_json:get_ne_binary_value(<<"Group-ID">>, JObj),
             lager:debug("DTMF ~s terminated playback, flushing all with group id ~s"

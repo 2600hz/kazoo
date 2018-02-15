@@ -50,6 +50,9 @@
         "Outbound-Call-ID": {
             "type": "string"
         },
+        "Participant-Flags": {
+            "type": "string"
+        },
         "Target-Call-ID": {
             "type": "string"
         },

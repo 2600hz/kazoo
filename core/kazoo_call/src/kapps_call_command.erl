@@ -27,6 +27,10 @@
         ]).
 
 -export([audio_macro/2, audio_macro/3]).
+-ifdef(TEST).
+-export([macros_to_commands/3]).
+-endif.
+
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
         ,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
@@ -464,7 +468,7 @@ audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, kz_binary:rand_hex(3)).
 -spec audio_macro(audio_macro_prompts(), kapps_call:call(), kz_term:ne_binary()) ->
                          binary().
 audio_macro(Prompts, Call, GroupId) ->
-    {_, _, Queue} = lists:foldl(fun build_macro/2, {Call, GroupId, []}, Prompts),
+    Queue = macros_to_commands(Prompts, Call, GroupId),
 
     NoopId = noop_id(),
     Commands = [kz_json:from_list(
@@ -479,6 +483,12 @@ audio_macro(Prompts, Call, GroupId) ->
               ],
     send_command(Command, Call),
     NoopId.
+
+-spec macros_to_commands(audio_macro_prompts(), kapps_call:call(), kz_term:ne_binary()) ->
+                                kz_json:objects().
+macros_to_commands(Prompts, Call, GroupId) ->
+    {_, _, Queue} = lists:foldl(fun build_macro/2, {Call, GroupId, []}, Prompts),
+    Queue.
 
 -type build_acc() :: {kapps_call:call(), kz_term:ne_binary(), kz_json:objects()}.
 -spec build_macro(audio_macro_prompt(), build_acc()) -> build_acc().
@@ -528,8 +538,8 @@ build_macro({'tts', Text, Voice}, {Call, GroupId, Queue}) ->
 build_macro({'tts', Text, Voice, Lang}, {Call, GroupId, Queue}) ->
     Command = tts_command(Text, Voice, Lang, Call),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
-build_macro({'tts', Text, Voice, Lang, Engine}, {Call, GroupId, Queue}) ->
-    Command = tts_command(Text, Voice, Lang, ?ANY_DIGIT, Engine, Call),
+build_macro({'tts', Text, Voice, Lang, Terminators}, {Call, GroupId, Queue}) ->
+    Command = tts_command(Text, Voice, Lang, Terminators, Call),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]}.
 
 %%--------------------------------------------------------------------
@@ -1545,21 +1555,21 @@ b_play(Media, Terminators, Leg, Endless, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec tts(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Call) -> tts(SayMe, kazoo_tts:default_voice(), Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Call) -> tts(SayMe, Voice, kapps_call:language(Call), Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators, kazoo_tts:default_provider(Call), Call).
 
--spec tts(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
-tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
+-spec tts(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binaries(), kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binary().
+tts(?NE_BINARY = SayMe, Voice, Lang, Terminators, Engine, Call) ->
     NoopId = noop_id(),
 
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
@@ -1607,11 +1617,11 @@ tts_terminators('undefined') -> ?ANY_DIGIT;
 tts_terminators([]) -> 'undefined';
 tts_terminators(Terminators) -> Terminators.
 
--spec tts_voice(kz_term:api_ne_binaries()) -> kz_term:ne_binary().
+-spec tts_voice(kz_term:api_binary()) -> kz_term:ne_binary().
 tts_voice('undefined') -> kazoo_tts:default_voice();
 tts_voice(Voice) -> Voice.
 
--spec tts_language(kz_term:api_ne_binaries(), kapps_call:call()) -> kz_term:ne_binary().
+-spec tts_language(kz_term:api_ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts_language('undefined', Call) -> kapps_call:language(Call);
 tts_language(Language, _Call) -> Language.
 

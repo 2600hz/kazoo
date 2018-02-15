@@ -153,6 +153,9 @@
         "Other-Leg-Direction": {
             "type": "string"
         },
+        "Participant-Flags": {
+            "type": "string"
+        },
         "Presence-ID": {
             "type": "string"
         },
