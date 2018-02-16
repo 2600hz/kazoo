@@ -9,7 +9,6 @@
         ,path_from_settings/1
         ,headers_as_binaries/1
         ,encode_multipart/2
-        ,handle_http_error_response/3
         ]).
 
 -export_type([format_field/0, format_fields/0]).

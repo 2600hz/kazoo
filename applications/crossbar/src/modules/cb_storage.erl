@@ -452,8 +452,13 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     Random = kz_binary:rand_hex(16),
     Content = <<"some random content: ", Random/binary>>,
     AName = <<Random/binary, "_test_credentials_file.txt">>,
-    DbName = kz_util:format_account_db(cb_context:account_id(ContextAcc)),
-    DocId = doc_id(ContextAcc),
+    AccountId = cb_context:account_id(ContextAcc),
+    TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
+                               ,<<"pvt_type">> => <<"storage_settings_probe">>
+                               }),
+    {ok, Doc} = kazoo_modb:save_doc(AccountId, TmpDoc, []),
+    DbName = kazoo_modb:get_modb(AccountId),
+    DocId = kz_json:get_value(<<"_id">>, Doc),
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
     Settings = kz_json:get_json_value(<<"settings">>, Att),
     AttHandler = kz_term:to_atom(<<"kz_att_", Handler/binary>>, 'true'),
