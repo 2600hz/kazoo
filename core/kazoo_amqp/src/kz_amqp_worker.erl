@@ -10,7 +10,7 @@
 %%%   request, expect a response back (or timeout)</dd>
 %%%   <dt>`call_collect'</dt><dd>uses the timeout to collect responses (successful or not)
 %%%   and returns the resulting list of responses</dd>
-%%% <dl>
+%%% </dl>
 %%%
 %%% @author James Aimonetti
 %%% @end

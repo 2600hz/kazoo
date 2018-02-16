@@ -82,7 +82,7 @@
 
 %%------------------------------------------------------------------------------
 %% @doc Authentication Request.
-%% Takes {@link kz_term:proplist}, creates JSON string or error.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -106,7 +106,7 @@ req_event_type() ->
 
 %%------------------------------------------------------------------------------
 %% @doc Authentication Response.
-%% Takes {@link kz_term:proplist}, creates JSON string or error.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -126,7 +126,7 @@ resp_v(JObj) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Authentication Error.
-%% Takes {@link kz_term:proplist}, creates JSON string or error.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec error(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.

@@ -7,7 +7,7 @@
 %%%   <dt>`credit'</dt><dd>A credit has been added to account-id</dd>
 %%%   <dt>`debit'</dt><dd>A debit has been applied to account-id</dd>
 %%%   <dt>`balance'</dt><dd>A request for any whapp with the balance of account-id to reply</dd>
-%%% <dl>
+%%% </dl>
 %%%
 %%% @author James Aimonetti
 %%% @end
