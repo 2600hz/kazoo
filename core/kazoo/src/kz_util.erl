@@ -177,7 +177,7 @@ format_account_id(Account) ->
 %% `unencoded' or `raw' format.
 %%
 %% <div class="notice">Accepts MODbs as well as account IDs/DBs</div>
-%% <div class="notice">If given `(Account, GregorianSeconds)`, it will return
+%% <div class="notice">If given `(Account, GregorianSeconds)', it will return
 %% an MODB in the `encoded' format.</div>
 %% @end
 %%------------------------------------------------------------------------------

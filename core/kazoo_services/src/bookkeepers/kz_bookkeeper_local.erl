@@ -14,10 +14,12 @@
 
 -include("services.hrl").
 
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec is_good_standing(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_good_standing(_AccountId, _Status) -> 'true'.
 
@@ -25,6 +27,7 @@ is_good_standing(_AccountId, _Status) -> 'true'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec sync(kz_service_items:items(), kz_term:ne_binary()) -> bookkeeper_sync_result().
 sync(_Items, _AccountId) -> 'ok'.
 
@@ -32,6 +35,7 @@ sync(_Items, _AccountId) -> 'ok'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec commit_transactions(kz_term:ne_binary(), kz_transactions:kz_transactions()) -> ok | error.
 commit_transactions(_BillingId, Transactions) ->
     kz_transactions:save(Transactions),
@@ -41,6 +45,7 @@ commit_transactions(_BillingId, Transactions) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec charge_transactions(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
 charge_transactions(_BillingId, _Transactions) -> [].
 
@@ -48,6 +53,7 @@ charge_transactions(_BillingId, _Transactions) -> [].
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec transactions(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                           {'ok', kz_transaction:transactions()} |
                           {'error', atom()}.
@@ -63,6 +69,7 @@ transactions(AccountId, From, To) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec handle_topup(kz_term:ne_binary(), kz_transactions:transactions()) -> 'ok'.
 handle_topup(_, []) -> 'ok';
 handle_topup(BillingId, [Transaction|Transactions]) ->

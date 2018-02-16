@@ -217,7 +217,6 @@ get_with_strategy(Strategy, Account, Category, Key) ->
 %%
 %% There is merge edition for `global' and `reseller': `global_merge' and `reseller_merge'.
 %% These are same as their normal counterpart but they do merge the results at the end.
-%%
 %% For example in `global_merge', it returns merge result of the account config
 %% (if any) and `system_config' (if any).
 %%
@@ -465,14 +464,21 @@ update_config_for_saving(AccountId, JObj) ->
                                  ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Flush accounts configuration cache.
+%% @doc Flush account's configuration cache for the given `Category'.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 flush(Account, Category) ->
     AccountDb = kz_util:format_account_db(Account),
     kz_datamgr:flush_cache_doc(AccountDb, kapps_config_util:account_doc_id(Category)),
     flush_all_strategies(Account, Category).
+
+%%------------------------------------------------------------------------------
+%% @doc Flush configuration cache fetched using all strategy for the given
+%% `Category' and `Account'.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec flush_all_strategies(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 flush_all_strategies(Account, Category) ->
@@ -483,6 +489,12 @@ flush_all_strategies(Account, Category) ->
                  ,<<"reseller_merge">>
                  ],
     lists:foreach(fun(Strategy) -> flush(Account, Category, Strategy) end, Strategies).
+
+%%------------------------------------------------------------------------------
+%% @doc Flush configuration cache fetch using `Strategy' for the given
+%% `Category' and `Account'.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 flush(Account, Category, Strategy) ->

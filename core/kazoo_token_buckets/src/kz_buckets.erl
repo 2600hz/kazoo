@@ -75,13 +75,10 @@
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
-%%------------------------------------------------------------------------------
-%% @doc consume_tokens(Name, [Count, [StartIfMissing]])
+%% consume_tokens(Name, [Count, [StartIfMissing]])
 %% Name :: name of the bucket
 %% Count :: how many tokens to try to consume
 %% StartIfMissing :: start the token bucket if it doesn't exist yet
-%% @end
-%%------------------------------------------------------------------------------
 
 -spec consume_token(kz_term:ne_binary()) -> boolean().
 consume_token(Name) ->
@@ -109,14 +106,14 @@ consume_tokens(<<_/binary>> = Key, Count, StartIfMissing) when is_integer(Count)
 consume_tokens(App, Key, Count, StartIfMissing) ->
     consume_tokens(App, Key, Count, StartIfMissing, fun kz_token_bucket:consume/2).
 
-%%------------------------------------------------------------------------------
-%% @doc consume_tokens_until(Name, Count, [StartIfMissing])
+%% consume_tokens_until(Name, Count, [StartIfMissing])
 %% Name :: name of the bucket
 %% Count :: how many tokens to try to consume
 %% StartIfMissing :: start the token bucket if it doesn't exist yet
-%%
-%% If Bucket is started and has fewer than Count tokens, consume the
-%% remaining tokens and return false
+
+%%------------------------------------------------------------------------------
+%% @doc If Bucket is started and has fewer than Count tokens, consume the
+%% remaining tokens and return `false'.
 %% @end
 %%------------------------------------------------------------------------------
 

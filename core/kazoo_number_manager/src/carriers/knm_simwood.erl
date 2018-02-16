@@ -1,7 +1,8 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz INC
-%%% @doc Handle client requests for phone_number at Simwood (UK based provider)
-%%% https://www.simwood.com/services/api
+%%% @doc Handle client requests for phone number at
+%%% <a href="https://www.simwood.com/services/api">Simwood</a> (UK based provider).
+%%%
 %%%
 %%%
 %%% @author OnNet (Kirill Sysoev github.com/onnet)
@@ -62,7 +63,7 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
-%% @doc Query Simwood.com for available numbers
+%% @doc Query Simwood for available numbers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
@@ -73,7 +74,7 @@ find_numbers(Prefix, Quantity, Options) ->
     process_response(kz_json:decode(Body), Options).
 
 %%------------------------------------------------------------------------------
-%% @doc Acquire a given number from Simwood.com
+%% @doc Acquire a given number from Simwood.
 %% @end
 %%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
@@ -88,7 +89,7 @@ acquire_number(Number) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Return number back to Simwood.com
+%% @doc Return number back to Simwood.
 %% @end
 %%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->

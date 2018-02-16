@@ -1,14 +1,16 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc Implementation of a token bucket as gen_server
-%%%   https://en.wikipedia.org/wiki/Token_bucket#The_token_bucket_algorithm
+%%% @doc Implementation of a
+%%% <a href="https://en.wikipedia.org/wiki/Token_bucket#The_token_bucket_algorithm">Token Bucket</a>
+%%% as `gen_server;.
 %%%
+%%% ```
 %%% Bucket = start_link(100, 10), % start with 100 tokens, add 10 per second (on the second in bulk)
 %%% consume(Bucket, 10) => 'true'
 %%% consume(Bucket, 1000) => 'false'
 %%%
 %%% Metered = start_link(100, 10, 'false'), % start with 100 tokens, add 1 per 100ms instead
-%%%
+%%% '''
 %%%
 %%% @author James Aimonetti
 %%% @end

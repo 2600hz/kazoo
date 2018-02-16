@@ -43,7 +43,7 @@ bind_q(_, _) -> 'ok'.
 unbind_q(_, _) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

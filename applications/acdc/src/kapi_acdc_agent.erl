@@ -441,7 +441,7 @@ unbind_q(Q, Ids, [_|T]) -> unbind_q(Q, Ids, T);
 unbind_q(_, _, []) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

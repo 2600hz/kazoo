@@ -1,9 +1,11 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc Manage the ETS table separate from the main process to use the ETS table
-%%% Protects against the main writer dying
+%%% Protects against the main writer dying.
 %%%
-%%% Inspired by: http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/
+%%% Inspired by:
+%%% <a href="http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/">
+%%% Don't Lose Your ETS Tables</a>.
 %%%
 %%% @author James Aimonetti
 %%% @end

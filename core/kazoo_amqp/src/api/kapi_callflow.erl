@@ -51,7 +51,7 @@ unbind_q(Q, _Props) ->
     amqp_util:unbind_q_from_kapps(Q, ?RESUME_ROUTING_KEY).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API.
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

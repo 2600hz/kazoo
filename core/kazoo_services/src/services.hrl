@@ -15,6 +15,7 @@
 -define(CACHE_NAME, 'kazoo_services_cache').
 
 -type bookkeeper_sync_result() :: 'ok' | 'delinquent' | 'retry'.
+%%
 
 -define(MAYBE_RESELLER_BOOKKEEPER_LOOKUP
        ,kapps_config:get_is_true(?CONFIG_CAT, <<"reseller_bookkeeper_lookup">>, 'false')

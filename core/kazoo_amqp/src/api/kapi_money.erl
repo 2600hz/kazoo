@@ -150,7 +150,7 @@ unbind_q(Queue, Props) ->
     amqp_util:unbind_q_from_configuration(Queue, Routing).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

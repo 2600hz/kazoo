@@ -1,6 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018 2600Hz, INC
-%%% @doc Builds PDF from an HTML template using HTMLDoc (http://www.msweet.org/projects.php?Z1)
+%%% @doc Builds PDF from an HTML template using
+%%% <a href="http://www.msweet.org/projects.php?Z1">HTMLDoc</a>.
 %%% @author Peter Defebvre
 %%% @author James Aimonetti
 %%% @end

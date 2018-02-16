@@ -533,7 +533,7 @@ set_state_deleted(T) ->
     setters(T, [{fun set_state/2, ?NUMBER_STATE_DELETED}]).
 
 %%------------------------------------------------------------------------------
-%% @doc Returns same fields view phone_numbers.json returns.
+%% @doc Returns same fields view `phone_numbers.json' returns.
 %% @end
 %%------------------------------------------------------------------------------
 -spec to_public_json(knm_phone_number()) -> kz_json:object().

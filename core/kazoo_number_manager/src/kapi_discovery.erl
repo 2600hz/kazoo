@@ -189,7 +189,7 @@ unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

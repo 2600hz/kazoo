@@ -804,7 +804,7 @@ recv_dtmf_command(DTMFs) ->
 %%------------------------------------------------------------------------------
 %% @doc Produces the low level AMQP request to set channel or call variables.
 %%
-%% <div class="notice">These are `custom' channel vars for state info only, and
+%% <div class="notice">These are `custom' channel variables for state info only, and
 %% can not be used to set system settings</div>
 %% @end
 %%------------------------------------------------------------------------------
@@ -841,8 +841,9 @@ set_terminators(Terminators, Call) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Produces the low level AMQP request to fetch channel variables.
-%% <div class="notice">These are `custom' channel vars for state info only, and
-%% can not the switch vars</div>
+%%
+%% <div class="notice">These are `custom' channel variables for state `info'
+%% only, and can not be sued to get switch variables</div>
 %% @end
 %%------------------------------------------------------------------------------
 

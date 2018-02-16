@@ -1,7 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz INC
 %%% @doc Provides access to stored call recordings.
-%%% Original <a href="https://github.com/2600hz/kazoo/pull/1218">pull request</a>
 %%%
 %%% @author OnNet (Kirill Sysoev [github.com/onnet])
 %%% @author Dinkor (Andrew Korniliv [github.com/dinkor])

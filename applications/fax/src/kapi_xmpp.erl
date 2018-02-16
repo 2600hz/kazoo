@@ -76,7 +76,7 @@ unbind_q(Q, [Event|T], JID) ->
 unbind_q(_Q, [], _JID) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

@@ -72,7 +72,7 @@ binding_keys_from_props(Props) ->
     edr_bindings:binding_keys(Bindings).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

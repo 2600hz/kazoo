@@ -110,8 +110,7 @@ num(N) ->
     knm_phone_number:number(knm_number:phone_number(N)).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Either `{@link nums()}' xor `{@link oks()}'.
+%% @doc Returns either {@link nums()} `xor' {@link oks()}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec todo(t()) -> nums() | oks().

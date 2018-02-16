@@ -174,7 +174,7 @@ unbind_q(Queue, [_|Restrict], Props) ->
 unbind_q(_, _, []) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
