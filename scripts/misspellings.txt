@@ -149,6 +149,7 @@ promise|promiss
 pronunciation|pronounciation
 proof|prufe
 publicly|publically
+quantity|quanity
 quarantine|quarentine
 queue|que
 questionnaire|questionaire questionnair

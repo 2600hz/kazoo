@@ -1,14 +1,14 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Provision template module
-%%% Handle client requests for provisioner template documents
+%%% @doc Provision template module.
+%%% Handle client requests for provisioner template documents.
 %%%
-%%% Note regarding storing the template as an attachment:
-%%% Since the tempalte is a 300k json object it is more efficent to store it as
+%%% <div class="notice">Regarding storing the template as an attachment:
+%%% Since the template is a 300k JSON object it is more efficient to store it as
 %%% an attachment, funky I know but necessary. Also since we already require
-%%% two API calls for editing a template we will maintain backward compatiblity by
+%%% two API calls for editing a template we will maintain backward compatibility by
 %%% not requiring an additional API call for the template and merge/unmerge it
-%%% from requests.
+%%% from requests</div>.
 %%%
 %%%
 %%% @author Jon Blanton

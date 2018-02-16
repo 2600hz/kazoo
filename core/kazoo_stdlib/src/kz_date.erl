@@ -112,8 +112,7 @@ relative_difference(Date1, Date2) ->
 %% @doc Calculates the date of the next occurrence of a weekday from the given
 %% start date.
 %%
-%% NOTICE!
-%% It is possible for this function to cross month/year boundaries.
+%% <div class="notice">It is possible for this function to cross month/year boundaries.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_next_weekday(kz_time:date(), kz_term:ne_binary()) -> kz_time:date().

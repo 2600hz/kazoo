@@ -88,10 +88,10 @@
 %% Optional options `<<"Media-Id">>', `<<"Message-Timestamp">>' and `<<"Document-Timestamp">>'
 %% are useful for migrating from account's database to account's MODB.
 %%
-%% Note: If `<<"Media-Id">>' option is passed, it'll use for preserving
+%% <div class="notice">If `<<"Media-Id">>' option is passed, it'll use for preserving
 %% current `message_id' during migration, so if for any reason migration failed
 %% and we run it again, it would try to write to same doc with same id
-%% which result in `{error, conflict}' which in this case is safe to ignore.
+%% which result in `{error, conflict}' which in this case is safe to ignore.</div>
 %%
 %% Option `<<"Message-Timestamp">>' is used to preserved previous message's utc_seconds.
 %%

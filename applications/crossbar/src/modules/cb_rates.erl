@@ -383,13 +383,15 @@ csv_to_rates(CSV, Context) ->
                                 ,{0, []}
                                 ).
 
-%% NOTE: Support row formats-
+
+-type rate_row() :: [string(),...] | string().
+%% <div class="notice">Support row formats:
+%% ```
 %%    [Prefix, ISO, Desc, Rate]
 %%    [Prefix, ISO, Desc, InternalRate, Rate]
 %%    [Prefix, ISO, Desc, Surcharge, InternalRate, Rate]
 %%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate]
-
--type rate_row() :: [string(),...] | string().
+%% '''</div>
 -type rate_row_acc() :: {integer(), kz_json:objects()}.
 
 -spec process_row(cb_context:context(), rate_row(), integer(), kz_json:objects(), integer()) ->

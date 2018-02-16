@@ -427,11 +427,11 @@ normalize_bulk_result(#ctx{account_id = _AccountId}=Ctx, Db, [S | Saved]) ->
 %% @doc process legacy message view result, generate a new message doc
 %% for them and map them to proper modb.
 %%
-%% Note: We are moving metadata only, attachment still remains in AccountDb,
+%% <div class="notice"> We are moving metadata only, attachment still remains in AccountDb,
 %% This is so much faster than moving with attachments which probably
 %% takes a couple of days for huge systems. We are creating message docs
 %% from scratch based on message metadata from each mailbox, and we use
-%% kazoo_data bulk operation for faster db writes.
+%% kazoo_data bulk operation for faster db writes.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_messages(#ctx{}, kz_json:objects()) -> {#ctx{}, kz_term:ne_binaries(), map()}.

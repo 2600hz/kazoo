@@ -227,9 +227,10 @@ save_fun('true') -> fun kz_datamgr:ensure_saved/3.
 
 %%------------------------------------------------------------------------------
 %% @doc Move a document from source to destination with attachments,
-%% optionally applies a transform function on the document
-%% Note: Caller is responsible to format both source and destination
-%% databases!
+%% optionally applies a transform function on the document.
+%%
+%% <div class="notice">Caller is responsible to format both source and destination
+%% databases!</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec move_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kazoo_data:docid()) ->
@@ -274,9 +275,10 @@ move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Copy a document from source to destination with attachments,
-%% optionally applies a transform function on the document
-%% Note: Caller is responsible to format both source and destination
-%% databases!
+%% optionally applies a transform function on the document.
+%%
+%% <div class="notice">Caller is responsible to format both source and destination
+%% databases!</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec copy_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kazoo_data:docid()) ->

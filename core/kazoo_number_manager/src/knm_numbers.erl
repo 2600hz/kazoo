@@ -1,7 +1,9 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz INC
 %%% @doc Bulk operations on numbers.
-%%% Note: functions should not throw, instead return {@link ret()}.
+%%%
+%%% <div class="notice">Functions should not throw, instead should return
+%%% {@link ret()}.</div>
 %%%
 %%% @author Peter Defebvre
 %%% @author Pierre Fenoll
@@ -221,7 +223,8 @@ ko(N, Reason, T) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to get numbers from DB.
-%% Note: each number in `Nums' has to be normalized.
+%%
+%% <div class="notice">Each number in `Nums' has to be normalized.</div>
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -280,9 +283,11 @@ from_jobjs(JObjs) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to create new numbers in DB or modify existing ones.
-%% Note: `assign_to' number option MUST be set.
-%% Note: creating numbers with `ported_in' option set to true will
-%%   attempt to create them with state `in_service'.
+%%
+%% <div class="notice">`assign_to' number option MUST be set.</div>
+%%
+%% <div class="notice">Creating numbers with `ported_in' option set to true will
+%% attempt to create them with state `in_service'.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec create(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
@@ -334,7 +339,8 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to update some phone_number fields.
-%% Note: will always result in a phone_number save.
+%%
+%% <div class="notice">Will always result in a phone_number save.</div>
 %% @end
 %%------------------------------------------------------------------------------
 

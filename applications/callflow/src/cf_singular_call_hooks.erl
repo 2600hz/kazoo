@@ -2,23 +2,40 @@
 %%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
-%%% This module is called by cf_exe at the init and destroy points of a call, in order to
-%%% identify the conversation in a singular manner and send out hooks to external URLs.
+%%% This module is called by {@link cf_exe} at the initialization and destroy
+%%% points of a call, in order to identify the conversation in a singular manner
+%%% and send out hooks to external URLs.
 %%%
-%%% Hook behavior is disabled by default, and will only be enabled if "singular_call_hook_url"
-%%% in the system_config / callflow configuration is populated.
+%%% Hook behavior is disabled by default, and will only be enabled if `singular_call_hook_url'
+%%% in the `system_config' or callflow configuration is populated.
 %%%
-%%% Example of JSON hook sent via post on call init:
-%%% {"Event":"init","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
-%%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet"}
+%%% Example of JSON hook sent via `POST' on call init:
+%%% ```
+%%%    {
+%%%      "Event": "init",
+%%%      "CallID": "OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%%      "To": "+14088317607",
+%%%      "From": "+16505811111",
+%%%      "Inception": "onnet"
+%%%    }
+%%% '''
 %%%
-%%% Example of JSON hook sent via post on call destroy:
-%%% {"Event":"destroy","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
-%%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet","Duration-Seconds":"33",
-%%%  "Hangup-Cause":"NORMAL_CLEARING","Disposition":"SUCCESS"}
+%%% Example of JSON hook sent via `POST' on call destroy:
+%%% ```
+%%%    {
+%%%      "Event": "destroy",
+%%%      "CallID": "OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%%      "To": "+14088317607",
+%%%      "From": "+16505811111",
+%%%      "Inception": "onnet",
+%%%      "Duration-Seconds": "33",
+%%%      "Hangup-Cause": "NORMAL_CLEARING",
+%%%      "Disposition":"SUCCESS"
+%%%    }
+%%% '''
 %%%
-%%% Note: Be sure to set the internal and external caller IDs for the devices.
-%%% These are used to resolve to/from numbers correctly.
+%%% <div class="notice">Be sure to set the internal and external caller IDs
+%%% for the devices. These are used to resolve to/from numbers correctly.</div>
 %%%
 %%%
 %%% @author Benedict Chan <benchan@sendhub.com>
@@ -59,7 +76,7 @@ maybe_hook_call(Call) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Sends an initial request signifying the start of this entire conversation
-%% in a hook to a preconfigured URL.
+%% in a hook to a pre-configured URL.
 %%
 %% @end
 %%------------------------------------------------------------------------------
@@ -98,7 +115,7 @@ send_init_hook(Call) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Sends a request signifying the end of this entire conversation in a
-%% hook to a preconfigured URL.
+%% hook to a pre-configured URL.
 %%
 %% @end
 %%------------------------------------------------------------------------------

@@ -1435,11 +1435,12 @@ is_unique_account_name(AccountId, Name) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Send a notification that the account has been created
+%%
+%% <div class="notice">When the `auth_token' is empty either sign ups or on-board
+%% allowed this request and they will notify once complete.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec notify_new_account(cb_context:context()) -> 'ok'.
-%% NOTE: when the auth token is empty either signups or onboard allowed this request
-%%       and they will notify once complete...
 notify_new_account(Context) ->
     notify_new_account(Context, cb_context:auth_doc(Context)).
 

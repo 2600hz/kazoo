@@ -727,8 +727,7 @@ next_rule_date(#rule{cycle = <<"yearly">>
 %% until the date can be calculated.  The date can be provided as an
 %% improper date.
 %%
-%% NOTICE!
-%% It is possible for this function to cross month/year boundaries.
+%% <div class="notice">It is possible for this function to cross month/year boundaries.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_ordinal_weekday(kz_time:year(), improper_month(), wday(), strict_ordinal()) -> kz_time:date().

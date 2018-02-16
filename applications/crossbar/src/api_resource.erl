@@ -1017,13 +1017,13 @@ next_chunk_fold(#{chunking_started := StartedChunk
 %% Simply set response in `Context''s `resp_data', either as a list of JObjs
 %% or list of CSV binary (depends on response type).
 %%
-%% Note: The JObjs in `Context''s response data are in the correct order,
+%% <div class="notice">The JObjs in `Context''s response data are in the correct order,
 %% if you're changing the JObjs (looping over, change/replace) do not forget
-%% to reverse it to the correct order again (unless you have a customized sort order).
+%% to reverse it to the correct order again (unless you have a customized sort order).</div>
 %%
-%% Note: For CSV, you have to check if chunk is started, if not
-%%       create the header and add it to the first element
-%%       (`<<Headers/binary, "\r\n", FirstRow/binary>>') of you're response.
+%% <div class="notice">For CSV, you have to check if chunk is started, if not
+%% create the header and add it to the first element
+%% (`<<Headers/binary, "\r\n", FirstRow/binary>>') of you're response.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_chunk(map()) -> {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.

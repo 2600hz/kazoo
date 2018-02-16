@@ -60,8 +60,9 @@ handle_req(JObj, _Props) ->
                                  ).
 
 %%------------------------------------------------------------------------------
-%% @doc create the props used by the template render function
-%% NOTE: amount is expected to be in dollars
+%% @doc create the props used by the template render function.
+%%
+%% <div class="notice">Amount is expected to be in dollars</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:object()) -> kz_term:proplist().

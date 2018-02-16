@@ -235,14 +235,14 @@ bindings(Routing) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Match routing patterns. * matches 1 slot, # 0 or more.
-%% Note: matching only accepts wilcards on first argument (asymetric).
+%% @doc Match routing patterns. `*' matches one slot, `#' matches zero or more.
+%% For example pattern `<<"#.6.*.1.4.*">>'  can match `<<"6.a.a.6.a.1.4.a">>'.
+%%
+%% <div class="notice">Matching only accepts wilcards on first argument (asymetric).</div>
+%%
+%% This is a copy from {@link kazoo_bindings} with extra
+%% checks for `bh_matches([_ | Bs], [<<"*">>|Rs]) ->'
 %% @end
-%%
-%% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
-%%
-%% this is a copy from kazoo_bindings with extra
-%% check for bh_matches([_ | Bs], [<<"*">>|Rs]) ->
 %%------------------------------------------------------------------------------
 -spec bh_matches(kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean().
 

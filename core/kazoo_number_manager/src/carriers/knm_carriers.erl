@@ -334,7 +334,8 @@ is_number_billable(PhoneNumber) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Returns whether carrier handles numbers local to the system.
-%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%%
+%% <div class="notice">A non-local (foreign) carrier module makes HTTP requests.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_local(kz_term:ne_binary()) -> boolean().

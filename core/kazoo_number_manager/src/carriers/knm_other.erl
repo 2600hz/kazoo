@@ -69,14 +69,15 @@ info() ->
 
 %%------------------------------------------------------------------------------
 %% @doc Is this carrier handling numbers local to the system?
-%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%%
+%% <div class="notice">A non-local (foreign) carrier module makes HTTP requests.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
 %%------------------------------------------------------------------------------
-%% @doc Query the local system for a quanity of available numbers
+%% @doc Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%------------------------------------------------------------------------------

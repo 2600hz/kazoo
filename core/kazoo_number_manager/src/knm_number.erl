@@ -112,8 +112,11 @@ is_number(_) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to get a number from DB.
-%% Note: Number parameter has to be normalized.
-%% Note: get/1,2 should not throw, instead returns: {ok,_} | {error,_} | ...
+%%
+%% <div class="notice">Number parameter has to be normalized.</div>
+%%
+%% <div class="notice">{@link get/1}, {@link get/2} should not throw,
+%% instead they should return: `{ok,_} | {error,_} | ...'.</div>
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -130,7 +133,8 @@ get(Num, Options) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to create a new number in DB or modify an existing one.
-%% Note: `assign_to' number option MUST be set.
+%%
+%% <div class="notice">`assign_to' number option MUST be set.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec create(kz_term:ne_binary(), knm_number_options:options()) -> knm_number_return().
@@ -295,7 +299,8 @@ move(Num, MoveTo, Options) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to update some phone_number fields.
-%% Note: will always result in a phone_number save.
+%%
+%% <div class="notice">will always result in a phone_number save.</div>
 %% @end
 %%------------------------------------------------------------------------------
 

@@ -247,9 +247,8 @@ build_load_modb_params(Context, View, Options) ->
 %% direction and `include_docs' (if it's not using reduce) and removes
 %% CrossbarView Options.
 %%
-%% NOTE: Do not set start/end keys in your CrossbarView Options,
-%% use provided special keys to generate start/end keys based on
-%% timestamp.
+%% <div class="notice">Do not set start or end keys in Options, use provided
+%% special keys to generate start/end keys based on timestamp.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_view_query(options(), direction(), api_range_key(), api_range_key(), boolean()) ->
@@ -898,7 +897,8 @@ maybe_set_start_end_keys(LoadMap, StartKey, EndKey) -> LoadMap#{start_key => Sta
 
 %%------------------------------------------------------------------------------
 %% @doc If pagination available, returns page size.
-%% Note: DO NOT ADD ONE (1) TO PAGE_SIZE/LIMIT! Load function will add it.
+%%
+%% <div class="notice">DO NOT ADD ONE (1) TO PAGE_SIZE/LIMIT! Load function will add it.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_page_size(cb_context:context(), options()) -> kz_term:api_pos_integer().

@@ -221,7 +221,7 @@ message(AccountId, MessageId, BoxId) ->
 %% @doc Change the message's folder.
 %% Returns the new updated message on success or the old message if update failed.
 %%
-%% Note: For use by {@link cf_voicemail} only.
+%% <div class="notice">For use by {@link cf_voicemail} only.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::kz_term:ne_binary(),
@@ -255,9 +255,9 @@ change_folder(Folder, Message, AccountId, BoxId) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Change the message's folder.
-%% Note: If `Folder' is `` {<<"deleted">>, 'true'} '', the message would move to
-%%       deleted folder and and its document will marked as soft-deleted,
-%%       otherwise it just move to deleted folder (for recovering later by user).
+%% <div class="notice">If `Folder' is `` {<<"deleted">>, 'true'} '', the message
+%% would move to deleted folder and and its document will marked as soft-deleted,
+%% otherwise it just move to deleted folder (for recovering later by user).</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec change_folder(Folder, Message, AccountId, BoxId, Functions) ->
@@ -675,8 +675,10 @@ try_save_document(Call, MsgJObj, Loop) ->
 
 %%------------------------------------------------------------------------------
 %% @doc create a fake Destination Box JObj to pass to change vmbox functions
-%% Note: set pvt_account_id and db just to make sure for case when timezone is not passed
-%% so kzd_voicemail_box can find timezone from vmbox the owner or account
+%%
+%% <div class="notice">Set `pvt_account_id' and db just to make sure for case
+%% when timezone is not passed so {@link kzd_voicemail_box} can find
+%% timezone from vmbox the owner or account.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec fake_vmbox_jobj(kapps_call:call(), kz_term:proplist()) -> kz_json:object().

@@ -92,7 +92,8 @@ count(AccountId, BoxId) ->
 %% @doc Get count of non-deleted messages in a specific box.
 %% Only counts messages which are in retention duration and are
 %% in `new' or `saved' folder only.
-%% Note: returns counts in form of `{new, saved}'
+%%
+%% <div class="notice">Returns counts in form of `{new, saved}'.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec count_non_deleted(AccountId, BoxId) -> Count when AccountId :: kz_term:ne_binary(),
@@ -220,8 +221,7 @@ update(AccountId, BoxId, Msgs) ->
 %% instead of `MessageId'.
 %% You can pass a list of JObj instead and they will be updated by applying any given `Functions` to do save.
 %%
-%%
-%% Note: Messages prior to retention duration will not update.
+%% <div class="notice">Messages prior to retention duration will not update.</div>
 %%
 %% Returns a JObj in the below form:
 %% ```
@@ -342,11 +342,12 @@ change_folder(Folder, Msgs, AccountId, BoxId) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Change messages folder.
-%% Note: Messages prior to retention duration will not update.
 %%
-%% Note: If `Folder' is `` {<<"deleted">>, 'true'} '', the message would move to
-%%       deleted folder and and its document will marked as soft-deleted,
-%%       otherwise it just move to deleted folder (for recovering later by user).
+%% <div class="notice">Messages prior to retention duration will not update.</div>
+%%
+%% <div class="notice">If `Folder' is `` {<<"deleted">>, 'true'} '', the message
+%% would move to deleted folder and and its document will marked as soft-deleted,
+%% otherwise it just move to deleted folder (for recovering later by user).</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec change_folder(Folder, Msgs, AccountId, BoxId, Functions) ->
@@ -511,8 +512,8 @@ normalize_account_listing(JObj, Map) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Normalize fetch/update bulk result.
-%% Note: Optional checks message belonging to the BoxId and message
-%%       retention
+%% <div class="notice">Optional checks message belonging to the BoxId and message
+%% retention.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_bulk_results(bulk_map(), kz_json:objects(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_time:api_seconds()) -> bulk_map().

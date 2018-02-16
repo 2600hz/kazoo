@@ -321,10 +321,12 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
-%% caller is the owner, and the pin is not required then we skip requesting the pin
+%% @doc Find the voicemail box, by making a fake 'callflow data payload' we look
+%% for it now because if the caller is the owner, and the pin is not required
+%% then we skip requesting the pin.
 %%
-%% Note: Check mailbox existence here to properly updating Loop in find_mailbox/4
+%% <div class="notice">Check mailbox existence here to properly updating `Loop' in
+%% {@link find_mailbox/4}.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_mailbox_by_number(non_neg_integer(), kapps_call:call()) ->

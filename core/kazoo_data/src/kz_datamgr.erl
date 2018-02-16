@@ -693,12 +693,12 @@ read_chunked_results(DocIds, {error, Reason}, Acc) ->
     ] ++ Acc.
 
 %%------------------------------------------------------------------------------
-%% @doc Open documents given doc ids returns an error tuple or the json.
+%% @doc Open documents given doc ids returns an error tuple or the JSON.
 %% Attempts to fetch from cache before making an ad-hoc bulk read.
 %% Each returned JObj contains either an `<<"doc">>' or `<<"error">>' field.
 %% So: match both error tuple and each JSON of the list.
 %%
-%% Note: no guaranty on order of results is provided.
+%% <div class="notice">No guaranty on order of results is provided.</div>
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1031,7 +1031,7 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 %%   <dt>`{rev, kz_term:ne_binary()}'</dt><dd>Current document's revision</dd>
 %% </dl>
 %%
-%% Note: Note atoms as keys in proplist.
+%% <div class="notice">Note atoms as keys in proplist.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec put_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:ne_binary()) ->
@@ -1364,9 +1364,10 @@ change_notice() ->
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to correct the database name.
-%% NOTE: The attempt to correct the dbname is not very Erlang like, but
-%%  since there are more places that expect an error and do not
-%%  handle a crash appropriately/gracefully this is a quick solution...
+%%
+%% <div class="notice">The attempt to correct the dbname is not very Erlang like,
+%% but since there are more places that expect an error and do not
+%% handle a crash appropriately/gracefully this is a quick solution.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_convert_dbname(kz_term:text()) ->

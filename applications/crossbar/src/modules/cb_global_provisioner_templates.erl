@@ -1,14 +1,14 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Provision template module
+%%% @doc Provision template module.
 %%% Handle client requests for provisioner template documents
 %%%
-%%% Note regarding storing the template as an attachment:
-%%% Since the template is a 300k json object it is more efficent to store it as
+%%% <div class="notice">Regarding storing the template as an attachment:
+%%% Since the template is a 300k JSON object it is more efficient to store it as
 %%% an attachment, funky I know but necessary. Also since we already require
-%%% two API calls for editing a template we will maintain backward compatiblity by
+%%% two API calls for editing a template we will maintain backward compatibility by
 %%% not requiring an additional API call for the template and merge/unmerge it
-%%% from requests.
+%%% from requests.</div>
 %%%
 %%%
 %%% @author Jon Blanton
@@ -72,7 +72,7 @@ init_db() ->
     ok.
 
 %%------------------------------------------------------------------------------
-%% @doc Add content types provided by this module
+%% @doc Add content types provided by this module.
 %% @end
 %%------------------------------------------------------------------------------
 -spec acceptable_content_types() -> kz_term:proplist().
@@ -101,7 +101,7 @@ get_content_type(JObj) ->
     kz_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>).
 
 %%------------------------------------------------------------------------------
-%% @doc Add content types accepted by this module
+%% @doc Add content types accepted by this module.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -119,9 +119,9 @@ content_types_accepted(Context, _, ?IMAGE_REQ, _) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
-%% given Nouns. For example `/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405.
+%% Failure here returns `405'.
 %% @end
 %%------------------------------------------------------------------------------
 
