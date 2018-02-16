@@ -93,8 +93,6 @@ find_by_customer(CustomerId, Min, Max) ->
      || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
     ].
 
-
-
 %%------------------------------------------------------------------------------
 %% @doc Creates a new transaction using the given record.
 %% @end
@@ -112,18 +110,27 @@ create(#bt_transaction{amount=Amount}=Transaction) ->
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
+%%------------------------------------------------------------------------------
+%% @doc Creates a new transaction using the given record. Sets `customer_id'
+%% field to `CustomerId'.
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec create(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 create(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{customer_id=CustomerId}).
 
-%%------------------------------------------------------------------------------
-%% @doc Create a sale transaction.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv create(Transaction#bt_transaction{type = <<"sale">>})
 
 -spec sale(bt_transaction()) -> bt_transaction().
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
+
+%%------------------------------------------------------------------------------
+%% @doc Set `customer_id' to `CustomerId' and create a sale transaction.
+%% @see sale/1
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec sale(kz_term:ne_binary(), bt_transaction()) -> bt_transaction().
 sale(CustomerId, Transaction) ->
@@ -200,14 +207,17 @@ refund(TransactionId, Amount) ->
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
-%%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a transaction record.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/transaction")
 
 -spec xml_to_record(bt_xml()) -> bt_transaction().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/transaction").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a transaction record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_transaction().
 xml_to_record(Xml, Base) ->
@@ -287,14 +297,17 @@ get_transaction_sources([Element|Elements], Sources) ->
     Source = kz_xml:get_value("transaction-source/text()", Element),
     get_transaction_sources(Elements, [Source|Sources]).
 
-%%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a transaction record.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv record_to_xml(Transaction, 'false')
 
 -spec record_to_xml(bt_transaction()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Transaction) ->
     record_to_xml(Transaction, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a transaction record. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_transaction(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(#bt_transaction{}=Transaction, ToString) ->

@@ -20,14 +20,17 @@
 -type discount() :: bt_discount().
 -type discounts() :: bt_discounts().
 
-%%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a discount record.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/discount")
 
 -spec xml_to_record(bt_xml()) -> bt_discount().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/discount").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a discount record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_discount().
 xml_to_record(Xml, Base) ->
@@ -40,13 +43,10 @@ xml_to_record(Xml, Base) ->
                 }.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert the given discount to a XML.
+%% @doc Converts the given add-on record to a XML document. If `ToString' is
+%% `true' returns exported XML as string binary.
 %% @end
 %%------------------------------------------------------------------------------
-
--spec record_to_xml(bt_discount()) -> kz_term:proplist() | bt_xml().
-record_to_xml(Discount) ->
-    record_to_xml(Discount, false).
 
 -spec record_to_xml(bt_discount(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Discount, ToString) ->

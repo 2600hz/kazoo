@@ -95,7 +95,7 @@ get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
 
 %%------------------------------------------------------------------------------
-%% @doc Get the subscription ID.
+%% @doc Get the add-on by ID from subscription record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -127,7 +127,7 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Get the subscription ID.
+%% @doc Update amount of given add-on ID in subscription record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -220,6 +220,7 @@ create(#bt_subscription{}=Subscription) ->
 %% <div class="notice">A canceled subscription cannot be updated.</div>
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec update(subscription()) -> subscription().
 update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
@@ -245,7 +246,7 @@ cancel(SubscriptionId) ->
     #bt_subscription{}.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Resets quantity of add-ons and discounts in the subscription record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -256,7 +257,7 @@ reset(Subscription) ->
                                                      ]).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Resets quantity of add-ons in the subscription record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -265,7 +266,7 @@ reset_addons(#bt_subscription{add_ons=AddOns}=Subscription) ->
     Subscription#bt_subscription{add_ons=[AddOn#bt_addon{quantity=0} || AddOn <- AddOns]}.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Resets quantity of discounts in the subscription record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -274,8 +275,8 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
     Subscription#bt_subscription{discounts=[Discount#bt_discount{quantity=0} || Discount <- Discounts]}.
 
 %%------------------------------------------------------------------------------
-%% @doc Really ugly function to update an add-on for a given subscription
-%% or subscription ID
+%% @doc Really ugly function to update an add-on quantity for a given subscription
+%% or subscription ID.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -307,8 +308,8 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Really ugly function to increment an add-on for a given subscription
-%% or subscription ID.
+%% @doc Really ugly function to increment an add-on quantity by one for a given
+%% subscription or subscription ID.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -407,7 +408,7 @@ update_payment_token(#bt_subscription{id=Id}, PaymentToken) ->
                     }.
 
 %%------------------------------------------------------------------------------
-%% @doc Returns whether subscription is canceled (impossible to update)
+%% @doc Returns whether subscription is canceled (impossible to update).
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_canceled(subscription()) -> boolean().
@@ -423,14 +424,17 @@ is_canceled(#bt_subscription{}) -> 'false'.
 is_expired(#bt_subscription{status = ?BT_EXPIRED}) -> 'true';
 is_expired(#bt_subscription{}) -> 'false'.
 
-%%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a subscription record.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/subscription")
 
 -spec xml_to_record(bt_xml()) -> subscription().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a subscription record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> subscription().
 xml_to_record(Xml, Base) ->
@@ -467,16 +471,17 @@ xml_to_record(Xml, Base) ->
                                  ]
                     ,descriptor = braintree_descriptor:xml_to_record(Xml)
                     }.
-
-
-%%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a subscription record.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv record_to_xml(Subscription, 'false')
 
 -spec record_to_xml(subscription()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Subscription) ->
     record_to_xml(Subscription, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a subscription record. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(subscription(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(#bt_subscription{}=Subscription, ToString) ->

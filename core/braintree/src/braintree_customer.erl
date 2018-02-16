@@ -58,6 +58,7 @@ new(CustomerId) ->
 %% @doc Creates a new subscription record.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec new_subscription(kz_term:ne_binary(), customer()) -> braintree_subscription:subscription().
 new_subscription(PlanId, Customer) ->
     PaymentToken = default_payment_token(Customer),
@@ -281,14 +282,17 @@ delete(CustomerId) ->
     _ = braintree_request:delete(Url),
     #bt_customer{}.
 
-%%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a customer record.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/customer")
 
 -spec xml_to_record(bt_xml()) -> customer().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a customer record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> customer().
 xml_to_record(Xml, Base) ->
@@ -315,15 +319,17 @@ xml_to_record(Xml, Base) ->
                                   || Subscription <- xmerl_xpath:string(SubscriptionPath, Xml)
                                  ]
                 }.
-
-%%------------------------------------------------------------------------------
-%% @doc Convert the given record to XML.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv record_to_xml(Customer, 'false')
 
 -spec record_to_xml(customer()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Customer) ->
     record_to_xml(Customer, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given record to XML. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(customer(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Customer, ToString) ->

@@ -15,7 +15,7 @@
 -include("bt.hrl").
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Accessor to get add-on quantity from the given add-on record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -23,14 +23,17 @@
 get_quantity(#bt_addon{quantity=Quantity}) ->
     Quantity.
 
-%%------------------------------------------------------------------------------
-%% @doc Converts the given XML to a customer record.
-%% @end
-%%------------------------------------------------------------------------------
+%% equiv xml_to_record(Xml, "/add-on")
 
 -spec xml_to_record(bt_xml()) -> bt_addon().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/add-on").
+
+%%------------------------------------------------------------------------------
+%% @doc Converts the given XML to a add-on record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_addon().
 xml_to_record(Xml, Base) ->
@@ -42,14 +45,17 @@ xml_to_record(Xml, Base) ->
              ,quantity = kz_term:to_integer(kz_xml:get_value([Base, "/quantity/text()"], Xml))
              }.
 
-%%------------------------------------------------------------------------------
-%% @doc Converts the given customer record to a XML document.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv record_to_xml(Addon, false)
 
 -spec record_to_xml(bt_addon()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Addon) ->
     record_to_xml(Addon, false).
+
+%%------------------------------------------------------------------------------
+%% @doc Converts the given add-on record to a XML document. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_addon(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Addon, ToString) ->

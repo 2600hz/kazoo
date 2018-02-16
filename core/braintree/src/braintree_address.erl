@@ -32,7 +32,7 @@ url(CustomerId, AddressId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses/", kz_term:to_list(AddressId)]).
 
 %%------------------------------------------------------------------------------
-%% @doc Find a customer by ID.
+%% @doc Find an address by ID.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ find(CustomerId, AddressId) ->
     xml_to_record(Xml).
 
 %%------------------------------------------------------------------------------
-%% @doc Creates a new customer using the given record.
+%% @doc Creates a new address using the given record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ create(#bt_address{customer_id=CustomerId}=Address) ->
     xml_to_record(Xml).
 
 %%------------------------------------------------------------------------------
-%% @doc Creates a new customer with the given costumer ID and billing address.
+%% @doc Creates a new address with the given costumer ID and billing address.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -64,7 +64,7 @@ create(CustomerId, Address) ->
     create(Address#bt_address{customer_id=CustomerId}).
 
 %%------------------------------------------------------------------------------
-%% @doc Updates a customer with the given record.
+%% @doc Updates an address with the given record.
 %% @end
 %%------------------------------------------------------------------------------
 -spec update(bt_address()) -> bt_address().
@@ -77,7 +77,7 @@ update(#bt_address{id=AddressId
     xml_to_record(Xml).
 
 %%------------------------------------------------------------------------------
-%% @doc Deletes a customer ID from Braintree's system.
+%% @doc Deletes an address ID from Braintree's system.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -93,14 +93,17 @@ delete(CustomerId, AddressId) ->
     _ = braintree_request:delete(Url),
     #bt_address{}.
 
-%%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a customer record.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/address")
 
 -spec xml_to_record(bt_xml()) -> bt_address().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to an address record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_address().
 xml_to_record(Xml, Base) ->
@@ -122,14 +125,17 @@ xml_to_record(Xml, Base) ->
                ,updated_at = kz_xml:get_value([Base, "/updated-at/text()"], Xml)
                }.
 
-%%------------------------------------------------------------------------------
-%% @doc Convert the give customer record to a XML document.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv record_to_xml(Address, 'false')
 
 -spec record_to_xml(bt_address()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml(Address) ->
     record_to_xml(Address, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the give address record to a XML document. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_address(), boolean()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml('undefined', _ToString) -> 'undefined';
