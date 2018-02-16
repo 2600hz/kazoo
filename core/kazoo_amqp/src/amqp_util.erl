@@ -1260,7 +1260,7 @@ access_request(Options) ->
 %% @doc Determines if the content is flagged as type JSON.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_json(#'P_basic'{}) -> boolean().
+-spec is_json(amqp_basic()) -> boolean().
 is_json(#'P_basic'{content_type=CT}) -> CT =:= ?DEFAULT_CONTENT_TYPE.
 
 %%------------------------------------------------------------------------------
