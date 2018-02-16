@@ -18,7 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 `outbound_callee_id_name` | Callee ID Name of the device calling out to the contact number | `string()` |   | `false` |  
 `outbound_callee_id_number` | Callee ID Number of the device calling out to the contact number | `string()` |   | `false` |  
 `throttle` | The rate that this click to call can be invoked | `integer()` |   | `false` |  
-`whitelist.[]` |   | `string()` |   | `false` |  
+`whitelist.[]` |   | `string(1..)` |   | `false` |  
 `whitelist` | A list of regular expressions that the click to call can dial to | `array(string(1..))` |   | `false` |  
 
 

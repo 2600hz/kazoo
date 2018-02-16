@@ -71,28 +71,30 @@ curl -v -X PUT \
  `dial` | Dial an endpoint (user/device/DID)
  `play` | Play media to the conference (all participants)
 
-##### Dialing an endpoint
+#### Dialing an endpoint
 
 Sometimes you want to dial out from a conference to an endpoint (versus waiting for the caller to dial into the conference). Similar to how the `group` callflow works, you can include device and user IDs; unlike groups, you can include DIDs as well (similar to quickcall/click2call).
 
-###### Schema
+##### Schema
 
 Schema for conference dial API command
 
 
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false`
-`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false`
-`endpoints.[]` |   | `string()` |   | `true`
-`endpoints` |   | `array(string() | device())` |   | `true`
-`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false`
-`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false`
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false` |
+`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false` |
+`endpoints.[]` |   | `string()|[./devices.md#schema](#devices)` |   |   |
+`endpoints` | Endpoints to dial out to and join to the conference | `array()` |   | `true` |
+`participant_flags.[]` |   | `string('mute' | 'deaf' | 'distribute_dtmf' | 'is_moderator' | 'disable_moh' | 'ghost' | 'join_existing' | 'video_mute')()` |   | `false` |
+`participant_flags` | Participant flags applied to each endpoint when it joins the conference | `array(string('mute' | 'deaf' | 'distribute_dtmf' | 'is_moderator' | 'disable_moh' | 'ghost' | 'join_existing' | 'video_mute'))` |   | `false` |
+`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false` |
+`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false` |
 
 
 
-###### Endpoints
+##### Endpoints
 
 Dial-able endpoints are
 1. Devices (by device id or [device JSON](./devices.md))
@@ -102,13 +104,13 @@ Dial-able endpoints are
 
 Note: Phone numbers will involve some internal legs being generated (loopback legs) to process the number as if it was a call coming in for the desired number. This means billing and limits will be applied just the same as if a user dialed the number from their device.
 
-###### Examples
+##### Examples
 
 ```json
 {
     "action":"dial"
     ,"data":{
-        ,"data":{
+        "data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
@@ -123,10 +125,10 @@ As when making [quickcalls](./quickcall.md), you can include `custom_application
 {
     "action":"dial"
     ,"data":{
-        ,"custom_application_vars":{
+        "custom_application_vars":{
             "foo":"bar"
         }
-        "data":{
+        ,"data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212"
@@ -141,10 +143,10 @@ You can also include the outbound call id you'd like the leg to use:
 {
     "action":"dial"
     ,"data":{
-        ,"custom_application_vars":{
+        "custom_application_vars":{
             "foo":"bar"
         }
-        "data":{
+        ,"data":{
             "endpoints":["{DEVICE_ID}","{USER_ID}","{NUMBER}","sip:{URI}"],
             "caller_id_name":"Conference XYZ",
             "caller_id_number":"5551212",
@@ -153,6 +155,21 @@ You can also include the outbound call id you'd like the leg to use:
     }
 }
 ```
+
+##### Participant Flags
+
+You can specify how a participant will enter a conference with a list of attributes:
+
+Value | Description
+----- | -----------
+`deaf` | Participant joins unable to hear conference audio
+`disable_moh` | Disable music on hold when the participant is the only one in the conference
+`distribute_dtmf` | Send DTMF from participant's leg to all other participants
+`ghost` | Uncounted in conference membership total
+`is_moderator` | Participant will join as a moderator
+`join_existing` | Participant may only join a running conference (won't start a conference)
+`mute` | Participant joins muted
+`video_mute` | Participant joins with video stream muted
 
 ##### Dialing out to a dynamic conference
 
@@ -201,7 +218,7 @@ Playing a media file to everyone in a conference:
 
 ```json
 {
-    action":"play"
+    "action":"play"
     ,"data"{
         "data":{"media_id":"{MEDIA_ID}"}
     }
@@ -307,7 +324,7 @@ curl -v -X PUT \
 Playing a media file to everyone in a conference:
 
 ```json
-{"data"{
+{"data":{
     "action":"play",
     "data":{"media_id":"{MEDIA_ID}"}
  }
@@ -420,7 +437,7 @@ Actions are JSON objects in format:
 
 ```json
 {
-    "action": {action}
+    "action": "{ACTION}"
 }
 ```
 

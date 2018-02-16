@@ -15,9 +15,9 @@ Key | Description | Type | Default | Required | Support Level
 `featurecode` | When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature | `object()` |   | `false` |  
 `flow` | A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to | [#/definitions/callflows.action](#callflowsaction) |   | `false` |  
 `metaflow` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) | [#/definitions/metaflows](#metaflows) |   | `false` |  
-`numbers.[]` |   | `string()` |   | `false` |  
+`numbers.[]` |   | `string(1..36)` |   | `false` |  
 `numbers` | A list of static numbers that the callflow should execute for | `array(string(1..36))` | `[]` | `false` |  
-`patterns.[]` |   | `string()` |   | `false` |  
+`patterns.[]` |   | `string(1..)` |   | `false` |  
 `patterns` | A list of regular expressions that the callflow should execute for, with optional capture groups | `array(string(1..))` | `[]` | `false` |  
 
 ##### callflows.action

@@ -39,6 +39,7 @@ create('undefined', Text, Voice, Format, Options) ->
 create(<<"flite">>, _Text, _Voice, _Format, _Options) ->
     {'error', 'tts_provider_failure', <<"flite is not available to create TTS media">>};
 create(Provider, Text, Voice, Format, Options) ->
+    lager:debug("using provider ~s to create tts", [Provider]),
     (provider_module(Provider)):create(Text, Voice, Format, Options).
 
 -spec provider_module(kz_term:ne_binary()) -> atom().

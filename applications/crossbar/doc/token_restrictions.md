@@ -402,7 +402,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].allowed_accounts.[]` |   | `string()` |   | `false` |  
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].allowed_accounts` | Account allowed to match this item | `array(string())` |   | `false` |  
-`restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/.[]` |   | `string()` |   | `false` |  
+`restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/.[]` |   | `string('GET' | 'PUT' | 'POST' | 'PATCH' | 'DELETE' | '_')` |   | `false` |  
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/` | verbs | `array(string('GET' | 'PUT' | 'POST' | 'PATCH' | 'DELETE' | '_'))` |   | `false` |  
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules` | Rules applied to endpoint parameters | `object()` |   | `false` |  
 `restrictions./^\w+$/./^\w+$/./^\w+$/` |   | `array(object())` |   | `false` |  

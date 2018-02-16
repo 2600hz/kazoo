@@ -446,6 +446,7 @@ exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
               ,{<<"Conference-ID">>, ConferenceId}
               ,{<<"Custom-Application-Vars">>, CAVs}
               ,{<<"Endpoints">>, ToDial}
+              ,{<<"Participant-Flags">>, kz_json:get_list_value(<<"participant_flags">>, Data)}
               ,{<<"Msg-ID">>, cb_context:req_id(Context)}
               ,{<<"Outbound-Call-ID">>, kz_json:get_ne_binary_value(<<"outbound_call_id">>, Data)}
               ,{<<"Target-Call-ID">>, TargetCallId}

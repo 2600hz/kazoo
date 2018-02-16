@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required | Support Level
 `interdigit_timeout` | How long, in milliseconds, to wait for the next DTMF | `integer()` |   | `false` |  
 `max_digits` | How many DTMFs to collect from the caller | `integer()` | `1` | `false` |  
 `terminator` | What DTMF will terminate collection before the timeout occurs | `string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' | '#' | '*')` | `#` | `false` |  
-`terminators.[]` |   | `string()` |   | `false` |  
+`terminators.[]` |   | `string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' | '#' | '*')` |   | `false` |  
 `terminators` | What DTMFs will terminate collection before the timeout occurs | `array(string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' | '#' | '*'))` |   | `false` |  
 `timeout` | How long, in milliseconds, to wait for the first DTMF | `integer()` | `5000` | `false` |  
 

@@ -143,18 +143,18 @@ Schema for endpoint media options
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`audio.codecs.[]` |   | `string()` |   | `false` |  
+`audio.codecs.[]` |   | `string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex')` |   | `false` |  
 `audio.codecs` | A list of audio codecs the endpoint supports | `array(string('OPUS' | 'CELT@32000h' | 'G7221@32000h' | 'G7221@16000h' | 'G722' | 'speex@32000h' | 'speex@16000h' | 'PCMU' | 'PCMA' | 'G729' | 'GSM' | 'CELT@48000h' | 'CELT@64000h' | 'G722_16' | 'G722_32' | 'CELT_48' | 'CELT_64' | 'Speex' | 'speex'))` |   | `false` |  
 `audio` | The audio media parameters | `object()` | `{}` | `false` |  
 `bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean() | string('true' | 'false' | 'auto')` |   | `false` |  
 `encryption.enforce_security` | Is Encryption Enabled? | `boolean()` | `false` | `false` |  
-`encryption.methods.[]` |   | `string()` |   | `false` |  
+`encryption.methods.[]` |   | `string('zrtp' | 'srtp')` |   | `false` |  
 `encryption.methods` | Supported Encryption Types | `array(string('zrtp' | 'srtp'))` | `[]` | `false` |  
 `encryption` | Encryption Parameters | `object()` | `{}` | `false` |  
 `fax_option` | Is T.38 Supported? | `boolean()` |   | `false` |  
 `ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false` |  
 `progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false` |  
-`video.codecs.[]` |   | `string()` |   | `false` |  
+`video.codecs.[]` |   | `string('H261' | 'H263' | 'H264' | 'VP8')` |   | `false` |  
 `video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false` |  
 `video` | The video media parameters | `object()` | `{}` | `false` |  
 
