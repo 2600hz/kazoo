@@ -115,7 +115,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener', {'created_queue', _}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{parent=Parent, broker=Broker}=State) ->
-    gen_listener:cast(Parent, {'federator_is_consuming', Broker, 'true'}),
+    gen_server:cast(Parent, {'federator_is_consuming', Broker, 'true'}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
