@@ -182,36 +182,49 @@ maybe_load_config_from_reseller(Account, Category) ->
 get_hierarchy(Account, Category, Key) ->
     get_hierarchy(Account, Category, Key, undefined).
 
-%% @equiv get_hierarchy(<<"hierarchy_merge">>, Account, Category, Key, Default)
+%% @equiv get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default)
 
 -spec get_hierarchy(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:json_term().
 get_hierarchy(Account, Category, Key, Default) ->
     get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
 
+%% @equiv get_with_strategy(Strategy, Account, Category, Key, undefined)
+
+-spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), kz_json:path()) ->
+                               kz_json:json_term().
+get_with_strategy(Strategy, Account, Category, Key) ->
+    get_with_strategy(Strategy, Account, Category, Key, undefined).
+
 %%------------------------------------------------------------------------------
-%% @doc Get a configuration key for a given category with a given strategy.
+%% @doc Get configuration `Key' for a given `Category' using a given strategy.
 %%
 %% Strategies are:
 %% <dl>
 %%   <dt>`<<"global">>'</dt>
 %%   <dd>Try to get from account db, if any, otherwise from reseller.
-%%   If not found or there is no account id get from `system_config'</dd>
+%%   If not found or there is no account id get from `system_config'.
+%%   </dd>
 %%
-%%   <dt><<"reseller">></dt><dd>Try to get from direct reseller, if not found get
-%%   from `system_config'</dd>
+%%   <dt>`<<"reseller">>'</dt>
+%%   <dd>Try to get from direct reseller, if not found get from `system_config'.
+%%   </dd>
 %%
-%%   <dt>hierarchy_merge: get from account and parent accounts until reach
-%%                      to the reseller account, then get from system_config
-%%                      and merge all results together
+%%   <dt>`<<"hierarchy_merge">>'</dt>
+%%   <dd>Get from account and parents of the account until reach to the reseller
+%%   account, then get from `system_config' and merge all results together.
+%%   </dd>
+%% </dl>
 %%
-%%    For global_merge and reseller_merge, do the same above then merge
-%%    the results at the end.
+%% There is merge edition for `global' and `reseller': `global_merge' and `reseller_merge'.
+%% These are same as their normal counterpart but they do merge the results at the end.
+%%
+%% For example in `global_merge', it returns merge result of the account config
+%% (if any) and `system_config' (if any).
+%%
+%% Merge is recursive from right to left, meaning settings in account supersets
+%% settings from parents, reseller and system_config.
 %% @end
 %%------------------------------------------------------------------------------
--spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), kz_json:path()) ->
-                               kz_json:json_term().
-get_with_strategy(Strategy, Account, Category, Key) ->
-    get_with_strategy(Strategy, Account, Category, Key, undefined).
 
 -spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                kz_json:json_term().
@@ -251,9 +264,10 @@ get_from_strategy_cache(Strategy, AccountId, Category, Key, false) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Get Key's value from account db document if defined, otherwise get
-%% from system_config
+%% from `system_config'.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec get_global_from_doc(kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) -> kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
     case kz_json:get_value(Key, JObj) of
@@ -263,14 +277,25 @@ get_global_from_doc(Category, Key, Default, JObj) ->
             Value
     end.
 
+%% @equiv get(Account, Category, Key, undefined)
 
 -spec get(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:api_json_term().
 get(Account, Category, Key) ->
     get(Account, Category, Key, undefined).
 
+%%------------------------------------------------------------------------------
+%% @doc Get `Key' value at `Category' from account db document if defined.
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec get(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_json:json_term() | Default.
 get(Account, Category, Key, Default) ->
     kz_json:get_value(Key, get(Account, Category), Default).
+
+%%------------------------------------------------------------------------------
+%% @doc Returns `Category' document from account db document if any.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get(api_account(), kz_term:ne_binary()) -> kz_json:object().
 get(Account, Category) ->
@@ -308,7 +333,7 @@ load_config_from_account(AccountId, Category) ->
     kz_datamgr:open_cache_doc(AccountDb, DocId, [{cache_failures, [not_found]}]).
 
 %%------------------------------------------------------------------------------
-%% @doc Get Accounts parent configuration for the Category
+%% @doc Get Accounts parent configuration for the Category.
 %%  1. Read account definition
 %%      1.1. If failed to read account definition, find its reseller
 %%  2. Fold over ancestor Ids and fetch config doc from their db
@@ -318,6 +343,7 @@ load_config_from_account(AccountId, Category) ->
 %%          2.2.2. If not reseller, continue the fold
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
 load_config_from_ancestors(AccountId, Category) ->
     load_config_from_ancestors(AccountId, Category, kz_services:is_reseller(AccountId)).
@@ -340,9 +366,10 @@ get_account_ancestors_or_reseller(AccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Get accounts config and walk the account up to accounts reseller
+%% @doc Get accounts config and walk the account up to accounts reseller.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec load_config_from_ancestors_fold(kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:objects()) ->
                                              kazoo_data:get_results_return().
 load_config_from_ancestors_fold([], _Category, JObjs) ->
@@ -387,9 +414,10 @@ get_account_tree(AccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Set the Value for the Key in account db
+%% @doc Sets the `Value' for the `Key' in account db.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec set(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 set(Account, Category, Key, Value) ->
     maybe_set_account(account_id(Account), Category, Key, Value).
@@ -405,10 +433,12 @@ maybe_set_account(AccountId, Category, Key, Value) ->
     JObj2.
 
 %%------------------------------------------------------------------------------
-%% @doc Set the Value for the Key in account db if found, otherwise get
-%% system_config value then save in account db.
+%% @doc Sets the` Value' for the `Key' in account db if found, otherwise gets
+%% `Category' document from `system_config' then sets the `Value' and save it
+%% in the account db.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec set_global(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 set_global(Account, Category, Key, Value) ->
     set_account_or_merge_global(account_id(Account), Category, Key, Value).
@@ -435,7 +465,7 @@ update_config_for_saving(AccountId, JObj) ->
                                  ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Flush accounts specific config cache
+%% @doc Flush accounts configuration cache.
 %% @end
 %%------------------------------------------------------------------------------
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
@@ -576,6 +606,7 @@ strategy_funs(<<"hierarchy_merge">>) ->
 %% @doc Find AccountId from binary, Call object or JObj.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec account_id(api_account()) -> account_or_not().
 account_id(?NE_BINARY=Account) -> kz_util:format_account_id(Account);
 account_id(undefined) -> no_account_id;
@@ -623,6 +654,18 @@ maybe_new_doc({error, _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
          ,{<<"kazoo_endpoint">>, <<"recorder_module">>}
          }
         ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Migrate values from old `Category/Key' to new category and key.
+%%
+%% Current migrations include:
+%% ```
+%% callflow.default_can_text_self -> kazoo_endpoint.default_can_text_self
+%% callflow.recorder_module -> kazoo_endpoint.recorder_module
+%% '''
+%%
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec migrate(kz_term:ne_binary()) -> ok.
 migrate(Account) ->

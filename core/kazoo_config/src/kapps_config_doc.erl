@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2016-2018, 2600Hz
+%%% @doc
+%%% @author Roman Galeev
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kapps_config_doc).
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -95,9 +101,9 @@ build_default(Id, JObj) ->
     Config = lists:foldl(fun(K,A) -> apply_default_values(A, K, Default) end, kz_json:new(), get_keys(JObj)),
     apply_schema_defaults(Id, Config).
 
-%%------------------------------------------------------------------------------
-%% Node API
-%%------------------------------------------------------------------------------
+%%%=============================================================================
+%%% Node API
+%%%=============================================================================
 
 -spec default_node(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 default_node(Id, ?DEFAULT) ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018 2600Hz, INC
+%%% @copyright (C) 2011-2018 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -113,7 +113,7 @@ cleanup_zone_prop({'amqp_uri', URI}) ->
 cleanup_zone_prop(Prop) -> Prop.
 
 %%------------------------------------------------------------------------------
-%% @doc Reads config.ini without starting the kazoo_config application.
+%% @doc Reads `config.ini' without starting the `kazoo_config' application.
 %% @end
 %%------------------------------------------------------------------------------
 -spec read_cookie(atom()) -> [atom()].
