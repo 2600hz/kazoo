@@ -12,8 +12,10 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = kapi_conference:config_req_v(JObj),
-    Request = kz_json:get_ne_value(<<"Request">>, JObj),
-    lager:debug("~s profile request received", [Request]),
+    Request = kz_json:get_ne_binary_value(<<"Request">>, JObj),
+    lager:debug("'~s' profile request received", [Request]),
+    lager:debug("~p~n", [JObj]),
+
     case props:get_value('server', Props) of
         'undefined' ->
             handle_request(Request, JObj, create_conference(JObj));
@@ -25,7 +27,7 @@ handle_req(JObj, Props) ->
 -spec create_conference(kz_json:object()) -> kapps_conference:conference().
 create_conference(JObj) ->
     Conference = kapps_conference:new(),
-    ProfileName = kz_json:get_ne_value(<<"Profile">>, JObj),
+    ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj),
     case binary:split(ProfileName, <<"_">>) of
         [ConferenceId, AccountId] ->
             Routines = [{fun kapps_conference:set_account_id/2, AccountId}
@@ -45,8 +47,9 @@ handle_request(<<"Controls">>, JObj, Conference) ->
 
 -spec handle_profile_request(kz_json:object(), kapps_conference:conference()) -> 'ok'.
 handle_profile_request(JObj, Conference) ->
-    ProfileName = kz_json:get_ne_value(<<"Profile">>, JObj),
-    {_, Profile} = kapps_conference:profile(Conference),
+    {Name, Profile} = kapps_conference:profile(Conference),
+    ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj, Name),
+
     ServerId = kz_api:server_id(JObj),
     Resp = [{<<"Profiles">>, profiles(ProfileName, fix_profile(Conference, Profile))}
            ,{<<"Advertise">>, advertise(ProfileName)}
@@ -59,7 +62,7 @@ handle_profile_request(JObj, Conference) ->
 
 -spec requested_profile_name(kz_json:object()) -> kz_term:ne_binary().
 requested_profile_name(JObj) ->
-    kz_json:get_ne_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME).
+    kz_json:get_ne_binary_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME).
 
 -spec profiles(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 profiles(ProfileName, Profile) ->
