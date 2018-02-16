@@ -31,14 +31,17 @@
 -type account_or_not() :: kz_term:ne_binary() | no_account_id.
 
 
-%%------------------------------------------------------------------------------
-%% @doc Get a non-empty configuration key for a given category and cast it as a binary
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv get_ne_binary(Account, Category, Path, undefined)
 
 -spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_term:api_ne_binary().
 get_ne_binary(Account, Category, Path) ->
     get_ne_binary(Account, Category, Path, undefined).
+
+%%------------------------------------------------------------------------------
+%% @doc Get a non-empty configuration key for a given category and cast
+%% it as a binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get_ne_binary(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binary() | Default.
 get_ne_binary(Account, Category, Path, Default) ->
@@ -48,15 +51,17 @@ get_ne_binary(Account, Category, Path, Default) ->
         false -> kz_term:to_binary(Value)
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Get a non-empty configuration key for a given category and cast it as
-%% a list of binary
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv get_ne_binaries(Account, Category, Path, undefined)
 
 -spec get_ne_binaries(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_term:ne_binaries().
 get_ne_binaries(Account, Category, Path) ->
     get_ne_binaries(Account, Category, Path, undefined).
+
+%%------------------------------------------------------------------------------
+%% @doc Get a non-empty configuration key for a given category and cast it as
+%% a list of binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get_ne_binaries(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> kz_term:ne_binaries() | Default.
 get_ne_binaries(Account, Category, Path, Default) ->
@@ -66,13 +71,17 @@ get_ne_binaries(Account, Category, Path, Default) ->
         true -> Values
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Get a configuration key for a given category and cast it as a pos_integer
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv get_pos_integer(Account, Category, Path, 'undefined')
+
 -spec get_pos_integer(api_account(), kz_term:ne_binary(), kz_json:path()) -> pos_integer().
 get_pos_integer(Account, Category, Path) ->
     get_pos_integer(Account, Category, Path, 'undefined').
+
+%%------------------------------------------------------------------------------
+%% @doc Get a configuration key for a given category and cast it
+%% as a `pos_integer'.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get_pos_integer(api_account(), kz_term:ne_binary(), kz_json:path(), Default) -> pos_integer() | Default.
 get_pos_integer(Account, Category, Path, Default) ->
@@ -88,15 +97,18 @@ to_pos_integer(Value, Default) ->
         _:_ -> Default
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Will search the account db first, then system_config for values.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv get_global(Account, Category, Key, undefined)
 
 -spec get_global(api_account(), kz_term:ne_binary(), kz_json:path()) ->
                         kz_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, undefined).
+
+%%------------------------------------------------------------------------------
+%% @doc Searches for configuration in `Category' and `Key' by first trying
+%% the account db then `system_config' for value.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get_global(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                         kz_json:json_term().
@@ -107,6 +119,13 @@ get_global(Account, Category, Key, Default) ->
         {error, _} ->
             get_from_reseller(Account, Category, Key, Default)
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Same as {@link get_global/3}, but returns the configuration document of
+%% `Category' instead.
+%% @see get_global/3
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get_global(api_account(), kz_term:ne_binary()) -> kz_json:object().
 get_global(Account, Category) ->
@@ -122,14 +141,17 @@ get_global(Account, Category) ->
             end
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Get global starting from reseller config.
-%% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv get_from_reseller(Account, Category, Key, undefined)
+
 -spec get_from_reseller(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:api_json_term().
 get_from_reseller(Account, Category, Key) ->
     get_from_reseller(Account, Category, Key, undefined).
+
+%%------------------------------------------------------------------------------
+%% @doc Get configuration from reseller (if any) or global config.
+%% It would make sure to skip reading from Account (i.e. sub-account of reseller).
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get_from_reseller(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:api_json_term().
 get_from_reseller(Account, Category, Key, Default) ->
@@ -154,30 +176,31 @@ maybe_load_config_from_reseller(Account, Category) ->
     load_config_from_reseller(Account, Category).
 -endif.
 
-%%------------------------------------------------------------------------------
-%% @doc Same as get_hierarchy/4 with Default set to undefined
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv get_hierarchy(Account, Category, Key, undefined)
+
 -spec get_hierarchy(api_account(), kz_term:ne_binary(), kz_json:path()) -> kz_json:json_term().
 get_hierarchy(Account, Category, Key) ->
     get_hierarchy(Account, Category, Key, undefined).
 
-%%------------------------------------------------------------------------------
-%% @doc Same as get_with_strategy/5 with Strategy "hierarchy_merge"
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv get_hierarchy(<<"hierarchy_merge">>, Account, Category, Key, Default)
+
 -spec get_hierarchy(api_account(), kz_term:ne_binary(), kz_json:path(), kz_json:api_json_term()) -> kz_json:json_term().
 get_hierarchy(Account, Category, Key, Default) ->
     get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc Get a configuration key for a given category with a given strategy.
+%%
 %% Strategies are:
-%%   * global: get from account db if found, otherwise from reseller.
-%%             In both cases if not found or there is no account id
-%%             get from system_config
-%%   * reseller: get from direct reseller, if not found get from system_config
-%%   * hierarchy_merge: get from account and parent accounts until reach
+%% <dl>
+%%   <dt>`<<"global">>'</dt>
+%%   <dd>Try to get from account db, if any, otherwise from reseller.
+%%   If not found or there is no account id get from `system_config'</dd>
+%%
+%%   <dt><<"reseller">></dt><dd>Try to get from direct reseller, if not found get
+%%   from `system_config'</dd>
+%%
+%%   <dt>hierarchy_merge: get from account and parent accounts until reach
 %%                      to the reseller account, then get from system_config
 %%                      and merge all results together
 %%
