@@ -15,13 +15,13 @@
 handle_req(JObj, Props) ->
     'true' = kapi_conference:config_req_v(JObj),
     Request = kz_json:get_ne_binary_value(<<"Request">>, JObj),
-    lager:debug("'~s' profile request received", [Request]),
-    lager:debug("~p~n", [JObj]),
 
     case props:get_value('server', Props) of
         'undefined' ->
+            lager:debug("'~s' profile request received, no participant involved here", [Request]),
             handle_request(Request, JObj, create_conference(JObj));
         Server ->
+            lager:debug("'~s' profile request received, asking participant ~p", [Request, Server]),
             {'ok', Conference} = conf_participant:conference(Server),
             handle_request(Request, JObj, Conference)
     end.
@@ -32,11 +32,13 @@ create_conference(JObj) ->
     ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj),
     case binary:split(ProfileName, <<"_">>) of
         [ConferenceId, AccountId] ->
+            lager:debug("creating conference config for ~s in account ~s", [ConferenceId, AccountId]),
             Routines = [{fun kapps_conference:set_account_id/2, AccountId}
                        ,{fun kapps_conference:set_id/2, ConferenceId}
                        ],
             kapps_conference:update(Routines, Conference);
         _Else ->
+            lager:debug("profile name ~s not split: ~p", [ProfileName, _Else]),
             Routines = [{fun kapps_conference:set_profile_name/2, ProfileName}],
             kapps_conference:update(Routines, Conference)
     end.

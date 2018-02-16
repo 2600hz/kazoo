@@ -509,7 +509,10 @@
 -define(CONFERENCE_ERROR_TYPES, []).
 
 -define(CONFIG_REQ_HEADERS, [<<"Request">>, <<"Profile">>]).
--define(OPTIONAL_CONFIG_REQ_HEADERS, [<<"Controls">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONFIG_REQ_HEADERS, [<<"Call-ID">>
+                                     ,<<"Conference-ID">>
+                                     ,<<"Controls">>
+                                     ]).
 -define(CONFIG_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                            ,{<<"Event-Name">>, <<"config_req">>}
                            ]).
