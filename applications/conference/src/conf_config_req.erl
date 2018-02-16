@@ -53,7 +53,7 @@ handle_profile_request(JObj, Conference) ->
     ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj, Name),
 
     ServerId = kz_api:server_id(JObj),
-    Resp = [{<<"Profiles">>, profiles(ProfileName, fix_profile(Conference, Profile))}
+    Resp = [{<<"Profiles">>, kz_json:from_list([{ProfileName, fix_profile(Conference, Profile)}])}
            ,{<<"Advertise">>, advertise(ProfileName)}
            ,{<<"Chat-Permissions">>, chat_permissions(ProfileName)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
@@ -65,10 +65,6 @@ handle_profile_request(JObj, Conference) ->
 -spec requested_profile_name(kz_json:object()) -> kz_term:ne_binary().
 requested_profile_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME).
-
--spec profiles(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
-profiles(ProfileName, Profile) ->
-    kz_json:from_list([{ProfileName, Profile}]).
 
 -spec advertise(kz_term:ne_binary()) -> kz_term:api_object().
 advertise(?DEFAULT_PROFILE_NAME = ProfileName) ->
