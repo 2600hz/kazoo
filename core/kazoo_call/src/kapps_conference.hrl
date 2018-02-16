@@ -24,14 +24,14 @@
                                 ,{<<"moh-sound">>, <<"$${hold_music}">>}
                                 ,{<<"enter-sound">>, ?DEFAULT_ENTRY_TONE}
                                 ,{<<"exit-sound">>, ?DEFAULT_EXIT_TONE}
-                                ,{<<"max-members-sound">>, <<"prompt://system_media/conf-max_participants/en-us">>}
-                                ,{<<"locked-sound">>, <<"prompt://system_media/conf-max_participants/en-us">>}
-                                ,{<<"muted-sound">>, <<"prompt://system_media/conf-muted/en-us">>}
-                                ,{<<"unmuted-sound">>, <<"prompt://system_media/conf-unmuted/en-us">>}
-                                ,{<<"deaf-sound">>, <<"prompt://system_media/conf-deaf/en-us">>}
-                                ,{<<"undeaf-sound">>, <<"prompt://system_media/conf-undeaf/en-us">>}
-                                ,{<<"member-enter-sound">>, <<"prompt://system_media/conf-joining_conference/en-us">>}
-                                ,{<<"alone-sound">>, <<"prompt://system_media/conf-alone/en-us">>}
+                                ,{<<"max-members-sound">>, <<"prompt://system_media/conf-max_participants">>}
+                                ,{<<"locked-sound">>, <<"prompt://system_media/conf-max_participants">>}
+                                ,{<<"muted-sound">>, <<"prompt://system_media/conf-muted">>}
+                                ,{<<"unmuted-sound">>, <<"prompt://system_media/conf-unmuted">>}
+                                ,{<<"deaf-sound">>, <<"prompt://system_media/conf-deaf">>}
+                                ,{<<"undeaf-sound">>, <<"prompt://system_media/conf-undeaf">>}
+                                ,{<<"member-enter-sound">>, <<"prompt://system_media/conf-joining_conference">>}
+                                ,{<<"alone-sound">>, <<"prompt://system_media/conf-alone">>}
                                 ]).
 
 -define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
