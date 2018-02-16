@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Module for studying Kazoo applications dependency.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kast_app_deps).
 
 -export([process_project/0

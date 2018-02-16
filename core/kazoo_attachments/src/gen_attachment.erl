@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc Storage attachment behaviour.
+%%% @author Harenson Henao
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(gen_attachment).
 
 -include("kz_att.hrl").

@@ -1,6 +1,9 @@
-%% @author root
-%% @doc
-%% @todo Add description to kz_att_util.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2016-2018, 2600Hz
+%%% @doc Some utilities to work with attachment.
+%%% @author Luis Azedo
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_att_util).
 
 -export([sha256/1, sha256_mac/2, sha_mac/2

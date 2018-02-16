@@ -1,6 +1,10 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Module for parsing Callflow actions for `Data' usage.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(cf_data_usage).
-
-%% module for parsing callflow actions for Data usage
 
 -export([process/0, process/1
         ,to_schema_docs/0, to_schema_doc/1

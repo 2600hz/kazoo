@@ -153,7 +153,7 @@ send_default_response(Call, Response) ->
         ).
 
 %%------------------------------------------------------------------------------
-%% @doc returns the configured response proplist
+%% @doc Returns the configured response proplist.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_response(kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_object().
@@ -166,7 +166,7 @@ get_response(Cause, Call) ->
     kapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause, Default).
 
 %%------------------------------------------------------------------------------
-%% @doc returns the default action given the error
+%% @doc Returns the default action given the error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec default_response(kz_term:ne_binary()) -> 'undefined' | kz_term:proplist().

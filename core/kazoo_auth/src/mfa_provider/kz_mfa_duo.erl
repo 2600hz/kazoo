@@ -1,6 +1,7 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz, INC
-%%% @doc
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Kazoo Duo multi factor authenticator.
+%%% @author Hesaam Farhang
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_mfa_duo).
@@ -38,7 +39,9 @@
 -define(AUTH_PART_SEP, <<":">>).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Takes the Duo configuration and authenticate the `Claims'.
+%% First request is always result in a signed signature response. When `Claims'
+%% has the Duo response to the sign signature, it will verifies this Duo's response.
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate(kz_term:proplist(), kz_json:object()) -> mfa_result().

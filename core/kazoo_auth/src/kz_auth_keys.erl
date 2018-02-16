@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz, INC
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -327,17 +327,19 @@ gen_private_key() ->
 erlint(MPInts) when is_list(MPInts) -> [erlint(X) || X <- MPInts ];
 erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
 
-%%------------------------------------------------------------------------------
-%% @doc Reset Kazoo private key, first get KeyId by from config.
-%% * Check if the document exists, if not create it,
-%% * generate a new private key and put it in cache
-%% @end
-%%------------------------------------------------------------------------------
+
+%% @equiv reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>))
 -spec reset_kazoo_private_key() -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 reset_kazoo_private_key() ->
     lager:warning("trying to reset kazoo private key"),
     reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
 
+%%------------------------------------------------------------------------------
+%% @doc Resets Kazoo private key. First get `KeyId' from config.
+%% Checks if the document exists, if not create it. Generate a new private key
+%% and put it in cache.
+%% @end
+%%------------------------------------------------------------------------------
 -spec reset_private_key(map() | kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 reset_private_key(#{pvt_server_key := KeyId}) ->
     reset_private_key(KeyId);

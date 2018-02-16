@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -52,8 +52,6 @@ default_application_timeout() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
-
 -spec send_sms(kz_json:objects(), kapps_call:call()) -> 'ok'.
 send_sms(Endpoints, Call) -> send_sms(Endpoints, ?DEFAULT_STRATEGY, Call).
 

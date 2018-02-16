@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%% @copyright (C) 2017-2018, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -42,7 +42,7 @@
 %%------------------------------------------------------------------------------
 %% @doc Publish notification and collect notify update messages from
 %% teletype. Useful if you want to make sure teletype processed
-%% the notification completely (e.g. new voicemail)
+%% the notification completely (e.g. new voicemail).
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_collect(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> kz_amqp_worker:request_return().
@@ -75,7 +75,7 @@ cast(Req, PublishFun) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc handle AMQP worker responses.
+%% @doc Handle AMQP worker responses.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_resp(kz_term:api_ne_binary(), kz_term:api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
@@ -92,7 +92,7 @@ handle_resp(NotifyType, Req, {'timeout', _}=Resp) ->
     check_for_failure(NotifyType, Req, Resp).
 
 %%------------------------------------------------------------------------------
-%% @doc check for notify update messages from teletype/notify apps.
+%% @doc Check for notify update messages from teletype/notify applications.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_for_failure(kz_term:api_ne_binary(), kz_term:api_terms(), {'ok' | 'returned' | 'timeout', kz_json:object() | kz_json:objects()}) -> 'ok'.

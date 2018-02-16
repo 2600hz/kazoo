@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018 2600Hz Inc
+%%% @copyright (C) 2011-2018 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -395,9 +395,10 @@ from_channel_create(JObj, Call) ->
     from_json(JObj, Call).
 
 %%------------------------------------------------------------------------------
-%% @doc READ THIS CAVEAT!!
-%% custom publisher and helper functions are not maintained when
-%% converting to/from json
+%% @doc Creates a call record from JSON object.
+%%
+%% <div class="warning">Custom publisher and helper functions are not maintained
+%% when converting to/from JSON</div>
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -461,9 +462,10 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    }.
 
 %%------------------------------------------------------------------------------
-%% @doc READ THIS CAVEAT!!
-%% custom publisher and helper functions are not maintained when
-%% converting to/from json
+%% @doc Converts a call record to JSON proplist.
+%%
+%% <div class="warning">Custom publisher and helper functions are not maintained
+%% when converting to/from JSON</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec to_json(call()) -> kz_json:object().

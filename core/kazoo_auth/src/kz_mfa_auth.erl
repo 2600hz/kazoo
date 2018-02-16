@@ -1,6 +1,7 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz, INC
-%%% @doc
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Module to authenticate a user with a multi factor provider.
+%%% @author Hesaam Farhang
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_mfa_auth).
@@ -18,7 +19,7 @@
 -export_type([result/0]).
 
 %%------------------------------------------------------------------------------
-%% @doc Read configuration and do authentication with configured MFA provider
+%% @doc Read configuration and do authentication with configured MFA provider.
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate(kz_term:proplist()) -> result().
@@ -39,7 +40,7 @@ authenticate(Claims) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Get MFA provider and checks it's enabled or not
+%% @doc Get MFA provider and checks it's enabled or not.
 %% @end
 %%------------------------------------------------------------------------------
 -spec provider(kz_term:api_object()) -> kz_term:ne_binary() | {'disabled', kz_term:ne_binary()} | {'error', 'no_provider'}.
@@ -54,7 +55,7 @@ provider(Configs) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Get MFA config from Account, if there was no config account
-%% get system default configuration
+%% get system default configuration.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_configs('undefined' | kz_term:proplist() | kz_json:object()) -> kz_term:api_object().
@@ -99,6 +100,11 @@ get_system_configs() ->
 -spec module_name(kz_term:ne_binary()) -> atom().
 module_name(Provider) -> kz_term:to_atom(<<"kz_mfa_", Provider/binary>>, 'true').
 
+
+%%------------------------------------------------------------------------------
+%% @doc Returns the system's default multi factor provider.
+%% @end
+%%------------------------------------------------------------------------------
 -spec default_provider() -> kz_term:ne_binary().
 default_provider() ->
     kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>, <<"duo">>).

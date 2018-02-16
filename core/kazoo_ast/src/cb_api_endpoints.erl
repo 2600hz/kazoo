@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Modules to create a reference documents from Crossbar API modules.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(cb_api_endpoints).
 
 -compile({'no_auto_import', [get/0]}).
@@ -94,11 +100,17 @@ api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
     lists:foldl(F, Acc, Paths);
 api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 
+%%------------------------------------------------------------------------------
+%% @doc Creates a Markdown section for each API methods.
+%% ```
 %% #### Fetch/Create/Change
 %% > Verb Path
 %% ```shell
 %% curl -v http://{SERVER}:8000/Path
 %% ```
+%% '''
+%% @end
+%%------------------------------------------------------------------------------
 methods_to_section('undefined', _Path, Acc) ->
     io:format("skipping path ~p\n", [_Path]),
     Acc;
@@ -162,9 +174,15 @@ maybe_add_schema(BaseName) ->
         SchemaJObj -> kz_ast_util:schema_to_table(SchemaJObj)
     end.
 
-%% This looks for "#### Schema" in the doc file and adds the JSON schema formatted as the markdown table
+%%------------------------------------------------------------------------------
+%% @doc This looks for `#### Schema' in the doc file and adds the JSON schema
+%% formatted as the markdown table.
+%% ```
 %% Schema = "vmboxes" or "devices"
 %% Doc = "voicemail.md" or "devices.md"
+%% '''
+%% @end
+%%------------------------------------------------------------------------------
 -spec schema_to_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 schema_to_doc(Schema, Doc) ->
     {'ok', SchemaJObj} = kz_json_schema:load(Schema),

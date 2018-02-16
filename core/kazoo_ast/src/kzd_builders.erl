@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc Kazoo document accessors builder.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kzd_builders).
 
 -export([build_accessors/0

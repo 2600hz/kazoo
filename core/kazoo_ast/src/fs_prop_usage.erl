@@ -1,6 +1,11 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Module for parsing ECallMgr modules, looking for Props from FreeSWITCH.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(fs_prop_usage).
 
-%% module for parsing ecallmgr modules, looking for Props from FreeSWITCH
 
 -export([process/0, process/1
         ,to_header_file/0
