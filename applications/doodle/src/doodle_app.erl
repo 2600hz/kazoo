@@ -13,7 +13,7 @@
 -export([start/2, stop/1]).
 
 %%------------------------------------------------------------------------------
-%% @doc Implement the application start behaviour
+%% @doc Implement the application start behaviour.
 %% @end
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().

@@ -558,6 +558,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+
 %%------------------------------------------------------------------------------
 %% this function determines if the callflow module specified at the
 %% current node is 'available' and attempts to launch it if so.

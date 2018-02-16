@@ -122,10 +122,11 @@
 %%%=============================================================================
 %%% API
 %%%=============================================================================
+
 %%------------------------------------------------------------------------------
 %% @doc When a queue receives a call and needs an agent, it will send a
-%%   member_connect_req. The agent will respond (if possible) with a
-%%   member_connect_resp payload or ignore the request
+%% `member_connect_req'. The agent will respond (if possible) with a
+%% `member_connect_resp' payload or ignore the request
 %% @end
 %%------------------------------------------------------------------------------
 -spec member_connect_req(pid(), kz_json:object()) -> 'ok'.
@@ -134,8 +135,8 @@ member_connect_req(ServerRef, JObj) ->
 
 %%------------------------------------------------------------------------------
 %% @doc When a queue receives a call and needs an agent, it will send a
-%%   member_connect_req. The agent will respond (if possible) with a
-%%   member_connect_resp payload or ignore the request
+%% `member_connect_req'. The agent will respond (if possible) with a
+%% `member_connect_resp' payload or ignore the request
 %% @end
 %%------------------------------------------------------------------------------
 -spec member_connect_win(pid(), kz_json:object()) -> 'ok'.
@@ -148,8 +149,8 @@ agent_timeout(ServerRef, JObj) ->
 
 %%------------------------------------------------------------------------------
 %% @doc When an agent is involved in a call, it will receive call events.
-%%   Pass the call event to the statem to see if action is needed (usually
-%%   for bridge and hangup events).
+%% Pass the call event to the `statem' to see if action is needed (usually
+%% for bridge and hangup events).
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_event(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
