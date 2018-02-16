@@ -58,7 +58,7 @@ init([Node, Props]) ->
     {'ok', #state{node=Node, options=Props}}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling call messages
+%% @doc Handling call messages.
 %% @end
 %% #state{nodes=[{FSNode, HandlerPid}]}
 %%------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
     {'reply', {'error', 'not_implemented'}, State, Timeout}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling cast messages
+%% @doc Handling cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -76,7 +76,7 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
     {'noreply', State, Timeout}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling all non call/cast messages
+%% @doc Handling all non call/cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -117,9 +117,9 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -129,7 +129,7 @@ terminate(_Reason, #state{node=Node}) ->
     lager:debug("fs pinger ~p to '~s' termination", [_Reason, Node]).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

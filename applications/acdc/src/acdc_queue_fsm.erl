@@ -634,9 +634,9 @@ handle_sync_event(_Event, From, StateName, State) ->
     }.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a gen_statem when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_statem terminates with
+%% @doc This function is called by a `gen_statem' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_statem' terminates with
 %% Reason. The return value is ignored.
 %%
 %% @end
@@ -646,7 +646,7 @@ terminate(_Reason, _StateName, _State) ->
     lager:debug("acdc queue statem terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.

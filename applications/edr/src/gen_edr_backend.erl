@@ -118,7 +118,7 @@ terminate(Reason, #state{module_state=ModState, module=Mod}) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', any()} | {'error', any()}.

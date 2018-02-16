@@ -155,7 +155,7 @@ init([Call, JObj]) ->
     }.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling call messages
+%% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> {'reply', 'ok', state()}.
@@ -163,7 +163,7 @@ handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling cast messages
+%% @doc Handling cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()} |
@@ -264,7 +264,7 @@ handle_cast(_Req, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling all non call/cast messages
+%% @doc Handling all non call/cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> {'noreply', state()} |
@@ -372,9 +372,9 @@ handle_event(_JObj, #state{response_pid=Pid
               ]}.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -385,7 +385,7 @@ terminate(_Reason, #state{response_pid=Pid}) ->
     lager:info("pivot call terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

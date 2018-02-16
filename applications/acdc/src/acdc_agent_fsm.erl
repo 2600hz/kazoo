@@ -1474,9 +1474,9 @@ handle_info(_Info, StateName, State) ->
     {'next_state', StateName, State}.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a gen_statem when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_statem terminates with
+%% @doc This function is called by a `gen_statem' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_statem' terminates with
 %% Reason. The return value is ignored.
 %%
 %% @end
@@ -1488,7 +1488,7 @@ terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.

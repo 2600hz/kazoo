@@ -215,7 +215,7 @@ init([{Schedule, Exec}]) ->
                  }}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling call messages
+%% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -226,7 +226,7 @@ handle_call('status', _From, State) ->
     {'reply', {Status, Next, TaskPid}, State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling cast messages
+%% @doc Handling cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -242,7 +242,7 @@ handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling all non call/cast messages
+%% @doc Handling all non call/cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -259,7 +259,7 @@ terminate(_Reason, State) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

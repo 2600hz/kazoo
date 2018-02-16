@@ -75,7 +75,7 @@ init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling call messages
+%% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(atom(), any(), state()) -> kz_types:handle_call_ret().
@@ -85,7 +85,7 @@ handle_call(_Request, _From, State) ->
     {'reply', Reply, State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling cast messages
+%% @doc Handling cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
@@ -94,7 +94,7 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handling all non call/cast messages
+%% @doc Handling all non call/cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
@@ -122,8 +122,8 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
 %% necessary cleaning up. When it returns, the gen_server terminate
 %% with Reason. The return value is ignored.
 %%
@@ -135,7 +135,7 @@ terminate(_Reason, #state{iodevice = IoDevice}) ->
     lager:debug("call inspector freeswitch parser terminated: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert process state when code is changed
+%% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
