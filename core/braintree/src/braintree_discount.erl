@@ -42,6 +42,12 @@ xml_to_record(Xml, Base) ->
                 ,quantity = kz_term:to_integer(kz_xml:get_value([Base, "/quantity/text()"], Xml))
                 }.
 
+%% @equiv record_to_xml(Discount, false)
+
+-spec record_to_xml(bt_discount()) -> kz_term:proplist() | bt_xml().
+record_to_xml(Discount) ->
+    record_to_xml(Discount, false).
+
 %%------------------------------------------------------------------------------
 %% @doc Converts the given add-on record to a XML document. If `ToString' is
 %% `true' returns exported XML as string binary.
