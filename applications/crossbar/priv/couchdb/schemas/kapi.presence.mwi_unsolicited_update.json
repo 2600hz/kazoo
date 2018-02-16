@@ -21,6 +21,9 @@
         "Expires": {
             "type": "string"
         },
+        "Extended-Presence-ID": {
+            "type": "string"
+        },
         "From": {
             "type": "string"
         },

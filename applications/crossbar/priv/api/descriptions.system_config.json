@@ -50,6 +50,7 @@
     "callflow.default_pin_length": "callflow default pin length",
     "callflow.default_use_account_caller_id": "callflow default use account caller id",
     "callflow.delete_after_notify": "Move the voicemail to delete folder after the notification has been sent",
+    "callflow.dialog_subscribed_mwi_prefix": "Prefix to apply (ex: *98) to the vm identifier for extended presence",
     "callflow.dynamic_cid.accept_prompt": "callflow.dynamic_cid accept prompt",
     "callflow.dynamic_cid.default_prompt": "callflow.dynamic_cid default prompt",
     "callflow.dynamic_cid.max_digits": "callflow.dynamic_cid max digits",

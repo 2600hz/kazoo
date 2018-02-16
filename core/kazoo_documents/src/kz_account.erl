@@ -12,6 +12,7 @@
         ,type/0
         ,id/1
         ,fetch/1, fetch/2
+        ,fetch_name/1, fetch_realm/1
 
         ,get_inherited_value/2
         ,get_inherited_value/3
@@ -173,6 +174,34 @@ fetch(Account, 'account') ->
     kz_datamgr:open_cache_doc(AccountDb, AccountId, [{'cache_failures',false}]);
 fetch(AccountId, 'accounts') ->
     kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId, [{'cache_failures',false}]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_name(kz_term:ne_binary()) -> kz_term:api_ne_binary().
+fetch_name(Account) ->
+    fetch_value(Account, fun name/1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_realm(kz_term:ne_binary()) -> kz_term:api_ne_binary().
+fetch_realm(Account) ->
+    fetch_value(Account, fun realm/1).
+
+-spec fetch_value(kz_term:ne_binary(), fun((doc()) -> kz_json:json_term())) ->
+                         kz_json:api_json_term().
+fetch_value(Account, Getter) ->
+    case fetch(Account) of
+        {'ok', Doc} -> Getter(Doc);
+        {'error', _R} ->
+            lager:error("error opening account doc ~p", [Account]),
+            'undefined'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

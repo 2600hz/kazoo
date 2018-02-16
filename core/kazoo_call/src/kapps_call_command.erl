@@ -283,7 +283,7 @@ presence(State, Call) ->
     presence(State, kapps_call:from(Call)).
 
 presence(State, PresenceId, 'undefined') ->
-    presence(State, PresenceId, 'undefined', 'undefined');
+    presence(State, PresenceId, ?FAKE_CALLID(PresenceId), 'undefined');
 presence(State, PresenceId, <<_/binary>> = CallId) ->
     presence(State, PresenceId, CallId, 'undefined');
 presence(State, PresenceId, Call) ->
