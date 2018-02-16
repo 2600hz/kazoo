@@ -422,10 +422,11 @@ fetch_conference_params(Node, Id, <<"request-controls">>, _ConfName, Data) ->
     FSName = props:get_value(<<"Controls">>, Data),
     [KZName, Profile] = binary:split(FSName, <<"?profile=">>),
     lager:debug("request controls:~p for profile: ~p", [KZName, Profile]),
-    lager:debug("config req built from ~p", [Data]),
+
     Cmd = [{<<"Request">>, <<"Controls">>}
           ,{<<"Profile">>, Profile}
           ,{<<"Controls">>, KZName}
+          ,{<<"Call-ID">>, kzd_freeswitch:call_id(Data)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kz_amqp_worker:call(Cmd
