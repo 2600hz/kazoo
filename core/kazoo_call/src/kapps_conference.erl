@@ -406,14 +406,19 @@ set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
     Conference#kapps_conference{profile_name=P}.
 
 -spec profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
-profile(#kapps_conference{profile=Profile}=Conference) when Profile /= 'undefined' ->
+profile(#kapps_conference{profile=Profile}=Conference) when Profile =/= 'undefined' ->
     case profile_name(Conference) of
         'undefined' -> {id(Conference), Profile};
         Name -> {Name, Profile}
     end;
-profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME, account_id='undefined'}=Conference) ->
+profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
+                         ,account_id='undefined'
+                         }=Conference) ->
     Language = language(Conference),
-    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME], default_profile(Language)),
+    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT
+                                   ,[<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME]
+                                   ,default_profile(Language)
+                                   ),
     {?DEFAULT_PROFILE_NAME, Profile};
 profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME, account_id=AccountId}=Conference) ->
     Language = language(Conference),
@@ -464,9 +469,11 @@ page_profile(Language) ->
 -spec update_profile_language(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 update_profile_language(Language, Profile) ->
     lists:map(fun({Key, Value}) when is_binary(Value) ->
-                    {Key, binary:replace(Value, <<"en-us">>, Language)};
-                   (Else) -> Else
-                end, Profile).
+                      {Key, binary:replace(Value, <<"en-us">>, Language)};
+                 (Else) -> Else
+              end
+             ,Profile
+             ).
 
 -spec application_name(conference()) -> kz_term:ne_binary().
 application_name(#kapps_conference{app_name=AppName}) ->
@@ -493,7 +500,9 @@ set_focus(Focus, Conference) when is_binary(Focus) ->
     Conference#kapps_conference{focus=Focus}.
 
 -spec language(conference()) -> kz_term:api_binary().
-language(#kapps_conference{language='undefined', account_id=AccountId}) ->
+language(#kapps_conference{language='undefined'
+                          ,account_id=AccountId
+                          }) ->
     Default = kz_media_util:default_prompt_language(),
     case kzd_accounts:fetch(AccountId) of
         {'ok', Account} -> kzd_accounts:language(Account, Default);
@@ -643,6 +652,7 @@ set_wait_for_moderator(WaitForModerator, Conference) when is_boolean(WaitForMode
 -spec play_name_on_join(conference()) -> boolean().
 play_name_on_join(#kapps_conference{play_name_on_join=PlayNameOnJoin}) ->
     PlayNameOnJoin.
+
 -spec set_play_name_on_join(boolean(), conference()) -> conference().
 set_play_name_on_join(PlayNameOnJoin, Conference) when is_boolean(PlayNameOnJoin) ->
     Conference#kapps_conference{play_name_on_join=PlayNameOnJoin}.
@@ -650,6 +660,7 @@ set_play_name_on_join(PlayNameOnJoin, Conference) when is_boolean(PlayNameOnJoin
 -spec play_entry_prompt(conference()) -> boolean().
 play_entry_prompt(#kapps_conference{play_entry_prompt=ShouldPlay}) ->
     ShouldPlay.
+
 -spec set_play_entry_prompt(boolean(), conference()) -> conference().
 set_play_entry_prompt(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#kapps_conference{play_entry_prompt=ShouldPlay}.
@@ -664,6 +675,7 @@ set_play_exit_tone(Media, Conference) when is_binary(Media) ->
 
 -spec play_entry_tone(conference()) -> tone().
 play_entry_tone(#kapps_conference{play_entry_tone=ShouldPlay}) -> ShouldPlay.
+
 -spec set_play_entry_tone(tone(), conference()) -> conference().
 set_play_entry_tone(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#kapps_conference{play_entry_tone=ShouldPlay};
@@ -673,6 +685,7 @@ set_play_entry_tone(Media, Conference) when is_binary(Media) ->
 -spec play_welcome(conference()) -> boolean().
 play_welcome(#kapps_conference{play_welcome=ShouldPlay}) ->
     ShouldPlay.
+
 -spec set_play_welcome(boolean(), conference()) -> conference().
 set_play_welcome(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#kapps_conference{play_welcome=ShouldPlay}.
@@ -746,8 +759,12 @@ kvs_store(Key, Value, #kapps_conference{kvs=Dict}=Conference) ->
 -spec kvs_store_proplist(kz_term:proplist(), conference()) -> conference().
 kvs_store_proplist(List, #kapps_conference{kvs=Dict}=Conference) ->
     Conference#kapps_conference{kvs=lists:foldr(fun({K, V}, D) ->
-                                             orddict:store(kz_term:to_binary(K), V, D)
-                                     end, Dict, List)}.
+                                                        orddict:store(kz_term:to_binary(K), V, D)
+                                                end
+                                               ,Dict
+                                               ,List
+                                               )
+                               }.
 
 -spec kvs_to_proplist(conference()) -> kz_term:proplist().
 kvs_to_proplist(#kapps_conference{kvs=Dict}) ->
@@ -767,7 +784,6 @@ kvs_update_counter(Key, Number, #kapps_conference{kvs=Dict}=Conference) ->
 
 -spec flush() -> 'ok'.
 flush() -> kz_cache:flush_local(?KAPPS_CALL_CACHE).
-
 
 -spec cache(conference()) -> 'ok'.
 cache(#kapps_conference{}=Conference) ->
