@@ -293,7 +293,7 @@ presence(State, Call) ->
 
 -spec presence(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary() | kapps_call:call()) -> 'ok'.
 presence(State, PresenceId, 'undefined') ->
-    presence(State, PresenceId, 'undefined', 'undefined');
+    presence(State, PresenceId, ?FAKE_CALLID(PresenceId), 'undefined');
 presence(State, PresenceId, <<_/binary>> = CallId) ->
     presence(State, PresenceId, CallId, 'undefined');
 presence(State, PresenceId, Call) ->
