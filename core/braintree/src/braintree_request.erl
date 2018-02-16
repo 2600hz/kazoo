@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -21,42 +21,46 @@
 -define(BT_DEFAULT_PRIVATE_KEY, kapps_config:get_binary(?CONFIG_CAT, <<"default_private_key">>, <<>>)).
 
 %%------------------------------------------------------------------------------
-%% @doc Preform a get request to braintree's system
+%% @doc Preform a get request to Braintree's system.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec get(nonempty_string()) -> bt_xml().
 get(Path) ->
     do_request('get', Path, <<>>).
 
 %%------------------------------------------------------------------------------
-%% @doc Preform a post request to braintree's system
+%% @doc Preform a post request to Braintree's system.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec post(nonempty_string(), binary()) -> bt_xml().
 post(Path, Request) ->
     do_request('post', Path, Request).
 
 %%------------------------------------------------------------------------------
-%% @doc Preform a put request to braintree's system
+%% @doc Preform a put request to Braintree's system.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec put(nonempty_string(), binary()) -> bt_xml().
 put(Path, Request) ->
     do_request('put', Path, Request).
 
 %%------------------------------------------------------------------------------
-%% @doc Preform a delete request to braintree's system
+%% @doc Preform a delete request to Braintree's system.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec delete(nonempty_string()) -> bt_xml().
 delete(Path) ->
     do_request('delete', Path, <<>>).
 
 %%------------------------------------------------------------------------------
-%% @private
-%% @doc Preform a request to the braintree service
+%% @doc Preform a request to the braintree service.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec do_request(http_verb(), nonempty_string(), binary()) -> bt_xml().
 do_request(Method, Path, Body) ->
     case braintree_server_url(?BT_DEFAULT_ENVIRONMENT) of
@@ -154,9 +158,10 @@ http_options() ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc If braintree verbose debuging is enabled write the log line to the file
+%% @doc If braintree verbose debugging is enabled write the log line to the file.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec verbose_debug(string(), [any()]) -> 'ok'.
 verbose_debug(Format, Args) ->
     case ?BT_DEBUG of
@@ -167,18 +172,20 @@ verbose_debug(Format, Args) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc Get the base URL for the braintree service
+%% @doc Get the base URL for the braintree service.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec braintree_server_url(string()) -> string() | 'undefined'.
 braintree_server_url(Env) ->
     props:get_value(Env, ?BT_SERVER_URL).
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc Determine if the response was valid
+%% @doc Determine if the response was valid.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec verify_response(bt_xml()) -> bt_xml().
 verify_response(Xml) ->
     case xmerl_xpath:string("/api-error-response", Xml) of

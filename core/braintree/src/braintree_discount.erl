@@ -1,9 +1,8 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @author Karl Anderson <karl@2600hz.org>
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
 %%%-----------------------------------------------------------------------------
 -module(braintree_discount).
 
@@ -22,7 +21,7 @@
 -type discounts() :: bt_discounts().
 
 %%------------------------------------------------------------------------------
-%% @doc Contert the given XML to a customer record
+%% @doc Convert the given XML to a discount record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -41,7 +40,7 @@ xml_to_record(Xml, Base) ->
                 }.
 
 %%------------------------------------------------------------------------------
-%% @doc Contert the given XML to a customer record
+%% @doc Convert the given discount to a XML.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -65,9 +64,10 @@ record_to_xml(Discount, ToString) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert a given record into a json object
+%% @doc Convert a given record into a JSON object.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec record_to_json(bt_discount()) -> kz_json:object().
 record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
@@ -77,9 +77,10 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= 'undefined']).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert a given json obj into a record
+%% @doc Convert a given JSON obj into a record.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec json_to_record(kz_term:api_object()) -> bt_discount() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->

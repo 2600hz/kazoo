@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -556,8 +556,8 @@
 focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
 
 %%------------------------------------------------------------------------------
-%% @doc Create a tone on the channel - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Create a tone on the channel.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -define(CONF_SAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
@@ -588,8 +588,8 @@ say_v(JObj) -> say_v(kz_json:to_proplist(JObj)).
 tts_v(API) -> say_v(API).
 
 %%------------------------------------------------------------------------------
-%% @doc Create a tone on the channel - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Create a tone on the channel.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -618,7 +618,7 @@ tones_v(Prop) when is_list(Prop) ->
 tones_v(JObj) -> tones_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec search_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -635,7 +635,7 @@ search_req_v(Prop) when is_list(Prop) ->
 search_req_v(JObj) -> search_req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec search_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -652,7 +652,7 @@ search_resp_v(Prop) when is_list(Prop) ->
 search_resp_v(JObj) -> search_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec discovery_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -669,7 +669,7 @@ discovery_req_v(Prop) when is_list(Prop) ->
 discovery_req_v(JObj) -> discovery_req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec discovery_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -686,7 +686,7 @@ discovery_resp_v(Prop) when is_list(Prop) ->
 discovery_resp_v(JObj) -> discovery_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_participant(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -703,7 +703,7 @@ add_participant_v(Prop) when is_list(Prop) ->
 add_participant_v(JObj) -> add_participant_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec deaf_participant(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -720,7 +720,7 @@ deaf_participant_v(Prop) when is_list(Prop) ->
 deaf_participant_v(JObj) -> deaf_participant_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec participant_energy(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -737,7 +737,7 @@ participant_energy_v(Prop) when is_list(Prop) ->
 participant_energy_v(JObj) -> participant_energy_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec kick(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -754,7 +754,7 @@ kick_v(Prop) when is_list(Prop) ->
 kick_v(JObj) -> kick_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec participants_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -771,7 +771,7 @@ participants_req_v(Prop) when is_list(Prop) ->
 participants_req_v(JObj) -> participants_req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec participants_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -788,7 +788,7 @@ participants_resp_v(Prop) when is_list(Prop) ->
 participants_resp_v(JObj) -> participants_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec lock(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -805,7 +805,7 @@ lock_v(Prop) when is_list(Prop) ->
 lock_v(JObj) -> lock_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec mute_participant(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -822,7 +822,7 @@ mute_participant_v(Prop) when is_list(Prop) ->
 mute_participant_v(JObj) -> mute_participant_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec play(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -839,7 +839,7 @@ play_v(Prop) when is_list(Prop) ->
 play_v(JObj) -> play_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec play_macro_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -856,7 +856,7 @@ play_macro_req_v(Prop) when is_list(Prop) ->
 play_macro_req_v(JObj) -> play_macro_req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec record(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -873,7 +873,7 @@ record_v(Prop) when is_list(Prop) ->
 record_v(JObj) -> record_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec recordstop(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -890,7 +890,7 @@ recordstop_v(Prop) when is_list(Prop) ->
 recordstop_v(JObj) -> recordstop_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec relate_participants(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -907,7 +907,7 @@ relate_participants_v(Prop) when is_list(Prop) ->
 relate_participants_v(JObj) -> relate_participants_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec set(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -924,7 +924,7 @@ set_v(Prop) when is_list(Prop) ->
 set_v(JObj) -> set_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec stop_play(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -941,7 +941,7 @@ stop_play_v(Prop) when is_list(Prop) ->
 stop_play_v(JObj) -> stop_play_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec undeaf_participant(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -958,7 +958,7 @@ undeaf_participant_v(Prop) when is_list(Prop) ->
 undeaf_participant_v(JObj) -> undeaf_participant_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec unlock(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -975,7 +975,7 @@ unlock_v(Prop) when is_list(Prop) ->
 unlock_v(JObj) -> unlock_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec unmute_participant(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -992,7 +992,7 @@ unmute_participant_v(Prop) when is_list(Prop) ->
 unmute_participant_v(JObj) -> unmute_participant_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec participant_volume_in(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -1009,7 +1009,7 @@ participant_volume_in_v(Prop) when is_list(Prop) ->
 participant_volume_in_v(JObj) -> participant_volume_in_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec participant_volume_out(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -1026,7 +1026,7 @@ participant_volume_out_v(Prop) when is_list(Prop) ->
 participant_volume_out_v(JObj) -> participant_volume_out_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec participant_event(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -1043,7 +1043,7 @@ participant_event_v(Prop) when is_list(Prop) ->
 participant_event_v(JObj) -> participant_event_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec event(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -1060,7 +1060,7 @@ event_v(Prop) when is_list(Prop) ->
 event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec conference_error(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -1077,7 +1077,7 @@ conference_error_v(Prop) when is_list(Prop) ->
 conference_error_v(JObj) -> conference_error_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec config_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -1094,7 +1094,7 @@ config_req_v(Prop) when is_list(Prop) ->
 config_req_v(JObj) -> config_req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes proplist, creates JSON string or error
+%% @doc Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec config_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -1137,7 +1137,7 @@ dial_resp_v(Prop) when is_list(Prop) ->
 dial_resp_v(JObj) -> dial_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Bind a queue to the conference exchange
+%% @doc Bind a queue to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -1176,7 +1176,7 @@ bind_to_q(_Q, [], _) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc Unbind a queue from the conference exhange
+%% @doc Unbind a queue from the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -1214,7 +1214,7 @@ unbind_from_q(Q, [{'command', ConfId}|T], Props) ->
 unbind_from_q(_Q, [], _) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -1222,7 +1222,7 @@ declare_exchanges() ->
     amqp_util:conference_exchange().
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1236,7 +1236,7 @@ publish_search_req(Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'discovery', 'undefined', [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1250,7 +1250,7 @@ publish_search_resp(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1264,7 +1264,7 @@ publish_discovery_req(Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'discovery', 'undefined', [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish the response to requestor
+%% @doc Publish the response to requestor.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1278,7 +1278,7 @@ publish_discovery_resp(Q, Req, ContentType) ->
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1292,7 +1292,7 @@ publish_add_participant(Zone, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', Zone, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1306,7 +1306,7 @@ publish_deaf_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1320,7 +1320,7 @@ publish_participant_energy(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1334,7 +1334,7 @@ publish_kick(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1348,7 +1348,7 @@ publish_participants_req(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1362,7 +1362,7 @@ publish_participants_resp(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1376,7 +1376,7 @@ publish_lock(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1390,7 +1390,7 @@ publish_mute_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1404,7 +1404,7 @@ publish_play(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1418,7 +1418,7 @@ publish_record(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1432,7 +1432,7 @@ publish_recordstop(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1446,7 +1446,7 @@ publish_relate_participants(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1460,7 +1460,7 @@ publish_set(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1474,7 +1474,7 @@ publish_stop_play(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1488,7 +1488,7 @@ publish_undeaf_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1502,7 +1502,7 @@ publish_unlock(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1516,7 +1516,7 @@ publish_unmute_participant(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1530,7 +1530,7 @@ publish_participant_volume_in(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1544,7 +1544,7 @@ publish_participant_volume_out(ConferenceId, Req, ContentType) ->
     amqp_util:conference_publish(Payload, 'command', ConferenceId, [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1558,7 +1558,7 @@ publish_participant_event(ConferenceId, CallId, Event, ContentType) ->
     amqp_util:conference_publish(Payload, 'event', ConferenceId, amqp_util:encode(CallId), [], ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1598,7 +1598,7 @@ event_key(API) ->
     ?CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1612,7 +1612,7 @@ publish_error(Queue, Req, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1631,7 +1631,7 @@ publish_command(ConferenceId, Req, ContentType) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1651,7 +1651,7 @@ publish_targeted_command(Focus, Req, ContentType) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1669,7 +1669,7 @@ profile(Props) when is_list(Props) -> props:get_value(<<"Profile">>, Props);
 profile(JObj) -> kz_json:get_value(<<"Profile">>, JObj).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1683,7 +1683,7 @@ publish_config_resp(Queue, Req, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish to the conference exchange
+%% @doc Publish to the conference exchange.
 %% @end
 %%------------------------------------------------------------------------------
 

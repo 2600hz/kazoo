@@ -109,8 +109,8 @@ get_value(JObj, Key) ->
     kz_json:get_value(Key, JObj).
 
 %%------------------------------------------------------------------------------
-%% @doc Format a call event from the switch for the listener
-%% Takes proplist, creates JSON string or error
+%% @doc Format a call event from the switch for the listener.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec doc_update(kz_term:api_terms()) ->
@@ -131,8 +131,8 @@ doc_update_v(JObj) ->
     doc_update_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Format a call event from the switch for the listener
-%% Takes proplist, creates JSON string or error
+%% @doc Format a call event from the switch for the listener.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec doc_type_update(kz_term:api_terms()) ->
@@ -249,7 +249,7 @@ unbind_for_doc_types(Q, Props) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

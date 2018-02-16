@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018 2600Hz
-%%% @doc FS passthrough API
+%%% @copyright (C) 2010-2018 2600Hz
+%%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_leader).
@@ -82,7 +82,7 @@ req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

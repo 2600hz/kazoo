@@ -1,10 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc APIs for events concerning money (like credits, debits, and others)
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc APIs for events concerning money (like credits, debits, and others).
+%%%
 %%% Types of events known:
-%%%   credit - a credit has been added to account-id
-%%%   debit - a debit has been applied to account-id
-%%%   balance - a request for any whapp with the balance of account-id to reply
+%%% <dl>
+%%%   <dt>`credit'</dt><dd>A credit has been added to account-id</dd>
+%%%   <dt>`debit'</dt><dd>A debit has been applied to account-id</dd>
+%%%   <dt>`balance'</dt><dd>A request for any whapp with the balance of account-id to reply</dd>
+%%% <dl>
 %%%
 %%% @author James Aimonetti
 %%% @end
@@ -57,8 +60,8 @@
 -define(BALANCE_RESP_TYPES, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Credit Update - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%% @doc Credit Update.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec credit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -77,8 +80,8 @@ credit_v(JObj) ->
     credit_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Debit Update - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%% @doc Debit Update.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec debit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -97,8 +100,8 @@ debit_v(JObj) ->
     debit_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Balance Request - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%% @doc Balance Request.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec balance_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -117,8 +120,8 @@ balance_req_v(JObj) ->
     balance_req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Balance Response - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%% @doc Balance Response.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec balance_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.

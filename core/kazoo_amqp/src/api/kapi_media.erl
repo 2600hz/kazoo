@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc Media requests, responses, and errors
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Media requests, responses, and errors.
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -61,8 +61,8 @@
 -define(MEDIA_ERROR_TYPES, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Request media - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Request media.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
@@ -81,8 +81,8 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Response with media - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Response with media.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_json:object() | kz_term:proplist()) ->
@@ -101,8 +101,8 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Media error - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Media error.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec error(kz_term:proplist() | kz_json:object()) ->
@@ -129,7 +129,7 @@ unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_kapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

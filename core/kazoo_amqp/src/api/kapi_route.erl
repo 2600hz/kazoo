@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Routing requests, responses, and wins!
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -35,8 +35,8 @@
 -export_type([req/0, resp/0]).
 
 %%------------------------------------------------------------------------------
-%% @doc Dialplan Route Request - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Dialplan Route Request.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
@@ -58,8 +58,8 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 
 %%------------------------------------------------------------------------------
-%% @doc Dialplan Route Response - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Dialplan Route Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
@@ -110,8 +110,8 @@ is_actionable_resp(JObj) ->
     is_actionable_resp(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Route within a Dialplan Route Response - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Route within a Dialplan Route Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp_route(kz_term:api_terms()) ->
@@ -130,8 +130,8 @@ resp_route_v(Prop) when is_list(Prop) ->
 resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Winning Responder Message - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Winning Responder Message.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec win(kz_term:api_terms()) ->
@@ -150,7 +150,7 @@ win_v(Prop) when is_list(Prop) ->
 win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Bind AMQP Queue for routing requests
+%% @doc Bind AMQP Queue for routing requests.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -208,7 +208,7 @@ get_account_routing_keys(Props) ->
     lists:foldl(fun(T, L) -> [get_route_req_account_routing(T, AccountId) | L] end, [], Types).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -261,8 +261,8 @@ publish_win(RespQ, Win, ContentType) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc extract the auth realm from the API request, using the requests to domain
-%% when provided with an IP
+%% @doc Extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_auth_realm(kz_term:api_terms()) -> kz_term:ne_binary().

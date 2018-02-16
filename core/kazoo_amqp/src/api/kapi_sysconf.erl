@@ -1,8 +1,8 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Expose system configuration data.
 %%% System configuration data is stored as key/values in a namespace
-%%% (a doc) in system_config DB.
+%%% (a doc) in `system_config' DB.
 %%%
 %%% @author Edouard Swiac
 %%% @author James Aimonetti
@@ -74,7 +74,7 @@
                        ]).
 
 %%------------------------------------------------------------------------------
-%% @doc READ
+%% @doc READ.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_req(kz_term:api_terms()) ->
@@ -112,7 +112,7 @@ get_resp_v(JObj) ->
     get_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc WRITE
+%% @doc WRITE.
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_req(kz_term:api_terms()) ->
@@ -150,7 +150,7 @@ set_resp_v(JObj) ->
     set_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Flush a given key
+%% @doc Flush a given key.
 %% @end
 %%------------------------------------------------------------------------------
 -spec flush_req(kz_term:api_terms()) ->
@@ -215,7 +215,7 @@ rm_bindings(_, []) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

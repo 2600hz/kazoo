@@ -1,6 +1,6 @@
 %%------------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc Globals API
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Globals API,
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_globals).
@@ -43,6 +43,7 @@
 -include_lib("amqp_util.hrl").
 
 %% Types & Accessors
+
 -type state() :: 'none' | 'local' | 'pending' | 'remote' | 'registered'.
 -export_type([state/0]).
 
@@ -323,7 +324,7 @@ query_resp_v(JObj) ->
     query_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

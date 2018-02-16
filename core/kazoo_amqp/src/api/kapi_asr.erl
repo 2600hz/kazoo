@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc ASR requests, responses, and errors
+%%% @doc ASR requests, responses, and errors AMQP API.
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -49,8 +49,8 @@
 -define(ASR_ERROR_TYPES, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Request asr - see wiki
-%% Takes kz_term:proplist(), creates JSON string or error
+%% @doc Send request ASR.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -69,8 +69,8 @@ req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Response with asr - see wiki
-%% Takes kz_term:proplist(), creates JSON string or error
+%% @doc Response with ASR.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -89,8 +89,8 @@ resp_v(JObj) ->
     resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Asr error - see wiki
-%% Takes kz_term:proplist(), creates JSON string or error
+%% @doc Asr error.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec error(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -109,7 +109,7 @@ error_v(JObj) ->
     error_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc bind to a queue to the asr exchange and events
+%% @doc Bind to a queue to the ASR exchange and events.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q(binary(), kz_term:proplist()) -> 'ok'.
@@ -117,7 +117,7 @@ bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ).
 
 %%------------------------------------------------------------------------------
-%% @doc unbind to a queue to the asr exchange and events
+%% @doc Unbind from a queue to the ASR exchange and events.
 %% @end
 %%------------------------------------------------------------------------------
 -spec unbind_q(binary()) -> 'ok'.
@@ -125,7 +125,7 @@ unbind_q(Queue) ->
     amqp_util:unbind_q_from_callctl(Queue).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -133,7 +133,7 @@ declare_exchanges() ->
     amqp_util:callctl_exchange().
 
 %%------------------------------------------------------------------------------
-%% @doc prepare and publish an asr request
+%% @doc Prepare and publish an ASR request.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -147,7 +147,7 @@ publish_req(Req, ContentType) ->
     amqp_util:callctl_publish(?KEY_ASR_REQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc prepare and publish an asr response
+%% @doc Prepare and publish an ASR response.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -161,7 +161,7 @@ publish_resp(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc prepare and publish an asr error
+%% @doc Prepare and publish an ASR error.
 %% @end
 %%------------------------------------------------------------------------------
 

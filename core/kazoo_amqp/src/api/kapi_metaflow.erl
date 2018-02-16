@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc Metaflow requests, responses, and errors
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Metaflow requests, responses, and errors.
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -102,8 +102,8 @@
 -define(METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), <<"metaflow.bind.", (amqp_util:encode(AccountId))/binary, ".", (amqp_util:encode(CallId))/binary>>).
 
 %%------------------------------------------------------------------------------
-%% @doc Request metaflow - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Request metaflow.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec action(kz_json:object() | kz_term:proplist()) ->
@@ -123,8 +123,8 @@ action_v(JObj) -> action_v(kz_json:to_proplist(JObj)).
 
 
 %%------------------------------------------------------------------------------
-%% @doc flow
-%% Takes proplist, creates JSON string or error
+%% @doc Flow.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec flow(kz_json:object() | kz_term:proplist()) ->
@@ -143,8 +143,8 @@ flow_v(Prop) when is_list(Prop) ->
 flow_v(JObj) -> flow_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc bind metaflow - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Bind metaflow.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_req(kz_json:object() | kz_term:proplist()) ->
@@ -223,7 +223,7 @@ unbind_q(Queue, Props, [_U | T]) ->
 unbind_q(_, _, []) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -320,8 +320,8 @@ ensure_callid(JObj) ->
     kz_json:set_value(<<"Call-ID">>, callid(JObj), JObj).
 
 %%------------------------------------------------------------------------------
-%% @doc Asks for metaflows to be enabled for a call - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Asks for metaflows to be enabled for a call.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec binding(kz_term:api_terms()) -> api_formatter_return().

@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc Delegate job from one app to another app.
-%%%  App/Key combo used to send messages.
+%%% @doc Delegate JObj from one application to another application.
+%%% App/Key combo used to send messages.
 %%%
 %%%
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
@@ -39,8 +39,8 @@
 -define(DELEGATE_TYPES, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Resume a callflow's flow
-%% Takes proplist, creates JSON iolist or error
+%% @doc Resume a Callflow's flow.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec delegate(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -81,7 +81,7 @@ unbind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
     amqp_util:unbind_q_from_kapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -89,7 +89,7 @@ declare_exchanges() ->
     amqp_util:kapps_exchange().
 
 %%------------------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc Publish the JSON string to the proper Exchange.
 %% @end
 %%------------------------------------------------------------------------------
 

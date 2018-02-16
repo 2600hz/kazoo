@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -35,6 +35,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec make_doc_xml(kz_term:proplist(), atom()) -> char_to_bin_res().
 make_doc_xml(Props, Root) ->
     Xml = xmerl:export_simple([doc_xml_simple(Props, Root)]
@@ -77,6 +78,7 @@ props_to_xml([{K, V}|T], Xml) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec bt_error_to_json(bt_error()) -> kz_json:object().
 bt_error_to_json(BtError) ->
     kz_json:from_list(
@@ -89,6 +91,7 @@ bt_error_to_json(BtError) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec bt_verification_to_json(bt_verification()) -> kz_json:object().
 bt_verification_to_json(BtVerification) ->
     kz_json:from_list(
@@ -106,6 +109,7 @@ bt_verification_to_json(BtVerification) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec bt_api_error_to_json(bt_api_error()) -> kz_json:object().
 bt_api_error_to_json(BtApiError) ->
     kz_json:from_list(
@@ -118,6 +122,7 @@ bt_api_error_to_json(BtApiError) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_no_payment_token() -> no_return().
 error_no_payment_token() ->
     Error = <<"No credit card found">>,
@@ -128,6 +133,7 @@ error_no_payment_token() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_authentication() -> no_return().
 error_authentication() ->
     Error = <<"Failed to authenticate with the card processor">>,
@@ -138,6 +144,7 @@ error_authentication() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_authorization() -> no_return().
 error_authorization() ->
     Error = <<"Failed to authorize with the card processor">>,
@@ -148,6 +155,7 @@ error_authorization() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_not_found(kz_term:ne_binary()) -> no_return().
 error_not_found(Object) ->
     Error = <<Object/binary, " not found">>,
@@ -158,6 +166,7 @@ error_not_found(Object) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_upgrade_required() -> no_return().
 error_upgrade_required() ->
     Error = <<"Card processor requires API library upgrade">>,
@@ -168,6 +177,7 @@ error_upgrade_required() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_server_error() -> no_return().
 error_server_error() ->
     Error = <<"Card processor server error">>,
@@ -178,6 +188,7 @@ error_server_error() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_maintenance() -> no_return().
 error_maintenance() ->
     Error = <<"Card processor currently down for maintenance">>,
@@ -188,6 +199,7 @@ error_maintenance() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_api(bt_api_error()) -> no_return().
 error_api(ApiError) ->
     JObj = bt_api_error_to_json(ApiError),
@@ -198,6 +210,7 @@ error_api(ApiError) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_io_fault() -> no_return().
 error_io_fault() ->
     Error = <<"Unable to establish communication with card processor">>,
@@ -208,6 +221,7 @@ error_io_fault() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_min_amount(number() | kz_term:ne_binary()) -> no_return().
 error_min_amount(Amount) ->
     Error = <<"Unable to process a transaction for less than $", (kz_term:to_binary(Amount))/binary>>,
@@ -218,6 +232,7 @@ error_min_amount(Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec error_max_amount(number() | kz_term:ne_binary()) -> no_return().
 error_max_amount(Amount) ->
     Error = <<"Unable to process a transaction for more than $", (kz_term:to_binary(Amount))/binary>>,

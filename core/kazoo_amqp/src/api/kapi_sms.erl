@@ -1,4 +1,5 @@
 %%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Routing requests, responses, and wins!
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -295,7 +296,7 @@ resume_v(Prop) when is_list(Prop) ->
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Bind AMQP Queue for routing requests
+%% @doc Bind AMQP Queue for routing requests.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -361,7 +362,7 @@ unbind_q(Exchange, Queue, CallId, RouteId, ['outbound'|Restrict]) ->
 unbind_q(_, _, _, _, []) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Handles authentication requests, responses, queue bindings
+%%% @doc Handles authentication requests, responses, queue bindings AMQP API.
 %%% @author James Aimonetti
 %%% @author Luis Azedo
 %%% @end
@@ -81,8 +81,8 @@
 -define(AUTHN_ERR_TYPES, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Authentication Request - see wiki
-%% Takes proplist, creates JSON iolist or error
+%% @doc Authentication Request.
+%% Takes {@link kz_term:proplist}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -105,8 +105,8 @@ req_event_type() ->
     {?EVENT_CATEGORY, ?AUTHN_REQ_EVENT_NAME}.
 
 %%------------------------------------------------------------------------------
-%% @doc Authentication Response - see wiki
-%% Takes proplist, creates JSON iolist or error
+%% @doc Authentication Response.
+%% Takes {@link kz_term:proplist}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -125,8 +125,8 @@ resp_v(JObj) ->
     resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Authentication Error - see wiki
-%% Takes proplist, creates JSON iolist or error
+%% @doc Authentication Error.
+%% Takes {@link kz_term:proplist}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec error(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -143,7 +143,7 @@ error_v(Prop) when is_list(Prop) ->
 error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Setup and tear down bindings for authn gen_listeners
+%% @doc Setup and tear down bindings for authn `gen_listeners'
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -157,7 +157,7 @@ unbind_q(Q, Props) ->
     amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -165,7 +165,7 @@ declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
 %%------------------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc Publish the JSON string to the proper Exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -198,7 +198,7 @@ publish_error(Queue, Resp, ContentType) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc creating the routing key for either binding queues or publishing messages
+%% @doc Creating the routing key for either binding queues or publishing messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_authn_req_routing(kz_term:ne_binary() | kz_term:api_terms()) -> kz_term:ne_binary().
@@ -212,7 +212,7 @@ get_authn_req_routing(Req) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc extract the auth user from the API request
+%% @doc Extract the auth user from the API request.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_auth_user(kz_json:object()) -> kz_term:api_binary().
@@ -228,8 +228,8 @@ get_auth_user(ApiJObj) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc extract the auth realm from the API request, using the requests to domain
-%% when provided with an IP
+%% @doc Extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_auth_realm(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binary().

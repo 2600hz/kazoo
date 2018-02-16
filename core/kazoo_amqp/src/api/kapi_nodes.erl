@@ -36,8 +36,8 @@
 -define(ADVERTISE_TYPES, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Request asr - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Nodes advertise.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec advertise(kz_term:api_terms()) -> {'ok', iolist()} |
@@ -57,7 +57,7 @@ advertise_v(JObj) ->
     advertise_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc bind to a queue to the asr exchange and events
+%% @doc Bind to a queue to this API exchange and events.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q(binary(), kz_term:proplist()) -> 'ok'.
@@ -65,7 +65,7 @@ bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_nodes(Queue).
 
 %%------------------------------------------------------------------------------
-%% @doc unbind to a queue to the asr exchange and events
+%% @doc Unbind to a queue to this API exchange and events.
 %% @end
 %%------------------------------------------------------------------------------
 -spec unbind_q(binary()) -> 'ok'.
@@ -73,7 +73,7 @@ unbind_q(Queue) ->
     amqp_util:unbind_q_from_nodes(Queue).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -81,7 +81,7 @@ declare_exchanges() ->
     amqp_util:nodes_exchange().
 
 %%------------------------------------------------------------------------------
-%% @doc prepare and publish a nodes advertise message
+%% @doc Prepare and publish a nodes advertise message.
 %% @end
 %%------------------------------------------------------------------------------
 

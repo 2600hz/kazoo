@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -218,7 +218,7 @@ unbind_q(Queue, AccountId, FaxId, StartId, ['start'|Restrict]) ->
 unbind_q(_, _, _, _, []) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

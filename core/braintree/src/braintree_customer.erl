@@ -33,7 +33,7 @@
              ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Create the partial url for this module
+%% @doc Create the partial URL for this module.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -46,15 +46,16 @@ url(CustomerId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId)]).
 
 %%------------------------------------------------------------------------------
-%% @doc Creates a new customer record
+%% @doc Creates a new customer record.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec new(kz_term:ne_binary()) -> customer().
 new(CustomerId) ->
     #bt_customer{id=CustomerId}.
 
 %%------------------------------------------------------------------------------
-%% @doc Creates a new subscription record
+%% @doc Creates a new subscription record.
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_subscription(kz_term:ne_binary(), customer()) -> braintree_subscription:subscription().
@@ -63,9 +64,10 @@ new_subscription(PlanId, Customer) ->
     braintree_subscription:new(PlanId, PaymentToken).
 
 %%------------------------------------------------------------------------------
-%% @doc Given a customer record find (if any) the default payment token
+%% @doc Given a customer record find (if any) the default payment token.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec default_payment_token(kz_term:ne_binary() | customer()) -> kz_term:api_binary().
 default_payment_token(#bt_customer{}=Customer) ->
     braintree_card:default_payment_token(get_cards(Customer));
@@ -79,33 +81,37 @@ default_payment_card(CustomerId) ->
     default_payment_card(find(CustomerId)).
 
 %%------------------------------------------------------------------------------
-%% @doc Get the customer id
+%% @doc Get the customer ID.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec get_id(customer()) -> kz_term:api_binary().
 get_id(#bt_customer{id=CustomerId}) ->
     CustomerId.
 
 %%------------------------------------------------------------------------------
-%% @doc Get credit cards
+%% @doc Get credit cards.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec get_cards(customer()) -> bt_cards().
 get_cards(#bt_customer{credit_cards=Cards}) ->
     Cards.
 
 %%------------------------------------------------------------------------------
-%% @doc Get subscriptions
+%% @doc Get subscriptions.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec get_subscriptions(customer()) -> bt_subscriptions().
 get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
     Subscriptions.
 
 %%------------------------------------------------------------------------------
-%% @doc Get a subscription
+%% @doc Get a subscription.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec get_subscription(kz_term:ne_binary(), customer() | bt_subscriptions()) ->
                               bt_subscription().
 get_subscription(PlanId, #bt_customer{subscriptions=Subscriptions}) ->
@@ -123,9 +129,10 @@ get_subscription(PlanId, [_|Subscriptions]) ->
     get_subscription(PlanId, Subscriptions).
 
 %%------------------------------------------------------------------------------
-%% @doc Find a customer by id
+%% @doc Get all customers.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec all() -> customers().
 all() ->
     Url = url(),
@@ -135,9 +142,10 @@ all() ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @doc Find a customer by id
+%% @doc Find a customer by ID.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec find(kz_term:ne_binary() | customer()) -> customer().
 find(#bt_customer{id = CustomerId}) -> find(CustomerId);
 find(CustomerId) ->
@@ -146,9 +154,10 @@ find(CustomerId) ->
     xml_to_record(Xml).
 
 %%------------------------------------------------------------------------------
-%% @doc Creates a new customer using the given record
+%% @doc Creates a new customer using the given record.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec create(customer() | kz_term:ne_binary()) -> customer().
 create(#bt_customer{}=Customer) ->
     Url = url(),
@@ -159,9 +168,10 @@ create(CustomerId) ->
     create(new(CustomerId)).
 
 %%------------------------------------------------------------------------------
-%% @doc Updates a customer with the given record
+%% @doc Updates a customer with the given record.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec update(customer()) -> customer().
 update(#bt_customer{}=Customer) ->
     %% Note: coming from cb_braintree, Customer only has (unsynced) card data
@@ -214,7 +224,7 @@ update_subsciption(NewPaymentToken, UpdatedCustomer) ->
 
     %% Make card as default /after/ updating subscriptions: this way
     %%  subscriptions are not attached to a deleted card and thus do not
-    %%  get cancelled before we can update their payment token.
+    %%  get canceled before we can update their payment token.
     NewCard1 = braintree_card:update(braintree_card:make_default(NewCard, 'true')),
 
     %% Delete previous cards and addresses /after/ changing subscriptions' payment token.
@@ -225,7 +235,7 @@ update_subsciption(NewPaymentToken, UpdatedCustomer) ->
 
 -spec update_subsciption_with_token(bt_subscription(), kz_term:ne_binary()) -> 'ok'.
 update_subsciption_with_token(Sub, NewPaymentToken) ->
-    ShouldUpdate = not braintree_subscription:is_cancelled(Sub)
+    ShouldUpdate = not braintree_subscription:is_canceled(Sub)
         andalso not braintree_subscription:is_expired(Sub),
     update_subsciption_with_token(Sub, NewPaymentToken, ShouldUpdate).
 
@@ -259,9 +269,10 @@ do_update(#bt_customer{id=CustomerId}=Customer) ->
     xml_to_record(Xml).
 
 %%------------------------------------------------------------------------------
-%% @doc Deletes a customer id from braintree's system
+%% @doc Deletes a customer ID from Braintree's system.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec delete(customer() | kz_term:ne_binary()) -> customer().
 delete(#bt_customer{id=CustomerId}) ->
     delete(CustomerId);
@@ -271,7 +282,7 @@ delete(CustomerId) ->
     #bt_customer{}.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert the given XML to a customer record
+%% @doc Convert the given XML to a customer record.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -306,7 +317,7 @@ xml_to_record(Xml, Base) ->
                 }.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert the given record to XML
+%% @doc Convert the given record to XML.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -336,9 +347,10 @@ record_to_xml(Customer, ToString) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert a given json object into a record
+%% @doc Convert a given JSON object into a record.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec json_to_record(kz_term:api_object()) -> customer().
 json_to_record('undefined') -> #bt_customer{};
 json_to_record(JObj) ->
@@ -362,9 +374,10 @@ maybe_add_credit_card(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert a given record into a json object
+%% @doc Convert a given record into a JSON object.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec record_to_json(customer()) -> kz_json:object().
 record_to_json(Customer) ->
     kz_json:from_list(

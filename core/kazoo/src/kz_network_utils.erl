@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc Various utilities - a veritable cornicopia
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Various utilities - a veritable cornucopia.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -114,9 +114,9 @@ is_ip(Address) ->
         orelse is_ipv6(Address).
 
 %%------------------------------------------------------------------------------
-%% @doc Detects if specified IP family is supported by system
-%% (Need 'ping' command installed on the system.
-%%  ping is part of iputils package)
+%% @doc Detects if specified IP family is supported by system.
+%% Needs `ping' command installed on the system.
+%% `ping' is part of `iputils' package.
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_ip_family_supported(inet:address_family()) -> boolean().
@@ -165,7 +165,7 @@ ping_cmd_option(_) -> "ping -c 1 localhost".
 
 %%------------------------------------------------------------------------------
 %% @doc Default binding IP address (bind on all interfaces) based
-%%      on supported IP family
+%% on supported IP family.
 %% @end
 %%------------------------------------------------------------------------------
 -spec default_binding_all_ip() -> string().

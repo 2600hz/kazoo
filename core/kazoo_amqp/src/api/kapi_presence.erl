@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -145,8 +145,8 @@ publish_search_resp(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Subscribing for updates
-%% Takes proplist, creates JSON string or error
+%% @doc Subscribing for updates.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec subscribe(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -311,8 +311,8 @@ probe_routing_key(JObj) ->
     probe_routing_key(kz_json:get_value(<<"Event-Package">>, JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc MWI - Update the Message Waiting Indicator on a device.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec mwi_extended_update(kz_term:proplist()) -> kz_term:proplist().
@@ -407,8 +407,8 @@ mwi_unsolicited_update_routing_key(JObj) ->
     mwi_unsolicited_update_routing_key(kz_json:get_value(<<"To">>, JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc MWI - Query the Message Waiting Indicator on a device - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc MWI - Query the Message Waiting Indicator on a device.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec mwi_query(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -441,8 +441,8 @@ mwi_query_routing_key(JObj) ->
     mwi_query_routing_key(kz_json:get_value(<<"Realm">>, JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Register_Overwrite (unregister is a key word) - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Register_Overwrite (unregister is a key word).
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec register_overwrite(kz_term:api_terms()) -> api_formatter_return().
@@ -741,7 +741,7 @@ is_valid_state(JObj) ->
     is_valid_state(kz_json:get_value(<<"State">>, JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

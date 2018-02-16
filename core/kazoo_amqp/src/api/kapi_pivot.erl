@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc Pivot API
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Pivot API.
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -86,7 +86,7 @@ unbind_q(Queue, Props) ->
     amqp_util:unbind_q_from_callmgr(Queue, get_pivot_req_routing(Realm)).
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.

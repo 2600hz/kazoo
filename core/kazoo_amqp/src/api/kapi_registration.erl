@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc Handle registration-related APIs, like reg_success and reg_lookup.
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle registration-related APIs, like `reg_success' and `reg_lookup'.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @end
@@ -118,8 +118,8 @@
 -define(REG_SYNC_RK, <<"registration.sync">>).
 
 %%------------------------------------------------------------------------------
-%% @doc Registration Success - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Registration Success.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec success(kz_term:api_terms()) ->
@@ -138,8 +138,8 @@ success_v(Prop) when is_list(Prop) ->
 success_v(JObj) -> success_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Registration Success - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Registration Success.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec flush(kz_term:api_terms()) ->
@@ -174,8 +174,8 @@ sync_v(Prop) when is_list(Prop) ->
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Registration Query - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Registration Query.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_req(kz_term:api_terms()) ->
@@ -194,8 +194,8 @@ query_req_v(Prop) when is_list(Prop) ->
 query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Registration Query Response - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Registration Query Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_resp(kz_term:api_terms()) ->
@@ -214,8 +214,8 @@ query_resp_v(Prop) when is_list(Prop) ->
 query_resp_v(JObj) -> query_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Registration Query Response - see wiki
-%% Takes proplist, creates JSON string or error
+%% @doc Registration Query Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_err(kz_term:api_terms()) ->
@@ -234,7 +234,7 @@ query_err_v(Prop) when is_list(Prop) ->
 query_err_v(JObj) -> query_err_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Setup and tear down bindings for authn gen_listeners
+%% @doc Setup and tear down bindings for authn `gen_listeners'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -278,7 +278,7 @@ unbind_q(Q, [_|T], Props) -> unbind_q(Q, T, Props);
 unbind_q(_, [], _) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -286,7 +286,7 @@ declare_exchanges() ->
     amqp_util:registrar_exchange().
 
 %%------------------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc Publish the JSON string to the proper Exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -300,7 +300,7 @@ publish_success(Success, ContentType) ->
     amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%% @doc Publish the JSON string to the proper Exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -354,7 +354,7 @@ publish_sync(API, ContentType) ->
     amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Special access to the API keys
+%% @doc Special access to the API keys.
 %% @end
 %%------------------------------------------------------------------------------
 -spec success_keys() -> kz_term:ne_binaries().
@@ -391,10 +391,13 @@ get_query_routing(Realm, 'undefined') ->
 get_query_routing(Realm, User) ->
     list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 
-%% Allow Queues to be bound for specific realms, and even users within those realms
-%% the resulting binding will be reg.success.{realm | *}.{user | *}
-%% * matches one segment only, which means all reg_success messages will be published to
-%% "key.success.realm.user"
+%%------------------------------------------------------------------------------
+%% @doc Allow Queues to be bound for specific realms, and even users within those realms.
+%% The resulting binding will be `reg.success.{realm | *}.{user | *}'.
+%% The `*' matches one segment only, which means all `reg_success' messages will be published to
+%% `key.success.realm.user'.
+%% @end
+%%------------------------------------------------------------------------------
 get_success_binding(Props) ->
     User = case props:get_value('user', Props) of
                'undefined' -> ".*";

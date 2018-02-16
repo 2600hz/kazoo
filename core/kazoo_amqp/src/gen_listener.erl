@@ -1,10 +1,9 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Behaviour for setting up an AMQP listener.
-%%% Add/remove responders for Event-Cat/Event-Name pairs. Each responder
+%%% Add/remove responders for `Event-Cat'/`Event-Name' pairs. Each responder
 %%% corresponds to a module that has defined a `handle/1' function, receiving
 %%% the {@link kz_json:object()} from the AMQP request.
-%%%
 %%%
 %%% Options:
 %%% <dl>
@@ -354,7 +353,8 @@ b_add_binding(Srv, Binding, Props) when is_binary(Binding)
 
 %%------------------------------------------------------------------------------
 %% @doc Add responder to a queue.
-%% It is expected that responders have been set up already, prior to binding the new queue
+%% It is expected that responders have been set up already, prior to
+%% binding the new queue.
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_queue(kz_types:server_ref(), binary(), kz_term:proplist(), binding() | bindings()) ->
@@ -448,7 +448,7 @@ init(Module, Params, ModuleState, TimeoutRef) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc Handling call messages
+%% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> handle_call_return().
@@ -477,7 +477,7 @@ handle_call(Request, From, State) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc Handling cast messages
+%% @doc Handling cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_return().
@@ -630,7 +630,7 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc Handling all non call/cast messages
+%% @doc Handling all non call/cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
@@ -703,8 +703,7 @@ handle_info(Message, State) ->
 %%------------------------------------------------------------------------------
 %% @private
 %% @doc Handles the AMQP messages prior to the spawning a handler.
-%% Allows listeners to pass options to handlers
-%%
+%% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  state().
@@ -720,8 +719,7 @@ handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
 %%------------------------------------------------------------------------------
 %% @private
 %% @doc Handles the AMQP messages prior to the spawning a handler.
-%% Allows listeners to pass options to handlers
-%%
+%% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) ->  handle_cast_return().

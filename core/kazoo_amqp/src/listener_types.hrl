@@ -9,12 +9,13 @@
 -type binding_property() :: {'restrict_to', list()}.
 -type binding_properties() :: [binding_property()].
 
--type binding() :: {binding_module(), binding_properties()}. %% {kapi_module, options}
+-type binding() :: {binding_module(), binding_properties()}.
+%% `{kapi_module, options}'
 -type bindings() :: [binding()].
 
-%% ExchangeName, ExchangeType[, ExchangeOptions]
 -type declare_exchange() :: {kz_term:ne_binary(), kz_term:ne_binary()} |
                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()}.
+%% `ExchangeName, ExchangeType[, ExchangeOptions]'
 -type declare_exchanges() :: [declare_exchange()].
 
 -type start_params() :: [{'responders', responder_start_params()} |
@@ -39,14 +40,16 @@
                               {module(), atom()} |
                               responder_callback_fun().
 -type responder_callback_mapping() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
+%% `{Event-Category, Event-Name}`
 -type responder_callback_mappings() :: [responder_callback_mapping()].
 
 -type responder_start_params() :: [{responder_callback(), responder_callback_mappings()}].
 
 -type responder_mfa() :: mfa() | {responder_callback_fun(), arity()}.
+%% `CallbackModule | {CallbackModule, Function} | CallbackFun'
 
-%% { {Event-Category, Event-Name}, CallbackModule | {CallbackModule, Function} | CallbackFun}
 -type responder() :: {responder_callback_mapping(), responder_mfa()}.
+%% `{{Event-Category, Event-Name}, CallbackModule | {CallbackModule, Function} | CallbackFun}'
 -type responders() :: [responder()].
 
 -define(KZ_LISTENER_TYPES_HRL, 'true').

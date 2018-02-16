@@ -1,8 +1,9 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc Notification messages, like voicemail left
+%%% @doc Notification messages, like voicemail left.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% @author Hesaam Farhang
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_notifications).
@@ -154,8 +155,10 @@
 %%% Internal Notifications Definitions
 %%%=============================================================================
 
-
-%% Notify Update
+%%-----------------------------------------------------------------------------
+%% @doc Get Notify Update Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec notify_update_definition() -> kapi_definition:api().
 notify_update_definition() ->
     #kapi_definition{name = <<"notify_update">>
@@ -179,8 +182,10 @@ notify_update_definition() ->
                               ]
                     ,types = []
                     }.
-
-%% Skeleton
+%%-----------------------------------------------------------------------------
+%% @doc Get Skeleton API Notification definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec skel_definition() -> kapi_definition:api().
 skel_definition() ->
     #kapi_definition{name = <<"skel">>
@@ -204,8 +209,10 @@ skel_definition() ->
 %%% Account Notifications Definitions
 %%%=============================================================================
 
-
-%% Account Zone Change
+%%-----------------------------------------------------------------------------
+%% @doc Get Account Zone Notification Change API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec account_zone_change_definition() -> kapi_definition:api().
 account_zone_change_definition() ->
     #kapi_definition{name = <<"account_zone_change">>
@@ -223,8 +230,10 @@ account_zone_change_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"account_zone_change">>)
                     ,types = []
                     }.
-
-%% Low Balance
+%%-----------------------------------------------------------------------------
+%% @doc Get Low Balance Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec low_balance_definition() -> kapi_definition:api().
 low_balance_definition() ->
     #kapi_definition{name = <<"low_balance">>
@@ -242,8 +251,10 @@ low_balance_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"low_balance">>)
                     ,types = []
                     }.
-
-%% New Account
+%%-----------------------------------------------------------------------------
+%% @doc Get New Account Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec new_account_definition() -> kapi_definition:api().
 new_account_definition() ->
     #kapi_definition{name = <<"new_account">>
@@ -264,8 +275,10 @@ new_account_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"new_account">>)
                     ,types = []
                     }.
-
-%% New Service Addition (from service audit log)
+%%-----------------------------------------------------------------------------
+%% @doc Get New Service Notification Addition (from service audit log) API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec service_added_definition() -> kapi_definition:api().
 service_added_definition() ->
     #kapi_definition{name = <<"service_added">>
@@ -297,8 +310,10 @@ service_added_definition() ->
                                          | ?DEFAULT_OPTIONAL_HEADERS
                                     ]).
 
-%% Top-up
-%% same headers for top-up and transaction
+%%-----------------------------------------------------------------------------%% Top-up
+%% @doc Get same headers Notification for top-up and transaction API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec topup_definition() -> kapi_definition:api().
 topup_definition() ->
     #kapi_definition{name = <<"topup">>
@@ -320,8 +335,10 @@ topup_definition() ->
                     ,types = []
                     }.
 
-%% Transaction
-%% same headers for top-up and transaction
+%%-----------------------------------------------------------------------------%% Transaction
+%% @doc Get same headers Notification for top-up and transaction API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec transaction_definition() -> kapi_definition:api().
 transaction_definition() ->
     #kapi_definition{name = <<"transaction">>
@@ -348,8 +365,10 @@ transaction_definition() ->
 %%% Fax Notifications Definitions
 %%%=============================================================================
 
-
-%% Fax Inbound (New Inbound Fax)
+%%-----------------------------------------------------------------------------
+%% @doc Get Fax Inbound Notification (New Inbound Fax) API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec inbound_fax_definition() -> kapi_definition:api().
 inbound_fax_definition() ->
     #kapi_definition{name = <<"inbound_fax">>
@@ -382,8 +401,10 @@ inbound_fax_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"inbound_fax">>)
                     ,types = []
                     }.
-
-%% Fax Inbound Error
+%%-----------------------------------------------------------------------------
+%% @doc Get Fax Inbound Notification Error API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec inbound_fax_error_definition() -> kapi_definition:api().
 inbound_fax_error_definition() ->
     #kapi_definition{name = <<"inbound_fax_error">>
@@ -418,8 +439,10 @@ inbound_fax_error_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"inbound_fax_error">>)
                     ,types = []
                     }.
-
-%% Fax Outbound
+%%-----------------------------------------------------------------------------
+%% @doc Get Fax Outbound Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec outbound_fax_definition() -> kapi_definition:api().
 outbound_fax_definition() ->
     #kapi_definition{name = <<"outbound_fax">>
@@ -449,8 +472,10 @@ outbound_fax_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"outbound_fax">>)
                     ,types = []
                     }.
-
-%% Fax Outbound Error
+%%-----------------------------------------------------------------------------
+%% @doc Get Fax Outbound Notification Error API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec outbound_fax_error_definition() -> kapi_definition:api().
 outbound_fax_error_definition() ->
     #kapi_definition{name = <<"outbound_fax_error">>
@@ -480,8 +505,10 @@ outbound_fax_error_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"outbound_fax_error">>)
                     ,types = []
                     }.
-
-%% Fax Outbound SMTP Error
+%%-----------------------------------------------------------------------------
+%% @doc Get Fax Outbound Notification SMTP Error API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec outbound_smtp_fax_error_definition() -> kapi_definition:api().
 outbound_smtp_fax_error_definition() ->
     #kapi_definition{name = <<"outbound_smtp_fax_error">>
@@ -511,8 +538,10 @@ outbound_smtp_fax_error_definition() ->
 %%% Number and Port Notifications Definitions
 %%%=============================================================================
 
-
-%% Cnam Request
+%%-----------------------------------------------------------------------------
+%% @doc Get Cnam Request Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec cnam_request_definition() -> kapi_definition:api().
 cnam_request_definition() ->
     #kapi_definition{name = <<"cnam_request">>
@@ -546,8 +575,10 @@ cnam_request_definition() ->
                                ,<<"Reason">>
                                     | ?DEFAULT_OPTIONAL_HEADERS
                                ]).
-
-%% Port Cancel
+%%-----------------------------------------------------------------------------
+%% @doc Get Port Cancel Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec port_cancel_definition() -> kapi_definition:api().
 port_cancel_definition() ->
     #kapi_definition{name = <<"port_cancel">>
@@ -564,8 +595,10 @@ port_cancel_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_cancel">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-
-%% Port Comment
+%%-----------------------------------------------------------------------------
+%% @doc Get Port Comment Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec port_comment_definition() -> kapi_definition:api().
 port_comment_definition() ->
     #kapi_definition{name = <<"port_comment">>
@@ -583,8 +616,10 @@ port_comment_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_comment">>)
                     ,types = []
                     }.
-
-%% Port Pending
+%%-----------------------------------------------------------------------------
+%% @doc Get Port Pending Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec port_pending_definition() -> kapi_definition:api().
 port_pending_definition() ->
     #kapi_definition{name = <<"port_pending">>
@@ -601,8 +636,10 @@ port_pending_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_pending">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-
-%% Port Rejected
+%%-----------------------------------------------------------------------------
+%% @doc Get Port Rejected Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec port_rejected_definition() -> kapi_definition:api().
 port_rejected_definition() ->
     #kapi_definition{name = <<"port_rejected">>
@@ -619,8 +656,10 @@ port_rejected_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_rejected">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-
-%% Port Request
+%%-----------------------------------------------------------------------------
+%% @doc Get Port Request Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec port_request_definition() -> kapi_definition:api().
 port_request_definition() ->
     #kapi_definition{name = <<"port_request">>
@@ -639,8 +678,10 @@ port_request_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_request">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-
-%% Port Scheduled
+%%-----------------------------------------------------------------------------
+%% @doc Get Port Scheduled Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec port_scheduled_definition() -> kapi_definition:api().
 port_scheduled_definition() ->
     #kapi_definition{name = <<"port_scheduled">>
@@ -657,8 +698,10 @@ port_scheduled_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_scheduled">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-
-%% Port Unconfirmed
+%%-----------------------------------------------------------------------------
+%% @doc Get Port Unconfirmed Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec port_unconfirmed_definition() -> kapi_definition:api().
 port_unconfirmed_definition() ->
     #kapi_definition{name = <<"port_unconfirmed">>
@@ -675,8 +718,10 @@ port_unconfirmed_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_unconfirmed">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-
-%% Ported
+%%-----------------------------------------------------------------------------
+%% @doc Get Ported API Notification definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec ported_definition() -> kapi_definition:api().
 ported_definition() ->
     #kapi_definition{name = <<"ported">>
@@ -699,8 +744,10 @@ ported_definition() ->
 %%% Register Notifications Definitions
 %%%=============================================================================
 
-
-%% Denied Emergency Bridge
+%%-----------------------------------------------------------------------------
+%% @doc Get Denied Emergency Notification Bridge API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec denied_emergency_bridge_definition() -> kapi_definition:api().
 denied_emergency_bridge_definition() ->
     #kapi_definition{name = <<"denied_emergency_bridge">>
@@ -729,8 +776,10 @@ denied_emergency_bridge_definition() ->
 %%% SIP Notifications Definitions
 %%%=============================================================================
 
-
-%% Deregister
+%%-----------------------------------------------------------------------------
+%% @doc Get Deregister API Notification definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec deregister_definition() -> kapi_definition:api().
 deregister_definition() ->
     #kapi_definition{name = <<"deregister">>
@@ -769,8 +818,10 @@ deregister_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"deregister">>)
                     ,types = []
                     }.
-
-%% First Occurrence
+%%-----------------------------------------------------------------------------
+%% @doc Get First Occurrence Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec first_occurrence_definition() -> kapi_definition:api().
 first_occurrence_definition() ->
     #kapi_definition{name = <<"first_occurrence">>
@@ -788,8 +839,10 @@ first_occurrence_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"first_occurrence">>)
                     ,types = []
                     }.
-
-%% Missed Call Alert
+%%-----------------------------------------------------------------------------
+%% @doc Get Missed Call Notification Alert API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec missed_call_definition() -> kapi_definition:api().
 missed_call_definition() ->
     #kapi_definition{name = <<"missed_call">>
@@ -819,8 +872,10 @@ missed_call_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"missed_call">>)
                     ,types = []
                     }.
-
-%% Register
+%%-----------------------------------------------------------------------------
+%% @doc Get Register API Notification definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec register_definition() -> kapi_definition:api().
 register_definition() ->
     #kapi_definition{name = <<"register">>
@@ -862,8 +917,10 @@ register_definition() ->
 %%% System Notifications Definitions
 %%%=============================================================================
 
-
-%% System Alert
+%%-----------------------------------------------------------------------------
+%% @doc Get System Alert Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec system_alert_definition() -> kapi_definition:api().
 system_alert_definition() ->
     #kapi_definition{name = <<"system_alert">>
@@ -895,8 +952,10 @@ system_alert_definition() ->
 %%% User Notifications Definitions
 %%%=============================================================================
 
-
-%% Customer Update
+%%-----------------------------------------------------------------------------
+%% @doc Get Customer Update Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec customer_update_definition() -> kapi_definition:api().
 customer_update_definition() ->
     #kapi_definition{name = <<"customer_update">>
@@ -918,8 +977,10 @@ customer_update_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"customer_update">>)
                     ,types = []
                     }.
-
-%% New User
+%%-----------------------------------------------------------------------------
+%% @doc Get New User Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec new_user_definition() -> kapi_definition:api().
 new_user_definition() ->
     #kapi_definition{name = <<"new_user">>
@@ -939,8 +1000,10 @@ new_user_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"new_user">>)
                     ,types = []
                     }.
-
-%% Password Recovery
+%%-----------------------------------------------------------------------------
+%% @doc Get Password Recovery Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec password_recovery_definition() -> kapi_definition:api().
 password_recovery_definition() ->
     #kapi_definition{name = <<"password_recovery">>
@@ -971,8 +1034,10 @@ password_recovery_definition() ->
 %%% Voicemail Notifications Definitions
 %%%=============================================================================
 
-
-%% Voicemail full
+%%-----------------------------------------------------------------------------
+%% @doc Get Voicemail full Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec voicemail_full_definition() -> kapi_definition:api().
 voicemail_full_definition() ->
     #kapi_definition{name = <<"voicemail_full">>
@@ -1009,8 +1074,10 @@ voicemail_full_definition() ->
                                         ,<<"Voicemail-Transcription">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
-
-%% Voicemail New
+%%-----------------------------------------------------------------------------
+%% @doc Get Voicemail New Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec voicemail_new_definition() -> kapi_definition:api().
 voicemail_new_definition() ->
     #kapi_definition{name = <<"voicemail_new">>
@@ -1026,8 +1093,10 @@ voicemail_new_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"voicemail_new">>)
                     ,types = []
                     }.
-
-%% Voicemail Saved
+%%-----------------------------------------------------------------------------
+%% @doc Get Voicemail Saved Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec voicemail_saved_definition() -> kapi_definition:api().
 voicemail_saved_definition() ->
     #kapi_definition{name = <<"voicemail_saved">>
@@ -1049,8 +1118,10 @@ voicemail_saved_definition() ->
 %%% Webhook Notifications Definitions
 %%%=============================================================================
 
-
-%% Webhook Callflow
+%%-----------------------------------------------------------------------------
+%% @doc Get Webhook Callflow Notification API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec webhook_definition() -> kapi_definition:api().
 webhook_definition() ->
     #kapi_definition{name = <<"webhook">>
@@ -1070,8 +1141,10 @@ webhook_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"webhook">>)
                     ,types = []
                     }.
-
-%% Webhook Disabled
+%%-----------------------------------------------------------------------------
+%% @doc Notification Get Webhook Disabled API definition.
+%% @end
+%%-----------------------------------------------------------------------------
 -spec webhook_disabled_definition() -> kapi_definition:api().
 webhook_disabled_definition() ->
     #kapi_definition{name = <<"webhook_disabled">>
@@ -1095,7 +1168,7 @@ webhook_disabled_definition() ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Get all API definitions of this module.
 %% @end
 %%------------------------------------------------------------------------------
 -spec api_definitions() -> kapi_definition:apis().
@@ -1138,6 +1211,11 @@ api_definitions() ->
     ,webhook_disabled_definition()
     ].
 
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
 -spec api_definition(atom() | kz_term:text() | kz_term:ne_binary()) -> kapi_definition:api().
 api_definition(Name) when is_atom(Name) ->
     api_definition(kz_term:to_binary(Name));
@@ -1216,6 +1294,10 @@ api_definition(<<"webhook">>) ->
 api_definition(<<"webhook_disabled">>) ->
     webhook_disabled_definition().
 
+%%------------------------------------------------------------------------------
+%% @doc Bind to a queue to this API exchange and events.
+%% @end
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
@@ -1253,6 +1335,10 @@ bind_to_q(Q, [RestrictTo|T]) ->
 bind_to_q(_Q, []) ->
     'ok'.
 
+%%------------------------------------------------------------------------------
+%% @doc Unbind from a queue of this API exchange and events.
+%% @end
+%%------------------------------------------------------------------------------
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props)).
@@ -1290,7 +1376,7 @@ unbind_q_from(_Q, []) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
@@ -1302,7 +1388,7 @@ declare_exchanges() ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Look up account ID in the given API term.
 %% @end
 %%------------------------------------------------------------------------------
 -spec account_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
@@ -1327,6 +1413,10 @@ find_account_id(Req, GetFun) ->
         _ -> 'undefined'
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Look up account DB in the given API term.
+%% @end
+%%------------------------------------------------------------------------------
 -spec account_db(kz_term:api_terms(), boolean()) -> kz_term:api_ne_binary().
 account_db('undefined', _) -> 'undefined';
 account_db(Req, StrictMODB) when is_list(Req) -> find_account_db(Req, StrictMODB, fun props:get_first_defined/2);
@@ -1348,6 +1438,10 @@ find_account_db(Req, StrictMODB, GetFun) ->
         _ -> 'undefined'
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Get a list of required and optional headers of the given Notification API.
+%% @end
+%%------------------------------------------------------------------------------
 -spec headers(kz_term:ne_binary()) -> kz_term:ne_binaries().
 headers(<<"fax_inbound_to_email">>) ->
     headers(<<"inbound_fax">>);
@@ -1371,7 +1465,7 @@ headers(Name) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc Generic function to build API payload
+%% @doc Generic function to build API payload.
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
@@ -1389,7 +1483,7 @@ build_message(JObj, Definition) ->
 
 %%------------------------------------------------------------------------------
 %% @private
-%% @doc Generic function to validate API payload
+%% @doc Generic function to validate API payload.
 %% @end
 %%------------------------------------------------------------------------------
 validate(Prop, #kapi_definition{required_headers = ReqH
@@ -1406,8 +1500,8 @@ validate(JObj, Definition) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Notify Status notification
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Notify Status notification.
+%% Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec notify_update(kz_term:api_terms()) -> api_formatter_return().
@@ -1430,7 +1524,7 @@ publish_notify_update(RespQ, API, ContentType) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Skeleton notification
-%% Takes prop-list, creates JSON string and publish it on AMQP
+%% Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec skel(kz_term:api_terms()) -> api_formatter_return().
@@ -1460,7 +1554,7 @@ publish_skel(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec account_zone_change(kz_term:api_terms()) -> api_formatter_return().
@@ -1484,7 +1578,7 @@ publish_account_zone_change(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec low_balance(kz_term:api_terms()) -> api_formatter_return().
@@ -1508,7 +1602,7 @@ publish_low_balance(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_account(kz_term:api_terms()) -> api_formatter_return().
@@ -1532,7 +1626,7 @@ publish_new_account(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec service_added(kz_term:api_terms()) -> api_formatter_return().
@@ -1556,7 +1650,7 @@ publish_service_added(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec topup(kz_term:api_terms()) -> api_formatter_return().
@@ -1580,7 +1674,7 @@ publish_topup(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec transaction(kz_term:api_terms()) -> api_formatter_return().
@@ -1610,7 +1704,7 @@ publish_transaction(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_inbound(kz_term:api_terms()) -> api_formatter_return().
@@ -1634,7 +1728,7 @@ publish_fax_inbound(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_inbound_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1658,7 +1752,7 @@ publish_fax_inbound_error(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_outbound(kz_term:api_terms()) -> api_formatter_return().
@@ -1682,7 +1776,7 @@ publish_fax_outbound(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_outbound_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1706,7 +1800,7 @@ publish_fax_outbound_error(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_outbound_smtp_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1736,7 +1830,7 @@ publish_fax_outbound_smtp_error(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec cnam_request(kz_term:api_terms()) -> api_formatter_return().
@@ -1760,7 +1854,7 @@ publish_cnam_request(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_cancel(kz_term:api_terms()) -> api_formatter_return().
@@ -1784,7 +1878,7 @@ publish_port_cancel(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_comment(kz_term:api_terms()) -> api_formatter_return().
@@ -1808,7 +1902,7 @@ publish_port_comment(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_pending(kz_term:api_terms()) -> api_formatter_return().
@@ -1832,7 +1926,7 @@ publish_port_pending(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_rejected(kz_term:api_terms()) -> api_formatter_return().
@@ -1856,7 +1950,7 @@ publish_port_rejected(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_request(kz_term:api_terms()) -> api_formatter_return().
@@ -1880,7 +1974,7 @@ publish_port_request(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_scheduled(kz_term:api_terms()) -> api_formatter_return().
@@ -1904,7 +1998,7 @@ publish_port_scheduled(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_unconfirmed(kz_term:api_terms()) -> api_formatter_return().
@@ -1928,7 +2022,7 @@ publish_port_unconfirmed(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec ported(kz_term:api_terms()) -> api_formatter_return().
@@ -1958,7 +2052,7 @@ publish_ported(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec denied_emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
@@ -1988,7 +2082,7 @@ publish_denied_emergency_bridge(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec deregister(kz_term:api_terms()) -> api_formatter_return().
@@ -2012,7 +2106,7 @@ publish_deregister(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec first_occurrence(kz_term:api_terms()) -> api_formatter_return().
@@ -2036,7 +2130,7 @@ publish_first_occurrence(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec missed_call(kz_term:api_terms()) -> api_formatter_return().
@@ -2060,7 +2154,7 @@ publish_missed_call(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec register(kz_term:api_terms()) -> api_formatter_return().
@@ -2090,7 +2184,7 @@ publish_register(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec system_alert(kz_term:api_terms()) -> api_formatter_return().
@@ -2120,7 +2214,7 @@ publish_system_alert(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec customer_update(kz_term:api_terms()) -> api_formatter_return().
@@ -2144,7 +2238,7 @@ publish_customer_update(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_user(kz_term:api_terms()) -> api_formatter_return().
@@ -2168,7 +2262,7 @@ publish_new_user(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec password_recovery(kz_term:api_terms()) -> api_formatter_return().
@@ -2198,7 +2292,7 @@ publish_password_recovery(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec voicemail_full(kz_term:api_terms()) -> api_formatter_return().
@@ -2222,7 +2316,7 @@ publish_voicemail_full(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec voicemail_new(kz_term:api_terms()) -> api_formatter_return().
@@ -2246,7 +2340,7 @@ publish_voicemail_new(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec voicemail_saved(kz_term:api_terms()) -> api_formatter_return().
@@ -2276,7 +2370,7 @@ publish_voicemail_saved(API, ContentType) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec webhook(kz_term:api_terms()) -> api_formatter_return().
@@ -2300,7 +2394,7 @@ publish_webhook(API, ContentType) ->
     amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec webhook_disabled(kz_term:api_terms()) -> api_formatter_return().

@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc Switch events messages
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Switch events messages.
 %%% @author Eduoard Swiac
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -93,7 +93,10 @@
                                 ]).
 -define(FSREPLY_COMMAND_TYPES, []).
 
-%% Request a reload_acls
+%%------------------------------------------------------------------------------
+%% @doc Request reload of FreeSwitch ACLs.
+%% @end
+%%------------------------------------------------------------------------------
 -spec reload_acls(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 reload_acls(Prop) when is_list(Prop) ->
     case reload_acls_v(Prop) of
@@ -109,7 +112,10 @@ reload_acls_v(Prop) when is_list(Prop) ->
 reload_acls_v(JObj) ->
     reload_acls_v(kz_json:to_proplist(JObj)).
 
-%% Request a reload_gateways
+%%------------------------------------------------------------------------------
+%% @doc Request reload of FreeSwitch gateways.
+%% @end
+%%------------------------------------------------------------------------------
 -spec reload_gateways(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 reload_gateways(Prop) when is_list(Prop) ->
     case reload_gateways_v(Prop) of
@@ -125,7 +131,10 @@ reload_gateways_v(Prop) when is_list(Prop) ->
 reload_gateways_v(JObj) ->
     reload_gateways_v(kz_json:to_proplist(JObj)).
 
-%% Request a fs_xml_flush
+%%------------------------------------------------------------------------------
+%% @doc Request flush of FreeSwitch `fs_xml_flush'.
+%% @end
+%%------------------------------------------------------------------------------
 -spec fs_xml_flush(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 fs_xml_flush(Prop) when is_list(Prop) ->
     case fs_xml_flush_v(Prop) of
@@ -141,7 +150,10 @@ fs_xml_flush_v(Prop) when is_list(Prop) ->
 fs_xml_flush_v(JObj) ->
     fs_xml_flush_v(kz_json:to_proplist(JObj)).
 
-%% Request that fs send a NOTIFY message
+%%------------------------------------------------------------------------------
+%% @doc Request that FreeSwitch send a `NOTIFY' message.
+%% @end
+%%------------------------------------------------------------------------------
 -spec notify(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 notify(Prop) when is_list(Prop) ->
     case notify_v(Prop) of
@@ -157,7 +169,10 @@ notify_v(Prop) when is_list(Prop) ->
 notify_v(JObj) ->
     notify_v(kz_json:to_proplist(JObj)).
 
-%% Request a fs command
+%%------------------------------------------------------------------------------
+%% @doc Request a FreeSwitch command.
+%% @end
+%%------------------------------------------------------------------------------
 -spec fs_command(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 fs_command(Prop) when is_list(Prop) ->
     case fs_command_v(Prop) of
@@ -173,7 +188,10 @@ fs_command_v(Prop) when is_list(Prop) ->
 fs_command_v(JObj) ->
     fs_command_v(kz_json:to_proplist(JObj)).
 
-%% Reply to fs command
+%%------------------------------------------------------------------------------
+%% @doc Reply to a FreeSwitch command.
+%% @end
+%%------------------------------------------------------------------------------
 -spec fs_reply(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 fs_reply(Prop) when is_list(Prop) ->
     case fs_reply_v(Prop) of
@@ -242,7 +260,7 @@ unbind_q_from(Q, ['command'|T], Props) ->
 unbind_q_from(_Q, [], _Props) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc declare the exchanges used by this API
+%% @doc Declare the exchanges used by this API.
 %% @end
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
