@@ -72,7 +72,6 @@ handle_req(JObj, _Props) ->
     notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% @end
 %%------------------------------------------------------------------------------
@@ -86,7 +85,6 @@ create_template_props(Event, Account) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------

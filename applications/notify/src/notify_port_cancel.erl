@@ -79,7 +79,6 @@ handle_req(JObj, _Props) ->
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% @end
 %%------------------------------------------------------------------------------
@@ -152,7 +151,6 @@ find_port_doc(PortRequestId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------

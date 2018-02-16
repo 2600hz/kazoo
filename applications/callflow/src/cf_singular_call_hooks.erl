@@ -39,7 +39,6 @@
         ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc First we check if this feature is enabled - if not, we return false.
 %% Next we check if the call is an indicator for the start of a singular call (A-leg),
 %% and if so, then we know the call should be hooked.
@@ -59,7 +58,6 @@ maybe_hook_call(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Sends an initial request signifying the start of this entire conversation
 %% in a hook to a preconfigured URL.
 %%
@@ -99,7 +97,6 @@ send_init_hook(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Sends a request signifying the end of this entire conversation in a
 %% hook to a preconfigured URL.
 %%
@@ -153,7 +150,6 @@ send_end_hook(Call, Event) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Checks if there is a non-empty hook url and that the call is singular (or a transfer)
 %% @end
 %%------------------------------------------------------------------------------
@@ -163,7 +159,6 @@ should_hook(Call) ->
         andalso call_is_singular(Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Checks if the singular call hook is enabled in the callflow system config.
 %% The call hook is enabled if the URL in the system_config / callflows / singular_call_hook_url
 %% field is not set to disabled.
@@ -175,7 +170,6 @@ is_enabled() ->
     (not kz_term:is_empty(get_hook_url())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function identifies if a call is the first of the conversation by checking if it
 %% has an existing bridge. We also check the presence of referredby and
 %% want to send the hook if it is a call transfer
@@ -192,7 +186,6 @@ call_is_singular(Call) ->
         orelse (ReferredBy =/= 'undefined').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Gets where the call was started. If kapps_call returns undefined, it was on net.
 %% @end
 %%------------------------------------------------------------------------------
@@ -204,7 +197,6 @@ get_inception(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Gets the singular call hook URL from the configuration (may be cached).
 %% @end
 %%------------------------------------------------------------------------------

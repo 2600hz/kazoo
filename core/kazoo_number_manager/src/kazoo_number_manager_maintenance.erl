@@ -308,7 +308,6 @@ copy_account_to_number_dbs(?MATCH_ACCOUNT_ENCODED(_, _, _)=AccountDb) ->
 copy_account_to_number_dbs(Account = ?NE_BINARY) ->
     copy_account_to_number_dbs(kz_util:format_account_db(Account)).
 
-%% @private
 -spec copy_account_to_number_dbs(kz_term:ne_binary(), kz_term:proplist(), integer()) -> 'ok'.
 copy_account_to_number_dbs(_AccountDb, _, Retries) when Retries < 0 ->
     ?SUP_LOG_DEBUG(" [~s] reached to maximum retries", [kz_util:format_account_id(_AccountDb)]);
@@ -330,7 +329,6 @@ copy_account_to_number_dbs(AccountDb, ViewOptions, Retries) ->
             copy_account_to_number_dbs(AccountDb, ViewOptions, Retries - 1)
     end.
 
-%% @private
 -spec split_and_save_to_number_dbs(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 split_and_save_to_number_dbs(AccountDb, Results) ->
     F = fun (JObj, M) ->
@@ -376,7 +374,6 @@ save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
             ?SUP_LOG_ERROR(" [~s] failed to save numbers to ~s: ~p", [AccountId, Db, _Reason])
     end.
 
-%% @private
 -spec check_assigned_to(kz_term:ne_binary(), kz_term:ne_binary(), gb_sets:set()) -> kz_term:proplist().
 check_assigned_to(AccountDb, Db, Conflicts) ->
     AccountId = kz_util:format_account_id(AccountDb),
@@ -417,7 +414,6 @@ warn_delete(AccountId, WrongAssigned) ->
                 ),
     'true'.
 
-%% @private
 -spec log_saved_failed(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 log_saved_failed(_, _, []) -> 'ok';
 log_saved_failed(AccountDb, Db, Props) ->
@@ -812,12 +808,10 @@ purge_number_db(NumberDb, State) ->
     end.
 
 
-%% @private
 -spec is_feature_valid(any()) -> boolean().
 is_feature_valid(Thing) ->
     lists:member(Thing, ?ALL_KNM_FEATURES).
 
-%% @private
 -spec invalid_feature(kz_term:ne_binary()) -> no_return.
 invalid_feature(Feature) ->
     io:format("Feature '~s' is not a known feature.\n", [Feature]),
@@ -828,12 +822,10 @@ all_features() ->
     io:format("Known features:\n\t~s\n", [list_features(?ALL_KNM_FEATURES)]),
     no_return.
 
-%% @private
 -spec list_features(kz_term:ne_binaries()) -> iodata().
 list_features(Features) ->
     kz_util:iolist_join($\s, Features).
 
-%% @private
 -spec error_with_number(kz_term:ne_binary(), any()) -> no_return.
 error_with_number(Num, Error) ->
     Reason = case kz_json:is_json_object(Error) of
@@ -843,7 +835,6 @@ error_with_number(Num, Error) ->
     io:format("Error with number ~s: ~s\n", [Num, Reason]),
     no_return.
 
-%% @private
 -spec print_feature_permissions(kz_term:ne_binaries(), kz_term:ne_binaries()) -> no_return.
 print_feature_permissions(Allowed, Denied) ->
     io:format("\tFeatures allowed: ~s\n"
@@ -852,7 +843,6 @@ print_feature_permissions(Allowed, Denied) ->
              ),
     no_return.
 
-%% @private
 -spec list_number_feature_permissions(knm_number:knm_number()) -> no_return.
 list_number_feature_permissions(N) ->
     PN = knm_number:phone_number(N),
@@ -862,7 +852,6 @@ list_number_feature_permissions(N) ->
     io:format("Feature permissions on ~s:\n", [Num]),
     print_feature_permissions(Allowed, Denied).
 
-%% @private
 -spec edit_feature_permissions_on_number(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
 edit_feature_permissions_on_number(Num, Fun, Feature) ->
     case is_feature_valid(Feature) of
@@ -906,12 +895,10 @@ feature_permissions_on_reseller_of(?MATCH_ACCOUNT_RAW(AccountId)) ->
     io:format("Feature permissions on reseller of ~s (~s):\n", [AccountId, ResellerId]),
     print_feature_permissions(Allowed, Denied).
 
-%% @private
 -spec empty_list_when_undefined(kz_term:api_list()) -> kz_term:ne_binaries().
 empty_list_when_undefined(undefined) -> [];
 empty_list_when_undefined(NeBinaries) -> NeBinaries.
 
-%% @private
 -spec edit_allowed_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
 edit_allowed_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     case is_feature_valid(Feature) of
@@ -924,7 +911,6 @@ edit_allowed_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
             feature_permissions_on_reseller_of(AccountId)
     end.
 
-%% @private
 -spec edit_denied_feature_permissions_on_reseller_of(kz_term:ne_binary(), fun(), kz_term:ne_binary()) -> no_return.
 edit_denied_feature_permissions_on_reseller_of(AccountId, Fun, Feature) ->
     case is_feature_valid(Feature) of
@@ -965,13 +951,11 @@ feature_permissions_on_system_config() ->
 reset_allowed_features_to_defaults_on_system_config() ->
     set_features_on_system_config(?DEFAULT_FEATURES_ALLOWED_SYSTEM).
 
-%% @private
 -spec set_features_on_system_config(kz_term:ne_binaries()) -> no_return.
 set_features_on_system_config(Features) ->
     _ = kapps_config:set(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, lists:usort(Features)),
     feature_permissions_on_system_config().
 
-%% @private
 -spec edit_allowed_feature_permissions_on_system_config(fun(), kz_term:ne_binary()) -> no_return.
 edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
     case is_feature_valid(Feature) of

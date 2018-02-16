@@ -258,7 +258,6 @@ redirect(Call, XmlText, Attrs) ->
               ],
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
-%% @private
 -spec exec_gather_els(pid(), kapps_call:call(), kz_types:xml_els()) -> 'ok'.
 exec_gather_els(_Parent, _Call, []) ->
     lager:info("finished gather sub elements");

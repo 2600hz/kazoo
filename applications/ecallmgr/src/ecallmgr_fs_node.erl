@@ -273,7 +273,6 @@ fetch_timeout(_Node) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -293,7 +292,6 @@ init([Node, Options]) ->
                  }}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -319,7 +317,6 @@ handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -343,7 +340,6 @@ handle_cast(_Req, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -369,7 +365,6 @@ handle_info(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Allows listener to pass options to handlers
 %% @end
 %%------------------------------------------------------------------------------
@@ -383,7 +378,6 @@ handle_event(_JObj, #state{node=Node
     }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -396,7 +390,6 @@ terminate(_Reason, #state{node=Node}) ->
     lager:info("node listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

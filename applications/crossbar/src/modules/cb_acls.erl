@@ -69,7 +69,6 @@ validate_summary(Context, ?HTTP_GET) ->
     summary(Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end

@@ -372,7 +372,6 @@ maybe_remove_aggregate(Context, ResourceId, _AccountDb) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -404,7 +403,6 @@ leak_job_fields(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -414,7 +412,6 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -424,7 +421,6 @@ jobs_summary(Context) ->
     crossbar_view:load_modb(Context, ?JOBS_LIST, [{'mapper', crossbar_view:map_doc_fun()}]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -433,7 +429,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -453,7 +448,6 @@ create_local(Context) ->
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing instance with the data provided, if it is
 %% valid
 %% @end
@@ -469,7 +463,6 @@ update_local(Context, Id) ->
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

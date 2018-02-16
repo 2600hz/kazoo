@@ -447,7 +447,6 @@ init(Module, Params, ModuleState, TimeoutRef) ->
                  }}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
@@ -476,7 +475,6 @@ handle_call(Request, From, State) ->
     handle_module_call(Request, From, State).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages.
 %% @end
 %%------------------------------------------------------------------------------
@@ -629,7 +627,6 @@ maybe_remove_binding({B, P}, B, P, Q) ->
 maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages.
 %% @end
 %%------------------------------------------------------------------------------
@@ -701,7 +698,6 @@ handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers.
 %% @end
@@ -717,7 +713,6 @@ handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
     distribute_event(JObj, Deliver, State).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers.
 %% @end
@@ -755,7 +750,6 @@ handle_confirm(Confirm, State) ->
     handle_module_cast(Msg, State).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -772,7 +766,6 @@ terminate(Reason, #state{module=Module
     lager:debug("~s terminated cleanly, going down", [Module]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed.
 %% @end
 %%------------------------------------------------------------------------------

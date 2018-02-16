@@ -187,7 +187,6 @@ delete(Context, _) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -197,7 +196,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"cccps">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -206,7 +204,6 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"cccp">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -217,7 +214,6 @@ update(Id, Context) ->
     cb_context:validate_request_data(<<"cccps">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -227,7 +223,6 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -238,7 +233,6 @@ on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"cccp">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view
 %% @end
 %%------------------------------------------------------------------------------
@@ -247,7 +241,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Checks whether cid and pin are unique
 %% @end
 %%------------------------------------------------------------------------------

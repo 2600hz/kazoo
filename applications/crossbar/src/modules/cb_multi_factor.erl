@@ -199,7 +199,6 @@ delete(Context, _) ->
     crossbar_doc:delete(Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -209,7 +208,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"multi_factor_provider">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -218,7 +216,6 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -229,7 +226,6 @@ update(Id, Context) ->
     cb_context:validate_request_data(<<"multi_factor_provider">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a login attempt log from MODB
 %% @end
 %%------------------------------------------------------------------------------
@@ -240,7 +236,6 @@ read_attempt_log(?MATCH_MODB_PREFIX(YYYY, MM, _) = AttemptId, Context) ->
     crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?ATTEMPTS_TYPE)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -250,7 +245,6 @@ validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -290,7 +284,6 @@ merge_summary(Configured, Available) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

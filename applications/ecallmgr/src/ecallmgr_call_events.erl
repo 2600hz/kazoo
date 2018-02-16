@@ -161,7 +161,6 @@ handle_publisher_usurp(JObj, Props) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -202,7 +201,6 @@ unregister_event_process(Node, CallId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -215,7 +213,6 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -315,7 +312,6 @@ update_event(Fun, Reg) ->
     catch Fun({'p', 'l', Reg}).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -484,7 +480,6 @@ handle_bowout(Node, Props, ResigningUUID) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Allows listener to pass options to handlers
 %% @end
 %%------------------------------------------------------------------------------
@@ -499,7 +494,6 @@ handle_event(_JObj, #state{ref=Ref
               ]}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_listener terminates
@@ -516,7 +510,6 @@ terminate(_Reason, #state{node_down_tref=NDTRef
     lager:debug("goodbye and thanks for all the fish: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

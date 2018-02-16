@@ -50,7 +50,6 @@ collect_channel_prop(Key, JObj) ->
     {Key, kz_json:get_value(Key, JObj)}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end

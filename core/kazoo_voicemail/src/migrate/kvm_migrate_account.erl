@@ -94,7 +94,6 @@ manual_vmbox_migrate(Account, BoxIds) ->
                        }
                   ).
 
-%% @private
 %% @doc Main migration loop
 %% @end
 -spec migration_loop(#ctx{}) -> 'ok' | kz_term:proplist().
@@ -108,7 +107,6 @@ migration_loop(#ctx{account_id = _AccountId, retries = Retries, last_error = Las
 migration_loop(Ctx) ->
     handle_result(Ctx, get_messages(Ctx)).
 
-%% @private
 %% @doc Get legacy messages from DB
 %% @end
 -spec get_messages(#ctx{}) -> db_ret().
@@ -130,7 +128,6 @@ get_messages(#ctx{mode = <<"account">>, account_db = AccountDb}) ->
 get_messages(#ctx{mode = <<"vmboxes">>, account_db = AccountDb, manual_vmboxes = BoxIds}) ->
     get_messages_from_vmboxes(AccountDb, BoxIds).
 
-%% @private
 %% @doc Do action on get_messages result. If we have something to process, reset context first.
 %% @end
 -spec handle_result(#ctx{}, db_ret()) -> 'ok' | kz_term:proplist().
@@ -165,7 +162,6 @@ handle_result(#ctx{account_id = _AccountId, retries = Retries}=Ctx, {'error', Re
                           }
                   ).
 
-%% @private
 %% @doc Check first to see we're hit the oldest MODB, if not and we're in manual account mode
 %% go to next loop, otherwise report summary and go down.
 %% @end
@@ -187,7 +183,6 @@ maybe_next_cycle(#ctx{mode = <<"account">>}=Ctx) ->
 maybe_next_cycle(#ctx{mode = <<"vmboxes">>}=Ctx) ->
     account_is_done(Ctx).
 
-%% @private
 %% @doc Last cycle was hit MODB
 %% @end
 -spec hit_last_modb(#ctx{}) -> 'ok' | kz_term:proplist().
@@ -200,7 +195,6 @@ hit_last_modb(#ctx{mode = <<"worker">>, account_id = AccountId
 hit_last_modb(Ctx) ->
     account_is_done(Ctx).
 
-%% @private
 %% @doc Migration finished, going down
 %% @end
 -spec account_is_done(#ctx{}) -> 'ok' | kz_term:proplist().
@@ -212,7 +206,6 @@ account_is_done(#ctx{account_id = _AccountId, total_stats = TotalStats}) ->
     ?SUP_LOG_INFO(":: voicemail migration process for account ~s has been finished", [_AccountId]),
     total_stats_to_prop(TotalStats).
 
-%% @private
 %% @doc If this manual migration, check tries and maybe retry again.
 %% @end
 -spec account_is_failed(#ctx{}, kz_term:ne_binary()) -> 'ok' | kz_term:proplist().
@@ -228,7 +221,6 @@ account_is_failed(Ctx, _) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Process messages and do migrate
 %% @end
 %%------------------------------------------------------------------------------
@@ -238,7 +230,6 @@ migrate_messages(#ctx{account_id = _AccountId}=Ctx, ViewResults) ->
     maybe_migrate(NewCtx, BoxIds, MsgMap, maps:keys(MsgMap)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check Db existence and process with migration
 %% @end
 %%------------------------------------------------------------------------------
@@ -253,7 +244,6 @@ maybe_migrate(Ctx, BoxIds, MsgMap, _DbCount) ->
     update_mailboxes(maps:fold(fun bulk_save_modb/3, Ctx, MsgMap), BoxIds).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -268,7 +258,6 @@ bulk_save_modb(Db, JObjs, #ctx{account_id = _AccountId}=Ctx) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -348,7 +337,6 @@ update_vmbox_message(Message, MODbFailed, Failed, _, Id, Timestamp) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get messages from mailbox arrays and generate lagecy_msg listing view
 %% fake message_doc result for manual migration
 %% @end
@@ -397,7 +385,6 @@ create_legacy_view_result(BoxJObj, Message) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check Db existence and remove messages that non exists dbs
 %% @end
 %%------------------------------------------------------------------------------
@@ -416,7 +403,6 @@ check_dbs_existence(Ctx, [Db | Dbs], MsgMap) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalize bulk save results and update stats accordingly
 %% @end
 %%------------------------------------------------------------------------------
@@ -438,7 +424,6 @@ normalize_bulk_result(#ctx{account_id = _AccountId}=Ctx, Db, [S | Saved]) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process legacy message view result, generate a new message doc
 %% for them and map them to proper modb.
 %%

@@ -126,7 +126,6 @@ direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine the appropriate action to retrieve a parked call
 %% @end
 %%------------------------------------------------------------------------------
@@ -219,7 +218,6 @@ pickup_event(Call, _Type, _Evt) ->
     wait_for_pickup(Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine the appropriate action to park the current call scenario
 %% @end
 %%------------------------------------------------------------------------------
@@ -281,7 +279,6 @@ wait_for_hangup(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Builds the json object representing the call in the parking slot
 %% @end
 %%------------------------------------------------------------------------------
@@ -342,7 +339,6 @@ maybe_custom_presence_id(Data, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns the provided slot number or the next available if none
 %% was provided
 %% @end
@@ -366,7 +362,6 @@ find_slot_number([A|[B|_]=Slots]) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Save the slot data in the parked calls object at the slot number.
 %% If, on save, it conflicts then it gets the new instance
 %% and tries again, determining the new slot.
@@ -433,7 +428,6 @@ maybe_add_slot_doc_rev(JObj, AccountDb) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc After an attended transfer we need to find the callid that we stored
 %% because it was the "C-Leg" of a transfer and now we have the
 %% actuall "A-Leg".  Find the old callid and update it with the new one.
@@ -515,7 +509,6 @@ maybe_get_ringback_id(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempts to retrieve the parked calls list from the datastore, if
 %% the list does not exist then it returns an new empty instance
 %% @end
@@ -545,7 +538,6 @@ load_parked_call(JObj) ->
     {SlotNumber, kz_json:set_value(<<"pvt_fields">>, kz_doc:private_fields(Doc), Slot)}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -573,7 +565,6 @@ maybe_cleanup_slot(_SlotNumber, _OldCallId, _NewCallId, _AccountDb) ->
     lager:info("parking slot ~p call-id changed from ~p to ~p, not cleaning.", [_SlotNumber, _OldCallId, _NewCallId]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -611,7 +602,6 @@ delete_slot(AccountDb, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -724,7 +714,6 @@ slot_configuration(Data, SlotNumber) ->
     kz_json:get_json_value(SlotNumber, slots_configuration(Data), kz_json:new()).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Ringback the device that parked the call
 %% @end
 %%------------------------------------------------------------------------------
@@ -738,7 +727,6 @@ get_endpoint_id(Username, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Ringback the device that parked the call
 %% @end
 %%------------------------------------------------------------------------------
@@ -906,7 +894,6 @@ update_presence(State, Slot) ->
     kz_amqp_worker:cast(Command, fun kapi_presence:publish_dialog/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -915,7 +902,6 @@ publish_parked(Call, SlotNumber) ->
     publish_event(Call, SlotNumber, <<"PARK_PARKED">>).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -924,7 +910,6 @@ publish_retrieved(Call, SlotNumber) ->
     publish_event(Call, SlotNumber, <<"PARK_RETRIEVED">>).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -933,7 +918,6 @@ publish_abandoned(Call, Slot) ->
     publish_event(Call, Slot, <<"PARK_ABANDONED">>).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

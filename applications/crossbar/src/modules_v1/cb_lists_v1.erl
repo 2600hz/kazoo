@@ -226,7 +226,6 @@ delete(Context, _ListId, _EntryId) ->
     crossbar_doc:delete(Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

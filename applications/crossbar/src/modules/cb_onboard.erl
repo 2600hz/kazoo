@@ -107,7 +107,6 @@ put(Context) ->
     create_response(Context1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will loop over all the 'extensions' and collect
 %% valid context's for users, voicemailboxes, devices, and callflows.
 %% Any errors will also be collected.
@@ -136,7 +135,6 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use the bindings to validate and create a context
 %% record to generate an account.  Any failure will be added to the error
 %% json object.
@@ -160,7 +158,6 @@ create_account(JObj, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use the bindings to validate and create a context
 %% record to generate an account.  Any failure will be added to the error
 %% json object.
@@ -190,7 +187,6 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use the bindings to validate and create a context
 %% record to generate an braintree_customer.  Any failure will be added to the error
 %% json object.
@@ -227,7 +223,6 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use the bindings to validate and create a context
 %% record to generate a user.  Any failure will be added to the error
 %% json object.
@@ -278,7 +273,6 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use the bindings to validate and create a context
 %% record to generate a device.  Any failure will be added to the error
 %% json object.
@@ -336,7 +330,6 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use the bindings to validate and create a context
 %% record to generate a vmbox.  Any failure will be added to the error
 %% json object.
@@ -385,7 +378,6 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use the bindings to validate and create a context
 %% record to generate a extension callflow.  Any failure will be added
 %% to the error json object.
@@ -427,7 +419,6 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will loop over the prevously generated context records
 %% providing each to the respective 'put' binding in order to create
 %% the objects.  Starts with the account :)
@@ -531,7 +522,6 @@ prepare_props(Props) ->
                end, props:delete(?KZ_ACCOUNTS_DB, Props)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Helper function to get the create object out of the successful
 %% context records for a specific key.
 %% @end
@@ -544,7 +534,6 @@ get_context_jobj(Key, Pass) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to create a token and save it to the token db
 %% @end
 %%------------------------------------------------------------------------------
@@ -577,7 +566,6 @@ create_response(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to create a token and save it to the token db
 %% @end
 %%------------------------------------------------------------------------------

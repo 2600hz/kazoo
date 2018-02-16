@@ -145,7 +145,6 @@ delete(Context, _CallflowId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
@@ -155,7 +154,6 @@ load_callflow_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a callflow document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -182,7 +180,6 @@ request_patterns(Context) ->
     kz_json:get_ne_value(<<"patterns">>, cb_context:req_data(Context), []).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -208,7 +205,6 @@ normalize_numbers(Context, Nums) ->
     cb_context:set_req_data(Context, NewReqData).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -338,7 +334,6 @@ on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflow:type())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -348,7 +343,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -369,7 +363,6 @@ maybe_reconcile_numbers(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -420,7 +413,6 @@ filter_callflow_list(CallflowId, JObjs) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc collect addional informat about the objects referenced in the flow
 %% @end
 %%------------------------------------------------------------------------------
@@ -472,7 +464,6 @@ get_metadata(Flow, Db, Metadata) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Given the metadata json object, an ID and a db find the document
 %% and add the fields to the metadata.  However, skip if the ID already
 %% exists in metadata.

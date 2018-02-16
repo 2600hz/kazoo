@@ -90,7 +90,6 @@ resource_exists(_SchemaName) -> 'true'.
 resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -120,7 +119,6 @@ on_success(Context) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -129,7 +127,6 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION_ANY).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -150,7 +147,6 @@ normalize_fun(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

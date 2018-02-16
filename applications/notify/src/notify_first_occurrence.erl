@@ -69,7 +69,6 @@ handle_req(JObj, _Props) ->
     notify_util:maybe_send_update(lists:flatten([SendResult0, SendResult1]), RespQ, MsgId).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% @end
 %%------------------------------------------------------------------------------
@@ -83,7 +82,6 @@ create_template_props(Account, Occurrence) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------

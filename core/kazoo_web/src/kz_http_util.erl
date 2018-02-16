@@ -93,7 +93,6 @@ urlencode(<<C, R/binary>>, Acc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Converts a single character to its base-16 %-encoded form.
 %% @end
 %%------------------------------------------------------------------------------
@@ -172,7 +171,6 @@ urlsplit(Source) ->
     {Scheme, Location, Path, Query, Frag}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Splits out the scheme portion of the URL (if present).
 %% @end
 %%------------------------------------------------------------------------------
@@ -206,7 +204,6 @@ urlsplit_s(<<C, R/binary>>, Acc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Splits out the location portion of the URL.
 %% @end
 %%------------------------------------------------------------------------------
@@ -234,7 +231,6 @@ urlsplit_l(<<C, R/binary>>, Acc) ->
     urlsplit_l(R, <<Acc/binary, C>>).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Splits and returns the path, query string, and fragment portions
 %% of the URL
 %% @end
@@ -254,7 +250,6 @@ urlsplit_p(<<C, R/binary>>, Acc) ->
     urlsplit_p(R, <<Acc/binary, C>>).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Splits the query string and fragment parts of the URL.
 %% @end
 %%------------------------------------------------------------------------------

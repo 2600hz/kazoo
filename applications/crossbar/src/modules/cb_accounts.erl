@@ -390,7 +390,6 @@ delete(Context, AccountId, ?RESELLER) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -401,7 +400,6 @@ maybe_update_descendants_count(Tree) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -411,7 +409,6 @@ create_apps_store_doc(AccountId) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -440,7 +437,6 @@ validate_move(_Type, _, _, _) ->
     'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -456,7 +452,6 @@ move_account(Context, AccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -476,7 +471,6 @@ prepare_context(Context, AccountId, AccountDb) ->
                                 ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -661,7 +655,6 @@ maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an account document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -681,13 +674,11 @@ validate_delete_request(AccountId, Context) ->
             end
     end.
 
-%% @private
 -spec validate_patch_request(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch_request(AccountId, Context) ->
     crossbar_doc:patch_and_validate(AccountId, Context, fun validate_request/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an account document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -696,7 +687,6 @@ load_account(AccountId, Context) ->
     leak_pvt_fields(AccountId, crossbar_doc:load(AccountId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -860,7 +850,6 @@ leak_trial_time_left(Context, JObj, _Expiration) ->
     cb_context:set_resp_data(Context, RespData).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a summary of the children of this account
 %% @end
 %%------------------------------------------------------------------------------
@@ -897,7 +886,6 @@ load_paginated_children(AccountId, Context) ->
                             )).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a summary of the descendants of this account
 %% @end
 %%------------------------------------------------------------------------------
@@ -935,7 +923,6 @@ load_paginated_descendants(AccountId, Context) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a summary of the siblngs of this account
 %% @end
 %%------------------------------------------------------------------------------
@@ -1054,7 +1041,6 @@ format_account_tree_results(Context, JObjs) ->
     cb_context:set_resp_data(Context, RespData).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1086,7 +1072,6 @@ load_parent_tree(AccountId, Context) ->
                       ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1097,7 +1082,6 @@ extract_tree(AccountId, JObjs) ->
     lists:delete(AccountId, Tree).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1126,7 +1110,6 @@ account_from_tree(JObj) ->
                       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1135,7 +1118,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function returns the private fields to be added to a new account
 %% document
 %% @end
@@ -1237,7 +1219,6 @@ create_new_tree(Context, _Verb, _Nouns) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
@@ -1268,7 +1249,6 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will create a new account and corresponding database
 %% then spawn a short initial function
 %% @end
@@ -1399,7 +1379,6 @@ load_initial_views(Context)->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1416,7 +1395,6 @@ replicate_account_definition(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will determine if the realm in the request is
 %% unique or belongs to the request being made
 %% @end
@@ -1432,7 +1410,6 @@ is_unique_realm(AccountId, Realm) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will determine if the account name is unique
 %% @end
 %%------------------------------------------------------------------------------
@@ -1457,7 +1434,6 @@ is_unique_account_name(AccountId, Name) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Send a notification that the account has been created
 %% @end
 %%------------------------------------------------------------------------------
@@ -1482,7 +1458,6 @@ notify_new_account(Context, _AuthDoc) ->
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Support the depreciated billing id on the account definition, will
 %% be phased out shortly
 %% @end
@@ -1506,7 +1481,6 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

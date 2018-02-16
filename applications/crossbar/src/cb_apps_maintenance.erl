@@ -32,7 +32,6 @@ migrate(Account) when is_binary(Account) ->
 %%% Internal functions
 %%%=============================================================================
 
-%% @private
 
 -spec save(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
 save(Account, Doc, AccountDoc) ->
@@ -45,7 +44,6 @@ save(Account, Doc, AccountDoc) ->
 
     end.
 
-%% @private
 
 -spec save_account(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 save_account(Account, AccountDoc) ->

@@ -91,7 +91,6 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
     handle_action(<<"logout">>, Hotdesk, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%------------------------------------------------------------------------------
@@ -118,7 +117,6 @@ build_endpoints([EndpointId|EndpointIds], Endpoints, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Conditions that this needs to handle:
 %% 0) sanity check the authorizing id
 %% 1) Has there been to many attempts to enter a valid pwd/id
@@ -212,7 +210,6 @@ logged_in(_, Call) ->
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Logout process
 %% 0) sanity check the authorizing id
 %%
@@ -261,7 +258,6 @@ logged_out(_, Call) ->
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Fetches the hotdesk parameters from the datastore and loads the
 %% mailbox record
 %% @end

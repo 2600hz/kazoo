@@ -72,7 +72,6 @@ handle(Data, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function provides a menu with the call forwarding options
 %% @end
 %%------------------------------------------------------------------------------
@@ -114,7 +113,6 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will update the call forwarding enabling it if it is
 %% not, and disabling it if it is
 %% @end
@@ -136,7 +134,6 @@ cf_toggle(CF, _, Call) ->
     cf_deactivate(CF, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will udpate the call forwarding object on the owner
 %% document to enable call forwarding
 %% @end
@@ -163,7 +160,6 @@ cf_activate(CF, CaptureGroup, Call) ->
     CF#callfwd{enabled='true', number=CaptureGroup}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will udpate the call forwarding object on the owner
 %% document to disable call forwarding
 %% @end
@@ -175,7 +171,6 @@ cf_deactivate(CF, Call) ->
     CF#callfwd{enabled='false'}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will udpate the call forwarding object on the owner
 %% document with a new number
 %% @end
@@ -211,7 +206,6 @@ cf_update_number(CF, CaptureGroup, _) ->
     CF#callfwd{number=CaptureGroup}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This is a helper function to update a document, and corrects the
 %% rev tag if the document is in conflict
 %% @end
@@ -248,7 +242,6 @@ update_callfwd(#callfwd{doc_id=Id
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will load the call forwarding record
 %% @end
 %%------------------------------------------------------------------------------

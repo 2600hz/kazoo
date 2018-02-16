@@ -31,7 +31,6 @@ delete_account(Context) ->
 %%%=============================================================================
 
 
-%% @private
 
 -spec handle_resp(kz_http:ret()) -> 'ok'.
 handle_resp({'ok', 200, _, Resp}) ->
@@ -41,7 +40,6 @@ handle_resp({'ok', Code, _, Resp}) ->
 handle_resp(_Error) ->
     lager:error("mobile_manager fatal error ~p", [_Error]).
 
-%% @private
 
 -spec req_uri(kz_term:ne_binaries()) -> kz_term:api_list().
 req_uri(ExplodedPath) ->
@@ -52,7 +50,6 @@ req_uri(ExplodedPath) ->
             kz_term:to_list(Uri)
     end.
 
-%% @private
 
 -spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(AuthToken) ->

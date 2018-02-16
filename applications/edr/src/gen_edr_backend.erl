@@ -118,7 +118,6 @@ terminate(Reason, #state{module_state=ModState, module=Mod}) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

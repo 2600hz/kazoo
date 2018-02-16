@@ -227,7 +227,6 @@ get_from_strategy_cache(Strategy, AccountId, Category, Key, false) ->
     walk_the_walk(strategy_options(Strategy, AccountId, Category, false, Key)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get Key's value from account db document if defined, otherwise get
 %% from system_config
 %% @end
@@ -286,7 +285,6 @@ load_config_from_account(AccountId, Category) ->
     kz_datamgr:open_cache_doc(AccountDb, DocId, [{cache_failures, [not_found]}]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get Accounts parent configuration for the Category
 %%  1. Read account definition
 %%      1.1. If failed to read account definition, find its reseller
@@ -319,7 +317,6 @@ get_account_ancestors_or_reseller(AccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get accounts config and walk the account up to accounts reseller
 %% @end
 %%------------------------------------------------------------------------------

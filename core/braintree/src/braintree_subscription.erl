@@ -81,7 +81,6 @@ new(SubscriptionId, PlanId, PaymentToken) ->
                     ,create='true'
                     }.
 
-%% @private
 -spec new_subscription_id() -> kz_term:ne_binary().
 new_subscription_id() ->
     kz_binary:rand_hex(16).
@@ -567,7 +566,6 @@ record_to_json(Subscription) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -580,7 +578,6 @@ should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine the necessary steps to change the add ons.
 %% @end
 %%------------------------------------------------------------------------------
@@ -598,7 +595,6 @@ update_options(Key, Value, Props) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine the necessary steps to change the add ons.
 %% @end
 %%------------------------------------------------------------------------------
@@ -641,7 +637,6 @@ create_addon_fold(#bt_addon{existing_id=Id
     append_items('update', props:filter_undefined(Item), Changes).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine the necessary steps to change the discounts.
 %% @end
 %%------------------------------------------------------------------------------
@@ -684,7 +679,6 @@ create_discount_fold(#bt_discount{existing_id=Id
     append_items('update', props:filter_undefined(Item), Changes).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine the necessary steps to change the add ons.
 %% @end
 %%------------------------------------------------------------------------------

@@ -112,7 +112,6 @@
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Overwrite the existing contents of a document with the contents of
 %% a file.
 %% @end
@@ -220,7 +219,6 @@ should_update(DbName, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Replaces multi-line Javascript into single line, on the fly
 %% while loading views from files.
 %% @end
@@ -237,7 +235,6 @@ maybe_adapt_multilines(JObj) ->
             kz_json:set_value(<<"views">>, kz_json:from_list(NewViews), JObj)
     end.
 
-%% @private
 -spec inline_js_fun(kz_term:ne_binary(), kz_term:ne_binaries() | kz_json:json_term(), kz_json:object()) ->
                            kz_json:object().
 inline_js_fun(Type, Code=[<<"function",_/binary>>|_], Acc) ->
@@ -1366,7 +1363,6 @@ change_notice() ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to correct the database name.
 %% NOTE: The attempt to correct the dbname is not very Erlang like, but
 %%  since there are more places that expect an error and do not

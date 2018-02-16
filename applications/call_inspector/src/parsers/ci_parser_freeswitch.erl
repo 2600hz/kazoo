@@ -49,7 +49,6 @@ start_link([Arg]=Args) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -76,7 +75,6 @@ init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -87,7 +85,6 @@ handle_call(_Request, _From, State) ->
     {'reply', Reply, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -97,7 +94,6 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -126,7 +122,6 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminate
@@ -140,7 +135,6 @@ terminate(_Reason, #state{iodevice = IoDevice}) ->
     lager:debug("call inspector freeswitch parser terminated: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

@@ -166,7 +166,6 @@ authenticate(_Nouns, _Verb) ->
     'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -249,7 +248,6 @@ content_types_accepted(Context, _AttachType, _Verb) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -619,7 +617,6 @@ delete(Context) ->
     maybe_cleanup_account_definition(crossbar_doc:delete(Context, ?HARD_DELETE)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load the binary attachment of a whitelabel doc (based on a domain)
 %% @end
 %%------------------------------------------------------------------------------
@@ -651,7 +648,6 @@ find_whitelabel(Context, Domain) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a whitelabel document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -668,7 +664,6 @@ find_whitelabel_meta(Context, Domain) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a whitelabel binary attachment from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -751,7 +746,6 @@ update_response_with_attachment(Context, AttachmentId, JObj) ->
     cb_context:set_resp_etag(WithHeaders, 'undefined').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -792,7 +786,6 @@ on_successful_validation(Context, WhitelabelId) ->
     crossbar_doc:load_merge(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update the binary attachment of a whitelabel doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -820,7 +813,6 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
                                 ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
@@ -849,7 +841,6 @@ attachment_name(AttachType, Filename, CT) ->
     <<AttachType/binary, "-", (attachment_name(Filename, CT))/binary>>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -867,7 +858,6 @@ is_domain_unique(AccountId, Domain) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -888,7 +878,6 @@ maybe_update_account_definition(Context, 'success') ->
 maybe_update_account_definition(Context, _Status) -> Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

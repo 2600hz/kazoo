@@ -732,7 +732,6 @@ b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterP
     wait_for_channel_unbridge().
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a redirect request to the Contact on Server.
 %% @end
 %%------------------------------------------------------------------------------
@@ -752,7 +751,6 @@ redirect(Contact, Server, Call) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a redirect request to Node.
 %% @end
 %%------------------------------------------------------------------------------
@@ -2955,7 +2953,6 @@ send_command(Command, Call) when is_list(Command) ->
 send_command(JObj, Call) -> send_command(kz_json:to_proplist(JObj), Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get the T38 settings for an endpoint based on carrier and device.
 %% @end
 %%------------------------------------------------------------------------------
@@ -3007,7 +3004,6 @@ get_outbound_t38_settings('false') ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

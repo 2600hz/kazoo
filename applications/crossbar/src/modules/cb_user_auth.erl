@@ -224,7 +224,6 @@ post(Context, ?RECOVERY) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -239,7 +238,6 @@ maybe_get_auth_token(Context, AuthToken) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -256,7 +254,6 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
     cb_context:add_system_error('forbidden', Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the credentials are valid based on the
 %% provided hash method
 %%
@@ -405,7 +402,6 @@ load_md5_results(Context, JObj, _Account) ->
     cb_context:set_doc(cb_context:store(Context, 'auth_type', <<"credentials">>), kz_json:get_value(<<"value">>, JObj)).
 
 
-%% @private
 -spec maybe_load_user_doc_via_creds(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_creds(Context) ->
     JObj = cb_context:doc(Context),
@@ -418,7 +414,6 @@ maybe_load_user_doc_via_creds(Context) ->
         {'ok', Account} ->     maybe_load_user_doc_by_username(Account, Context)
     end.
 
-%% @private
 -spec maybe_load_user_doc_by_username(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_by_username(Account, Context) ->
     JObj = cb_context:doc(Context),
@@ -462,7 +457,6 @@ maybe_load_user_doc_by_username(Account, Context) ->
             cb_context:add_validation_error(<<"username">>, <<"not_found">>, Msg, Context)
     end.
 
-%% @private
 -spec save_reset_id_then_send_email(cb_context:context()) -> cb_context:context().
 save_reset_id_then_send_email(Context) ->
     MoDb = kazoo_modb:get_modb(cb_context:account_db(Context)),
@@ -495,7 +489,6 @@ save_reset_id_then_send_email(Context) ->
     end.
 
 
-%% @private
 -spec maybe_load_user_doc_via_reset_id(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_reset_id(Context) ->
     ResetId = kz_json:get_ne_binary_value(?RESET_ID, cb_context:req_data(Context)),
@@ -526,7 +519,6 @@ maybe_load_user_doc_via_reset_id(Context) ->
             cb_context:add_validation_error(<<"user">>, <<"not_found">>, Msg, Context)
     end.
 
-%% @private
 -spec reset_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM)) ->
     <<Y1:1/binary, Y2:1/binary, Y3:1/binary, Y4:1/binary>> = YYYY,
@@ -550,7 +542,6 @@ reset_id(<<AccountId:32/binary,
     MM = <<M1/binary, M2/binary>>,
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM).
 
-%% @private
 -spec reset_link(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_link(UIURL, ResetId) ->
     case binary:match(UIURL, <<$?>>) of
@@ -558,7 +549,6 @@ reset_link(UIURL, ResetId) ->
         _ -> <<UIURL/binary, "&recovery=", ResetId/binary>>
     end.
 
-%% @private
 -spec create_resetid_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 create_resetid_doc(ResetId, UserId) ->
     kz_json:from_list(
@@ -569,7 +559,6 @@ create_resetid_doc(ResetId, UserId) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

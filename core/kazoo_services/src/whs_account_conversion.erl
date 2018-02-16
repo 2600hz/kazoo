@@ -113,7 +113,6 @@ set_reseller_id(Reseller, Account) ->
     maybe_update_services(AccountId, ?SERVICES_PVT_RESELLER_ID, ResellerId).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

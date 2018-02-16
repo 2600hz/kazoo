@@ -314,7 +314,6 @@ patch(Context, Id) ->
     post(Context, Id).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -343,7 +342,6 @@ load_attachment(UserId, AttachmentId, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -402,7 +400,6 @@ update_device_presence(Context, DeviceDoc) ->
                   end).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -415,7 +412,6 @@ maybe_send_email(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -432,7 +428,6 @@ send_email(Context) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_new_user/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
@@ -452,7 +447,6 @@ fix_envelope(Context) ->
     cb_context:set_resp_data(Context, lists:reverse(RespData)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a user document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -460,7 +454,6 @@ fix_envelope(Context) ->
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -626,7 +619,6 @@ rehash_creds(_UserId, Username, Password, Context) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will determine if the user name in the request is
 %% unique or belongs to the request being made
 %% @end
@@ -646,7 +638,6 @@ username_doc_id(Username, Context, _AccountDb) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -654,7 +645,6 @@ username_doc_id(Username, Context, _AccountDb) ->
 normalize_view_results(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Converts context to vcard
 %% @end
 %%------------------------------------------------------------------------------

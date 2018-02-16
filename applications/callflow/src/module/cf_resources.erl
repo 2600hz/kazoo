@@ -68,7 +68,6 @@ handle_bridge_failure(Cause, Code, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -310,7 +309,6 @@ get_inception(Call) ->
     kz_json:get_value(<<"Inception">>, kapps_call:custom_channel_vars(Call)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Consume Erlang messages and return on offnet response
 %% @end
 %%------------------------------------------------------------------------------

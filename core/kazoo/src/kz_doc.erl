@@ -88,7 +88,6 @@
 -define(KEYS_ATTACHMENTS(A), [ [Key, A] || Key <- ?KEYS_ATTACHMENTS]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is used to update the private timestamps, and db
 %% parameters on all crossbar documents.
 %% @end

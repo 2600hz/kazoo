@@ -113,7 +113,6 @@ put(Context) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the credentials are valid based on the
 %% provided hash method
 %%

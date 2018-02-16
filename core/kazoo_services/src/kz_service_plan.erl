@@ -198,7 +198,6 @@ cumulative_quantity(Item, CumulativeDiscount, Quantity) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -216,7 +215,6 @@ bookkeeper_jobj(CategoryId, ItemId, ServicePlan) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -230,7 +228,6 @@ get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If tiered flate rates are provided, find the value to use given the
 %% current quantity.
 %% @end
@@ -248,7 +245,6 @@ get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If tiered flate rates are provided, find the value to use given the
 %% current quantity.
 %% @end
@@ -264,7 +260,6 @@ get_flat_rate(Quantity, ItemPlan) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If tiered rates are provided, find the value to use given the current
 %% quantity.  If no rates are viable attempt to use the "rate" property.
 %% @end
@@ -281,7 +276,6 @@ get_quantity_rate(Quantity, ItemPlan) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get the item quantity, drawing solely from the provided account or
 %% (when the service plan dictates) the summed (cascaded) decendants.
 %% Also handle the special case were we should sum all items in a

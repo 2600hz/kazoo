@@ -78,7 +78,6 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
     {'error', 'asr_provider_failure', kz_json:decode(Content2)}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Send a freeform ASR request to iSpeech
 %% @end
 %%------------------------------------------------------------------------------
@@ -102,7 +101,6 @@ exec_freeform(Content, ContentType, Locale, Options) ->
     handle_response(make_request(BaseUrl, Headers, Body, Options)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Send a command list ASR request to iSpeech
 %% @end
 %%------------------------------------------------------------------------------
@@ -133,7 +131,6 @@ exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
     handle_response(make_request(BaseUrl, Headers, Body, Opts)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert audio file/content-type if initial format not supported
 %% @end
 %%------------------------------------------------------------------------------

@@ -139,7 +139,6 @@ anonymous_caller_id_number(AccountId) ->
     kapps_account_config:get_global(AccountId, ?PRIVACY_CAT, ?KEY_ANON_NUMBER, ?ANON_NUMBER).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Checks for screen bits and caller id hide parameters
 %% @end
 %%------------------------------------------------------------------------------
@@ -155,7 +154,6 @@ caller_privacy_mode('false', 'true') -> ?HIDE_NUMBER;
 caller_privacy_mode('false', 'false') -> ?NO_HIDE_MODE.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Make some/all/no part of caller id anonymous base on system config
 %% @end
 %%------------------------------------------------------------------------------
@@ -201,7 +199,6 @@ anonymize_cid(AccountId, {Name, _}, ?HIDE_NUMBER) ->
     {Name, anonymous_caller_id_number(AccountId)}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get default privacy settings from system_config or from
 %% legacy anonymizer setting on account's document
 %% @end
@@ -234,7 +231,6 @@ get_master_account() ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Look for Caller Screens and CID Privacy Hide value, default to 'false'
 %% @end
 %%------------------------------------------------------------------------------
@@ -248,7 +244,6 @@ caller_privacy_name(JObj) -> kz_term:is_true(get_value(?CALLER_PRIVACY_NAME, JOb
 caller_privacy_number(JObj) -> kz_term:is_true(get_value(?CALLER_PRIVACY_NUMBER, JObj, 'false')).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Look into Caller ID Number to see if it starts with at least two 00
 %% (a common way to make caller id number anonymous)
 %% @end
@@ -262,7 +257,6 @@ is_zero(?NE_BINARY=Number) ->
 is_zero(_) -> 'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get Key from JObj, if not found look into CCV
 %% @end
 %%------------------------------------------------------------------------------

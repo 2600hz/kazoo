@@ -239,7 +239,6 @@ send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -252,7 +251,6 @@ init([Call]) ->
     {'ok', #state{call=Call}}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -299,7 +297,6 @@ handle_call(_Request, _From, State) ->
     {'reply', Reply, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -394,7 +391,6 @@ event_listener_name(Call, Module) ->
     <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_term:to_binary(Module))/binary>>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -447,7 +443,6 @@ handle_info(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -520,7 +515,6 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_listener terminates
@@ -554,7 +548,6 @@ hangup_call(Call) ->
     send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------
@@ -566,7 +559,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%=============================================================================
 %%------------------------------------------------------------------------------
-%% @private
 %% this function determines if the callflow module specified at the
 %% current node is 'available' and attempts to launch it if so.
 %% Otherwise it will advance to the next child in the flow
@@ -621,7 +613,6 @@ cf_module_skip(CFModule, _Call) ->
     {'undefined', CFModule}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc helper function to spawn a linked callflow module, from the entry
 %% point 'handle' having set the callid on the new process first
 %% @end
@@ -634,7 +625,6 @@ spawn_cf_module(CFModule, Data, Call) ->
     ,CFModule
     }.
 
-%% @private
 -spec cf_module_task(atom(), list(), kapps_call:call(), pid()) -> any().
 cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
@@ -650,7 +640,6 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc unlike the kapps_call_command this send command does not call the
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send

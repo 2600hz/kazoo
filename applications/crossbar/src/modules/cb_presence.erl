@@ -87,7 +87,6 @@ authorize(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
 authorize(_Context, _Nouns, _Verb) -> 'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
@@ -106,7 +105,6 @@ allowed_methods(_Extension) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
@@ -119,7 +117,6 @@ resource_exists() -> 'true'.
 resource_exists(_Extension) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function allows report to be downloaded.
 %% @end
 %%------------------------------------------------------------------------------
@@ -137,7 +134,6 @@ content_types_provided_for_report(Context, Report) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%

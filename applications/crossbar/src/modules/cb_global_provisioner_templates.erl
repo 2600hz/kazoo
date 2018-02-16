@@ -96,7 +96,6 @@ content_types_provided_for_provisioner(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
 content_types_provided_for_provisioner(Context, _, _, _) ->
     Context.
 
-%% @private
 -spec get_content_type(kz_json:object()) -> kz_term:ne_binary().
 get_content_type(JObj) ->
     kz_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>).
@@ -269,7 +268,6 @@ delete(Context, DocId, ?IMAGE_REQ) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -278,7 +276,6 @@ load_template_image(DocId, Context) ->
     crossbar_doc:load_attachment(DocId, ?IMAGE_REQ, ?TYPE_CHECK_OPTION(<<"provisioner_template">>), Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -299,7 +296,6 @@ upload_template_image(Context, [_|_]) ->
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Msg, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of provision templates, each summarized.  Or a specific
 %% provision template summary.
 %% @end
@@ -309,7 +305,6 @@ load_provisioner_template_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new provision template document with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -319,7 +314,6 @@ create_provisioner_template(Context) ->
     cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a provision template document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -341,7 +335,6 @@ load_provisioner_template(DocId, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing provision template document with the data provided, if it is
 %% valid
 %% @end
@@ -352,7 +345,6 @@ update_provisioner_template(DocId, Context) ->
     cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -367,7 +359,6 @@ on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"provisioner_template">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

@@ -82,7 +82,6 @@ handle_req(JObj, _Props) ->
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% @end
 %%------------------------------------------------------------------------------
@@ -192,7 +191,6 @@ normalize_find_numbers({Number, _}) -> Number;
 normalize_find_numbers(Number) -> Number.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------
@@ -219,7 +217,6 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
     notify_util:send_email(From, To, Email).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------
@@ -283,7 +280,6 @@ create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
     }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

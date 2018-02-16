@@ -300,7 +300,6 @@ consume(Bin, {Acc,Sep,AccBin}) ->
             {Acc, Sep, NewAccBin}
     end.
 
-%% @private
 
 -spec find_position(kz_term:ne_binary(), kz_term:ne_binaries()) -> pos_integer().
 find_position(Item, Items) ->
@@ -315,7 +314,6 @@ complete_header(Fields, CSVHeader) ->
     Diff = CSVHeader -- Fields,
     Fields ++ Diff.
 
-%% @private
 map_io_indices(Header, CSVHeader) ->
     MapF = fun ({I, Head}, M) ->
                    M#{find_position(Head, Header) => I}
@@ -323,7 +321,6 @@ map_io_indices(Header, CSVHeader) ->
     IndexToCSVHeader = lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader),
     lists:foldl(MapF, #{}, IndexToCSVHeader).
 
-%% @private
 -spec cell_to_binary(cell()) -> binary().
 cell_to_binary(?ZILCH) -> <<>>;
 cell_to_binary(<<>>) -> <<>>;

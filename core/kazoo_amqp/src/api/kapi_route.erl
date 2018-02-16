@@ -260,7 +260,6 @@ publish_win(RespQ, Win, ContentType) ->
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Extract the auth realm from the API request, using the requests to domain
 %% when provided with an IP.
 %% @end

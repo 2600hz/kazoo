@@ -198,7 +198,6 @@ handle(Data, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -276,7 +275,6 @@ check_mailbox(#mailbox{pin=Pin
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -323,7 +321,6 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
 %% caller is the owner, and the pin is not required then we skip requesting the pin
 %%
@@ -365,7 +362,6 @@ find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, Call
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -455,7 +451,6 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -465,7 +460,6 @@ play_greeting_intro(#mailbox{play_greeting_intro='true'}, Call) ->
 play_greeting_intro(_, _) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -498,7 +492,6 @@ play_greeting(#mailbox{unavailable_media_id=MediaId}, Call) ->
     kapps_call_command:play(Corrected, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -508,7 +501,6 @@ play_instructions(#mailbox{skip_instructions='false'}, Call) ->
     kapps_call_command:prompt(<<"vm-record_message">>, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -552,7 +544,6 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -575,7 +566,6 @@ setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
     Box1#mailbox{is_setup='true'}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -716,7 +706,6 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -773,7 +762,6 @@ message_count_prompts(New, Saved) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns the message audio prompt
 %% @end
 %%------------------------------------------------------------------------------
@@ -799,7 +787,6 @@ message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
 
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Plays back a message then the menu, and continues to loop over the
 %% menu utill
 %% @end
@@ -869,7 +856,6 @@ play_prev_message(Messages, [H|T], Count, Box, Call) ->
     play_messages([H|Messages], T, Count, Box, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Main function for forwarding a message to another vmbox of this account
 %% @end
 %%------------------------------------------------------------------------------
@@ -1001,7 +987,6 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Loops over the message menu after the first play back util the
 %% user provides a valid option
 %% @end
@@ -1049,7 +1034,6 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1168,7 +1152,6 @@ handle_config_selection(#mailbox{}=Box
     config_menu(Box, Call, Loop + 1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Recording the temporary greeting to override the common greeting
 %% @end
 %%------------------------------------------------------------------------------
@@ -1190,7 +1173,6 @@ record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
     overwrite_temporary_unavailable_greeting(AttachmentName, Box, Call, 'update').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Overwrites current media document of the temporary greeting
 %% by a new recorded version.
 %% @end
@@ -1241,7 +1223,6 @@ overwrite_temporary_unavailable_greeting(AttachmentName
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Deletes current temporary greeting.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1314,7 +1295,6 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1380,7 +1360,6 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1485,7 +1464,6 @@ collect_pin(Interdigit, Call, NoopId) ->
                                      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1515,7 +1493,6 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Fetches the mailbox parameters from the data store and loads the
 %% mailbox record
 %% @end
@@ -1656,7 +1633,6 @@ owner_info(AccountDb, MailboxJObj, OwnerId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1686,7 +1662,6 @@ populate_keys(Call) ->
          }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1785,7 +1760,6 @@ try_match_callerid([Box|Boxes], CallerId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1846,7 +1820,6 @@ review_recording(AttachmentName, AllowOperator
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1888,7 +1861,6 @@ maybe_remove_attachments(AccountDb, MediaId, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1904,7 +1876,6 @@ min_recording_length(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1954,7 +1925,6 @@ set_recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
     kz_doc:update_pvt_parameters(Doc, AccountDb, [{'type', <<"media">>}]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1986,7 +1956,6 @@ update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, kapps_call:account_db(Call)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1995,7 +1964,6 @@ tmp_file(Ext) ->
     <<(kz_binary:rand_hex(16))/binary, ".", Ext/binary>>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Accepts Universal Coordinated Time (UTC) and convert it to binary
 %% encoded Unix epoch in the provided timezone
 %% @end
@@ -2007,7 +1975,6 @@ get_unix_epoch(Epoch, Timezone) ->
     kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

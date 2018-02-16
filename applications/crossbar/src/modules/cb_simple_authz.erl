@@ -81,7 +81,6 @@ should_ignore(Context) ->
               end, cb_context:req_nouns(Context)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns true if the requested account id is a descendant or the same
 %% as the account id that has been authorized to make the request.
 %% @end
@@ -135,7 +134,6 @@ account_is_descendant('false', Context, AuthAccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns true the request is not for a system admin module (as defined
 %% by the list above) or if it is and the account is a superduper admin.
 %% @end
@@ -159,7 +157,6 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns true if the request contains a system admin module.
 %% @end
 %%------------------------------------------------------------------------------

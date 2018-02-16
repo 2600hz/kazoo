@@ -197,7 +197,6 @@ publish_error(Queue, Resp, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Creating the routing key for either binding queues or publishing messages.
 %% @end
 %%------------------------------------------------------------------------------
@@ -211,7 +210,6 @@ get_authn_req_routing(Req) ->
 -define(AUTH_DEFAULT_USERATDOMAIN, <<"nouser@nodomain">>).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Extract the auth user from the API request.
 %% @end
 %%------------------------------------------------------------------------------
@@ -227,7 +225,6 @@ get_auth_user(ApiJObj) ->
     kz_term:to_lower_binary(AuthUser).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Extract the auth realm from the API request, using the requests to domain
 %% when provided with an IP.
 %% @end

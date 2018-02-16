@@ -105,7 +105,6 @@
 -type appliers() :: [applier()].
 -type appliers(A) :: [applier(A)].
 
-%% @private
 -spec num(knm_number:knm_number()) -> num().
 num(N) ->
     knm_phone_number:number(knm_number:phone_number(N)).
@@ -511,7 +510,6 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 %%% Internal functions
 %%%=============================================================================
 
-%% @private
 -type reason_t() :: atom() | fun((num())-> knm_errors:error()).
 
 -spec new(knm_number_options:options(), nums()) -> t().
@@ -537,7 +535,6 @@ new(Options, ToDos, KOs, Reason) ->
      }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Apply something to `todo' if not empty
 %% If empty use `ok' as the new `todo'.
 %% If `ok' is empty, return.
@@ -557,7 +554,6 @@ pipe(T, [F|Fs]) ->
         NewT -> pipe(NewT, Fs)
     end.
 
-%% @private
 %% @doc
 %% Exported ONLY for {@link knm_number_states} use.
 %% @end
@@ -571,7 +567,6 @@ do(F, T) ->
     NewT = F(T),
     NewT#{todo => []}.
 
-%% @private
 %% @doc Exported ONLY for `knm_number_states' use.
 %% @end
 -spec do_in_wrap(applier(t_pn()), t()) -> t().
@@ -584,7 +579,6 @@ do_in_wrap(F, T0=#{todo := Ns}) ->
     T1 = do(F, T0#{todo => PNs}),
     rewrap_phone_numbers(NumsMap, T1).
 
-%% @private
 %% Exported ONLY for `knm_number_states' use.
 -spec merge_okkos(t(), t()) -> t().
 merge_okkos(#{ok := OKa, ko := KOa}
@@ -593,18 +587,15 @@ merge_okkos(#{ok := OKa, ko := KOa}
       ,ko => maps:merge(KOa, KOb)
       }.
 
-%% @private
 %% Exported ONLY for `knm_number_states' use.
 -spec merge_okkos([t()]) -> t().
 merge_okkos([T]) -> T;
 merge_okkos([T0|Ts]) ->
     lists:foldl(fun merge_okkos/2, T0, Ts).
 
-%% @private
 -spec id(t()) -> t().
 id(T=#{todo := Todo}) -> ok(Todo, T).
 
-%% @private
 -spec ret(t()) -> ret().
 ret(#{ok := OKs
      ,ko := KOs
@@ -634,7 +625,6 @@ to_json(#{ok := Ns, ko := KOs}) ->
         ,{<<"error">>, kz_json:from_map(KOs)}
         ])).
 
-%% @private
 -spec unwrap_phone_numbers(knm_number:knm_numbers()) ->
                                   {#{num() => knm_number:knm_number()}
                                   ,knm_phone_number:knm_phone_numbers()
@@ -647,7 +637,6 @@ unwrap_phone_numbers(Ns) ->
         end,
     lists:foldl(F, {#{}, []}, Ns).
 
-%% @private
 -spec rewrap_phone_numbers(#{num() => knm_number:knm_number()}, t()) -> t().
 rewrap_phone_numbers(NumsMap, T=#{ok := PNs}) ->
     F = fun (PN, Ns) ->

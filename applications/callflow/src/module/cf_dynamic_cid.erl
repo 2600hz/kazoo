@@ -79,7 +79,6 @@ handle(Data, Call, _Manual, CaptureGroup) ->
     handle_manual(Data, Call, CaptureGroup).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handle manual mode of dynamic cid
 %% @end
 %%------------------------------------------------------------------------------
@@ -91,7 +90,6 @@ handle_manual(Data, Call, CaptureGroup) ->
     cf_exe:continue(Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handle static mode of dynamic cid
 %% @end
 %%------------------------------------------------------------------------------
@@ -102,7 +100,6 @@ handle_static(Data, Call, CaptureGroup) ->
     cf_exe:continue(Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Read CID info from a list of CID defined in database
 %% @end
 %%------------------------------------------------------------------------------
@@ -132,7 +129,6 @@ proceed_with_call(CIDName, CIDNumber, Destination, Data, Call) ->
     maybe_route_to_callflow(Data, Call, Destination).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update caller id number. If call
 %% has a capture group, strip the non capture group digits from
 %% request, to and callee_number
@@ -150,7 +146,6 @@ update_call(Call, CIDNumber, Destination) ->
     maybe_strip_features_code(kapps_call:exec(Updates, C1), Destination).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Same as update_call/3, but also sets caller id name
 %% @end
 %%------------------------------------------------------------------------------
@@ -171,7 +166,6 @@ update_call(Call, CIDNumber, CIDName, Destination) ->
     maybe_strip_features_code(kapps_call:exec(Updates, C1), Destination).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If Destination exists correct "request", "to" and "callee_id_number"
 %% @end
 %%------------------------------------------------------------------------------
@@ -194,7 +188,6 @@ maybe_strip_features_code(Call, Destination) ->
     cf_exe:set_call(kapps_call:exec(Updates, Call)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Lookup callflow and continue with the call if we have a destination number
 %% @end
 %%------------------------------------------------------------------------------
@@ -212,7 +205,6 @@ maybe_route_to_callflow(Data, Call, Number) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -230,7 +222,6 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -245,7 +236,6 @@ should_restrict_call(Data, Call, Number) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -260,7 +250,6 @@ should_restrict_call(Call, Number) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Collect CID number from user
 %% @end
 %%------------------------------------------------------------------------------
@@ -314,7 +303,6 @@ collect_cid_number(Data, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get static CID from callflow data
 %% @end
 %%------------------------------------------------------------------------------
@@ -330,7 +318,6 @@ get_static_cid_entry(Data, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Pull in document from database with the caller id switching information inside
 %% @end
 %%------------------------------------------------------------------------------
@@ -435,7 +422,6 @@ get_cid_length_from_list_document(Call, ListId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Play reject prompt if any of the caller id are empty
 %% @end
 %%------------------------------------------------------------------------------
@@ -455,7 +441,6 @@ maybe_set_default_cid(Name, Number, _Call) ->
     {Name, Number}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc play reject prompts when caller id number is empty or invalid
 %% @end
 %%------------------------------------------------------------------------------

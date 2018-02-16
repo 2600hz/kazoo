@@ -335,7 +335,6 @@ send_response(Request) ->
             j5_channels:authorized(kz_json:from_list(Resp))
     end.
 
-%% @private
 -spec trunk_usage(kz_term:ne_binary()) -> kz_term:ne_binary().
 trunk_usage(Id) ->
     Limits = j5_limits:get(Id),

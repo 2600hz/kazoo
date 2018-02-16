@@ -140,7 +140,6 @@ return_command_result({'ok', _}, FileName, 'file') -> {'ok', FileName};
 return_command_result({'error', _}=Error, _FileName, _) -> Error.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Run normalizer command
 %% @end
 %%------------------------------------------------------------------------------
@@ -289,7 +288,6 @@ do_join_media_files(Files, Options) ->
     Result.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Based on detected format options, normalize the files if
 %% sample rate are different of desire sample rate, otherwise
 %% copy the files to a temporary place to join them together.
@@ -325,7 +323,6 @@ maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Detect file format options(sample_rate, file format) and return
 %% a tuple of detect options
 %% @end
@@ -346,7 +343,6 @@ detect_format_options(File) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

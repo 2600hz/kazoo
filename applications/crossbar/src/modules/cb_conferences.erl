@@ -309,7 +309,6 @@ add_realtime_fold(Conference, RunningConferences) ->
     kz_json:set_value(kz_doc:id(Conference), Amended, RunningConferences).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new conference document with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------

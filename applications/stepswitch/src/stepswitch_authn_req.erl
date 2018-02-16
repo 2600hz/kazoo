@@ -23,7 +23,6 @@ handle_req(JObj, _Props) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -35,7 +34,6 @@ maybe_send_auth_resp(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc extract the auth realm from the API request, using the requests to domain
 %% when provided with an IP
 %% @end

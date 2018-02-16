@@ -181,7 +181,6 @@ handle_conference_error(JObj, Props) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -201,7 +200,6 @@ start_sanity_check_timer(Timeout) ->
     erlang:send_after(Timeout, self(), 'sanity_check').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -220,7 +218,6 @@ handle_call(_Request, _, P) ->
     {'reply', {'error', 'unimplemented'}, P}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -302,7 +299,6 @@ handle_cast(_Cast, Participant) ->
     {'noreply', Participant}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -333,7 +329,6 @@ handle_info(_Msg, Participant) ->
     {'noreply', Participant}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -383,7 +378,6 @@ handle_channel_pivot(JObj, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -405,7 +399,6 @@ maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
 maybe_clear(_) -> 'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------
@@ -580,14 +573,12 @@ set_enter_exit_sounds({_, AccountId, MediaId}, #participant{conference=Conferenc
              ],
     kapps_call_command:media_macro(Sounds, Call).
 
-%% @private
 -spec play_exit_tone(boolean(), kapps_conference:conference()) -> kz_term:api_binary().
 play_exit_tone('false', Conference) ->
     play_exit_tone_media(?EXIT_TONE(kapps_conference:account_id(Conference)), Conference);
 play_exit_tone('true', Conference) ->
     play_exit_tone_media(?MOD_EXIT_TONE(kapps_conference:account_id(Conference)), Conference).
 
-%% @private
 -spec play_exit_tone_media(kz_term:ne_binary(), kapps_conference:conference()) -> kz_term:api_binary().
 play_exit_tone_media(Tone, Conference) ->
     case kapps_conference:play_exit_tone(Conference) of
@@ -596,7 +587,6 @@ play_exit_tone_media(Tone, Conference) ->
         _Else -> Tone
     end.
 
-%% @private
 -spec play_entry_tone(boolean(), kapps_conference:conference()) -> kz_term:api_binary().
 play_entry_tone('false', Conference) ->
     play_entry_tone_media(?ENTRY_TONE(kapps_conference:account_id(Conference)), Conference);

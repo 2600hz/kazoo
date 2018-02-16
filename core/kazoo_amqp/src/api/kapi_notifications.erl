@@ -1464,7 +1464,6 @@ headers(Name) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generic function to build API payload.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1482,7 +1481,6 @@ build_message(JObj, Definition) ->
     build_message(kz_json:to_proplist(JObj), Definition).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generic function to validate API payload.
 %% @end
 %%------------------------------------------------------------------------------

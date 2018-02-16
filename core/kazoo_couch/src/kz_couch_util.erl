@@ -24,7 +24,6 @@
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Send the query function in an anon fun with arity 0; if it returns 504, retry
 %% until 3 failed retries occur.
 %% @end
@@ -188,7 +187,6 @@ db_url(#server{}=Conn, DbName) ->
     list_to_binary([Server, "/", DbName]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------

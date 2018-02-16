@@ -193,7 +193,6 @@ put(Context) ->
 %%% Internal functions
 %%%=============================================================================
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to create a token and save it to the token db
 %% @end
 %%------------------------------------------------------------------------------
@@ -220,7 +219,6 @@ create_local_token(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Make a crossbar request to the authoritative server to authorize
 %% the shared token and get the account/user for the token
 %% @end
@@ -244,7 +242,6 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure those exist locally.
 %% @end
@@ -263,7 +260,6 @@ import_missing_data(Account, User) ->
         andalso import_missing_user(AccountId, kz_doc:id(User), User).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure the account exists (creating if not)
 %% @end
@@ -322,7 +318,6 @@ import_missing_account(AccountId, Account) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If a remote host authenticates the shared token it will return
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end

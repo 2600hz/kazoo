@@ -125,7 +125,6 @@ to_response(Context, _, _) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/cdr/' can only accept GET
 %%
@@ -150,7 +149,6 @@ allowed_methods(?PATH_LEGS, _InteractionId) ->
     [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
@@ -167,7 +165,6 @@ resource_exists(?PATH_LEGS, _) -> 'true';
 resource_exists(_, _) -> 'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -242,7 +239,6 @@ load_chunk_view(Context, ViewName, Options0) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to CDRs summary.
 %% @end
 %%------------------------------------------------------------------------------
@@ -277,7 +273,6 @@ merge_cdr_summary(JObj1, JObj2) ->
 normalize_summary_results(JObj, Acc) -> [JObj|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generate specific view options for the path.
 %% @end
 %%------------------------------------------------------------------------------
@@ -320,7 +315,6 @@ maybe_add_stale_to_options('true') -> [{'stale', 'ok'}];
 maybe_add_stale_to_options('false') ->[].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Loads CDR docs from database and normalized the them.
 %% @end
 %%------------------------------------------------------------------------------
@@ -373,7 +367,6 @@ normalize_cdrs(Context, <<"csv">>, JObjs) ->
     [normalize_cdr_to_csv(JObj, Context) || JObj <- JObjs].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalize CDR in JSON
 %% @end
 %%------------------------------------------------------------------------------
@@ -384,7 +377,6 @@ normalize_cdr_to_jobj(JObj, Context) ->
     kz_json:from_list([{K, F(JObj, Timestamp)} || {K, F} <- csv_rows(Context)]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalize CDR in CSV
 %% @end
 %%------------------------------------------------------------------------------
@@ -503,7 +495,6 @@ reseller_cost(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a CDR document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -518,7 +509,6 @@ load_cdr(CDRId, Context) ->
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load Legs for a cdr interaction from the database
 %% @end
 %%------------------------------------------------------------------------------

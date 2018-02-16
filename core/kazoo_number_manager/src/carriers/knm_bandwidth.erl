@@ -193,7 +193,6 @@ acquire_and_provision_number(Number) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
@@ -219,7 +218,6 @@ should_lookup_cnam() -> 'true'.
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Make a REST request to Bandwidth.com Numbers API to preform the
 %% given verb (purchase, search, provision, ect).
 %% @end
@@ -301,7 +299,6 @@ make_numbers_request(Verb, Props) ->
 -endif.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert a number order response to json.
 %% @end
 %%------------------------------------------------------------------------------
@@ -326,7 +323,6 @@ number_order_response_to_json(Xml) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert a number search response XML entity to json
 %% @end
 %%------------------------------------------------------------------------------
@@ -354,7 +350,6 @@ get_cleaned(Path, Xml) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert a rate center XML entity to json
 %% @end
 %%------------------------------------------------------------------------------
@@ -371,7 +366,6 @@ rate_center_to_json(Xml) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine if the request was successful, and if not extract any
 %% error text
 %% @end

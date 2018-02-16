@@ -60,7 +60,6 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc return the app name and data (as a binary string) to send to
 %% the FS ESL via mod_erlang_event
 %% @end
@@ -635,7 +634,6 @@ maybe_multi_set(_Node, _UUID, []) -> 'undefined';
 maybe_multi_set(Node, UUID, Vars) -> ecallmgr_util:multi_set_args(Node, UUID, Vars).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Redirect command helpers
 %% @end
 %%------------------------------------------------------------------------------
@@ -661,7 +659,6 @@ maybe_add_redirect_header(Node, UUID, RedirectServer) ->
     ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Eavesdrop command helpers
 %% @end
 %%------------------------------------------------------------------------------
@@ -678,7 +675,6 @@ eavesdrop(Node, UUID, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Call pickup command helpers
 %% @end
 %%------------------------------------------------------------------------------
@@ -961,7 +957,6 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
                                   ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Conference command helpers
 %% @end
 %%------------------------------------------------------------------------------
@@ -1070,7 +1065,6 @@ wait_for_conference(ConfName) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Store command helpers
 %% @end
 %%------------------------------------------------------------------------------
@@ -1236,7 +1230,6 @@ send_store_fax_call_event(UUID, Results) ->
     kz_amqp_worker:cast(Prop, fun kapi_call:publish_event/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1290,7 +1283,6 @@ base_fetch_call_event_props(UUID, ChannelProps) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Execute extension helpers
 %% @end
 %%------------------------------------------------------------------------------
@@ -1394,7 +1386,6 @@ tts(Node, UUID, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Playback command helpers
 %% @end
 %%------------------------------------------------------------------------------
@@ -1449,7 +1440,6 @@ maybe_add_terminators(Acc, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

@@ -215,7 +215,6 @@ maybe_flush_config(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -228,7 +227,6 @@ summary_available(Context) ->
     cb_context:setters(Context, Setters).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -300,7 +298,6 @@ set_as_system(AuthConfig, Path) ->
     kz_json:set_value(Path, Default, AuthConfig).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -312,7 +309,6 @@ update(Id, Context) ->
     cb_context:validate_request_data(SchemaName, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -323,7 +319,6 @@ validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, C1, fun update/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -366,7 +361,6 @@ has_account_id_or_db(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Only allow to set the configuration id if the account who has the configuration is
 %% in the tree
 %% * if master is setting the config, allow
@@ -405,7 +399,6 @@ failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
     cb_context:setters(Context, Setters).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a login attempt log from MODB
 %% @end
 %%------------------------------------------------------------------------------

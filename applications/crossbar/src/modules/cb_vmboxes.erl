@@ -124,7 +124,6 @@ resource_exists(_, ?MESSAGES_RESOURCE, _) -> 'true'.
 resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -157,7 +156,6 @@ maybe_add_types_accepted(Context, ?BIN_DATA, ?HTTP_GET) ->
 maybe_add_types_accepted(Context, _, _) -> Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -438,7 +436,6 @@ add_pvt_auth_funs(Context) ->
     [fun(JObj) -> crossbar_doc:add_pvt_auth(JObj, Context) end].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc disallow vmbox messages array changing.
 %% Also check if vmbox has still message array
 %% and inform client to do migrate their vmbox
@@ -488,7 +485,6 @@ save_attachment(Context, Filename, FileJObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -506,7 +502,6 @@ get_folder_filter(Context, Default) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Filter messages(JObjs) based on Folder or Ids and
 %% apply query strings filters on them as well.
 %%
@@ -609,7 +604,6 @@ normalization_format(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -618,7 +612,6 @@ validate_request(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -640,7 +633,6 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -651,7 +643,6 @@ check_vmbox_schema(VMBoxId, Context) ->
     cb_context:validate_request_data(<<"vmboxes">>, Context1, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -672,7 +663,6 @@ maybe_migrate_notification_emails(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -685,7 +675,6 @@ on_successful_validation(VMBoxId, Context) ->
     crossbar_doc:load_merge(VMBoxId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Support PATCH - merge vmbox document with request data
 %% @end
 %%------------------------------------------------------------------------------
@@ -694,7 +683,6 @@ validate_patch(Context, DocId)->
     crossbar_doc:patch_and_validate(DocId, Context, fun validate_request/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of vmboxes, each summarized.
 %% @end
 %%------------------------------------------------------------------------------
@@ -730,7 +718,6 @@ merge_summary_fold(BoxSummary, CountMap) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a vmbox document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -771,7 +758,6 @@ empty_source_id(Context) ->
     cb_context:add_validation_error(<<"source_id">>, <<"required">>, Message, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get messages summary for a given mailbox
 %% @end
 %%------------------------------------------------------------------------------
@@ -825,7 +811,6 @@ message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc For Backward compatibility with voicemail box `messages' array, set
 %% `max_range' to retention seconds to get all messages which are in
 %% retention duration range *only* if request doesn't have
@@ -843,7 +828,6 @@ get_max_range(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get message by its media ID and its context
 %% @end
 %%------------------------------------------------------------------------------
@@ -912,7 +896,6 @@ create_new_message_document(Context, BoxJObj) ->
     cb_context:set_doc(cb_context:set_account_db(Context, kz_doc:account_db(Message)), Message).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get message binary content so it can be downloaded
 %% VMBoxId is the doc id for the voicemail box document
 %% VMId is the id for the voicemail document, containing the binary data
@@ -938,7 +921,6 @@ load_message_binary(BoxId, MediaId, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1074,7 +1056,6 @@ del_all_files(Dir) ->
                  ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc generate a media name based on CallerID and creation date
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
@@ -1092,7 +1073,6 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     list_to_binary([CallerId, "_", Date, Ext]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1128,7 +1108,6 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1150,7 +1129,6 @@ update_mwi(Context, _BoxId, _Status) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1165,7 +1143,6 @@ maybe_migrate_vm_box(Box) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1180,7 +1157,6 @@ migrate(Account) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1201,7 +1177,6 @@ maybe_migrate_boxes(AccountDb, Boxes) ->
     maybe_update_boxes(AccountDb, ToUpdate).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

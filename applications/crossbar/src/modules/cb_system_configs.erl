@@ -266,7 +266,6 @@ delete(Context, Id, Node, Doc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -281,7 +280,6 @@ read_for_delete(Id, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -292,7 +290,6 @@ summary(Context) ->
     crossbar_doc:load_view(View, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

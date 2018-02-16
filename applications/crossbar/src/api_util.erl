@@ -126,7 +126,6 @@ add_cors_headers(Req, Context) ->
                ,get_cors_headers(Allow)
                ).
 
-%% @private
 -spec get_cors_headers(kz_term:ne_binaries()) -> kz_term:proplist().
 get_cors_headers(Allow) ->
     [{<<"access-control-allow-origin">>, <<"*">>}
@@ -512,7 +511,6 @@ decode_json_body(ReqBody, Req) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes envelope keys, sets envelope keys to lowercase.
 %% @end
 %%------------------------------------------------------------------------------
@@ -525,7 +523,6 @@ normalize_envelope_keys_foldl(_K, 'undefined', JObj) -> JObj;
 normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize_key(K), V, JObj).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determines if the request envelope is valid.
 %% @end
 %%------------------------------------------------------------------------------
@@ -688,7 +685,6 @@ maybe_add_post_method(_, _, Allowed) ->
     Allowed.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use event bindings to determine if the client has
 %% provided a valid authentication token.
 %% @end
@@ -1064,7 +1060,6 @@ validate_resources_fold({Mod, Params}, ContextAcc) ->
     crossbar_bindings:fold(Event, Payload).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will use event bindings to determine if the client is
 %% authorized for this request.
 %% @end
@@ -1253,7 +1248,6 @@ create_json_chunk_response(Req, JObjs, StartedChunk) ->
             {StartedChunk, Req}
     end.
 
-%% @private
 -spec do_encode_to_json(kz_json:objects()) -> binary().
 do_encode_to_json(JObjs) ->
     Encoded = kz_json:encode(JObjs),

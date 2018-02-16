@@ -128,7 +128,6 @@ manually_update_nested_quantities_fold(Carrier, Count, S) ->
     Q = kz_services:updated_quantity(Cat, Carrier, S),
     kz_services:update(Cat, Carrier, Q + Count, S).
 
-%% @private
 -spec update_numbers(kz_services:services(), pns()) -> kz_services:services().
 update_numbers(Services, []) -> Services;
 update_numbers(Services, [PN|PNs]) ->
@@ -145,7 +144,6 @@ update_numbers(Services, [PN|PNs]) ->
             update_numbers(UpdatedServices, PNs)
     end.
 
-%% @private
 -spec update_number_quantities(kz_services:services(), pn()) -> kz_services:services().
 update_number_quantities(Services, PN) ->
     DID = knm_phone_number:number(PN),
@@ -159,7 +157,6 @@ update_number_quantities(Services, PN) ->
             kz_services:update(?PHONE_NUMBERS, Classification, Quantity + 1, Services)
     end.
 
-%% @private
 -spec is_number_billable(pn()) -> boolean().
 is_number_billable(PN) ->
     IsBillable = knm_carriers:is_number_billable(PN),
@@ -169,7 +166,6 @@ is_number_billable(PN) ->
                                            ]),
     IsBillable.
 
-%% @private
 -spec update_feature_quantities(kz_term:ne_binaries(), kz_services:services()) -> kz_services:services().
 update_feature_quantities([], Services) -> Services;
 update_feature_quantities([Feature|Features], Services) ->

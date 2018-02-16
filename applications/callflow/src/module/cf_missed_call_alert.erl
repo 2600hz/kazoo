@@ -97,7 +97,6 @@ send_missed_alert(Call, Notify, Emails) ->
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_missed_call/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Try to find email addressed using module's data object
 %% @end
 %%------------------------------------------------------------------------------
@@ -114,7 +113,6 @@ find_email_addresses(Call, Recipients) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Possible values for recipient type can be:
 %%      * email: an email or a list of emails
 %%      * user: a user id or a list of user ids to read their email
@@ -130,7 +128,6 @@ find_email_addresses_by_type(_AccountDb, _JObj, _) ->
     [].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc an email or a list of emails
 %% @end
 %%------------------------------------------------------------------------------
@@ -142,7 +139,6 @@ get_email_addresses(_AccountDb, Emails) when is_list(Emails) ->
 get_email_addresses(_AccountDb, _) -> [].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc a user id or a list of user ids to read their email
 %%      addresses from
 %% @end

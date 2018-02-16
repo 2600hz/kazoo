@@ -162,7 +162,6 @@ delete(Context, _) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -174,7 +173,6 @@ validate_directories(Context, ?HTTP_PUT) ->
     create(Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -189,7 +187,6 @@ validate_directory(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -206,7 +203,6 @@ get_pdf(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -228,7 +224,6 @@ pdf_props(Context) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -250,7 +245,6 @@ pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
     pdf_users(AccountDb, SortBy, Users, [Props|Acc]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -265,7 +259,6 @@ pdf_user(AccountDb, UserId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -280,7 +273,6 @@ pdf_callflow(AccountDb, CallflowId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -290,7 +282,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"directories">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -319,7 +310,6 @@ load_directory_users(Id, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing conference document with the data provided, if it is
 %% valid
 %% @end
@@ -330,7 +320,6 @@ update(DocId, Context) ->
     cb_context:validate_request_data(<<"directories">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update-merge an existing conference document partially with the data provided, if it is
 %% valid
 %% @end
@@ -340,7 +329,6 @@ validate_patch(DocId, Context) ->
     crossbar_doc:patch_and_validate(DocId, Context, fun update/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -353,7 +341,6 @@ on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"directory">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -363,7 +350,6 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

@@ -120,7 +120,6 @@ delete(Context, _) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -130,7 +129,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"blacklists">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -139,7 +137,6 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -150,7 +147,6 @@ update(Id, Context) ->
     cb_context:validate_request_data(<<"blacklists">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update-merge an existing menu document partially with the data provided, if it is
 %% valid
 %% @end
@@ -160,7 +156,6 @@ validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -170,7 +165,6 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -182,7 +176,6 @@ on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -191,7 +184,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

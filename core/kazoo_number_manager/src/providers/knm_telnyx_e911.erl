@@ -60,13 +60,11 @@ delete(Number) ->
 %%% Internal functions
 %%%=============================================================================
 
-%% @private
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
     knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -116,7 +114,6 @@ maybe_update_e911(Number, 'false') ->
             end
     end.
 
-%% @private
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
                          {'ok', knm_number:knm_number()} |
                          {'error', kz_term:ne_binary()}.

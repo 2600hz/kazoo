@@ -251,7 +251,6 @@ delete_faxbox(Id, Context) ->
     read(Id, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -302,7 +301,6 @@ remove_private_fields_fold(<<"pvt_", K1/binary>>, Acc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing instance with the data provided, if it is
 %% valid
 %% @end
@@ -313,7 +311,6 @@ update_faxbox(Id, Context) ->
     cb_context:validate_request_data(<<"faxbox">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -341,7 +338,6 @@ generate_email_address(Context) ->
     <<New/binary, ".", Domain/binary>>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end

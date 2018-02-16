@@ -151,7 +151,6 @@ list_available_features(Parameters) ->
 cleanse_features(Features) ->
     lists:usort([legacy_provider_to_feature(Feature) || Feature <- Features]).
 
-%% @private
 -spec is_local(knm_phone_number:knm_phone_number()) -> boolean().
 is_local(PN) ->
     ModuleName = knm_phone_number:module_name(PN),
@@ -345,7 +344,6 @@ legacy_provider_to_feature(?LEGACY_VITELITY_E911) -> ?FEATURE_E911;
 legacy_provider_to_feature(Else) -> Else.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -415,7 +413,6 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -endif.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

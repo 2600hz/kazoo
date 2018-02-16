@@ -140,7 +140,6 @@ resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?CUSTOMER_UPDATE, ?MESSAGE) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -643,7 +642,6 @@ maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -653,7 +651,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"notifications">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -1060,7 +1057,6 @@ read_account_attachment(Context, AttachmentsDb, DocId, Name) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -1142,7 +1138,6 @@ template_module_name(Id, Context, CT) ->
       >>, 'true').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -1290,7 +1285,6 @@ normalize_available_port(Value, Acc, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1379,7 +1373,6 @@ clean_req_doc(Doc) ->
                         ], Doc).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1423,7 +1416,6 @@ maybe_update_db(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Remove Template Customization from an account
 %% @end
 %%------------------------------------------------------------------------------
@@ -1454,7 +1446,6 @@ remove_customization(AccountId, Ids) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Forcing System's Templates to an account by first removing
 %% account's customization and then copy the templates from
 %% system_config to account's db.

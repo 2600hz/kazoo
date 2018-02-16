@@ -142,7 +142,6 @@ filter_by_reason(Reason, Transactions) ->
                         , kz_transaction:is_reason(Reason, Transaction)
     ].
 
-%% @private
 -spec is_from_braintree(kz_transaction:transaction()) -> boolean().
 is_from_braintree(Transaction) ->
     kz_transaction:description(Transaction) =:= <<"braintree transaction">>.
@@ -157,7 +156,6 @@ filter_for_per_minute(Transactions) ->
                         , is_per_minute(Transaction)
     ].
 
-%% @private
 -spec is_per_minute(kz_transaction:transaction()) -> boolean().
 is_per_minute(Transaction) ->
     case kz_transaction:code(Transaction) of
@@ -190,7 +188,6 @@ fetch(Account, From, To) ->
     ViewOptionsList = get_range(Account, From, To),
     fetch(Account, ViewOptionsList).
 
-%% @private
 -spec fetch(kz_term:ne_binary(), kz_term:proplists()) ->
                    {'ok', kz_transactions()} |
                    {'error', any()}.
@@ -205,7 +202,6 @@ fetch(Account, ViewOptionsList) ->
             {'ok', de_duplicate_transactions(Local, Bookkeeper)}
     end.
 
-%% @private
 -spec get_range(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                        ViewOptionsList :: kz_term:proplists().
 get_range(Account, From, To) ->
@@ -231,7 +227,6 @@ fetch_local(Account, From, To) ->
     ViewOptionsList = get_range(Account, From, To),
     fetch_local(Account, ViewOptionsList).
 
-%% @private
 -spec fetch_local(kz_term:ne_binary(), kz_term:proplists()) ->
                          {'ok', kz_transactions()} |
                          {'error', any()}.
@@ -239,7 +234,6 @@ fetch_local(_Account, []) -> {'ok', []};
 fetch_local(Account, ViewOptionsList) ->
     do_fetch_local(Account, ViewOptionsList, []).
 
-%% @private
 -spec do_fetch_local(kz_term:ne_binary(), kz_term:proplists(), kz_json:objects()) ->
                             {'ok', kz_transactions()} |
                             {'error', any()}.
@@ -254,14 +248,12 @@ do_fetch_local(_Account, [], ViewRes) ->
                    ],
     {'ok', Transactions}.
 
-%% @private
 -spec fetch_bookkeeper(kz_term:ne_binary(), kz_term:proplists()) ->
                               {'ok', kz_transactions()} |
                               {'error', any()}.
 fetch_bookkeeper(Account, ViewOptionsList) ->
     do_fetch_bookkeeper(Account, ViewOptionsList, []).
 
-%% @private
 -spec do_fetch_bookkeeper(kz_term:ne_binary(), kz_term:proplists(), kz_json:objects()) ->
                                  {'ok', kz_transactions()} |
                                  {'error', any()}.
@@ -294,7 +286,6 @@ fetch_bookkeeper(Account, From, To) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -314,7 +305,6 @@ de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, A
         'false' -> de_duplicate_transactions(Transactions, BookkeeperTransactions, [Value|Acc])
     end.
 
-%% @private
 -spec transactions_to_props(kz_transactions()) -> kz_term:proplist().
 transactions_to_props(Transactions) ->
     lists:foldl(fun transaction_to_prop_fold/2, [], Transactions).

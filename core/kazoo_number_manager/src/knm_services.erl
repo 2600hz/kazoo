@@ -222,7 +222,6 @@ do_fetch_services(undefined) -> kz_services:new();
 do_fetch_services(?MATCH_ACCOUNT_RAW(AssignedTo)) -> kz_services:fetch(AssignedTo).
 -endif.
 
-%% @private
 -spec create_numbers_transaction(kz_term:ne_binaries(), pos_integer(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                         kz_transaction:transaction().
 create_numbers_transaction(Nums=[_|_], Units, BillingId, AccountId) ->

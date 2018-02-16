@@ -105,7 +105,6 @@ resource_exists(?STATUS_PATH_TOKEN, _) -> 'true';
 resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -253,7 +252,6 @@ publish_update(Context, AgentId, PubFun) ->
     kz_amqp_worker:cast(Update, PubFun).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -531,7 +529,6 @@ add_miss(Miss, Acc, QueueId) ->
                       ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -541,7 +538,6 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the resuts of a view
 %% @end
 %%------------------------------------------------------------------------------

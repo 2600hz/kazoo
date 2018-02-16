@@ -90,7 +90,6 @@ is_only_time_filter(Context, FilterKey) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns `true' if all of the requested props are found, `false' if one is not found
 %% @end
 %%------------------------------------------------------------------------------
@@ -113,7 +112,6 @@ by_doc(Doc, Context, 'true') ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Build filter function if filter is requested by the client.
 %% @end
 %%------------------------------------------------------------------------------
@@ -125,7 +123,6 @@ build(Context, 'true') ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Build a function with arity 2 if filter is requested by the client.
 %% This function will filter documents and then applies caller map function
 %% on the view result.
@@ -200,7 +197,6 @@ should_filter_doc(Doc, K, V) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns `true' or `false' if the prop is found inside the doc.
 %% @end
 %%------------------------------------------------------------------------------

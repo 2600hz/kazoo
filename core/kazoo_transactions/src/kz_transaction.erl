@@ -171,7 +171,6 @@ new(#{account_id := AccountId
                    ,pvt_modified = Modfified
                    }.
 
-%% @private
 -spec new(kz_term:ne_binary(), units(), kz_term:ne_binary()) -> transaction().
 new(Ledger, Amount, Type) ->
     #kz_transaction{pvt_type = Type
@@ -338,7 +337,6 @@ to_public_json(Transaction) ->
         to_json(Transaction))).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -368,7 +366,6 @@ add_sub_account_name(AccountId, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -494,7 +491,6 @@ service_save_transaction(#kz_transaction{pvt_account_id = AccountId}=Transaction
             end
     end.
 
-%% @private
 -spec prepare_transaction(transaction()) -> transaction() | {'error', any()}.
 prepare_transaction(#kz_transaction{id = 'undefined'}=Transaction) ->
     prepare_transaction(Transaction#kz_transaction{id = modb_doc_id()});

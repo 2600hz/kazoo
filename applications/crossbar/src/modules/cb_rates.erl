@@ -76,7 +76,6 @@ authorize(_Context, _Nouns) ->
     'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
@@ -96,7 +95,6 @@ allowed_methods(?NUMBER, _PhoneNumber) ->
     [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
@@ -133,7 +131,6 @@ content_types_provided_by_verb(Context, _Verb) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -215,7 +212,6 @@ validate_number(Phonenumber, Context) ->
 %%% Internal functions
 %%%=============================================================================
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -225,7 +221,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -234,7 +229,6 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -245,7 +239,6 @@ update(Id, Context) ->
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -255,7 +248,6 @@ validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -295,7 +287,6 @@ add_default_route(Doc, Prefix) ->
     kz_json:set_value(<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>], Doc).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -305,7 +296,6 @@ summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check the uploaded file for CSV
 %% resource.
 %% @end
@@ -335,7 +325,6 @@ error_no_file(Context) ->
                                    ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -344,7 +333,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert the file, based on content-type, to rate documents
 %% @end
 %%------------------------------------------------------------------------------

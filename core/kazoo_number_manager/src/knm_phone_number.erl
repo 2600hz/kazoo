@@ -445,7 +445,6 @@ is_mdn_for_mdn_run(PN, IsMDNRun) ->
         andalso ?LOG_DEBUG("~s is an mdn", [number(PN)]),
     xnor(IsMDNRun, IsMDN).
 
-%% @private
 xnor(false, false) -> true;
 xnor(false, true) -> false;
 xnor(true, false) -> false;
@@ -600,7 +599,6 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -738,7 +736,6 @@ features_fold(FeatureKey, Acc, JObj) ->
     kz_json:set_value(FeatureKey, Data, Acc).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -866,7 +863,6 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
 -spec number_db(knm_phone_number()) -> kz_term:ne_binary().
 number_db(#knm_phone_number{number_db=NumberDb}) -> NumberDb.
 
-%% @private
 -spec rev(knm_phone_number()) -> kz_term:api_ne_binary().
 rev(#knm_phone_number{rev=Rev}) -> Rev.
 
@@ -1663,7 +1659,6 @@ error_unauthorized() ->
     knm_errors:to_json(A).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1672,7 +1667,6 @@ save_to_number_db(T0) ->
     save_to(fun split_by_numberdb/1, fun database_error/3, T0).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Makes sure number is assigned to assigned_to by creating number doc
 %% that may not yet exist in AssignedTo DB.
 %% @end
@@ -1681,7 +1675,6 @@ assign(T0) ->
     save_to(fun split_by_assignedto/1, fun assign_failure/3, T0).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Makes sure number is unassigned from prev_assigned_to by removing
 %% number doc that may still exist in PrevAssignedTo DB.
 %% @end

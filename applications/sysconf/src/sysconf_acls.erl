@@ -108,7 +108,6 @@ wait_for_pid_refs(PidRefs, Timeout) ->
             lager:debug("timed out waiting for pid refs: ~p", [PidRefs])
     end.
 
-%% @private
 -spec resolve_hostname(pid(), kz_term:ne_binary(), kz_json:object(), fun()) -> 'ok'.
 resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
     lager:debug("attempting to resolve '~s'", [ResolveMe]),

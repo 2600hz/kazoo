@@ -121,7 +121,6 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -155,7 +154,6 @@ find_allotment_by_classification(Classification, Limits) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -220,7 +218,6 @@ add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, At
     allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

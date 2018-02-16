@@ -110,7 +110,6 @@ is_allowed(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -134,7 +133,6 @@ post(Context) -> crossbar_doc:save(Context).
 %%% Internal functions
 %%%=============================================================================
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a Limit document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -143,7 +141,6 @@ load_limit(Context) ->
     maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing device document with the data provided, if it is
 %% valid
 %% @end
@@ -153,7 +150,6 @@ update_limits(Context) ->
     cb_context:validate_request_data(<<"limits">>, Context, fun on_successful_validation/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -162,7 +158,6 @@ on_successful_validation(Context) ->
     maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

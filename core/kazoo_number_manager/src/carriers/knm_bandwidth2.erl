@@ -266,7 +266,6 @@ from_bandwidth2(<<"+", _/binary>> = Number) -> Number;
 from_bandwidth2(Number) -> <<"+1", Number/binary>>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
@@ -370,7 +369,6 @@ api_post("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders", 
 -endif.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Make a REST request to Bandwidth.com Numbers API to perform the
 %% given verb (purchase, search, provision, etc).
 %% @end
@@ -426,7 +424,6 @@ handle_response({'error', _}=E) ->
     E.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert a number order response to json
 %% @end
 %%------------------------------------------------------------------------------
@@ -446,7 +443,6 @@ number_order_response_to_json(Xml) ->
        )
      ).
 
-%% @private
 -spec search_response_to_KNM(kz_types:xml_els() | kz_types:xml_el(), kz_term:ne_binary()) -> tuple().
 search_response_to_KNM([Xml], QID) ->
     search_response_to_KNM(Xml, QID);
@@ -459,14 +455,12 @@ search_response_to_KNM(Xml, QID) ->
             ),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
-%% @private
 -spec tollfree_search_response_to_KNM(kz_types:xml_el(), kz_term:ne_binary()) -> tuple().
 tollfree_search_response_to_KNM(Xml, QID) ->
     Num = from_bandwidth2(kz_xml:get_value("//TelephoneNumber/text()", Xml)),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, kz_json:new()}}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert a rate center XML entity to json
 %% @end
 %%------------------------------------------------------------------------------
@@ -486,7 +480,6 @@ rate_center_to_json(Xml) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Determine if the request was successful, and if not extract any
 %% error text
 %% @end

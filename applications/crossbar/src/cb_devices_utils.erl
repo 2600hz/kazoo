@@ -21,7 +21,6 @@ is_ip_unique(IP, DeviceId) ->
     is_ip_acl_unique(IP, DeviceId)
         andalso is_ip_sip_auth_unique(IP, DeviceId).
 
-%% @private
 
 -spec is_ip_acl_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_acl_unique(IP, DeviceId) ->
@@ -38,7 +37,6 @@ is_ip_unique(JObj, IP, DeviceId) ->
             not (kz_network_utils:verify_cidr(IP, kz_json:get_value(<<"ip">>, JObj)))
     end.
 
-%% @private
 
 -spec is_ip_sip_auth_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_ip_sip_auth_unique(IP, DeviceId) ->
@@ -47,7 +45,6 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
         {'error', 'not_found'} -> 'true'
     end.
 
-%% @private
 
 -spec get_all_acl_ips() -> kz_json:objects().
 get_all_acl_ips() ->
@@ -69,7 +66,6 @@ get_all_acl_ips() ->
             extract_all_ips(kapi_sysconf:get_value(JObj, kz_json:new()))
     end.
 
-%% @private
 
 -spec extract_all_ips(kz_json:object()) -> kz_json:objects().
 extract_all_ips(JObj) ->

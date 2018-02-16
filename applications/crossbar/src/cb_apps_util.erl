@@ -82,7 +82,6 @@ create_apps_store_doc(Account) ->
 %%% Internal functions
 %%%=============================================================================
 
-%% @private
 
 -spec get_apps_store_doc(kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_apps_store_doc(Account) ->
@@ -93,7 +92,6 @@ get_apps_store_doc(Account) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Find the first Service plan in Account or Account's reseller
 %% hierarchy which has `ui_apps' or has `ui_apps._all'
 %% @end
@@ -153,7 +151,6 @@ is_apps_in_service_plan_empty(ServicePlan) ->
 is_show_all_in_service_plan_enabled(ServicePlan) ->
     kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
 
-%% @private
 
 -spec filter_apps(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:objects()) -> kz_json:objects().
 filter_apps(AccountId, UserId, Apps) ->
@@ -173,7 +170,6 @@ filter_apps(AccountId, UserId, Apps, AppStoreJObj) ->
             andalso not is_blacklisted(App, AppStoreJObj)
     ].
 
-%% @private
 
 -spec is_authorized(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) -> boolean().
 is_authorized(_, 'undefined', _, _) ->
@@ -200,7 +196,6 @@ get_specific_ids(Users) ->
            (Id = kz_doc:id(User)) =/= 'undefined'
     ].
 
-%% @private
 
 -spec add_permissions(kz_json:object(), kz_json:object()) -> kz_json:object().
 add_permissions(App, JObj) ->
@@ -211,14 +206,12 @@ add_permissions(App, JObj) ->
             kz_json:merge([kzd_app:publish(App), AppPerm])
     end.
 
-%% @private
 
 -spec is_blacklisted(kz_json:object(), kz_json:object()) -> boolean().
 is_blacklisted(App, JObj) ->
     Blacklist = kzd_apps_store:blacklist(JObj),
     lists:member(kz_doc:id(App), Blacklist).
 
-%% @private
 
 -spec is_filtered(kz_term:ne_binary(), kz_json:object()) -> boolean().
 is_filtered(AccountId, App) ->
@@ -242,7 +235,6 @@ is_filtered(_AccountId, _App, _AppName) ->
     lager:debug("not filtering '~s'", [_AppName]),
     'false'.
 
-%% @private
 
 -spec maybe_set_account(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_account(Account, Doc) ->
@@ -254,7 +246,6 @@ maybe_set_account(Account, Doc) ->
         'false' -> JObj
     end.
 
-%% @private
 
 -spec set_account(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_account(Account, JObj) ->
@@ -271,14 +262,12 @@ set_account(Account, JObj) ->
             Corrected
     end.
 
-%% @private
 
 -spec get_plan_apps(kzd_service_plan:doc()) -> kz_json:object().
 get_plan_apps(ServicePlan) ->
     Apps = kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY, kz_json:new()),
     kz_json:delete_key(<<"_all">>, Apps).
 
-%% @private
 
 -spec find_enabled_apps(kz_json:object()) -> kz_json:objects().
 find_enabled_apps(PlanAppsJObj) ->

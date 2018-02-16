@@ -125,7 +125,6 @@ relay_cdr_event(JObj, Props) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -156,7 +155,6 @@ init([Call, JObj]) ->
     }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -165,7 +163,6 @@ handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -267,7 +264,6 @@ handle_cast(_Req, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -364,7 +360,6 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling messaging bus events
 %% @end
 %%------------------------------------------------------------------------------
@@ -377,7 +372,6 @@ handle_event(_JObj, #state{response_pid=Pid
               ]}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -391,7 +385,6 @@ terminate(_Reason, #state{response_pid=Pid}) ->
     lager:info("pivot call terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

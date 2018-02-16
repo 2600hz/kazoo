@@ -150,7 +150,6 @@ registration_update(Context) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -177,7 +176,6 @@ track_assignment('delete', Context) ->
     cb_modules_util:log_assignment_updates(Updates).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -191,7 +189,6 @@ get_numbers_fold(Server, Acc) ->
     kz_json:get_keys(kz_json:get_value(<<"DIDs">>, Server, kz_json:new())) ++ Acc.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -207,7 +204,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -216,7 +212,6 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing instance with the data provided, if it is
 %% valid
 %% @end
@@ -233,7 +228,6 @@ update(Id, Context) ->
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update-merge an existing instance partially with the data provided, if it is
 %% valid
 %% @end
@@ -243,7 +237,6 @@ validate_patch(Id, Context) ->
     crossbar_doc:patch_and_validate(Id, Context, fun update/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -254,7 +247,6 @@ on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -268,7 +260,6 @@ summary(Context) ->
                           ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

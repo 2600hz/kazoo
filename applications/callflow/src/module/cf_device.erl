@@ -46,7 +46,6 @@ maybe_handle_bridge_failure(Reason, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%------------------------------------------------------------------------------

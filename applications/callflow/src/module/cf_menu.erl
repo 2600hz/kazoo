@@ -55,7 +55,6 @@ handle(Data, Call) ->
     menu_loop(Menu, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc The main auto-attendant loop, will execute for the number
 %% of retries playing the greeting and collecting digits till the
 %% digits are routable
@@ -138,7 +137,6 @@ menu_handle_no_digits(#cf_menu_data{retries=Retries}=Menu, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc The primary sequence logic to route the collected digits
 %% @end
 %%------------------------------------------------------------------------------
@@ -153,7 +151,6 @@ try_match_digits(Digits, Menu, Call) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check if the digits are a exact match for the auto-attendant children
 %% @end
 %%------------------------------------------------------------------------------
@@ -167,7 +164,6 @@ is_callflow_child(Digits, _, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check if hunting is enabled
 %% @end
 %%------------------------------------------------------------------------------
@@ -176,7 +172,6 @@ is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
     Hunt.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check whitelist hunt digit patterns
 %% @end
 %%------------------------------------------------------------------------------
@@ -199,7 +194,6 @@ is_hunt_allowed(Digits, #cf_menu_data{hunt_allow=RegEx}, _) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check blacklisted hunt digit patterns
 %% @end
 %%------------------------------------------------------------------------------
@@ -222,7 +216,6 @@ is_hunt_denied(Digits, #cf_menu_data{hunt_deny=RegEx}, _) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Hunt for a callflow with these numbers
 %% @end
 %%------------------------------------------------------------------------------
@@ -248,7 +241,6 @@ hunt_for_callflow(Digits, Menu, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -291,7 +283,6 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) -
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -306,7 +297,6 @@ play_invalid_prompt(#cf_menu_data{invalid_media=Id}, Call) ->
     kapps_call_command:b_play(<<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -321,7 +311,6 @@ play_transferring_prompt(#cf_menu_data{transfer_media=Id}, Call) ->
     kapps_call_command:b_play(<<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -336,7 +325,6 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
     kapps_call_command:b_play(<<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -349,7 +337,6 @@ get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
     <<$/, (kapps_call:account_db(Call))/binary, $/, Id/binary>>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -368,7 +355,6 @@ store_recording(AttachmentName, MediaId, Call) ->
     kapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -392,7 +378,6 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -401,7 +386,6 @@ tmp_file() ->
     <<(kz_term:to_hex_binary(crypto:strong_rand_bytes(16)))/binary, ".mp3">>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -430,7 +414,6 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -451,7 +434,6 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
     kz_doc:id(JObj).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -489,7 +471,6 @@ update_doc(Updates, Id, Call) ->
     update_doc(Updates, Id, kapps_call:account_db(Call)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

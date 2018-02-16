@@ -201,7 +201,6 @@ new_id() ->
 %%% Internal functions
 %%%=============================================================================
 
-%% @private
 -spec help(kz_term:ne_binary(), kz_term:ne_binary()) ->
                   kz_json:object() |
                   {'error', 'unknown_category_action'}.
@@ -410,7 +409,6 @@ is_processing(#{started := Started
 is_processing(_) ->
     false.
 
-%% @private
 -spec status(task()) -> kz_term:ne_binary().
 status(#{was_stopped := true}) ->
     ?STATUS_STOPPED;

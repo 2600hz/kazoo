@@ -67,7 +67,6 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API
 %% Send to endpoint in determined order

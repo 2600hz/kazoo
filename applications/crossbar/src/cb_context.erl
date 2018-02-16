@@ -1027,7 +1027,6 @@ add_system_error(Error, JObj, Context) ->
 add_system_error(Code, Error, JObj, Context) ->
     build_system_error(Code, Error, JObj, Context).
 
-%% @private
 
 -spec build_system_error(integer(), atom() | kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) -> context().
 build_system_error(Code, Error, <<_/binary>> = Message, Context) ->

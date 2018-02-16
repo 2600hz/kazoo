@@ -83,7 +83,6 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
     debug_read(Context, CallId).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% Proper pagination is merely impossible for this API since we debugs
 %% are in two documents, setting limit to 2 * PagSize is a bad choice.
@@ -99,7 +98,6 @@ debug_summary(Context) ->
     maybe_normalize_debug_results(crossbar_view:load_modb(Context, ?CB_FIRST_ITERATION, ViewOptions)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Pivot debugs are store in two documents, request debug and response
 %% debug. If page_size is requested set limit accordingly to return
 %% both documents.
@@ -114,7 +112,6 @@ limit_by_page_size(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -145,7 +142,6 @@ debug_read(Context, CallId) ->
     crossbar_view:load_modb(Context, ?CB_DEBUG_LIST, ViewOptions).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -157,7 +153,6 @@ maybe_normalize_debug_results(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -172,7 +167,6 @@ normalize_debug_results(Context) ->
                       ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Since view key is Call-ID, we're sure debug docs for the same Call-ID
 %% are adjacent to each other. If we previously visited the Call-ID
 %% the next doc with the same Call-ID are merged with list's head.
@@ -200,7 +194,6 @@ sort_by_created(A, B, 'descending') ->
     kz_json:get_integer_value(<<"created">>, A, 0) > kz_json:get_integer_value(<<"created">>, B, 1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -214,7 +207,6 @@ fix_page_size(Context) ->
                                 ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -223,7 +215,6 @@ normalize_debug_read(JObj, Acc) ->
     [leak_pvt_field(kz_json:get_value(<<"doc">>, JObj)) | Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

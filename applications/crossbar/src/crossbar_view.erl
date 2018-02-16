@@ -453,7 +453,6 @@ map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] 
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load view results based on options. If the request is chunked
 %% finish the chunk if it's started and set is_chunked or return
 %% the {@link cb_cowboy_payload()} back to {@link api_resource} and {@link api_util}.
@@ -487,7 +486,6 @@ load_view(ContextError, _) ->
     ContextError.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check page size is exhausted or shall we continue querying same
 %% database (if query is chunk), otherwise go to next database.
 %% It sets `total_queried' after figure out what to do.
@@ -576,7 +574,6 @@ chunk_map_roll_in(#{last_key := OldLastKey}=ChunkMap
              }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Fold over databases and fetch result from each and count total result.
 %% If pagination is requested keeps track of last key.
 %% If `page_size' is not in the options, make unlimited get_results.
@@ -656,7 +653,6 @@ get_results(#{databases := [Db|RestDbs]=Dbs
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Apply filter to result, find last key.
 %% Then based on page_size, limit, result length and last key see
 %% we're done or shall we continue.
@@ -695,7 +691,6 @@ handle_query_result(#{last_key := LastKey
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check page size is exhausted or not.
 %% @end
 %%------------------------------------------------------------------------------
@@ -729,7 +724,6 @@ check_page_size_and_length(#{total_queried := TotalQueried
     }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Find out db request limit to use based on chunk size and remaining
 %% amount to satisfy page_size.
 %% @end
@@ -756,7 +750,6 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
     1 + PageSize - TotalQueried.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Apply filter function if provided while keep maintaining the result
 %% order.
 %% Filter function can be arity 1 (operating on list of JObjs) and
@@ -779,7 +772,6 @@ apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Figure out the last key if we have some result and page size is not
 %% exhausted yet.
 %% @end
@@ -797,7 +789,6 @@ last_key(_LastKey, JObjs, Limit, Returned) when Returned == Limit ->
     {kz_json:get_value(<<"key">>, Last), JObjs1}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If the last key is known set as the `next_start_key' in the
 %% response envelope.
 %% @end
@@ -812,7 +803,6 @@ format_response(#{total_queried := TotalQueried
     Envelope = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
-%% @private
 -spec add_paging(api_range_key(), non_neg_integer(), api_range_key(), kz_json:object()) -> kz_json:object().
 add_paging(StartKey, PageSize, NextStartKey, JObj) ->
     DeleteKeys = [<<"start_key">>, <<"page_size">>, <<"next_start_key">>],
@@ -860,7 +850,6 @@ is_chunked(Context, Options) ->
         andalso not props:get_is_true('unchunkable', Options, 'false').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create ranged view lookup database list using start/end time and
 %% direction.
 %% @end
@@ -908,7 +897,6 @@ maybe_set_start_end_keys(LoadMap, 'undefined', EndKey) -> LoadMap#{end_key => En
 maybe_set_start_end_keys(LoadMap, StartKey, EndKey) -> LoadMap#{start_key => StartKey, end_key => EndKey}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If pagination available, returns page size.
 %% Note: DO NOT ADD ONE (1) TO PAGE_SIZE/LIMIT! Load function will add it.
 %% @end
@@ -945,7 +933,6 @@ get_page_size_from_request(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get time key value from options or request.
 %% @end
 %%------------------------------------------------------------------------------
@@ -961,7 +948,6 @@ get_time_key(Context, Key, Options, Default) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get `max_range' from option or system config.
 %% @end
 %%------------------------------------------------------------------------------
@@ -973,7 +959,6 @@ get_max_range(Options) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Build customized start/end key mapper.
 %% @end
 %%------------------------------------------------------------------------------
@@ -996,7 +981,6 @@ map_keymap(Context, Options, Fun) when is_function(Fun, 2) -> Fun(Options, Conte
 map_keymap(_, _, ApiRangeKey) -> ApiRangeKey.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Build customized start/end key mapper for ranged query.
 %% If a map option is not present in the options, the timestamp
 %% will be used as the key.

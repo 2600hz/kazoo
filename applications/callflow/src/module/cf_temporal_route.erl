@@ -64,7 +64,6 @@ handle(Data, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Test all rules in reference to the current temporal routes, and
 %% returns the first valid callflow, or the default.
 %% @end
@@ -121,7 +120,6 @@ process_rules(_, [], _) ->
     'default'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Finds and returns a list of rule records that have do not occur in
 %% the future as well as pertain to this temporal route mapping.
 %% @end
@@ -189,7 +187,6 @@ days_in_rule(JObj) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Loads the temporal record with data from the db.
 %% @end
 %%------------------------------------------------------------------------------
@@ -264,7 +261,6 @@ interdigit_timeout(Data) ->
                              ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Loads rules set from account db.
 %% @end
 %%------------------------------------------------------------------------------
@@ -283,7 +279,6 @@ get_rule_set(Id, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Present the caller with the option to enable, disable, or reset
 %% the provided temporal rules.
 %% @end
@@ -321,7 +316,6 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
@@ -352,7 +346,6 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
@@ -383,7 +376,6 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
@@ -414,7 +406,6 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc determines the appropriate gregorian seconds to be used as the
 %% current date/time for this temporal route selection
 %% @end
@@ -431,7 +422,6 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
                      }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc The big daddy
 %% Calculates the date of the next event given the type, interval,
 %% rule, start date, and current date.
@@ -733,7 +723,6 @@ next_rule_date(#rule{cycle = <<"yearly">>
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Safety wrapper on date_of_dow used to loop over failing attempts
 %% until the date can be calculated.  The date can be provided as an
 %% improper date.
@@ -755,7 +744,6 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Calculates the date of the last occurance of a weekday within a
 %% given month/year.  The date can be provided as an improper date.
 %%
@@ -784,7 +772,6 @@ find_last_weekday({Y, M, _}, Weekday) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Unsafe calculation of the date for a specific day of the week, this
 %% function will explode on occasion.
 %% @end
@@ -809,7 +796,6 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
     kz_date:normalize({Y, M, D}).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Calculates the distance, in total ISO weeks, between two dates
 %% I rather dislike this approach, but it is the best of MANY evils that I came up with...
 %% The idea here is to find the difference (in days) between the ISO 8601 mondays

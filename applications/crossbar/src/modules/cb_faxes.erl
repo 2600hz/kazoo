@@ -170,7 +170,6 @@ maybe_add_types_accepted(Context, ?HTTP_PUT) ->
 maybe_add_types_accepted(Context, _) -> Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -344,7 +343,6 @@ delete(Context, _, Id, ?ATTACHMENT) ->
                , Context, ANames).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -376,7 +374,6 @@ maybe_add_faxbox_data(FaxBoxDoc, Context) ->
     cb_context:set_req_data(Context, ReqData).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -452,7 +449,6 @@ get_fax_running_status(Id, Q) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a fax document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -461,7 +457,6 @@ load_fax_meta(FaxId, Folder, Context) ->
     validate_fax_doc_folder(Folder, crossbar_doc:load({<<"fax">>, FaxId}, Context, ?TYPE_CHECK_OPTION(<<"fax">>))).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -495,7 +490,6 @@ verify_number(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -536,7 +530,6 @@ initial_job_status([]) -> <<"pending">>;
 initial_job_status(_) -> <<"attaching_files">>.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -605,7 +598,6 @@ load_smtp_log(Context) ->
     crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, Options).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load the binary attachment of a fax doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -642,7 +634,6 @@ set_fax_binary(Context, AttachmentId) ->
                       ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -659,7 +650,6 @@ outgoing_summary(Context) ->
     crossbar_view:load(Context, ViewName, Options).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

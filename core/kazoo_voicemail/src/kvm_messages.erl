@@ -446,7 +446,6 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -494,7 +493,6 @@ add_timestamp_if_defined(Key, Timestamp, ViewOpts) ->
 -define(LISTING_BY_TIMESTAMP_BOX_ID_KEY_INDEX, 2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalize listing view results.
 %% @end
 %%------------------------------------------------------------------------------
@@ -512,7 +510,6 @@ normalize_account_listing(JObj, Map) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalize fetch/update bulk result.
 %% Note: Optional checks message belonging to the BoxId and message
 %%       retention
@@ -574,7 +571,6 @@ is_prior_to_retention(JObj, RetenTimestamp, _) ->
 -define(PER_BOX_FOLDER_VIEW_FOLDER_KEY_INDEX, 2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalize count view results.
 %% @end
 %%------------------------------------------------------------------------------
@@ -615,7 +611,6 @@ sum_per_folder(JObj, FolderKeyIndex, BoxIdKeyIndex, ResultMap) ->
               }.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Apply update functions and map all messages to their MODBs.
 %% If message is prior to retention, do not apply functions, just
 %% set the folder to 'deleted' and set it to_update_map to update the

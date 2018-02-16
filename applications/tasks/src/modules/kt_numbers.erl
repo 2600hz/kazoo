@@ -365,13 +365,11 @@ ported_in(Cell) -> is_cell_boolean(Cell).
 force_outbound(Cell) -> is_cell_boolean(Cell).
 
 
-%% @private
 -spec is_cell_boolean(kz_term:ne_binary()) -> boolean().
 is_cell_boolean(<<"true">>) -> 'true';
 is_cell_boolean(<<"false">>) -> 'true';
 is_cell_boolean(_) -> 'false'.
 
-%% @private
 -spec is_cell_true(kz_term:api_ne_binary()) -> boolean().
 is_cell_true('undefined') -> 'undefined';
 is_cell_true(<<"true">>) -> 'true';
@@ -566,7 +564,6 @@ import(#{account_id := Account
     Row = handle_result(Args, knm_number:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
 
-%% @private
 public_fields(Args) -> kz_json:from_list(lists:flatten(pub_fields(Args))).
 pub_fields(Args=#{<<"cnam.inbound">> := CNAMInbound
                  ,<<"cnam.outbound">> := CNAMOutbound
@@ -616,19 +613,16 @@ pub_fields(Args=#{<<"cnam.inbound">> := CNAMInbound
     ,additional_fields_to_json(Args)
     ].
 
-%% @private
 cnam(Props) -> maybe_nest(?FEATURE_CNAM, Props).
 e911(Props) -> maybe_nest(?FEATURE_E911, Props).
 prepend(Props) -> maybe_nest(?FEATURE_PREPEND, Props).
 ringback(Props) -> maybe_nest(?FEATURE_RINGBACK, Props).
 failover(Props) -> maybe_nest(?FEATURE_FAILOVER, Props).
 
-%% @private
 -spec maybe_nest(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 maybe_nest(_, []) -> [];
 maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
-%% @private
 import_module_name(AuthBy, Carrier) ->
     case kz_util:is_system_admin(AuthBy)
         andalso Carrier
@@ -638,7 +632,6 @@ import_module_name(AuthBy, Carrier) ->
         _ -> Carrier
     end.
 
-%% @private
 import_state(AuthBy, State) ->
     case kz_util:is_system_admin(AuthBy)
         andalso 'undefined' =/= State
@@ -647,7 +640,6 @@ import_state(AuthBy, State) ->
         'true' -> [{'state', State}]
     end.
 
-%% @private
 additional_fields_to_json(Args) ->
     F = fun (Field, JObj) ->
                 Path = binary:split(Field, <<$.>>, ['global']),
@@ -662,7 +654,6 @@ additional_fields_to_json(Args) ->
       lists:foldl(F, kz_json:new(), additional_fields(Args))
      ).
 
-%% @private
 additional_fields(Args) ->
     [OpaqueField
      || <<"opaque.", OpaqueField0/binary>> <- maps:keys(Args),
@@ -670,7 +661,6 @@ additional_fields(Args) ->
         not kz_term:is_empty(OpaqueField)
     ].
 
-%% @private
 select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
 select_account_id(_, AccountId) -> AccountId.
 

@@ -101,7 +101,6 @@ alert_using_email('true', JObj) ->
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% @end
 %%------------------------------------------------------------------------------
@@ -127,7 +126,6 @@ create_template_props(Event) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------

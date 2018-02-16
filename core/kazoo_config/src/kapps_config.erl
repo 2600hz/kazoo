@@ -670,7 +670,6 @@ update_category(Category, JObj, PvtFields) ->
     end.
 -endif.
 
-%% @private
 
 -spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_term:api_object()) ->
                                  {'ok', kz_json:object()} |
@@ -793,7 +792,6 @@ flush(Category, Keys, Node) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Fetch a given configuration category from (in order):
 %% 1. from the cache
 %% 2. from the db

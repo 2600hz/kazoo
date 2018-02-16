@@ -123,7 +123,6 @@ bucket_cost(Flow) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Should this call be able to use outbound resources, the exact opposite
 %% exists in the handoff module.  When updating this one make sure to sync
 %% the change with that module
@@ -145,7 +144,6 @@ allow_no_match_type(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc determine if callflows should respond to a route request
 %% @end
 %%------------------------------------------------------------------------------
@@ -170,7 +168,6 @@ callflow_should_respond(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc send a route response for a route request that can be fulfilled by this
 %% process
 %% @end
@@ -224,7 +221,6 @@ get_ringback_media(Flow, JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -239,7 +235,6 @@ pre_park_action(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process
 %% @end
 %%------------------------------------------------------------------------------
@@ -264,7 +259,6 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
     kapps_call:exec(Updaters, Call).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process
 %% @end
 %%------------------------------------------------------------------------------

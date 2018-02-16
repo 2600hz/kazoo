@@ -243,7 +243,6 @@ delete(Context, ?PLANS_TOKEN, _PlanId) ->
     crossbar_doc:delete(Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -253,7 +252,6 @@ create(Context) ->
     cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -266,7 +264,6 @@ read(Context, PlanId) ->
     crossbar_doc:load(PlanId, Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -292,7 +289,6 @@ patch_update(Context, PlanId) ->
     crossbar_doc:patch_and_validate(PlanId, Context, VFun).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -313,7 +309,6 @@ summary(Context, {'reseller_plans', AccountId}) ->
     crossbar_doc:load_view(?CB_ACCOUNT_LIST, Options, Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -341,7 +336,6 @@ on_successful_validation(Id, ?HTTP_PATCH, Context) ->
     crossbar_doc:load_merge(Id, Context, ?STORAGE_CHECK_OPTIONS).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

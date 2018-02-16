@@ -160,7 +160,6 @@ authorize_media(_Context, _Nouns, _AccountId) ->
     'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -225,7 +224,6 @@ languages_provided(Context, _Id, _Path) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the parameters and content are correct
 %% for this request.
 %%
@@ -496,7 +494,6 @@ delete(Context, MediaId, ?BIN_DATA) ->
     delete_media_binary(MediaId, Context, cb_context:account_id(Context)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized list of media
 %% @end
 %%------------------------------------------------------------------------------
@@ -638,7 +635,6 @@ normalize_language_results(JObj, Acc) ->
     [kz_doc:id(JObj) | Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load prompt listing
 %% @end
 %%------------------------------------------------------------------------------
@@ -753,7 +749,6 @@ fix_prompt_start_keys_fold(Key, JObj) ->
 
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a media document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -770,7 +765,6 @@ load_media_meta(Context, MediaId, _AccountId) ->
     crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -839,7 +833,6 @@ maybe_add_prompt_fields(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -849,7 +842,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load the binary attachment of a media doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -876,7 +868,6 @@ load_media_binary(Context, MediaId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update the binary attachment of a media doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -912,7 +903,6 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Delete the binary attachment of a media doc
 %% @end
 %%------------------------------------------------------------------------------

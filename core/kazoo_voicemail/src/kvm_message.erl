@@ -278,7 +278,6 @@ change_folder(Folder, Message, AccountId, BoxId, Funs0) ->
             Error
     end.
 
-%% @private
 %% @equiv update(AccountId, BoxId, Message, [])
 -spec update(kz_term:ne_binary(), kz_term:api_ne_binary(), message()) -> db_ret().
 update(AccountId, BoxId, Message) ->
@@ -864,7 +863,6 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If notification was successfully processed return the NotifyAction.
 %% Otherwise return action 'nothing' to store the message as new voicemail.
 %% @end
@@ -916,7 +914,6 @@ update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Double check document to make sure it's not exists in db.
 %% Using `kz_datamgr:ensure_save` is more efficient here, but
 %% we're doing this fetch/retry for proof of concept whether document's id

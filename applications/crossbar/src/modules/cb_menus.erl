@@ -44,7 +44,6 @@ init() ->
     ok.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
@@ -61,7 +60,6 @@ allowed_methods(_MenuId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
@@ -74,7 +72,6 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -124,7 +121,6 @@ delete(Context, _DocId) ->
 %%% Internal functions
 %%%=============================================================================
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
@@ -134,7 +130,6 @@ load_menu_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new menu document with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -144,7 +139,6 @@ create_menu(Context) ->
     cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a menu document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -153,7 +147,6 @@ load_menu(DocId, Context) ->
     crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -164,7 +157,6 @@ update_menu(DocId, Context) ->
     cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -174,7 +166,6 @@ validate_patch(DocId, Context) ->
     crossbar_doc:patch_and_validate(DocId, Context, fun update_menu/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -190,7 +181,6 @@ on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

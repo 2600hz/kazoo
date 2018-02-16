@@ -84,7 +84,6 @@ valid_options(Opts) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -121,7 +120,6 @@ opt_find_me_fun(Opts) -> props:get_value('find_me_function', Opts).
 opt_gift_data(Opts) -> props:get_value('gift_data', Opts, 'ok').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -131,7 +129,6 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -148,7 +145,6 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -209,7 +205,6 @@ send_give_away_retry(Tbl) ->
     self() ! {'give_away', Tbl},
     'ok'.
 
-%% @private
 -spec find_me(find_me_fun(), pid()) -> 'ok'.
 find_me(Fun, Srv) ->
     lager:debug("trying to find successor for ~p", [Srv]),
@@ -227,7 +222,6 @@ find_me(Fun, Srv) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -240,7 +234,6 @@ terminate(_Reason, _State) ->
     lager:debug("ETS mgr going down: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

@@ -224,7 +224,6 @@ delete(Context, DeviceId) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
@@ -255,7 +254,6 @@ load_users_device_summary(Context, UserId) ->
                           ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -266,7 +264,6 @@ validate_request(DeviceId, Context) ->
     prepare_outbound_flags(DeviceId, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Validate payloads for actions on a device.
 %% @end
 %%------------------------------------------------------------------------------
@@ -455,7 +452,6 @@ on_successful_validation(DeviceId, Context) ->
     crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a device document from the database.
 %% @end
 %%------------------------------------------------------------------------------
@@ -464,7 +460,6 @@ load_device(DeviceId, Context) ->
     crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kzd_devices:type())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Retrieve the status of the devices linked to the account
 %% Reads registered devices in registrations, then map to devices of the account
 %% @end
@@ -477,7 +472,6 @@ load_device_status(Context) ->
     crossbar_util:response(RegStatuses, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -487,7 +481,6 @@ normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns the complete list of registrations in a the first registrar
 %% to respond for a given account realm.  This is not 100% accurate
 %% as an endpoint might be stored in another registrar, but it is
@@ -533,7 +526,6 @@ extract_device_registrations([JObj|JObjs], Set) ->
     extract_device_registrations(JObjs, S).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check if the device sip creds are unique
 %% @end
 %%------------------------------------------------------------------------------
@@ -570,7 +562,6 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -595,7 +586,6 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
 maybe_aggregate_device(_, _, _) -> 'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -617,7 +607,6 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
 maybe_remove_aggregate(_, _, _) -> 'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Perform actions on a device
 %% @end
 %%------------------------------------------------------------------------------

@@ -70,7 +70,6 @@ stop(Srv) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -109,7 +108,6 @@ get_language(<<L:2/binary>>) -> <<L/binary, "-", L/binary>>;
 get_language(Language) -> Language.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -132,7 +130,6 @@ handle_call('continuous', _From, #state{}=State) ->
     {'reply', 'ok', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -144,7 +141,6 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -239,7 +235,6 @@ log_error(_Error, _Contents) ->
     lager:info("recv error ~p : collected: ~p", [_Error, _Contents]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -254,7 +249,6 @@ terminate(_Reason, #state{id=Id, reqs=Reqs}) ->
     lager:debug("media tts ~s going down: ~p", [Id, _Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

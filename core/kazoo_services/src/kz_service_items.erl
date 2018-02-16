@@ -127,7 +127,6 @@ update(ServiceItem, ServiceItems) ->
     dict:store(Key, ServiceItem, ServiceItems).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Nasty conditional logging (but functional).... bleh...
 %% @end
 %%------------------------------------------------------------------------------

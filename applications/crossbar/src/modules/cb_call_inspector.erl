@@ -158,13 +158,11 @@ inspect_call_id(CallId, Context) ->
             crossbar_util:response_bad_identifier(CallId, Context)
     end.
 
-%% @private
 -spec sanitize(kz_json:objects()) -> kz_json:objects().
 sanitize(JObjs) ->
     [kz_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generate specific view options for the path.
 %% @end
 %%------------------------------------------------------------------------------
@@ -181,7 +179,6 @@ get_view_options(_) ->
     {'undefined', []}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Loads CDR docs from database and normalized the them.
 %% @end
 %%------------------------------------------------------------------------------
@@ -191,7 +188,6 @@ load_chunked_cdrs(Context, RespType) ->
     cb_cdrs:load_chunked_cdr_ids(Context, RespType, Ids).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -211,7 +207,6 @@ get_cdr_ids(JObjs) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Send a filter request to call_inspector application to filter
 %% which cdr_id is on call_inspector data store
 %% @end

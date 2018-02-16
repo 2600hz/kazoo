@@ -120,7 +120,6 @@ maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
 maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% @end
 %%------------------------------------------------------------------------------
@@ -157,7 +156,6 @@ get_vm_doc(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------

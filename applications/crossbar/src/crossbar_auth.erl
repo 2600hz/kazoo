@@ -185,7 +185,6 @@ reset_identity_secret(Context) ->
     cb_context:set_doc(Context, Doc).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get merge result of account and its parents, reseller and system
 %% authentication configuration.
 %% @end
@@ -207,7 +206,6 @@ get_inherited_config(AccountId, 'false') ->
     kapps_account_config:get_hierarchy(ParentId, ?AUTH_CONFIG_CAT, <<"auth_modules">>).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Utility func to generate method's config path
 %% @end
 %%------------------------------------------------------------------------------
@@ -215,7 +213,6 @@ get_inherited_config(AccountId, 'false') ->
 method_config_path(Method, Key) -> [Method, Key].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Utility func to generate method's multi-factor config path
 %% @end
 %%------------------------------------------------------------------------------
@@ -237,7 +234,6 @@ token_auth_expiry(Method, AuthConfig) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Check if is authenticator module is enabled or not.
 %% @end
 %%------------------------------------------------------------------------------
@@ -246,7 +242,6 @@ is_auth_module_enabled(Method, Config) ->
     kz_json:is_true(method_config_path(Method, <<"enabled">>), Config, 'true').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Checks if authenticator module is configured to do multi factor auth.
 %% @end
 %%------------------------------------------------------------------------------
@@ -262,7 +257,6 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
         andalso multi_factor_allowed_for_account(MasterId, ClaimAccountId, MFAAccountId, IncludeSubAccounts).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Checks if multi factor is enabled by looking at system, account and hierarchy.
 %% If the configuration comes from a parent account
 %% then we should look for property `multi_factor.include_subaccounts'.

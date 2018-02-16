@@ -39,7 +39,6 @@ authenticate(Claims) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get MFA provider and checks it's enabled or not
 %% @end
 %%------------------------------------------------------------------------------
@@ -54,7 +53,6 @@ provider(Configs) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Get MFA config from Account, if there was no config account
 %% get system default configuration
 %% @end

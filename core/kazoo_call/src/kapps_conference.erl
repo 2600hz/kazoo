@@ -622,7 +622,6 @@ set_call(Call, Conference) ->
     Conference#kapps_conference{call=Call}.
 
 
-%% @private
 -spec get_tone(any()) -> tone().
 get_tone(Thing) ->
     case kz_term:is_boolean(Thing) of

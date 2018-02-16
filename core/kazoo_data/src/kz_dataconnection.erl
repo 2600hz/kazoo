@@ -38,7 +38,6 @@ start_link(#data_connection{}=Connection) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -49,7 +48,6 @@ init([Connection]) ->
     {'ok', Connection}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -58,7 +56,6 @@ handle_call(_Request, _From, Connection) ->
     {'reply', {'error', 'not_implemented'}, Connection}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -67,7 +64,6 @@ handle_cast(_Msg, Connection) ->
     {'noreply', Connection}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -100,7 +96,6 @@ handle_info(_Info, Connection) ->
     {'noreply', Connection}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -113,7 +108,6 @@ terminate(_Reason, _Connection) ->
     lager:debug("couch connection terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

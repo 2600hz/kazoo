@@ -71,7 +71,6 @@ to_csv({Req, Context}) ->
     {Req, cb_context:set_resp_data(Context, normalize_acdc_stats(Context, <<"csv">>))}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/acdc_call_stats/' can only accept GET
 %%
@@ -83,7 +82,6 @@ allowed_methods() ->
     [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404
 %% @end
@@ -92,7 +90,6 @@ allowed_methods() ->
 resource_exists() -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -115,7 +112,6 @@ validate(Context) ->
     load_stats_summary(Context, cb_context:req_nouns(Context)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of accounts, each summarized.  Or a specific
 %% account summary.
 %% @end
@@ -133,7 +129,6 @@ load_stats_summary(Context, _Nouns) ->
     cb_context:add_system_error('faulty_request', Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

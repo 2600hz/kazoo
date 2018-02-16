@@ -82,7 +82,6 @@ handle_call_event(JObj, Props) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the listener, and sends the init hook
 %% @end
 %%------------------------------------------------------------------------------
@@ -101,7 +100,6 @@ init([Call]) ->
     {'ok', #state{call=Call}}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handle call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -111,7 +109,6 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handle cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -130,7 +127,6 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -140,7 +136,6 @@ handle_info(Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Allows listener to pass options to handlers
 %% @end
 %%------------------------------------------------------------------------------
@@ -149,7 +144,6 @@ handle_event(_JObj, _State) ->
     {'reply', []}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -161,7 +155,6 @@ terminate(_Reason, _State) ->
     lager:debug("singular call hook listener terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

@@ -245,7 +245,6 @@ raw_account_id(Other) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% `(modb()) -> modb_id() when modb() :: modb_id() | modb_db() | modb_db_unencoded()'
 %% Crashes if given anything else.
 %%------------------------------------------------------------------------------
@@ -296,7 +295,6 @@ format_resource_selectors_id(AccountId, 'encoded') ->
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% Returns `account_id() | any()'.
 %% Passes input along if not `account_id() | account_db() | account_db_unencoded().'
 %%------------------------------------------------------------------------------
@@ -562,7 +560,6 @@ set_allow_number_additions(Account, IsAllowed) ->
     account_update(Account, fun(J) -> kzd_accounts:set_allow_number_additions(J, IsAllowed) end).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1012,7 +1009,6 @@ iolist_join(_, []) -> [];
 iolist_join(Sep, [H|T]) ->
     [H | iolist_join_prepend(Sep, T)].
 
-%% @private
 -spec iolist_join_prepend(Sep, List1) -> List2 when
       Sep :: T,
       List1 :: [T],

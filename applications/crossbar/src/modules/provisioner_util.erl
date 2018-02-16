@@ -307,7 +307,6 @@ is_mac_address_in_use(Context, MacAddress) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc post data to a provisiong server
 %% @end
 %%------------------------------------------------------------------------------
@@ -335,7 +334,6 @@ do_simple_provision(MACAddress, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc post data to a provisiong server
 %% @end
 %%------------------------------------------------------------------------------
@@ -427,7 +425,6 @@ do_awesome_provision(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -467,7 +464,6 @@ get_owner(OwnerId, AccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Do awesome provisioning
 %% @end
 %%------------------------------------------------------------------------------
@@ -496,7 +492,6 @@ send_provisioning_template(JObj, Context) ->
     send_provisioning_request(Template, MAC).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If the device specifies a local template id then return that
 %% template
 %% @end
@@ -520,7 +515,6 @@ get_template(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc add the account_id to the root of the provisioning json
 %% @end
 %%------------------------------------------------------------------------------
@@ -531,7 +525,6 @@ set_account_id(Context) ->
     [fun(J) -> kz_json:set_value(<<"account_id">>, AccountId, J) end].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc get the settings from the account doc that should be used in the
 %% base properties for the line
 %% @end
@@ -558,7 +551,6 @@ set_account_line_defaults(Context) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc get the settings from the device doc that should be used in the
 %% base properties for the line
 %% @end
@@ -600,7 +592,6 @@ set_device_line_defaults(Context) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc merge in any overrides from the global provisioning db
 %% @end
 %%------------------------------------------------------------------------------
@@ -620,7 +611,6 @@ set_global_overrides(_) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc merge in any overrides from the account doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -640,7 +630,6 @@ set_account_overrides(Context) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc merge in any overrides from the user doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -663,7 +652,6 @@ set_user_overrides(Context) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc merge in any overrides from the device doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -681,7 +669,6 @@ set_device_overrides(Context) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Send awesome provisioning request
 %% @end
 %%------------------------------------------------------------------------------
@@ -701,7 +688,6 @@ send_provisioning_request(Template, MACAddress) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -776,7 +762,6 @@ maybe_sync_sip_data(Context, 'user', 'force') ->
             'ok'
     end.
 
-%% @private
 -spec send_check_sync(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 send_check_sync('undefined', _Realm, _MsgId) ->
     lager:warning("did not send check sync: username is undefined");

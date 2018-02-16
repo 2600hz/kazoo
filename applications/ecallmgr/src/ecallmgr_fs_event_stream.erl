@@ -51,7 +51,6 @@ start_link(Node, Bindings, Subclasses) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -66,7 +65,6 @@ init([Node, Bindings, Subclasses]) ->
                                }).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -75,7 +73,6 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -101,7 +98,6 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
     {'noreply', State, Timeout}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -186,7 +182,6 @@ handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
     ecallmgr_events:event(EventName, UUID, EventProps, Node).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -206,7 +201,6 @@ terminate(_Reason, #state{socket=Socket, node=Node}=State) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

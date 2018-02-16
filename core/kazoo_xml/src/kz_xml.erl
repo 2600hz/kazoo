@@ -56,7 +56,6 @@ is_empty_text(#xmlText{value=" "}) -> 'true';
 is_empty_text(_El) -> 'false'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generic helper to get the text value of a XML path
 %% @end
 %%------------------------------------------------------------------------------
@@ -73,7 +72,6 @@ get_value(Paths, Xml) ->
     end.
 
 
-%% @private
 -spec extract_values(kz_types:xml_els()) -> kz_term:api_binary().
 extract_values([]) -> 'undefined';
 extract_values(Elements) ->

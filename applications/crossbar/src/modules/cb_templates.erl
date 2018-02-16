@@ -117,7 +117,6 @@ account_created(Context) ->
 %%% Internal functions
 %%%=============================================================================
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -134,7 +133,6 @@ summary(Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
@@ -157,7 +155,6 @@ load_template_db(TemplateName, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Format the template/db name into a raw, unencoded or encoded form.
 %% @end
 %%------------------------------------------------------------------------------
@@ -176,7 +173,6 @@ format_template_name(TemplateName, 'raw') ->
     TemplateName.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new template database and load it with views so it can be
 %% used as an 'account'
 %% @end
@@ -196,7 +192,6 @@ create_template_db(TemplateName, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If a valid template database is provided import the non-design
 %% documents into the account
 %% @end
@@ -223,7 +218,6 @@ is_design_doc_id(<<"_design/", _/binary>>) -> 'false';
 is_design_doc_id(_) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Given a list of IDs in the template database, import them into the
 %% account database, correcting the pvt fields.
 %% @end

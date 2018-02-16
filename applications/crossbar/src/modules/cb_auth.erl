@@ -110,7 +110,6 @@ resource_exists(?LINKS_PATH, _LinkId) -> 'true';
 resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
@@ -573,7 +572,6 @@ set_public_key_response(Context, PublicKeyPem, <<"application/x-pem-file">>=CT) 
               ],
     cb_context:setters(Context, Setters).
 
-%% @private
 %% @doc Find Mime type we should return from Accept header or payload if provided by module
 %% (temporary, better to make generic function to use across crossbar module)
 -spec find_accept_type(cb_context:context()) -> kz_term:ne_binary().

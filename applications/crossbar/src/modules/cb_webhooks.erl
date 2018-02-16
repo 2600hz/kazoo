@@ -275,7 +275,6 @@ delete_account_hooks(JObjs) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -308,7 +307,6 @@ reenable_validation_error(Context) ->
     cb_context:add_validation_error(?REENABLE, <<"enum">>, Msg, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -327,7 +325,6 @@ maybe_leak_pvt_fields(Context) ->
     cb_context:set_doc(Context, NewDoc).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -338,7 +335,6 @@ update(Id, Context) ->
     cb_context:validate_request_data(<<"webhooks">>, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -411,7 +407,6 @@ normalize_attempt_results(JObj, Acc) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -504,7 +499,6 @@ get_hook_definition(HookEvent, MasterDb) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If a hook was auto-disabled and is being re-enabled, cleanup the private
 %% fields related to the auto-disabling
 %% @end

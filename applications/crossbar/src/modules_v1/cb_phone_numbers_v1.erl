@@ -74,7 +74,6 @@ init() ->
     ok.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines the verbs that are appropriate for the
 %% given Nouns. For example `/accounts/' can only accept GET and PUT
 %%
@@ -107,7 +106,6 @@ allowed_methods(?COLLECTION, ?ACTIVATE) ->
     [?HTTP_PUT].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function determines if the provided list of Nouns are valid.
 %% Failure here returns 404.
 %% @end
@@ -306,7 +304,6 @@ summary(Context) ->
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
 
-%% @private
 -spec rename_qs_filters(cb_context:context()) -> cb_context:context().
 rename_qs_filters(Context) ->
     Renamer = fun (<<"filter_state">>, Value)       -> {<<"filter_pvt_state">>, Value};
@@ -317,7 +314,6 @@ rename_qs_filters(Context) ->
     NewQS = kz_json:map(Renamer, cb_context:query_string(Context)),
     cb_context:set_query_string(Context, NewQS).
 
-%% @private
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     Number = kz_json:get_value(<<"key">>, JObj),
@@ -331,7 +327,6 @@ normalize_view_results(JObj, Acc) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -357,7 +352,6 @@ identify(Context, Number) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database.
 %% @end
 %%------------------------------------------------------------------------------
@@ -372,7 +366,6 @@ read(Context, Number) ->
     set_response(Result, Number, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -413,7 +406,6 @@ find_numbers(Context) ->
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -422,7 +414,6 @@ validate_request(Context) ->
     cb_context:validate_request_data(<<"phone_numbers">>, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -433,7 +424,6 @@ validate_delete(Context) ->
                       ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

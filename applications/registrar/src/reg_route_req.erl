@@ -50,7 +50,6 @@ maybe_replay_route_req(JObj, CCVs, IP) ->
 
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc lookup auth by IP in cache/database and return the result
 %% @end
 %%------------------------------------------------------------------------------

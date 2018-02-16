@@ -96,7 +96,6 @@ is_notice_enabled_default() ->
     kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'true').
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% @end
 %%------------------------------------------------------------------------------
@@ -145,7 +144,6 @@ fax_values(Event) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------

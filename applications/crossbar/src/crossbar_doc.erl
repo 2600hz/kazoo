@@ -163,7 +163,6 @@ maybe_open_cache_docs(DbName, DocIds, Options) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Returns `true' or `false' if the requested document type is matched
 %% against the actual document type or the name of the last resource
 %% that request it. It first checks expected type is matched with document
@@ -790,7 +789,6 @@ rev_to_etag(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1069,7 +1067,6 @@ version_specific_success(JObjs, Context, _Version) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1099,7 +1096,6 @@ handle_datamgr_errors(Else, _View, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is used to update the private timestamps, and db
 %% parameters on all crossbar documents.
 %% @end
@@ -1200,7 +1196,6 @@ add_pvt_alphanum_name(JObj, _, Name, _) ->
     kz_json:set_value(<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name), JObj).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

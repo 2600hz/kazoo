@@ -287,7 +287,6 @@ patch(Context, Id) ->
     post(Context, Id).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -510,7 +509,6 @@ merge_user_channels_fold(Channel, D) ->
     dict:store(UUID, Channel, D).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load list of accounts, each summarized. Or a specific
 %% account summary.
 %% @end
@@ -520,7 +518,6 @@ load_user_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load a user document from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -528,7 +525,6 @@ load_user_summary(Context) ->
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -686,7 +682,6 @@ rehash_creds(_UserId, Username, Password, Context) ->
      ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will determine if the username in the request is
 %% unique or belongs to the request being made
 %% @end
@@ -707,7 +702,6 @@ username_doc_id(Username, Context, _AccountDb) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------

@@ -58,7 +58,6 @@ sign(Claims)
 sign(Claims) ->
     sign(kz_json:to_map(Claims)).
 
-%% @private
 %% @doc Find the identity based on Provider and Claims, return the secret
 -spec identity_secret(map()) -> map() | {'error', any()}.
 identity_secret(#{auth_provider := #{name := <<"kazoo">>}
@@ -116,7 +115,6 @@ identity_secret(#{auth_provider := #{jwt_user_id_claim := IdentityField
 
 identity_secret(#{}) -> {'error', {500, 'invalid_identity_provider'}}.
 
-%% @private
 %% @doc Fetch the identity from DB or profile (if it's an OAuth provider)
 -spec get_identity_secret(map()) -> map() | {'error', any()}.
 get_identity_secret(#{auth_provider := #{name := <<"kazoo">>}
@@ -142,7 +140,6 @@ get_identity_secret(#{auth_provider := #{profile_cache_timer := _Timer}
 get_identity_secret(Token) ->
     get_identity(Token).
 
-%% @private
 %% @doc Fetch the identity profile from DB cache
 -spec get_identity(map()) -> map() | {'error', any()}.
 get_identity(#{auth_db := Db
@@ -153,7 +150,6 @@ get_identity(#{auth_db := Db
         {'error', 'not_found'} -> from_profile(Token)
     end.
 
-%% @private
 %% @doc Check if cached doc is expired or not, if it is read from profile
 %% to force refershing.
 -spec check_cache_expiration(map(), kz_json:object()) -> map() | {'error', any()}.
@@ -175,7 +171,6 @@ check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
 check_cache_expiration(#{}=Token, JObj) ->
     check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)}).
 
-%% @private
 %% @doc Read the identity secret from profile (Only third-party OAuth provider)
 -spec check_secret(map()) -> map() | {'error', any()}.
 check_secret(#{auth_provider := #{profile_signature_secret_field := Field}
@@ -191,7 +186,6 @@ check_secret(#{auth_provider := #{name := Name}}) ->
     lager:debug("provider ~s does not support profile signature secret field", [Name]),
     {'error', {500, 'invalid_identity_provider'}}.
 
-%% @private
 %% @doc Get the identity profile from the third-party OAuth provider
 -spec from_profile(map()) -> map() | {'error', any()}.
 from_profile(Token) ->
@@ -202,7 +196,6 @@ from_profile(Token) ->
         Error -> Error
     end.
 
-%% @private
 %% @doc Get the identity secret from doc. (Only Kazoo provider)
 %% Create it if it's not present.
 -spec check_kazoo_secret(map()) -> map() | {'error', any()}.
@@ -355,7 +348,6 @@ reset_doc_secret(JObj) ->
 %%==============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Read identity secret from DB first and update it
 %% @end
 %%------------------------------------------------------------------------------
@@ -376,7 +368,6 @@ reset_identity_secret(#{auth_db := Db
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generate a new Kazoo signing secret
 %% @end
 %%------------------------------------------------------------------------------

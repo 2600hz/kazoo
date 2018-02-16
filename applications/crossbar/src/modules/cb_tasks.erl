@@ -419,13 +419,11 @@ delete(Context, TaskId) ->
 %%% Internal functions
 %%%=============================================================================
 
-%% @private
 -spec set_db(cb_context:context()) -> cb_context:context().
 set_db(Context) ->
     cb_context:set_account_db(Context, ?KZ_TASKS_DB).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -539,7 +537,6 @@ read_attachment_file(TaskId, Context, AttachmentName) ->
     crossbar_doc:load_attachment(TaskId, AttachmentName, Type, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -561,18 +558,15 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
 
-%% @private
 -spec req_content_type(cb_context:context()) -> kz_term:ne_binary().
 req_content_type(Context) ->
     cb_context:req_header(Context, <<"content-type">>).
 
-%% @private
 -spec is_content_type_csv(cb_context:context()) -> boolean().
 is_content_type_csv(Context) ->
     [Lhs, Rhs] = binary:split(req_content_type(Context), <<$/>>),
     lists:member({Lhs, Rhs}, ?CSV_CONTENT_TYPES).
 
-%% @private
 -spec attached_data(cb_context:context(), boolean()) -> kz_tasks:input().
 attached_data(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -580,7 +574,6 @@ attached_data(Context, 'true') ->
 attached_data(Context, 'false') ->
     kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)).
 
-%% @private
 -spec save_attached_data(cb_context:context(), kz_term:ne_binary(), kz_tasks:input(), boolean()) ->
                                 cb_context:context().
 save_attached_data(Context, TaskId, CSV, 'true') ->
@@ -599,7 +592,6 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     Options = [{'content_type', <<"text/csv">>}],
     crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, CSV, Context, Options).
 
-%% @private
 -spec help(cb_context:context()) -> cb_context:context().
 help(Context) ->
     Category = cb_context:req_param(Context, ?QS_CATEGORY),

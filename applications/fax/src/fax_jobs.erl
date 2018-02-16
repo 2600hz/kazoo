@@ -90,7 +90,6 @@ start_link(AccountId) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -104,7 +103,6 @@ init([AccountId]) ->
     {'ok', State, ?POLLING_INTERVAL}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -113,7 +111,6 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State, ?POLLING_INTERVAL}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -156,7 +153,6 @@ handle_cast(_Msg, State) ->
     {'noreply', State, ?POLLING_INTERVAL}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -192,7 +188,6 @@ handle_event(JObj, _State) ->
     'ignore'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -205,7 +200,6 @@ terminate(_Reason, #state{account_id=AccountId}) ->
     lager:debug("terminating fax jobs for account ~s: ~p", [AccountId, _Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------

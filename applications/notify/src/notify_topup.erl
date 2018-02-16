@@ -60,7 +60,6 @@ handle_req(JObj, _Props) ->
                                  ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc create the props used by the template render function
 %% NOTE: amount is expected to be in dollars
 %% @end
@@ -76,7 +75,6 @@ create_template_props(_, AccountJObj) ->
                        ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -85,7 +83,6 @@ pretty_print_dollars(Amount) ->
     kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------

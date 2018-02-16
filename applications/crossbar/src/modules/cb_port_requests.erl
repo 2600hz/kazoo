@@ -435,7 +435,6 @@ load_port_request(Context, Id) ->
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -450,7 +449,6 @@ validate_load_summary(Context, <<_/binary>> = Type) ->
     maybe_normalize_summary_results(load_summary(Context, view_key_options(Context, Type, 'false'))).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -497,7 +495,6 @@ patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
     crossbar_doc:patch_and_validate(PortId, Context1, ValidateFun, LoadOptions).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -509,7 +506,6 @@ validate_attachments(Context, Id, ?HTTP_PUT) ->
     read(Context, Id).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -523,7 +519,6 @@ validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
     is_deletable(load_attachment(Id, AttachmentId, Context)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -542,7 +537,6 @@ is_deletable(Context, _PortState) ->
     cb_context:add_system_error('invalid_method', Msg, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Create a new instance with the data provided, if it is valid
 %% @end
 %%------------------------------------------------------------------------------
@@ -552,7 +546,6 @@ create(Context) ->
     cb_context:validate_request_data(?SCHEMA, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -578,7 +571,6 @@ authority(AccountId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -589,7 +581,6 @@ update(Context, Id) ->
     cb_context:validate_request_data(?SCHEMA, Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -794,7 +785,6 @@ prepare_timeline(Context, Doc) ->
     {_, NewDocs} = lists:unzip(lists:keysort(1, Indexed)),
     NewDocs.
 
-%% @private
 %% calls by `validate(Context, Id, ?PATH_TOKEN_TIMELINE)'
 -spec maybe_prepare_timeline(cb_context:context()) -> cb_context:context().
 maybe_prepare_timeline(Context) ->
@@ -821,7 +811,6 @@ run_comment_filter(JObj) ->
     kz_json:set_value(<<"comments">>, Filtered, JObj).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -846,7 +835,6 @@ leak_pvt_fields(Res, JObj) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -857,7 +845,6 @@ summary_attachments(Context, Id) ->
     cb_context:set_resp_data(Context1, knm_port_request:normalize_attachments(As)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -898,7 +885,6 @@ on_successful_validation(Context, _Id, 'false') ->
     cb_context:add_validation_error(PortState, <<"type">>, Msg, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -916,7 +902,6 @@ can_update_port_request(Context, _) ->
     cb_context:is_superduper_admin(cb_context:auth_account_id(Context)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -932,7 +917,6 @@ successful_validation(Context, _Id) ->
     cb_context:set_doc(Context, Normalized).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -989,7 +973,6 @@ number_validation_error(Context, Number, Message) ->
     cb_context:add_validation_error(Number, <<"type">>, Msg, Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1015,7 +998,6 @@ check_number_existence(E164, Number, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1029,7 +1011,6 @@ load_attachment(Id, AttachmentId, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1046,7 +1027,6 @@ load_attachment(AttachmentId, Context) ->
          },
     cb_context:add_resp_headers(Context1, Headers).
 
-%% @private
 -spec maybe_move_state(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_move_state(Context, PortState) ->
     Metadata = knm_port_request:transition_metadata(cb_context:auth_account_id(Context)
@@ -1075,7 +1055,6 @@ maybe_move_state(Context, PortState) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1092,7 +1071,6 @@ generate_loa(Context, _RespStatus) ->
     Context.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1111,7 +1089,6 @@ find_template(ResellerId, CarrierName) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1133,7 +1110,6 @@ maybe_send_port_comment_notification(Context, Id) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1148,7 +1124,6 @@ has_new_comment(OldComments, NewComments) ->
     OldTime < NewTime.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1187,7 +1162,6 @@ send_port_notification(Context, Id, State, Fun) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1200,7 +1174,6 @@ revert_patch(Context) ->
     crossbar_doc:save(cb_context:set_doc(Context, RevertedDoc)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1222,7 +1195,6 @@ send_port_comment_notification(Context, Id, NewComment) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1236,7 +1208,6 @@ send_port_unconfirmed_notification(Context, Id) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1251,7 +1222,6 @@ send_port_request_notification(Context, Id) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_request/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1265,7 +1235,6 @@ send_port_pending_notification(Context, Id) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_pending/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1279,7 +1248,6 @@ send_port_rejected_notification(Context, Id) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_rejected/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1293,7 +1261,6 @@ send_port_cancel_notification(Context, Id) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_cancel/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1307,7 +1274,6 @@ send_ported_notification(Context, Id) ->
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_ported/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1334,7 +1300,6 @@ common_patch_notification_props(_, _) ->
     kz_api:default_headers(?APP_NAME, ?APP_VERSION).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

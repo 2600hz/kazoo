@@ -374,7 +374,6 @@ gift_data() -> 'ok'.
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
@@ -385,7 +384,6 @@ init([]) ->
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
@@ -486,7 +484,6 @@ add_binding(Binding, Responder, Pieces, Prefix) ->
     ets:insert_new(table_id(), Bind).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -565,7 +562,6 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -578,7 +574,6 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -591,7 +586,6 @@ terminate(_Reason, _) ->
     lager:debug("bindings server terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------
@@ -604,7 +598,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If a binding_result uses 'eoq' for its response, the payload is
 %% ignored and the subscriber is re-inserted into the queue, with the
 %% previous payload being passed to the next invocation.

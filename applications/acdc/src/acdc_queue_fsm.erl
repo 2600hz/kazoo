@@ -604,7 +604,6 @@ connecting('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{que
     {'next_state', 'ready', clear_member_call(State), 'hibernate'}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -617,7 +616,6 @@ handle_event(_Event, StateName, State) ->
     {'next_state', StateName, State}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -755,7 +753,6 @@ elapsed(Ref) when is_reference(Ref) ->
 elapsed(Time) -> kz_time:elapsed_s(Time).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc If some agents are busy, the manager will tell us to delay our
 %% connect reqs
 %%
@@ -793,7 +790,6 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Abort a queue call between connect_reqs if agents have left the
 %% building
 %%

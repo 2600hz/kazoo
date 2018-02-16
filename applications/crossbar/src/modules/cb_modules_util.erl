@@ -83,7 +83,6 @@ cavs_from_request(ReqData, QueryString) ->
     kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
@@ -249,7 +248,6 @@ apply_assignment_updates(Updates, Context) ->
     PortAssignResults ++ AssignResults.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Split a list of assignment updates into a 2-element tuple; element
 %% 1 is a list of port requests, element 2 is a list of numbers that
 %% are already active.

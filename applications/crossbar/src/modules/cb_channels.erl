@@ -140,7 +140,6 @@ put(Context, UUID) ->
 
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Load an instance from the database
 %% @end
 %%------------------------------------------------------------------------------
@@ -193,7 +192,6 @@ find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -243,7 +241,6 @@ validate_action(Context, _UUID, _Action) ->
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -339,7 +336,6 @@ account_summary(Context) ->
     get_channels(Context, [], fun kapi_call:publish_query_account_channels_req/1).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

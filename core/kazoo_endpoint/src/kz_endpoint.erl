@@ -1036,7 +1036,6 @@ guess_endpoint_type(Endpoint, []) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Creates the kazoo API endpoint for a bridge call command. This
 %% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
@@ -1229,7 +1228,6 @@ push_headers(PushJObj) ->
                 end, PushJObj).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1249,7 +1247,6 @@ validate_sip_transport(<<"sctp">>) -> <<"sctp">>;
 validate_sip_transport(_) -> 'undefined'.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1262,7 +1259,6 @@ get_custom_sip_interface(JObj) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Creates the kazoo API endpoint for a bridge call command. This
 %% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
@@ -1281,7 +1277,6 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Creates the Kazoo API endpoint for a bridge call command when
 %% the device (or owner) has forwarded their phone.  This endpoint
 %% is comprised of a route based on CallFwd, the relevant settings
@@ -1326,7 +1321,6 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -1407,7 +1401,6 @@ maybe_add_mobile_path(Route) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will return the sip headers that should be set for
 %% the endpoint
 %% @end
@@ -1509,7 +1502,6 @@ maybe_add_aor(JObj, _, Username, Realm) ->
     kz_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , JObj).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.
@@ -1900,7 +1892,6 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.

@@ -131,7 +131,6 @@ inspect_call_id(CallId) ->
     end,
     no_return.
 
-%% @private
 -spec sanitize(kz_json:objects()) -> kz_json:objects().
 sanitize(JObjs) ->
     [kz_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].

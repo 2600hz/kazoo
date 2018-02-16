@@ -565,7 +565,6 @@ update_existing_rollup(_Account, Balance, Transaction) ->
     lager:debug("updated rollup in ~s with new balance ~p", [_Account, Balance]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -677,7 +676,6 @@ clean_transactions([Transaction|Transactions], Acc) ->
     clean_transactions(Transactions, [clean_transaction(Transaction)|Acc]).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------

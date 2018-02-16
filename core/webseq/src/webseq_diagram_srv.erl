@@ -90,7 +90,6 @@ what(B) when is_binary(B) -> B;
 what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Initializes the server
 %% @end
 %%------------------------------------------------------------------------------
@@ -137,7 +136,6 @@ init({'db', Name, Database}=Type) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling call messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -159,7 +157,6 @@ handle_call(_,_,S) ->
     {'reply', 'ok', S}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -201,7 +198,6 @@ handle_cast(_Msg, S) ->
     {'noreply', S}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Handling all non call/cast messages
 %% @end
 %%------------------------------------------------------------------------------
@@ -211,7 +207,6 @@ handle_info(_Info, S) ->
     {'noreply', S}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc Convert process state when code is changed
 %% @end
 %%------------------------------------------------------------------------------
@@ -220,7 +215,6 @@ code_change(_, S, _) ->
     {'ok', S}.
 
 %%------------------------------------------------------------------------------
-%% @private
 %% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates

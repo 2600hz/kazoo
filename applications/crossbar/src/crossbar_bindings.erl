@@ -130,7 +130,6 @@ check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';
 check_bool(_) -> 'false'.
 
-%% @private
 
 -spec filter_out_failed({boolean() | 'stop', any()} | boolean() | any()) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
@@ -141,7 +140,6 @@ filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
 filter_out_failed(Term) -> not kz_term:is_empty(Term).
 
-%% @private
 
 -spec filter_out_succeeded({boolean() | 'stop', any()} | boolean() | any()) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
