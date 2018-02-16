@@ -60,6 +60,7 @@ handle_profile_request(JObj, Conference) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("returning conference profile ~s", [ProfileName]),
+    lager:debug("~s", [kz_json:encode(kz_json:from_list(Resp))]),
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
 
 -spec requested_profile_name(kz_json:object()) -> kz_term:ne_binary().

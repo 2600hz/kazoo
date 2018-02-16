@@ -52,5 +52,19 @@
                           ,kz_json:from_list([{<<"action">>, <<"hangup">>},   {<<"digits">>, <<"#">>}])
                           ]).
 
+-define(DEFAULT_ADVERTISE_CONFIG, 'undefined').
+-define(PAGE_ADVERTISE_CONFIG, 'undefined').
+-define(ADVERTISE(ConfigName, Default)
+       ,kapps_config:get_json(?CONFIG_CAT, [<<"advertise">>, ConfigName], Default)
+       ).
+-define(ADVERTISE(ConfigName), ?ADVERTISE(ConfigName, 'undefined')).
+
+-define(DEFAULT_CHAT_CONFIG, 'undefined').
+-define(PAGE_CHAT_CONFIG, 'undefined').
+-define(CHAT_PERMISSIONS(ConfigName, Default)
+       ,kapps_config:get_json(?CONFIG_CAT, [<<"chat-permissions">>, ConfigName], Default)
+       ).
+-define(CHAT_PERMISSIONS(ConfigName), ?CHAT_PERMISSIONS(ConfigName, 'undefined')).
+
 -define(KAPPS_CONFERENCE_HRL, 'true').
 -endif.
