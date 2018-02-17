@@ -62,9 +62,9 @@ start_link(Call, Fun, Args) ->
                            ).
 
 %%------------------------------------------------------------------------------
-%% @doc Handles call events (typically triggerred by a freeswitch event)
+%% @doc Handles call events (typically triggered by a FreeSWITCH event).
 %% For the purposes of the singular hook listener, we are only interested in
-%% CHANNEL_DESTROY.
+%% `CHANNEL_DESTROY'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec relay_amqp(kz_json:object(), kz_term:proplist()) -> any().
@@ -77,7 +77,7 @@ relay_amqp(JObj, Props) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the listener, and sends the init hook
+%% @doc Initializes the listener, and sends the init hook.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([fun()]) -> {'ok', state()}.
@@ -90,7 +90,7 @@ init([Call, Callback, Args]) ->
                  }}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handle call messages
+%% @doc Handle call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), any(), state()) ->
@@ -99,7 +99,7 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handle cast messages
+%% @doc Handle cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) ->
@@ -133,7 +133,7 @@ handle_info(Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers
+%% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> {'reply', kz_term:proplist()}.

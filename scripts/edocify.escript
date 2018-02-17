@@ -559,7 +559,7 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
 %%
 %% Expected outcome:
 %% * for example,
-%% %% @doc Initializes the server
+%% %% @doc Initializes the server.
 %% * also removes empty comment lines after `@doc' and before first non empty comment line
 %% @end
 %%------------------------------------------------------------------------------

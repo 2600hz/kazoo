@@ -1,11 +1,17 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc data:{
-%%%   "duration":2 // how long to delay for
-%%%   "unit":"s" // optional unit of time, defaults to seconds
-%%% }
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Sleeping before hanging up.
 %%%
-%%% unit can be one of: "ms", "s", "m", "h"
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`duration'</dt>
+%%%   <dd>How long to delay for. Default is zero.</dd>
+%%%
+%%%   <dt>`unit'</dt>
+%%%   <dd><strong>Optional: </strong>Unit of time, defaults to `s' (seconds).</dd>
+%%% </dl>
+%%%
+%%% Unit can be one of: `ms', `s', `m', `h'.
 %%%
 %%%
 %%% @author James Aimonetti

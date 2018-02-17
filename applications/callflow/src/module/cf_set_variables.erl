@@ -1,9 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "custom_application_vars": {"key": "value", "key": "value"},
-%%%   "export": true
-%%% }
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Set or export multiple Custom Channel variables.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`custom_application_vars'</dt>
+%%%   <dd>A JSON object of the Key/Value of the variable/value to set or export.</dd>
+%%%
+%%%   <dt>`export'</dt>
+%%%   <dd>`boolean()', should export instead of set or not.</dd>
+%%% </dl>
 %%%
 %%%
 %%% @end

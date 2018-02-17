@@ -338,7 +338,7 @@ get_operator_callflow(Account) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Look for children branches to handle the failure replies of
-%% certain actions, like cf_offnet and cf_resources
+%% certain actions, like {@link cf_offnet} and {@link cf_resources}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_bridge_failure({'fail', kz_json:object()} | kz_term:api_binary(), kapps_call:call()) ->
@@ -369,7 +369,7 @@ handle_bridge_failure(Cause, Code, Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Send and wait for a call failure cause response
+%% @doc Send and wait for a call failure cause response.
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_default_response(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.

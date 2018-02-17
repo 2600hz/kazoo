@@ -118,7 +118,7 @@ handle_originate_execute(JObj, Props) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([node() | kz_json:object()]) -> {'stop', 'normal'} |
@@ -349,7 +349,7 @@ handle_info(_Info, State) ->
     {'noreply', State, 'hibernate'}.
 
 %%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers
+%% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().

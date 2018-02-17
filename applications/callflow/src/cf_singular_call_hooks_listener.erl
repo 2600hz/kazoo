@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc This listener handles call CHANNEL_DESTROY events.
-%%% It is started by cf_singular_call_hooks and will
+%%% @doc This listener handles call `CHANNEL_DESTROY' events.
+%%% It is started by {@link cf_singular_call_hooks} and will
 %%% trigger when it is time to send the call end hook.
 %%%
 %%% @author Benedict Chan
@@ -61,9 +61,9 @@ start_link(Call) ->
                                      ], [Call]).
 
 %%------------------------------------------------------------------------------
-%% @doc Handles call events (typically triggerred by a freeswitch event)
+%% @doc Handles call events (typically triggered by a FreeSWITCH event).
 %% For the purposes of the singular hook listener, we are only interested in
-%% CHANNEL_DESTROY.
+%% `CHANNEL_DESTROY'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> any().
@@ -82,7 +82,7 @@ handle_call_event(JObj, Props) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the listener, and sends the init hook
+%% @doc Initializes the listener, and sends the init hook.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([kapps_call:call()]) -> {'ok', state()}.
@@ -100,7 +100,7 @@ init([Call]) ->
     {'ok', #state{call=Call}}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handle call messages
+%% @doc Handle call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), any(), state()) ->
@@ -109,7 +109,7 @@ handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handle cast messages
+%% @doc Handle cast messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()} |
@@ -136,7 +136,7 @@ handle_info(Info, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers
+%% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> {'reply', []}.

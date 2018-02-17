@@ -294,7 +294,7 @@ is_moderator(#participant{conference_channel_vars=Vars}) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
@@ -400,7 +400,7 @@ handle_info(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers
+%% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().

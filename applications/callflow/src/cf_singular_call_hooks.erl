@@ -2,6 +2,7 @@
 %%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
+%%%
 %%% This module is called by {@link cf_exe} at the initialization and destroy
 %%% points of a call, in order to identify the conversation in a singular manner
 %%% and send out hooks to external URLs.
@@ -167,7 +168,7 @@ send_end_hook(Call, Event) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Checks if there is a non-empty hook url and that the call is singular (or a transfer)
+%% @doc Checks if there is a non-empty hook URL and that the call is singular (or a transfer)
 %% @end
 %%------------------------------------------------------------------------------
 -spec should_hook(kapps_call:call()) -> boolean().
@@ -177,7 +178,7 @@ should_hook(Call) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Checks if the singular call hook is enabled in the callflow system config.
-%% The call hook is enabled if the URL in the system_config / callflows / singular_call_hook_url
+%% The call hook is enabled if the URL in the `system_config' / callflows / `singular_call_hook_url'
 %% field is not set to disabled.
 %%
 %% @end
@@ -187,9 +188,9 @@ is_enabled() ->
     (not kz_term:is_empty(get_hook_url())).
 
 %%------------------------------------------------------------------------------
-%% @doc This function identifies if a call is the first of the conversation by checking if it
-%% has an existing bridge. We also check the presence of referredby and
-%% want to send the hook if it is a call transfer
+%% @doc This function identifies if a call is the first of the conversation by
+%% checking if it has an existing bridge. We also check the presence of referred
+%% by and want to send the hook if it is a call transfer
 %%
 %% @end
 %%------------------------------------------------------------------------------

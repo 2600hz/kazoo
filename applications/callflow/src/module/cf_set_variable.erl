@@ -1,10 +1,19 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "variable":{{var_name}},
-%%%   "value:{{value}},
-%%%   "channel": "a", "both"
-%%% }
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Set a Custom Channel variable.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`variable'</dt>
+%%%   <dd>Name of the variable to set.</dd>
+%%%
+%%%   <dt>`value'</dt>
+%%%   <dd>Value to set.</dd>
+%%%
+%%%   <dt>`channel'</dt>
+%%%   <dd>On which call channel variable should be set, channel (leg) `a',
+%%%   `both', ... . Default is `a'.</dd>
+%%% </dl>
 %%%
 %%%
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC

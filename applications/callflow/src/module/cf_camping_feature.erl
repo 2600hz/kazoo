@@ -1,25 +1,32 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc Sends request to start the call to recipient when he's available.
-%%% ```
-%%% data: {
-%%%   "timeout": "_minutes_timeout"
-%%%   ,"tries": "_count"
-%%%   ,"try_interval": "_minutes_interval"
-%%%   ,"stop_after": "_minutes_timeout"
-%%% }
-%%% '''
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Sends request to start the call to recipient when they available.
 %%%
-%%% uses `cf_capture_group' to extract extension number
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`timeout'</dt>
+%%%   <dd>Timeout in minutes.</dd>
 %%%
+%%%   <dt>`tries'</dt>
+%%%   <dd>Number of retries.</dd>
+%%%
+%%%   <dt>`try_interval'</dt>
+%%%   <dd>Intervals in minutes between each retries.</dd>
+%%%
+%%%   <dt>`stop_after'</dt>
+%%%   <dd>Timeout to stop retries in minutes</dd>
+%%% </dl>
+%%%
+%%% `cf_capture_group' is used to extract extension number.
 %%% `timeout', `tries', `try_interval' and `stop_after' will correct system
-%%% defaults if present
+%%% defaults if present.
 %%%
-%%% usage example
-%%%
-%%% 1) create a "pattern callflow" with "patterns": `["^\\*7([0-9]*)$"]'
-%%% 2) create simple callflow with `number = 401'
-%%% 3) dial 401 to start ringing the phones in group, in another phone dial *7401 to make call camping
+%%% <strong>Usage example:</strong>
+%%% <ol>
+%%%   <li>Create a "pattern callflow" with `"patterns": ["^\\*7([0-9]*)$"]'</li>
+%%%   <li>Create simple callflow with `number = 401'</li>
+%%%   <li>Dial 401 to start ringing the phones in group, in another phone dial *7401 to make call camping</li>
+%%% </ol>
 %%%
 %%%
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
@@ -129,7 +136,7 @@ do(Monad, Actions) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module, creates the parameters and branches
-%% to cf_group_pickup.
+%% to {@link cf_group_pickup}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

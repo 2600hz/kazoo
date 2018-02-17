@@ -189,7 +189,7 @@ fs_nodedown(Srv, Node) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([atom() | kz_term:ne_binary() | kz_json:object()]) -> {'ok', state()}.
@@ -338,7 +338,7 @@ handle_info(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers
+%% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
@@ -371,9 +371,9 @@ handle_call_events(JObj, FetchId) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a gen_listener when it is about to
+%% @doc This function is called by a `gen_listener' when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
-%% necessary cleaning up. When it returns, the gen_listener terminates
+%% necessary cleaning up. When it returns, the `gen_listener' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end

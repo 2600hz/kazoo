@@ -90,7 +90,7 @@ what(B) when is_binary(B) -> B;
 what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(diagram_type() | [diagram_type()]) -> {'ok', state()}.

@@ -1,8 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc Detects if a call is fax
-%%% user(s).
-%%%
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Detects if a call is fax user(s).
 %%% @author James Aimonetti
 %%% @author Ben Wann
 %%% @author Luis Azedo

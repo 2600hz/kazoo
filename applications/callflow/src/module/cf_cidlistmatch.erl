@@ -1,15 +1,22 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc Handles inspection of incoming caller id and branching to a child
+%%% @doc Handles inspection of incoming caller ID and branching to a child
 %%% callflow node accordingly.
 %%%
-%%% "data":{
-%%%   "id":"01fc63f92d9b89a25dd4ff1039e64497" // match list id
-%%% },
-%%% "children": {
-%%%   "match": { [callflow node to branch to when absolute mode is false and regex matches] },
-%%%   "nomatch": { [callflow node to branch to when regex does not match or no child node defined for incoming caller id] },
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`id'</dt>
+%%%   <dd>Document ID of the match list</dd>
+%%% </dl>
+%%%
+%%% Sample for children section of Callflow:
+%%% ```
+%%%     "children": {
+%%%         "match": { // callflow node to branch to when absolute mode is false and regex matches },
+%%%         "nomatch": { // callflow node to branch to when regex does not match or no child node defined for incoming caller id },
+%%%     }
+%%% '''
+%%%
 %%%
 %%% @author Kozlov Yakov
 %%% @end

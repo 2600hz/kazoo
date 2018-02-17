@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc handler for route requests, responds if callflows match
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handler for route requests, responds if Callflows match.
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -125,7 +125,7 @@ bucket_cost(Flow) ->
 %%------------------------------------------------------------------------------
 %% @doc Should this call be able to use outbound resources, the exact opposite
 %% exists in the handoff module.  When updating this one make sure to sync
-%% the change with that module
+%% the change with that module.
 %% @end
 %%------------------------------------------------------------------------------
 -spec allow_no_match(kapps_call:call()) -> boolean().
@@ -144,7 +144,7 @@ allow_no_match_type(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc determine if callflows should respond to a route request
+%% @doc Determine if Callflows should respond to a route request.
 %% @end
 %%------------------------------------------------------------------------------
 -spec callflow_should_respond(kapps_call:call()) -> boolean().
@@ -168,8 +168,8 @@ callflow_should_respond(Call) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc send a route response for a route request that can be fulfilled by this
-%% process
+%% @doc Send a route response for a route request that can be fulfilled by this
+%% process.
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_route_response(kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.

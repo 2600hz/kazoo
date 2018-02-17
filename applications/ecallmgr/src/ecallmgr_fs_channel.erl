@@ -356,7 +356,7 @@ channel_cavs(JObj) -> kz_json:get_list_value(<<"custom_application_vars">>, JObj
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
@@ -443,7 +443,7 @@ handle_fs_event(UUID, Props, Node, Options) ->
     'ok'.
 
 %%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers
+%% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().

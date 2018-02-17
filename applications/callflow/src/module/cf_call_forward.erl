@@ -1,8 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "action":"activate" | "deactivate" | "update" | "toggle" | "menu"
-%%% }
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Callflow action to control call forwarding feature.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>The action to be done: `activate', `deactivate', `update', `toggle' and `menu'.</dd>
+%%% </dl>
 %%%
 %%% @author Karl Anderson
 %%% @end

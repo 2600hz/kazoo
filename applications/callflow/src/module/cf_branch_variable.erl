@@ -1,11 +1,18 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc Try to branch based on the value of a variable.
-%%% "data":{
-%%%   "variable":{{var_name}}
-%%%   //optional
-%%%   "scope": "[custome_channel_vars|device|user|account|_]",
-%%% }
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`variable'</dt>
+%%%   <dd>The name of Callflow child name to branch into</dd>
+%%%
+%%%   <dt>`scope'</dt>
+%%%   <dd><strong>Optional: </strong>The scope which is `variable' is defined.
+%%%   Possible scopes are `custome_channel_vars', `device', `user', `account'
+%%%   and `merged'.
+%%%   </dd>
+%%% </dl>
 %%%
 %%%
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
@@ -24,7 +31,7 @@
 -type variable_key() :: kz_term:api_ne_binary() | kz_term:api_ne_binaries().
 
 %%------------------------------------------------------------------------------
-%% @doc Entry point for this module
+%% @doc Entry point for this module.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.

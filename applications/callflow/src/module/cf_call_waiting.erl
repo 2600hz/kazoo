@@ -1,11 +1,17 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc "data": {
-%%%   "action": "activate" | "deactivate" | *"toggle",
-%%%   "scope": "device" | *"user"
-%%% }
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Callflow action to control call waiting feature.
 %%%
-%%% * Default value
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>The action to be done: `activate', `deactivate' and `toggle'.
+%%%   Default is `toggle'.</dd>
+%%%
+%%%   <dt>`scope'</dt>
+%%%   <dd>Which endpoint this action must be set: `device', `user'.
+%%%   Default is `user'.</dd>
+%%% </dl>
 %%%
 %%%
 %%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
@@ -89,7 +95,7 @@ maybe_get_doc(AccountDb, Id) ->
 maybe_execute_action(#call_waiting{action = Action}=CW, Call) ->
     case props:get_value(Action, actions()) of
         'undefined' ->
-            lager:info("unsupported call forwaring action ~s", [Action]),
+            lager:info("unsupported call waiting action ~s", [Action]),
             kapps_call_command:b_prompt(<<"cw-not_available">>, Call);
         ActionFun -> execute_action(ActionFun, CW, Call)
     end.

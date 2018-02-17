@@ -1,6 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%% @copyright (C) 2010,2018 2600Hz
 %%% @doc Base module for callflow action
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`param_1'</dt>
+%%%   <dd>Use param_1 to make a call</dd>
+%%%
+%%%   <dt>`param_2'</dt>
+%%%   <dd>Description.</dd>
+%%% </dl>
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_skel).

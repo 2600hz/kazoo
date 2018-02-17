@@ -1,12 +1,21 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "pin":"1234"
-%%%   ,"retries":3
-%%%   // optional after here
-%%%   ,"interdigit":2000
-%%%   ,"max_digits":15
-%%% }
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Allow caller to use the account resource to call out.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`pin'</dt>
+%%%   <dd><strong>Optional: </strong>PIN code to allow caller use this feature.</dd>
+%%%
+%%%   <dt>`max_digits'</dt>
+%%%   <dd>Maximum digits allowed when collecting destination number. Default is 15 digits.</dd>
+%%%
+%%%   <dt>`retries'</dt>
+%%%   <dd><strong>Optional: </strong>Maximum number of retries to collect PIN and/or destination number. Default is 3.</dd>
+%%%
+%%%   <dt>`interdigit'</dt>
+%%%   <dd><strong>Optional: </strong>How long to wait for the next DTMF, in milliseconds</dd>
+%%% </dl>
 %%%
 %%% @author James Aimonetti
 %%% @end
@@ -32,7 +41,7 @@ handle(Data, Call) ->
     lager:info("starting DISA handler"),
     kapps_call_command:answer(Call),
 
-    Pin = kz_json:get_value(<<"pin">>, Data),
+    Pin = kz_json:get_value(<<"pin">>, Data, <<>>),
     Retries = kz_json:get_integer_value(<<"retries">>, Data, 3),
     Interdigit = kz_json:get_integer_value(<<"interdigit">>, Data, kapps_call_command:default_interdigit_timeout()),
 
@@ -114,9 +123,9 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Check collect digits to be not empty, if empty collect again
-%% (e.g. if previous callflow crashed during collecting digits before recieving pound
-%%  FreeSwitch still thinks it's collecting for the previous callflow, and collect_digits
-%%  for this module will be resulted to an empty binary)
+%% (e.g. if previous callflow crashed during collecting digits before receiving pound
+%% FreeSwitch still thinks it's collecting for the previous callflow, and collect digits
+%% for this module will be resulted to an empty binary)
 %% @end
 %%------------------------------------------------------------------------------
 -spec collect_destination_number(kapps_call:call(), kz_json:object(), pos_integer()) -> kz_term:ne_binary().

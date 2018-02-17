@@ -1,12 +1,19 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "text":"This is what should be said"
-%%%   // optional
-%%%   ,"voice":"male" // or "female"
-%%%   ,"language":"en"
-%%%   ,"engine":"flite" // or "ispeech if configured
-%%% }
+%%% @copyright (C) 2014-2018, 2600Hz
+%%% @doc Takes a text and uses TTS to play it to the caller.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`text'</dt>
+%%%   <dd>This is what should be said.</dd>
+%%%
+%%%   <dt>`voice'</dt>
+%%%   <dd>One of: `male' or `female'.</dd>
+%%%
+%%%   <dt>`engine'</dt>
+%%%   <dd>`flite' or `ispeech'.</dd>
+%%% </dl>
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_tts).

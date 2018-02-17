@@ -1,11 +1,18 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "action": "menu" | "enable" | "disable" | "reset"
-%%%   ,"rules":[] // list of rules
-%%%   // optional after here
-%%%   ,"interdigit_timeout":2000
-%%% }
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Controls and picks Callflows based rules.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>One of: `menu', `enable', `diable', `reset'.</dd>
+%%%
+%%%   <dt>`rules'</dt>
+%%%   <dd>List of the rules.</dd>
+%%%
+%%%   <dt>`interdigit_timeout'</dt>
+%%%   <dd>How long to wait for the next DTMF, in milliseconds. Default is 2000.</dd>
+%%% </dl>
 %%%
 %%% @author Karl Anderson
 %%% @end

@@ -320,7 +320,7 @@ amqp_call(Call, API, PubFun, VerifyFun) when is_function(PubFun, 1) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Initializes the server
+%% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([kapps_call:call()]) -> {'ok', state()}.
@@ -566,7 +566,7 @@ handle_info(_Msg, State) ->
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
-%% @doc Handle call messages, sometimes forward them on..
+%% @doc Handle call messages, sometimes forward them on.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
@@ -611,9 +611,9 @@ handle_event(JObj, #state{cf_module_pid=PidRef
     'ignore'.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a gen_listener when it is about to
+%% @doc This function is called by a `gen_listener' when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
-%% necessary cleaning up. When it returns, the gen_listener terminates
+%% necessary cleaning up. When it returns, the `gen_listener' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -648,10 +648,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% this function determines if the callflow module specified at the
+%% @doc This function determines if the callflow module specified at the
 %% current node is 'available' and attempts to launch it if so.
-%% Otherwise it will advance to the next child in the flow
-%% @doc
+%% Otherwise it will advance to the next child in the flow.
 %% @end
 %%------------------------------------------------------------------------------
 -spec launch_cf_module(state()) -> state().
@@ -705,8 +704,8 @@ cf_module_not_found(Call) ->
     {'undefined', kapps_call:kvs_fetch('cf_last_action', Call)}.
 
 %%------------------------------------------------------------------------------
-%% @doc helper function to spawn a linked callflow module, from the entry
-%% point 'handle' having set the callid on the new process first
+%% @doc Helper function to spawn a linked callflow module, from the entry
+%% point 'handle' having set the callid on the new process first.
 %% @end
 %%------------------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, kz_json:object(), kapps_call:call()) ->
@@ -731,7 +730,7 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc unlike the kapps_call_command this send command does not call the
+%% @doc Unlike the kapps_call_command this send command does not call the
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send
 %% a hangup command without relying on the (now terminated) cf_exe.

@@ -1,14 +1,28 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc Collect DTMF into an optional key for later retrieval
-%%% "data":{
-%%%   "max_digits":4
-%%%   ,"timeout":5000 // milliseconds, how long to wait for first DTMF
-%%%   ,"terminator":"#" // what DTMF stops collection (and aren't included)
-%%%   ,"terminators":["#","*"] // what DTMFs stop collection (and aren't included)
-%%%   ,"interdigit_timeout":2000 // milliseconds, how long to wait for the next DTMF
-%%%   ,"collection_name":"your_name_here" // name the collection for later processing
-%%% }
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Collect DTMF into an optional key for later retrieval.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`max_digits'</dt>
+%%%   <dd>Maximum digits to collect. Default is to collect one digit.</dd>
+%%%
+%%%   <dt>`max_digits'</dt>
+%%%   <dd>How long to wait for first DTMF, in milliseconds</dd>
+%%%
+%%%   <dt>`terminator'</dt>
+%%%   <dd>What DTMF stops collection (and aren't included). Possible values are [0-9*#]. Default is `#'.</dd>
+%%%
+%%%   <dt>`terminators'</dt>
+%%%   <dd>What DTMFs stops collection (and aren't included). Possible values are [0-9*#]. Default is `#'.</dd>
+%%%
+%%%   <dt>`interdigit_timeout'</dt>
+%%%   <dd>How long to wait for the next DTMF, in milliseconds</dd>
+%%%
+%%%   <dt>`collection_name'</dt>
+%%%   <dd>The name of the collection to store collected numbers for later processing</dd>
+%%% </dl>
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_collect_dtmf).

@@ -1,12 +1,21 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "action":"compose"|"check"
-%%%   // optional
-%%%   ,"id":"vmbox_id"
-%%%   ,"max_message_length":500
-%%%   ,"interdigit_timeout":2000 // in milliseconds
-%%% }
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Check/compose Voicemail messages.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>One of: `compose' or `check'.</dd>
+%%%
+%%%   <dt>`id'</dt>
+%%%   <dd><strong>Optional: </strong>Voice Mailbox ID.</dd>
+%%%
+%%%   <dt>`max_message_length'</dt>
+%%%   <dd><strong>Optional: </strong>Maximum length of the voicemail message. Default is 500.</dd>
+%%%
+%%%   <dt>`interdigit_timeout'</dt>
+%%%   <dd>How long to wait for the next DTMF, in milliseconds. Default is 2000.</dd>
+%%% </dl>
 %%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti

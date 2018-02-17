@@ -1,6 +1,7 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Branch the call to the capture group if found, otherwise
+%%% continue with original callee number.
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
 %%%-----------------------------------------------------------------------------

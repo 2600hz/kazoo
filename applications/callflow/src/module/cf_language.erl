@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc "data":{"language":"en"}
-%%% Sets the language to use for the rest of the call
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Sets the language to use for the rest of the call.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`language'</dt>
+%%%   <dd>Language to set. Default is `en'</dd>
+%%% </dl>
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------

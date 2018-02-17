@@ -1,16 +1,25 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz, INC
-%%% @doc Eacesdrop feature code
-%%% data: {
-%%%   "group_id":"_group_id_"
-%%%   ,"approved_device_id":"_user_id_"
-%%%   ,"appoved_user_id":"_device_id_"
-%%%   ,"approved_group_id":"_group_id_"
-%%% }
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Eavesdrop feature code
 %%%
-%%% group_id defines list of eavesdrop's targets. If group_id is
-%%% undefined then anybody can be eavesdroped.
-%%% One of the approved_device_id, appoved_user_id, approved_group_id
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`group_id'</dt>
+%%%   <dd>Group ID.</dd>
+%%%
+%%%   <dt>`approved_device_id'</dt>
+%%%   <dd>Device ID.</dd>
+%%%
+%%%   <dt>`approved_user_id'</dt>
+%%%   <dd>User ID.</dd>
+%%%
+%%%   <dt>`approved_group_id'</dt>
+%%%   <dd>Group ID.</dd>
+%%% </dl>
+%%%
+%%% `group_id' defines a list of eavesdrop targets. If `group_id' is
+%%% `undefined' then anybody can be eavesdropped.
+%%% One of the `approved_device_id', `appoved_user_id' or `approved_group_id'
 %%% must be defined to access feature code.
 %%%
 %%%

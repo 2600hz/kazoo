@@ -1,6 +1,20 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc Sends a notification for missed call
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Sends a notification for missed call.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`recipients'</dt>
+%%%   <dd>A list of JSON Objects contains different recipients for notifications.
+%%%   Each recipient object have to keys:
+%%%     <ul>
+%%%       <li>`type': Specified what kind of recipient is this. Possible values are `user' or `email'.</li>
+%%%       <li>`id': Based on `type' it could be a list of emails or user IDs (to get their email address) or
+%%%       just a single email or user ID (to get its email from).</li>
+%%%     </ul>
+%%%   </dd>
+%%% </dl>
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_missed_call_alert).

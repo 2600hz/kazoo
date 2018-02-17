@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "id":"menu_id"
-%%%   // optional after here
-%%%   "interdigit_timeout":2000
-%%% }
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Provide a menu to caller.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`id'</dt>
+%%%   <dd>ID of menu document.</dd>
+%%%
+%%%   <dt>`interdigit_timeout'</dt>
+%%%   <dd><strong>Optional: </strong>How long to wait for the next DTMF, in milliseconds</dd>
+%%% </dl>
 %%%
 %%% @author Karl Anderson
 %%% @end

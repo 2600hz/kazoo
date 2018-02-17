@@ -1,23 +1,54 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc Account, user, device level privacy.
-%%% "data":{
-%%%   "to_did":"+14155550987" // statically dial DID
-%%%   ,"media":"media_id"
-%%%   ,"ringback":"ringback_id"
-%%%   ,"format_from_did":boolean()
-%%%   ,"timeout":integer()
-%%%   ,"do_not_normalize":boolean()
-%%%   ,"bypass_e164":boolean()
-%%%   ,"from_uri_realm":"realm.com"
-%%%   ,"caller_id_type":"external" // can use custom caller id properties on endpoints
-%%%   ,"use_local_resources":boolean()
-%%%   ,"hunt_account_id":"account_3" // use account_3's local carriers instead of current account
-%%%   ,"emit_account_id":boolean() // puts account id in SIP header X-Account-ID
-%%%   ,"custom_sip_headers:{"header":"value",...}
-%%%   ,"ignore_early_media":boolean()
-%%%   ,"outbound_flags":["flag_1","flag_2"] // used to match flags on carrier docs
-%%% }
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Callflow resource.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`to_did'</dt>
+%%%   <dd>Statically dial DID</dd>
+%%%
+%%%   <dt>`media'</dt>
+%%%   <dd>"Media ID</dd>
+%%%
+%%%   <dt>`ringback'</dt>
+%%%   <dd>Ringback ID</dd>
+%%%
+%%%   <dt>`format_from_did'</dt>
+%%%   <dd>`boolean()'</dd>
+%%%
+%%%   <dt>`timeout'</dt>
+%%%   <dd>`integer()'</dd>
+%%%
+%%%   <dt>`do_not_normalize'</dt>
+%%%   <dd>`boolean()'</dd>
+%%%
+%%%   <dt>`bypass_e164'</dt>
+%%%   <dd>`boolean()'</dd>
+%%%
+%%%   <dt>`from_uri_realm'</dt>
+%%%   <dd>Realm</dd>
+%%%
+%%%   <dt>`caller_id_type'</dt>
+%%%   <dd>Can use custom caller id properties on endpoints, e.g. `external'.</dd>
+%%%
+%%%   <dt>`use_local_resources'</dt>
+%%%   <dd>`boolean()'</dd>
+%%%
+%%%   <dt>`hunt_account_id'</dt>
+%%%   <dd>Use this account's local carriers instead of current account.</dd>
+%%%
+%%%   <dt>`emit_account_id'</dt>
+%%%   <dd>`boolean()', puts account ID in SIP header `X-Account-ID'</dd>
+%%%
+%%%   <dt>`custom_sip_headers'</dt>
+%%%   <dd>`{"header":"value",...}'</dd>
+%%%
+%%%   <dt>`ignore_early_media'</dt>
+%%%   <dd>`boolean()'</dd>
+%%%
+%%%   <dt>`outbound_flags'</dt>
+%%%   <dd>`["flag_1","flag_2"]', used to match flags on carrier docs</dd>
+%%% </dl>
 %%%
 %%% @author Karl Anderson
 %%% @author Sponsored by Raffel Internet B.V. Implemented by Voyager Internet Ltd.

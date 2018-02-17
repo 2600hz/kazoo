@@ -1,13 +1,21 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc "data":{
-%%%   "action": "manual" | "list"
-%%%   "media_id":"id_of_media"
-%%%   "id":"{LIST_ID}" // the list referenced above is kept in a couchdb document with this id
-%%%                    // required for  action:"list"
-%%%   // optional after this
-%%%   "interdigit_timeout":2000
-%%% }
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Allow the user to change their Caller ID based on the action.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>How to collect Caller ID: `lists' (`list' has same effect), `static' or `manual'. Default is `manual'.</dd>
+%%%
+%%%   <dt>`media_id'</dt>
+%%%   <dd>ID of the media prompt to play before starting collecting DTMF.</dd>
+%%%
+%%%   <dt>`id'</dt>
+%%%   <dd>ID if the list document to use if action is `list' or `lists'. Required if the action is `list' or `lists'.</dd>
+%%%
+%%%   <dt>`interdigit'</dt>
+%%%   <dd><strong>Optional: </strong>How long to wait for the next DTMF, in milliseconds</dd>
+%%% </dl>
 %%%
 %%% @author Karl Anderson
 %%% @author William Lloyd

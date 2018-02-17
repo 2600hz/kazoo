@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc Base module for callflow action
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Plays an audio prompt and then continue.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_audio_macro).

@@ -1,17 +1,22 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz, INC
-%%% @doc Intercept a call
-%%% data: {
-%%%   "user_id":"_user_id_"
-%%%   ,"device_id":"_device_id_"
-%%% }
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Intercept a call.
 %%%
-%%% One of the two - user_id, or device_id - must be defined on
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`user_id'</dt>
+%%%   <dd>User ID.</dd>
+%%%
+%%%   <dt>`device_id'</dt>
+%%%   <dd>Device ID></dd>
+%%% </dl>
+%%%
+%%% One of the two, `user_id' or `device_id', must be defined on
 %%% the data payload. Preference is given by most restrictive option set,
-%%% so device_id is checked for first, then user_id.
+%%% so `device_id' is checked for first, then `user_id'.
 %%%
-%%% device_id will only steal a channel of a specific device,
-%%% user_id will only steal a channel on any of the user's devices*
+%%% `device_id' will only steal a channel of a specific device,
+%%% `user_id' will only steal a channel on any of the user's devices.
 %%%
 %%%
 %%% @author SIPLABS LLC (Mikhail Rodionov)

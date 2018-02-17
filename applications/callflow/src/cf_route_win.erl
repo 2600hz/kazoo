@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc handler for route wins, bootstraps callflow execution
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handler for route wins, bootstraps callflow execution.
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------

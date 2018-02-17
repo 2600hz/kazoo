@@ -1,6 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz Inc
-%%% @doc
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Callflow action to branch the call to another callflow.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`id'</dt>
+%%%   <dd>The Id of the Callflow to branch.</dd>
+%%% </dl>
+%%%
 %%% @author Karl Anderson
 %%% @end
 %%%-----------------------------------------------------------------------------
