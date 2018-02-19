@@ -152,7 +152,7 @@ get_ag_file_specs([H|T], File, Acc, ErrorAcc) ->
         {File, _, _, _}=Line ->
             get_ag_file_specs(T, File, Acc ++ [Line], ErrorAcc);
         {_, _, _, _} ->
-            {[H|T], Acc};
+            {[H|T], Acc, ErrorAcc};
         Error ->
             get_ag_file_specs(T, File, Acc, ErrorAcc ++ [Error])
     end.

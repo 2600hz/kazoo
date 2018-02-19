@@ -8,9 +8,11 @@
 %%%-----------------------------------------------------------------------------
 
 -module(kz_att_google_storage).
+-behaviour(gen_attachment).
 
 -include("kz_att.hrl").
 
+%% `gen_attachment' behaviour callbacks (API)
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
@@ -23,11 +25,65 @@
 -define(DRV_SCOPES, [?DRV_SCOPE]).
 -define(DRV_TOKEN_OPTIONS, #{scopes => ?DRV_SCOPES}).
 
+%% ====================================================================
+%% `gen_attachment' behaviour callbacks (API)
+%% ====================================================================
+-spec put_attachment(gen_attachment:settings()
+                    ,gen_attachment:db_name()
+                    ,gen_attachment:doc_id()
+                    ,gen_attachment:att_name()
+                    ,gen_attachment:contents()
+                    ,gen_attachment:options()
+                    ) -> gen_attachment:put_response().
+put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
+    Authorization = gstorage_token(Settings),
+    CT = kz_mime:from_filename(AName),
+    {Bucket, Name} = resolve_path(Settings, {DbName, DocId, AName}),
+    case send_attachment(Authorization, Bucket, Name, CT, Options, Contents) of
+        {ok, ContentUrl, ResponseHeaders} ->
+            props:to_log(ResponseHeaders, <<"GSTORAGE2 HEADERS">>),
+            Data = base64:encode(term_to_binary({Settings, ContentUrl})),
+            {'ok', [{'attachment', [{<<"gstorage">>, Data}
+                                   ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
+                                   ]}
+                   ]};
+        {ok, ResponseHeaders} ->
+            Data = base64:encode(term_to_binary({Settings, {name, Name}})),
+            {'ok', [{'attachment', [{<<"gstorage">>, Data}
+                                   ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
+                                   ]}
+                   ]};
+        Else -> Else
+    end.
+
+-spec fetch_attachment(gen_attachment:handler_props()
+                      ,gen_attachment:db_name()
+                      ,gen_attachment:doc_id()
+                      ,gen_attachment:att_name()
+                      ) -> gen_attachment:fetch_response().
+fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
+    case kz_json:get_value(<<"gstorage">>, HandlerProps) of
+        'undefined' ->
+            gen_attachment:error_response(400, 'invalid_data');
+        GData ->
+            {#{bucket := Bucket} = Settings, ContentId} = binary_to_term(base64:decode(GData)),
+            Authorization = gstorage_token(Settings),
+            Headers = [{<<"Authorization">>, Authorization}],
+            Url = case ContentId of
+                      {name, Name} -> <<(?DRV_BASE_FETCH_URL(Bucket))/binary, "/", Name/binary>>;
+                      ContentId -> ContentId
+                  end,
+            case kz_http:get(Url, Headers) of
+                {'ok', 200, _ResponseHeaders, ResponseBody} ->
+                    {'ok', ResponseBody};
+                Resp ->
+                    kz_att_util:handle_http_error_response(Resp, "GStorage fetch error", Url)
+            end
+    end.
 
 %% ====================================================================
-%% API functions
+%% Internal functions
 %% ====================================================================
-
 -spec gstorage_default_fields() -> kz_term:proplist().
 gstorage_default_fields() ->
     [{group, [{arg, <<"id">>}
@@ -53,30 +109,10 @@ gstorage_token(#{oauth_app_id := AppId}) ->
     {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_app(AppId, ?DRV_TOKEN_OPTIONS),
     Authorization.
 
--spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
-put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
-    Authorization = gstorage_token(Settings),
-    CT = kz_mime:from_filename(AName),
-    {Bucket, Name} = resolve_path(Settings, {DbName, DocId, AName}),
-    case send_attachment(Authorization, Bucket, Name, CT, Options, Contents) of
-        {ok, ContentUrl, ResponseHeaders} ->
-            props:to_log(ResponseHeaders, <<"GSTORAGE2 HEADERS">>),
-            Data = base64:encode(term_to_binary({Settings, ContentUrl})),
-            {'ok', [{'attachment', [{<<"gstorage">>, Data}
-                                   ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
-                                   ]}
-                   ]};
-        {ok, ResponseHeaders} ->
-            Data = base64:encode(term_to_binary({Settings, {name, Name}})),
-            {'ok', [{'attachment', [{<<"gstorage">>, Data}
-                                   ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
-                                   ]}
-                   ]};
-        Else -> Else
-    end.
-
 -spec send_attachment(binary(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist(), binary()) ->
-                             {ok, kz_term:proplist()} | {'error', 'gstorage_drive_error'}.
+                             {'ok', kz_term:proplist()} |
+                             {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+                             gen_attachment:error_response().
 send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(
@@ -104,7 +140,8 @@ send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, ContentType}
               ],
-    case kz_http:post(?DRV_MULTIPART_FILE_URL(Bucket), Headers, Body) of
+    Url = ?DRV_MULTIPART_FILE_URL(Bucket),
+    case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
             props:to_log(ResponseHeaders, <<"GSTORAGE HEADERS">>),
             BodyJObj = kz_json:decode(ResponseBody),
@@ -112,30 +149,6 @@ send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
                 undefined -> {ok, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders) ]};
                 ContentUrl -> {ok, ContentUrl, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders)]}
             end;
-        _E ->
-            lager:error("GSTORAGE ERROR ~p", [_E]),
-            {'error', 'google_storage_error'}
+        Resp ->
+            kz_att_util:handle_http_error_response(Resp, "GStorage error", Url)
     end.
-
--spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', iodata()} |
-                              {'error', 'invalid_data' | 'not_found'}.
-fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
-    case kz_json:get_value(<<"gstorage">>, HandlerProps) of
-        'undefined' -> {'error', 'invalid_data'};
-        GData ->
-            {#{bucket := Bucket} = Settings, ContentId} = binary_to_term(base64:decode(GData)),
-            Authorization = gstorage_token(Settings),
-            Headers = [{<<"Authorization">>, Authorization}],
-            Url = case ContentId of
-                      {name, Name} -> <<(?DRV_BASE_FETCH_URL(Bucket))/binary, "/", Name/binary>>;
-                      ContentId -> ContentId
-                  end,
-            case kz_http:get(Url, Headers) of
-                {'ok', 200, _ResponseHeaders, ResponseBody} -> {'ok', ResponseBody};
-                _E ->
-                    lager:error("GSTORAGE FETCH ERROR ~p", [_E]),
-                    {'error', 'not_found'}
-            end
-    end.
-

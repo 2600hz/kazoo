@@ -1152,6 +1152,11 @@ outbound_call_id(Call, AgentId) ->
                                'ok'.
 add_queue_binding(AcctId, AgentId, QueueId, StateName) ->
     lager:debug("adding queue binding for ~s", [QueueId]),
+    Body = kz_json:from_list([{<<"agent_id">>, AgentId}
+                             ,{<<"queue_id">>, QueueId}
+                             ,{<<"event">>, <<"logged_into_queue">>}
+                             ]),
+    kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AcctId),
     gen_listener:add_binding(self()
                             ,'acdc_queue'
                             ,[{'restrict_to', ['member_connect_req']}
@@ -1163,6 +1168,11 @@ add_queue_binding(AcctId, AgentId, QueueId, StateName) ->
 -spec rm_queue_binding(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 rm_queue_binding(AcctId, AgentId, QueueId) ->
     lager:debug("removing queue binding for ~s", [QueueId]),
+    Body = kz_json:from_list([{<<"agent_id">>, AgentId}
+                             ,{<<"queue_id">>, QueueId}
+                             ,{<<"event">>, <<"logged_out_of_queue">>}
+                             ]),
+    kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AcctId),
     gen_listener:rm_binding(self()
                            ,'acdc_queue'
                            ,[{'restrict_to', ['member_connect_req']}

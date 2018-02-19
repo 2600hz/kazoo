@@ -34,7 +34,7 @@
         ,create_resp_content/2, create_resp_file/2, create_csv_resp_content/2
         ,create_pull_response/2, create_pull_response/3
 
-        ,init_chunk_stream/2
+        ,init_chunk_stream/2, init_chunk_stream/3
         ,close_chunk_json_envelope/2
         ,create_json_chunk_response/2, create_csv_chunk_response/2
 
@@ -65,6 +65,8 @@
        ).
 
 -define(DEFAULT_JSON_ERROR_MSG, <<"All JSON must be valid">>).
+
+-define(DEFAULT_CSV_FILE_NAME, <<"result.csv">>).
 
 -type stop_return() :: {'stop', cowboy_req:req(), cb_context:context()}.
 -type resp_file() :: {integer(), send_file_fun()}.
@@ -1237,8 +1239,9 @@ get_encode_options(Context) ->
 create_csv_resp_content(Req, Context) ->
     Content = csv_body(cb_context:resp_data(Context)),
     ContextHeaders = cb_context:resp_headers(Context),
+    FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
-               ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, <<"attachment; filename=\"data.csv\"">>)
+               ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, <<"attachment; filename=\"", FileName/binary, "\"">>)
                },
     {Content, maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)}.
 
@@ -1306,9 +1309,25 @@ create_csv_chunk_response(Req, Context) ->
             'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req),
             {'true', Req};
         'false' ->
-            Req1 = init_chunk_stream(Req, <<"to_csv">>),
+            FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
+            Req1 = init_chunk_stream(Req, <<"to_csv">>, FileName),
             'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req1),
             {'true', Req1}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Return the "x-file-name" from the request header if available,
+%% if its not then check url params for "file_name"
+%% if neither are present then return the default defined value
+%% @end
+%%--------------------------------------------------------------------
+-spec csv_file_name(cb_context:context(), kz_term:binary()) -> kz_term:binary().
+csv_file_name(Context, Default) ->
+    case cb_context:req_header(Context, <<"x-file-name">>) of
+        'undefined' -> cb_context:req_value(Context, <<"file_name">>, Default);
+        FileName -> FileName
     end.
 
 %% @public
@@ -1319,8 +1338,12 @@ init_chunk_stream(Req, <<"to_json">>) ->
     'ok' = cowboy_req:stream_body("{\"data\":[", 'nofin', Req1),
     Req1;
 init_chunk_stream(Req, <<"to_csv">>) ->
+    init_chunk_stream(Req, <<"to_csv">>, ?DEFAULT_CSV_FILE_NAME).
+
+-spec init_chunk_stream(cowboy_req:req(), kz_term:ne_binary(), kz_term:ne_binary()) -> cowboy_req:req().
+init_chunk_stream(Req, <<"to_csv">>, FileName) ->
     Headers0 = #{<<"content-type">> => <<"text/csv">>
-                ,<<"content-disposition">> => <<"attachment; filename=\"result.csv\"">>
+                ,<<"content-disposition">> => <<"attachment; filename=\"", FileName/binary, "\"">>
                 },
     Headers = maps:merge(Headers0, cowboy_req:resp_headers(Req)),
     cowboy_req:stream_reply(200, Headers, Req).

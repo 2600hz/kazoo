@@ -5,6 +5,7 @@
 
 -define(VALID_STATUSES, [<<"waiting">>, <<"handled">>, <<"abandoned">>, <<"processed">>]).
 
+-define(STATS_QUERY_LIMITS_ENABLED, kapps_config:get_is_true(?CONFIG_CAT, <<"stats_query_limits_enabled">>, 'true')).
 -define(MAX_RESULT_SET, kapps_config:get_integer(?CONFIG_CAT, <<"max_result_set">>, 25)).
 
 -record(agent_miss, {agent_id :: kz_term:api_binary()
@@ -56,6 +57,7 @@
                      ,callid :: kz_term:api_binary() | '_'
                      ,caller_id_name :: kz_term:api_binary() | '_'
                      ,caller_id_number :: kz_term:api_binary() | '_'
+                     ,queue_id :: kz_term:api_binary() | '_'
                      ,is_archived = 'false' :: boolean() | '$1' | '$2' | '_'
                      }).
 -type status_stat() :: #status_stat{}.

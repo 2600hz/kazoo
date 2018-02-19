@@ -711,13 +711,12 @@ format_stats(Context, Resp) ->
      ).
 
 fetch_ranged_queue_stats(Context, StartRange) ->
-    MaxRange = ?ACDC_ARCHIVE_WINDOW,
+    MaxRange = ?ACDC_CLEANUP_WINDOW,
 
     Now = kz_time:now_s(),
     Past = Now - MaxRange,
 
     To = kz_term:to_integer(cb_context:req_value(Context, <<"end_range">>, Now)),
-    MaxFrom = To - MaxRange,
 
     case kz_term:to_integer(StartRange) of
         F when F > To ->
@@ -726,12 +725,9 @@ fetch_ranged_queue_stats(Context, StartRange) ->
                                     ,{<<"cause">>, StartRange}
                                     ]),
             cb_context:add_validation_error(<<"end_range">>, <<"maximum">>, Msg, Context);
-        F when F < MaxFrom ->
-            %% Range is too big
-            fetch_ranged_queue_stats(Context, MaxFrom, To, MaxFrom >= Past);
         F when F < Past, To > Past ->
             %% range overlaps archived/real data, use real
-            fetch_ranged_queue_stats(Context, Past, To, Past >= Past);
+            fetch_ranged_queue_stats(Context, Past, To, 'true');
         F ->
             fetch_ranged_queue_stats(Context, F, To, F >= Past)
     end.

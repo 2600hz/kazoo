@@ -285,7 +285,7 @@ current_calls_resp_v(JObj) ->
 
 -define(STATUS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATUS_REQ_HEADERS, [<<"Agent-ID">>, <<"Start-Range">>, <<"End-Range">>
-                                     ,<<"Status">>
+                                     ,<<"Status">>, <<"Limit">>
                                      ]).
 -define(STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
                            ,{<<"Event-Name">>, <<"status_req">>}
@@ -360,6 +360,7 @@ status_resp_v(JObj) ->
 -define(STATUS_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Timestamp">>]).
 -define(STATUS_OPTIONAL_HEADERS, [<<"Wait-Time">>, <<"Pause-Time">>, <<"Call-ID">>
                                  ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                 ,<<"Queue-ID">>
                                  ]).
 -define(STATUS_VALUES(Name), [{<<"Event-Category">>, <<"acdc_status_stat">>}
                              ,{<<"Event-Name">>, Name}

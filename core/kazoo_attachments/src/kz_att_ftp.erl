@@ -7,17 +7,24 @@
 %%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
 -module(kz_att_ftp).
+-behaviour(gen_attachment).
 
 -include("kz_att.hrl").
 
-%% ====================================================================
-%% API functions
-%% ====================================================================
-
+%% `gen_attachment' behaviour callbacks (API)
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
--spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
+%% ====================================================================
+%% `gen_attachment' behaviour callbacks (API)
+%% ====================================================================
+-spec put_attachment(gen_attachment:settings()
+                    ,gen_attachment:db_name()
+                    ,gen_attachment:doc_id()
+                    ,gen_attachment:att_name()
+                    ,gen_attachment:contents()
+                    ,gen_attachment:options()
+                    ) -> gen_attachment:put_response().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
     #{url := BaseUrlParam} = Params,
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
@@ -30,13 +37,32 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
                        ,[AName, DocId, DbName, Url]
                        ),
             {'ok', url_fields(DocUrlField, Url)};
-        {'error', _Err} = Error ->
+        {'error', Err} ->
             lager:debug("error '~p' uploading attachment ~s of document ~s/~s to ~s"
-                       ,[_Err, AName, DocId, DbName, Url]
+                       ,[Err, AName, DocId, DbName, Url]
                        ),
-            Error
+            gen_attachment:error_response(400, Err)
     end.
 
+-spec fetch_attachment(gen_attachment:handler_props()
+                      ,gen_attachment:db_name()
+                      ,gen_attachment:doc_id()
+                      ,gen_attachment:att_name()
+                      ) -> gen_attachment:fetch_response().
+fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
+    case kz_json:get_value(<<"url">>, HandlerProps) of
+        'undefined' ->
+            gen_attachment:error_response(400, 'invalid_data');
+        Url ->
+            case fetch_attachment(Url) of
+                {'ok', _Bin} = Resp -> Resp;
+                {'error', Reason} -> gen_attachment:error_response(400, Reason)
+            end
+    end.
+
+%% ====================================================================
+%% Internal functions
+%% ====================================================================
 -spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
@@ -45,7 +71,7 @@ send_request(Url, Contents) ->
         _ -> {'error', <<"error parsing url : ", Url/binary>>}
     end.
 
--spec send_request(string(), integer(), string(), string(), binary()) -> 'ok' | {'error', any()}.
+-spec send_request(string(), integer(), string(), string(), binary()) -> 'ok' | {'error', binary()}.
 send_request(Host, Port, UserPass, FullPath, Contents) ->
     {User, Pass} = case string:tokens(UserPass, ":") of
                        [U, P] -> {U, P};
@@ -95,13 +121,6 @@ url_fields(DocUrlField, Url) ->
     [{'attachment', [{<<"url">>, Url}]}
     ,{'document', [{DocUrlField, Url}]}
     ].
-
--spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
-fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
-    case kz_json:get_value(<<"url">>, HandlerProps) of
-        'undefined' -> {'error', 'invalid_data'};
-        Url -> fetch_attachment(Url)
-    end.
 
 -spec fetch_attachment(kz_term:ne_binary()) -> {'ok', binary()} | {'error', any()}.
 fetch_attachment(Url) ->

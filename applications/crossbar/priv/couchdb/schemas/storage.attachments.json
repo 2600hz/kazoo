@@ -3,7 +3,7 @@
     "_id": "storage.attachments",
     "description": "Keys are 32-character identifiers to be used in storage plans",
     "patternProperties": {
-        "^[a-z,0-9]{32}$": {
+        "^[a-z0-9]{32}$": {
             "description": "Configuration for the supported storage backends",
             "oneOf": [
                 {

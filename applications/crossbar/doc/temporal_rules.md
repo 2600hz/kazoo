@@ -18,7 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 `ordinal` | The recurrence ordinal for this rule | `string('every' | 'first' | 'second' | 'third' | 'fourth' | 'fifth' | 'last')` |   | `false` |  
 `start_date` | The date that any recurrence should be calculated as starting on | `integer()` | `62586115200` | `false` |  
 `time_window_start` | Seconds from the start of a day to stop considering this rule valid | `integer()` |   | `false` |  
-`wdays.[]` |   | `string()` |   | `false` |  
+`wdays.[]` |   | `string('monday' | 'tuesday' | 'wednesday' | 'wensday' | 'thursday' | 'friday' | 'saturday' | 'sunday')` |   | `false` |  
 `wdays` | The recurrence weekdays for this rule | `array(string('monday' | 'tuesday' | 'wednesday' | 'wensday' | 'thursday' | 'friday' | 'saturday' | 'sunday'))` |   | `false` |  
 
 

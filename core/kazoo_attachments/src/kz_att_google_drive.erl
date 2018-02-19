@@ -8,9 +8,11 @@
 %%%-----------------------------------------------------------------------------
 
 -module(kz_att_google_drive).
+-behaviour(gen_attachment).
 
 -include("kz_att.hrl").
 
+%% `gen_attachment' behaviour callbacks (API)
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
@@ -27,12 +29,52 @@
 -define(DRV_TOKEN_OPTIONS, #{scopes => ?DRV_SCOPES}).
 -define(DRV_FOLDER_CT, <<"application/vnd.google-apps.folder">>).
 
--type gdrive_result() :: {'ok', binary()} | {'error', 'google_drive_error'}.
+%% ====================================================================
+%% `gen_attachment' behaviour callbacks (API)
+%% ====================================================================
+-spec put_attachment(gen_attachment:settings()
+                    ,gen_attachment:db_name()
+                    ,gen_attachment:doc_id()
+                    ,gen_attachment:att_name()
+                    ,gen_attachment:contents()
+                    ,gen_attachment:options()
+                    ) -> gen_attachment:put_response().
+put_attachment(#{oauth_doc_id := TokenDocId}=Settings, DbName, DocId, AName, Contents, Options) ->
+    {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
+    CT = kz_mime:from_filename(AName),
+    {Folder, Name} = resolve_path(Settings, {DbName, DocId, AName}, Authorization),
+    Resp =  send_attachment(Authorization, Folder, TokenDocId, Name, CT, Options, Contents),
+    case gen_attachment:is_error_response(Resp) of
+        true when Folder /= [<<"root">>] ->
+            send_attachment(Authorization, [<<"root">>], TokenDocId, Name, CT, Options, Contents);
+        Else -> Else
+    end.
+
+-spec fetch_attachment(gen_attachment:handler_props()
+                      ,gen_attachment:db_name()
+                      ,gen_attachment:doc_id()
+                      ,gen_attachment:att_name()
+                      ) -> gen_attachment:fetch_response().
+fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
+    case kz_json:get_value(<<"gdrive">>, HandlerProps) of
+        'undefined' ->
+            gen_attachment:error_response(400, 'invalid_data');
+        GData ->
+            {TokenDocId, ContentId} = binary_to_term(base64:decode(GData)),
+            {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
+            Headers = [{<<"Authorization">>, Authorization}],
+            Url = <<?DRV_BASE_FETCH_URL, "/", ContentId/binary, "?alt=media">>,
+            case kz_http:get(Url, Headers) of
+                {'ok', 200, _ResponseHeaders, ResponseBody} ->
+                    {'ok', ResponseBody};
+                Resp ->
+                    kz_att_util:handle_http_error_response(Resp, "GDrive fetch error", Url)
+            end
+    end.
 
 %% ====================================================================
-%% API functions
+%% Internal functions
 %% ====================================================================
-
 -spec get_json_from_url(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
     case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{ssl, [{versions, ['tlsv1.2']}]}]) of
@@ -50,7 +92,7 @@ get_json_from_url(Url, ReqHeaders) ->
             {'error', Else}
     end.
 
--spec create_folder(binary(), binary(), binary()) -> gdrive_result().
+-spec create_folder(binary(), binary(), binary()) -> gen_attachment:fetch_response().
 create_folder(Name, Parent, Authorization) ->
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, <<"application/json">>}
@@ -125,34 +167,22 @@ gdrive_default_fields() ->
 gdrive_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, gdrive_default_fields()).
 
--spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
-put_attachment(#{oauth_doc_id := TokenDocId}=Settings, DbName, DocId, AName, Contents, Options) ->
-    {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
-    CT = kz_mime:from_filename(AName),
-    {Folder, Name} = resolve_path(Settings, {DbName, DocId, AName}, Authorization),
-    case send_attachment(Authorization, Folder, TokenDocId, Name, CT, Options, Contents) of
-        {error, _E} when Folder /= [<<"root">>] ->
-            send_attachment(Authorization, [<<"root">>], TokenDocId, Name, CT, Options, Contents);
-        Else -> Else
-    end.
-
--spec gdrive_post(binary(), kz_term:proplist(), binary()) -> gdrive_result().
+-spec gdrive_post(binary(), kz_term:proplist(), binary()) -> {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+                                                             gen_attachment:error_response().
 gdrive_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
             BodyJObj = kz_json:decode(ResponseBody),
             case kz_json:get_value(<<"id">>, BodyJObj) of
-                undefined -> {error, 'return_id_missing'};
-                ContentId -> {ok, ContentId, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders)]}
+                undefined -> gen_attachment:error_response(400, 'return_id_missing');
+                ContentId -> {'ok', ContentId, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders)]}
             end;
-        _E ->
-            lager:error("GDRIVE ERROR ~p", [_E]),
-            {'error', 'google_drive_error'}
+        Resp ->
+            kz_att_util:handle_http_error_response(Resp, "GDrive error", Url)
     end.
 
-
 -spec send_attachment(binary(), kz_term:binaries(), binary(), binary(), binary(), kz_term:proplist(), binary()) ->
-                             {ok, kz_term:proplist()} | {'error', 'google_drive_error'}.
+                             gen_attachment:put_response().
 send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(
@@ -189,23 +219,4 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
                                    ]}
                    ]};
         Else -> Else
-    end.
-
--spec fetch_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', iodata()} |
-                              {'error', 'invalid_data' | 'not_found'}.
-fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
-    case kz_json:get_value(<<"gdrive">>, HandlerProps) of
-        'undefined' -> {'error', 'invalid_data'};
-        GData ->
-            {TokenDocId, ContentId} = binary_to_term(base64:decode(GData)),
-            {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
-            Headers = [{<<"Authorization">>, Authorization}],
-            Url = <<?DRV_BASE_FETCH_URL, "/", ContentId/binary, "?alt=media">>,
-            case kz_http:get(Url, Headers) of
-                {'ok', 200, _ResponseHeaders, ResponseBody} -> {'ok', ResponseBody};
-                _E ->
-                    lager:error("GDRIVE FETCH ERROR ~p", [_E]),
-                    {'error', 'not_found'}
-            end
     end.

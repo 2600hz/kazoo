@@ -1,0 +1,56 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.edr_amqp.event",
+    "description": "AMQP API for edr_amqp.event",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Account-Tree": {
+            "type": "string"
+        },
+        "Body": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "edr"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "event"
+            ],
+            "type": "string"
+        },
+        "Gregorian-Time": {
+            "type": "integer"
+        },
+        "ID": {
+            "type": "string"
+        },
+        "Node": {
+            "type": "string"
+        },
+        "Severity": {
+            "type": "string"
+        },
+        "Timestamp": {
+            "type": "string"
+        },
+        "Verbosity": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Body",
+        "Gregorian-Time",
+        "ID",
+        "Node",
+        "Severity",
+        "Timestamp",
+        "Verbosity"
+    ],
+    "type": "object"
+}

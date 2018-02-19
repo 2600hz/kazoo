@@ -392,6 +392,10 @@ validator_properties([<<_/binary>>|_]=Values) ->
     kz_json:from_list([{<<"type">>, <<"string">>}
                       ,{<<"enum">>, Values}
                       ]);
+validator_properties({_, 'is_pos_integer', 1}) ->
+    kz_json:from_list([{<<"type">>, <<"integer">>}
+                      ,{<<"minimum">>, 1}
+                      ]);
 validator_properties({_, 'is_integer', 1}) ->
     kz_json:from_list([{<<"type">>, <<"integer">>}]);
 validator_properties({_, 'is_binary', 1}) ->

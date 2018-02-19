@@ -2099,6 +2099,11 @@
             },
             "type": "object"
         },
+        "callflows.edr": {
+            "description": "Validator for the edr callflow's data object",
+            "properties": {},
+            "type": "object"
+        },
         "callflows.fax_detect": {
             "description": "Validator for the fax_detect callflow's data object",
             "properties": {
@@ -2775,6 +2780,11 @@
                 "id": {
                     "description": "Media ID or URL of the media to play",
                     "type": "string"
+                },
+                "loop_count": {
+                    "description": "How many times to loop the media",
+                    "minimum": 1,
+                    "type": "integer"
                 },
                 "terminators": {
                     "default": [
@@ -4061,6 +4071,7 @@
                     "type": "string"
                 },
                 "endpoints": {
+                    "description": "Endpoints to dial out to and join to the conference",
                     "items": {
                         "oneOf": [
                             {
@@ -4074,6 +4085,24 @@
                         ]
                     },
                     "minItems": 1,
+                    "type": "array"
+                },
+                "participant_flags": {
+                    "description": "Participant flags applied to each endpoint when it joins the conference",
+                    "items": {
+                        "description": "Participant flag",
+                        "enum": [
+                            "mute",
+                            "deaf",
+                            "distribute_dtmf",
+                            "is_moderator",
+                            "disable_moh",
+                            "ghost",
+                            "join_existing",
+                            "video_mute"
+                        ],
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "target_call_id": {
@@ -6910,6 +6939,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -6956,6 +6988,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -7028,6 +7063,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -7074,6 +7112,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -7122,6 +7163,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -7168,6 +7212,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -7216,6 +7263,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -7263,6 +7313,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -7299,6 +7352,9 @@
                     "enum": [
                         "status_req"
                     ],
+                    "type": "string"
+                },
+                "Limit": {
                     "type": "string"
                 },
                 "Start-Range": {
@@ -7365,6 +7421,9 @@
                 "Pause-Time": {
                     "type": "integer"
                 },
+                "Queue-ID": {
+                    "type": "string"
+                },
                 "Timestamp": {
                     "type": "string"
                 },
@@ -7411,6 +7470,9 @@
                 },
                 "Pause-Time": {
                     "type": "integer"
+                },
+                "Queue-ID": {
+                    "type": "string"
                 },
                 "Timestamp": {
                     "type": "string"
@@ -8912,6 +8974,9 @@
                 "Other-Leg-Direction": {
                     "type": "string"
                 },
+                "Participant-Flags": {
+                    "type": "string"
+                },
                 "Presence-ID": {
                     "type": "string"
                 },
@@ -9147,6 +9212,9 @@
                     "type": "string"
                 },
                 "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Participant-Flags": {
                     "type": "string"
                 },
                 "Target-Call-ID": {
@@ -9926,6 +9994,10 @@
                 },
                 "Leg": {
                     "type": "string"
+                },
+                "Loop-Count": {
+                    "minimum": 1,
+                    "type": "integer"
                 },
                 "Terminators": {
                     "items": {
@@ -11889,6 +11961,10 @@
                     ],
                     "type": "string"
                 },
+                "Loop-Count": {
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "Media-Name": {
                     "type": "string"
                 },
@@ -12656,6 +12732,9 @@
                         "feminine",
                         "neuter"
                     ],
+                    "type": "string"
+                },
+                "Group-ID": {
                     "type": "string"
                 },
                 "Insert-At": {
@@ -13610,6 +13689,10 @@
                 "Leg": {
                     "type": "string"
                 },
+                "Loop-Count": {
+                    "minimum": 1,
+                    "type": "integer"
+                },
                 "Terminators": {
                     "items": {
                         "enum": [
@@ -13804,6 +13887,60 @@
             },
             "required": [
                 "Results"
+            ],
+            "type": "object"
+        },
+        "kapi.edr_amqp.event": {
+            "description": "AMQP API for edr_amqp.event",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Account-Tree": {
+                    "type": "string"
+                },
+                "Body": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "edr"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "event"
+                    ],
+                    "type": "string"
+                },
+                "Gregorian-Time": {
+                    "type": "integer"
+                },
+                "ID": {
+                    "type": "string"
+                },
+                "Node": {
+                    "type": "string"
+                },
+                "Severity": {
+                    "type": "string"
+                },
+                "Timestamp": {
+                    "type": "string"
+                },
+                "Verbosity": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Body",
+                "Gregorian-Time",
+                "ID",
+                "Node",
+                "Severity",
+                "Timestamp",
+                "Verbosity"
             ],
             "type": "object"
         },
@@ -23005,6 +23142,7 @@
                 }
             },
             "required": [
+                "media_source",
                 "name"
             ],
             "type": "object"
@@ -26040,6 +26178,7 @@
                             "properties": {
                                 "oauth_doc_id": {
                                     "description": "Doc ID in the system 'auth' database",
+                                    "kazoo-validation": true,
                                     "type": "string"
                                 }
                             },
@@ -26339,6 +26478,11 @@
                     "default": 5,
                     "description": "acdc queue worker count",
                     "type": "integer"
+                },
+                "stats_query_limits_enabled": {
+                    "default": true,
+                    "description": "When enabled, prevent stats queries with limits greater than max_result_set",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -27091,6 +27235,7 @@
                     "type": "integer"
                 },
                 "profiles": {
+                    "default": {},
                     "properties": {
                         "default": {
                             "default": {
@@ -27118,7 +27263,8 @@
                             "description": "conferences page",
                             "type": "object"
                         }
-                    }
+                    },
+                    "type": "object"
                 },
                 "review_name": {
                     "default": false,
@@ -28392,6 +28538,174 @@
                     "default": 3600000,
                     "description": "ecallmgr user cache time in in milliseconds",
                     "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.edr": {
+            "description": "Schema for edr system_config",
+            "properties": {
+                "backends": {
+                    "default": [],
+                    "description": "Registered edr backends",
+                    "items": {
+                        "properties": {
+                            "bindings": {
+                                "description": "The types of events the backend should be notified about",
+                                "items": {
+                                    "description": "An edr binding",
+                                    "properties": {
+                                        "account_id": {
+                                            "anyOf": [
+                                                {
+                                                    "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "items": {
+                                                        "description": "The account id(s) to receive events from. If not specified or * then events for all accounts will be received",
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "default": "*"
+                                        },
+                                        "app_name": {
+                                            "default": "*",
+                                            "description": "Which apps should we receive events from? If not specified or * then events for all apps will be received",
+                                            "type": "string"
+                                        },
+                                        "exact_severity": {
+                                            "default": false,
+                                            "description": "If true, then only events with severity exactly matching the severity field will be received. If false then more severe events will also be received",
+                                            "type": "boolean"
+                                        },
+                                        "exact_verbosity": {
+                                            "default": false,
+                                            "description": "If true, then only events with verbosity exactly matching the verbosity field will be received. If false then less verbose events will also be received",
+                                            "type": "boolean"
+                                        },
+                                        "include_descendants": {
+                                            "default": false,
+                                            "description": "Should we receive events relating to descendant accounts if an account is specified?",
+                                            "type": "boolean"
+                                        },
+                                        "severity": {
+                                            "anyOf": [
+                                                {
+                                                    "description": "What severity are we interested in events for?",
+                                                    "enum": [
+                                                        "ok",
+                                                        "warning",
+                                                        "critical"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "items": {
+                                                        "description": "What severity are we interested in events for?",
+                                                        "enum": [
+                                                            "ok",
+                                                            "warning",
+                                                            "critical"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "default": "ok"
+                                        },
+                                        "verbosity": {
+                                            "anyOf": [
+                                                {
+                                                    "description": "What verbosity are we interested in events for?",
+                                                    "enum": [
+                                                        "trace",
+                                                        "debug",
+                                                        "info",
+                                                        "warn",
+                                                        "error",
+                                                        "fatal"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "items": {
+                                                        "description": "What verbosity are we interested in events for?",
+                                                        "enum": [
+                                                            "trace",
+                                                            "debug",
+                                                            "info",
+                                                            "warn",
+                                                            "error",
+                                                            "fatal"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "default": "info"
+                                        }
+                                    },
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            "enabled": {
+                                "default": true,
+                                "description": "Should the backend be started on edr app start?",
+                                "type": "boolean"
+                            },
+                            "name": {
+                                "description": "A unique identifier for the backend",
+                                "minLength": 1,
+                                "type": "string"
+                            },
+                            "options": {
+                                "description": "Options passed on to the backend module. These vary by module",
+                                "properties": {
+                                    "formatter": {
+                                        "description": "Output format configuration which is used by some (but not all) backends",
+                                        "properties": {
+                                            "options": {
+                                                "description": "Options passed on to the formatter module. These vary by module",
+                                                "type": "object"
+                                            },
+                                            "type": {
+                                                "description": "The formatter module to be used (eg. json refers to edr_fmt_json.erl)",
+                                                "enum": [
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": {
+                                "description": "The backend module to be used (eg. amqp refers to edr_be_amqp.erl)",
+                                "enum": [
+                                    "amqp",
+                                    "file",
+                                    "http"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "type",
+                            "bindings",
+                            "enabled"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"

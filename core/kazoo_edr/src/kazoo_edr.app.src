@@ -1,0 +1,10 @@
+{application, kazoo_edr, [
+                          {description, "EDR core component"},
+                          {vsn, "4.0.0"},
+                          {modules, []},
+                          {registered, [ ]},
+                          {applications, [ kernel
+                                         , stdlib
+                                         , kazoo_bindings
+                                         ]}
+                         ]}.

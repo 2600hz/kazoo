@@ -81,6 +81,7 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
              ,{<<"Caller-Priority">>, CallerPriority}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'waiting', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
 
 -spec call_abandoned(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
@@ -93,6 +94,7 @@ call_abandoned(AccountId, QueueId, CallId, Reason) ->
              ,{<<"Abandon-Timestamp">>, kz_time:now_s()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'abandoned', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_abandoned/1).
 
 -spec call_handled(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -105,6 +107,7 @@ call_handled(AccountId, QueueId, CallId, AgentId) ->
              ,{<<"Handled-Timestamp">>, kz_time:now_s()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'handled', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_handled/1).
 
 -spec call_missed(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -118,6 +121,7 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
              ,{<<"Miss-Timestamp">>, kz_time:now_s()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'missed', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_missed/1).
 
 -spec call_processed(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
@@ -131,6 +135,7 @@ call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
              ,{<<"Hung-Up-By">>, Initiator}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+    call_state_change(AccountId, 'processed', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_processed/1).
 
 -spec agent_ready(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -540,7 +545,7 @@ is_valid_call_status(S) ->
         'false' -> 'false'
     end.
 
--spec query_calls(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
+-spec query_calls(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer() | 'no_limit') -> 'ok'.
 query_calls(RespQ, MsgId, Match, _Limit) ->
     case ets:select(call_table_id(), Match) of
         [] ->
@@ -917,3 +922,9 @@ create_call_stat(Id, JObj, Props) ->
 -spec update_call_stat(kz_term:ne_binary(), updates(), kz_term:proplist()) -> 'ok'.
 update_call_stat(Id, Updates, Props) ->
     gen_listener:cast(props:get_value('server', Props), {'update_call', Id, Updates}).
+
+call_state_change(AccountId, Status, Prop) ->
+    Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"call_status_change">>}
+                                               ,{<<"Status">>, Status}
+                                                | Prop])),
+    kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

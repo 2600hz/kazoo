@@ -85,6 +85,14 @@ extra_validation(<<"storage.plan.database.attachment.handler">>, Value, State) -
                                                   ,State
                                                   )
     end;
+extra_validation(<<"storage.attachment.google_drive.oauth_doc_id">>, Value, State) ->
+    validate_attachment_oauth_doc_id(Value, State);
+extra_validation(<<"storage.attachment.google_storage.oauth_doc_id">>, Value, State) ->
+    validate_attachment_oauth_doc_id(Value, State);
+extra_validation(<<"storage.attachment.onedrive.oauth_doc_id">>, Value, State) ->
+    validate_attachment_oauth_doc_id(Value, State);
+extra_validation(<<"storage.attachment.dropbox.oauth_doc_id">>, Value, State) ->
+    validate_attachment_oauth_doc_id(Value, State);
 extra_validation(_Key, _Value, State) ->
     lager:debug("extra validation of ~s not handled for value ~p", [_Key, _Value]),
     State.
@@ -98,3 +106,14 @@ validate_module_data(Schema, Value, State) ->
                  _OtherSchema -> State1
              end,
     jesse_state:undo_resolve_ref(State2, State).
+
+validate_attachment_oauth_doc_id(Value, State) ->
+    lager:debug("Validating oauth_doc_id: ~s", [Value]),
+    case kz_datamgr:open_doc(<<"system_auth">>, Value) of
+        {ok, _Obj} ->
+            State;
+        {error, not_found} ->
+            ErrorMsg = <<"Invalid oauth_doc_id: ", Value/binary>>,
+            lager:debug("~s", [ErrorMsg]),
+            jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
+    end.

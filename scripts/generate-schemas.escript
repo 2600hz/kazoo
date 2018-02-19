@@ -7,8 +7,24 @@
 -export([main/1]).
 
 main(_) ->
-    cf_data_usage:to_schema_docs(),
-    (catch kp_data_usage:to_schema_docs()),
-    kapps_config_usage:to_schema_docs(),
-    conference_schema_builder:to_schema(),
-    kapi_schemas:to_schemas().
+    lists:foreach(fun run_generator/1
+                 ,[fun cf_data_usage:to_schema_docs/0
+                  ,fun kp_data_usage:to_schema_docs/0
+                  ,fun kapps_config_usage:to_schema_docs/0
+                  ,fun conference_schema_builder:to_schema/0
+                  ,fun kapi_schemas:to_schemas/0
+                  ]
+                 ).
+
+run_generator(F) ->
+    try F()
+    catch
+        'throw':'no_type' ->
+            ST = [{M, _F, _A, Props}|_] = erlang:get_stacktrace(),
+            CompileOpts = M:module_info(compile),
+            SrcModule = props:get_value(source, CompileOpts),
+            Line = props:get_value('line', Props),
+            io:format("~s:~p: no type found when running ~p~n", [SrcModule, Line, F]),
+            [io:format("~p~n", [S]) || S <- ST],
+            exit(1)
+    end.

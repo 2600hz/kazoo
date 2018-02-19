@@ -45,8 +45,7 @@
 %% Check for cleanup every 5 minutes
 -define(CLEANUP_PERIOD, kapps_config:get_integer(?CONFIG_CAT, <<"cleanup_period_ms">>, 360000)).
 
-%% Remove data from ETS
--define(CLEANUP_WINDOW, kapps_config:get_integer(?CONFIG_CAT, <<"cleanup_window_s">>, ?SECONDS_IN_DAY)).
+-define(CLEANUP_WINDOW, ?ACDC_CLEANUP_WINDOW).
 
 %% Archive every 60 seconds
 -define(ARCHIVE_PERIOD, kapps_config:get_integer(?CONFIG_CAT, <<"archive_period_ms">>, 60000)).
