@@ -82,7 +82,10 @@ create_apps_store_doc(Account) ->
 %%% Internal functions
 %%%=============================================================================
 
-
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_apps_store_doc(kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_apps_store_doc(Account) ->
     case kzd_apps_store:fetch(Account) of

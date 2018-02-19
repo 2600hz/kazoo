@@ -17,7 +17,7 @@
 %% regex to find `@public' tag.
 -define(REGEX_PUBLIC_TAG, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%+ *@public' core/ applications/").
 
-%% regex to spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
+%% regex for spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
 %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
 %% multi line regex won't work). For multi line the first line should end with `|' followed by same regex until exhausted.
 -define(REGEX_COMMENT_SPEC, "ag '^%%+\\s*@spec((.*$\\n)?(.*\\)$|.*}$|.*\\|(\\n%%+(.*\\)$|.*}$|.*\\||[^@=-]+$))+)|.*$)' core/ applications/").
@@ -38,7 +38,7 @@
 -define(REGEX_TO_DOC_LINE, "ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/").
 
 %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
--define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%*\\s*@doc[^\\n]*$(\\n%%*$)+' core/ applications/").
+-define(REGEX_DOC_TAG_EMPTY_COMMENT, "ag -G '(erl|erl.src|hrl|hrl.src)$' '%%* *@doc *$(\\n%%* *$)+' core/ applications/").
 
 main(_) ->
     _ = io:setopts(user, [{encoding, unicode}]),

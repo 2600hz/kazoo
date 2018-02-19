@@ -50,6 +50,10 @@ start(TaskId, API, ExtraArgs) ->
 %%% Internal functions
 %%%=============================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {ok, state()} |
                                                                       {error, any()}.
 init(TaskId, API, ExtraArgs) ->
