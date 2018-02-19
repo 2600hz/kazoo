@@ -15,7 +15,7 @@ main([KazooPLT | Args]) ->
             usage(),
             halt(1)
     end,
-    case [Arg || Arg <- Args,
+    case [Arg || Arg <- lists:usort(Args ++ string:tokens(os:getenv("TO_DIALYZE", ""), " ")),
                  not is_test(Arg)
                      andalso (
                        is_ebin_dir(Arg)
