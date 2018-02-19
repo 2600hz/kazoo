@@ -106,6 +106,8 @@
 -export([order_by/3]).
 
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
+
+%% %% @headerfile "kazoo_stdlib/include/kazoo_json.hrl"
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export_type([json_proplist/0
@@ -125,7 +127,6 @@ encode(JObj) -> encode(JObj, []).
 
 -spec encode(json_term(), encode_options()) -> kz_term:text().
 encode(JObj, Options) -> jiffy:encode(JObj, Options).
-
 
 -spec unsafe_decode(iolist() | kz_term:ne_binary()) -> json_term().
 unsafe_decode(Thing) when is_list(Thing);
@@ -147,7 +148,6 @@ unsafe_decode(JSON, <<"application/json">>) ->
         _Error:_Reason ->
             throw({'invalid_json', {'error', {0, 'decoder_exit'}}, JSON})
     end.
-
 
 -spec decode(iolist() | kz_term:ne_binary()) -> json_term().
 decode(Thing) when is_list(Thing)
@@ -246,20 +246,20 @@ are_equal(JObj1, JObj2) ->
     to_map(JObj1) =:= to_map(JObj2).
 
 %%------------------------------------------------------------------------------
-%% @doc Converts top-level proplist to json object, but only if sub-proplists have been converted
-%% first.
+%% @doc Converts top-level proplist to JSON object, but only if sub-proplists
+%% have been converted first.
 %%
 %% For example:
+%% ```
+%% [{a, b}, {c, [{d, e}]}]
+%% '''
 %%
-%% ```[{a, b}, {c, [{d, e}]}]'''
-%%
-%% would be converted to json by
-%%
+%% would be converted to JSON by:
 %% ```
 %% kz_json:from_list([{a,b}, {c, kz_json:from_list([{d, e}])}]).
 %% '''
 %%
-%% The sub-proplist `[{d,e}]'' needs converting before being passed to the next level.
+%% The sub-proplist `[{d,e}]' needs converting before being passed to the next level.
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_list(json_proplist()) -> object().
@@ -307,6 +307,7 @@ merge(JObj1, JObj2) ->
 -type merge_arg_2() :: {'left' | 'right', json_term()} | {'both', json_term(), json_term()}.
 -type merge_fun_result() :: 'undefined' | {'ok', json_term()}.
 -type merge_fun() :: fun((key(), merge_arg_2()) -> merge_fun_result()).
+
 -spec merge(merge_fun(), object(), object()) -> object().
 merge(MergeFun, ?JSON_WRAPPER(PropsA), ?JSON_WRAPPER(PropsB)) ->
     ListA = lists:sort(PropsA),
@@ -420,17 +421,14 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred
         'true' -> set_value(Syek, Value, JObj1)
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Sum two (deep) JSON objects.
-%% Default sumer function only sums numbers. For other kinds of values,
-%% the value from JObj1 is kept untouched. If it is undefined it's the one from JObj2.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv sum(JObj1, JObj2, fun kz_json:default_sumer/2).
+
 -spec sum(object(), object()) -> object().
 sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
     sum(JObj1, JObj2, fun default_sumer/2).
 
 -type sumer() :: fun((json_term(), json_term()) -> json_term()).
+
 -spec default_sumer(json_term(), json_term()) -> json_term().
 default_sumer(Value1, undefined) -> Value1;
 default_sumer(undefined, Value2) -> Value2;
@@ -440,6 +438,13 @@ default_sumer(Value1, Value2) when is_number(Value1),
 default_sumer(Value1, _) ->
     Value1.
 
+%%------------------------------------------------------------------------------
+%% @doc Sum two (deep) JSON objects.
+%% Default sumer function only sums numbers. For other kinds of values,
+%% the value from `JObj1' is kept untouched. If it is undefined it's the
+%% one from `JObj2'.
+%% @end
+%%------------------------------------------------------------------------------
 -spec sum(object(), object(), sumer()) -> object().
 sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Sumer)
   when is_function(Sumer, 2) ->
@@ -456,15 +461,18 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
     V = get_value(Syek, JObj1),
     set_value(Syek, Sumer(V, Value), JObj1).
 
-%%------------------------------------------------------------------------------
-%% @doc Sum (deep) JSON objects.
-%% Default sumer function only sums numbers. For other kinds of values,
-%% the value from JObj1 is kept untouched. If it is undefined it takes the value from the other JObjs.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun kz_json:default_sumer/2).
+
 -spec sum_jobjs(objects()) -> object().
 sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
 
+
+%%------------------------------------------------------------------------------
+%% @doc Sum (deep) a list of JSON objects.
+%% This is like {@link sum/3} but fold over a list of JSON objects.
+%% @see sum/3
+%% @end
+%%------------------------------------------------------------------------------
 -spec sum_jobjs(objects(), sumer()) -> object().
 sum_jobjs([], Sumer)
   when is_function(Sumer, 2) -> new();
@@ -491,8 +499,7 @@ order_by(Path, Ids, ListOfJObjs)
         ],
     [erase(Id) || Id <- Ids].
 
-%% Convert a json object to a proplist
-%% only top-level conversion is supported
+%% Convert a JSON object to a proplist %% only top-level conversion is supported
 
 -spec to_proplist(object() | objects()) ->
                          json_proplist() | json_proplists() | flat_proplist().
@@ -513,7 +520,7 @@ recursive_to_proplist(Props) when is_list(Props) ->
 recursive_to_proplist(Else) -> Else.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert a json object to a map
+%% @doc Convert a JSON object to a map.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -540,7 +547,7 @@ recursive_to_map(List) when is_list(List) ->
 recursive_to_map(Else) -> Else.
 
 %%------------------------------------------------------------------------------
-%% @doc Convert a map to a json object
+%% @doc Convert a map to a JSON object.
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_map(map()) -> object().
@@ -593,21 +600,25 @@ filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
 
 -type mapper() :: fun((key(), json_term()) -> {key(), json_term()}).
+
 -spec map(mapper(), object() | flat_object()) -> object() | flat_object().
 map(F, ?JSON_WRAPPER(Prop)) when is_function(F, 2) ->
     from_list([F(K, V) || {K,V} <- Prop]).
 
 -type filtermapper() :: fun((key(), json_term()) -> boolean() | {'true', json_term()}).
+
 -spec filtermap(filtermapper(), object() | flat_object()) -> object() | flat_object().
 filtermap(F, ?JSON_WRAPPER(Prop)) when is_function(F, 2) ->
     ?JSON_WRAPPER(lists:filtermap(fun({K, V}) -> F(K, V) end, Prop)).
 
 -type foreach_fun() :: fun(({key(), json_term()}) -> any()).
+
 -spec foreach(foreach_fun(), object()) -> 'ok'.
 foreach(F, ?JSON_WRAPPER(Prop)) when is_function(F, 1) ->
     lists:foreach(F, Prop).
 
 -type kv_boolean_pred() :: fun(({key(), json_term()}) -> boolean()).
+
 -spec all(kv_boolean_pred(), object()) -> boolean().
 all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:all(Pred, Prop).
@@ -617,6 +628,7 @@ any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
 -type folder() :: fun((key(), json_term(), any()) -> any()).
+
 -spec foldl(folder(), any(), object()) -> any().
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
@@ -798,8 +810,8 @@ get_ne_value(Key, JObj, Default) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Find first json object that has a non_empty value for Key.
-%% Returns the value at Key
+%% @doc Find first JSON object that has a non-empty value for `Key'.
+%% Returns the value at `Key'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -832,8 +844,8 @@ find_first_defined([Key|Keys], JObjs, Default) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Find first json object that has a Value for Key.
-%% Returns the json object or 'undefined'
+%% @doc Find first JSON object that has a Value for Key.
+%% Returns the JSON object or `undefined'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -913,7 +925,10 @@ values(JObj) ->
 values(Key, JObj) ->
     values(get_value(Key, JObj, new())).
 
-%% split the json object into values and the corresponding keys
+%%------------------------------------------------------------------------------
+%% @doc Split the JSON object into values and the corresponding keys.
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_values(object()) -> {json_terms(), keys()} | {[], []}.
 get_values(JObj) ->
     lists:foldr(fun(Key, {Vs, Ks}) ->
@@ -1036,8 +1051,8 @@ delete_key(Key, JObj) ->
 
 %%------------------------------------------------------------------------------
 %% @doc No `prune' leaves the parent intact (default).
-%%  With `prune': removes the parent key if the result of the delete is an empty list.
-%%  So, `` delete_key([<<"k1">>, <<"k1.1">>], {[{<<"k1">>, {[{<<"k1.1">>, <<"v1.1">>}]}}]}) '' would result in:
+%% With `prune': removes the parent key if the result of the delete is an empty list.
+%% So, `` delete_key([<<"k1">>, <<"k1.1">>], {[{<<"k1">>, {[{<<"k1.1">>, <<"v1.1">>}]}}]}) '' would result in:
 %%
 %% ```
 %%    'no_prune' -> {[{<<"k1">>, []}]}
@@ -1154,7 +1169,7 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
     replace_in_list(N-1, V1, Vs, [V | Acc]).
 
 %%------------------------------------------------------------------------------
-%% @doc Read a json fixture file from the filesystem into memory
+%% @doc Read a JSON fixture file from the file system into memory.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1197,9 +1212,9 @@ fixture(App, Path) when is_atom(App) ->
 -endif.
 
 %%------------------------------------------------------------------------------
-%% @doc Normalize a JSON object for storage as a Document
+%% @doc Normalize a JSON object for storage as a Document.
 %% All dashes are replaced by underscores, all upper case character are
-%% converted to lower case
+%% converted to lower case.
 %%
 %% @end
 %%------------------------------------------------------------------------------
@@ -1237,6 +1252,7 @@ normalize_key_char(C) -> C.
 -type search_replace_format() :: {kz_term:ne_binary(), kz_term:ne_binary()} |
                                  {kz_term:ne_binary(), kz_term:ne_binary(), fun((any()) -> any())}.
 -type search_replace_formatters() :: [search_replace_format()].
+
 -spec normalize_jobj(object(), kz_term:ne_binaries(), search_replace_formatters()) -> object().
 normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
     normalize_jobj(
