@@ -19,9 +19,9 @@
 
 -spec init() -> 'ok'.
 init() ->
-    blackhole_bindings:bind(<<"blackhole.authorize.ping">>, ?MODULE, 'authorize'),
-    blackhole_bindings:bind(<<"blackhole.validate.ping">>, ?MODULE, 'validate'),
-    blackhole_bindings:bind(<<"blackhole.command.ping">>, ?MODULE, 'ping'),
+    _ = blackhole_bindings:bind(<<"blackhole.authorize.ping">>, ?MODULE, 'authorize'),
+    _ = blackhole_bindings:bind(<<"blackhole.validate.ping">>, ?MODULE, 'validate'),
+    _ = blackhole_bindings:bind(<<"blackhole.command.ping">>, ?MODULE, 'ping'),
     'ok'.
 
 -spec authorize(bh_context:context(), kz_json:object()) -> bh_context:context().

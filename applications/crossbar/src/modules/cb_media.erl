@@ -414,10 +414,10 @@ maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
 
     try kazoo_tts:create(Text, Voice) of
         {'error', Reason} ->
-            maybe_delete_tts(Context, kz_term:to_binary(Reason), CreateOrUpdate),
+            _ = maybe_delete_tts(Context, kz_term:to_binary(Reason), CreateOrUpdate),
             crossbar_util:response('error', kz_term:to_binary(Reason), Context);
         {'error', 'tts_provider_failure', Reason} ->
-            maybe_delete_tts(Context, kz_term:to_binary(Reason), CreateOrUpdate);
+            _ = maybe_delete_tts(Context, kz_term:to_binary(Reason), CreateOrUpdate);
         {'ok', ContentType, Content} ->
             MediaId = kz_doc:id(JObj),
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}

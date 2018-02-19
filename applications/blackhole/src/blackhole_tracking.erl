@@ -143,9 +143,9 @@ init([]) ->
                            ,'named_table'
                            ,{'keypos', #bh_context.websocket_session_id}
                            ]),
-    blackhole_bindings:bind(<<"blackhole.session.open">>, ?MODULE, 'add_socket'),
-    blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'remove_socket'),
-    blackhole_bindings:bind(<<"blackhole.finish.*">>, ?MODULE, 'update_socket'),
+    _ = blackhole_bindings:bind(<<"blackhole.session.open">>, ?MODULE, 'add_socket'),
+    _ = blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'remove_socket'),
+    _ = blackhole_bindings:bind(<<"blackhole.finish.*">>, ?MODULE, 'update_socket'),
     {'ok', Tab}.
 
 %%------------------------------------------------------------------------------
