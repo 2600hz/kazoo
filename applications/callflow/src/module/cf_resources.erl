@@ -21,6 +21,10 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%
+%%%
+%%%   Account, user, device level privacy - Sponsored by Raffel Internet B.V
+%%%       implemented by Voyager Internet Ltd.
 %%%-------------------------------------------------------------------
 -module(cf_resources).
 -behaviour(gen_cf_action).
@@ -124,7 +128,7 @@ get_channel_vars(Call) ->
 -spec add_privacy_flags(kapps_call:call(), kz_proplist()) -> kz_proplist().
 add_privacy_flags(Call, Acc) ->
     CCVs = kapps_call:custom_channel_vars(Call),
-    kz_privacy:flags(CCVs) ++ Acc.
+    props:set_values(get_privacy_prefs(Call), kz_privacy:flags(CCVs)) ++ Acc.
 
 -spec maybe_require_ignore_early_media(kapps_call:call(), kz_proplist()) -> kz_proplist().
 maybe_require_ignore_early_media(Call, Acc) ->
@@ -432,3 +436,40 @@ handle_channel_destroy(<<"loopback", _/binary>>, _JObj) ->
     {<<"TRANSFER">>, 'ok'};
 handle_channel_destroy(_, JObj) ->
     {kz_call_event:hangup_cause(JObj), kz_call_event:hangup_code(JObj)}.
+
+-spec get_privacy_prefs(kapps_call:call()) -> kz_proplist().
+get_privacy_prefs(Call) ->
+    case use_endpoint_prefs(Call) of
+        'true' -> check_inception(Call);
+        'false'  -> []
+    end.
+
+-spec use_endpoint_prefs(kapps_call:call()) -> boolean().
+use_endpoint_prefs(Call) ->
+    %% only overwrite the ccvs if privacy has not been set by cf_privacy
+    %% or if the call has been configured to overwrite cf_privacy settings
+    not kz_privacy:has_flags(kapps_call:custom_channel_vars(Call))
+        orelse kapps_call:kvs_fetch(<<"use_endpoint_privacy">>, Call).
+
+-spec check_inception(kapps_call:call()) -> kz_proplist().
+check_inception(Call) ->
+    lager:debug("Checking inception of call"),
+    case kapps_call:inception(Call) of
+        'undefined' -> get_privacy_prefs_from_endpoint(Call);
+        _Else -> []
+    end.
+
+-spec get_privacy_prefs_from_endpoint(kapps_call:call()) -> kz_proplist().
+get_privacy_prefs_from_endpoint(Call) ->
+    lager:debug("Call is outbound, checking outbound_privacy value"),
+    {'ok', Endpoint} = kz_endpoint:get(Call),
+    case kz_json:get_value([<<"caller_id_options">>, <<"outbound_privacy">>], Endpoint) of
+        'undefined' ->
+            [];
+        %% can't call kapps_call_command:privacy/2 with Mode = <<"none">>
+        <<"none">>=NoneMode ->
+            cf_util:ccvs_by_privacy_mode(NoneMode);
+        Mode ->
+            kapps_call_command:privacy(Mode, Call),
+            cf_util:ccvs_by_privacy_mode(Mode)
+    end.
