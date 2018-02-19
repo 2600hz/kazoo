@@ -114,10 +114,10 @@
             "friendly_name": "Comment UTC Timestamp",
             "i18n_label": "comment.timestamp_utc"
         },
-        "port_request.customser_contact": {
-            "description": "Customser Email",
-            "friendly_name": "Customser Email",
-            "i18n_label": "customser_contact"
+        "port_request.customer_contact": {
+            "description": "Customer Email",
+            "friendly_name": "Customer Email",
+            "i18n_label": "customer_contact"
         },
         "port_request.id": {
             "description": "Port Request Id",
