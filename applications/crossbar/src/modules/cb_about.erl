@@ -39,7 +39,7 @@ allowed_methods() -> [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

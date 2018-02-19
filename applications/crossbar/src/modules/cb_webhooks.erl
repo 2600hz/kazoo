@@ -134,9 +134,9 @@ authenticate(_Context, _Verb, _Nouns) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
-%% given Nouns. For example `/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405.
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -156,7 +156,7 @@ allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 

@@ -71,9 +71,9 @@ init() ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
-%% given Nouns. For example `/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405.
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -96,7 +96,7 @@ allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -161,7 +161,7 @@ authorize(_Verb, _Nouns) ->
 %% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with deviceId
 %%
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_resource(cb_context:context()) -> cb_context:context().

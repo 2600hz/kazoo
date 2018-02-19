@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018, 2600Hz
-%%% @doc Ecallmgr module (statem) for disconnecting calls when account
-%%% balance drops below zero
+%%% @doc Ecallmgr module (`statem') for disconnecting calls when account
+%%% balance drops below zero.
 %%%
 %%% @author Dinkor (Sergey Korobkov)
 %%% @author Daniel Finke

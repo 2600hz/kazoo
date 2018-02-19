@@ -82,9 +82,9 @@ init() ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
-%% given Nouns. For example `/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405.
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -122,7 +122,7 @@ allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -149,7 +149,7 @@ resource_exists(_, Path) ->
 %% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with account data
 %%
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -433,7 +433,7 @@ validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
                    ),
     lists:member(AuthId, L);
 validate_move(_Type, _, _, _) ->
-    lager:error("unknow move type ~p", [_Type]),
+    lager:error("unknown move type ~p", [_Type]),
     'false'.
 
 %%------------------------------------------------------------------------------

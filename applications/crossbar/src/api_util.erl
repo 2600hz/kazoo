@@ -638,11 +638,11 @@ is_cb_module_version(Context, Elem) ->
 %% among event responses.  The responses can only veto the list of
 %% methods, they can not add.
 %%
-%% If a client passes a `?verb=(PUT|DELETE)' on a POST request, ReqVerb will
+%% If a client passes a `?verb=(PUT|DELETE)' on a `POST' request, `ReqVerb' will
 %% be `?HTTP_PUT' or `?HTTP_DELETE', while `HttpVerb' is `POST'. If the allowed
 %% methods do not include `POST', we need to add it if allowed methods include
 %% the verb in `ReqVerb'.
-%% So, POSTing a `?HTTP_PUT', and the allowed methods include `PUT', insert POST
+%% So, POSTing a `?HTTP_PUT', and the allowed methods include `PUT', insert `POST'
 %% as well.
 %% POSTing a `?HTTP_DELETE', and `DELETE' is NOT in the allowed methods, remove
 %% `POST' from the allowed methods.
@@ -1216,8 +1216,8 @@ create_resp_file(Req, Context) ->
     {{Len, Fun}, Req}.
 
 %%------------------------------------------------------------------------------
-%% @doc Encode the JObj and send it as a chunk. Start chunk response if is
-%% not started yet.
+%% @doc Encodes the `JObj' and send it as a chunk. Starts chunk response if is
+%% not started yet. This is usually called by `api_resource:to_chnuk/3'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_json_chunk_response(cowboy_req:req(), cb_context:context()) ->

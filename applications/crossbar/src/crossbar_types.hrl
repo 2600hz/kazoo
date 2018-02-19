@@ -18,16 +18,16 @@
                      kz_term:api_binary() | kz_term:ne_binaries() |
                      map().
 
-%% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
 -type req_file() :: {kz_term:ne_binary(), kz_json:object()}.
+%% `{file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}'
 -type req_files() :: [req_file()].
 -type req_json() :: kz_json:object() | {'malformed', binary()}.
 
 -type req_noun() :: {kz_term:ne_binary(), kz_term:ne_binaries()}.
 -type req_nouns() :: [req_noun()].
 
-%% {Type, SubType, Options}
 -type content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | kz_term:proplist()} | kz_term:ne_binary().
+%% `{Type, SubType, Options}'
 
 -type media_value() :: {content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].
@@ -38,8 +38,8 @@
 -define(MEDIA_VALUE(Type, SubType, Weight), ?MEDIA_VALUE(Type, SubType, Weight, [], [])).
 -define(MEDIA_VALUE(Type, SubType), ?MEDIA_VALUE(Type, SubType, 1000, [], [])).
 
-%% {handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}
 -type crossbar_content_handler() :: {atom(), kz_term:proplist()}.
+%% `{handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}'
 -type crossbar_content_handlers() :: [crossbar_content_handler()].
 
 -type http_method() :: kz_term:ne_binary(). %% HTTP Verbs in UPPERCASE

@@ -925,10 +925,10 @@ compose_forward_message(Message, SrcBoxId, #mailbox{media_extension=Ext}=DestBox
     lager:debug("playing forwarding instructions to caller"),
     _ = play_instructions(DestBox, Call),
     _NoopId = kapps_call_command:noop(Call),
-    %% timeout after 5 min for saftey, so this process cant hang around forever
+    %% timeout after 5 min for safety, so this process cant hang around forever
     case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {'ok', _} ->
-            lager:info("played fowarding instructions to caller, recording new message"),
+            lager:info("played forwarding instructions to caller, recording new message"),
             record_forward(tmp_file(Ext), Message, SrcBoxId, DestBox, Call);
         {'dtmf', _Digits} ->
             _ = kapps_call_command:b_flush(Call),
@@ -942,7 +942,6 @@ compose_forward_message(Message, SrcBoxId, #mailbox{media_extension=Ext}=DestBox
 record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
                                                           ,max_message_length=MaxMessageLength
                                                           }=DestBox, Call) ->
-    lager:info("composing new forward voicemail to ~s", [AttachmentName]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                              ,{<<"Duration-ON">>, <<"500">>}
                              ,{<<"Duration-OFF">>, <<"100">>}
@@ -966,7 +965,7 @@ record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
                                       )
             end;
         {'error', _R} ->
-            lager:info("error while attempting to record a foward message: ~p", [_R])
+            lager:info("error while attempting to record a forward message: ~p", [_R])
     end.
 
 -spec forward_message(kz_term:api_ne_binary(), non_neg_integer(), kz_json:object(), kz_term:ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.

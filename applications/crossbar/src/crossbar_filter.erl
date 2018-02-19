@@ -33,11 +33,8 @@
 build(Context) ->
     build(Context, is_defined(Context)).
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% Equivalent of {@link build_with_mapper/3}, will call {@link is_defined/1} on Context.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv build_with_mapper(Context, UserMapper, is_defined(Context))
+
 -spec build_with_mapper(cb_context:context(), crossbar_view:user_mapper_fun()) -> crossbar_view:mapper_fun().
 build_with_mapper(Context, UserMapper) ->
     build_with_mapper(Context, UserMapper, is_defined(Context)).
@@ -68,7 +65,7 @@ is_defined(Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Check if only time filters are defined in query string, useful to
-%% crossbar_view to not add `include_docs' if only they are defined.
+%% {@link crossbar_view} to not add `include_docs' if only they are defined.
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_only_time_filter(cb_context:context(), kz_term:ne_binary()) -> boolean().
@@ -89,14 +86,17 @@ is_only_time_filter(Context, FilterKey) ->
             kz_json:all(Fun, cb_context:query_string(Context))
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Returns `true' if all of the requested props are found, `false' if one is not found
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv by_doc(Doc, Context, is_defined(Context))
+
 -spec by_doc(kz_term:api_object(), cb_context:context()) -> boolean().
 by_doc(Doc, Context) ->
     by_doc(Doc, Context, is_defined(Context)).
 
+%%------------------------------------------------------------------------------
+%% @doc Returns `true' if all of the requested filters are satisfied, otherwise
+%% returns `false'.
+%% @end
+%%------------------------------------------------------------------------------
 -spec by_doc(kz_term:api_object(), cb_context:context(), boolean()) -> boolean().
 by_doc(_, _, 'false') ->
     lager:debug("no filters defined"),

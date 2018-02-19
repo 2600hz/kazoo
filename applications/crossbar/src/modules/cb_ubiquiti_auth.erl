@@ -65,9 +65,9 @@ init() ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
-%% given Nouns. For example `/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405.
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
@@ -75,7 +75,7 @@ allowed_methods() -> [?HTTP_PUT].
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.

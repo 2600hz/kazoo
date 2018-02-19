@@ -83,27 +83,29 @@
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the version number attached to created/updated documents.
-%% Indicates what pvt fields are created/updated when saving.
-%%
-%% Failure here returns 410, 500, or 503
+%% Indicates what private fields are created/updated when saving.
 %% @end
 %%------------------------------------------------------------------------------
 -spec current_doc_vsn() -> kz_term:ne_binary().
 current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 
-%%------------------------------------------------------------------------------
-%% @doc This function attempts to load the context with account details,
-%% including the account db name and the account doc.
-%%
-%% Failure here returns 410, 500, or 503
-%% @end
-%%------------------------------------------------------------------------------
+%% equiv load(DocId, Context, [])
+
 -spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context()) ->
                   cb_context:context().
 load({DocType, DocId}, Context) ->
     load(DocId, Context, [{'doc_type', DocType}]);
 load(DocId, Context) ->
     load(DocId, Context, []).
+
+%%------------------------------------------------------------------------------
+%% @doc This function attempts to load the context with account details,
+%% including the account db name and the account doc.
+%%
+%% Failure here returns `404 Not Found', `409 Conflict'
+%% or `503 Service Unavailable'.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context(), load_options()) ->
                   cb_context:context().
@@ -237,24 +239,27 @@ handle_successful_load(Context, JObj, 'false') ->
                ),
     cb_context:store(handle_datamgr_success(JObj, Context), 'db_doc', JObj).
 
-%%------------------------------------------------------------------------------
-%% @doc This function attempts to merge the submitted data with the private
-%% fields of an existing account document, if successful it will
-%% load the context with the account details.
-%%
-%% Failure here returns 410, 500, or 503
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv load_merge(DocId, cb_context:doc(Context), Context, [])
 
--spec load_merge(kz_term:ne_binary(), cb_context:context()) ->
-                        cb_context:context().
+-spec load_merge(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_merge(DocId, Context) ->
     load_merge(DocId, cb_context:doc(Context), Context, []).
 
--spec load_merge(kz_term:ne_binary(), cb_context:context(), kz_term:proplist()) ->
-                        cb_context:context().
+%% @equiv load_merge(DocId, cb_context:doc(Context), Context, Options)
+
+-spec load_merge(kz_term:ne_binary(), cb_context:context(), kz_term:proplist()) -> cb_context:context().
 load_merge(DocId, Context, Options) ->
     load_merge(DocId, cb_context:doc(Context), Context, Options).
+
+%%------------------------------------------------------------------------------
+%% @doc This function attempts to merge the submitted data with the private
+%% fields of an existing account document. If successful it will
+%% load the context with the account details.
+%%
+%% Failure here returns `404 Not Found', `409 Conflict'
+%% or `503 Service Unavailable'.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec load_merge(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:proplist()) ->
                         cb_context:context().
@@ -302,13 +307,6 @@ patch_the_doc(RequestData, ExistingDoc) ->
     PubJObj = kz_doc:public_fields(RequestData),
     kz_json:merge(fun kz_json:merge_left/2, PubJObj, ExistingDoc).
 
-%%------------------------------------------------------------------------------
-%% @doc This function attempts to load the context with the results of a view
-%% run against the accounts database.
-%%
-%% Failure here returns 500 or 503.
-%% @end
-%%------------------------------------------------------------------------------
 -spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context()) ->
                        cb_context:context().
 load_view(View, Options, Context) ->
@@ -332,11 +330,20 @@ load_view(View, Options, Context, StartKey) ->
     load_view(View, Options, Context, StartKey
              ,cb_context:pagination_page_size(Context)
              ).
+%% @equiv load_view(View, Options, Context, StartKey, PageSize, 'undefined')
 
 -spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer()) ->
                        cb_context:context().
 load_view(View, Options, Context, StartKey, PageSize) ->
     load_view(View, Options, Context, StartKey, PageSize, 'undefined').
+
+%%------------------------------------------------------------------------------
+%% @doc This function attempts to load the context with the results of a view
+%% run against the accounts database.
+%%
+%% Failure here returns 500 or 503.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), filter_fun()) ->
                        cb_context:context().
@@ -453,6 +460,8 @@ limit_by_page_size(Context, PageSize) ->
             'undefined'
     end.
 
+%% @equiv cb_context:req_value(Context, <<"start_key">>)
+
 -spec start_key(cb_context:context()) -> kz_json:api_json_term().
 start_key(Context) ->
     cb_context:req_value(Context, <<"start_key">>).
@@ -531,6 +540,18 @@ load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
 load_attachment(Doc, AName, Options, Context) ->
     load_attachment({kz_doc:type(Doc), kz_doc:id(Doc)}, AName, Options, Context).
 
+%% @equiv save(Context, [])
+
+-spec save(cb_context:context()) -> cb_context:context().
+save(Context) ->
+    save(Context, []).
+
+%% @equiv save(Context, cb_context:doc(Context), Options)
+
+-spec save(cb_context:context(), kz_term:proplist()) -> cb_context:context().
+save(Context, Options) ->
+    save(Context, cb_context:doc(Context), Options).
+
 %%------------------------------------------------------------------------------
 %% @doc This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
@@ -538,16 +559,6 @@ load_attachment(Doc, AName, Options, Context) ->
 %% Failure here returns 500 or 503.
 %% @end
 %%------------------------------------------------------------------------------
-
--spec save(cb_context:context()) ->
-                  cb_context:context().
-save(Context) ->
-    save(Context, []).
-
--spec save(cb_context:context(), kz_term:proplist()) ->
-                  cb_context:context().
-save(Context, Options) ->
-    save(Context, cb_context:doc(Context), Options).
 
 -spec save(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
                   cb_context:context().
@@ -577,6 +588,12 @@ save(Context, JObj, Options) ->
             Context1
     end.
 
+%%equiv ensure_saved(Context, [])
+
+-spec ensure_saved(cb_context:context()) -> cb_context:context().
+ensure_saved(Context) ->
+    ensure_saved(Context, []).
+
 %%------------------------------------------------------------------------------
 %% @doc This function attempts to save the provided document to the accounts
 %% database. The result is loaded into the context record.
@@ -585,13 +602,7 @@ save(Context, JObj, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec ensure_saved(cb_context:context()) ->
-                          cb_context:context().
-ensure_saved(Context) ->
-    ensure_saved(Context, []).
-
--spec ensure_saved(cb_context:context(), kz_term:proplist()) ->
-                          cb_context:context().
+-spec ensure_saved(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 ensure_saved(Context, Options) ->
     ensure_saved(Context, cb_context:doc(Context), Options).
 
@@ -609,18 +620,13 @@ ensure_saved(Context, JObj, Options) ->
             Context1
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Save the Contents as an attachment on the document.
-%% Failure here returns 500 or 503.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv  save_attachment(DocId, AName, Contents, Context, [])
 -spec save_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 save_attachment(DocId, AName, Contents, Context) ->
     save_attachment(DocId, AName, Contents, Context, []).
 
 %%------------------------------------------------------------------------------
-%% @doc Save the Contents as an attachment on the document with options.
-%% Failure here returns 500 or 503.
+%% @doc Save the Contents as an attachment on the document.
 %% @end
 %%------------------------------------------------------------------------------
 -spec save_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:proplist()) ->
@@ -688,20 +694,22 @@ maybe_delete_doc(Context, DocId) ->
             end
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc This function will attempt to remove an account document from the
-%% account database.
-%% This is preformed as a soft-delete and enforced
-%% by the views.  Clean up process remove old data based on the delete
-%% flag and last modified date
-%%
-%% Failure here returns 500 or 503.
-%% @end
-%%------------------------------------------------------------------------------
+%% @equiv delete(Context, cb_context:should_soft_delete(Context))
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     delete(Context, cb_context:should_soft_delete(Context)).
 
+%%------------------------------------------------------------------------------
+%% @doc This function will attempt to remove a document from the database.
+%% If th second argument is `true' this is preformed as a soft-delete and enforced
+%% by the views. Clean up process remove old data based on the delete
+%% flag and last modified date.
+%% If the second argument is `false', the document is hard delete from database.
+%%
+%% By default `should_soft_delete' field in context record is set to `true', the
+%% document is soft-deleted.
+%% @end
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), boolean()) -> cb_context:context().
 delete(Context, ?SOFT_DELETE) ->
     Doc = cb_context:doc(Context),
@@ -774,7 +782,7 @@ delete_attachment(DocId, AName, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function will attempt to convert a revision tag on the provided
-%% document into a usable ETag for the response.
+%% document into a usable `ETag' for the response.
 %% @end
 %%------------------------------------------------------------------------------
 -spec rev_to_etag(kz_json:object() | kz_json:objects() | kz_term:ne_binary()) ->
@@ -1158,6 +1166,14 @@ add_pvt_request_id(JObj, Context) ->
     RequestId = cb_context:req_id(Context),
     kz_json:set_value(<<"pvt_request_id">>, RequestId, JObj).
 
+%%------------------------------------------------------------------------------
+%% @doc This function is used to update the private to set account ID, user ID
+%% and original account ID and user ID (if the authenticated user is masqueraded).
+%%
+%% This is do the system administrator can track who has changed the
+%% document recently.
+%% @end
+%%------------------------------------------------------------------------------
 -spec add_pvt_auth(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_auth(JObj, Context) ->
     case cb_context:is_authenticated(Context) of

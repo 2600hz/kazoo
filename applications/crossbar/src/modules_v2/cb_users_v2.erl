@@ -70,9 +70,9 @@ init() ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
-%% given Nouns. For example `/accounts/' can only accept GET and PUT
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405.
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -117,7 +117,7 @@ content_types_provided(Context, _, _) ->
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -176,7 +176,7 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 %% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with userId
 %%
-%% Failure here returns 404.
+%% Failure here returns `404 Not Found'.
 %% @end
 %%------------------------------------------------------------------------------
 

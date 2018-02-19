@@ -46,7 +46,7 @@
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Init a REST request.
+%% @doc Initialize a REST request.
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
@@ -695,9 +695,9 @@ previously_existed(Req, State) ->
     {'false', Req, State}.
 
 %%------------------------------------------------------------------------------
-%% @doc If we're tunneling PUT through POST,
-%% we need to allow POST to create a nonexistent resource
-%% AKA, 201 Created header set.
+%% @doc If we're tunneling `PUT' through `POST',
+%% we need to allow `POST' to create a nonexistent resource
+%% a.k.a a `201 Created' header set.
 %% @end
 %%------------------------------------------------------------------------------
 -spec allow_missing_post(cowboy_req:req(), cb_context:context()) ->
