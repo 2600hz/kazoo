@@ -399,6 +399,7 @@ missing_comment_blocks_after_sep(Result) ->
     'ok'.
 
 add_missing_comment_blocks(File, Positions) ->
+    io:format("."),
     Lines = read_lines(File, true),
     save_lines(File, do_add_missing_comment_blocks(Lines, Positions, [])).
 
