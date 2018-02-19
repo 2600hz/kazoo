@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @author Karl Anderson

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Listener for sysconf_read, and sysconf_write AMQP requests
 %%% @author Edouard Swiac
 %%% @end

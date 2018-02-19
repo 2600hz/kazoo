@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc Handle e911 provisioning
 %%% @author James Aimonetti
 %%% @author Peter Defebvre

@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016, Conversant Ltd
-%%% @doc JSON formatter module
+%%% @copyright (C) 2016-2018, Conversant Ltd
+%%% @doc JSON formatter module.
 %%% @author Max Lay
 %%% @end
 %%%-----------------------------------------------------------------------------

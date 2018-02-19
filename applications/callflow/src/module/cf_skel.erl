@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010,2018 2600Hz
-%%% @doc Base module for callflow action
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Base module for Callflow action.
 %%%
 %%% <h4>Data options:</h4>
 %%% <dl>

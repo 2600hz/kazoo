@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Create freeswitch offline configuration
 %%% @author Luis Azedo
 %%% @end

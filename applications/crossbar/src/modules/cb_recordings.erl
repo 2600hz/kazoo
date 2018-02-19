@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc Provides access to stored call recordings.
 %%%
 %%% @author OnNet (Kirill Sysoev [github.com/onnet])

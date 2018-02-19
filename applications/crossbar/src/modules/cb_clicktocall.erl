@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Click to call
 %%% Allow embeddable HTML forms (or other ways to POST to the URL)
 %%% and create a call.

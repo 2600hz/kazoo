@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz INC
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc Handle tower-of-power MDN phone numbers.
 %%% @author Pierre Fenoll
 %%% @end

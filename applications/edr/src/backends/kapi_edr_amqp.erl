@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017, Conversant Ltd
+%%% @copyright (C) 2017-2018, Conversant Ltd
 %%% @doc
 %%% @author Max Lay
 %%% @end

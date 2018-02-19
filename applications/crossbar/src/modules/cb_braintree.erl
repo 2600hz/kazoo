@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Handle client requests for braintree documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz Inc
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Periodically checks the hangup stats for anomalies
 %%% Config values to set for threshold checks:
 %%%   "one", "five", "fifteen", "day", "mean"

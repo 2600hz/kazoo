@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc Handles port request life cycles
 %%% See doc/port_requests.md
 %%%

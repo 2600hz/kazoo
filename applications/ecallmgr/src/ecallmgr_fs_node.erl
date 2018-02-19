@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Manage a FreeSWITCH node and its resources
 %%% @author James Aimonetti
 %%% @author Karl Anderson

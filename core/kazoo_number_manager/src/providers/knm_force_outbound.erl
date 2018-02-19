@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Handle failover provisioning
 %%% @author Pierre Fenoll
 %%% @end

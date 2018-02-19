@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc Handles changing an agent's status
 %%% "data":{
 %%%   "action":["login","logout"] // one of these

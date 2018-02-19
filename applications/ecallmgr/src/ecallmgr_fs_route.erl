@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc Receive route(dialplan) requests from FS, request routes and respond
 %%% @author James Aimonetti
 %%% @end

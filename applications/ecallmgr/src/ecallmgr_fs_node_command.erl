@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Execute node commands
 %%% @author Luis Azedo
 %%% @end

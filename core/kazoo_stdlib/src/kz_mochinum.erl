@@ -1,18 +1,21 @@
-%%
-%% REMOVE THIS FILE WHEN KZ_UTIL IS FIXED
-%%
-%% @copyright 2007 Mochi Media, Inc.
-%% @author Bob Ippolito <bob@mochimedia.com>
+%%%-----------------------------------------------------------------------------
+%%% @copyright 2007 Mochi Media, Inc.
+%%% @doc Useful numeric algorithms for floats that cover some deficiencies
+%%% in the math module.
+%%%
+%%% More interesting is digits/1, which implements the algorithm from:
+%%% http://www.cs.indiana.edu/~burger/fp/index.html
+%%% See also "Printing Floating-Point Numbers Quickly and Accurately"
+%%% in Proceedings of the SIGPLAN '96 Conference on Programming Language
+%%% Design and Implementation.
+%%% module renamed due to conflicts with rabbitmq_common
+%%%
+%%% TODO: REMOVE THIS FILE WHEN {@link kz_util} IS FIXED!
+%%%
+%%% @author Bob Ippolito <bob@mochimedia.com>
+%%% @end
+%%%-----------------------------------------------------------------------------
 
-%% @doc Useful numeric algorithms for floats that cover some deficiencies
-%% in the math module. More interesting is digits/1, which implements
-%% the algorithm from:
-%% http://www.cs.indiana.edu/~burger/fp/index.html
-%% See also "Printing Floating-Point Numbers Quickly and Accurately"
-%% in Proceedings of the SIGPLAN '96 Conference on Programming Language
-%% Design and Implementation.
-
-%% module renamed due to conflicts with rabbitmq_common
 
 -module(kz_mochinum).
 -author("Bob Ippolito <bob@mochimedia.com>").

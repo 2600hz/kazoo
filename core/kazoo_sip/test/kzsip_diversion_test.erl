@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc Diversion SIP header manipulation tests
 %%% @author James Aimonetti
 %%% @end

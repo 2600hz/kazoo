@@ -1,9 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
-%%% This process runs on each node in the Kazoo cluster. It collects information
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc This process runs on each node in the Kazoo cluster. It collects information
 %%% on each node, and regularly sends the information the stats application.
-%%% For ecallmgr nodes, it also collects ecallmgr information, and
+%%% For `ecallmgr' nodes, it also collects `ecallmgr' information, and
 %%% sip events statistics.
+%%% @end
+%%%
+%%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%%-----------------------------------------------------------------------------
 -module(kazoo_stats).
 -behaviour(gen_server).

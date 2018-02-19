@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017, Conversant Ltd
-%%% @doc EDR output formatter
+%%% @copyright (C) 2017-2018, Conversant Ltd
+%%% @doc EDR output formatter.
 %%% @author Max Lay
 %%% @end
 %%%-----------------------------------------------------------------------------

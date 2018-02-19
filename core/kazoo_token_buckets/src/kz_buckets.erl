@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
+%%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc API interface for buckets
 %%% ETS writer for table
 %%%

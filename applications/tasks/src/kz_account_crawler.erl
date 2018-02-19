@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
 %%% @author Pierre Fenoll
