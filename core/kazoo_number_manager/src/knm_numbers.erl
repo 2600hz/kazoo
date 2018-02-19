@@ -52,7 +52,7 @@
 
 -type num() :: kz_term:ne_binary().  %%TODO: support ranges?
 -type nums() :: [num()].
--type ok() :: knm_number:knm_number().
+-type ok() :: knm_number:knm_number() | knm_phone_number:knm_phone_number().
 -type oks() :: [ok()].
 -type ko() :: knm_errors:error() | atom().
 -type kos() :: #{num() => ko()}.
