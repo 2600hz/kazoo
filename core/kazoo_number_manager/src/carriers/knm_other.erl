@@ -122,7 +122,7 @@ check_numbers(Numbers) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Query the local system for a quanity of available numbers
+%% @doc Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%------------------------------------------------------------------------------

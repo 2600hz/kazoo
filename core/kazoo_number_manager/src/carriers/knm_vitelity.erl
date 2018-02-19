@@ -48,7 +48,7 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
-%% @doc Query the Vitelity system for a quanity of available numbers
+%% @doc Query the Vitelity system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%------------------------------------------------------------------------------

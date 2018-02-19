@@ -41,7 +41,7 @@ handle_req(JObj, _Props) ->
     'true' = kapi_notifications:port_cancel_v(JObj),
     kz_util:put_callid(JObj),
 
-    lager:debug("an in-progress port has been cancelled, sending email notification"),
+    lager:debug("an in-progress port has been canceled, sending email notification"),
 
     RespQ = kz_api:server_id(JObj),
     MsgId = kz_api:msg_id(JObj),

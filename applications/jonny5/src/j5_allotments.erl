@@ -188,7 +188,7 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
         {'error', 'not_found'} ->
             add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts);
         {'error', _R}=Error ->
-            lager:debug("unable to get consumed quanity for ~s allotment from ~s: ~p"
+            lager:debug("unable to get consumed quantity for ~s allotment from ~s: ~p"
                        ,[Classification, LedgerDb, _R]
                        ),
             Error
