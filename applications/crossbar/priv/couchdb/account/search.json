@@ -68,7 +68,7 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_deleted) return;",
-                "  if (doc.hasOwnProperty(\"numbers\") {",
+                "  if (doc.hasOwnProperty(\"numbers\")) {",
                 "    for (var i in doc.numbers) {",
                 "      emit([doc.pvt_type, doc.numbers[i].replace(/[^a-z0-9]/g, '')], {",
                 "        'id': doc._id,",
