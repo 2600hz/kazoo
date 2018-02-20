@@ -26,6 +26,8 @@
 
 %%------------------------------------------------------------------------------
 %% @doc Starts the supervisor.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).

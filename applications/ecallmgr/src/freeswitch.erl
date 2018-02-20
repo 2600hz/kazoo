@@ -94,10 +94,13 @@ api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
 -spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).
 
+%%------------------------------------------------------------------------------
 %% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
 %% sent to calling process after it is received. This function
-%% returns the result of the initial bgapi call or `timeout' if FreeSWITCH fails
+%% returns the result of the initial `bgapi' call or `timeout' if FreeSWITCH fails
 %% to respond.
+%% @end
+%%------------------------------------------------------------------------------
 -spec bgapi(atom(), atom(), string() | binary()) -> fs_api_return().
 bgapi(Node, Cmd, Args) -> ?FS_MODULE:bgapi(Node, Cmd, Args).
 
