@@ -647,6 +647,54 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > POST /v2/resource_selectors/rules
     > POST /v2/whitelabel/domains
 
+## state-of-edoc.escript
+
+Searches for undocumented source files:
+
+```shell
+./scripts/state-of-edoc.escript
+```
+
+    State of EDoc
+    ...........................................[more_dots]
+
+    These files don't have documentations in module header:
+    -- applications/acdc/src/acdc_agent_listener.erl
+    -- applications/acdc/src/acdc_agent_maintenance.erl
+    -- applications/acdc/src/acdc_agent_sup.erl
+    -- applications/acdc/src/acdc_agent_util.erl
+    -- applications/acdc/src/acdc_agents_sup.erl
+    -- applications/acdc/src/acdc_announcements.erl
+    -- applications/acdc/src/acdc_announcements_sup.erl
+    -- applications/acdc/src/acdc_app.erl
+    -- applications/acdc/src/acdc_eavesdrop.erl
+    -- core/kazoo_xml/src/kz_xml.erl
+    [more_files]
+
+    These functions in files don't have any documentations:
+    -- applications/acdc/src/acdc_agent_handler.erl [undocumented functions: 11/11 (%100)]
+    -- applications/acdc/src/acdc_agent_maintenance.erl [undocumented functions: 5/5 (%100)]
+    -- applications/acdc/src/acdc_queue_thief.erl [undocumented functions: 1/1 (%100)]
+    -- applications/acdc/src/acdc_stats.erl [undocumented functions: 33/33 (%100)]
+    -- applications/acdc/src/acdc_stats_util.erl [undocumented functions: 7/7 (%100)]
+    -- applications/acdc/src/acdc_sup.erl [undocumented functions: 2/2 (%100)]
+    -- applications/acdc/src/acdc_util.erl [undocumented functions: 15/15 (%100)]
+    -- applications/cccp/src/cccp_shared_listener.erl [undocumented functions: 1/9 (%11)]
+    -- applications/ecallmgr/src/ecallmgr_fs_conferences_shared.erl [undocumented functions: 1/9 (%11)]
+    -- applications/webhooks/src/webhooks_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/amqp_cron/src/amqp_cron_task.erl [undocumented functions: 1/9 (%11)]
+    -- core/amqp_leader/src/amqp_leader_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_apps/src/kazoo_apps_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_maintenance/src/kapps_config_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_maintenance/src/kazoo_oauth_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/kazoo_maintenance/src/skel_maint_listener.erl [undocumented functions: 1/9 (%11)]
+    -- core/braintree/src/braintree_customer.erl [undocumented functions: 2/21 (%9)]
+    [more_files]
+
+
+    Processed 1277 files
+    Files without documentations in module header: 769/1277 (%60)
+    Files with undocumented functions: 1021/1277 (%79)
 
 ## `sync_to_remote.bash`
 
