@@ -29,12 +29,22 @@ main(_) ->
 state_of_edoc([], ErlsLength, _, {NoModule, NoFunctions}) ->
     print_no_module_summary(lists:reverse(NoModule)),
     print_no_functions(lists:sort(fun sort_no_functions/2, NoFunctions)),
+
     L1 = length(NoModule),
     L2 = length(NoFunctions),
+
+    NoModulePer = integer_to_binary(L1 * 100 div ErlsLength),
+    NoFunPer = integer_to_binary(L2 * 100 div ErlsLength),
+
+    ModuleDocPer = integer_to_binary(100 - L1 * 100 div ErlsLength),
+    FunDocPer = integer_to_binary(100 - L2 * 100 div ErlsLength),
+
     io:put_chars(
       [$\n, $\n, "Processed ", integer_to_binary(ErlsLength), " files", $\n
-      ,"Files without documentations in module header: ", integer_to_binary(L1), "/", integer_to_binary(ErlsLength), " (%", integer_to_binary(L1 * 100 div ErlsLength), ")", $\n
-      ,"Files with undocumented functions: ", integer_to_binary(L2), "/", integer_to_binary(ErlsLength), " (%", integer_to_binary(L2 * 100 div ErlsLength), ")", $\n
+      ,"Files without documentations in module header: ", integer_to_binary(L1), "/", integer_to_binary(ErlsLength), " (%", NoModulePer, ")", $\n
+      ,"Files with undocumented functions: ", integer_to_binary(L2), "/", integer_to_binary(ErlsLength), " (%", NoFunPer, ")", $\n, $\n
+      ,"Only %", ModuleDocPer, " has documentations in module header", $\n
+      ,"Only %", FunDocPer, " has complete documentations for functions", $\n
       ]
      );
 state_of_edoc([Erl|Erls], ErlsLength, Includes, Acc) ->
@@ -52,7 +62,8 @@ print_no_functions(NoFunctions) ->
     io:format("~nThese functions in files don't have any documentations:~n"),
     io:put_chars(
       [["-- ", Erl, " "
-       ,"[undocumented functions: ", integer_to_binary(length(NoCommented) + 1), "/", integer_to_binary(FunsCount), " (%", integer_to_binary(Percentage), ")]", $\n
+       ,"[undocumented functions: ", integer_to_binary(length(NoCommented) + 1), "/", integer_to_binary(FunsCount)
+       ," (%", integer_to_binary(Percentage), "), %", integer_to_binary(100 - Percentage), " are documented.]", $\n
         %% ,FNameH, "/", FArityH, [[", ", FName, "/", FArity] || {FName, FArity} <- NoCommented]
        ]
        || {Erl, FunsCount, Percentage, [{FNameH, FArityH}|NoCommented]} <- NoFunctions
