@@ -421,7 +421,7 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred
         'true' -> set_value(Syek, Value, JObj1)
     end.
 
-%% @equiv sum(JObj1, JObj2, fun kz_json:default_sumer/2).
+%% @equiv sum(JObj1, JObj2, fun kz_json:default_sumer/2)
 
 -spec sum(object(), object()) -> object().
 sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
@@ -461,7 +461,7 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
     V = get_value(Syek, JObj1),
     set_value(Syek, Sumer(V, Value), JObj1).
 
-%% @equiv sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun kz_json:default_sumer/2).
+%% @equiv sum_jobjs(JObjs, fun kz_json:default_sumer/2)
 
 -spec sum_jobjs(objects()) -> object().
 sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
