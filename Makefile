@@ -87,23 +87,26 @@ clean-release:
 
 build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
-	patch _rel/'kazoo'/bin/'kazoo' -i rel/relx.patch
+#	patch _rel/'kazoo'/bin/'kazoo' -i rel/relx.patch
 build-all-release: build-release
 	for path in applications/*/; do \
 	  app=$$(echo $$path | cut -d/ -f2) ; \
 	  if [ $$app = 'skel' ]; then continue; fi ; \
 	  $(RELX) --config rel/relx.config -V 2 release --relname $$app ; \
-	  patch _rel/$$app/bin/$$app -i rel/relx.patch ; \
+#	  patch _rel/$$app/bin/$$app -i rel/relx.patch ; \
 	done
-build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
-	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
-	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
+build-dev-release: $(RELX) clean-release rel/dev.relx.config rel/dev.vm.args rel/dev.sys.config
+	$(RELX) --dev-mode true --config rel/dev.relx.config -V 2 release --relname 'kazoo' --sys_config rel/dev.sys.config --vm_args rel/dev.vm.args
+#	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
-	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
+#	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
+
 rel/relx.config: rel/relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
+rel/dev.relx.config: rel/dev.relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
 rel/relx.config-dev: export KAZOO_DEV='true'
 rel/relx.config-dev: rel/relx.config.src
@@ -111,8 +114,8 @@ rel/relx.config-dev: rel/relx.config.src
 
 rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
 	cp $^ $@
-rel/vm.args: rel/args rel/dev-vm.args
-	( echo '-setcookie $${COOKIE}'; cat $<; echo '-name $${NODE_NAME}' ) > $@
+rel/vm.args: rel/args
+	cp $^ $@
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
