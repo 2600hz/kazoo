@@ -187,6 +187,8 @@ start_queue_call(JObj, Props, Call) ->
             kapps_call_command:hold(MOH, Call)
     end,
 
+    JObj2 = kz_json:set_value([<<"Call">>, <<"Custom-Channel-Vars">>, <<"Queue-ID">>], QueueId, JObj),
+
     _ = kapps_call_command:set('undefined'
                               ,kz_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}
                                                  ,{<<"Queue-ID">>, QueueId}
@@ -195,7 +197,7 @@ start_queue_call(JObj, Props, Call) ->
                               ),
 
     %% Add member to queue for tracking position
-    gen_listener:cast(props:get_value('server', Props), {'add_queue_member', JObj}).
+    gen_listener:cast(props:get_value('server', Props), {'add_queue_member', JObj2}).
 
 -spec handle_member_call_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_call_success(JObj, Prop) ->
