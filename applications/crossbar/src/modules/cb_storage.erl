@@ -492,12 +492,12 @@ add_datamgr_error(AttId, Error, Context) ->
     crossbar_doc:handle_datamgr_errors(Error, AttId, Context).
 
 -spec add_att_settings_validation_error(kz_term:ne_binary()
-                                       ,gen_attachment:error_response()
+                                       ,kz_att_error:error()
                                        ,cb_context:context()
                                        ) -> cb_context:context().
-add_att_settings_validation_error(AttId, ErrorResponse, Context) ->
-    ErrorCode = gen_attachment:error_code(ErrorResponse),
-    ErrorBody = gen_attachment:error_body(ErrorResponse),
+add_att_settings_validation_error(AttId, {'error', Reason, ExtendedError}, Context) ->
+    ErrorCode = kz_att_error:resp_code(ExtendedError),
+    ErrorBody = kz_att_error:resp_body(ExtendedError),
     EmptyJObj = kz_json:new(),
     %% Some attachment handlers return a bitstring as the value for `ErrorBody` variable,
     %% some other return an encoded JSON object which is also a binary value but
@@ -506,10 +506,13 @@ add_att_settings_validation_error(AttId, ErrorResponse, Context) ->
                        EmptyJObj -> ErrorBody;
                        DecodedErrorBody -> DecodedErrorBody
                    end,
-    Error = [{<<"error_code">>, ErrorCode}, {<<"error_body">>, NewErrorBody}],
-    Reason = kz_json:insert_values(Error, kz_json:new()),
+    Error = [{<<"error_code">>, ErrorCode}
+            ,{<<"error_body">>, NewErrorBody}
+            ,{<<"message">>, Reason}
+            ],
+    ErrorObj = kz_json:insert_values(Error, kz_json:new()),
     cb_context:add_validation_error([<<"attachments">>, AttId]
                                    ,<<"invalid">>
-                                   ,Reason
+                                   ,ErrorObj
                                    ,Context
                                    ).

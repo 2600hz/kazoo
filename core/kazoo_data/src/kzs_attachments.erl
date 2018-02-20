@@ -127,7 +127,8 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
             Size = size(Contents),
             Att = attachment_from_handler(AName, attachment_handler_jobj(Handler, Props), Size, CT),
             handle_put_attachment(Map, Att, DbName, DocId, AName, Contents, Options, Props);
-        {'error', _} = E -> E
+        {'error', _} = E -> E;
+        {'error', _, _} = E -> E %% kz_att_error.erl extended error
     end;
 put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),

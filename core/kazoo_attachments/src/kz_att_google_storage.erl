@@ -48,7 +48,6 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
                        ) -> gen_attachment:put_response().
 do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
                  ,Settings, DbName, DocId, AName, Contents, Options) ->
-    Authorization = gstorage_token(Settings),
     CT = kz_mime:from_filename(AName),
     {Bucket, Name} = resolve_path(Settings, {DbName, DocId, AName}),
     case send_attachment(Authorization, Bucket, Name, CT, Options, Contents) of

@@ -73,8 +73,7 @@ handle_put_attachment_resp({'error', Url, Resp}, Routines) ->
     NewRoutines = [{fun kz_att_error:set_req_url/2, Url}
                    | Routines
                   ],
-    handle_http_error_response(Resp, NewRoutines);
-handle_put_attachment_resp(Resp, _) -> Resp.
+    handle_http_error_response(Resp, NewRoutines).
 
 -spec fetch_attachment(gen_attachment:handler_props()
                       ,gen_attachment:db_name()
