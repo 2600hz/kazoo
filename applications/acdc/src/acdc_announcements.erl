@@ -178,9 +178,8 @@ play_announcements(Prompts, #{call := Call
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_average_wait_time(kapps_call:call()) -> kz_term:api_pos_integer().
+-spec get_average_wait_time(kapps_call:call()) -> kz_term:api_non_neg_integer().
 get_average_wait_time(Call) ->
-    AccountId = kapps_call:account_id(Call),
     QueueId = kapps_call:custom_channel_var(<<"Queue-ID">>, Call),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, kapps_call:account_id(Call)}
@@ -188,49 +187,16 @@ get_average_wait_time(Call) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_acdc_stats:publish_current_calls_req/1
-                                     ,fun kapi_acdc_stats:current_calls_resp_v/1
+                                     ,fun kapi_acdc_stats:publish_average_wait_time_req/1
+                                     ,fun kapi_acdc_stats:average_wait_time_resp_v/1
                                      )
     of
         {'error', E} ->
             lager:error("failed to receive current calls from AMQP: ~p", [E]),
             'undefined';
         {'ok', Resp} ->
-            calculate_average_wait_time(Resp)
+            kz_json:get_integer_value(<<"Average-Wait-Time">>, Resp, 0)
     end.
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Compute the average wait time based on the current_calls_resp
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_average_wait_time(kz_json:object()) -> pos_integer().
-calculate_average_wait_time(JObj) ->
-    WaitTimeCalls = kz_json:get_list_value(<<"Waiting">>, JObj, []) ++
-        kz_json:get_list_value(<<"Handled">>, JObj, []) ++
-        kz_json:get_list_value(<<"Processed">>, JObj, []),
-    Abandoned = length(kz_json:get_list_value(<<"Abandoned">>, JObj, [])),
-    Total = length(kz_json:get_list_value(<<"Abandoned">>, JObj, [])) +
-        length(kz_json:get_list_value(<<"Handled">>, JObj, [])) +
-        length(kz_json:get_list_value(<<"Processed">>, JObj, [])),
-
-    TotalWait = lists:foldl(fun(Stat, Acc) ->
-                                    Acc + kz_json:get_integer_value(<<"wait_time">>, Stat, 0)
-                            end, 0, WaitTimeCalls),
-    calculate_average_wait_time(Abandoned, Total, TotalWait).
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Calculate average wait time, considering div by 0
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_average_wait_time(pos_integer(), pos_integer(), pos_integer()) -> pos_integer().
-calculate_average_wait_time(Total, Total, TotalWait) ->
-    TotalWait;
-calculate_average_wait_time(Abandoned, Total, TotalWait) ->
-    TotalWait div (Total - Abandoned).
 
 %%--------------------------------------------------------------------
 %% @doc
