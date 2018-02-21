@@ -253,8 +253,8 @@ handle_search_error(Conference, Call, Srv) ->
     Queue = kapps_conference:id(Conference),
     kz_amqp_channel:remove_consumer_pid(),
     kz_amqp_channel:consumer_broker(Arbitrator),
-    _ = amqp_util:new_queue(Queue),
-    try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
+    _ = kz_amqp_util:new_queue(Queue),
+    try kz_amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
             lager:debug("initial participant creating conference on switch nodename '~p'", [kapps_call:switch_hostname(Call)]),
             conf_participant:set_conference(Conference, Srv),

@@ -82,7 +82,7 @@ publish_subscribe(JObj) ->
 -spec publish_subscribe(kz_term:api_terms(), binary()) -> 'ok'.
 publish_subscribe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun subscribe/1),
-    amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
+    kz_amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc notifying subscribers
@@ -108,7 +108,7 @@ publish_notify(JObj) -> publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
 -spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
 publish_notify(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
-    amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
+    kz_amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -119,25 +119,25 @@ bind_q(Queue, Props) ->
     bind_q(Queue, props:get_value('restrict_to', Props), Props).
 
 bind_q(Queue, 'undefined', Props) ->
-    amqp_util:bind_q_to_exchange(Queue
-                                ,?SUBSCRIBE_RK(Props)
-                                ,?OMNIPRESENCE_EXCHANGE
-                                ),
-    amqp_util:bind_q_to_exchange(Queue
-                                ,?NOTIFY_RK(Props)
-                                ,?OMNIPRESENCE_EXCHANGE
-                                );
+    kz_amqp_util:bind_q_to_exchange(Queue
+                                   ,?SUBSCRIBE_RK(Props)
+                                   ,?OMNIPRESENCE_EXCHANGE
+                                   ),
+    kz_amqp_util:bind_q_to_exchange(Queue
+                                   ,?NOTIFY_RK(Props)
+                                   ,?OMNIPRESENCE_EXCHANGE
+                                   );
 bind_q(Queue, ['subscribe'|Restrict], Props) ->
-    amqp_util:bind_q_to_exchange(Queue
-                                ,?SUBSCRIBE_RK(Props)
-                                ,?OMNIPRESENCE_EXCHANGE
-                                ),
+    kz_amqp_util:bind_q_to_exchange(Queue
+                                   ,?SUBSCRIBE_RK(Props)
+                                   ,?OMNIPRESENCE_EXCHANGE
+                                   ),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['notify'|Restrict], Props) ->
-    amqp_util:bind_q_to_exchange(Queue
-                                ,?NOTIFY_RK(Props)
-                                ,?OMNIPRESENCE_EXCHANGE
-                                ),
+    kz_amqp_util:bind_q_to_exchange(Queue
+                                   ,?NOTIFY_RK(Props)
+                                   ,?OMNIPRESENCE_EXCHANGE
+                                   ),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, [_|Restrict], Props) ->
     bind_q(Queue, Restrict, Props);
@@ -149,25 +149,25 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:atoms() | 'undefined', kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, 'undefined', Props) ->
-    amqp_util:unbind_q_from_exchange(Queue
-                                    ,?SUBSCRIBE_RK(Props)
-                                    ,?OMNIPRESENCE_EXCHANGE
-                                    ),
-    amqp_util:unbind_q_from_exchange(Queue
-                                    ,?NOTIFY_RK(Props)
-                                    ,?OMNIPRESENCE_EXCHANGE
-                                    );
+    kz_amqp_util:unbind_q_from_exchange(Queue
+                                       ,?SUBSCRIBE_RK(Props)
+                                       ,?OMNIPRESENCE_EXCHANGE
+                                       ),
+    kz_amqp_util:unbind_q_from_exchange(Queue
+                                       ,?NOTIFY_RK(Props)
+                                       ,?OMNIPRESENCE_EXCHANGE
+                                       );
 unbind_q(Queue, ['subscribe'|Restrict], Props) ->
-    amqp_util:unbind_q_from_exchange(Queue
-                                    ,?SUBSCRIBE_RK(Props)
-                                    ,?OMNIPRESENCE_EXCHANGE
-                                    ),
+    kz_amqp_util:unbind_q_from_exchange(Queue
+                                       ,?SUBSCRIBE_RK(Props)
+                                       ,?OMNIPRESENCE_EXCHANGE
+                                       ),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['notify'|Restrict], Props) ->
-    amqp_util:unbind_q_from_exchange(Queue
-                                    ,?NOTIFY_RK(Props)
-                                    ,?OMNIPRESENCE_EXCHANGE
-                                    ),
+    kz_amqp_util:unbind_q_from_exchange(Queue
+                                       ,?NOTIFY_RK(Props)
+                                       ,?OMNIPRESENCE_EXCHANGE
+                                       ),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, [_|Restrict], Props) ->
     unbind_q(Queue, Restrict, Props);
@@ -179,4 +179,4 @@ unbind_q(_, _, []) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?OMNIPRESENCE_EXCHANGE, <<"topic">>).
+    kz_amqp_util:new_exchange(?OMNIPRESENCE_EXCHANGE, <<"topic">>).

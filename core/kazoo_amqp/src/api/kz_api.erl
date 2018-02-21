@@ -62,7 +62,7 @@
         ,validate_message/4
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -ifdef(TEST).
 -export([has_any/2, has_all/2]).
@@ -339,7 +339,7 @@ publish_error(TargetQ, JObj) ->
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(TargetQ, Error, ContentType) ->
     {'ok', Payload} = prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun error_resp/1),
-    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Sanitizes generic AMQP payloads

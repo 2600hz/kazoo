@@ -68,13 +68,13 @@ get_status({_, JObj}) ->
 
 mock_them_all() ->
     meck:new(kz_amqp_worker, [unstick, passthrough]),
-    meck:new(amqp_util, [unstick, passthrough]),
+    meck:new(kz_amqp_util, [unstick, passthrough]),
     meck:new(gen_smtp_client, [unstick, passthrough]),
 
     meck:expect(kz_amqp_worker, call_collect, kz_amqp_worker_call_collect()),
     meck:expect(kz_amqp_worker, cast, kz_amqp_worker_cast()),
-    meck:expect(amqp_util, targeted_publish, amqp_util_targeted_publish()),
-    meck:expect(amqp_util, notifications_publish, amqp_util_notifications_publish()),
+    meck:expect(kz_amqp_util, targeted_publish, kz_amqp_util_targeted_publish()),
+    meck:expect(kz_amqp_util, notifications_publish, kz_amqp_util_notifications_publish()),
     meck:expect(gen_smtp_client, send, smtp_send()).
 
 validate_mock() ->
@@ -82,7 +82,7 @@ validate_mock() ->
      ,?_assertEqual(true, meck:validate(Mocked))
      }
      || Mocked <- [kz_amqp_worker
-                  ,amqp_util
+                  ,kz_amqp_util
                   ,gen_smtp_client
                   ]
     ].
@@ -125,7 +125,7 @@ wait_collect_until(UntilFun, Resps, ReqRef) ->
 
 
 %% call by kapi_notifications:publish_*/1
-amqp_util_notifications_publish() ->
+kz_amqp_util_notifications_publish() ->
     fun(_, Payload, _) ->
             _ = teletype_bindings:notification(kz_json:decode(Payload)),
             %% line above actually has the result, but it's single response and
@@ -142,7 +142,7 @@ kz_amqp_worker_cast() ->
     end.
 
 %% call by kapi_notifications:publish_notify_update/2
-amqp_util_targeted_publish() ->
+kz_amqp_util_targeted_publish() ->
     fun(_, Payload, _) ->
             %% if we could have the eunit test's pid, and spawn kapi_notifications:publish_* above then
             %% we have a real process for teletype which is sending messages to mocked qmqp worker above.

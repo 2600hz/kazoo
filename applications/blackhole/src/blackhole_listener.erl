@@ -285,7 +285,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec encode_call_id(kz_json:object()) -> kz_term:ne_binary().
 encode_call_id(JObj) ->
-    amqp_util:encode(kz_call_event:call_id(JObj)).
+    kz_amqp_util:encode(kz_call_event:call_id(JObj)).
 
 -spec handle_hook_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> any().
 handle_hook_event(AccountId, EventType, JObj) ->

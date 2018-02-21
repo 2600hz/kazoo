@@ -17,7 +17,7 @@
 
 -export([init/1]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
 

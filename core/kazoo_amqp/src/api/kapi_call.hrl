@@ -8,7 +8,7 @@
        ,list_to_binary(["call."
                        ,kz_term:to_binary(Event)
                        ,"."
-                       ,amqp_util:encode(CallId)
+                       ,kz_amqp_util:encode(CallId)
                        ])
        ).
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).

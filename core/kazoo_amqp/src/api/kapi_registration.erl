@@ -28,7 +28,7 @@
         ,publish_sync/0, publish_sync/1, publish_sync/2
         ]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(KEY_REG_SUCCESS, <<"registration.success">>).
 -define(KEY_REG_QUERY, <<"registration.query">>).
@@ -242,17 +242,17 @@ bind_q(Q, Props) ->
     bind_q(Q, props:get_value('restrict_to', Props), Props).
 
 bind_q(Q, 'undefined', Props) ->
-    _ = amqp_util:bind_q_to_registrar(Q, get_success_binding(Props)),
-    amqp_util:bind_q_to_registrar(Q, get_query_binding(Props));
+    _ = kz_amqp_util:bind_q_to_registrar(Q, get_success_binding(Props)),
+    kz_amqp_util:bind_q_to_registrar(Q, get_query_binding(Props));
 bind_q(Q, ['reg_success'|T], Props) ->
-    _ = amqp_util:bind_q_to_registrar(Q, get_success_binding(Props)),
+    _ = kz_amqp_util:bind_q_to_registrar(Q, get_success_binding(Props)),
     bind_q(Q, T, Props);
 bind_q(Q, ['reg_query'|T], Props) ->
-    _ = amqp_util:bind_q_to_registrar(Q, get_query_binding(Props)),
+    _ = kz_amqp_util:bind_q_to_registrar(Q, get_query_binding(Props)),
     bind_q(Q, T, Props);
 bind_q(Q, ['reg_flush'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    _ = amqp_util:bind_q_to_registrar(Q, get_flush_routing(Realm)),
+    _ = kz_amqp_util:bind_q_to_registrar(Q, get_flush_routing(Realm)),
     bind_q(Q, T, Props);
 bind_q(Q, [_|T], Props) -> bind_q(Q, T, Props);
 bind_q(_, [], _) -> 'ok'.
@@ -262,17 +262,17 @@ unbind_q(Q, Props) ->
     unbind_q(Q, props:get_value('restrict_to', Props), Props).
 
 unbind_q(Q, 'undefined', Props) ->
-    _ = amqp_util:unbind_q_from_registrar(Q, get_success_binding(Props)),
-    amqp_util:unbind_q_from_registrar(Q, get_query_binding(Props));
+    _ = kz_amqp_util:unbind_q_from_registrar(Q, get_success_binding(Props)),
+    kz_amqp_util:unbind_q_from_registrar(Q, get_query_binding(Props));
 unbind_q(Q, ['reg_success'|T], Props) ->
-    _ = amqp_util:unbind_q_from_registrar(Q, get_success_binding(Props)),
+    _ = kz_amqp_util:unbind_q_from_registrar(Q, get_success_binding(Props)),
     unbind_q(Q, T, Props);
 unbind_q(Q, ['reg_query'|T], Props) ->
-    _ = amqp_util:unbind_q_from_registrar(Q, get_query_binding(Props)),
+    _ = kz_amqp_util:unbind_q_from_registrar(Q, get_query_binding(Props)),
     unbind_q(Q, T, Props);
 unbind_q(Q, ['reg_flush'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    _ = amqp_util:unbind_q_from_registrar(Q, get_flush_routing(Realm)),
+    _ = kz_amqp_util:unbind_q_from_registrar(Q, get_flush_routing(Realm)),
     unbind_q(Q, T, Props);
 unbind_q(Q, [_|T], Props) -> unbind_q(Q, T, Props);
 unbind_q(_, [], _) -> 'ok'.
@@ -283,7 +283,7 @@ unbind_q(_, [], _) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:registrar_exchange().
+    kz_amqp_util:registrar_exchange().
 
 %%------------------------------------------------------------------------------
 %% @doc Publish the JSON string to the proper Exchange.
@@ -297,7 +297,7 @@ publish_success(JObj) ->
 -spec publish_success(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_success(Success, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun success/1),
-    amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
+    kz_amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Publish the JSON string to the proper Exchange.
@@ -311,7 +311,7 @@ publish_flush(JObj) ->
 -spec publish_flush(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_flush(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_FLUSH_VALUES, fun flush/1),
-    amqp_util:registrar_publish(get_flush_routing(API), Payload, ContentType).
+    kz_amqp_util:registrar_publish(get_flush_routing(API), Payload, ContentType).
 
 -spec publish_query_req(kz_term:api_terms()) -> 'ok'.
 publish_query_req(JObj) ->
@@ -320,7 +320,7 @@ publish_query_req(JObj) ->
 -spec publish_query_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun query_req/1),
-    amqp_util:registrar_publish(get_query_routing(Req), Payload, ContentType).
+    kz_amqp_util:registrar_publish(get_query_routing(Req), Payload, ContentType).
 
 -spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_query_resp(Queue, JObj) ->
@@ -329,7 +329,7 @@ publish_query_resp(Queue, JObj) ->
 -spec publish_query_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_RESP_VALUES, fun query_resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_query_err(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_query_err(Queue, JObj) ->
@@ -338,7 +338,7 @@ publish_query_err(Queue, JObj) ->
 -spec publish_query_err(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_query_err(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_ERR_VALUES, fun query_err/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_sync() -> 'ok'.
 publish_sync() ->
@@ -351,7 +351,7 @@ publish_sync(JObj) ->
 -spec publish_sync(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sync(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_SYNC_VALUES, fun sync/1),
-    amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).
+    kz_amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Special access to the API keys.
@@ -373,7 +373,7 @@ get_success_routing(JObj) ->
 
 -spec get_success_routing(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_success_routing(Realm, User) ->
-    list_to_binary([?KEY_REG_SUCCESS, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+    list_to_binary([?KEY_REG_SUCCESS, ".", kz_amqp_util:encode(Realm), ".", kz_amqp_util:encode(User)]).
 
 -spec get_query_routing(kz_term:api_terms()) -> kz_term:ne_binary().
 get_query_routing(Prop) when is_list(Prop) ->
@@ -387,9 +387,9 @@ get_query_routing(JObj) ->
 
 -spec get_query_routing(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_query_routing(Realm, 'undefined') ->
-    list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".*"]);
+    list_to_binary([?KEY_REG_QUERY, ".", kz_amqp_util:encode(Realm), ".*"]);
 get_query_routing(Realm, User) ->
-    list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+    list_to_binary([?KEY_REG_QUERY, ".", kz_amqp_util:encode(Realm), ".", kz_amqp_util:encode(User)]).
 
 %%------------------------------------------------------------------------------
 %% @doc Allow Queues to be bound for specific realms, and even users within those realms.
@@ -401,11 +401,11 @@ get_query_routing(Realm, User) ->
 get_success_binding(Props) ->
     User = case props:get_value('user', Props) of
                'undefined' -> ".*";
-               U -> [".", amqp_util:encode(U)]
+               U -> [".", kz_amqp_util:encode(U)]
            end,
     Realm = case props:get_value('realm', Props) of
                 'undefined' -> ".*";
-                R -> [".", amqp_util:encode(R)]
+                R -> [".", kz_amqp_util:encode(R)]
             end,
 
     iolist_to_binary([?KEY_REG_SUCCESS, Realm, User]).
@@ -413,17 +413,17 @@ get_success_binding(Props) ->
 get_query_binding(Props) ->
     User = case props:get_value('user', Props) of
                'undefined' -> ".*";
-               U -> [".", amqp_util:encode(U)]
+               U -> [".", kz_amqp_util:encode(U)]
            end,
     Realm = case props:get_value('realm', Props) of
                 'undefined' -> ".*";
-                R -> [".", amqp_util:encode(R)]
+                R -> [".", kz_amqp_util:encode(R)]
             end,
 
     iolist_to_binary([?KEY_REG_QUERY, Realm, User]).
 
 get_flush_routing(Realm) when is_binary(Realm) ->
-    <<"registration.flush.", (amqp_util:encode(Realm))/binary>>;
+    <<"registration.flush.", (kz_amqp_util:encode(Realm))/binary>>;
 get_flush_routing(Prop) when is_list(Prop) ->
     get_flush_routing(props:get_value(<<"Realm">>, Prop));
 get_flush_routing(JObj) ->

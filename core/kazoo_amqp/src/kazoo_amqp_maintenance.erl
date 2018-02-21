@@ -24,7 +24,7 @@
 
 -export([gc_pools/0, gc_pool/1]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(ASSIGNMENTS, 'kz_amqp_assignments').
 -define(CONNECTIONS, 'kz_amqp_connections').

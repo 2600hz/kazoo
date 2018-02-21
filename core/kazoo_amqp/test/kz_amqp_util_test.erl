@@ -5,18 +5,18 @@
 %%% @author Karl Anderson
 %%% @author Edouard Swiac
 %%% @end
-%%%-----------------------------------------------------------------------------
--module(amqp_util_test).
+%%%-------------------------------------------------------------------
+-module(kz_amqp_util_test).
 
 -include_lib("eunit/include/eunit.hrl").
 
 encode_key_test_() ->
-    [?_assertEqual(<<"#">>, amqp_util:encode(<<"#">>))
-    ,?_assertEqual(<<"*">>, amqp_util:encode(<<"*">>))
-    ,?_assertEqual(<<"key">>, amqp_util:encode(<<"key">>))
-    ,?_assertEqual(<<"routing%2Ekey">>, amqp_util:encode(<<"routing.key">>))
-    ,?_assertEqual(<<"long%2Erouting%2Ekey">>, amqp_util:encode(<<"long.routing.key">>))
-    ,?_assertEqual(<<"test%26%2E192%2E+168%2E+5%2E+5%23">>, amqp_util:encode(<<"test&.192. 168. 5. 5#">>))
+    [?_assertEqual(<<"#">>, kz_amqp_util:encode(<<"#">>))
+    ,?_assertEqual(<<"*">>, kz_amqp_util:encode(<<"*">>))
+    ,?_assertEqual(<<"key">>, kz_amqp_util:encode(<<"key">>))
+    ,?_assertEqual(<<"routing%2Ekey">>, kz_amqp_util:encode(<<"routing.key">>))
+    ,?_assertEqual(<<"long%2Erouting%2Ekey">>, kz_amqp_util:encode(<<"long.routing.key">>))
+    ,?_assertEqual(<<"test%26%2E192%2E+168%2E+5%2E+5%23">>, kz_amqp_util:encode(<<"test&.192. 168. 5. 5#">>))
     ].
 
 trim_test_() ->
@@ -35,4 +35,4 @@ trim_test_() ->
     [check_trim(Min, Max, Test) || Test <- Vals].
 
 check_trim(Min, Max, {N, T}) ->
-    ?_assertEqual(T, amqp_util:trim(Min, Max, N)).
+    ?_assertEqual(T, kz_amqp_util:trim(Min, Max, N)).

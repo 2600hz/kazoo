@@ -9,7 +9,7 @@
 -export([declare_exchanges/0]).
 -export([publish_req/2, publish_req/3]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
 -define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).
@@ -49,7 +49,7 @@ req_v(JObj) ->
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callctl_exchange().
+    kz_amqp_util:callctl_exchange().
 
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_req(Queue, JObj) ->
@@ -58,4 +58,4 @@ publish_req(Queue, JObj) ->
 -spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Queue, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?FS_REQ_VALUES, fun req/1),
-    amqp_util:callctl_publish(Queue, Payload, ContentType).
+    kz_amqp_util:callctl_publish(Queue, Payload, ContentType).

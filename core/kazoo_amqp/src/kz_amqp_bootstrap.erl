@@ -20,7 +20,7 @@
         ,code_change/3
         ]).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -54,7 +54,7 @@ init([]) ->
     lager:info("waiting for first amqp connection...", []),
     kz_amqp_connections:wait_for_available(),
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
-    amqp_util:targeted_exchange(),
+    kz_amqp_util:targeted_exchange(),
     {'ok', #state{}, 100}.
 
 %%------------------------------------------------------------------------------

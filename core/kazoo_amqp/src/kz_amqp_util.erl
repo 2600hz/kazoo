@@ -7,10 +7,10 @@
 %%% @author Edouard Swiac
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%%-----------------------------------------------------------------------------
--module(amqp_util).
+%%%-------------------------------------------------------------------
+-module(kz_amqp_util).
 
--include("amqp_util.hrl").
+-include("kz_amqp_util.hrl").
 
 -export([targeted_exchange/0]).
 -export([new_targeted_queue/0, new_targeted_queue/1]).

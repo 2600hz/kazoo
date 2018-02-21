@@ -273,6 +273,14 @@ kz_account_to_kzd_accounts() {
     done
 }
 
+amqp_util_to_kz_amqp_util() {
+    FROM="amqp_util"
+    TO="kz_amqp_util"
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+        sed -i -e "s%\b$FROM%$TO%g" "$FILE"
+    done
+}
+
 kz_includes() {
     INCLUDES=(kz_databases.hrl
               kz_log.hrl
@@ -495,5 +503,7 @@ echo "ensuring kz_types migration to module is performed"
 kz_type_modules
 echo "updating kazoo document accessors"
 kzd_accessors
+echo "updating amqp_util  to kz_amqp_util"
+amqp_util_to_kz_amqp_util
 
 popd >/dev/null

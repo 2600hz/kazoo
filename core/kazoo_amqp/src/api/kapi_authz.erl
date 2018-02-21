@@ -20,7 +20,7 @@
         ,publish_balance_check_resp/2, publish_balance_check_resp/3
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -define(EVENT_CATEGORY, <<"authz">>).
 -define(KEY_AUTHZ_REQ, <<"authz.authorize">>).
@@ -166,15 +166,15 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
 bind_to_q(Q, 'undefined') ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, <<"authz.*">>);
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, <<"authz.*">>);
 bind_to_q(Q, ['authorize'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_REQ),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_REQ),
     bind_to_q(Q, T);
 bind_to_q(Q, ['broadcast'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_BROADCAST),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_BROADCAST),
     bind_to_q(Q, T);
 bind_to_q(Q, ['balance_check'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_BALANCE_CHECK_REQ),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_BALANCE_CHECK_REQ),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) -> 'ok'.
 
@@ -183,15 +183,15 @@ unbind_q(Q, Props) ->
     unbind_q_from(Q, props:get_value('restrict_to', Props)).
 
 unbind_q_from(Q, 'undefined') ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, <<"authz.*">>);
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, <<"authz.*">>);
 unbind_q_from(Q, ['authorize'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_REQ),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_REQ),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['broadcast'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_BROADCAST),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_BROADCAST),
     bind_to_q(Q, T);
 unbind_q_from(Q, ['balance_check'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_BALANCE_CHECK_REQ),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_BALANCE_CHECK_REQ),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) -> 'ok'.
 
@@ -201,7 +201,7 @@ unbind_q_from(_Q, []) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:callmgr_exchange().
 
 %%------------------------------------------------------------------------------
 %% @doc Publish the JSON string to the proper Exchange.
@@ -215,7 +215,7 @@ publish_authz_req(JObj) ->
 -spec publish_authz_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_authz_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?AUTHZ_REQ_VALUES, fun authz_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_REQ).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_REQ).
 
 -spec publish_authz_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_authz_resp(Queue, JObj) ->
@@ -224,7 +224,7 @@ publish_authz_resp(Queue, JObj) ->
 -spec publish_authz_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_authz_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?AUTHZ_RESP_VALUES, fun authz_resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_balance_check_req(kz_term:api_terms()) -> 'ok'.
 publish_balance_check_req(JObj) ->
@@ -233,7 +233,7 @@ publish_balance_check_req(JObj) ->
 -spec publish_balance_check_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_balance_check_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_CHECK_REQ_VALUES, fun balance_check_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_BALANCE_CHECK_REQ).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_BALANCE_CHECK_REQ).
 
 -spec publish_balance_check_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_balance_check_resp(Queue, JObj) ->
@@ -242,7 +242,7 @@ publish_balance_check_resp(Queue, JObj) ->
 -spec publish_balance_check_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_balance_check_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?BALANCE_CHECK_RESP_VALUES, fun balance_check_resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec broadcast_authz_resp(kz_term:api_terms()) -> 'ok'.
 broadcast_authz_resp(JObj) ->
@@ -251,4 +251,4 @@ broadcast_authz_resp(JObj) ->
 -spec broadcast_authz_resp(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 broadcast_authz_resp(Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?AUTHZ_RESP_VALUES, fun authz_resp/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_BROADCAST).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_BROADCAST).

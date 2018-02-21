@@ -13,7 +13,7 @@
         ,publish_req/1, publish_req/2
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kz_amqp_util.hrl").
 
 -type req() :: kz_term:api_terms().
 
@@ -46,17 +46,17 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 bind_q(Queue, Props) when is_list(Props) ->
     bind_q(Queue, props:get_value('account_id', Props, <<"*">>));
 bind_q(Queue, ?NE_BINARY=AccountId) ->
-    amqp_util:bind_q_to_callmgr(Queue, ?REQ_ROUTING_KEY(AccountId)).
+    kz_amqp_util:bind_q_to_callmgr(Queue, ?REQ_ROUTING_KEY(AccountId)).
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist() | kz_term:ne_binary()) -> 'ok'.
 unbind_q(Queue, Props) when is_list(Props) ->
     bind_q(Queue, props:get_value('account_id', Props, <<"*">>));
 unbind_q(Queue, ?NE_BINARY=AccountId) ->
-    amqp_util:unbind_q_from_callmgr(Queue, ?REQ_ROUTING_KEY(AccountId)).
+    kz_amqp_util:unbind_q_from_callmgr(Queue, ?REQ_ROUTING_KEY(AccountId)).
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callmgr_exchange().
+    kz_amqp_util:callmgr_exchange().
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
@@ -65,7 +65,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?REQ_ROUTING_KEY(get_account_id(Req))).
+    kz_amqp_util:callmgr_publish(Payload, ContentType, ?REQ_ROUTING_KEY(get_account_id(Req))).
 
 -spec get_account_id(kz_term:api_terms()) -> kz_term:ne_binary().
 get_account_id(Props) when is_list(Props) ->
