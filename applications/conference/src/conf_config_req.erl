@@ -8,6 +8,7 @@
 -export([handle_req/2]).
 
 -include("conference.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
@@ -96,8 +97,36 @@ fix_profile(Conference, Profile) ->
     Routines = [fun add_conference_params/2
                ,fun fix_entry_tones/2
                ,fun fix_exit_tones/2
+               ,fun update_prompts/2
                ],
     lists:foldl(fun(F, P) -> F(Conference, P) end, Profile, Routines).
+
+-spec update_prompts(kapps_conference:conference(), kz_json:object()) -> kz_json:object().
+update_prompts(Conference, Profile) ->
+    {_, UpdatedProfile} = kz_json:foldl(fun update_prompt/3, {Conference, Profile}, Profile),
+    UpdatedProfile.
+
+-type update_acc() :: {kapps_conference:conference(), kz_json:object()}.
+-spec update_prompt(kz_json:key(), kz_json:json_string(), update_acc()) -> update_acc().
+update_prompt(Key, Value, Acc) ->
+    update_prompt(kz_binary:reverse(Key), Key, Value, Acc).
+
+-spec update_prompt(kz_json:key(), kz_json:key(), kz_json:json_string(), update_acc()) -> update_acc().
+update_prompt(<<"dnuos-", _/binary>>, Key, PromptId, {Conference, Profile}) ->
+    AccountId = prompt_account_id(Conference),
+    Language = kapps_conference:language(Conference),
+    PromptUrl = kz_media_util:get_prompt(PromptId, Language, AccountId),
+
+    lager:debug("updating conference sound ~s to use ~s(~s)", [Key, PromptId, PromptUrl]),
+    {Conference, kz_json:set_value(Key, PromptUrl, Profile)};
+update_prompt(_Yek, _Key, _value, Acc) -> Acc.
+
+-spec prompt_account_id(kapps_conference:conference()) -> kz_term:ne_binary().
+prompt_account_id(Conference) ->
+    case kapps_conference:account_id(Conference) of
+        'undefined' -> ?KZ_MEDIA_DB;
+        AccountId -> AccountId
+    end.
 
 -spec add_conference_params(kapps_conference:conference(), kz_json:object()) -> kz_json:object().
 add_conference_params(Conference, Profile) ->
@@ -150,11 +179,14 @@ max_participants(Conference) ->
 max_members_sound(Conference) ->
     case kapps_conference:max_members_media(Conference) of
         'undefined' ->
+            lager:debug("getting max members prompt from account"),
             kz_media_util:get_account_prompt(?DEFAULT_MAX_MEMBERS_MEDIA
                                             ,'undefined'
                                             ,kapps_conference:account_id(Conference)
                                             );
-        Media -> Media
+        Media ->
+            lager:debug("conference has max-members-sound: ~s", [Media]),
+            Media
     end.
 
 -spec handle_controls_request(kz_json:object(), kapps_conference:conference()) -> 'ok'.
