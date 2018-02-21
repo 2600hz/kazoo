@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.acdc_wait_time",
+    "description": "Validator for the acdc_wait_time callflow's data object",
+    "properties": {
+        "id": {
+            "description": "Queue ID",
+            "type": "string"
+        },
+        "var": {
+            "description": "Custom KV whose value to use instead of \"id\"",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
