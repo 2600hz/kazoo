@@ -24,14 +24,14 @@
                                 ,{<<"moh-sound">>, <<"$${hold_music}">>}
                                 ,{<<"enter-sound">>, ?DEFAULT_ENTRY_TONE}
                                 ,{<<"exit-sound">>, ?DEFAULT_EXIT_TONE}
-                                ,{<<"max-members-sound">>, <<"prompt://system_media/conf-max_participants">>}
-                                ,{<<"locked-sound">>, <<"prompt://system_media/conf-max_participants">>}
-                                ,{<<"muted-sound">>, <<"prompt://system_media/conf-muted">>}
-                                ,{<<"unmuted-sound">>, <<"prompt://system_media/conf-unmuted">>}
-                                ,{<<"deaf-sound">>, <<"prompt://system_media/conf-deaf">>}
-                                ,{<<"undeaf-sound">>, <<"prompt://system_media/conf-undeaf">>}
-                                ,{<<"member-enter-sound">>, <<"prompt://system_media/conf-joining_conference">>}
-                                ,{<<"alone-sound">>, <<"prompt://system_media/conf-alone">>}
+                                ,{<<"max-members-sound">>, <<"conf-max_participants">>}
+                                ,{<<"locked-sound">>, <<"conf-max_participants">>}
+                                ,{<<"muted-sound">>, <<"conf-muted">>}
+                                ,{<<"unmuted-sound">>, <<"conf-unmuted">>}
+                                ,{<<"deaf-sound">>, <<"conf-deaf">>}
+                                ,{<<"undeaf-sound">>, <<"conf-undeaf">>}
+                                ,{<<"member-enter-sound">>, <<"conf-joining_conference">>}
+                                ,{<<"alone-sound">>, <<"conf-alone">>}
                                 ]).
 
 -define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
