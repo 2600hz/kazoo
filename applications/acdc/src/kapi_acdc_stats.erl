@@ -291,12 +291,13 @@ current_calls_resp_v(JObj) ->
     current_calls_resp_v(kz_json:to_proplist(JObj)).
 
 -define(AVERAGE_WAIT_TIME_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
--define(OPTIONAL_AVERAGE_WAIT_TIME_REQ_HEADERS, []).
+-define(OPTIONAL_AVERAGE_WAIT_TIME_REQ_HEADERS, [<<"Window">>]).
 -define(AVERAGE_WAIT_TIME_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
                                       ,{<<"Event-Name">>, <<"average_wait_time_req">>}
                                       ]).
 -define(AVERAGE_WAIT_TIME_REQ_TYPES, [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
                                      ,{<<"Queue-ID">>, fun kz_term:is_ne_binary/1}
+                                     ,{<<"Window">>, fun is_integer/1}
                                      ]).
 
 -spec average_wait_time_req(kz_term:api_terms()) ->

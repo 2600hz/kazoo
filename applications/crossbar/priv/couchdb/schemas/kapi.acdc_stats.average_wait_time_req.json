@@ -22,6 +22,9 @@
         "Queue-ID": {
             "minLength": 1,
             "type": "string"
+        },
+        "Window": {
+            "type": "integer"
         }
     },
     "required": [

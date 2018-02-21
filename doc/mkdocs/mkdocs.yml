@@ -245,6 +245,7 @@ pages:
         - 'Agents': 'applications/callflow/doc/acdc_agent.md'
         - 'Queue Login': 'applications/callflow/doc/acdc_queue.md'
         - 'Member Entry': 'applications/callflow/doc/acdc_member.md'
+        - 'Average Wait Time': 'applications/callflow/doc/acdc_wait_time.md'
     - 'Menu (IVR)': 'applications/callflow/doc/menu.md'
     - 'Custom Webhook': 'applications/callflow/doc/webhook.md'
     - 'Channel Move': 'applications/callflow/doc/move.md'
