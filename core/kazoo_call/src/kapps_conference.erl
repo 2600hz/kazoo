@@ -467,12 +467,20 @@ page_profile(Language) ->
 
 -spec update_profile_language(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 update_profile_language(Language, Profile) ->
-    lists:map(fun({Key, Value}) when is_binary(Value) ->
-                      {Key, binary:replace(Value, <<"en-us">>, Language)};
-                 (Else) -> Else
+    lists:map(fun({Key, Value}) ->
+                      update_prompt_language(kz_binary:reverse(Key), Key, Value, Language)
               end
              ,Profile
              ).
+
+-spec update_prompt_language(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_term:ne_binary()) ->
+                                    {kz_term:ne_binary(), kz_json:json_term()}.
+update_prompt_language(_Yek, Key, <<>> = Value, _Language) ->
+    {Key, Value};
+update_prompt_language(<<"dnuos-", _/binary>>, Key, Value, Language) ->
+    {Key, kz_media_util:get_prompt(Value, Language)};
+update_prompt_language(_, Key, Value, _Language) ->
+    {Key, Value}.
 
 -spec application_name(conference()) -> kz_term:ne_binary().
 application_name(#kapps_conference{app_name=AppName}) ->
