@@ -23,14 +23,15 @@ handle(Data, Call) ->
             update_call(CaptureGroup
                        ,cf_exe:get_call(Call)
                        ,Mode
+                       ,should_use_endpoint_privacy(Data)
                        ),
             cf_exe:branch(kz_json:get_value(<<"flow">>, CallFlow), Call);
         {'error', _} ->
             cf_exe:stop(Call)
     end.
 
--spec update_call(kz_term:ne_binary(), {'ok', kapps_call:call()}, kz_term:ne_binary()) -> 'ok'.
-update_call(CaptureGroup, {'ok', Call}, Mode) ->
+-spec update_call(kz_term:ne_binary(), {'ok', kapps_call:call()}, kz_term:ne_binary(), boolean()) -> 'ok'.
+update_call(CaptureGroup, {'ok', Call}, Mode, Overwrite) ->
     Normalize = knm_converters:normalize(CaptureGroup),
     CCVs = ccvs_by_privacy_mode(Mode),
     Routines = [{fun kapps_call:set_request/2
@@ -39,9 +40,17 @@ update_call(CaptureGroup, {'ok', Call}, Mode) ->
                  >>
                 }
                ,{fun kapps_call:set_custom_channel_vars/2, CCVs}
+               ,{fun kapps_call:kvs_store/3, <<"use_endpoint_privacy">>, Overwrite}
                ],
     cf_exe:set_call(kapps_call:exec(Routines, Call)).
 
 -spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
 ccvs_by_privacy_mode(Mode) ->
     cf_util:ccvs_by_privacy_mode(Mode).
+
+-spec should_use_endpoint_privacy(kz_json:object()) -> boolean().
+should_use_endpoint_privacy(Data) ->
+    case kz_json:get_ne_binary_value(<<"endpoint_strategy">>, Data, <<"overwrite">>) of
+        <<"overwrite">> -> 'false';
+        <<"merge">> -> 'true'
+    end.

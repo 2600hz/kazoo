@@ -748,10 +748,12 @@ ccvs_by_privacy_mode(<<"yes">>) ->
 ccvs_by_privacy_mode(<<"name">>) ->
     [{<<"Caller-Screen-Bit">>, 'true'}
     ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'false'}
     ];
 ccvs_by_privacy_mode(<<"number">>) ->
     [{<<"Caller-Screen-Bit">>, 'true'}
     ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'false'}
     ];
 %% returns empty list so that callflow settings override
 ccvs_by_privacy_mode(<<"none">>) -> [];
