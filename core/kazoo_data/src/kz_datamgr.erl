@@ -1038,12 +1038,12 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
 -spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary()) ->
                               {'ok', binary()} |
                               data_error() |
-                              gen_attachment:error_response().
+                              kz_att_error:error().
 
 -spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
                               {'ok', binary()} |
                               data_error() |
-                              gen_attachment:error_response().
+                              kz_att_error:error().
 fetch_attachment(DbName, {DocType, DocId}, AName) ->
     fetch_attachment(DbName, DocId, AName, [{'doc_type', DocType}]);
 fetch_attachment(DbName, DocId, AName) ->
@@ -1052,7 +1052,7 @@ fetch_attachment(DbName, DocId, AName) ->
 fetch_attachment(DbName, {DocType, DocId}, AName, Options) when ?VALID_DBNAME(DbName) ->
     fetch_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options));
 fetch_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME(DbName) ->
-    kzs_attachments:fetch_attachment(kzs_plan:plan(DbName, Options), DbName, DocId, AName);
+    kzs_attachments:fetch_attachment(kzs_plan:plan(DbName, Options), DbName, DocId, AName, Options);
 fetch_attachment(DbName, DocId, AName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> fetch_attachment(Db, DocId, AName, Options);
@@ -1087,13 +1087,13 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 -spec put_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
                             data_error() |
-                            gen_attachment:error_response().
+                            kz_att_error:error().
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec put_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
                             {'ok', kz_json:object(), kz_term:proplist()} |
                             data_error() |
-                            gen_attachment:error_response().
+                            kz_att_error:error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 

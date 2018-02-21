@@ -42,8 +42,7 @@
                            }.
 
 -type update_routines() :: [{fun((extended_error(), Value) -> extended_error()), Value}].
--type error() :: {'error', kz_datamgr:data_errors(), extended_error()} |
-                 {'error', kz_datamgr:data_errors()}.
+-type error() :: {'error', kz_datamgr:data_errors(), extended_error()}.
 -export_type([error/0
              ,update_routines/0
              ]).
@@ -57,7 +56,7 @@ new(Reason, Routines) ->
     Extended = lists:foldl(fun({F, Value}, M) ->
                                    F(M, Value)
                            end, #{}, Routines),
-    maybe_new_extended(Reason, Extended).
+    {'error', Reason, Extended}.
 
 -spec fetch_routines(gen_attachment:handler_props()
                     ,gen_attachment:db_name()
@@ -166,19 +165,3 @@ options(#{'options' := Options}) ->
 -spec set_options(extended_error(), gen_attachment:options()) -> extended_error().
 set_options(ExtendedError, Options) ->
     ExtendedError#{'options' => Options}.
-
-%% =======================================================================================
-%% Private functions
-%% =======================================================================================
--spec maybe_new_extended(kz_datamgr:data_errors(), extended_error()) ->
-    error().
-maybe_new_extended(Reason, #{'options' := 'undefined'}) ->
-    %% not put_attachment call, return normal error
-    {'error', Reason};
-maybe_new_extended(Reason, #{'options' := Options} = Extended) ->
-    case lists:keyfind('error_verbosity', 1, Options) of
-        'false' ->
-            {'error', Reason};
-        {'error_verbosity', 'verbose'} ->
-            {'error', Reason, Extended}
-    end.

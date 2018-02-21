@@ -65,9 +65,9 @@
                     ,gen_attachment:options()
                     ) -> gen_attachment:put_response().
 put_attachment(#{'oauth_doc_id' := TokenDocId} = Settings,
-               DbName, DocId, AName, Contents, _Options) ->
+               DbName, DocId, AName, Contents, Options) ->
     Authorization = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_PUT_TOKEN_OPTIONS),
-    do_put_attachment(Authorization, Settings, DbName, DocId, AName, Contents, _Options).
+    do_put_attachment(Authorization, Settings, DbName, DocId, AName, Contents, Options).
 
 -spec do_put_attachment(kz_auth_client:token()
                        ,gen_attachment:settings()

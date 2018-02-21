@@ -11,12 +11,10 @@
 -type handler_props()    :: kz_data:connection().
 
 -type put_response()     :: {'ok', [{atom(), [{binary(), binary() | kz_json:object()}]}]} |
-                            kz_datamgr:data_error() |
-                            kz_att_extended_error:error().
+                            kz_att_error:error().
 
 -type fetch_response()   :: {'ok', iodata()} |
-                            kz_datamgr:data_error() |
-                            kz_att_extended_error:error().
+                            kz_att_error:error().
 
 -export_type([settings/0
              ,db_name/0
