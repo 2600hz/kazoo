@@ -245,7 +245,7 @@
                               ,{<<"Fax-Timezone">>, <<"fax_timezone">>}
                               ,{<<"From-URI">>, <<"sip_from_uri">>}
                               ,{<<"Hangup-After-Pickup">>, <<"hangup_after_bridge">>}
-                              ,{<<"Hold-Media">>, <<"hold_music">>}
+                              ,{<<"Hold-Media">>, [<<"hold_music">>, <<"temp_hold_music">>]}
                               ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
                               ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                               ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}

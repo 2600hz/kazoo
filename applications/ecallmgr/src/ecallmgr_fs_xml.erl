@@ -537,11 +537,10 @@ get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
 get_channel_vars({<<"origination_uuid">> = K, UUID}, Vars) ->
     [ <<K/binary, "=", UUID/binary>> | Vars];
 
-get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
-    [list_to_binary(["hold_music="
-                    ,kz_term:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
-                    ])
-     | Vars];
+get_channel_vars({<<"Hold-Media">> = K, Media}, Vars) ->
+    HoldMedia = ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()),
+    [list_to_binary([FSKey, "=", HoldMedia]) || FSKey <- ecallmgr_util:get_fs_key(K)]
+        ++ Vars;
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
