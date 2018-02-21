@@ -371,6 +371,7 @@ fix_conference_profile(Resp) ->
 
 -spec fix_conference_profile(kz_json:path(), kz_json:object()) -> {kz_json:path(), kz_json:object()}.
 fix_conference_profile(Name, Profile) ->
+    lager:debug("fixing up conference profile ~s", [Name]),
     Routines = [fun maybe_fix_profile_tts/1
                ,fun conference_sounds/1
                ,fun set_verbose_events/1
@@ -404,10 +405,12 @@ conference_sound(Key, Value, Profile) ->
     maybe_convert_sound(kz_binary:reverse(Key), Key, Value, Profile).
 
 maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
-    MediaName = ecallmgr_util:media_path(Value),
+    MediaName = ecallmgr_util:media_path(Value, 'new', kz_util:get_callid(), kz_json:new()),
+    lager:debug("fixed up ~s from ~s to ~s", [Key, Value, MediaName]),
     kz_json:set_value(Key, MediaName, Profile);
-maybe_convert_sound(_, _, _, Profile) -> Profile.
-
+maybe_convert_sound(_, _Key, _Value, Profile) ->
+    lager:debug("not updating ~s from ~s", [_Key, _Value]),
+    Profile.
 
 -spec fetch_conference_config(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> fs_sendmsg_ret().
 fetch_conference_config(Node, Id, <<"COMMAND">>, Data) ->
