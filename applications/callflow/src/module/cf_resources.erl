@@ -369,15 +369,20 @@ check_inception(Call) ->
 
 -spec get_privacy_prefs_from_endpoint(kapps_call:call()) -> kz_term:proplist().
 get_privacy_prefs_from_endpoint(Call) ->
-    lager:debug("Call is outbound, checking caller_id_outbound_privacy value"),
-    {'ok', Endpoint} = kz_endpoint:get(Call),
+    get_privacy_prefs_from_endpoint(Call, kz_endpoint:get(Call)).
+
+-spec get_privacy_prefs_from_endpoint(kapps_call:call(), {'ok', kz_json:object()} | {'error', any()}) -> kz_term:proplist().
+get_privacy_prefs_from_endpoint(Call, {'ok', Endpoint}) ->
+    lager:debug("call is outbound, checking caller_id_outbound_privacy value"),
     case kz_json:get_value([<<"caller_id_options">>, <<"outbound_privacy">>], Endpoint) of
-        'undefined' ->
-            [];
+        'undefined' -> [];
         %% can't call kapps_call_command:privacy/2 with Mode = <<"none">>
         <<"none">>=NoneMode ->
             cf_util:ccvs_by_privacy_mode(NoneMode);
         Mode ->
             kapps_call_command:privacy(Mode, Call),
             cf_util:ccvs_by_privacy_mode(Mode)
-    end.
+    end;
+get_privacy_prefs_from_endpoint(_Call, {'error', _E}) ->
+    lager:debug("authorizing endpoint has no privacy settings"),
+    [].
