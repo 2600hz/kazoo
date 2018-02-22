@@ -150,13 +150,7 @@ manual_presence_resp(Username, Realm, JObj) ->
     PresenceId = <<Username/binary, "@", Realm/binary>>,
     case kz_json:get_value(PresenceId, JObj) of
         'undefined' -> 'not_found';
-        State ->
-            PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
-                             ,{<<"State">>, State}
-                             ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash(md5, PresenceId))}
-                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ],
-            kz_amqp_worker:cast(PresenceUpdate, fun kapi_presence:publish_update/1)
+        State -> kapps_call_command:presence(State, PresenceId)
     end.
 
 %%--------------------------------------------------------------------

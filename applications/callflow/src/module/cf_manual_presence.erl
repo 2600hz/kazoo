@@ -19,6 +19,7 @@
 
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
+    kapps_call_command:answer(Call),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     PresenceId =
         case binary:match((P = kzd_devices:presence_id(Data, CaptureGroup)), <<"@">>) of
