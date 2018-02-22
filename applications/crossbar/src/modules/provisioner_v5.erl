@@ -333,28 +333,23 @@ settings_keys(Assoc, KeyKind, JObj) ->
     Brand = get_brand(JObj),
     Family = get_family(JObj),
     AccountId = kz_doc:account_id(JObj),
-    Keys =
-        kz_json:foldl(
-          fun(Key, Value, Acc) ->
+
+    Fun = fun(Key, null, Acc) ->
+                  %% workaround since `kz_json:set_value/3' is removing key if the value is `null'.
+                  kz_json:from_list([{Key, null} | kz_json:to_proplist(Acc)]);
+             (Key, Value, Acc) ->
                   Type = kz_json:get_binary_value(<<"type">>, Value),
                   V = kz_json:get_binary_value(<<"value">>, Value),
                   FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId, Assoc),
                   maybe_add_feature_key(Key, FeatureKey, Acc)
-          end
-                     ,kz_json:new()
-                     ,FeatureKeys
-         ),
+          end,
+
+    Keys = kz_json:foldl(Fun, kz_json:new(), FeatureKeys),
+
     case get_line_key(Brand, Family) of
         'undefined' -> Keys;
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
-
--spec get_label(binary(), binary()) -> binary().
-get_label(AccountId, DocId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Doc = kz_datamgr:open_cache_doc(AccountDb, DocId),
-
-    get_label(Doc).
 
 -spec get_label(kz_json:object()) -> binary().
 get_label(Doc) ->
@@ -379,7 +374,7 @@ get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
         'undefined' -> 'undefined';
         Presence ->
             kz_json:from_list(
-              [{<<"label">>, get_label(AccountId, Presence)}
+              [{<<"label">>, get_label(UserJObj)}
               ,{<<"value">>, Presence}
               ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
               ,{<<"account">>, get_line_key(Brand, Family)}
@@ -397,7 +392,7 @@ get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, As
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
-            Label = <<"Park ", (get_label(AccountId, Presence))/binary>>,
+            Label = <<"Park ", (get_label(UserJObj))/binary>>,
             kz_json:from_list(
               [{<<"label">>, Label}
               ,{<<"value">>, <<"*3", Presence/binary>>}
