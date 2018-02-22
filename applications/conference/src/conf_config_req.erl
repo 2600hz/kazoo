@@ -114,6 +114,9 @@ update_prompt(Key, Value, Acc) ->
     update_prompt(kz_binary:reverse(Key), Key, Value, Acc).
 
 -spec update_prompt(kz_json:key(), kz_json:key(), kz_json:json_string(), update_acc()) -> update_acc().
+update_prompt(<<"dnuos-", _/binary>>, _Key, <<>>, Acc) -> Acc;
+update_prompt(<<"dnuos-", _/binary>>, _Key, <<"tone_stream://", _/binary>>, Acc) -> Acc;
+update_prompt(<<"dnuos-", _/binary>>, _Key, <<"$${", _/binary>>, Acc) -> Acc;
 update_prompt(<<"dnuos-", _/binary>>, Key, PromptId, {Conference, Profile}) ->
     AccountId = prompt_account_id(Conference),
     Language = kapps_conference:language(Conference),
