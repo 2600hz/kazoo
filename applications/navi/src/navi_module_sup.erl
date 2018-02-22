@@ -30,7 +30,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -46,7 +46,7 @@ get_living_children() ->
 %% @doc Determines if there is a notification server for the supplied
 %% notification type and app. If there is, send the notification.
 %%--------------------------------------------------------------------
--spec push(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok' | 'error'.
+-spec push(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok' | 'error'.
 push(RegistrationId, AppName, NotificationType, Msg, ExtraParameters) ->
     Name =  get_notification_server_name(AppName, NotificationType),
     lager:debug("Finding process to send push notification to: ~p", [Name]),
@@ -77,7 +77,7 @@ push(RegistrationId, AppName, NotificationType, Msg, ExtraParameters) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 10,
@@ -106,6 +106,6 @@ process_server_config(ServerConfig) ->
     lager:debug("Initialising notification server: ~p", [Name]),
     ?SUPER_NAME_ARGS_TYPE(Id, 'navi_notification_server_sup', [ServerConfig, Name], 'temporary').
 
--spec get_notification_server_name(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_notification_server_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_notification_server_name(AppName, NotificationType) ->
     kz_term:to_binary(io_lib:format("nv_~s_~s_sup", [AppName, NotificationType])).

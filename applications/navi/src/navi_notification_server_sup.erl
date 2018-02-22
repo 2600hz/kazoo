@@ -29,14 +29,14 @@
 %% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link(kz_json:object(), ne_binary()) -> startlink_ret().
+-spec start_link(kz_json:object(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(ServerConfig, MyName) ->
     lager:debug("Initialising ~s supervisor", [kz_json:get_value(<<"notification_type">>, ServerConfig)]),
     Type = kz_json:get_value(<<"notification_type">>, ServerConfig),
     AppName = kz_json:get_value(<<"app_name">>, ServerConfig),
     supervisor:start_link({'local', kz_term:to_atom(MyName, 'true')}, ?MODULE, [Type, AppName, ServerConfig]).
 
--spec push(supervisor:sup_ref(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok' | 'error'.
+-spec push(supervisor:sup_ref(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok' | 'error'.
 push(Super, RegistrationId, NotificationType, Msg, ExtraParameters) ->
     %% Should be exactly one child if it has not crashed
     lager:debug("Request to push notification through ~s supervisor", [NotificationType]),
@@ -66,7 +66,7 @@ get_living_children(Super) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(any()) -> sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([Type, AppName, ServerConfig]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

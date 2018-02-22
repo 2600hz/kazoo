@@ -30,7 +30,7 @@
         ]).
 
 -record(state, {name   :: atom()
-               ,topic  :: ne_binary()
+               ,topic  :: kz_term:ne_binary()
                ,pid    :: pid()
                }).
 -type state() :: #state{}.
@@ -44,7 +44,7 @@
                                  }.
 
 
--spec start_link(atom(), kz_json:object()) -> startlink_ret().
+-spec start_link(atom(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(MyName, ServerConfig) ->
     lager:debug("Starting apns notification server: ~p", [MyName]),
     RetVal = gen_server:start_link({'local', MyName}, ?MODULE, [MyName, ServerConfig],[]),
@@ -70,11 +70,11 @@ init([MyName, ServerConfig]) ->
     lager:debug("starting apns push notification server: ~p", [Name]),
     init_apns_connection(kz_json:get_value(<<"environment">>, ServerConfig), Connection, Name, Topic).
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'push', {RegistrationId, Message, ExtraParams}}, #state{name=Name, topic=Topic}=State) ->
     lager:debug("Received request to push notification into apns"),
     TrueTopic = get_true_topic(Topic, ExtraParams),
@@ -93,7 +93,7 @@ handle_cast({'push', {RegistrationId, Message, ExtraParams}}, #state{name=Name, 
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_, State) ->
     {'noreply', State}.
 
@@ -107,17 +107,17 @@ terminate(Reason, #state{pid=Pid}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec push(pid(), ne_binary(), ne_binary()) -> any().
+-spec push(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 push(Srv, RegistrationId, Message) ->
     push(Srv, RegistrationId, Message, []).
--spec push(pid(), ne_binary(), ne_binary(), kz_proplist()) -> any().
+-spec push(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> any().
 push(Srv, RegistrationId, Message, ExtraParams) ->
     gen_server:cast(Srv, {'push', {RegistrationId, Message, ExtraParams}}).
 
 %%=========================================================
 %%                 Private Methods
 %%========================================================
--spec init_apns_connection(ne_binary(), partial_connection(), atom(), ne_binary()) -> init_retval().
+-spec init_apns_connection(kz_term:ne_binary(), partial_connection(), atom(), kz_term:ne_binary()) -> init_retval().
 init_apns_connection(<<"dev">>, Connection, Name, Topic) ->
     lager:debug("Creating dev apns connection: ~p", [Name]),
     NewConnection = Connection#{apple_host => ?DEV_HOST, apple_port => ?DEV_PORT},
@@ -130,7 +130,7 @@ init_apns_connection(<<"prod">>, Connection, Name, Topic) ->
     {'ok', Pid} = inaka_apns:connect(NewConnection),
     {'ok', #state{name=Name, topic=Topic, pid=Pid}}.
 
--spec get_true_topic(ne_binary(), kz_proplist()) -> ne_binary().
+-spec get_true_topic(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().
 get_true_topic(Topic, ExtraParameters) ->
     case props:get_value(<<"topic_extension">>, ExtraParameters) of
         <<"voip">> -> kz_term:to_binary(io_lib:format(<<"~p.voip">>, [Topic]));

@@ -159,7 +159,7 @@ create(Context, App, MobileDeviceId) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec update(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(App, MobileDeviceId, Context) ->
     lager:debug("Reading push notification subscription: ~p - ~p", [App, MobileDeviceId]),
     case subscription_does_exist(App, MobileDeviceId, Context) of
@@ -176,7 +176,7 @@ update(App, MobileDeviceId, Context) ->
 %% Read all matching mobile device registration keys for the given mobile device
 %% @end
 %%--------------------------------------------------------------------
--spec read_docs_for_app_and_mobile_device_id(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec read_docs_for_app_and_mobile_device_id(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 read_docs_for_app_and_mobile_device_id(Context, App, MobileDeviceId) ->
     lager:debug("Reading push notification subscription: ~p - ~p", [App, MobileDeviceId]),
     case subscription_does_exist(App, MobileDeviceId, Context) of
@@ -195,7 +195,7 @@ read_docs_for_app_and_mobile_device_id(Context, App, MobileDeviceId) ->
 %% Called when request has validated successfully, prepares document for saving in db
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation(api_ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', App, MobileDeviceId, Context) ->
     %% Set values that came from path
     lager:debug("New push notification subscription validated successfully"),
@@ -207,7 +207,7 @@ on_successful_validation('undefined', App, MobileDeviceId, Context) ->
                          ]),
     lager:debug("Set push notification subscription doc filled with private values: ~p", [NewDoc]),
     cb_context:set_doc(Context, NewDoc).
--spec on_successful_validation(api_ne_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_validation(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"push_notification_subscription">>)).
 
@@ -221,7 +221,7 @@ on_successful_validation(Id, Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_json_value(<<"value">>, JObj)|Acc].
 
--spec subscription_does_exist(ne_binary(), ne_binary(), cb_context:context()) -> {'not_exists' | 'error', cb_context:context()} | {'exists', api_object()}.
+-spec subscription_does_exist(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> {'not_exists' | 'error', cb_context:context()} | {'exists', kz_term:api_object()}.
 subscription_does_exist(App, MobileDeviceId, Context) ->
     ViewContext = crossbar_doc:load_view(?BY_APP_BY_DEVICE, [{'key', [cb_context:auth_user_id(Context), MobileDeviceId, App]}], Context, fun normalize_view_results/2),
     case {cb_context:has_errors(ViewContext), cb_context:doc(ViewContext)} of

@@ -12,7 +12,7 @@
 
 -export([add_apns_app/5, add_fcm_app/2]).
 
--spec add_apns_app(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | {{'error', any()}, ne_binary()}.
+-spec add_apns_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {{'error', any()}, kz_term:ne_binary()}.
 add_apns_app(Name, Topic, Environment, CertificateFile, KeyFile) ->
     case {file:read_file(CertificateFile), file:read_file(KeyFile)} of
         {{'ok', CertificateBin}, {'ok', KeyBin}} ->
@@ -28,7 +28,7 @@ add_apns_app(Name, Topic, Environment, CertificateFile, KeyFile) ->
         {_, {'error', _} = Error} -> {Error, <<"Error reading key file">>}
     end.
 
--spec add_fcm_app(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} | {{'error', any()}, ne_binary()}.
+-spec add_fcm_app(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {{'error', any()}, kz_term:ne_binary()}.
 add_fcm_app(Name, ApiKey) ->
     NewApp = kz_json:from_list([{<<"app_name">>, Name}
                                ,{<<"api_key">>, ApiKey}
@@ -36,7 +36,7 @@ add_fcm_app(Name, ApiKey) ->
                                ]),
     validate_and_set_app(NewApp).
 
--spec validate_and_set_app(kz_json:object()) -> {'ok', kz_json:object()} | {{'error', any()}, ne_binary()}.
+-spec validate_and_set_app(kz_json:object()) -> {'ok', kz_json:object()} | {{'error', any()}, kz_term:ne_binary()}.
 validate_and_set_app(NewApp) ->
     {'ok', Config} = kapps_config:get_category(?CONFIG_CAT),
     Apps = kz_json:get_value(<<"notification_servers">>, kz_json:get_value(<<"default">>, Config)),

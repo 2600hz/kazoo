@@ -47,7 +47,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec push_device(api_terms()) ->
+-spec push_device(kz_term:api_terms()) ->
                          {'ok', iolist()} |
                          {'error', string()}.
 push_device(Prop) when is_list(Prop) ->
@@ -58,7 +58,7 @@ push_device(Prop) when is_list(Prop) ->
 push_device(JObj) ->
     push_device(kz_json:to_proplist(JObj)).
 
--spec push_v_device(api_terms()) -> boolean().
+-spec push_v_device(kz_term:api_terms()) -> boolean().
 push_v_device(Prop) when is_list(Prop) ->
     lager:debug("Validating payload: ~p", [Prop]),
     kz_api:validate(Prop, ?NAVI_PUSH_DEVICE_HEADERS, ?NAVI_PUSH_DEVICE_VALUES, ?NAVI_PUSH_DEVICE_TYPES);
@@ -69,7 +69,7 @@ push_v_device(JObj) ->
 %% @doc Setup and tear down bindings for navi gen_listeners
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
@@ -83,7 +83,7 @@ bind_to_q(Q, [_|T]) ->
 bind_to_q(_Q, []) ->
     'ok'.
 
--spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
+-spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     unbind_q_from(Q, props:get_value('restrict_to', Props)).
 
@@ -110,8 +110,8 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_push_device(api_terms()) -> 'ok'.
--spec publish_push_device(api_terms(), ne_binary()) -> 'ok'.
+-spec publish_push_device(kz_term:api_terms()) -> 'ok'.
+-spec publish_push_device(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_push_device(Props) when is_list(Props) ->
     publish_push_device(kz_json:from_list(Props));
 publish_push_device(JObj) ->

@@ -48,7 +48,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                      ,{'responders', ?RESPONDERS}
@@ -85,7 +85,7 @@ init([]) ->
 %%                                   {stop, Reason, Reply, State} |
 %%                                   {stop, Reason, State}
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -96,7 +96,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -111,7 +111,7 @@ handle_cast(_Msg, State) ->
 %%                                   {noreply, State, Timeout} |
 %%                                   {stop, Reason, State}
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -120,7 +120,7 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -152,7 +152,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc Determines who received the voicemail and which user that corresponds to, then sends notifications.
 %% @spec handle_new_voicemail(Jobj, Props) -> ok
 %%--------------------------------------------------------------------
--spec handle_new_voicemail(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_new_voicemail(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_new_voicemail(JObj, _Props) ->
     %% Ensure object is actually of event we want
     'true' = kapi_notifications:voicemail_new_v(JObj),
@@ -171,7 +171,7 @@ handle_new_voicemail(JObj, _Props) ->
 %% @doc Handles external requests to send push notifications
 %% @spec handle_push_request_device(Jobj, Props) -> ok
 %%--------------------------------------------------------------------
--spec handle_push_request_device(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_push_request_device(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push_request_device(JObj, _Props) ->
     lager:debug("Navi received external push request"),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
@@ -187,7 +187,7 @@ handle_push_request_device(JObj, _Props) ->
 %%%===================================================================
 
 %%% Gets the registrations for the user of the given type and pushes the notifications
--spec push_notifications(api_ne_binary(), api_ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> any().
+-spec push_notifications(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> any().
 push_notifications(Account, User, Event, Message, ExtraParameters) ->
     case get_user_notification_registrations(Account, User, Event) of
         [_|_]=Registrations ->
@@ -197,7 +197,7 @@ push_notifications(Account, User, Event, Message, ExtraParameters) ->
     end.
 
 %%% Gets the registration(s) for the device of the given type and pushes the notification to that device
--spec push_notifications_device(api_ne_binary(), api_ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> any().
+-spec push_notifications_device(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> any().
 push_notifications_device(Account, Device, Event, Message, ExtraParameters) ->
     %% There may be multiple push notification registrations for the one device if the user uses many accounts on one device
     %% without unregistering, but we only need to return one of them as that will still deliver the notification to the device.
@@ -209,14 +209,14 @@ push_notifications_device(Account, Device, Event, Message, ExtraParameters) ->
     end.
 
 %% Reads the view for the push registrations for a device
--spec get_user_notification_registrations_device(ne_binary(), ne_binary(), ne_binary()) -> kz_json:objects().
+-spec get_user_notification_registrations_device(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_user_notification_registrations_device(Account, Device, Event) ->
     AccountDB = kz_util:format_account_db(Account),
     {'ok', Rows} = kz_datamgr:get_results(AccountDB, <<"push_notification_subscriptions/by_reg_by_subscription">>, [{'key', [Device, Event]}]),
     [kz_json:get_value(<<"value">>, Row) || Row <- Rows].
 
 %%% Reads the view for all registered devices for a given user
--spec get_user_notification_registrations(api_ne_binary(), ne_binary(), ne_binary()) -> kz_json:objects().
+-spec get_user_notification_registrations(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_user_notification_registrations(_Account, 'undefined', _Event) ->
     [];
 get_user_notification_registrations(Account, User, Event) ->
@@ -225,7 +225,7 @@ get_user_notification_registrations(Account, User, Event) ->
     [kz_json:get_value(<<"value">>, Row) || Row <- Rows].
 
 %%% Develops a human readable string for the person's voicemail or missed call notification
--spec create_caller_id_string(kz_json:object()) -> ne_binary().
+-spec create_caller_id_string(kz_json:object()) -> kz_term:ne_binary().
 create_caller_id_string(JObj) ->
     case {kz_json:get_value(<<"Caller-ID-Number">>, JObj), kz_json:get_value(<<"Caller-ID-Name">>, JObj)} of
         {'undefined', _} -> <<"someone">>;
@@ -234,7 +234,7 @@ create_caller_id_string(JObj) ->
     end.
 
 %%% Sets up the datastructure and calls the push notification service
--spec send_notification_to_device(kz_json:object(), ne_binary(), kz_proplist()) -> 'ok' | 'error'.
+-spec send_notification_to_device(kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok' | 'error'.
 send_notification_to_device(Registration, Msg, ExtraParameters) ->
     lager:debug("Sending notification for registration: ~p", [Registration]),
     RegistrationId = kz_json:get_value(<<"notification_registration_id">>, Registration),
