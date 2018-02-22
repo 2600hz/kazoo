@@ -1169,7 +1169,7 @@ update_mwi(Context, [BoxId | BoxIds]) ->
 -spec update_mwi(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries(), atom()) -> cb_context:context().
 update_mwi(Context, BoxId, 'success') ->
     AccountId = cb_context:account_id(Context),
-    _ = cb_modules_util:update_mwi(BoxId, AccountId),
+    _ = kvm_mwi:notify_vmbox(AccountId, BoxId),
     Context;
 update_mwi(Context, _BoxId, _Status) ->
     Context.

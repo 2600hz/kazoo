@@ -33,7 +33,7 @@
 -define(SERVER, ?MODULE).
 
 -define(MAX_PROCESS,
-        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_worker">>], 10)).
+        kapps_config:get_integer(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_worker">>], 10)).
 
 -type worker() :: {pid(), next_account()}.
 -type workers() :: [worker()].

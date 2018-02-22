@@ -190,11 +190,13 @@ sw_quantity(_Quantity) -> <<"100">>.
 -spec process_response(kz_json:objects(), knm_carriers:options()) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
-    AccountId = knm_carriers:account_id(Options),
+    QID = knm_search:query_id(Options),
     {'ok', [N || JObj <- JObjs,
-                 {'ok', N} <- [response_jobj_to_number(JObj, AccountId)]
+                 N <- [response_jobj_to_number(JObj, QID)]
            ]}.
 
 response_jobj_to_number(JObj, QID) ->
-    Num = kz_json:get_value(<<"number">>, JObj),
+    Num = <<(kz_json:get_binary_value(<<"country_code">>, JObj))/binary
+            ,(kz_json:get_binary_value(<<"number">>, JObj))/binary
+          >>,
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.

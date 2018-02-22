@@ -9,7 +9,6 @@
 -module(cb_modules_util).
 
 -export([pass_hashes/2
-        ,update_mwi/2
         ,get_devices_owned_by/2
         ,cavs_from_context/1
 
@@ -52,37 +51,6 @@ pass_hashes(Username, Password) ->
     SHA1 = kz_term:to_hex_binary(crypto:hash('sha', Creds)),
     MD5 = kz_term:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
-
--spec update_mwi(kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
-update_mwi(BoxId, AccountId) ->
-    kz_util:spawn(fun() -> send_mwi_update(BoxId, AccountId) end).
-
--spec send_mwi_update(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_mwi_update(BoxId, AccountId) ->
-    timer:sleep(?MILLISECONDS_IN_SECOND),
-
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    {'ok', BoxJObj} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
-    OwnerId = kzd_voicemail_box:owner_id(BoxJObj),
-    BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
-
-    _ = kz_util:spawn(fun kz_endpoint:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    {New, Saved} = kvm_messages:count_non_deleted(AccountId, BoxId),
-    _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
-    lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
-
--spec send_mwi_update(non_neg_integer(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_mwi_update(New, Saved, BoxNumber, AccountId) ->
-    Realm = kzd_accounts:fetch_realm(AccountId),
-    To = <<BoxNumber/binary, "@", Realm/binary>>,
-    Command = [{<<"To">>, To}
-              ,{<<"Messages-New">>, New}
-              ,{<<"Messages-Saved">>, Saved}
-              ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("updating MWI for vmbox ~s@~s (~b/~b)", [BoxNumber, Realm, New, Saved]),
-    kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
 
 -spec get_devices_owned_by(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->

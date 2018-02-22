@@ -212,7 +212,7 @@ handle(Data, Call) ->
 check_mailbox(Box, Call) ->
     %% Wrapper to initalize the attempt counter
     Resp = check_mailbox(Box, Call, 1),
-    _ = send_mwi_update(Box, Call),
+    _ = send_mwi_update(Box),
     Resp.
 
 -spec check_mailbox(mailbox(), kapps_call:call(), non_neg_integer()) ->
@@ -613,7 +613,7 @@ main_menu(Box, Call, Loop) when Loop > 4 ->
     %% is likely a abandonded channel, terminate
     lager:info("entered main menu with too many invalid entries"),
     _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
-    send_mwi_update(Box, Call);
+    send_mwi_update(Box);
 main_menu(#mailbox{keys=#keys{hear_new=HearNew
                              ,hear_saved=HearSaved
                              ,exit=Exit
@@ -645,22 +645,22 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
-            send_mwi_update(Box, Call);
+            send_mwi_update(Box);
         {'ok', Exit} ->
             lager:info("user choose to exit voicemail menu"),
-            send_mwi_update(Box, Call);
+            send_mwi_update(Box);
         {'ok', HearNew} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_NEW]),
             Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
-                'ok' -> send_mwi_update(Box, Call);
+                'ok' -> send_mwi_update(Box);
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_SAVED]),
             Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
-                'ok' -> send_mwi_update(Box, Call);
+                'ok' -> send_mwi_update(Box);
                 _Else ->  main_menu(Box, Call)
             end;
         _ ->
@@ -696,22 +696,22 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
-            send_mwi_update(Box, Call);
+            send_mwi_update(Box);
         {'ok', Exit} ->
             lager:info("user choose to exit voicemail menu"),
-            send_mwi_update(Box, Call);
+            send_mwi_update(Box);
         {'ok', HearNew} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_NEW]),
             Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
-                'ok' -> send_mwi_update(Box, Call);
+                'ok' -> send_mwi_update(Box);
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
             lager:info("playing all messages in folder: ~s", [?VM_FOLDER_SAVED]),
             Folder = kzd_box_message:filter_folder(Messages, ?VM_FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
-                'ok' -> send_mwi_update(Box, Call);
+                'ok' -> send_mwi_update(Box);
                 _Else ->  main_menu(Box, Call)
             end;
         {'ok', Configure} ->
@@ -1011,7 +1011,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ]
                    ),
     case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
-        {'ok', NewCall} -> send_mwi_update(DestBox, NewCall);
+        {'ok', _NewCall} -> send_mwi_update(DestBox);
         {'error', _, _Msg} ->
             lager:warning("failed to save forwarded voice mail message recorded media : ~p", [_Msg])
     end.
@@ -1533,7 +1533,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                   ,{<<"Timezone">>, Timezone}
                   ],
     case kvm_message:new(Call, NewMsgProps) of
-        {'ok', NewCall} -> send_mwi_update(Box, NewCall);
+        {'ok', _NewCall} -> send_mwi_update(Box);
         {'error', _, _Msg} -> lager:warning("failed to save voice mail message recorded media : ~p", [_Msg])
     end.
 
@@ -2059,30 +2059,9 @@ is_owner(Call, OwnerId) ->
         _Else -> 'false'
     end.
 
--spec send_mwi_update(mailbox(), kapps_call:call()) -> 'ok'.
-send_mwi_update(#mailbox{mailbox_id='undefined'
-                        }
-               ,_Call) ->
-    'ok';
-send_mwi_update(#mailbox{owner_id=OwnerId
-                        ,mailbox_number=BoxNumber
-                        ,account_db=AccountDb
+-spec send_mwi_update(mailbox()) -> 'ok'.
+send_mwi_update(#mailbox{mailbox_id='undefined'}) -> 'ok';
+send_mwi_update(#mailbox{account_db=AccountDb
                         ,mailbox_id=BoxId
-                        }
-               ,Call) ->
-    _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    {New, Saved} = kvm_messages:count_non_deleted(kapps_call:account_id(Call), BoxId),
-    _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, Call]),
-    lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, kapps_call:account_id(Call), New, Saved]).
-
--spec send_mwi_update(non_neg_integer(), non_neg_integer(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
-send_mwi_update(New, Saved, BoxNumber, Call) ->
-    Realm = kapps_call:account_realm(Call),
-    Command = [{<<"To">>, <<BoxNumber/binary, "@", Realm/binary>>}
-              ,{<<"Messages-New">>, New}
-              ,{<<"Messages-Saved">>, Saved}
-              ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("updating MWI for vmbox ~s@~s (~b/~b)", [BoxNumber, Realm, New, Saved]),
-    kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
+                        }) ->
+    kvm_mwi:notify_vmbox(AccountDb, BoxId).

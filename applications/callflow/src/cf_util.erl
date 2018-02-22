@@ -186,27 +186,16 @@ mwi_query(JObj) ->
 maybe_vm_mwi_resp('undefined', _Realm, _AccountDb, _JObj) -> 'ok';
 maybe_vm_mwi_resp(<<_/binary>> = VMNumber, Realm, AccountDb, JObj) ->
     case mailbox(AccountDb, VMNumber) of
-        {'ok', Doc} -> vm_mwi_resp(Doc, VMNumber, Realm, JObj);
+        {'ok', Doc} -> kvm_mwi:notify_vmbox(AccountDb, kz_doc:id(Doc));
         {'error', _} -> mwi_resp(VMNumber, Realm, AccountDb, JObj)
     end.
 
--spec vm_mwi_resp(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-vm_mwi_resp(Doc, VMNumber, Realm, JObj) ->
-    {New, Saved} = vm_count(Doc),
-    kz_endpoint:send_mwi_update(New, Saved, VMNumber, Realm, JObj).
-
 -spec mwi_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-mwi_resp(Username, Realm, AccountDb, JObj) ->
-    case owner_ids_by_sip_username(AccountDb, Username) of
-        {'ok', [<<_/binary>> = OwnerId]} ->
-            mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
+mwi_resp(Username, _Realm, AccountDb, _JObj) ->
+    case endpoint_id_by_sip_username(AccountDb, Username) of
+        {'ok', EndpointId} -> kvm_mwi:notify_endpoint(AccountDb, EndpointId);
         _Else -> 'ok'
     end.
-
--spec mwi_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
-    {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-    kz_endpoint:send_mwi_update(New, Saved, Username, Realm, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -219,12 +208,12 @@ mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
                                           {'error', atom()} |
                                           kz_datamgr:data_error().
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
-    kz_endpoint:unsolicited_owner_mwi_update(AccountDb, OwnerId).
+    kvm_mwi:notify_owner(AccountDb, OwnerId).
 
 -spec unsolicited_endpoint_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
                                              'ok' | {'error', any()}.
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
-    kz_endpoint:unsolicited_endpoint_mwi_update(AccountDb, EndpointId).
+    kvm_mwi:notify_endpoint(AccountDb, EndpointId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -723,12 +712,6 @@ get_mailbox(AccountDb, VMNumber) ->
             E
     end.
 
--spec vm_count(kz_json:object()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count(JObj) ->
-    AccountId = kz_doc:account_id(JObj),
-    BoxId = kz_doc:id(JObj),
-    kvm_messages:count_non_deleted(AccountId, BoxId).
-
 -spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
 ccvs_by_privacy_mode('undefined') ->
     ccvs_by_privacy_mode(<<"full">>);
@@ -742,25 +725,18 @@ ccvs_by_privacy_mode(<<"yes">>) ->
 ccvs_by_privacy_mode(<<"name">>) ->
     [{<<"Caller-Screen-Bit">>, 'true'}
     ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Number">>, 'false'}
     ];
 ccvs_by_privacy_mode(<<"number">>) ->
     [{<<"Caller-Screen-Bit">>, 'true'}
     ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+    ,{<<"Caller-Privacy-Hide-Name">>, 'false'}
     ];
 %% returns empty list so that callflow settings override
 ccvs_by_privacy_mode(<<"none">>) -> [];
 ccvs_by_privacy_mode(_Else) ->
     lager:debug("unsupported privacy mode ~s, forcing full privacy", [_Else]),
     ccvs_by_privacy_mode(<<"full">>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec vm_count_by_owner(kz_term:ne_binary(), kz_term:ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
-    kvm_messages:count_by_owner(AccountDb, OwnerId).
 
 -spec flush_control_queue(kapps_call:call()) -> 'ok'.
 flush_control_queue(Call) ->

@@ -1,7 +1,7 @@
                 Account Zone Change
 
 
-Your account '{{accout.name}}' zone has been changed.
+Your account '{{account.name}}' zone has been changed.
 
 
 === Zones Change Details ===

@@ -1,7 +1,7 @@
                 Webhook Auto-Disabled
 
 
-Webhook {{hook.name}} of account {{account.name}} has been autmatically
+Webhook {{hook.name}} of account {{account.name}} has been automatically
 disabled because of repeated failed attempts!
 
     > Check the webhook history API for more information on why

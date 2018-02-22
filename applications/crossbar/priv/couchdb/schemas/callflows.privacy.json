@@ -3,6 +3,15 @@
     "_id": "callflows.privacy",
     "description": "Validator for the privacy callflow's data object",
     "properties": {
+        "endpoint_strategy": {
+            "default": "overwrite",
+            "description": "whether cf_privacy should overwrite or merge with the caller_id_options of the endpoint.",
+            "enum": [
+                "overwrite",
+                "merge"
+            ],
+            "type": "string"
+        },
         "mode": {
             "default": "full",
             "description": "set caller privacy on calls, restricting the presentation some or full parts of Caller ID",

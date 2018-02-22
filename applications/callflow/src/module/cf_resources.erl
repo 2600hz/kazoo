@@ -347,6 +347,20 @@ handle_channel_destroy(_, JObj) ->
 
 -spec get_privacy_prefs(kapps_call:call()) -> kz_term:proplist().
 get_privacy_prefs(Call) ->
+    case use_endpoint_prefs(Call) of
+        'true' -> check_inception(Call);
+        'false'  -> []
+    end.
+
+-spec use_endpoint_prefs(kapps_call:call()) -> boolean().
+use_endpoint_prefs(Call) ->
+    %% only overwrite the ccvs if privacy has not been set by cf_privacy
+    %% or if the call has been configured to overwrite cf_privacy settings
+    not kz_privacy:has_flags(kapps_call:custom_channel_vars(Call))
+        orelse kapps_call:kvs_fetch(<<"use_endpoint_privacy">>, Call).
+
+-spec check_inception(kapps_call:call()) -> kz_term:proplist().
+check_inception(Call) ->
     lager:debug("Checking inception of call"),
     case kapps_call:inception(Call) of
         'undefined' -> get_privacy_prefs_from_endpoint(Call);
