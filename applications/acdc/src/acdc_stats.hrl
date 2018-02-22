@@ -23,8 +23,8 @@
                    ,agent_id :: kz_term:api_binary() | '$3' | '_' % the handling agent
 
                    ,entered_timestamp = kz_time:now_s() :: pos_integer() | '$1' | '$5' | '_'
-                   ,abandoned_timestamp :: kz_term:api_integer() | '_'
-                   ,handled_timestamp :: kz_term:api_integer() | '_'
+                   ,abandoned_timestamp :: kz_term:api_integer() | '$2' | '_'
+                   ,handled_timestamp :: kz_term:api_integer() | '$3' | '_'
                    ,processed_timestamp :: kz_term:api_integer() | '_'
 
                    ,hung_up_by :: kz_term:api_binary() | '_'

@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(kapi_acdc_stats).
 
@@ -21,6 +22,10 @@
         ,current_calls_req/1, current_calls_req_v/1
         ,current_calls_err/1, current_calls_err_v/1
         ,current_calls_resp/1, current_calls_resp_v/1
+
+        ,average_wait_time_req/1, average_wait_time_req_v/1
+        ,average_wait_time_err/1, average_wait_time_err_v/1
+        ,average_wait_time_resp/1, average_wait_time_resp_v/1
 
         ,status_req/1, status_req_v/1
         ,status_err/1, status_err_v/1
@@ -54,6 +59,10 @@
         ,publish_current_calls_req/1, publish_current_calls_req/2
         ,publish_current_calls_err/2, publish_current_calls_err/3
         ,publish_current_calls_resp/2, publish_current_calls_resp/3
+
+        ,publish_average_wait_time_req/1, publish_average_wait_time_req/2
+        ,publish_average_wait_time_err/2, publish_average_wait_time_err/3
+        ,publish_average_wait_time_resp/2, publish_average_wait_time_resp/3
 
         ,publish_status_req/1, publish_status_req/2
         ,publish_status_err/2, publish_status_err/3
@@ -282,6 +291,80 @@ current_calls_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?CURRENT_CALLS_RESP_HEADERS, ?CURRENT_CALLS_RESP_VALUES, ?CURRENT_CALLS_RESP_TYPES);
 current_calls_resp_v(JObj) ->
     current_calls_resp_v(kz_json:to_proplist(JObj)).
+
+-define(AVERAGE_WAIT_TIME_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
+-define(OPTIONAL_AVERAGE_WAIT_TIME_REQ_HEADERS, []).
+-define(AVERAGE_WAIT_TIME_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
+                                      ,{<<"Event-Name">>, <<"average_wait_time_req">>}
+                                      ]).
+-define(AVERAGE_WAIT_TIME_REQ_TYPES, [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
+                                     ,{<<"Queue-ID">>, fun kz_term:is_ne_binary/1}
+                                     ]).
+
+-spec average_wait_time_req(kz_term:api_terms()) ->
+                                   {'ok', iolist()} |
+                                   {'error', string()}.
+average_wait_time_req(Props) when is_list(Props) ->
+    case average_wait_time_req_v(Props) of
+        'true' -> kz_api:build_message(Props, ?AVERAGE_WAIT_TIME_REQ_HEADERS, ?OPTIONAL_AVERAGE_WAIT_TIME_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for average_wait_time_req"}
+    end;
+average_wait_time_req(JObj) ->
+    average_wait_time_req(kz_json:to_proplist(JObj)).
+
+-spec average_wait_time_req_v(kz_term:api_terms()) -> boolean().
+average_wait_time_req_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?AVERAGE_WAIT_TIME_REQ_HEADERS, ?AVERAGE_WAIT_TIME_REQ_VALUES, ?AVERAGE_WAIT_TIME_REQ_TYPES);
+average_wait_time_req_v(JObj) ->
+    average_wait_time_req_v(kz_json:to_proplist(JObj)).
+
+-define(AVERAGE_WAIT_TIME_ERR_HEADERS, [<<"Error-Reason">>]).
+-define(OPTIONAL_AVERAGE_WAIT_TIME_ERR_HEADERS, []).
+-define(AVERAGE_WAIT_TIME_ERR_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
+                                      ,{<<"Event-Name">>, <<"average_wait_time_err">>}
+                                      ]).
+-define(AVERAGE_WAIT_TIME_ERR_TYPES, [{<<"Error-Reason">>, fun is_binary/1}]).
+
+-spec average_wait_time_err(kz_term:api_terms()) ->
+                                   {'ok', iolist()} |
+                                   {'error', string()}.
+average_wait_time_err(Props) when is_list(Props) ->
+    case average_wait_time_err_v(Props) of
+        'true' -> kz_api:build_message(Props, ?AVERAGE_WAIT_TIME_ERR_HEADERS, ?OPTIONAL_AVERAGE_WAIT_TIME_ERR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for average_wait_time_err"}
+    end;
+average_wait_time_err(JObj) ->
+    average_wait_time_err_v(kz_json:to_proplist(JObj)).
+
+-spec average_wait_time_err_v(kz_term:api_terms()) -> boolean().
+average_wait_time_err_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?AVERAGE_WAIT_TIME_ERR_HEADERS, ?AVERAGE_WAIT_TIME_ERR_VALUES, ?AVERAGE_WAIT_TIME_ERR_TYPES);
+average_wait_time_err_v(JObj) ->
+    average_wait_time_err_v(kz_json:to_proplist(JObj)).
+
+-define(AVERAGE_WAIT_TIME_RESP_HEADERS, [<<"Average-Wait-Time">>]).
+-define(OPTIONAL_AVERAGE_WAIT_TIME_RESP_HEADERS, []).
+-define(AVERAGE_WAIT_TIME_RESP_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
+                                       ,{<<"Event-Name">>, <<"average_wait_time_resp">>}
+                                       ]).
+-define(AVERAGE_WAIT_TIME_RESP_TYPES, [{<<"Average-Wait-Time">>, fun is_integer/1}]).
+
+-spec average_wait_time_resp(kz_term:api_terms()) ->
+                                    {'ok', iolist()} |
+                                    {'error', string()}.
+average_wait_time_resp(Props) when is_list(Props) ->
+    case average_wait_time_resp_v(Props) of
+        'true' -> kz_api:build_message(Props, ?AVERAGE_WAIT_TIME_RESP_HEADERS, ?OPTIONAL_AVERAGE_WAIT_TIME_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for average_wait_time_resp"}
+    end;
+average_wait_time_resp(JObj) ->
+    average_wait_time_resp(kz_json:to_proplist(JObj)).
+
+-spec average_wait_time_resp_v(kz_term:api_terms()) -> boolean().
+average_wait_time_resp_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?AVERAGE_WAIT_TIME_RESP_HEADERS, ?AVERAGE_WAIT_TIME_RESP_VALUES, ?AVERAGE_WAIT_TIME_RESP_TYPES);
+average_wait_time_resp_v(JObj) ->
+    average_wait_time_resp_v(kz_json:to_proplist(JObj)).
 
 -define(STATUS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATUS_REQ_HEADERS, [<<"Agent-ID">>, <<"Start-Range">>, <<"End-Range">>
@@ -775,6 +858,33 @@ publish_current_calls_resp(RespQ, JObj) ->
 -spec publish_current_calls_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_current_calls_resp(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CURRENT_CALLS_RESP_VALUES, fun current_calls_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_average_wait_time_req(kz_term:api_terms()) -> 'ok'.
+publish_average_wait_time_req(JObj) ->
+    publish_average_wait_time_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_average_wait_time_req(kz_term:api_terms(), binary()) -> 'ok'.
+publish_average_wait_time_req(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?AVERAGE_WAIT_TIME_REQ_VALUES, fun average_wait_time_req/1),
+    amqp_util:kapps_publish(query_call_stat_routing_key(API), Payload, ContentType).
+
+-spec publish_average_wait_time_err(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_average_wait_time_err(RespQ, JObj) ->
+    publish_average_wait_time_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_average_wait_time_err(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
+publish_average_wait_time_err(RespQ, API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?AVERAGE_WAIT_TIME_ERR_VALUES, fun average_wait_time_err/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_average_wait_time_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_average_wait_time_resp(RespQ, JObj) ->
+    publish_average_wait_time_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_average_wait_time_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
+publish_average_wait_time_resp(RespQ, API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?AVERAGE_WAIT_TIME_RESP_VALUES, fun average_wait_time_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_status_req(kz_term:api_terms()) -> 'ok'.
