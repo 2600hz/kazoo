@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.navi.push_device",
+    "description": "AMQP API for navi.push_device",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Device-ID": {
+            "type": "string"
+        },
+        "Message": {
+            "type": "string"
+        },
+        "Metadata": {
+            "type": "string"
+        },
+        "Push-Topic": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Device-ID",
+        "Message",
+        "Push-Topic"
+    ],
+    "type": "object"
+}

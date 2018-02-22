@@ -19,7 +19,9 @@
         ,code_change/3
         ]).
 
--export([handle_new_voicemail/2]).
+-export([handle_new_voicemail/2
+        ,handle_push_request_device/2
+        ]).
 
 -include("navi.hrl").
 
@@ -29,9 +31,12 @@
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ['new_voicemail']}]}
+                  ,{'navi', [{'restrict_to', ['push_device']}]}
                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'handle_new_voicemail'}, [{<<"notification">>, <<"voicemail_new">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_new_voicemail'}, [{<<"notification">>, <<"voicemail_new">>}]}
+                    ,{{?MODULE, 'handle_push_request_device'}, [{<<"navi">>, <<"push_device">>}]}
+                    ]).
 -define(QUEUE_NAME, <<"navi_listener">>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -157,24 +162,64 @@ handle_new_voicemail(JObj, _Props) ->
     AccountDb = kz_util:format_account_db(Account),
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, VoicemailBoxId),
     User = kzd_voicemail_box:owner_id(Doc),
-    case get_user_notification_registrations(User, Account, <<"new_voicemail">>) of
-        [_|_]=Registrations ->
-            lager:debug("Found ~p notification registrations for user: ~p", [Registrations, User]),
-            ExtraParameters = [{<<"metadata">>, kz_json:normalize(JObj)}],
-            Msg = kz_term:to_binary(io_lib:format("You received a voicemail message from ~s", [create_caller_id_string(JObj)])),
-            do_notifications(Registrations, Msg, ExtraParameters);
-        [] -> lager:debug("No push notification registrations for user: ~p/~p", [Account, User])
-    end.
+    Msg = kz_term:to_binary(io_lib:format("You received a voicemail message from ~s", [create_caller_id_string(JObj)])),
+    ExtraParameters = [{<<"metadata">>, kz_json:normalize(JObj)}],
+    push_notifications(Account, User, <<"new_voicemail">>, Msg, ExtraParameters).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Handles external requests to send push notifications
+%% @spec handle_push_request_device(Jobj, Props) -> ok
+%%--------------------------------------------------------------------
+-spec handle_push_request_device(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_push_request_device(JObj, _Props) ->
+    lager:debug("Navi received external push request"),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    DeviceId = kz_json:get_value(<<"Device-ID">>, JObj),
+    Msg = kz_json:get_value(<<"Message">>, JObj),
+    Metadata = kz_json:get_value(<<"Metadata">>, JObj),
+    Event = kz_json:get_value(<<"Push-Topic">>, JObj),
+    ExtraParameters = [{<<"metadata">>, kz_json:normalize(Metadata)}],
+    push_notifications_device(AccountId, DeviceId, Event, Msg, ExtraParameters).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
+%%% Gets the registrations for the user of the given type and pushes the notifications
+-spec push_notifications(api_ne_binary(), api_ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> any().
+push_notifications(Account, User, Event, Message, ExtraParameters) ->
+    case get_user_notification_registrations(Account, User, Event) of
+        [_|_]=Registrations ->
+            lager:debug("Found ~p notification registrations for user: ~p", [Registrations, User]),
+            [send_notification_to_device(Registration, Message, ExtraParameters) || Registration <- Registrations];
+        [] -> lager:debug("No push notification registrations for user: ~p/~p", [Account, User])
+    end.
+
+%%% Gets the registration(s) for the device of the given type and pushes the notification to that device
+-spec push_notifications_device(api_ne_binary(), api_ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> any().
+push_notifications_device(Account, Device, Event, Message, ExtraParameters) ->
+    %% There may be multiple push notification registrations for the one device if the user uses many accounts on one device
+    %% without unregistering, but we only need to return one of them as that will still deliver the notification to the device.
+    case get_user_notification_registrations_device(Account, Device, Event) of
+        [Reg|_] ->
+            lager:debug("Found ~p notification registration for device: ~p", [Reg, Device]),
+            send_notification_to_device(Reg, Message, ExtraParameters);
+        [] -> lager:debug("No push notification registrations for device: ~p/~p", [Account, Device])
+    end.
+
+%% Reads the view for the push registrations for a device
+-spec get_user_notification_registrations_device(ne_binary(), ne_binary(), ne_binary()) -> kz_json:objects().
+get_user_notification_registrations_device(Account, Device, Event) ->
+    AccountDB = kz_util:format_account_db(Account),
+    {'ok', Rows} = kz_datamgr:get_results(AccountDB, <<"push_notification_subscriptions/by_reg_by_subscription">>, [{'key', [Device, Event]}]),
+    [kz_json:get_value(<<"value">>, Row) || Row <- Rows].
+
 %%% Reads the view for all registered devices for a given user
 -spec get_user_notification_registrations(api_ne_binary(), ne_binary(), ne_binary()) -> kz_json:objects().
-get_user_notification_registrations('undefined', _Account, _Event) ->
+get_user_notification_registrations(_Account, 'undefined', _Event) ->
     [];
-get_user_notification_registrations(User, Account, Event) ->
+get_user_notification_registrations(Account, User, Event) ->
     AccountDB = kz_util:format_account_db(Account),
     {'ok', Rows} = kz_datamgr:get_results(AccountDB, <<"push_notification_subscriptions/by_user_by_subscription">>, [{'key', [User, Event]}]),
     [kz_json:get_value(<<"value">>, Row) || Row <- Rows].
@@ -187,11 +232,6 @@ create_caller_id_string(JObj) ->
         {Number, 'undefined'} -> Number;
         {Number, Name} -> kz_term:to_binary(io_lib:format("~s (~s)", [Name, Number]))
     end.
-
-%%% Takes all of a user's registrations and sends push notifications for them
--spec do_notifications(kz_json:objects(), ne_binary(), kz_proplist()) -> any().
-do_notifications(Registrations, Msg, ExtraParameters) ->
-    [send_notification_to_device(Registration, Msg, ExtraParameters) || Registration <- Registrations].
 
 %%% Sets up the datastructure and calls the push notification service
 -spec send_notification_to_device(kz_json:object(), ne_binary(), kz_proplist()) -> 'ok' | 'error'.

@@ -228,7 +228,7 @@ subscription_does_exist(App, MobileDeviceId, Context) ->
         {'true', _} -> {'error', ViewContext};
         {'false', []} -> {'not_exists', crossbar_util:response_bad_identifier(MobileDeviceId, Context)};
         {'false', [Item|[]]=Doc} ->
-            lager:error("Loaded doc from context: ~p", [Doc]),
+            lager:debug("Loaded doc from context: ~p", [Doc]),
             {'exists', Item};
         {'false', [_|_]} ->
             lager:error("Database inconsistency: multiple docs for one mobile device push notification subscription"),

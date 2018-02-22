@@ -11,7 +11,7 @@ Schema for a push notification subscription
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `notification_preferences.[]` |   | `string()` |   | `true`
-`notification_preferences` | The types of notifications that the user wants to receive | `array(string('new_voicemail' | 'missed_call'))` |   | `true`
+`notification_preferences` | The types of notifications that the user wants to receive | `array(string('new_voicemail' | 'chat'))` | `["new_voicemail", "chat"]` | `true`
 `notification_registration_id` | The registration id for the mobile device | `string()` |   | `true`
 `notification_type` | The type of notification service to use | `string('apns' | 'fcm')` |   | `true`
 

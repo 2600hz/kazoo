@@ -4,11 +4,15 @@
     "description": "Schema for a push notification subscription",
     "properties": {
         "notification_preferences": {
+            "default": [
+                "new_voicemail",
+                "chat"
+            ],
             "description": "The types of notifications that the user wants to receive",
             "items": {
                 "enum": [
                     "new_voicemail",
-                    "missed_call"
+                    "chat"
                 ],
                 "type": "string"
             },

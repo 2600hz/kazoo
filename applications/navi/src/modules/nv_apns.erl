@@ -52,6 +52,7 @@ start_link(MyName, ServerConfig) ->
 
 -spec init(any()) -> init_retval().
 init([MyName, ServerConfig]) ->
+    process_flag('trap_exit', 'true'),
     kz_util:put_callid(MyName),
     Name = kz_term:to_atom(kz_term:to_binary(io_lib:format("~s_srv", [MyName])), 'true'),
     PemDecodedCert = public_key:pem_decode(kz_json:get_value(<<"certificate">>, ServerConfig)),
@@ -93,16 +94,12 @@ handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
-    lager:error("Lost apns connection with reason: ~p", [Reason]),
-    demonitor(Ref),
-    {'stop', 'apns_connection_down', State};
 handle_info(_, State) ->
     {'noreply', State}.
 
 -spec terminate(any(), state()) -> 'ok'.
 terminate(Reason, #state{pid=Pid}) ->
-    lager:error("nv_apns terminating with reason: ~p. Destroying apns connection", [Reason]),
+    lager:info("nv_apns terminating with reason: ~p. Destroying apns connection", [Reason]),
     inaka_apns:close_connection(Pid),
     'ok'.
 
