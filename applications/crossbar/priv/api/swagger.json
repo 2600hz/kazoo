@@ -255,19 +255,19 @@
         "account_config.notify": {
             "description": "Schema for notify account_config",
             "properties": {
-                "notify_presist_exceptions": {
+                "notify_persist_exceptions": {
                     "default": [
                         "system_alert"
                     ],
-                    "description": "List of notification types have to be ignored to presist if they failed to publish",
+                    "description": "List of notification types have to be ignored to persist if they failed to publish",
                     "items": {
                         "type": "string"
                     },
                     "type": "array"
                 },
-                "should_presist_for_retry": {
+                "should_persist_for_retry": {
                     "default": true,
-                    "description": "Enabled presist of failed to publish notifications for account/system",
+                    "description": "Enabled persist of failed to publish notifications for account/system",
                     "type": "boolean"
                 }
             },
@@ -4749,7 +4749,7 @@
                     "properties": {
                         "error_message": {
                             "default": "",
-                            "description": "A description of any error that occured",
+                            "description": "A description of any error that occurred",
                             "type": "string"
                         },
                         "fax_bad_rows": {
@@ -24744,7 +24744,7 @@
                                 "type": "boolean"
                             },
                             "format_from_uri": {
-                                "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header",
+                                "description": "When set to true requests to this resource gateway will have a re-formatted SIP From Header",
                                 "type": "boolean"
                             },
                             "from_uri_realm": {
@@ -28943,24 +28943,24 @@
                     "description": "notify notification app",
                     "type": "string"
                 },
-                "notify_presist_enabled": {
+                "notify_persist_enabled": {
                     "default": true,
-                    "description": "Enabled presist of failed to publish notifications globally",
+                    "description": "Enabled persist of failed to publish notifications globally",
                     "type": "boolean"
                 },
-                "notify_presist_exceptions": {
+                "notify_persist_exceptions": {
                     "default": [
                         "system_alert"
                     ],
-                    "description": "List of notification types have to be ignored to presist if they failed to publish",
+                    "description": "List of notification types have to be ignored to persist if they failed to publish",
                     "items": {
                         "type": "string"
                     },
                     "type": "array"
                 },
-                "notify_presist_temprorary_force_exceptions": {
+                "notify_persist_temporary_force_exceptions": {
                     "default": [],
-                    "description": "List of notification types have to be ignored temprorary globally to presist if they failed to publish",
+                    "description": "List of notification types have to be ignored temporary globally to persist if they failed to publish",
                     "items": {
                         "type": "string"
                     },
@@ -28977,9 +28977,9 @@
                     "description": "notify search rep email",
                     "type": "boolean"
                 },
-                "should_presist_for_retry": {
+                "should_persist_for_retry": {
                     "default": true,
-                    "description": "Enabled presist of failed to publish notifications for account/system",
+                    "description": "Enabled persist of failed to publish notifications for account/system",
                     "type": "boolean"
                 },
                 "use_federated_listener": {
