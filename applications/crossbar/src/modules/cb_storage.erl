@@ -453,10 +453,12 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     Content = <<"some random content: ", Random/binary>>,
     AName = <<Random/binary, "_test_credentials_file.txt">>,
     AccountId = cb_context:account_id(ContextAcc),
+    %% Create dummy document where the attachment(s) will be attached to.
+    %% TODO: move this tmpdoc creation to maybe_check_storage_settings function.
     TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
                                ,<<"pvt_type">> => <<"storage_settings_probe">>
                                }),
-    {ok, Doc} = kazoo_modb:save_doc(AccountId, TmpDoc, []),
+    {ok, Doc} = kazoo_modb:save_doc(AccountId, TmpDoc),
     DbName = kazoo_modb:get_modb(AccountId),
     DocId = kz_json:get_value(<<"_id">>, Doc),
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
