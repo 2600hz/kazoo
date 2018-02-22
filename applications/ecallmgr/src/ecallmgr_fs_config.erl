@@ -436,7 +436,6 @@ maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
     lager:debug("fixed up ~s from ~s to ~s", [Key, Value, MediaName]),
     kz_json:set_value(Key, MediaName, Profile);
 maybe_convert_sound(_, _Key, _Value, Profile) ->
-    lager:debug("not updating ~s from ~s", [_Key, _Value]),
     Profile.
 
 -spec fetch_conference_config(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> fs_sendmsg_ret().

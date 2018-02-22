@@ -417,23 +417,28 @@ profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
     Language = language(Conference),
     Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT
                                    ,[<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME]
-                                   ,default_profile(Language)
+                                   ,default_profile(Language, 'undefined')
                                    ),
     {?DEFAULT_PROFILE_NAME, Profile};
-profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME, account_id=AccountId}=Conference) ->
+profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
+                         ,account_id=AccountId
+                         }=Conference) ->
     Language = language(Conference),
+    DefaultProfile = default_profile(Language, AccountId),
+
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME]) of
-        'undefined' -> profile(Conference#kapps_conference{account_id='undefined'});
+        'undefined' -> {?DEFAULT_PROFILE_NAME, DefaultProfile};
         Profile -> {?DEFAULT_PROFILE_NAME, Profile}
     end;
 profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id='undefined'}=Conference) ->
     Language = language(Conference),
-    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME], page_profile(Language)),
+    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME], default_page_profile(Language, 'undefined')),
     [{?PAGE_PROFILE_NAME, Profile}];
 profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id=AccountId}=Conference) ->
     Language = language(Conference),
+    DefaultPageProfile = default_page_profile(Language, AccountId),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME]) of
-        'undefined' -> profile(Conference#kapps_conference{account_id='undefined'});
+        'undefined' -> {?PAGE_PROFILE_NAME, DefaultPageProfile};
         Profile -> {?PAGE_PROFILE_NAME, Profile}
     end;
 profile(#kapps_conference{profile_name='undefined'}=Conference) ->
@@ -458,29 +463,33 @@ raw_profile(#kapps_conference{profile=Profile}) -> Profile.
 set_profile(Profile, Conference) ->
     Conference#kapps_conference{profile=Profile}.
 
--spec default_profile(kz_term:ne_binary()) -> kz_json:object().
-default_profile(Language) ->
-    kz_json:from_list(update_profile_language(Language, ?DEFAULT_PROFILE_CONFIG)).
+-spec default_profile(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
+default_profile(Language, AccountId) ->
+    kz_json:from_list(update_profile_language(Language, AccountId, ?DEFAULT_PROFILE_CONFIG)).
 
--spec page_profile(kz_term:ne_binary()) -> kz_json:object().
-page_profile(Language) ->
-    kz_json:from_list(update_profile_language(Language, ?PAGE_PROFILE_CONFIG)).
+-spec default_page_profile(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
+default_page_profile(Language, AccountId) ->
+    kz_json:from_list(update_profile_language(Language, AccountId, ?PAGE_PROFILE_CONFIG)).
 
--spec update_profile_language(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
-update_profile_language(Language, Profile) ->
+-spec update_profile_language(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+update_profile_language(Language, AccountId, Profile) ->
     lists:map(fun({Key, Value}) ->
-                      update_prompt_language(kz_binary:reverse(Key), Key, Value, Language)
+                      update_prompt_language(kz_binary:reverse(Key), Key, Value, Language, AccountId)
               end
              ,Profile
              ).
 
--spec update_prompt_language(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_term:ne_binary()) ->
+-spec update_prompt_language(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                                     {kz_term:ne_binary(), kz_json:json_term()}.
-update_prompt_language(_Yek, Key, <<>> = Value, _Language) ->
+update_prompt_language(_Yek, Key, <<>> = Value, _Language, _AccountId) ->
     {Key, Value};
-update_prompt_language(<<"dnuos-", _/binary>>, Key, Value, Language) ->
-    {Key, kz_media_util:get_prompt(Value, Language)};
-update_prompt_language(_, Key, Value, _Language) ->
+update_prompt_language(_Yek, Key, <<"tone_stream://", _/binary>> = Value, _Language, _AccountId) ->
+    {Key, Value};
+update_prompt_language(_Yek, Key, <<"$${", _/binary>> = Value, _Language, _AccountId) ->
+    {Key, Value};
+update_prompt_language(<<"dnuos-", _/binary>>, Key, Value, Language, AccountId) ->
+    {Key, kz_media_util:get_prompt(Value, Language, AccountId)};
+update_prompt_language(_, Key, Value, _Language, _AccountId) ->
     {Key, Value}.
 
 -spec application_name(conference()) -> kz_term:ne_binary().
