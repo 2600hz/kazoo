@@ -360,9 +360,12 @@ load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
     of
         'false' -> Context;
         {'ok', Results} ->
-            JObjs = [kz_json:get_value(<<"doc">>, Result)
+            JObjs = [kz_json:get_json_value(<<"doc">>, Result)
                      || Result <- Results,
-                        crossbar_filter:by_doc(kz_json:get_value(<<"doc">>, Result), Context)
+                        %% if there are no filters, include doc
+                        %% otherwise run filters against doc for inclusion
+                        (not crossbar_filter:is_defined(Context))
+                            orelse crossbar_filter:by_doc(kz_json:get_json_value(<<"doc">>, Result), Context)
                     ],
             RespData = cb_context:resp_data(Context),
             cb_context:set_resp_data(Context, RespData ++ normalize_cdrs(Context, RespType, JObjs));

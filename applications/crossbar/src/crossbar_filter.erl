@@ -106,6 +106,7 @@ by_doc(Doc, Context) ->
 
 -spec by_doc(kz_term:api_object(), cb_context:context(), boolean()) -> boolean().
 by_doc(_, _, 'false') ->
+    lager:debug("no filters defined"),
     'true';
 by_doc('undefined', _, 'true') ->
     lager:debug("no doc was returned (no include_docs?)"),
@@ -193,8 +194,15 @@ filter_doc_by_querystring(Doc, QueryString) ->
 -spec should_filter_doc(kz_json:object(), kz_term:ne_binary(), kz_json:json_term()) -> boolean().
 should_filter_doc(Doc, K, V) ->
     try filter_prop(Doc, K, V) of
-        'undefined' -> 'true';
-        Bool -> Bool
+        'undefined' ->
+            lager:debug("should include doc based on key: ~s value: ~p", [K, V]),
+            'true';
+        'true' ->
+            lager:debug("should include doc based on key: ~s value: ~p", [K, V]),
+            'true';
+        'false' ->
+            lager:debug("should not include doc based on key: ~s value: ~p", [K, V]),
+            'false'
     catch
         _E:_R ->
             lager:debug("failed to process filter ~s: ~s:~p", [K, _E, _R]),
