@@ -36,11 +36,11 @@
 -type state() :: #state{}.
 
 -type init_retval() :: {'ok', state()} | {'stop', any()}.
--type partial_connection()   :: #{name       => inaka_apns_connection:name()
+-type partial_connection()   :: #{name       => apns_connection:name()
                                  ,certdata   => binary()
                                  ,keydata    => {'RSAPrivateKey', binary()}
                                  ,timeout    => integer()
-                                 ,type       => inaka_apns_connection:type()
+                                 ,type       => apns_connection:type()
                                  }.
 
 
@@ -82,16 +82,23 @@ handle_cast({'push', {RegistrationId, Message, ExtraParams}}, #state{name=Name, 
                },
     Notification = #{aps => #{alert => Message}
                     ,metadata => kz_json:to_map(props:get_value(<<"metadata">>, ExtraParams))},
-    case inaka_apns:push_notification(Name, RegistrationId, Notification, Headers) of
+    case apns:push_notification(Name, RegistrationId, Notification, Headers) of
         {'timeout', _StreamId} ->
             lager:info("apns notification timed out in connection"),
             {'noreply', State};
         {200, _, _} ->
             lager:debug("apns notification sent successfully"),
+            {'noreply', State};
+        {_, [{<<"apns-id">>, Id}], Err} ->
+            lager:error("Error delivering notification: ~s - ~p", [Id, Err]),
+            {'noreply', State};
+        _ ->
             {'noreply', State}
     end;
 handle_cast('stop', State) ->
-    {'stop', 'normal', State}.
+    {'stop', 'normal', State};
+handle_cast(_, State) ->
+    {'noreply', State}.
 
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_, State) ->
@@ -100,7 +107,7 @@ handle_info(_, State) ->
 -spec terminate(any(), state()) -> 'ok'.
 terminate(Reason, #state{pid=Pid}) ->
     lager:info("nv_apns terminating with reason: ~p. Destroying apns connection", [Reason]),
-    inaka_apns:close_connection(Pid),
+    apns:close_connection(Pid),
     'ok'.
 
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -121,13 +128,13 @@ push(Srv, RegistrationId, Message, ExtraParams) ->
 init_apns_connection(<<"dev">>, Connection, Name, Topic) ->
     lager:debug("Creating dev apns connection: ~p", [Name]),
     NewConnection = Connection#{apple_host => ?DEV_HOST, apple_port => ?DEV_PORT},
-    {'ok', Pid} = inaka_apns:connect(NewConnection),
+    {'ok', Pid} = apns:connect(NewConnection),
     {'ok', #state{name=Name, topic=Topic, pid=Pid}};
 
 init_apns_connection(<<"prod">>, Connection, Name, Topic) ->
     lager:debug("Creating prod apns connection: ~p", [Name]),
     NewConnection = Connection#{apple_host => ?PROD_HOST, apple_port => ?PROD_PORT},
-    {'ok', Pid} = inaka_apns:connect(NewConnection),
+    {'ok', Pid} = apns:connect(NewConnection),
     {'ok', #state{name=Name, topic=Topic, pid=Pid}}.
 
 -spec get_true_topic(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().

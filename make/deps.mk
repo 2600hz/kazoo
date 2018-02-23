@@ -16,6 +16,7 @@ DEPS = amqp_client \
 	erlydtl \
 	escalus \
 	exml \
+        fcm \
 	folsom \
 	fs_event \
 	fs_sync \
@@ -62,6 +63,7 @@ dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50
 dep_eiconv = git https://github.com/zotonic/eiconv
 dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
 dep_exml = git https://github.com/paulgray/exml 2.2.1
+dep_fcm = git https://github.com/softwarejoint/fcm-erlang.git
 dep_jiffy = git https://github.com/fenollp/jiffy patch-1  ## See https://github.com/davisp/jiffy/pull/152
 dep_jsx = git https://github.com/talentdeficit/jsx v2.8.2 ## inaka apns dependency
 dep_meck = git https://github.com/eproxus/meck

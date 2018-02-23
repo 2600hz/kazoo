@@ -14,8 +14,8 @@
 
                  , lager
 
+                 , apns
                  , fcm
-                 , inaka_apns
                  ]},
   {mod, {navi_app, []}}
  ]}.
