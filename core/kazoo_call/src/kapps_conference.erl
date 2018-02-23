@@ -468,7 +468,7 @@ build_system_profile(Conference) ->
                                            ,[<<"profiles">>, Language, ProfileName]
                                            ,default_profile(Language, 'undefined')
                                            ),
-    
+
     case kapps_config:get_json(?CONFERENCE_CONFIG_CAT
                                           ,[<<"profiles">>, ProfileName]
                                           )
