@@ -155,10 +155,10 @@
 %%% Internal Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Notify Update Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec notify_update_definition() -> kapi_definition:api().
 notify_update_definition() ->
     #kapi_definition{name = <<"notify_update">>
@@ -182,10 +182,10 @@ notify_update_definition() ->
                               ]
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Skeleton API Notification definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec skel_definition() -> kapi_definition:api().
 skel_definition() ->
     #kapi_definition{name = <<"skel">>
@@ -209,10 +209,10 @@ skel_definition() ->
 %%% Account Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Account Zone Notification Change API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_zone_change_definition() -> kapi_definition:api().
 account_zone_change_definition() ->
     #kapi_definition{name = <<"account_zone_change">>
@@ -230,10 +230,10 @@ account_zone_change_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"account_zone_change">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Low Balance Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec low_balance_definition() -> kapi_definition:api().
 low_balance_definition() ->
     #kapi_definition{name = <<"low_balance">>
@@ -251,10 +251,10 @@ low_balance_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"low_balance">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get New Account Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec new_account_definition() -> kapi_definition:api().
 new_account_definition() ->
     #kapi_definition{name = <<"new_account">>
@@ -275,10 +275,10 @@ new_account_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"new_account">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get New Service Notification Addition (from service audit log) API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec service_added_definition() -> kapi_definition:api().
 service_added_definition() ->
     #kapi_definition{name = <<"service_added">>
@@ -313,7 +313,7 @@ service_added_definition() ->
 %%-----------------------------------------------------------------------------%% Top-up
 %% @doc Get same headers Notification for top-up and transaction API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec topup_definition() -> kapi_definition:api().
 topup_definition() ->
     #kapi_definition{name = <<"topup">>
@@ -338,7 +338,7 @@ topup_definition() ->
 %%-----------------------------------------------------------------------------%% Transaction
 %% @doc Get same headers Notification for top-up and transaction API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec transaction_definition() -> kapi_definition:api().
 transaction_definition() ->
     #kapi_definition{name = <<"transaction">>
@@ -365,10 +365,10 @@ transaction_definition() ->
 %%% Fax Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Fax Inbound Notification (New Inbound Fax) API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec inbound_fax_definition() -> kapi_definition:api().
 inbound_fax_definition() ->
     #kapi_definition{name = <<"inbound_fax">>
@@ -401,10 +401,10 @@ inbound_fax_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"inbound_fax">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Fax Inbound Notification Error API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec inbound_fax_error_definition() -> kapi_definition:api().
 inbound_fax_error_definition() ->
     #kapi_definition{name = <<"inbound_fax_error">>
@@ -439,10 +439,10 @@ inbound_fax_error_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"inbound_fax_error">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Fax Outbound Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec outbound_fax_definition() -> kapi_definition:api().
 outbound_fax_definition() ->
     #kapi_definition{name = <<"outbound_fax">>
@@ -472,10 +472,10 @@ outbound_fax_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"outbound_fax">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Fax Outbound Notification Error API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec outbound_fax_error_definition() -> kapi_definition:api().
 outbound_fax_error_definition() ->
     #kapi_definition{name = <<"outbound_fax_error">>
@@ -505,10 +505,10 @@ outbound_fax_error_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"outbound_fax_error">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Fax Outbound Notification SMTP Error API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec outbound_smtp_fax_error_definition() -> kapi_definition:api().
 outbound_smtp_fax_error_definition() ->
     #kapi_definition{name = <<"outbound_smtp_fax_error">>
@@ -538,10 +538,10 @@ outbound_smtp_fax_error_definition() ->
 %%% Number and Port Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Cnam Request Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cnam_request_definition() -> kapi_definition:api().
 cnam_request_definition() ->
     #kapi_definition{name = <<"cnam_request">>
@@ -575,10 +575,10 @@ cnam_request_definition() ->
                                ,<<"Reason">>
                                     | ?DEFAULT_OPTIONAL_HEADERS
                                ]).
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Port Cancel Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_cancel_definition() -> kapi_definition:api().
 port_cancel_definition() ->
     #kapi_definition{name = <<"port_cancel">>
@@ -595,10 +595,10 @@ port_cancel_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_cancel">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Port Comment Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_comment_definition() -> kapi_definition:api().
 port_comment_definition() ->
     #kapi_definition{name = <<"port_comment">>
@@ -616,10 +616,10 @@ port_comment_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_comment">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Port Pending Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_pending_definition() -> kapi_definition:api().
 port_pending_definition() ->
     #kapi_definition{name = <<"port_pending">>
@@ -636,10 +636,10 @@ port_pending_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_pending">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Port Rejected Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_rejected_definition() -> kapi_definition:api().
 port_rejected_definition() ->
     #kapi_definition{name = <<"port_rejected">>
@@ -656,10 +656,10 @@ port_rejected_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_rejected">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Port Request Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_request_definition() -> kapi_definition:api().
 port_request_definition() ->
     #kapi_definition{name = <<"port_request">>
@@ -678,10 +678,10 @@ port_request_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_request">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Port Scheduled Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_scheduled_definition() -> kapi_definition:api().
 port_scheduled_definition() ->
     #kapi_definition{name = <<"port_scheduled">>
@@ -698,10 +698,10 @@ port_scheduled_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_scheduled">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Port Unconfirmed Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec port_unconfirmed_definition() -> kapi_definition:api().
 port_unconfirmed_definition() ->
     #kapi_definition{name = <<"port_unconfirmed">>
@@ -718,10 +718,10 @@ port_unconfirmed_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"port_unconfirmed">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Ported API Notification definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec ported_definition() -> kapi_definition:api().
 ported_definition() ->
     #kapi_definition{name = <<"ported">>
@@ -744,10 +744,10 @@ ported_definition() ->
 %%% Register Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Denied Emergency Notification Bridge API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec denied_emergency_bridge_definition() -> kapi_definition:api().
 denied_emergency_bridge_definition() ->
     #kapi_definition{name = <<"denied_emergency_bridge">>
@@ -776,10 +776,10 @@ denied_emergency_bridge_definition() ->
 %%% SIP Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Deregister API Notification definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec deregister_definition() -> kapi_definition:api().
 deregister_definition() ->
     #kapi_definition{name = <<"deregister">>
@@ -818,10 +818,10 @@ deregister_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"deregister">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get First Occurrence Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec first_occurrence_definition() -> kapi_definition:api().
 first_occurrence_definition() ->
     #kapi_definition{name = <<"first_occurrence">>
@@ -839,10 +839,10 @@ first_occurrence_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"first_occurrence">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Missed Call Notification Alert API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec missed_call_definition() -> kapi_definition:api().
 missed_call_definition() ->
     #kapi_definition{name = <<"missed_call">>
@@ -872,10 +872,10 @@ missed_call_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"missed_call">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Register API Notification definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec register_definition() -> kapi_definition:api().
 register_definition() ->
     #kapi_definition{name = <<"register">>
@@ -917,10 +917,10 @@ register_definition() ->
 %%% System Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get System Alert Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec system_alert_definition() -> kapi_definition:api().
 system_alert_definition() ->
     #kapi_definition{name = <<"system_alert">>
@@ -952,10 +952,10 @@ system_alert_definition() ->
 %%% User Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Customer Update Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec customer_update_definition() -> kapi_definition:api().
 customer_update_definition() ->
     #kapi_definition{name = <<"customer_update">>
@@ -977,10 +977,10 @@ customer_update_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"customer_update">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get New User Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec new_user_definition() -> kapi_definition:api().
 new_user_definition() ->
     #kapi_definition{name = <<"new_user">>
@@ -1000,10 +1000,10 @@ new_user_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"new_user">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Password Recovery Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec password_recovery_definition() -> kapi_definition:api().
 password_recovery_definition() ->
     #kapi_definition{name = <<"password_recovery">>
@@ -1034,10 +1034,10 @@ password_recovery_definition() ->
 %%% Voicemail Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Voicemail full Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec voicemail_full_definition() -> kapi_definition:api().
 voicemail_full_definition() ->
     #kapi_definition{name = <<"voicemail_full">>
@@ -1074,10 +1074,10 @@ voicemail_full_definition() ->
                                         ,<<"Voicemail-Transcription">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Voicemail New Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec voicemail_new_definition() -> kapi_definition:api().
 voicemail_new_definition() ->
     #kapi_definition{name = <<"voicemail_new">>
@@ -1093,10 +1093,10 @@ voicemail_new_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"voicemail_new">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Voicemail Saved Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec voicemail_saved_definition() -> kapi_definition:api().
 voicemail_saved_definition() ->
     #kapi_definition{name = <<"voicemail_saved">>
@@ -1118,10 +1118,10 @@ voicemail_saved_definition() ->
 %%% Webhook Notifications Definitions
 %%%=============================================================================
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Get Webhook Callflow Notification API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec webhook_definition() -> kapi_definition:api().
 webhook_definition() ->
     #kapi_definition{name = <<"webhook">>
@@ -1141,10 +1141,10 @@ webhook_definition() ->
                     ,values = ?NOTIFY_VALUES(<<"webhook">>)
                     ,types = []
                     }.
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Notification Get Webhook Disabled API definition.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec webhook_disabled_definition() -> kapi_definition:api().
 webhook_disabled_definition() ->
     #kapi_definition{name = <<"webhook_disabled">>

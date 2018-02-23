@@ -1,9 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% mwi
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc Message Wait Indicator utilities.
+%%% @author Luis Lazedo
 %%% @end
-%%% @contributors
 %%%-------------------------------------------------------------------
 -module(kvm_mwi).
 
@@ -22,11 +21,10 @@
 
 -define(MWI_SEND_UNSOLICITED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc Generate database name based on DocId
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec notify_vmbox(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 notify_vmbox(Account, BoxId) ->
@@ -162,12 +160,9 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
             send_unsolicited_mwi_update(New, Saved, Username, Realm)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
+%%------------------------------------------------------------------------------
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type vm_count() :: non_neg_integer().
 -spec send_unsolicited_mwi_update(vm_count(), vm_count(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_unsolicited_mwi_update(New, Saved, Username, Realm) ->
@@ -195,12 +190,9 @@ vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
+%%------------------------------------------------------------------------------
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_endpoint_owner(kz_json:object()) -> kz_term:api_ne_binary().
 get_endpoint_owner(JObj) ->
     maybe_get_endpoint_hotdesk_owner(JObj).

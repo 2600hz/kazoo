@@ -155,10 +155,10 @@ close(Channel, [#'queue.declare'{queue=Queue}|Commands]) when is_pid(Channel) ->
 close(Channel, [_|Commands]) ->
     close(Channel, Commands).
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish a message only if there is an existing channel assignment.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_publish(basic_publish(), amqp_msg()) -> 'ok'.
 maybe_publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
     case maybe_split_routing_key(RoutingKey) of
@@ -171,10 +171,10 @@ maybe_publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
                          )
     end.
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Publish will wait up to 5 seconds for a valid channel before publishing.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish(basic_publish(), amqp_msg()) -> 'ok'.
 publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
     case maybe_split_routing_key(RoutingKey) of
