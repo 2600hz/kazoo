@@ -9,39 +9,37 @@
 
 -include("conference.hrl").
 
--spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
-handle_req(JObj, _Options) ->
-    'true' = kapi_conference:discovery_req_v(JObj),
-    Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
+-spec handle_req(kapi_conference:discovery_req(), kz_term:proplist()) -> any().
+handle_req(DiscoveryReq, _Options) ->
+    'true' = kapi_conference:discovery_req_v(DiscoveryReq),
+    Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, DiscoveryReq)),
     _ = kapps_call_command:set(kz_json:from_list([{<<"Is-Conference">>, <<"true">>}]), 'undefined', Call),
     kapps_call:put_callid(Call),
     case conf_participant_sup:start_participant(Call) of
         {'ok', Srv} ->
-            conf_participant:set_discovery_event(JObj, Srv),
+            conf_participant:set_discovery_event(DiscoveryReq, Srv),
             conf_participant:consume_call_events(Srv),
             kapps_call_command:answer(Call),
-            maybe_welcome_to_conference(Srv, create_conference(JObj, Call));
+            maybe_welcome_to_conference(Srv, create_conference(DiscoveryReq, Call));
         _Else -> discovery_failed(Call, 'undefined')
     end.
 
--spec create_conference(kz_json:object(), kapps_call:call()) -> kapps_conference:conference().
-create_conference(JObj, Call) ->
-    ConferenceId = kz_json:get_value(<<"Conference-ID">>, JObj),
-    create_conference(ConferenceId, JObj, Call).
+-spec create_conference(kapi_conference:discover_req(), kapps_call:call()) -> kapps_conference:conference().
+create_conference(DiscoveryReq, Call) ->
+    create_conference(DiscoveryReq, Call, kz_json:get_binary_ne_value(<<"Conference-ID">>, DiscoveryReq)).
 
--spec create_conference(kz_term:api_binary(), kz_json:object(), kapps_call:call()) -> kapps_conference:conference().
-create_conference('undefined', JObj, Call) ->
-    kapps_conference:set_call(Call, kapps_conference:from_json(JObj));
-create_conference(ConferenceId, JObj, Call) ->
-    AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:open_doc(AccountDb, ConferenceId) of
+-spec create_conference(kapi_conference:discovery_req(), kapps_call:call(), kz_term:api_ne_binary()) -> kapps_conference:conference().
+create_conference(DiscoveryReq, Call, 'undefined') ->
+    kapps_conference:set_call(Call, kapps_conference:from_json(DiscoveryReq));
+create_conference(DiscoveryReq, Call, ConferenceId) ->
+    case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), ConferenceId) of
         {'ok', Doc} ->
             lager:debug("discovery request contained a valid conference id, building object"),
-            J = kz_json:set_value(<<"Conference-Doc">>, Doc, JObj),
-            kapps_conference:set_call(Call, kapps_conference:from_json(J));
+            WithConferenceDoc = kz_json:set_value(<<"Conference-Doc">>, Doc, DiscoveryReq),
+            kapps_conference:set_call(Call, kapps_conference:from_json(WithConferenceDoc));
         _Else ->
             lager:debug("could not find specified conference id ~s: ~p", [ConferenceId, _Else]),
-            kapps_conference:set_call(Call, kapps_conference:from_json(JObj))
+            kapps_conference:set_call(Call, kapps_conference:from_json(DiscoveryReq))
     end.
 
 -spec maybe_welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
