@@ -452,11 +452,14 @@ build_account_profile(Conference) ->
 
     DefaultProfile = default_profile(Language, AccountId),
 
-    LanguageProfile = kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName], DefaultProfile),
+    LanguageProfile = kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]),
+    Profile = kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, ProfileName]),
 
-    case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
-        'undefined' -> {ProfileName, LanguageProfile};
-        Profile -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
+    case {LanguageProfile, Profile} of
+        {'undefined', 'undefined'} -> {ProfileName, DefaultProfile};
+        {'undefined', Profile} -> {ProfileName, Profile};
+        {LanguageProfile, 'undefined'} -> {ProfileName, LanguageProfile};
+        {LanguageProfile, Profile} -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
 -spec build_system_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
