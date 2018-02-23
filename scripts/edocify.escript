@@ -6,7 +6,7 @@
 
 -export([main/1]).
 
--define(SEP(I, C), <<(binary:copy(<<$%>>, I))/binary, (binary:copy(C, 67))/binary>>).
+-define(SEP(I, C, L), <<(binary:copy(<<$%>>, I))/binary, (binary:copy(C, L))/binary>>).
 
 %% regex for evil spec+specs
 -define(REGEX_SPECSPEC, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' --nogroup '^\\-spec[^.]+\\.$(\\n+\\-spec[^.]+\\.$)+' core/ applications/").
@@ -15,7 +15,8 @@
 -define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/").
 
 %% regex to find `@public' tag.
--define(REGEX_PUBLIC_TAG, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%+ *@public' core/ applications/").
+%% TODO: remove private tag from this regex in a distant future.
+-define(REGEX_PUBLIC_TAG, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public|private)' core/ applications/").
 
 %% regex for spec tag in comments: any comments which starts with `@spec' follow by anything (optional one time new line)
 %% until it ends (for single line @spec) any ending with `)' or `}' or any string at the end of the line (should be last regex otherwise
@@ -33,6 +34,10 @@
 
 %% regex for finding comment block with no @end
 -define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '^%%*[ ]*@doc[^\\n]*$(\\n^(?!(%%* *@end|%%* ?--+$|%%* ?==+$))^%%[^\\n]*$)*(\\n%%* ?(--+|==+)$)' core/ applications/").
+
+%% regex for separator lines with length lower than 78 (for %%) or 77 (for %%%).
+-define(REGEX_INCREASE_SEP_LENGTH_2, "ag -G '(erl|erl.src|hrl|hrl.src)$' '^%% *-{50,77}$' applications/*/{include,src}/** core/*/{include,src}/**").
+-define(REGEX_INCREASE_SEP_LENGTH_3, "ag -G '(erl|erl.src|hrl|hrl.src)$' '^%%%+ *={50,76}$' applications/*/{include,src}/** core/*/{include,src}/**").
 
 %% regex for finding first comment line after `@doc'
 -define(REGEX_TO_DOC_LINE, "ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/").
@@ -55,6 +60,8 @@ main(_) ->
           ,{?REGEX_SEP_SPEC, "adding missing comments block after separator", fun missing_comment_blocks_after_sep/1}
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
+          ,{?REGEX_INCREASE_SEP_LENGTH_2, "increase separator line (starts with %%) length", fun(R) -> increase_sep_length(R, <<"-">>) end}
+          ,{?REGEX_INCREASE_SEP_LENGTH_3, "increase separator line (starts with %%&) length", fun(R) -> increase_sep_length(R, <<"=">>) end}
           ,{?REGEX_TO_DOC_LINE, "move first comment line to the same line as @doc", fun move_to_doc_line/1}
            %% must be last thing to run
           ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
@@ -271,7 +278,7 @@ edocify_header(File) ->
     save_lines(File, edocify_header(Module, Header, []) ++ OtherLines).
 
 edocify_header(Module, [], Header) ->
-    [?SEP(3, <<$=>>)] ++ Header ++ [<<"%%% @end">>, ?SEP(3, <<$=>>)] ++ Module;
+    [?SEP(3, <<$=>>, 77)] ++ Header ++ [<<"%%% @end">>, ?SEP(3, <<$=>>, 77)] ++ Module;
 edocify_header(Module, [<<"@contributors", _/binary>>|T], Header) ->
     Authors = [<<"%%% @author ", Author/binary>>
                    || A <- T,
@@ -535,6 +542,47 @@ do_comment_blocks_with_no_end([{LN, Line}|Lines], Positions, Formatted) ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [Line]);
         true ->
             do_comment_blocks_with_no_end(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @end">>, Line])
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Increase separator line length.
+%%
+%% Ag sample output:
+%% ``
+%% applications/konami/src/konami_listener.erl:3:%%-------_more_---
+%% applications/konami/src/konami_listener.erl:5:%%-------_more_---
+%% '''
+%%
+%% Expected outcome:
+%% * For `%%' separator, there should be 78 `-'
+%% * For `%%%' separator, there should be 77 `='
+%% * for both cases any spaces between comment character and separator should be remove.
+%% @end
+%%------------------------------------------------------------------------------
+increase_sep_length(Result, SepChar) ->
+    Positions = collect_positions_per_file([Line || Line <- binary:split(Result, <<"\n">>, [global]), Line =/= <<>>], #{}),
+    Separator = make_me_sep(SepChar),
+    _ = maps:map(fun(F, P) -> increase_sep_length(F, P, Separator) end, Positions),
+    'ok'.
+
+make_me_sep(S = <<"-">>) ->
+    ?SEP(2, S, 78);
+make_me_sep(S = <<"=">>) ->
+    ?SEP(3, S, 77).
+
+increase_sep_length(File, Positions, Separator) ->
+    io:format("."),
+    Lines = read_lines(File, true),
+    save_lines(File, do_increase_sep_length(Lines, Positions, Separator, [])).
+
+do_increase_sep_length([], _, _, Formatted) ->
+    Formatted;
+do_increase_sep_length([{LN, Line}|Lines], Positions, Separator, Formatted) ->
+    case lists:member(LN, Positions) of
+        true ->
+            do_increase_sep_length(Lines, Positions, Separator, Formatted ++ [Separator]);
+        false ->
+            do_increase_sep_length(Lines, Positions, Separator, Formatted ++ [Line])
     end.
 
 %%------------------------------------------------------------------------------
