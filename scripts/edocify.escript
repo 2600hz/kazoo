@@ -3,6 +3,8 @@
 %% -*- coding: utf-8 -*-
 
 -mode(compile).
+-compile(nowarn_unused_function).
+-compile(nowarn_unused_vars).
 
 -export([main/1]).
 
@@ -67,7 +69,7 @@ main(_) ->
           ,{?REGEX_CB_RESOURCE_EXISTS_COMMENT, "escape code block for 'resource_exists' function crossbar modules", fun cb_resource_exists_comments/1}
           ,{?REGEX_COMMENT_BLOCK_WITH_NO_END, "fix comment blocks with no @end", fun comment_blocks_with_no_end/1}
           ,{?REGEX_INCREASE_SEP_LENGTH_2, "increase separator line (starts with %%) length", fun(R) -> increase_sep_length(R, <<"-">>) end}
-          ,{?REGEX_INCREASE_SEP_LENGTH_3, "increase separator line (starts with %%&) length", fun(R) -> increase_sep_length(R, <<"=">>) end}
+          ,{?REGEX_INCREASE_SEP_LENGTH_3, "increase separator line (starts with %%%) length", fun(R) -> increase_sep_length(R, <<"=">>) end}
           ,{?REGEX_TO_DOC_LINE, "move first comment line to the same line as @doc", fun move_to_doc_line/1}
            %% must be last thing to run
           ,{?REGEX_DOC_TAG_EMPTY_COMMENT, "remove empty comment line after @doc", fun remove_doc_tag_empty_comment/1}
@@ -377,7 +379,7 @@ edocify_header(File) ->
     save_lines(File, edocify_header(Module, Header, []) ++ OtherLines).
 
 edocify_header(Module, [], Header) ->
-    [?SEP(3, <<$=>>, 77)] ++ Header ++ [<<"%%% @end">>, ?SEP(3, <<$=>>, 77)] ++ Module;
+    [?SEP(3, <<$->>, 77)] ++ Header ++ [<<"%%% @end">>, ?SEP(3, <<$->>, 77)] ++ Module;
 edocify_header(Module, [<<"@contributors", _/binary>>|T], Header) ->
     Authors = [<<"%%% @author ", Author/binary>>
                    || A <- T,
@@ -398,7 +400,13 @@ edocify_header(Module, [<<"@Contributions", Rest/binary>>|T], Header) ->
     %% mind you it is `Contributions' not `Contributors'
     edocify_header(Module, [<<"@contributors", " ", Rest/binary>>|T], Header);
 edocify_header(Module, [H|T], Header) ->
-    case is_seprator_chars(strip_right_spaces(strip_left_spaces(H)), [<<$=>>, <<$->>]) of
+    Striped = strip_right_spaces(strip_left_spaces(H)),
+    case Striped =/= <<"@end">>
+        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+    of
+        false ->
+            %% removing end tag to add it later
+            edocify_header(Module, T, Header);
         {true, _} ->
             %% removing separator to replace later
             edocify_header(Module, T, Header);
@@ -733,12 +741,18 @@ do_move_to_doc_line([{LN, Line}|Lines], Positions, Formatted) ->
             %% remove empty comment line
             do_move_to_doc_line(Lines, Positions, Formatted);
         <<"@doc">> ->
-            %% remove empty `@doc' line, adding later after we found the first non empty comment line
-            do_move_to_doc_line(Lines, Positions, Formatted);
+            PerCount = count_precent(Line),
+            %% add doc tag in case there is no non-empty comment lines so we don't loose the doc tag
+            do_move_to_doc_line(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>]);
         Rest ->
             %% this clause should only match once for the first non empty comment line
             PerCount = count_precent(Line),
-            do_move_to_doc_line(Lines, Positions, Formatted ++ [<<(binary:copy(<<$%>>, PerCount))/binary, " @doc ", Rest/binary>>])
+            DocTagLine = <<(binary:copy(<<$%>>, PerCount))/binary, " @doc">>,
+            NewForm = case lists:last(Formatted) of
+                          DocTagLine -> lists:droplast(Formatted);
+                          _ -> Formatted
+                      end,
+            do_move_to_doc_line(Lines, Positions, NewForm ++ [<<(DocTagLine)/binary, " ", Rest/binary>>])
     end.
 
 %%------------------------------------------------------------------------------
