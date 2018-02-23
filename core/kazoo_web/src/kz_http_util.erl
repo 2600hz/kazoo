@@ -104,10 +104,10 @@ encode_char(Char) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Parses a query string and returns a list of key->value pairs.
-%% If the input string contains a ? then everything after the ? will
+%% @doc Parses a query string and returns a list of key-value pairs.
+%% If the input string contains a `?' then everything after the `?' will
 %% be treated as the query string, otherwise the entire input is treated
-%% as the query string. The return key->value pairs will be urldecoded.
+%% as the query string. The return key-value pairs will be URL decoded.
 %% @end
 %%------------------------------------------------------------------------------
 -spec parse_query_string(binary()) -> [{binary(), binary()}].
@@ -232,7 +232,7 @@ urlsplit_l(<<C, R/binary>>, Acc) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Splits and returns the path, query string, and fragment portions
-%% of the URL
+%% of the URL.
 %% @end
 %%------------------------------------------------------------------------------
 -spec urlsplit_p(binary(), binary()) -> {binary(), binary(), binary()}.
@@ -275,8 +275,15 @@ urlunsplit({S, N, P, Q, F}) ->
 
     iolist_to_binary([Us, N, P, Uq, Uf]).
 
-%% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
-%%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
+%%------------------------------------------------------------------------------
+%% @doc Convert JSON object to encoded query string.
+%%
+%% Example: take JObj
+%% `{key1: val1, key2: [v2_1, v2_2], key3: {k3_1: v3_1}}'
+%% will returns:
+%% `key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1'
+%% @end
+%%------------------------------------------------------------------------------
 -spec json_to_querystring(object()) -> iolist().
 json_to_querystring(JObj) -> json_to_querystring(JObj, <<>>).
 
@@ -334,6 +341,10 @@ encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
     encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, urlencode(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
+%%------------------------------------------------------------------------------
+%% @doc Converts HTTP status code to reason.
+%% @end
+%%------------------------------------------------------------------------------
 -spec http_code_to_status_line(atom() | pos_integer()) -> kz_term:ne_binary().
 %% 4×× Client Error
 http_code_to_status_line(400) -> <<"Bad Request">>;

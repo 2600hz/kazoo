@@ -21,8 +21,10 @@
 -export([options/1, set_options/2]).
 
 -type req_url() :: kz_term:ne_binary().
--type resp_code() :: pos_integer() | atom(). %% 400, 404, 409, etc.
--type resp_body() :: binary() | bitstring() | atom(). %% encoded map() | <<"example">> | 'not_found' | 'return_id_missing' | etc.
+-type resp_code() :: pos_integer() | atom().
+%% HTTP status codes line `400', `404', `409', etc.
+-type resp_body() :: binary() | bitstring() | atom().
+%% Response body in forms of binary encoded of `map()' or literal binary `<<"example">>' or atoms like `not_found' or `return_id_missing', etc.
 -type resp_headers() :: kz_term:proplist().
 
 -type extended_error() :: #{'db_name' => gen_attachment:db_name()
@@ -166,13 +168,17 @@ options(#{'options' := Options}) ->
 set_options(ExtendedError, Options) ->
     ExtendedError#{'options' => Options}.
 
-%% =======================================================================================
-%% Internal functions
-%% =======================================================================================
-%% There are some errors for which the attachment handlers don't get an error_code nor a
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc There are some errors for which the attachment handlers don't get an error_code nor a
 %% resp_body, so this function tries to return some meaningful default routines based on
 %% the error reason. Thus, no need to call `[{fun kz_att_error:set_resp_code/2, 401} | Routines]'
 %% in every place we return `oauth_failure' error.
+%% @end
+%%------------------------------------------------------------------------------
 default_routines('oauth_failure') ->
     [{fun set_resp_code/2, 401}, {fun set_resp_body/2, <<>>}];
 default_routines(_) ->
