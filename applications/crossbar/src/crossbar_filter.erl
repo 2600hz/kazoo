@@ -84,15 +84,21 @@ is_defined(Context) ->
 %%--------------------------------------------------------------------
 -spec is_only_time_filter(cb_context:context(), kz_term:ne_binary()) -> boolean().
 is_only_time_filter(Context, FilterKey) ->
-    Fun = fun({<<"created_from">>, _}) -> 'true';
-             ({<<"created_to">>, _}) -> 'true';
-             ({<<"modified_from">>, _}) -> 'true';
-             ({<<"modified_to">>, _}) -> 'true';
-             ({Key, _}) ->
-                  Key =/= <<FilterKey/binary, "_from">>
-                      andalso Key =/= <<FilterKey/binary, "_to">>
-          end,
-    kz_json:all(Fun, cb_context:query_string(Context)).
+    QueryString = cb_context:query_string(Context),
+
+    case kz_term:is_empty(QueryString) of
+        'true' -> 'false';
+        'false' ->
+            Fun = fun({<<"created_from">>, _}) -> 'true';
+                     ({<<"created_to">>, _}) -> 'true';
+                     ({<<"modified_from">>, _}) -> 'true';
+                     ({<<"modified_to">>, _}) -> 'true';
+                     ({Key, _}) ->
+                          Key =:= <<FilterKey/binary, "_from">>
+                              orelse Key =:= <<FilterKey/binary, "_to">>
+                  end,
+            kz_json:all(Fun, cb_context:query_string(Context))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
