@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_sms_offnet).
 
 -include("doodle.hrl").
@@ -15,12 +13,10 @@
 
 -define(DEFAULT_EVENT_WAIT, 10 * ?MILLISECONDS_IN_SECOND).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     cf_sms_resources:handle(kz_json:set_value(<<"use_local_resources">>, 'false', Data), Call).

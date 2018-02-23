@@ -1,17 +1,22 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Handles starting/stopping a call recording
+%%% @doc Handles starting/stopping a call recording.
 %%%
-%%% "data":{
-%%%   "time_limit":600 // in seconds, how long to record the call
-%%%   ,"format":["mp3","wav"] // what format to store the recording in
-%%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`time_limit'</dt>
+%%%   <dd>How long to record the call, in seconds. Default is 600 seconds.</dd>
+%%%
+%%%   <dt>`format'</dt>
+%%%   <dd>What format to store the recording in, e.g. `mp3' or `wav'.</dd>
+%%%
+%%%   <dt>`url'</dt>
+%%%   <dd>What URL to PUT the file to.</dd>
+%%% </dl>
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_record_caller).
 
 -behaviour(gen_cf_action).
@@ -20,11 +25,10 @@
 
 -include("callflow.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Url = kz_json:get_value(<<"url">>, Data),

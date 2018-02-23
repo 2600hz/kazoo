@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%% Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_transactions).
 
 -export([call_charges/2
@@ -31,12 +29,10 @@
 -type kz_transactions() :: kz_transaction:transactions().
 -export_type([kz_transactions/0]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec call_charges(kz_term:ne_binary(), kz_term:ne_binary()) -> integer().
 call_charges(Ledger, CallId) ->
     call_charges(Ledger, CallId, 'true').
@@ -112,12 +108,10 @@ call_charges(Ledger, CallId, Event, 'false') ->
             []
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Filter list of transactions by reason
+%%------------------------------------------------------------------------------
+%% @doc Filter list of transactions by reason
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_by_reason(kz_term:ne_binary(), kz_transactions()) -> kz_transactions().
 filter_by_reason(<<"only_bookkeeper">>, Transactions) ->
     {BTTransactions, LTransactions} = lists:partition(fun is_from_braintree/1, Transactions),
@@ -148,24 +142,20 @@ filter_by_reason(Reason, Transactions) ->
                         , kz_transaction:is_reason(Reason, Transaction)
     ].
 
-%% @private
 -spec is_from_braintree(kz_transaction:transaction()) -> boolean().
 is_from_braintree(Transaction) ->
     kz_transaction:description(Transaction) =:= <<"braintree transaction">>.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Keep only per minute transactions
+%%------------------------------------------------------------------------------
+%% @doc Keep only per minute transactions
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_for_per_minute(kz_transactions()) -> kz_transactions().
 filter_for_per_minute(Transactions) ->
     [Transaction || Transaction <- Transactions
                         , is_per_minute(Transaction)
     ].
 
-%% @private
 -spec is_per_minute(kz_transaction:transaction()) -> boolean().
 is_per_minute(Transaction) ->
     case kz_transaction:code(Transaction) of
@@ -174,12 +164,10 @@ is_per_minute(Transaction) ->
         _Code -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% fetch last transactions
+%%------------------------------------------------------------------------------
+%% @doc fetch last transactions
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_last(kz_term:ne_binary(), pos_integer()) ->
                         {'ok', kz_transactions()} |
                         {'error', any()}.
@@ -189,12 +177,10 @@ fetch_last(Account, Count) ->
                   ],
     fetch_local(Account, [ViewOptions]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% fetch last transactions from From to To
+%%------------------------------------------------------------------------------
+%% @doc fetch last transactions from From to To
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                    {'ok', kz_transactions()} |
                    {'error', any()}.
@@ -202,7 +188,6 @@ fetch(Account, From, To) ->
     ViewOptionsList = get_range(Account, From, To),
     fetch(Account, ViewOptionsList).
 
-%% @private
 -spec fetch(kz_term:ne_binary(), kz_term:proplists()) ->
                    {'ok', kz_transactions()} |
                    {'error', any()}.
@@ -217,7 +202,6 @@ fetch(Account, ViewOptionsList) ->
             {'ok', de_duplicate_transactions(Local, Bookkeeper)}
     end.
 
-%% @private
 -spec get_range(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                        ViewOptionsList :: kz_term:proplists().
 get_range(Account, From, To) ->
@@ -232,12 +216,10 @@ get_range(Account, From, To) ->
       end || MODb <- kazoo_modb:get_range(Account, From, To)
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% fetch last local transactions from From to To
+%%------------------------------------------------------------------------------
+%% @doc fetch last local transactions from From to To
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_local(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                          {'ok', kz_transactions()} |
                          {'error', any()}.
@@ -245,7 +227,6 @@ fetch_local(Account, From, To) ->
     ViewOptionsList = get_range(Account, From, To),
     fetch_local(Account, ViewOptionsList).
 
-%% @private
 -spec fetch_local(kz_term:ne_binary(), kz_term:proplists()) ->
                          {'ok', kz_transactions()} |
                          {'error', any()}.
@@ -253,7 +234,6 @@ fetch_local(_Account, []) -> {'ok', []};
 fetch_local(Account, ViewOptionsList) ->
     do_fetch_local(Account, ViewOptionsList, []).
 
-%% @private
 -spec do_fetch_local(kz_term:ne_binary(), kz_term:proplists(), kz_json:objects()) ->
                             {'ok', kz_transactions()} |
                             {'error', any()}.
@@ -268,14 +248,12 @@ do_fetch_local(_Account, [], ViewRes) ->
                    ],
     {'ok', Transactions}.
 
-%% @private
 -spec fetch_bookkeeper(kz_term:ne_binary(), kz_term:proplists()) ->
                               {'ok', kz_transactions()} |
                               {'error', any()}.
 fetch_bookkeeper(Account, ViewOptionsList) ->
     do_fetch_bookkeeper(Account, ViewOptionsList, []).
 
-%% @private
 -spec do_fetch_bookkeeper(kz_term:ne_binary(), kz_term:proplists(), kz_json:objects()) ->
                                  {'ok', kz_transactions()} |
                                  {'error', any()}.
@@ -290,12 +268,10 @@ do_fetch_bookkeeper(Account, [ViewOptions|ViewOptionsList], Acc) ->
 do_fetch_bookkeeper(_Account, [], Transactions) ->
     {'ok', Transactions}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% fetch last bookkeeper transactions from From to To
+%%------------------------------------------------------------------------------
+%% @doc fetch last bookkeeper transactions from From to To
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_bookkeeper(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                               {'ok', kz_transactions()} |
                               {'error', any()}.
@@ -309,12 +285,10 @@ fetch_bookkeeper(Account, From, To) ->
             {'error', <<"error while fetching bookkeeper transactions">>}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec de_duplicate_transactions(kz_transactions(), kz_transactions()) -> kz_transactions().
 de_duplicate_transactions(Transactions, BookkeeperTransactions) ->
@@ -331,7 +305,6 @@ de_duplicate_transactions([{Key, Value}|Transactions], BookkeeperTransactions, A
         'false' -> de_duplicate_transactions(Transactions, BookkeeperTransactions, [Value|Acc])
     end.
 
-%% @private
 -spec transactions_to_props(kz_transactions()) -> kz_term:proplist().
 transactions_to_props(Transactions) ->
     lists:foldl(fun transaction_to_prop_fold/2, [], Transactions).
@@ -343,12 +316,10 @@ transaction_to_prop_fold(Transaction, Acc) ->
     {Date, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     [{{Date, Amount}, Transaction}|Acc].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Save list of record
+%%------------------------------------------------------------------------------
+%% @doc Save list of record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type save_acc() :: [{'ok' | 'error', kz_transaction:transaction()}].
 
 -spec save(kz_transactions()) -> save_acc().
@@ -366,12 +337,10 @@ save([Transaction | Transactions], Acc) ->
             save(Transactions, [{'error', Transaction} | Acc])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type remove_acc() :: ['ok' | {'error', kz_transaction:transaction()}].
 
 -spec remove(kz_transactions()) -> remove_acc().
@@ -390,22 +359,18 @@ remove([Transaction | Transactions], Acc) ->
     end.
 
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec to_json(kz_transactions()) -> kz_json:objects().
 to_json(Transactions) ->
     [kz_transaction:to_json(Tr) || Tr <- Transactions].
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec to_public_json(kz_transactions()) -> kz_json:objects().
 to_public_json(Transactions) ->
     [kz_transaction:to_public_json(Tr) ||  Tr <- Transactions].

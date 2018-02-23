@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Collector of stats
+%%% @doc Collector of stats
+%%% @author James Aimonetti
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%% @author Daniel Finke
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
-%%%   Daniel Finke
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(acdc_stats).
 -behaviour(gen_listener).
 
@@ -334,13 +332,11 @@ handle_call_query(JObj, _Prop) ->
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Handle requests for the average wait time of a queue based on stats
+%%------------------------------------------------------------------------------
+%% @doc Handle requests for the average wait time of a queue based on stats
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_average_wait_time_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_average_wait_time_req(JObj, _Prop) ->
     'true' = kapi_acdc_stats:average_wait_time_req_v(JObj),
@@ -591,13 +587,11 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
             kapi_acdc_stats:publish_current_calls_resp(RespQ, Resp)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Calculate and reply with the average wait time on a queue
+%%------------------------------------------------------------------------------
+%% @doc Calculate and reply with the average wait time on a queue
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec query_average_wait_time(kz_json:object()) -> 'ok'.
 query_average_wait_time(JObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj),
@@ -626,14 +620,12 @@ query_average_wait_time(JObj) ->
            ],
     kapi_acdc_stats:publish_average_wait_time_resp(RespQ, Resp).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Calculate the average wait time given a list of finished call stat
+%%------------------------------------------------------------------------------
+%% @doc Calculate the average wait time given a list of finished call stat
 %% timestamps
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec average_wait_time_fold(list()) -> non_neg_integer().
 average_wait_time_fold(Stats) ->
     {CallCount, TotalWaitTime} = lists:foldl(fun average_wait_time_fold/2

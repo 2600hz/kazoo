@@ -1,12 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
-%%%
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_telnyx_cnam).
 -behaviour(knm_gen_provider).
 
@@ -15,13 +12,11 @@
 
 -include("knm.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is saved, and will
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is saved, and will
 %% produce notifications if the cnam object changes
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(Number) ->
@@ -38,12 +33,10 @@ save(Number, ?NUMBER_STATE_PORT_IN) ->
 save(Number, _State) ->
     Number.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is deleted
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is deleted
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     _ = disable_inbound(Number),
@@ -54,11 +47,14 @@ delete(Number) ->
                                      ]
                                     ).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%% @private
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle(knm_number:knm_number()) -> knm_number:knm_number().
 handle(Number) ->
     support_depreciated_cnam(
@@ -69,7 +65,6 @@ handle(Number) ->
        )
      ).
 
-%% @private
 -spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 handle_outbound_cnam(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
@@ -92,7 +87,6 @@ handle_outbound_cnam(Number) ->
             Number1
     end.
 
-%% @private
 -spec handle_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 handle_inbound_cnam(Number) ->
     PN = knm_number:phone_number(Number),
@@ -115,7 +109,6 @@ handle_inbound_cnam(Number) ->
             knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end.
 
-%% @private
 -spec support_depreciated_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 support_depreciated_cnam(Number) ->
     knm_services:deactivate_feature(Number, ?FEATURE_CNAM).
@@ -132,7 +125,6 @@ toggle_inbound(Number, ShouldEnable) ->
             ShouldEnable = kz_json:is_true(Key, Rep)
     end.
 
-%% @private
 set_outbound(Number, NewCNAM) ->
     Key = <<"cnam_listing_details">>,
     Body = kz_json:from_list([{Key, NewCNAM}
@@ -141,12 +133,10 @@ set_outbound(Number, NewCNAM) ->
     Rep = knm_telnyx_util:req(put, ["numbers", knm_telnyx_util:did(Number)], Body),
     NewCNAM = kz_json:get_ne_binary_value(Key, Rep).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish_cnam_update(knm_number:knm_number()) -> 'ok'.
 -ifndef(TEST).
 publish_cnam_update(Number) ->

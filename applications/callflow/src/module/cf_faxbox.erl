@@ -1,15 +1,14 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Instructs the switch to receive a fax from the caller
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Instructs the switch to receive a fax from the caller.
 %%% Stores the fax in the database and optionally emails a configured
 %%% user(s).
+%%%
+%%% @author James Aimonetti
+%%% @author Ben Wann
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Ben Wann
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_faxbox).
 
 -behaviour(gen_cf_action).
@@ -20,12 +19,10 @@
 
 -define(FAX_OPTION, [<<"media">>, <<"fax_option">>]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     FaxboxId = get_faxbox_id(Data),

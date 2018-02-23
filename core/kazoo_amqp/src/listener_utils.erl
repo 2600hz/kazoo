@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Utility functions for AMQP listeners to use to add/remove responders
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Utility functions for AMQP listeners to use to add/remove responders.
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(listener_utils).
 
 -export([add_responder/3
@@ -57,10 +55,14 @@ rm_responder(Responders, Responder, Keys) ->
           )
     ].
 
-%%--------------------------------------------------------------------
-%% Internal functions
-%%--------------------------------------------------------------------
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec is_responder_known(responders(), responder_callback()) -> boolean().
 is_responder_known(Responders, {Responder,_}=Callback) ->
     _ = maybe_load_responder(Responder),

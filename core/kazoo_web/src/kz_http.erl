@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Kazoo HTTP client
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Kazoo HTTP client
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_http).
 
 -export([req/1, req/2, req/3, req/4, req/5
@@ -61,10 +59,10 @@
 
 -define(REQ_URL_INDEX, 1).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Send synchronous request
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Send synchronous request.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec get(string()) -> ret().
 get(Url) ->
@@ -178,10 +176,10 @@ put(Url, Headers, Body) ->
 put(Url, Headers, Body, Options) ->
     req('put', Url, Headers, Body, Options).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Send a synchronous HTTP request
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Send a synchronous HTTP request.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec req(string()) -> ret().
 req(Url) ->
@@ -205,10 +203,10 @@ req(Method, Url, Hdrs, Body, Opts) ->
     Request = build_request(Method, Url, Headers, Body),
     execute_request(Method, Request, Options).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Send an asynchronous HTTP request
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Send an asynchronous HTTP request.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec async_req(pid(), kz_term:text()) -> ret().
 async_req(Pid, Url) ->
@@ -237,10 +235,10 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
                  ],
     execute_request(Method, Request, NewOptions).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Send request using httpc and handle its response
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Send request using httpc and handle its response.
+%% @end
+%%------------------------------------------------------------------------------
 -spec execute_request(method(), httpc_request(), kz_term:proplist()) -> ret().
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
@@ -254,10 +252,10 @@ execute_request(Method, Request, Opts) ->
         end,
     handle_response(timer:tc(F)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Response to caller in a proper manner
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Response to caller in a proper manner.
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_response(httpc_ret() | {pos_integer(), {method(), kz_term:text(), httpc_ret()}}) -> ret().
 handle_response({Micros, {_Method, _Url, Resp}}) when is_integer(Micros) ->
     ElapsedMs = float_to_list(Micros / ?MILLISECONDS_IN_SECOND, [{'decimals', 2}, 'compact']),
@@ -289,10 +287,10 @@ handle_response({'error', Error}=Err) ->
     lager:debug("request failed with ~p", [Error]),
     Err.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Build Authorization header using basic_auth option
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Build Authorization header using basic_auth option.
+%% @end
+%%------------------------------------------------------------------------------
 -spec maybe_basic_auth(kz_term:proplist(), kz_term:proplist()) -> {kz_term:proplist(), kz_term:proplist()}.
 maybe_basic_auth(Headers, Options) ->
     case props:get_value('basic_auth', Options) of
@@ -302,10 +300,10 @@ maybe_basic_auth(Headers, Options) ->
             BasicAuth = {"Authorization", AuthString},
             {[BasicAuth|Headers], props:delete('basic_auth', Options)}
     end.
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Build httpc request argument based on method
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Build httpc request argument based on method.
+%% @end
+%%------------------------------------------------------------------------------
 -spec build_request(method(), kz_term:text(), kz_term:proplist(), http_body()) -> httpc_request().
 build_request(Method, Url, Headers, _Body) when Method =:= 'options';
                                                 Method =:= 'get';
@@ -334,13 +332,12 @@ build_request(Method, Url, Headers, Body) when Method =:= 'post';
 
 ensure_string_headers(Headers) ->
     [{kz_term:to_list(K), kz_term:to_list(V)} || {K,V} <- Headers].
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Get options out of a propslist based on options type
 %% Two <code>HTTP_OPTIONS</code> and <code>OPTIONS</code> macros are specify
 %% which type of options should be returned.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_options(list(), kz_term:proplist()) -> kz_term:proplist().
 get_options(Type, Options) ->
     [KV || KV = {K, _V} <- Options, lists:member(K, Type)].

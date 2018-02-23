@@ -1,14 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @yright (C) 2011-2018 2600Hz INC
-%%% @doc
-%%% Dialplan API definitions
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018 2600Hz
+%%% @doc Dialplan API definitions.
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%
-%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -ifndef(KAPI_DIALPLAN_HRL).
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 

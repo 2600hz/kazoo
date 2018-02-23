@@ -1,12 +1,9 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Google Storage for attachments
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Google Storage for attachments.
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
-
 -module(kz_att_google_storage).
 -behaviour(gen_attachment).
 
@@ -25,9 +22,14 @@
 -define(DRV_SCOPES, [?DRV_SCOPE]).
 -define(DRV_TOKEN_OPTIONS, #{'scopes' => ?DRV_SCOPES}).
 
-%% ====================================================================
-%% `gen_attachment' behaviour callbacks (API)
-%% ====================================================================
+%%%=============================================================================
+%%% gen_attachment behaviour callbacks (API)
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -116,9 +118,14 @@ do_fetch_attachment({'error', _}, _, _, HandlerProps, DbName, DocId, AName) ->
     Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
     kz_att_error:new('oauth_failure', Routines).
 
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec gstorage_default_fields() -> kz_term:proplist().
 gstorage_default_fields() ->
     [{'group', [{'arg', <<"id">>}

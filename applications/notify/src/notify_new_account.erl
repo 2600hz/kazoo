@@ -1,13 +1,12 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Renders a custom account email template, or the system default,
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
-%%% @end
 %%%
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(notify_new_account).
 
 -export([init/0, handle_req/2]).
@@ -20,12 +19,10 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".new_account">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% initialize the module
+%%------------------------------------------------------------------------------
+%% @doc initialize the module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
@@ -34,12 +31,10 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% process the AMQP requests
+%%------------------------------------------------------------------------------
+%% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:new_account_v(JObj),
@@ -82,12 +77,10 @@ handle_req(JObj, _Props) ->
     SendResult1 = build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props),
     notify_util:maybe_send_update(lists:flatten([SendResult0, SendResult1]), RespQ, MsgId).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create the props used by the template render function
+%%------------------------------------------------------------------------------
+%% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:object(), kz_json:object(), kz_json:objects()) ->
                                    kz_term:proplist().
 create_template_props(Event, Admin, Account, AllDocs) ->
@@ -109,12 +102,10 @@ create_template_props(Event, Admin, Account, AllDocs) ->
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:api_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
@@ -152,12 +143,10 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
             },
     notify_util:send_email(From, To, Email).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_account(kz_json:objects()) -> kz_json:object().
 find_account([]) ->
     kz_json:new();
@@ -168,12 +157,10 @@ find_account([Doc|Docs]) ->
         _ -> find_account(Docs)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_admin(kz_json:objects()) -> kz_json:object().
 find_admin([]) -> kz_json:new();
 find_admin([Doc|Docs]) ->

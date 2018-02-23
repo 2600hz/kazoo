@@ -1,16 +1,22 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% "data":{
-%%%   "action": "menu" | "enable" | "disable" | "reset"
-%%%   ,"rules":[] // list of rules
-%%%   // optional after here
-%%%   ,"interdigit_timeout":2000
-%%% }
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Controls and picks Callflows based rules.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>One of: `menu', `enable', `diable', `reset'.</dd>
+%%%
+%%%   <dt>`rules'</dt>
+%%%   <dd>List of the rules.</dd>
+%%%
+%%%   <dt>`interdigit_timeout'</dt>
+%%%   <dd>How long to wait for the next DTMF, in milliseconds. Default is 2000.</dd>
+%%% </dl>
+%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_temporal_route).
 
 -behaviour(gen_cf_action).
@@ -26,11 +32,10 @@
         ]).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Temporal = get_temporal_route(Data, Call),
@@ -65,13 +70,11 @@ handle(Data, Call) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Test all rules in reference to the current temporal routes, and
+%%------------------------------------------------------------------------------
+%% @doc Test all rules in reference to the current temporal routes, and
 %% returns the first valid callflow, or the default.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_rules(temporal(), rules(), kapps_call:call()) ->
                            'default' | binary().
 process_rules(Temporal, [#rule{enabled='false'
@@ -123,13 +126,11 @@ process_rules(_, [], _) ->
     lager:info("continuing with default callflow"),
     'default'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Finds and returns a list of rule records that have do not occur in
+%%------------------------------------------------------------------------------
+%% @doc Finds and returns a list of rule records that have do not occur in
 %% the future as well as pertain to this temporal route mapping.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_temporal_rules(temporal(), kapps_call:call()) -> rules().
 get_temporal_rules(#temporal{local_sec=LSec
                             ,routes=Routes
@@ -192,12 +193,10 @@ days_in_rule(JObj) ->
                ,kz_json:get_list_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
                ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Loads the temporal record with data from the db.
+%%------------------------------------------------------------------------------
+%% @doc Loads the temporal record with data from the db.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_load_rules(kz_json:object(), kapps_call:call(), routes()) -> routes().
 maybe_load_rules(Data, _Call, Routes) ->
     Rules = kz_json:get_value(<<"rules">>, Data, []),
@@ -268,12 +267,10 @@ interdigit_timeout(Data) ->
                              ,kapps_call_command:default_interdigit_timeout()
                              ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Loads rules set from account db.
+%%------------------------------------------------------------------------------
+%% @doc Loads rules set from account db.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_rule_set(route() | kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 get_rule_set({Id, Id}, Call) ->
     get_rule_set(Id, Call);
@@ -288,13 +285,11 @@ get_rule_set(Id, Call) ->
         {'ok', JObj} -> kz_json:get_list_value(<<"temporal_rules">>, JObj, [])
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Present the caller with the option to enable, disable, or reset
+%%------------------------------------------------------------------------------
+%% @doc Present the caller with the option to enable, disable, or reset
 %% the provided temporal rules.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec temporal_route_menu(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 temporal_route_menu(#temporal{keys=#keys{enable=Enable
                                         ,disable=Disable
@@ -327,14 +322,12 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
             temporal_route_menu(Temporal, Rules, Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Retrieve and update the enabled key on the temporal rule document.
+%%------------------------------------------------------------------------------
+%% @doc Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disable_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
     kapps_call_command:b_prompt(Disabled, Call);
@@ -359,14 +352,12 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
             disable_temporal_rules(Temporal, T, Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Retrieve and update the enabled key on the temporal rule document.
+%%------------------------------------------------------------------------------
+%% @doc Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reset_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
     kapps_call_command:b_prompt(Reset, Call);
@@ -391,14 +382,12 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
             reset_temporal_rules(Temporal, T, Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Retrieve and update the enabled key on the temporal rule document.
+%%------------------------------------------------------------------------------
+%% @doc Retrieve and update the enabled key on the temporal rule document.
 %% Also plays messages to the caller based on the results of that
 %% operation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec enable_temporal_rules(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
     kapps_call_command:b_prompt(Enabled, Call);
@@ -423,13 +412,11 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
             enable_temporal_rules(Temporal, T, Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% determines the appropriate gregorian seconds to be used as the
+%%------------------------------------------------------------------------------
+%% @doc determines the appropriate gregorian seconds to be used as the
 %% current date/time for this temporal route selection
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_current_time(temporal()) -> temporal().
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(calendar:universal_time()
@@ -441,10 +428,8 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
                      ,local_time=LocalTime
                      }.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% The big daddy
+%%------------------------------------------------------------------------------
+%% @doc The big daddy
 %% Calculates the date of the next event given the type, interval,
 %% rule, start date, and current date.
 %%
@@ -453,7 +438,7 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %%   - monday, tuesday, wensday, thursday, friday, saturday, sunday
 %%   - 1,2,3..31
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec next_rule_date(rule(), kz_time:date()) -> kz_time:date().
 next_rule_date(#rule{cycle = <<"date">>
                     ,start_date=Date0
@@ -744,17 +729,14 @@ next_rule_date(#rule{cycle = <<"yearly">>
             find_ordinal_weekday(Y0 + Offset + I0, Month, Weekday, Ordinal)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Safety wrapper on date_of_dow used to loop over failing attempts
+%%------------------------------------------------------------------------------
+%% @doc Safety wrapper on date_of_dow used to loop over failing attempts
 %% until the date can be calculated.  The date can be provided as an
 %% improper date.
 %%
-%% NOTICE!
-%% It is possible for this function to cross month/year boundaries.
+%% <div class="notice">It is possible for this function to cross month/year boundaries.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_ordinal_weekday(kz_time:year(), improper_month(), wday(), strict_ordinal()) -> kz_time:date().
 find_ordinal_weekday(Y1, M1, Weekday, Ordinal) when M1 =:= 13 ->
     find_ordinal_weekday(Y1 + 1, 1, Weekday, Ordinal);
@@ -767,22 +749,21 @@ find_ordinal_weekday(Y1, M1, Weekday, Ordinal) ->
             find_ordinal_weekday(Y1, M1 + 1, Weekday, Ordinal)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Calculates the date of the last occurance of a weekday within a
+%%------------------------------------------------------------------------------
+%% @doc Calculates the date of the last occurance of a weekday within a
 %% given month/year.  The date can be provided as an improper date.
 %%
 %% Assumption/Principle:
 %%   A DOW can never occur more than four times in a month.
-%% ---------------------------------------------------------
+%% @end
+%%------------------------------------------------------------------------------
 %% First attempt to calulate the date of the fouth DOW
 %% occurance.  Since the function corrects an invalid
 %% date by crossing month/year boundries, cause a badmatch
 %% if this happens. Therefore, during the exception the last
 %% occurance MUST be in the third week.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_last_weekday(improper_date(), wday()) -> kz_time:date().
 find_last_weekday({Y, M, D}, Weekday) when M =:= 13 ->
     find_last_weekday({Y + 1, 1, D}, Weekday);
@@ -796,13 +777,11 @@ find_last_weekday({Y, M, _}, Weekday) ->
             date_of_dow(Y, M, Weekday, <<"fourth">>)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Unsafe calculation of the date for a specific day of the week, this
+%%------------------------------------------------------------------------------
+%% @doc Unsafe calculation of the date for a specific day of the week, this
 %% function will explode on occasion.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec date_of_dow(kz_time:year(), improper_month(), wday(), strict_ordinal()) -> kz_time:date().
 date_of_dow(Year, 1, Weekday, Ordinal) ->
     date_of_dow(Year - 1, 13, Weekday, Ordinal);
@@ -822,11 +801,8 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
     {Y, M, D} = calendar:gregorian_days_to_date(Days),
     kz_date:normalize({Y, M, D}).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Calculates the distance, in total ISO weeks, between two dates
-%%
+%%------------------------------------------------------------------------------
+%% @doc Calculates the distance, in total ISO weeks, between two dates
 %% I rather dislike this approach, but it is the best of MANY evils that I came up with...
 %% The idea here is to find the difference (in days) between the ISO 8601 mondays
 %% of the start and end dates.  This takes care of all the corner cases for us such as:
@@ -835,7 +811,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %%    - Spanning years
 %% All while remaining ISO 8601 compliant.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec iso_week_difference(kz_time:date(), kz_time:date()) -> non_neg_integer().
 iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
     DS0 = calendar:date_to_gregorian_days(kz_date:from_iso_week(calendar:iso_week_number({Y0, M0, D0}))),

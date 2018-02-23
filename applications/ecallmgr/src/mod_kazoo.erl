@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(mod_kazoo).
 
 -export([version/1
@@ -148,10 +153,13 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
             {'error', 'exception'}
     end.
 
+%%------------------------------------------------------------------------------
 %% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
 %% sent to calling process after it is received. This function
-%% returns the result of the initial bgapi call or `timeout' if FreeSWITCH fails
+%% returns the result of the initial `bgapi' call or `timeout' if FreeSWITCH fails
 %% to respond.
+%% @end
+%%------------------------------------------------------------------------------
 -spec bgapi(atom(), atom(), string() | binary()) -> fs_api_return().
 bgapi(Node, Cmd, Args) ->
     Self = self(),

@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(doodle_util).
 
 -include("doodle.hrl").
@@ -38,10 +36,14 @@
 -export([lookup_mdn/1]).
 -export([maybe_reschedule_sms/1, maybe_reschedule_sms/2, maybe_reschedule_sms/3]).
 
-%% ====================================================================
+%%==============================================================================
 %% API functions
-%% ====================================================================
+%%==============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec set_sms_body(kz_term:ne_binary(), kapps_call:call()) -> kapps_call:call().
 set_sms_body(Body, Call) ->
     kapps_call:kvs_store(<<"Body">>, Body, Call).
@@ -303,13 +305,11 @@ sms_status(<<"202">>, _) -> <<"accepted">>;
 sms_status(_, <<"Success">>) -> <<"completed">>;
 sms_status(_, _) -> <<"pending">>.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Look for children branches to handle the failure replies of
+%%------------------------------------------------------------------------------
+%% @doc Look for children branches to handle the failure replies of
 %% certain actions, like cf_sms_offnet and cf_sms_resources
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_bridge_failure({'fail' | 'error', kz_json:object() | atom()} | kz_term:api_binary(), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->

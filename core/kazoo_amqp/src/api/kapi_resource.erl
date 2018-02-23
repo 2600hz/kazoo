@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_resource).
 
 -export([originate_req/1, originate_req_v/1
@@ -119,7 +117,7 @@
                                       ,{<<"Bypass-Media">>, fun kz_term:is_boolean/1}
                                       ]).
 
-%% Origintate Resp
+%% Originate Resp
 -define(ORIGINATE_RESP_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_RESP_HEADERS, [<<"Channel-Call-State">> | kapi_call:optional_call_event_headers()]).
 -define(ORIGINATE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
@@ -129,7 +127,7 @@
                               ,{<<"Custom-Appliction-Vars">>, fun kz_json:is_json_object/1}
                               ]).
 
-%% Origintate Started
+%% Originate Started
 -define(ORIGINATE_STARTED_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_STARTED_HEADERS, [<<"Channel-Call-State">> | kapi_call:optional_call_event_headers()]).
 -define(ORIGINATE_STARTED_VALUES, [{<<"Event-Category">>, <<"resource">>}
@@ -139,7 +137,7 @@
                                  ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                                  ]).
 
-%% Origintate UUID
+%% Originate UUID
 -define(ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-Control-Queue">>]).
 -define(ORIGINATE_UUID_VALUES, [{<<"Event-Category">>, <<"resource">>}
@@ -163,11 +161,11 @@ originate_execute(API) ->
 originate_execute_v(API) ->
     kapi_dialplan:originate_execute_v(API).
 
-%%--------------------------------------------------------------------
-%% @doc Resource Request - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Resource Request.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec originate_req(kz_term:api_terms()) -> api_formatter_return().
 originate_req(Prop) when is_list(Prop) ->
     EPs = [begin
@@ -203,11 +201,11 @@ originate_req_endpoint_v(JObj) ->
     originate_req_endpoint_v(kz_json:to_proplist(JObj)).
 
 
-%%--------------------------------------------------------------------
-%% @doc Resource Request - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Resource Request.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec originate_resp(kz_term:api_terms()) -> api_formatter_return().
 originate_resp(Prop) when is_list(Prop) ->
     case originate_resp_v(Prop) of
@@ -223,11 +221,11 @@ originate_resp_v(Prop) when is_list(Prop) ->
 originate_resp_v(JObj) ->
     originate_resp_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Resource Request started - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Resource Request started.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec originate_started(kz_term:api_terms()) -> api_formatter_return().
 originate_started(Prop) when is_list(Prop) ->
     case originate_started_v(Prop) of
@@ -243,11 +241,11 @@ originate_started_v(Prop) when is_list(Prop) ->
 originate_started_v(JObj) ->
     originate_started_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Resource Request UUID - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Resource Request UUID.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec originate_uuid(kz_term:api_terms()) -> api_formatter_return().
 originate_uuid(Prop) when is_list(Prop) ->
     case originate_uuid_v(Prop) of
@@ -263,11 +261,11 @@ originate_uuid_v(Prop) when is_list(Prop) ->
 originate_uuid_v(JObj) ->
     originate_uuid_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Eavesdrop Request - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Eavesdrop Request.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec eavesdrop_req(kz_term:api_terms()) -> api_formatter_return().
 eavesdrop_req(Prop) when is_list(Prop) ->
     case eavesdrop_req_v(Prop) of
@@ -283,11 +281,11 @@ eavesdrop_req_v(Prop) when is_list(Prop) ->
 eavesdrop_req_v(JObj) ->
     eavesdrop_req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Eavesdrop Response - see wiki
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc Eavesdrop Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec eavesdrop_resp(kz_term:api_terms()) -> api_formatter_return().
 eavesdrop_resp(Prop) when is_list(Prop) ->
     case eavesdrop_resp_v(Prop) of
@@ -343,11 +341,10 @@ unbind_q(Queue, Prop, [_|T]) ->
 unbind_q(_, _, []) ->
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:callmgr_exchange().

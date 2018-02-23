@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_number_states).
 
 -export([to_options_state/1]).
@@ -261,14 +259,12 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
     knm_phone_number:setters(PhoneNumber, Setters).
 
 
-%% @private
 -spec invalid_state_transition(t(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> t().
 invalid_state_transition(T=#{todo := Ns}, FromState, ToState) ->
     {error,A,B,C} = (catch knm_errors:invalid_state_transition(undefined, FromState, ToState)),
     Reason = knm_errors:to_json(A, B, C),
     knm_numbers:ko(Ns, Reason, T).
 
-%% @private
 fail_if_mdn(T=#{todo := Ns}, ToState) ->
     case lists:partition(fun is_mdn/1, Ns) of
         {[], _} -> knm_numbers:ok(Ns, T);
@@ -287,17 +283,14 @@ fail_if_mdn(T=#{todo := Ns}, FromState, ToState) ->
             knm_numbers:merge_okkos(Ta, Tb)
     end.
 
-%% @private
 is_mdn(N) ->
     ?CARRIER_MDN =:= knm_phone_number:module_name(knm_number:phone_number(N)).
 
-%% @private
 is_assigned_to_assignto(N) ->
     PN = knm_number:phone_number(N),
     knm_phone_number:assign_to(PN)
         =:= knm_phone_number:assigned_to(PN).
 
-%% @private
 -spec group_by_state(t()) -> [{kz_term:ne_binary(), knm_numbers:oks()}].
 group_by_state(#{todo := Ns}) ->
     F = fun (N, M) ->

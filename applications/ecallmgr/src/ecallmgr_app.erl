@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_app).
 
 -behaviour(application).
@@ -20,8 +18,7 @@
 
 %% Application callbacks
 
-%% @public
-%% @doc Implement the application start behaviour
+%% @doc Implement the application start behaviour.
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
@@ -46,8 +43,7 @@ request(Acc) ->
      | Acc
     ].
 
-%% @public
-%% @doc Implement the application stop behaviour
+%% @doc Implement the application stop behaviour.
 -spec stop(any()) -> any().
 stop(_State) ->
     _ = freeswitch_nodesup_unbind(),

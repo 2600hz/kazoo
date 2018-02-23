@@ -164,7 +164,8 @@ dialyze: dialyze-it
 
 dialyze-it: $(PLT)
 	@if [ -n "$(TO_DIALYZE)" ]; then \
-	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE); \
+	export TO_DIALYZE="$(TO_DIALYZE)"; \
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt; \
 	fi;
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
@@ -212,6 +213,7 @@ code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(ROOT)/scripts/check-spelling.bash
 	@$(ROOT)/scripts/kz_diaspora.bash
+	@$(ROOT)/scripts/edocify.escript
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
@@ -275,6 +277,7 @@ endif
 
 circle-docs:
 	@./scripts/state-of-docs.sh || true
+	@$(ROOT)/scripts/state-of-edoc.escript
 	@$(MAKE) apis
 	@$(MAKE) docs
 
@@ -306,7 +309,10 @@ circle-unstaged:
 	exit 1
 
 circle-dialyze: build-plt
-	@TO_DIALYZE="$(CHANGED)" $(MAKE) dialyze
+# circle-dialyze: circle-dialyze: export TO_DIALYZE = $(CHANGED)
+circle-dialyze:
+	@export TO_DIALYZE="$(CHANGED)"
+	@$(MAKE) dialyze
 
 circle-release:
 	@$(MAKE) build-ci-release

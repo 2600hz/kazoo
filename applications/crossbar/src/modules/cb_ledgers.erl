@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors:
-%%%   Peter Defebvre
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_ledgers).
 
 -export([init/0
@@ -30,16 +28,14 @@
 %%-define(LEDGER_VIEW, "ledgers/listing_by_service").
 %% TODO: make this change for 4.1
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.ledgers">>, ?MODULE, 'allowed_methods'),
@@ -49,13 +45,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.get.ledgers">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.ledgers">>, ?MODULE, 'put').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -75,15 +69,17 @@ allowed_methods(_LedgerId) ->
 allowed_methods(_LedgerId, _LedgerEntryId) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /ledgers => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /ledgers => []
 %%    /ledgers/foo => [<<"foo">>]
 %%    /ledgers/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -94,12 +90,10 @@ resource_exists(_) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, _) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) -> cb_simple_authz:authorize(Context).
 
@@ -140,16 +134,14 @@ authorize_create(Context) ->
         'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /ledgers mights load a list of ledgers objects
 %% /ledgers/123 might load the ledgers object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -182,29 +174,25 @@ validate(Context, Id) ->
 validate(Context, Ledger, Id) ->
     validate_ledger_doc(Context, Ledger, Id, cb_context:req_verb(Context)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?CREDIT) ->
     credit_or_debit(Context, ?CREDIT);
 put(Context, ?DEBIT) ->
     credit_or_debit(Context, ?DEBIT).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
 validate_ledgers(Context, ?HTTP_GET) ->
     read_ledgers(Context).
@@ -213,12 +201,10 @@ validate_ledgers(Context, ?HTTP_GET) ->
 validate_ledger_doc(Context, Ledger, Id, ?HTTP_GET) ->
     read_ledger_doc(Context, Ledger, Id).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec credit_or_debit(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 credit_or_debit(Context, Action) ->
     ReqData = cb_context:req_data(Context),
@@ -244,12 +230,10 @@ credit_or_debit(Context, Action) ->
             maybe_impact_reseller(Context, JObj)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_action(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
                     ,kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) ->
                             {'ok', kz_json:object()} |
@@ -259,12 +243,10 @@ process_action(?CREDIT, SrcService, SrcId, AccountId, Usage, Props) ->
 process_action(?DEBIT, SrcService, SrcId, AccountId, Usage, Props) ->
     kz_ledger:debit(AccountId, SrcService, SrcId, Usage, Props).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_impact_reseller(cb_context:context(), kz_json:object()) -> cb_context:context().
 maybe_impact_reseller(Context, Ledger) ->
     ResellerId = cb_context:reseller_id(Context),
@@ -286,12 +268,10 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
             crossbar_util:response(kz_doc:public_fields(Ledger), Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read_ledgers(cb_context:context()) -> cb_context:context().
 read_ledgers(Context) ->
     {From, To} = case crossbar_view:time_range(Context) of
@@ -318,12 +298,10 @@ maybe_convert_units(<<"amount">>, 'undefined') -> 0;
 maybe_convert_units(<<"amount">>, Units) -> wht_util:units_to_dollars(Units);
 maybe_convert_units(_, Value) -> Value.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(Context, JObj, Acc) ->
@@ -375,12 +353,10 @@ maybe_set_doc_modb_prefix(Id, Created) ->
     {Year, Month, _} = kz_term:to_date(Created),
     kazoo_modb_util:modb_id(Year, Month, Id).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read_ledger_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
     Year  = kz_term:to_integer(YYYY),

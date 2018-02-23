@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(fax_util).
 
 -export([fax_properties/1]).
@@ -51,13 +49,11 @@ collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
 collect_channel_prop(Key, JObj) ->
     {Key, kz_json:get_value(Key, JObj)}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
+%%------------------------------------------------------------------------------
+%% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec attachment_name(binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun maybe_generate_random_filename/1

@@ -1,15 +1,12 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
+%%% @doc Delegate JObj from one application to another application.
+%%% App/Key combo used to send messages.
 %%%
-%%%  Delegate job from one app to another app.
 %%%
-%%%  App/Key combo used to send messages.
-%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_delegate).
 
 -export([delegate/1, delegate_v/1]).
@@ -41,11 +38,11 @@
                          ]).
 -define(DELEGATE_TYPES, []).
 
-%%--------------------------------------------------------------------
-%% @doc Resume a callflow's flow
-%% Takes proplist, creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Resume a Callflow's flow.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delegate(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 delegate(Prop) when is_list(Prop) ->
     case delegate_v(Prop) of
@@ -83,19 +80,18 @@ unbind_q(Q, <<_/binary>> = App, 'undefined') ->
 unbind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
     amqp_util:unbind_q_from_kapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
-%%--------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%%------------------------------------------------------------------------------
+%% @doc Publish the JSON string to the proper Exchange.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_delegate(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_delegate(TargetApp, API) ->

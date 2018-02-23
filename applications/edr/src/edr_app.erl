@@ -1,13 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Created : 17 Jul 2016
+%%% @author SIPLABS, LLC (Vorontsov Nikita)
+%%% @author Conversant Ltd (Max Lay)
 %%% @end
-%%% Created : 17 Jul 2016
-%%% @contributors
-%%%   SIPLABS, LLC (Vorontsov Nikita)
-%%%   Conversant Ltd (Max Lay)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(edr_app).
 
 -behaviour(application).
@@ -18,19 +15,19 @@
         ,stop/1
         ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Implement the application start behaviour
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Implement the application start behaviour.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
     _ = declare_exchanges(),
     edr_sup:start_link().
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Implement the application stop behaviour
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Implement the application stop behaviour.
+%% @end
+%%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) -> 'ok'.
 

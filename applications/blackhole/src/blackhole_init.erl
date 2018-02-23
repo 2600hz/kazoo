@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Jon Blanton
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Jon Blanton
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(blackhole_init).
 
 -export([start_link/0]).
@@ -27,10 +25,10 @@ paths_list() ->
 api_path() ->
     {'_', [], 'blackhole_socket_handler', []}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Starts the app for inclusion in a supervisor tree
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the application for inclusion in a supervisor tree.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
@@ -41,10 +39,10 @@ start_link() ->
     maybe_start_ssl(Dispatch),
     'ignore'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Functions for onrequest and onresponse callbacks
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Functions for onrequest and onresponse callbacks.
+%% @end
+%%------------------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req) -> Req.
 

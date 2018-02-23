@@ -1,18 +1,22 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Callflow action to control call waiting feature.
 %%%
-%%% "data": {
-%%%   "action": "activate" | "deactivate" | *"toggle",
-%%%   "scope": "device" | *"user"
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd>The action to be done: `activate', `deactivate' and `toggle'.
+%%%   Default is `toggle'.</dd>
 %%%
-%%% * Default value
+%%%   <dt>`scope'</dt>
+%%%   <dd>Which endpoint this action must be set: `device', `user'.
+%%%   Default is `user'.</dd>
+%%% </dl>
 %%%
+%%%
+%%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_call_waiting).
 
 -behaviour(gen_cf_action).
@@ -36,14 +40,12 @@ actions() ->
     ,{<<"deactivate">>, fun (_Enabled) -> 'false' end}
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case maybe_build_call_waiting_record(Data, Call) of
@@ -93,7 +95,7 @@ maybe_get_doc(AccountDb, Id) ->
 maybe_execute_action(#call_waiting{action = Action}=CW, Call) ->
     case props:get_value(Action, actions()) of
         'undefined' ->
-            lager:info("unsupported call forwaring action ~s", [Action]),
+            lager:info("unsupported call waiting action ~s", [Action]),
             kapps_call_command:b_prompt(<<"cw-not_available">>, Call);
         ActionFun -> execute_action(ActionFun, CW, Call)
     end.

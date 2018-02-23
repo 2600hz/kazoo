@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Utilities shared by a subset of kapps
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Utilities shared by a subset of `kapps'.
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapps_util).
 
 -export([update_all_accounts/1]).
@@ -75,14 +73,12 @@
 -define(ACCT_BY_IP_CACHE(IP), {?MODULE, 'account_by_ip', IP}).
 -define(GET_BY_CACHE_ORIGIN, [{'origin', [{'db', ?KZ_ACCOUNTS_DB, <<"account">>}]}]).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Update a document in each crossbar account database with the
-%% file contents.  This is intended for _design docs....
+%%------------------------------------------------------------------------------
+%% @doc Update a document in each crossbar account database with the
+%% file contents.  This is intended for `_design' docs.
 %%
-%% @spec update_all_accounts() -> ok | error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_all_accounts(kz_term:ne_binary()) -> 'ok'.
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
@@ -90,13 +86,11 @@ update_all_accounts(File) ->
                           kz_datamgr:revise_doc_from_file(AccountDb, 'crossbar', File)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will import every .json file found in the given
-%% application priv/couchdb/views/ folder into every account
+%%------------------------------------------------------------------------------
+%% @doc This function will import every `.json' file found in the given
+%% application `priv/couchdb/views/' folder into every account database.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec revise_whapp_views_in_accounts(atom()) -> 'ok'.
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
@@ -104,13 +98,11 @@ revise_whapp_views_in_accounts(App) ->
                           kz_datamgr:revise_views_from_folder(AccountDb, App)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will replicate the results of the filter from each
-%% account db into the target database
+%%------------------------------------------------------------------------------
+%% @doc This function will replicate the results of the filter from each
+%% account db into the target database.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec replicate_from_accounts(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     lists:foreach(fun(AccountDb) ->
@@ -118,13 +110,11 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
                           replicate_from_account(AccountDb, TargetDb, FilterDoc)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will replicate the results of the filter from the
-%% source database into the target database
+%%------------------------------------------------------------------------------
+%% @doc This function will replicate the results of the filter from the
+%% source database into the target database.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec replicate_from_account(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                     'ok' | {'error', 'matching_dbs'}.
 replicate_from_account(AccountDb, AccountDb, _) ->
@@ -146,13 +136,11 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
             lager:debug("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Find the system admin from the system_config if set, if not
-%% set it to the oldest acccount and return that.
+%%------------------------------------------------------------------------------
+%% @doc Find the system admin from the `system_config' if set, if not
+%% set it to the oldest account and return that.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_master_account_id() -> {'ok', kz_term:ne_binary()} |
                                  {'error', atom()}.
 get_master_account_id() ->
@@ -174,6 +162,11 @@ find_master_account_id({'ok', Accounts}) ->
     {'ok', _} = kapps_config:set(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
     Ok.
 
+%%------------------------------------------------------------------------------
+%% @doc Find the system admin database.
+%% @see get_master_account_id/0
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_master_account_db() -> {'ok', kz_term:ne_binary()} |
                                  {'error', any()}.
 get_master_account_db() ->
@@ -183,6 +176,10 @@ get_master_account_db() ->
             {'ok', kz_util:format_account_db(AccountId)}
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Returns whether or not the  Account' is system admin or not.
+%% @end
+%%------------------------------------------------------------------------------
 -spec is_master_account(kz_term:ne_binary()) -> boolean().
 is_master_account(Account) ->
     AccountId = kz_util:format_account_id(Account),
@@ -191,22 +188,19 @@ is_master_account(Account) ->
         _Else -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
+%%------------------------------------------------------------------------------
+%% @doc Returns length of the given account tree.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_depth(kz_term:ne_binary()) -> kz_term:api_non_neg_integer().
 account_depth(Account) ->
     {'ok', JObj} = kzd_accounts:fetch(Account),
     length(kzd_accounts:tree(JObj)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% List an account's descendants (including the provided AccountId).
+%%------------------------------------------------------------------------------
+%% @doc List an account's descendants (including the provided AccountId).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_descendants(kz_term:ne_binary()) -> kz_term:ne_binaries().
 account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
     View = <<"accounts/listing_by_descendants">>,
@@ -220,22 +214,19 @@ account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
             []
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
+%%------------------------------------------------------------------------------
+%% @doc Checks if account has descendants or not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_has_descendants(kz_term:ne_binary()) -> boolean().
 account_has_descendants(Account) ->
     AccountId = kz_util:format_account_id(Account),
     [] =/= (account_descendants(AccountId) -- [AccountId]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given a list of accounts this returns the id of the oldest
+%%------------------------------------------------------------------------------
+%% @doc Given a list of accounts this returns the id of the oldest.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_oldest_doc(kz_json:objects()) ->
                              {'ok', kz_term:ne_binary()} |
                              {'error', 'no_docs'}.
@@ -253,13 +244,11 @@ find_oldest_doc([First|Docs]) ->
                    ,Docs),
     {'ok', OldestDocID}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will return a list of all account database names
-%% in the requested encoding
+%%------------------------------------------------------------------------------
+%% @doc This function will return a list of all account database names
+%% in the requested encoding.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get_all_accounts() -> kz_term:ne_binaries().
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
@@ -356,11 +345,10 @@ is_account_db(Db) ->
                         {'multiples', kz_term:ne_binaries()} |
                         {'error', 'not_found'}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Realms are one->one with accounts.
+%%------------------------------------------------------------------------------
+%% @doc Get the account db by realm. Realms are one->one with accounts.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_account_by_realm(kz_term:ne_binary()) -> getby_return().
 get_account_by_realm(RawRealm) ->
     Realm = kz_term:to_lower_binary(RawRealm),
@@ -462,12 +450,11 @@ is_enabled(AccountId, {<<"account">>, AccountId}) ->
         orelse throw({'error', {'account_disabled', AccountId}});
 is_enabled(_AccountId, {_Type, _Thing}) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Names are one->many with accounts since account names are not
-%% unique.
+%%------------------------------------------------------------------------------
+%% @doc Get account db by account's name. Names are one->many with accounts
+%% since account names are not unique.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_accounts_by_name(kz_term:ne_binary()) -> getby_return().
 get_accounts_by_name(Name) ->
     get_accounts_by(Name, ?ACCT_BY_NAME_CACHE(Name), ?AGG_LIST_BY_NAME).
@@ -504,13 +491,11 @@ do_get_accounts_by(What, CacheKey, View) ->
 cache(Key, AccountDbs) ->
     kz_cache:store_local(?KAPPS_GETBY_CACHE, Key, AccountDbs, ?GET_BY_CACHE_ORIGIN).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given an JSON Object for a hangup event, or bridge completion
-%% this returns the cause and code for the call termination
+%%------------------------------------------------------------------------------
+%% @doc Given an JSON Object for a hangup event, or bridge completion
+%% this returns the cause and code for the call termination.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_call_termination_reason(kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_call_termination_reason(JObj) ->
     Cause = case kz_json:get_ne_value(<<"Application-Response">>, JObj) of
@@ -522,12 +507,10 @@ get_call_termination_reason(JObj) ->
     Code = kz_json:get_value(<<"Hangup-Code">>, JObj, <<"sip:600">>),
     {Cause, Code}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
+%%------------------------------------------------------------------------------
+%% @doc Reads all view files from given `Folder' in the given `App'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_views_json(atom(), string()) -> kz_datamgr:views_listing().
 get_views_json(App, Folder) ->
     Pattern = filename:join([code:priv_dir(App), "couchdb", Folder, "*.json"]),
@@ -548,26 +531,23 @@ get_view_json(Path) ->
     JObj = kz_json:decode(Bin),
     {kz_doc:id(JObj), JObj}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv update_views(Db, Views, 'false')
 -spec update_views(kz_term:ne_binary(), kz_datamgr:views_listing()) -> boolean().
 update_views(Db, Views) ->
     update_views(Db, Views, 'false').
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec update_views(kz_term:ne_binary(), kz_datamgr:views_listing(), boolean()) -> boolean().
 update_views(Db, Views, ShouldRemove) ->
     kz_term:is_true(kz_datamgr:db_view_update(Db, Views, ShouldRemove)).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_aggregate_device(kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 add_aggregate_device(_, 'undefined') -> 'ok';
 add_aggregate_device(Db, Device) ->
@@ -582,12 +562,10 @@ add_aggregate_device(Db, Device) ->
         end,
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec rm_aggregate_device(kz_term:ne_binary(), kz_term:api_object() | kz_term:api_binary()) -> 'ok'.
 rm_aggregate_device(_, 'undefined') -> 'ok';
 rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
@@ -663,13 +641,11 @@ amqp_pool_collect(Api, PubFun, TimeoutOrUntil) ->
 amqp_pool_collect(Api, PubFun, Until, Timeout) ->
     kz_amqp_worker:call_collect(Api, PubFun, Until, Timeout).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Extracts the User and Realm from either the Request or To field, configured
-%% in the system_config DB. Defaults to Request (To is the other option)
+%%------------------------------------------------------------------------------
+%% @doc Extracts the User and Realm from either the Request or To field, configured
+%% in the `system_config' DB. Defaults to Request (To is the other option).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_destination(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                              {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_destination(JObj, Cat, Key) ->

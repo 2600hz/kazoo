@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Simple & efficient operations on CSV binaries.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Simple and efficient operations on CSV binaries.
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_csv).
 
 %% Public API
@@ -45,17 +43,15 @@
 -export([split_row/1]).
 -endif.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Return count of rows minus the first one.
+%%------------------------------------------------------------------------------
+%% @doc Return count of rows minus the first one.
 %% Returns 0 if a row is longer/smaller than the header row.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec count_rows(csv()) -> non_neg_integer().
 count_rows(<<>>) -> 0;
 count_rows(CSV) when is_binary(CSV) ->
@@ -84,11 +80,10 @@ throw_bad(Row, {MaxRow,RowsCounted}) ->
             throw({'error', 'bad_csv_row'})
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type folder(T) :: fun((row(), T) -> T).
 -spec fold(csv(), folder(T), T) -> T.
 fold(CSV, Fun, Acc)
@@ -100,11 +95,10 @@ fold(CSV, Fun, Acc)
             fold(CSVRest, Fun, NewAcc)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec take_row(csv()) -> {row(), csv()} | 'eof'.
 take_row(CSV)
   when is_binary(CSV) ->
@@ -116,11 +110,10 @@ take_row(CSV)
             {split_row(Line), CSVRest}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec take_mapped_row(row(), csv()) -> {mapped_row(), csv()} | 'eof'.
 take_mapped_row(Header, CSV)
   when is_binary(CSV) ->
@@ -131,11 +124,10 @@ take_mapped_row(Header, CSV)
             {MappedRow, CSVRest}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pad_row_to(non_neg_integer(), row()) -> row().
 pad_row_to(N, Row)
   when N > length(Row) ->
@@ -143,11 +135,10 @@ pad_row_to(N, Row)
 pad_row_to(_, Row) ->
     Row.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type fassoc_ret() :: {'ok', mapped_row()} | {'error', kz_term:ne_binary()}.
 -type fassoc() :: fun((row()) -> fassoc_ret()).
 -type verifier() :: fun((atom(), cell()) -> boolean()).
@@ -182,12 +173,10 @@ verify(Verifier, Header, Row, I, Map) ->
         true -> {Field, Cell}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns an unordered list of the name of columns that did not pass validation.
+%%------------------------------------------------------------------------------
+%% @doc Returns an unordered list of the name of columns that did not pass validation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type mapped_row_verifier() :: fun((kz_term:ne_binary(), cell()) -> boolean()).
 -spec verify_mapped_row(mapped_row_verifier(), mapped_row()) -> [] | header().
 verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
@@ -200,32 +189,28 @@ verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
         end,
     maps:fold(F, [], MappedRow).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec row_to_iolist(row()) -> iodata().
 row_to_iolist([Cell]) -> cell_to_binary(Cell);
 row_to_iolist(Row=[_|_]) ->
     kz_util:iolist_join($,, [cell_to_binary(Cell) || Cell <- Row]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec mapped_row_to_iolist(row(), mapped_row()) -> iodata().
 mapped_row_to_iolist(HeaderRow, Map) ->
     row_to_iolist([maps:get(Header, Map, ?ZILCH) || Header <- HeaderRow]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Converts JSON-represented CSV data to binary.
+%%------------------------------------------------------------------------------
+%% @doc Converts JSON-represented CSV data to binary.
 %% We assume fields for first record are defined in all other records.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec json_to_iolist(nonempty_list(kz_json:object())) -> iodata().
 json_to_iolist(Records) ->
     json_to_iolist(Records, kz_json:get_keys(hd(Records))).
@@ -246,12 +231,10 @@ json_to_iolist(Records, Fields)
     kz_util:delete_file(Tmp),
     IOData.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec from_jobjs(kz_json:objects()) -> iolist().
 from_jobjs(JObjs) ->
     from_jobjs(JObjs, []).
@@ -264,10 +247,14 @@ from_jobjs(JObjs, Options) ->
                ],
     lists:foldl(fun(F, J) -> F(J, Options) end, JObjs, Routines).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec take_line(csv()) -> [csv(),...] | eof.
 take_line(CSV) ->
     case binary:split(CSV, [<<"\r\n">>, <<"\n\r">>, <<"\r\r">>, <<$\n>>, <<$\r>>]) of
@@ -313,7 +300,6 @@ consume(Bin, {Acc,Sep,AccBin}) ->
             {Acc, Sep, NewAccBin}
     end.
 
-%% @private
 
 -spec find_position(kz_term:ne_binary(), kz_term:ne_binaries()) -> pos_integer().
 find_position(Item, Items) ->
@@ -328,7 +314,6 @@ complete_header(Fields, CSVHeader) ->
     Diff = CSVHeader -- Fields,
     Fields ++ Diff.
 
-%% @private
 map_io_indices(Header, CSVHeader) ->
     MapF = fun ({I, Head}, M) ->
                    M#{find_position(Head, Header) => I}
@@ -336,7 +321,6 @@ map_io_indices(Header, CSVHeader) ->
     IndexToCSVHeader = lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader),
     lists:foldl(MapF, #{}, IndexToCSVHeader).
 
-%% @private
 -spec cell_to_binary(cell()) -> binary().
 cell_to_binary(?ZILCH) -> <<>>;
 cell_to_binary(<<>>) -> <<>>;

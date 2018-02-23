@@ -1,10 +1,18 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Base module for callflow action
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Base module for Callflow action.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`param_1'</dt>
+%%%   <dd>Use param_1 to make a call</dd>
+%%%
+%%%   <dt>`param_2'</dt>
+%%%   <dd>Description.</dd>
+%%% </dl>
+%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_skel).
 
 -behaviour(gen_cf_action).
@@ -13,12 +21,10 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
     %% Data is the "data" object from the JSON payload

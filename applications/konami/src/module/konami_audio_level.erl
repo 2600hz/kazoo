@@ -1,16 +1,15 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, Vladimir Ralev
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
 %%% @author Vladimir Ralev
-%%% @doc
-%%% Allow to change volume for channels, mute and unmute.
+%%% @doc Allow to change volume for channels, mute and unmute.
 %%% Data = {
 %%%   "action":"start" // or "stop"
 %%%   ,"mode":"read" // or "write" depends on direction
 %%%   ,"level":"-4" // -4 is mute, 0 is unmute, other values are not studied
 %%% }
-%%% @end
 %%% Created : 17. Mar 2016 6:25 AM
-%%%-------------------------------------------------------------------
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(konami_audio_level).
 -author("vladimirralev").
 

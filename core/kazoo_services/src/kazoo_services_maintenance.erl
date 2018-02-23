@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kazoo_services_maintenance).
 
 -export([flush/0]).
@@ -28,23 +26,19 @@
 
 -define(KZ_SERVICES_DB_TMP, <<"services_backup">>).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
     kz_services:flush_services().
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Add arbitrary credit to an account, without charging the accounts
+%%------------------------------------------------------------------------------
+%% @doc Add arbitrary credit to an account, without charging the accounts
 %% credit card
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec credit(kz_term:ne_binary(), kz_term:text()) -> 'no_return'.
 credit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
@@ -57,13 +51,11 @@ credit(AccountId, Amount) ->
     end,
     'no_return'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Add arbitrary debit to an account, without charging the accounts
+%%------------------------------------------------------------------------------
+%% @doc Add arbitrary debit to an account, without charging the accounts
 %% debit card
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec debit(kz_term:ne_binary(), kz_term:text()) -> 'no_return'.
 debit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
@@ -103,24 +95,20 @@ admin_discretion(T) ->
 admin_description(T) ->
     kz_transaction:set_description(<<"system administrator credit modification">>, T).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% maintenance function for the services db
+%%------------------------------------------------------------------------------
+%% @doc maintenance function for the services db
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
     kz_datamgr:db_create(?KZ_SERVICES_DB),
     kz_datamgr:revise_docs_from_folder(?KZ_SERVICES_DB, 'kazoo_services', "views").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% scheduals an eventual sync with the bookkeeper and will dirty the
+%%------------------------------------------------------------------------------
+%% @doc scheduals an eventual sync with the bookkeeper and will dirty the
 %% full reseller tree (as it normally does when changes occur)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec reconcile() -> 'no_return'.
 reconcile() ->
@@ -145,13 +133,11 @@ reconcile(Account) ->
             io:format("failed to reconcile account ~s(~p):~n  ~p~n", [Account, _E, _R])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% runs an immediate sync with a bookkeeper without dirting the
+%%------------------------------------------------------------------------------
+%% @doc runs an immediate sync with a bookkeeper without dirting the
 %% reseller tree (only the one account is affected)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sync(kz_term:text()) -> 'ok'.
 sync(Account) when not is_binary(Account) ->
     sync(kz_term:to_binary(Account));
@@ -174,12 +160,10 @@ do_sync_descendants([Descendant|Descendants]) ->
     _ = sync(Descendant),
     do_sync_descendants(Descendants).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set the reseller_id to the provided value on the provided account
+%%------------------------------------------------------------------------------
+%% @doc Set the reseller_id to the provided value on the provided account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_reseller_id(kz_term:text(), kz_term:text()) -> 'ok'.
 set_reseller_id(Reseller, Account) when not is_binary(Account) ->
     set_reseller_id(Reseller, kz_term:to_binary(Account));
@@ -188,13 +172,11 @@ set_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
 set_reseller_id(Reseller, Account) ->
     whs_account_conversion:set_reseller_id(Reseller, Account).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set the reseller_id to the provided value on all the sub-accounts
+%%------------------------------------------------------------------------------
+%% @doc Set the reseller_id to the provided value on all the sub-accounts
 %% of the provided account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cascade_reseller_id(kz_term:text(), kz_term:text()) -> 'ok'.
 cascade_reseller_id(Reseller, Account) when not is_binary(Account) ->
     cascade_reseller_id(Reseller, kz_term:to_binary(Account));
@@ -203,38 +185,32 @@ cascade_reseller_id(Reseller, Account) when not is_binary(Reseller) ->
 cascade_reseller_id(Reseller, Account) ->
     whs_account_conversion:cascade_reseller_id(Reseller, Account).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Remove reseller status from an account and set all its sub accounts
+%%------------------------------------------------------------------------------
+%% @doc Remove reseller status from an account and set all its sub accounts
 %% to the next higher reseller
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec demote_reseller(kz_term:text()) -> 'ok'.
 demote_reseller(Account) when not is_binary(Account) ->
     demote_reseller(kz_term:to_binary(Account));
 demote_reseller(Account) ->
     whs_account_conversion:demote(Account).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set the reseller status on the provided account and update all
+%%------------------------------------------------------------------------------
+%% @doc Set the reseller status on the provided account and update all
 %% sub accounts
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec make_reseller(kz_term:text()) -> 'ok'.
 make_reseller(Account) when not is_binary(Account) ->
     make_reseller(kz_term:to_binary(Account));
 make_reseller(Account) ->
     whs_account_conversion:promote(Account).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec attempt_services_recovery() -> 'ok'.
 attempt_services_recovery() ->
     JObjs = fetch_all_service_docs(?KZ_SERVICES_DB_TMP),

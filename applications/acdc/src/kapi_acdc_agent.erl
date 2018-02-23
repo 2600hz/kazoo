@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%%
-%%% Bindings and JSON APIs for dealing with agents, as part of ACDc
-%%%
+%%% @doc Bindings and JSON APIs for dealing with agents, as part of ACDc
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_acdc_agent).
 
 -export([sync_req/1, sync_req_v/1
@@ -444,11 +440,10 @@ unbind_q(Q, {AcctId, AgentId, _}=Ids, ['stats'|T]) ->
 unbind_q(Q, Ids, [_|T]) -> unbind_q(Q, Ids, T);
 unbind_q(_, _, []) -> 'ok'.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:kapps_exchange().

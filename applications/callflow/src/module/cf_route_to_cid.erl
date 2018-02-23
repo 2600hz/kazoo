@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Kirill Sysoev
 %%% @end
-%%% @contributors
-%%%   Kirill Sysoev
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_route_to_cid).
 
 -behaviour(gen_cf_action).
@@ -14,13 +12,11 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This module attempts to lookup endpoints by it's cid number.
+%%------------------------------------------------------------------------------
+%% @doc This module attempts to lookup endpoints by it's cid number.
 %% Returns continue if fails to connect or stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case endpoints_lookup(Data, Call) of

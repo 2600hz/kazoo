@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Various utilities - a veritable cornucopia
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Various utilities to work with time.
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_time).
 
 -export([current_tstamp/0, current_unix_tstamp/0
@@ -39,6 +37,7 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -type now() :: erlang:timestamp().
+%% {MegaSecs :: integer() >= 0, Secs :: integer() >= 0, MicroSecs :: integer() >= 0}
 -type year() :: non_neg_integer().
 -type month() :: 1..12.
 -type day() :: 1..31.

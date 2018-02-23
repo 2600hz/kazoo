@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Handle client requests for braintree documents
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle client requests for braintree documents
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_braintree).
 
 -export([init/0
@@ -33,10 +29,14 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".braintree">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = ssl:start(),
@@ -48,15 +48,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.delete.braintree">>, ?MODULE, 'delete'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?CUSTOMER_PATH_TOKEN) ->
@@ -80,14 +78,11 @@ allowed_methods(?ADDRESSES_PATH_TOKEN, _AddressId) ->
 allowed_methods(?TRANSACTIONS_PATH_TOKEN, _TransactionId) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(?CUSTOMER_PATH_TOKEN) -> 'true';
@@ -102,15 +97,13 @@ resource_exists(?CARDS_PATH_TOKEN, _) -> 'true';
 resource_exists(?ADDRESSES_PATH_TOKEN, _) -> 'true';
 resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 %% CUSTOMER API
 validate(Context, ?CUSTOMER_PATH_TOKEN) ->
@@ -469,16 +462,14 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
             crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Creates an empty customer in braintree
+%%------------------------------------------------------------------------------
+%% @doc Creates an empty customer in braintree
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_braintree_customer(cb_context:context()) -> cb_context:context().
 create_braintree_customer(Context) ->
     try

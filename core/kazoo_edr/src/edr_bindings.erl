@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2017 Conversant Ltd
-%%% @doc
-%%% EDR event distribution bindings
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc EDR event distribution bindings
+%%% @author Conversant Ltd (Max Lay)
 %%% @end
-%%% @contributors
-%%%    Conversant Ltd (Max Lay)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(edr_bindings).
 
 -include("edr.hrl").

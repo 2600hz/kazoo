@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(call_inspector_maintenance).
 
 -export([list_active_parsers/0
@@ -134,7 +131,6 @@ inspect_call_id(CallId) ->
     end,
     no_return.
 
-%% @private
 -spec sanitize(kz_json:objects()) -> kz_json:objects().
 sanitize(JObjs) ->
     [kz_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].

@@ -1,4 +1,8 @@
-
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Utilities for working with file extensions.
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_mime).
 
 -export([to_extension/1, to_extensions/1]).
@@ -6,8 +10,8 @@
 -export([from_filename/1]).
 -export([to_filename/1]).
 
+%%------------------------------------------------------------------------------
 %% @doc Transform a mimetype to an extension
-%%
 %%      Example:
 %%
 %% ```
@@ -16,40 +20,56 @@
 %% 2> kz_mime:to_extension(<<"text/plain">>).
 %% <<"txt">>
 %% '''
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec to_extension(binary()) -> binary().
 to_extension(CT) ->
     hd(to_extensions(CT)).
 
-%% @doc Return the mimetype for any file by looking at its extension.
+%%------------------------------------------------------------------------------
+%% @doc Return the mime-type for any file by looking at its extension.
 %% Example:
 %%
 %% ```
 %% 1> kz_mime:from_filename(<<"test.cpp">>).
 %% <<"text/x-c">>
 %% '''
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec from_filename(file:filename_all()) -> binary().
 from_filename(Path) ->
     from_extension(filename:extension(Path)).
 
+%%------------------------------------------------------------------------------
 %% @doc generate a filename with extension for content-type.
+%%
 %% Example:
 %%
 %% ```
 %% 1> kz_mime:to_filename(<<"text/plain">>).
 %% <<"1345678wdfghjk34rtghjk.txt">>
 %% '''
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec to_filename(binary()) -> binary().
 to_filename(CT) ->
     list_to_binary([kz_binary:rand_hex(16), ".", hd(to_extensions(CT))]).
 
-%% @doc Return the mimetype for any file by looking at its extension.
+%%------------------------------------------------------------------------------
+%% @doc Return the mime type for any file by looking at its extension.
+%%
 %% Example:
 %%
 %% ```
 %% 1> kzd_mime:from_extension(<<".c">>).
 %% <<"text/x-c">>
 %% '''
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec from_extension(binary()) -> binary().
 
 

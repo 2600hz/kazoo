@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz INC
-%%% @doc
-%%% Module for interacting with JSON schema docs
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2014-2018, 2600Hz
+%%% @doc Module for interacting with JSON schema docs
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_json_schema).
 
 -export([add_defaults/2
@@ -650,12 +648,10 @@ error_to_jobj({'schema_invalid'
 error_to_jobj(Other, _Options) ->
     throw({'schema_error', Other}).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Add a validation error to the list of request errors
+%%------------------------------------------------------------------------------
+%% @doc Add a validation error to the list of request errors
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validation_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
                                   validation_error().
 validation_error(Property, <<"type">>=C, Message, Options) ->
@@ -871,4 +867,3 @@ fix_path(Path) ->
 -spec fix_el(kz_json:key() | non_neg_integer()) -> kz_json:key() | non_neg_integer().
 fix_el(I) when is_integer(I) -> I+1;
 fix_el(El) -> El.
-

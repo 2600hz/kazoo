@@ -1,7 +1,8 @@
-%% @author root
-%% @doc @todo Add description to kazoo_oauth_util.
-
-
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kazoo_oauth_service).
 
 -include("kazoo_oauth.hrl").

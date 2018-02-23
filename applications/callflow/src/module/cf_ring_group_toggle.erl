@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% Logs a user in or out of a ring group
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Logs a user in or out of a ring group.
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%   Max Lay
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_ring_group_toggle).
 
 -behaviour(gen_cf_action).
@@ -20,14 +19,12 @@
 
 -define(MAX_SAVE_RETRIES, 3).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     _ = kapps_call_command:answer(Call),

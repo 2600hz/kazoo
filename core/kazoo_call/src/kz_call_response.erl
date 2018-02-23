@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_call_response).
 
 -export([send/3, send/4, send/5]).
@@ -22,13 +20,11 @@
 config_doc_id() ->
     ?CALL_RESPONSE_CONF.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create a call response, as a queue of events when media should be
+%%------------------------------------------------------------------------------
+%% @doc Create a call response, as a queue of events when media should be
 %% played as part of the error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
                   {'ok', kz_term:ne_binary()} |
@@ -124,12 +120,10 @@ do_send(CallId, CtrlQ, Commands) ->
                         end
                        ).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_default(kapps_call:call(), kz_term:api_binary()) ->
                           {'ok', kz_term:ne_binary()} |
                           {'error', 'no_response'}.
@@ -158,12 +152,10 @@ send_default_response(Call, Response) ->
         ,kapps_call:get_prompt(Call, Media)
         ).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% returns the configured response proplist
+%%------------------------------------------------------------------------------
+%% @doc Returns the configured response proplist.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_response(kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_object().
 get_response(Cause, Call) ->
     Default = case default_response(Cause) of
@@ -173,12 +165,10 @@ get_response(Cause, Call) ->
     AccountId = kapps_call:account_id(Call),
     kapps_account_config:get_global(AccountId, ?CALL_RESPONSE_CONF, Cause, Default).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% returns the default action given the error
+%%------------------------------------------------------------------------------
+%% @doc Returns the default action given the error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec default_response(kz_term:ne_binary()) -> 'undefined' | kz_term:proplist().
 default_response(<<"RESPONSE_TO_STATUS_ENQUIRY">>) -> 'undefined';
 default_response(<<"FACILITY_NOT_SUBSCRIBED">>) -> 'undefined';

@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handles authorization requests, responses, queue bindings
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handles authorization requests, responses, queue bindings.
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_rate).
 
 -export([req/1, req_v/1
@@ -78,11 +76,11 @@
                          ,{<<"Update-Callee-ID">>, fun kz_term:is_boolean/1}
                          ]).
 
-%%--------------------------------------------------------------------
-%% @doc Authorization Request - see wiki
-%% Takes proplist, creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Authorization Request.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
@@ -100,11 +98,11 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Authorization Response - see wiki
-%% Takes proplist, creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Authorization Response.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
@@ -122,10 +120,10 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) ->
     resp_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Setup and tear down bindings for rate gen_listeners
+%%------------------------------------------------------------------------------
+%% @doc Setup and tear down bindings for rate `gen_listeners'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
@@ -160,19 +158,18 @@ unbind_q_from(Q, [_|T]) ->
 unbind_q_from(_Q, []) ->
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
-%%--------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%%------------------------------------------------------------------------------
+%% @doc Publish the JSON string to the proper Exchange.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->

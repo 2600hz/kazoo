@@ -1,10 +1,8 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% S3 Storage for attachments
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc S3 Storage for attachments.
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
 -module(kz_att_s3).
 -behaviour(gen_attachment).
@@ -12,7 +10,7 @@
 -include("kz_att.hrl").
 -include_lib("erlcloud/include/erlcloud_aws.hrl").
 
-%% `gen_attachment' behaviour callbacks (API)
+%% gen_attachment behaviour callbacks (API)
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
@@ -23,9 +21,14 @@
                      {'http_error', pos_integer(), string(), binary()}
                     }.
 
-%% ====================================================================
-%% `gen_attachment' behaviour callbacks (API)
-%% ====================================================================
+%%%=============================================================================
+%%% gen_attachment behaviour callbacks (API)
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -74,9 +77,14 @@ fetch_attachment(Conn, DbName, DocId, AName) ->
             end
     end.
 
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec bucket(map()) -> string().
 bucket(#{bucket := Bucket}) -> kz_term:to_list(Bucket).
 

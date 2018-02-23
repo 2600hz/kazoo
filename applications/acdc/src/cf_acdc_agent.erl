@@ -1,8 +1,6 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% Handles changing an agent's status
-%%%
+%%% @doc Handles changing an agent's status
 %%% "data":{
 %%%   "action":["login","logout","paused","resume"] // one of these
 %%%   ,"timeout":600 // in seconds, for "paused" status
@@ -11,10 +9,10 @@
 %%%                      ,"red_flash", "red_solid", "green"
 %%%                     ]
 %%% }
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_acdc_agent).
 
 -export([handle/2
@@ -28,11 +26,10 @@
 
 -include_lib("callflow/src/callflow.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     kapps_call_command:answer(Call),

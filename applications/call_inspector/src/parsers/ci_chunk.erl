@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ci_chunk).
 
 -export([new/0]).
@@ -183,14 +180,11 @@ dst(Bin = <<_/binary>>) ->
 is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Gives back an ordered list of entities participating in the SIP dialog.
-%%
-%% `Chunks` needs to be ordered (e.g. using reorder_dialog/1).
+%%------------------------------------------------------------------------------
+%% @doc Gives back an ordered list of entities participating in the SIP dialog.
+%% `Chunks' needs to be ordered (e.g. using {@link reorder_dialog/1}).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_dialog_entities([chunk()]) -> kz_term:ne_binaries().
 get_dialog_entities(Chunks) ->
     get_dialog_entities(Chunks, []).

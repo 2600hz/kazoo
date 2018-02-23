@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @Copyright (C) 2010-2016, 2600Hz
-%%% @doc
-%%% Test utilities for manipulating Kazoo/Kazoo documents
+%%% @doc Test utilities for manipulating Kazoo/Kazoo documents
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_doc_tests).
 
 -include_lib("eunit/include/eunit.hrl").

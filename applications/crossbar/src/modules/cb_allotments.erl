@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Dinkor Media Group (Sergey Korobkov)
 %%% @end
-%%% @contributors
-%%%   Dinkor Media Group (Sergey Korobkov)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_allotments).
 
 -export([init/0
@@ -23,10 +21,14 @@
 -define(CONSUMED, <<"consumed">>).
 -define(PVT_ALLOTMENTS, <<"pvt_allotments">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.allotments">>, ?MODULE, 'allowed_methods'),
@@ -35,15 +37,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.allotments">>, ?MODULE, 'post'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -53,14 +53,11 @@ allowed_methods() ->
 allowed_methods(?CONSUMED) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -68,15 +65,13 @@ resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(?CONSUMED) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_allotments(Context, cb_context:req_verb(Context)).
@@ -100,15 +95,14 @@ validate_consumed(Context, ?HTTP_GET) ->
 post(Context) ->
     update_allotments(Context).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a document from the database
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Load a document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_allotments(cb_context:context()) -> cb_context:context().
 load_allotments(Context) ->
     C = crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
@@ -216,12 +210,10 @@ on_successful_validation(Context) ->
             crossbar_util:response_400(Msg, kz_json:new(), Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_allowed(cb_context:context()) -> boolean().
 is_allowed(Context) ->
     AccountId = cb_context:account_id(Context),
@@ -243,12 +235,10 @@ is_allowed(Context) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_create_limits_doc(cb_context:context()) -> cb_context:context().
 maybe_create_limits_doc(Context) ->
@@ -266,12 +256,10 @@ maybe_create_limits_doc(Context, 404) ->
                        ]);
 maybe_create_limits_doc(Context, _RespCode) -> Context.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_allotments(cb_context:context()) -> cb_context:context().
 update_allotments(Context) ->
     Doc = cb_context:doc(Context),

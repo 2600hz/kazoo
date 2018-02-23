@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Handlers for various AMQP payloads
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Handlers for various AMQP payloads
+%%% @author Dinkor (Sergey Korobkov)
 %%% @end
-%%% @contributors
-%%%     Dinkor (Sergey Korobkov)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(j5_balance_check_req).
 
 -export([handle_req/2]).
@@ -33,4 +31,3 @@ build_resp(RespAccounts, ReqJObj) ->
       ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
-

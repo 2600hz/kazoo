@@ -1,45 +1,55 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% Intercept a call in the specified device/user/extension
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Intercept a call in the specified device/user/extension.
 %%%
-%%% data: {
-%%%   "type" : "user | device | extension"
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`type'</dt>
+%%%   <dd>"Can be one of the `group', `user', `device' or `extension' values.</dd>
+%%% </dl>
 %%%
-%%% uses cf_capture_group and type to build parameters to branch to cf_intercept
+%%% This feature is using Callflow `cf_capture_group' and type to build parameters
+%%% to branch to {@link cf_intercept}.
 %%%
-%%% user -> lookup groups by number  (WIP)
-%%% device -> lookup device by sip username
-%%% extension -> lookup callflows
+%%% <strong>Actions will result in:</strong>
+%%% <ul>
+%%%   <li>`group': Lookup groups by number (WIP)</li>
+%%%   <li>`user': Lookup groups by number (WIP)</li>
+%%%   <li>`device': Lookup device by SIP user name</li>
+%%%   <li>`extension': Lookup Callflows</li>
+%%% </ul>
 %%%
-%%% usage example for BLF on spa504g
-%%% the sip user of device we want to monitor for this example is 55578547
-%%% on "Phone" Tab, go to "Line Key 2" and set
-%%%   Extension : disabled
-%%%   Share Call Appearance : private
-%%%   Extended Function :fnc=blf+cp;sub=55578547@sip.domain.com;ext=55578547@sip.domain.com
+%%% <h4>Usage Example for BLF on `spa504g'</h4>
+%%% The SIP user of device we want to monitor for this example is 55578547.
 %%%
-%%% on "Attendant Console" Tab, set "Attendant Console Call Pickup Code:" to *98# instead of *98
-%%% this way the username part of the subscription is passed along (*9855578547)
+%%% <ol>
+%%%    <li>On <i>Phone</i> Tab, go to <i>Line Key 2</i> and set:
+%%%      <ul>
+%%%        <li><strong>Extension: </strong><i>disabled</i></li>
+%%%        <li><strong>Share Call Appearance: </strong><i>private</i></li>
+%%%        <li><strong>Extended Function: </strong>`:fnc=blf+cp;sub=55578547@sip.domain.com;ext=55578547@sip.domain.com'</li>
+%%%      </ul>
+%%%    </li>
 %%%
-%%% create a "pattern callflow" with "patterns": ["^\\*98([0-9]*)$"]
-%%% set the parameter "type" to "device"
+%%%    <li>On <i>Attendant Console</i> Tab, set <i>Attendant Console Call Pickup Code</i> to `*98#' instead of `*98'.
+%%%        This way the user name part of the subscription is passed along (`*9855578547').
+%%%    </li>
+%%%
+%%%    <li>Create a <i>pattern</i> Callflow with `patterns' key as: `["^\\*98([0-9]*)$"]'. Set the parameter `type' to `device'.</li>
+%%% </ol>
+%%%
+%%% <h4>Usage Example for Extension Pickup</h4>
+%%% <ol>
+%%%   <li>Create a <i>pattern</i> Callflow with `patterns' key as: `["^\\*7([0-9]*)$"]' and set the parameter `type' to `extension'.</li>
+%%%   <li>Create simple Callflow with `number' set as `401' and set the target to a <i>ring group</i> or <i>page group</i>.</li>
+%%%   <li>Dial `401' to start ringing the phones in group, in another phone dial `*7401' to pickup the call</li>
+%%% </ol>
 %%%
 %%%
-%%% usage example for extension pickup
-%%%
-%%% 1) create a "pattern callflow" with "patterns": ["^\\*7([0-9]*)$"] and set the parameter "type" to "extension"
-%%% 2) create simple callflow with number = 401 and set the target to a "ring group" or "page group"
-%%% 3) dial 401 to start ringing the phones in group, in another phone dial *7401 to pickup the call
-%%%
-%%%
-%%%
+%%% @author SIPLABS LLC (Mikhail Rodionov)
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Mikhail Rodionov)
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_intercept_feature).
 
 -behaviour(gen_cf_action).
@@ -48,13 +58,11 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module, creates the parameters and branches
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module, creates the parameters and branches
 %% to cf_intercept.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),

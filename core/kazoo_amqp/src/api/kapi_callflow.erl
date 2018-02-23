@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_callflow).
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
@@ -26,11 +24,11 @@
                        ]).
 -define(RESUME_TYPES, []).
 
-%%--------------------------------------------------------------------
-%% @doc Resume a callflow's flow
-%% Takes proplist, creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Resume a Callflow's flow.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resume(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resume(Prop) when is_list(Prop) ->
     case resume_v(Prop) of
@@ -52,19 +50,18 @@ bind_q(Q, _Props) ->
 unbind_q(Q, _Props) ->
     amqp_util:unbind_q_from_kapps(Q, ?RESUME_ROUTING_KEY).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
-%%--------------------------------------------------------------------
-%% @doc Publish the JSON iolist() to the proper Exchange
+%%------------------------------------------------------------------------------
+%% @doc Publish the JSON string to the proper Exchange.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish_resume(kz_term:api_terms()) -> 'ok'.
 publish_resume(JObj) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?RESUME_VALUES, fun resume/1),

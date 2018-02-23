@@ -1,17 +1,17 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% This module looks up the Caller ID Name by matching
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc This module looks up the Caller ID Name by matching
 %%% numbers/patters with the provided lists.
 %%%
-%%% "data":{
-%%%   "lists": ["01fc63f92d9b89a25dd4ff1039e64497"]
-%%% },
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`lists'</dt>
+%%%   <dd>ID of list document to use.</dd>
+%%% </dl>
+%%%
+%%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%     Sponsored by Conversant Ltd,
-%%%         implemented by SIPLABS, LLC (Ilya Ashchepkov)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_lookupcidname).
 
 -behaviour(gen_cf_action).

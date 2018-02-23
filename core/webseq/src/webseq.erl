@@ -1,12 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Log messages in a way to make importing to WebSequenceDiagrams.com
+%%% @doc Log messages in a way to make importing to WebSequenceDiagrams.com
 %%% easier
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(webseq).
 
 -export([start/1

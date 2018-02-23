@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(acdc_agent_util).
 
 -export([update_status/3, update_status/4
@@ -203,7 +201,6 @@ clear_monitor(Ref) ->
     after 0 -> 'ok'
     end.
 
-%% @private
 -spec async_most_recent_ets_statuses(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), pid()) -> 'ok'.
 async_most_recent_ets_statuses(AccountId, AgentId, Options, Pid) ->
     case most_recent_ets_statuses(AccountId, AgentId, Options) of
@@ -215,7 +212,6 @@ async_most_recent_ets_statuses(AccountId, AgentId, Options, Pid) ->
             'ok'
     end.
 
-%% @private
 -spec async_most_recent_db_statuses(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), pid()) -> 'ok'.
 async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
     case most_recent_db_statuses(AccountId, AgentId, Options) of

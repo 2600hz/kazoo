@@ -1,12 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz, INC
-%%% @doc
-%%% Jonny5 module (worker) for disconnect calls when account
-%%% balance drops below zero
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Jonny5 module (worker) for disconnect calls when account
+%%% balance drops below zero.
+%%%
+%%% @author Dinkor (Sergey Korobkov)
 %%% @end
-%%% @contributors
-%%%     Dinkor (Sergey Korobkov)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_balance_crawler_worker).
 
 -export([start/0]).

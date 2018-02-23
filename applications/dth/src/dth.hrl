@@ -4,8 +4,8 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
--include("include/dthsoap.hrl").
--include("include/dth_amqp.hrl").
+-include_lib("dth/include/dthsoap.hrl").
+-include_lib("dth/include/dth_amqp.hrl").
 
 -define(APP_NAME, <<"dth">>).
 -define(APP_VERSION, <<"4.0.0">>).

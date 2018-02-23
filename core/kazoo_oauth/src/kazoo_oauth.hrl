@@ -13,7 +13,7 @@
 -define(OAUTH_GRANT_TYPE,<<"urn:ietf:params:oauth:grant-type:jwt-bearer">>).
 -define(OAUTH_GRANT_TYPE2,<<"http://oauth.net/grant_type/jwt/1.0/bearer">>).
 
--include("include/kazoo_oauth_types.hrl").
+-include_lib("kazoo_oauth/include/kazoo_oauth_types.hrl").
 
 -define(KAZOO_OAUTH_HRL, 'true').
 -endif.

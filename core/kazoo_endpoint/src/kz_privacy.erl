@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_privacy).
 
 -export([maybe_cid_privacy/2
@@ -41,14 +38,12 @@
 -type cid_number() :: kz_term:api_binary().
 -type cid() :: {cid_name(), cid_number()}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Would anonymize caller id if screen and hide parameters in
+%%------------------------------------------------------------------------------
+%% @doc Would anonymize caller id if screen and hide parameters in
 %% CCVs are presents and system is configured to hide some part of
 %% caller id or both or bot hiding at all.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_cid_privacy(kz_term:proplist() | kz_json:object(), cid()) -> cid().
 maybe_cid_privacy(Props, Default) when is_list(Props) ->
     maybe_cid_privacy(kz_json:from_list(Props), Default);
@@ -80,13 +75,11 @@ has_flags(JObj) ->
                  orelse caller_privacy_number(JObj)
                 ).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Find out if we call should be blocked if it's anonymous and Account
+%%------------------------------------------------------------------------------
+%% @doc Find out if we call should be blocked if it's anonymous and Account
 %% or system is configured to block anonymous calls
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec should_block_anonymous(kz_json:object()) -> boolean().
 should_block_anonymous(JObj) ->
     AccountId = get_value(<<"Account-ID">>, JObj),
@@ -106,12 +99,10 @@ should_block_anonymous(JObj) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Checks all possible variables to see if the incoming call is anonymous
+%%------------------------------------------------------------------------------
+%% @doc Checks all possible variables to see if the incoming call is anonymous
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_anonymous(kz_json:object()) -> boolean().
 is_anonymous(JObj) ->
     IsPrivacyNumber = kz_term:is_true(get_value(<<"Caller-Privacy-Number">>, JObj, 'false')),
@@ -123,12 +114,10 @@ is_anonymous(JObj) ->
         orelse IsPrivacyNumber
         orelse HasPrivacyFlags.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Default anonymous Caller IDs from System wide config, or Account
+%%------------------------------------------------------------------------------
+%% @doc Default anonymous Caller IDs from System wide config, or Account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec anonymous_caller_id_name() -> kz_term:ne_binary().
 anonymous_caller_id_name() ->
     kapps_config:get_binary(?PRIVACY_CAT, ?KEY_ANON_NAME, ?ANON_NAME).
@@ -149,12 +138,10 @@ anonymous_caller_id_number('undefined') ->
 anonymous_caller_id_number(AccountId) ->
     kapps_account_config:get_global(AccountId, ?PRIVACY_CAT, ?KEY_ANON_NUMBER, ?ANON_NUMBER).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Checks for screen bits and caller id hide parameters
+%%------------------------------------------------------------------------------
+%% @doc Checks for screen bits and caller id hide parameters
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec caller_privacy_mode(kz_json:object()) -> kz_term:ne_binary() | 'false'.
 caller_privacy_mode(JObj) ->
     caller_screen_bit(JObj)
@@ -166,12 +153,10 @@ caller_privacy_mode('true', 'false') -> ?HIDE_NAME;
 caller_privacy_mode('false', 'true') -> ?HIDE_NUMBER;
 caller_privacy_mode('false', 'false') -> ?NO_HIDE_MODE.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Make some/all/no part of caller id anonymous base on system config
+%%------------------------------------------------------------------------------
+%% @doc Make some/all/no part of caller id anonymous base on system config
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_anonymize_cid(kz_term:api_binary(), kz_term:ne_binary(), kz_json:object(), cid()) -> cid().
 maybe_anonymize_cid('undefined', HideMode, JObj, Default) ->
     maybe_anonymize_cid(get_default_privacy_mode(JObj), HideMode, JObj, Default);
@@ -213,13 +198,11 @@ anonymize_cid(AccountId, {_, Number}, ?HIDE_NAME) ->
 anonymize_cid(AccountId, {Name, _}, ?HIDE_NUMBER) ->
     {Name, anonymous_caller_id_number(AccountId)}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get default privacy settings from system_config or from
+%%------------------------------------------------------------------------------
+%% @doc Get default privacy settings from system_config or from
 %% legacy anonymizer setting on account's document
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_default_privacy_mode(kz_json:object()) -> kz_term:ne_binary().
 get_default_privacy_mode(JObj) ->
     AccountId = get_value(<<"Account-ID">>, JObj, get_master_account()),
@@ -247,12 +230,10 @@ get_master_account() ->
         {'error', _} -> 'undefined'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Look for Caller Screens and CID Privacy Hide value, default to 'false'
+%%------------------------------------------------------------------------------
+%% @doc Look for Caller Screens and CID Privacy Hide value, default to 'false'
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec caller_screen_bit(kz_json:object()) -> boolean().
 caller_screen_bit(JObj) -> kz_term:is_true(get_value(?CALLER_SCREEN_BIT, JObj, 'false')).
 
@@ -262,13 +243,11 @@ caller_privacy_name(JObj) -> kz_term:is_true(get_value(?CALLER_PRIVACY_NAME, JOb
 -spec caller_privacy_number(kz_json:object()) -> boolean().
 caller_privacy_number(JObj) -> kz_term:is_true(get_value(?CALLER_PRIVACY_NUMBER, JObj, 'false')).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Look into Caller ID Number to see if it starts with at least two 00
+%%------------------------------------------------------------------------------
+%% @doc Look into Caller ID Number to see if it starts with at least two 00
 %% (a common way to make caller id number anonymous)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_zero(kz_term:api_ne_binary()) -> boolean().
 is_zero(?NE_BINARY=Number) ->
     case re:run(erlang:binary_to_list(Number), "^\\+?00+\$", ['global']) of
@@ -277,12 +256,10 @@ is_zero(?NE_BINARY=Number) ->
     end;
 is_zero(_) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get Key from JObj, if not found look into CCV
+%%------------------------------------------------------------------------------
+%% @doc Get Key from JObj, if not found look into CCV
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_value(kz_term:ne_binary(), kz_json:object()) -> any().
 get_value(Key, JObj) ->
     get_value(Key, JObj, 'undefined').

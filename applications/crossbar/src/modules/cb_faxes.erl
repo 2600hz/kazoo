@@ -1,12 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors:
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_faxes).
 
 -export([init/0
@@ -63,16 +60,14 @@
 -define(INBOX_ACTION_FORWARD, <<"forward">>).
 -define(INBOX_ACTIONS, [?INBOX_ACTION_FORWARD]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
+%%------------------------------------------------------------------------------
+%% @doc Initializes the bindings this module will respond to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.faxes">>, ?MODULE, 'allowed_methods'),
@@ -83,13 +78,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
+%%------------------------------------------------------------------------------
+%% @doc Given the path tokens related to this module, what HTTP methods are
 %% going to be responded to.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -125,15 +118,17 @@ allowed_methods(?INBOX, _FaxId, ?ATTACHMENT) ->
 allowed_methods(?OUTBOX, _FaxId, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /faxes => []
+%%------------------------------------------------------------------------------
+%% @doc Does the path point to a valid resource.
+%% For example:
+%%
+%% ```
+%%    /faxes => []
 %%    /faxes/foo => [<<"foo">>]
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
+%% '''
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -174,13 +169,10 @@ maybe_add_types_accepted(Context, ?HTTP_PUT) ->
     cb_context:add_content_types_accepted(Context, ?ACCEPTED_TYPES);
 maybe_add_types_accepted(Context, _) -> Context.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%%------------------------------------------------------------------------------
+%% @doc Add content types accepted and provided by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, ?OUTBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
@@ -222,16 +214,14 @@ content_types_provided_for_fax(Context) ->
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
+%%------------------------------------------------------------------------------
+%% @doc Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /faxes mights load a list of fax objects
 %% /faxes/123 might load the fax object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -315,12 +305,10 @@ validate_inbox_fax_action(Action, Id, Context) ->
         'false' -> cb_context:add_system_error(<<"invalid action">>, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is PUT, execute the actual action, usually a db save.
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -338,12 +326,10 @@ put(Context, ?INBOX, Id) ->
     Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
     do_put_action(Context, ?INBOX, Action, Id).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
+%%------------------------------------------------------------------------------
+%% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _, _Id) ->
     crossbar_doc:delete(Context).
@@ -356,12 +342,10 @@ delete(Context, _, Id, ?ATTACHMENT) ->
                 end
                , Context, ANames).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
+%%------------------------------------------------------------------------------
+%% @doc Create a new instance with the data provided, if it is valid
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     FaxBoxDoc = cb_context:fetch(Context, <<"faxbox">>),
@@ -389,12 +373,10 @@ maybe_add_faxbox_data(FaxBoxDoc, Context) ->
                          ,Props),
     cb_context:set_req_data(Context, ReqData).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an instance from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Type, Context) ->
     Year  = kz_term:to_integer(YYYY),
@@ -466,22 +448,18 @@ get_fax_running_status(Id, Q) ->
         _ -> <<"not available">>
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a fax document from the database
+%%------------------------------------------------------------------------------
+%% @doc Load a fax document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_fax_meta(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_fax_meta(FaxId, Folder, Context) ->
     validate_fax_doc_folder(Folder, crossbar_doc:load({<<"fax">>, FaxId}, Context, ?TYPE_CHECK_OPTION(<<"fax">>))).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     case cb_context:req_files(Context) =:= []
@@ -511,12 +489,10 @@ verify_number(Context) ->
             cb_context:add_validation_error(Property, Code, Message, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec on_success(cb_context:context()) -> cb_context:context().
 on_success(Context) ->
     AccountDb = cb_context:account_db(Context),
@@ -553,13 +529,11 @@ maybe_add_timezone(_Context, Timezone) ->
 initial_job_status([]) -> <<"pending">>;
 initial_job_status(_) -> <<"attaching_files">>.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec inbox_summary(cb_context:context()) -> cb_context:context().
 inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
 
@@ -623,12 +597,10 @@ load_smtp_log(Context) ->
               ],
     crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, Options).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load the binary attachment of a fax doc
+%%------------------------------------------------------------------------------
+%% @doc Load the binary attachment of a fax doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_fax_binary(path_token(), path_token(), cb_context:context()) -> cb_context:context().
 load_fax_binary(?MATCH_MODB_PREFIX(Year,Month,_) = FaxId, Folder, Context) ->
     do_load_fax_binary(FaxId, Folder, cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)));
@@ -661,13 +633,11 @@ set_fax_binary(Context, AttachmentId) ->
                        ]
                       ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec outgoing_summary(cb_context:context()) -> cb_context:context().
 outgoing_summary(Context) ->
     JObj = cb_context:fetch(Context, <<"faxbox">>, kz_json:new()),
@@ -679,12 +649,10 @@ outgoing_summary(Context) ->
               ],
     crossbar_view:load(Context, ViewName, Options).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_modb_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_modb_view_results(JObj, Acc) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),

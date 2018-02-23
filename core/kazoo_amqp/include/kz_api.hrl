@@ -51,7 +51,6 @@
 %%% *_HEADERS or OPTIONAL_*_HEADERS, and Type defines a function that validates a passed in value
 %%% is an appropriate type for the given Key, returning a boolean. If Key is not in the passed-in
 %%% message, true is returned without running the Type fun.
-%%% @spec Type :: function(Value :: any()) -> boolean()
 %%%
 %%% eg: -define(FOO_TYPES, [{<<"baz">>, fun(V) -> lists:member(V, props:get_value(<<"baz">>, ?FOO_VALUES)) end}]).
 %%%   would define a function to validate the value of key <<"baz">> in the same way ?FOO_VALUES does.

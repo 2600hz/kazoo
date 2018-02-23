@@ -1,15 +1,13 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Account module
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Account module
 %%% Handle client requests for account documents
 %%%
+%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_accounts).
 
 -export([init/0
@@ -82,15 +80,13 @@ init() ->
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -124,14 +120,11 @@ allowed_methods(_AccountId, ?API_KEY) -> [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_AccountId, ?TREE) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -152,15 +145,13 @@ resource_exists(_, Path) ->
              ],
     lists:member(Path, Paths).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns and Resource Ids are valid.
 %% If valid, updates Context with account data
 %%
-%% Failure here returns 404
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
 validate_resource(Context) ->
@@ -174,15 +165,13 @@ validate_resource(Context, AccountId) ->
 validate_resource(Context, AccountId, _Path) ->
     load_account_db(Context, AccountId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
                       cb_context:context().
@@ -284,12 +273,10 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
         _Else -> Context1
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
@@ -321,12 +308,10 @@ post(Context, AccountId, ?MOVE) ->
 patch(Context, AccountId) ->
     post(Context, AccountId).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -378,12 +363,10 @@ put(Context, AccountId, ?RESELLER) ->
         'ok' -> load_account(AccountId, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
@@ -406,32 +389,29 @@ delete(Context, AccountId, ?RESELLER) ->
         'ok' -> load_account(AccountId, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update_descendants_count(kz_term:ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
     _ = kz_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_apps_store_doc(kz_term:ne_binary()) -> 'ok'.
 create_apps_store_doc(AccountId) ->
     _ = kz_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_move(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 validate_move(<<"superduper_admin">>, Context, _, _) ->
     lager:debug("using superduper_admin flag to allow move account"),
@@ -453,14 +433,13 @@ validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
                    ),
     lists:member(AuthId, L);
 validate_move(_Type, _, _, _) ->
-    lager:error("unknow move type ~p", [_Type]),
+    lager:error("unknown move type ~p", [_Type]),
     'false'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec move_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 move_account(Context, AccountId) ->
     Data = cb_context:req_data(Context),
@@ -472,12 +451,10 @@ move_account(Context, AccountId) ->
             load_account(AccountId, prepare_context(AccountId, Context))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec prepare_context(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 prepare_context('undefined', Context) ->
@@ -493,12 +470,10 @@ prepare_context(Context, AccountId, AccountDb) ->
                                 ,{fun cb_context:set_account_id/2, AccountId}
                                 ]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(AccountId, Context) ->
     ValidateFuns = [fun ensure_account_has_realm/2
@@ -679,12 +654,10 @@ maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
             cb_context:add_validation_error([<<"account">>], <<"forbidden">>, Msg, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an account document from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an account document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_delete_request(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_delete_request(AccountId, Context) ->
     case kapps_util:account_has_descendants(AccountId) of
@@ -701,27 +674,22 @@ validate_delete_request(AccountId, Context) ->
             end
     end.
 
-%% @private
 -spec validate_patch_request(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch_request(AccountId, Context) ->
     crossbar_doc:patch_and_validate(AccountId, Context, fun validate_request/2).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an account document from the database
+%%------------------------------------------------------------------------------
+%% @doc Load an account document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_account(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_account(AccountId, Context) ->
     leak_pvt_fields(AccountId, crossbar_doc:load(AccountId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec leak_pvt_fields(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 leak_pvt_fields(AccountId, Context) ->
@@ -881,12 +849,10 @@ leak_trial_time_left(Context, JObj, _Expiration) ->
                                 ),
     cb_context:set_resp_data(Context, RespData).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a summary of the children of this account
+%%------------------------------------------------------------------------------
+%% @doc Load a summary of the children of this account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_children(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_children(AccountId, Context) ->
     load_children(AccountId, Context, cb_context:api_version(Context)).
@@ -919,12 +885,10 @@ load_paginated_children(AccountId, Context) ->
                             ,fun normalize_view_results/2
                             )).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a summary of the descendants of this account
+%%------------------------------------------------------------------------------
+%% @doc Load a summary of the descendants of this account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants(AccountId, Context) ->
     load_descendants(AccountId, Context, cb_context:api_version(Context)).
@@ -958,12 +922,10 @@ load_paginated_descendants(AccountId, Context) ->
                             )
      ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a summary of the siblngs of this account
+%%------------------------------------------------------------------------------
+%% @doc Load a summary of the siblngs of this account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
     case kz_util:is_system_admin(cb_context:auth_account_id(Context))
@@ -1078,11 +1040,10 @@ format_account_tree_results(Context, JObjs) ->
         ],
     cb_context:set_resp_data(Context, RespData).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_parents(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_parents(AccountId, Context) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
@@ -1110,22 +1071,20 @@ load_parent_tree(AccountId, Context) ->
                        ]
                       ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec extract_tree(kz_term:ne_binary(), kz_json:objects()) -> kz_term:ne_binaries().
 extract_tree(AccountId, JObjs) ->
     JObj = kz_json:find_value(<<"id">>, AccountId, JObjs),
     [_, Tree] = kz_json:get_value(<<"key">>, JObj),
     lists:delete(AccountId, Tree).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec find_accounts_from_tree(kz_term:ne_binaries(), kz_json:objects(), cb_context:context()) -> kz_json:objects().
 find_accounts_from_tree(Tree, JObjs, Context) ->
@@ -1150,23 +1109,19 @@ account_from_tree(JObj) ->
                       ,{<<"name">>, kzd_accounts:name(JObj)}
                       ]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the results of a view
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function returns the private fields to be added to a new account
+%%------------------------------------------------------------------------------
+%% @doc This function returns the private fields to be added to a new account
 %% document
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_private_properties(cb_context:context()) -> cb_context:context().
 set_private_properties(Context) ->
     PvtFuns = [fun add_pvt_type/1
@@ -1263,13 +1218,11 @@ create_new_tree(Context, _Verb, _Nouns) ->
         'true' -> create_new_tree(kz_json:get_value(<<"account_id">>, JObj))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will attempt to load the context with the db name of
+%%------------------------------------------------------------------------------
+%% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_account_db(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries()) ->
                              cb_context:context().
 load_account_db(Context, [AccountId|_]) ->
@@ -1295,13 +1248,11 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
             crossbar_util:response_db_fatal(Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will create a new account and corresponding database
+%%------------------------------------------------------------------------------
+%% @doc This function will create a new account and corresponding database
 %% then spawn a short initial function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_new_account_db(cb_context:context()) -> cb_context:context().
 create_new_account_db(Context) ->
     AccountDb = cb_context:account_db(Context),
@@ -1427,12 +1378,10 @@ load_initial_views(Context)->
     _ = kazoo_number_manager_maintenance:update_number_services_view(cb_context:account_db(Context)),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec replicate_account_definition(kz_json:object()) ->
                                           {'ok', kz_json:object()} |
                                           {'error', any()}.
@@ -1445,13 +1394,11 @@ replicate_account_definition(JObj) ->
             kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will determine if the realm in the request is
+%%------------------------------------------------------------------------------
+%% @doc This function will determine if the realm in the request is
 %% unique or belongs to the request being made
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_unique_realm(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
 is_unique_realm(AccountId, Realm) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Realm)}],
@@ -1462,12 +1409,10 @@ is_unique_realm(AccountId, Realm) ->
         _Else -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will determine if the account name is unique
+%%------------------------------------------------------------------------------
+%% @doc This function will determine if the account name is unique
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_is_unique_account_name(kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
 maybe_is_unique_account_name(AccountId, Name) ->
     case kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"ensure_unique_name">>, 'true') of
@@ -1488,15 +1433,14 @@ is_unique_account_name(AccountId, Name) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Send a notification that the account has been created
+%%------------------------------------------------------------------------------
+%% @doc Send a notification that the account has been created
+%%
+%% <div class="notice">When the `auth_token' is empty either sign ups or on-board
+%% allowed this request and they will notify once complete.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec notify_new_account(cb_context:context()) -> 'ok'.
-%% NOTE: when the auth token is empty either signups or onboard allowed this request
-%%       and they will notify once complete...
 notify_new_account(Context) ->
     notify_new_account(Context, cb_context:auth_doc(Context)).
 
@@ -1514,13 +1458,11 @@ notify_new_account(Context, _AuthDoc) ->
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Support the depreciated billing id on the account definition, will
+%%------------------------------------------------------------------------------
+%% @doc Support the depreciated billing id on the account definition, will
 %% be phased out shortly
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec support_depreciated_billing_id(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
                                             cb_context:context().
 support_depreciated_billing_id('undefined', _, Context) -> Context;
@@ -1539,12 +1481,10 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
             cb_context:add_validation_error(<<"billing_id">>, <<"not_found">>, Msg, Reason)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete_remove_services(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_services(Context) ->
     case kz_services:delete(cb_context:account_id(Context)) of

@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Various utilities - a veritable cornicopia
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Various utilities - a veritable cornucopia.
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_network_utils).
 
 -export([get_hostname/0]).
@@ -71,33 +69,27 @@
              ,options/0
              ]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec lookup_timeout() -> ?LOOKUP_TIMEOUT.
 lookup_timeout() -> ?LOOKUP_TIMEOUT.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_hostname() -> string().
 get_hostname() ->
     {'ok', Host} = inet:gethostname(),
     {'ok', #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
     Hostname.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_ipv4(kz_term:text()) -> boolean().
 is_ipv4(Address) when is_binary(Address) ->
     is_ipv4(kz_term:to_list(Address));
@@ -121,13 +113,12 @@ is_ip(Address) ->
     is_ipv4(Address)
         orelse is_ipv6(Address).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Detects if specified IP family is supported by system
-%% (Need 'ping' command installed on the system.
-%%  ping is part of iputils package)
+%%------------------------------------------------------------------------------
+%% @doc Detects if specified IP family is supported by system.
+%% Needs `ping' command installed on the system.
+%% `ping' is part of `iputils' package.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_ip_family_supported(inet:address_family()) -> boolean().
 is_ip_family_supported(Family) ->
     listen_to_ping(Family, ping_cmd_option(Family), 1).
@@ -172,12 +163,11 @@ ping_cmd_option('inet6') -> "ping -6 -c 1 localhost";
 ping_cmd_option('ping6') -> "ping6 -c 1 localhost";
 ping_cmd_option(_) -> "ping -c 1 localhost".
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc Default binding IP address (bind on all interfaces) based
-%%      on supported IP family
+%% on supported IP family.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec default_binding_all_ip() -> string().
 default_binding_all_ip() ->
     default_binding_all_ip(is_ip_family_supported('inet')
@@ -196,12 +186,10 @@ prefered_inet('inet6') -> "::";
 prefered_inet('system') ->
     kapps_config:get_string(<<"kapps_controller">>, <<"default_apps_ip_address_to_bind">>, "0.0.0.0").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec to_cidr(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_cidr(IP) -> to_cidr(IP, <<"32">>).
 
@@ -263,24 +251,20 @@ verify_cidr(IP, CIDR) ->
 %%             ]
 %%     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_rfc1918_ip(kz_term:text()) -> boolean().
 is_rfc1918_ip(IP) ->
     verify_cidr(IP, "192.168.0.0/16")
         orelse verify_cidr(IP, "10.0.0.0/8")
         orelse verify_cidr(IP, "172.16.0.0/12").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_nameservers(kz_term:ne_binary()) -> [string()].
 find_nameservers(Domain) ->
     find_nameservers(Domain, default_options()).
@@ -314,12 +298,10 @@ find_nameservers_parent([_|Parts], Options) ->
         Nameservers -> Nameservers
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resolve(kz_term:ne_binary()) -> kz_types:ip_list().
 resolve(Address) ->
     resolve(Address, default_options()).
@@ -373,12 +355,10 @@ resolve_a_record(Domain, IPs, Options) ->
 resolve_a_record_fold(IPTuple, I) ->
     [iptuple_to_binary(IPTuple) | I].
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> kz_term:ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(kz_term:to_binary(A))/binary, "."
@@ -422,12 +402,10 @@ naptrtuple_to_binary({Order, Preference, Flags, Services, Regexp, Domain}) ->
 mxtuple_to_binary({_Priority, Domain}) ->
     <<(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary>>.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec pretty_print_bytes(non_neg_integer()) -> iolist().
 pretty_print_bytes(Bytes)
   when Bytes div 1073741824 > 0 ->
@@ -441,12 +419,10 @@ pretty_print_bytes(Bytes)
 pretty_print_bytes(Bytes) ->
     io_lib:format("~BB", [Bytes]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec lookup_dns(kz_term:ne_binary(), atom()) ->
                         {'ok', [inet_res:dns_data()]}.
 %% See kernel/src/inet_dns.hrl, the S_* macros for values for Type
@@ -458,12 +434,10 @@ lookup_dns(Hostname, Type) ->
 lookup_dns(Hostname, Type, Options) ->
     {'ok', inet_res:lookup(kz_term:to_list(Hostname), 'in', Type, Options)}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec new_options() -> options().
 new_options() -> [].
 

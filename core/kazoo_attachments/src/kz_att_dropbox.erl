@@ -1,13 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Dropbox for attachments
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Dropbox for attachments.
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
-
 -module(kz_att_dropbox).
+
 -behaviour(gen_attachment).
 
 -include("kz_att.hrl").
@@ -20,9 +18,14 @@
 -define(DRV_FETCH_URL, <<"https://content.dropboxapi.com/2/files/download">>).
 -define(DRV_DROPBOX_HEADER(I), {<<"Dropbox-API-Arg">>, kz_json:encode(kz_json:from_list([{<<"path">>, I}]))}).
 
-%% ====================================================================
-%% `gen_attachment' behaviour callbacks (API)
-%% ====================================================================
+%%%=============================================================================
+%%% gen_attachment behaviour callbacks (API)
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -116,9 +119,14 @@ do_fetch_attachment({'error', _}, _, HandlerProps, DbName, DocId, AName) ->
     Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
     kz_att_error:new('oauth_failure', Routines).
 
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec resolve_path(map(), attachment_info()) -> kz_term:ne_binary().
 resolve_path(Settings, AttInfo) ->
     <<"/", (dropbox_format_url(Settings, AttInfo))/binary>>.

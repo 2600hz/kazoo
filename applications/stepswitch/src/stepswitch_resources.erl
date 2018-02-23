@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stepswitch_resources).
 
 -export([get_props/0, get_props/1, get_props/2]).
@@ -215,12 +213,10 @@ sort_resources(Resources) ->
                        W1 =< W2
                end, Resources).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 endpoints(Number, OffnetJObj) ->
     case maybe_get_endpoints(Number, OffnetJObj) of
@@ -272,12 +268,10 @@ endpoint_ordering(P1, P2) ->
     kz_json:get_value(<<"Weight">>, P1, 1)
         =< kz_json:get_value(<<"Weight">>, P2, 1).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reverse_lookup(kz_json:object()) ->
                             {'ok', kz_term:proplist()} |
                             {'error', 'not_found'}.
@@ -408,12 +402,10 @@ search_gateway(_, _, Realm, #gateway{server=Realm
 search_gateway(_, _, _, _) ->
     {'error', 'not_found'}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec filter_resources(kz_term:ne_binaries(), resources()) -> resources().
 filter_resources([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
@@ -449,12 +441,10 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resources_to_endpoints(resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->
                                     kz_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
@@ -641,12 +631,10 @@ evaluate_rules([Rule|Rules], Number) ->
 evaluate_cid_rules([], _) -> {'ok','empty_rules'};
 evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateways_to_endpoints(kz_term:ne_binary(), gateways(), kapi_offnet_resource:req(), kz_json:objects()) ->
                                    kz_json:objects().
 gateways_to_endpoints(_Number, [], _OffnetJObj, Endpoints) -> Endpoints;
@@ -837,12 +825,10 @@ gateway_emergency_resource(#gateway{is_emergency='true'}) ->
     <<"true">>;
 gateway_emergency_resource(_) -> 'undefined'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get() -> resources().
 get() -> get('undefined').
 
@@ -879,12 +865,10 @@ get_local_resource(ResourceId, AccountId) ->
         Resources -> get_resource(ResourceId, Resources)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_global_resources() -> resources().
 -ifdef(TEST).
 fetch_global_resources() ->
@@ -907,12 +891,10 @@ fetch_global_resources() ->
     end.
 -endif.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_local_resources(kz_term:ne_binary()) -> resources().
 -ifdef(TEST).
 fetch_local_resources(AccountId) ->
@@ -963,12 +945,10 @@ build_account_dedicated_proxy(Proxy) ->
     ProxyIP = kz_json:get_value(<<"ip">>, Proxy),
     {Zone, ProxyIP}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resources_from_jobjs(kz_json:objects()) -> resources().
 resources_from_jobjs(JObjs) ->
@@ -1054,12 +1034,10 @@ classifier_is_emergency(ClassifierJObj, <<"emergency">>, _DefaultEmergency) ->
 classifier_is_emergency(ClassifierJObj, _Classifier, DefaultEmergency) ->
     kz_json:is_true(<<"emergency">>, ClassifierJObj, DefaultEmergency).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type rule() :: re:mp().
 -type rules() :: [rule()].
 
@@ -1160,12 +1138,10 @@ resource_is_emergency(JObj) ->
     kz_json:is_true(<<"emergency">>, JObj)
         orelse (kz_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateways_from_jobjs(kz_json:objects(), resource()) -> gateways().
 gateways_from_jobjs(JObjs, Resource) ->
     gateways_from_jobjs(JObjs, Resource, []).
@@ -1180,12 +1156,10 @@ gateways_from_jobjs([JObj|JObjs], Resource, Gateways) ->
             gateways_from_jobjs(JObjs, Resource, G)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateway_from_jobj(kz_json:object(), resource()) -> gateway().
 gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                               ,format_from_uri=FormatFrom
@@ -1263,12 +1237,10 @@ endpoint_options(JObj, <<"sip">>) ->
 endpoint_options(_, _) ->
     kz_json:new().
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Build the sip url of a resource gateway
+%%------------------------------------------------------------------------------
+%% @doc Build the sip url of a resource gateway
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec gateway_dialstring(gateway(), kz_term:ne_binary()) -> kz_term:ne_binary().
 gateway_dialstring(#gateway{route='undefined'
                            ,prefix=Prefix

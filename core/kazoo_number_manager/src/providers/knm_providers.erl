@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, 2600Hz INC
-%%% @doc
-%%% Handle prepend feature
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2016-2018, 2600Hz
+%%% @doc Handle prepend feature
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_providers).
 
 -include("knm.hrl").
@@ -53,30 +51,26 @@
 -endif.
 -type feature_parameters() :: #feature_parameters{}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec save(knm_numbers:collection()) -> knm_numbers:collection().
 save(Number) ->
     do_exec(Number, 'save').
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(knm_numbers:collection()) -> knm_numbers:collection().
 delete(Number) ->
     do_exec(Number, 'delete').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% List features a number is allowed by its reseller to enable.
+%%------------------------------------------------------------------------------
+%% @doc List features a number is allowed by its reseller to enable.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec available_features(knm_phone_number:knm_phone_number()) -> kz_term:ne_binaries().
 available_features(PhoneNumber) ->
     list_available_features(feature_parameters(PhoneNumber)).
@@ -85,12 +79,10 @@ available_features(PhoneNumber) ->
 available_features(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
     list_available_features(feature_parameters(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% The name of the billable service associated with a feature.
+%%------------------------------------------------------------------------------
+%% @doc The name of the billable service associated with a feature.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec service_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 -ifdef(TEST).
 service_name(?FEATURE_E911, _AccountId) ->
@@ -108,12 +100,10 @@ service_name(Feature, _) ->
     service_name(Feature).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Util function to get E911 caller name defaults.
+%%------------------------------------------------------------------------------
+%% @doc Util function to get E911 caller name defaults.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec e911_caller_name(knm_number:knm_number(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 -ifdef(TEST).
 e911_caller_name(_Number, ?NE_BINARY=Name) -> Name;
@@ -128,10 +118,14 @@ e911_caller_name(Number, 'undefined') ->
     end.
 -endif.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec service_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 service_name(<<"knm_dash_e911">>) -> ?LEGACY_DASH_E911;
 service_name(<<"knm_telnyx_e911">>) -> ?LEGACY_TELNYX_E911;
@@ -157,7 +151,6 @@ list_available_features(Parameters) ->
 cleanse_features(Features) ->
     lists:usort([legacy_provider_to_feature(Feature) || Feature <- Features]).
 
-%% @private
 -spec is_local(knm_phone_number:knm_phone_number()) -> boolean().
 is_local(PN) ->
     ModuleName = knm_phone_number:module_name(PN),
@@ -350,11 +343,10 @@ legacy_provider_to_feature(<<"vitelity_cnam">>) -> ?FEATURE_CNAM;
 legacy_provider_to_feature(?LEGACY_VITELITY_E911) -> ?FEATURE_E911;
 legacy_provider_to_feature(Else) -> Else.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec requested_modules(knm_number:knm_number()) -> kz_term:ne_binaries().
 requested_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -420,11 +412,10 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type exec_action() :: 'save' | 'delete'.
 
 -spec do_exec(knm_numbers:collection(), exec_action()) -> knm_numbers:collection().
@@ -472,7 +463,6 @@ remove_denied_features(N) ->
     NewPN = knm_phone_number:remove_denied_features(PN),
     knm_number:set_phone_number(N, NewPN).
 
-%% @public
 -spec features_denied(knm_phone_number:knm_phone_number()) -> kz_term:ne_binaries().
 features_denied(PN) ->
     cleanse_features(list_denied_features(feature_parameters(PN))).

@@ -1,25 +1,28 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz, INC
-%%% @doc
-%%% Intercept a call
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Intercept a call.
 %%%
-%%% data: {
-%%%   "user_id":"_user_id_"
-%%%   ,"device_id":"_device_id_"
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`user_id'</dt>
+%%%   <dd>User ID.</dd>
 %%%
-%%% One of the two - user_id, or device_id - must be defined on
+%%%   <dt>`device_id'</dt>
+%%%   <dd>Device ID></dd>
+%%% </dl>
+%%%
+%%% One of the two, `user_id' or `device_id', must be defined on
 %%% the data payload. Preference is given by most restrictive option set,
-%%% so device_id is checked for first, then user_id.
+%%% so `device_id' is checked for first, then `user_id'.
 %%%
-%%% device_id will only steal a channel of a specific device,
-%%% user_id will only steal a channel on any of the user's devices*
+%%% `device_id' will only steal a channel of a specific device,
+%%% `user_id' will only steal a channel on any of the user's devices.
 %%%
+%%%
+%%% @author SIPLABS LLC (Mikhail Rodionov)
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Mikhail Rodionov)
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_intercept).
 
 -behaviour(gen_cf_action).
@@ -28,13 +31,11 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     _ = case maybe_allowed_to_intercept(Data, Call) of

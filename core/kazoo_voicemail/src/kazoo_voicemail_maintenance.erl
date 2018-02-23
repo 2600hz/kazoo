@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Mailbox maintenance
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Mailbox maintenance
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kazoo_voicemail_maintenance).
 
 -export([migrate/0
@@ -23,11 +21,10 @@
 
 -define(VIEW_MISSING_METADATA, <<"mailbox_messages/missing_metadata">>).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc Migrate all messages in vmbox into the new modb format
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec migrate() -> 'ok'.
 migrate() ->
     _ = process_flag('trap_exit', 'true'),
@@ -59,11 +56,10 @@ print_migration_stats(Props) ->
     _ = [io:format("~s: ~b~n", [K, V]) || {K, V} <- Props],
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec recover_messages_all() -> 'ok'.
 recover_messages_all() ->
     MODbs = kapps_util:get_all_account_mods(),
@@ -154,11 +150,10 @@ rebuild_message_metadata(JObj, AttachmentName) ->
     Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
     kzd_box_message:set_metadata(Metadata, JObj).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec renotify(kz_term:text(), kz_term:text()) -> 'ok'.
 renotify(Account, MessageId) ->
     MODb = get_modb(Account, MessageId),

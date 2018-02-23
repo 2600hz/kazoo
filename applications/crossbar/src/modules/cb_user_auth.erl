@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% User auth module
+%%% @doc User auth module
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_user_auth).
 
 -export([init/0
@@ -40,10 +38,14 @@
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -55,15 +57,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.user_auth">>, ?MODULE, 'post'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
@@ -72,14 +72,11 @@ allowed_methods() -> [?HTTP_PUT].
 allowed_methods(?RECOVERY) -> [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(_AuthToken) -> [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -88,11 +85,10 @@ resource_exists() -> 'true'.
 resource_exists(?RECOVERY) -> 'true';
 resource_exists(_AuthToken) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
@@ -127,11 +123,10 @@ authorize_nouns(Context, _, ?HTTP_PUT) ->
 authorize_nouns(_, [{<<"user_auth">>, _}], _) -> 'true';
 authorize_nouns(_, _Nouns, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
@@ -141,15 +136,13 @@ authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _ResetId]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -226,15 +219,14 @@ post(Context, ?RECOVERY) ->
     Context2 = cb_context:set_doc(Context1, DocForCreation),
     crossbar_auth:create_auth_token(Context2, ?MODULE).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_get_auth_token(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_get_auth_token(Context, AuthToken) ->
     case AuthToken =:= cb_context:auth_token(Context) of
@@ -245,11 +237,10 @@ maybe_get_auth_token(Context, AuthToken) ->
         'false' -> cb_context:add_system_error('invalid_credentials', Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_auth_resp(cb_context:context(), kz_term:ne_binary(),  kz_term:ne_binary()) ->
                               cb_context:context().
 create_auth_resp(Context, AccountId, AccountId) ->
@@ -262,17 +253,15 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
                ,[_AccountId, _AuthAccountId]),
     cb_context:add_system_error('forbidden', Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the credentials are valid based on the
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the credentials are valid based on the
 %% provided hash method
 %%
 %% Attempt to lookup and compare the user creds in the provided accounts.
 %%
 %% Failure here returns 401
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 maybe_authenticate_user(Context) ->
@@ -413,7 +402,6 @@ load_md5_results(Context, JObj, _Account) ->
     cb_context:set_doc(cb_context:store(Context, 'auth_type', <<"credentials">>), kz_json:get_value(<<"value">>, JObj)).
 
 
-%% @private
 -spec maybe_load_user_doc_via_creds(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_creds(Context) ->
     JObj = cb_context:doc(Context),
@@ -426,7 +414,6 @@ maybe_load_user_doc_via_creds(Context) ->
         {'ok', Account} ->     maybe_load_user_doc_by_username(Account, Context)
     end.
 
-%% @private
 -spec maybe_load_user_doc_by_username(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_by_username(Account, Context) ->
     JObj = cb_context:doc(Context),
@@ -470,7 +457,6 @@ maybe_load_user_doc_by_username(Account, Context) ->
             cb_context:add_validation_error(<<"username">>, <<"not_found">>, Msg, Context)
     end.
 
-%% @private
 -spec save_reset_id_then_send_email(cb_context:context()) -> cb_context:context().
 save_reset_id_then_send_email(Context) ->
     MoDb = kazoo_modb:get_modb(cb_context:account_db(Context)),
@@ -503,7 +489,6 @@ save_reset_id_then_send_email(Context) ->
     end.
 
 
-%% @private
 -spec maybe_load_user_doc_via_reset_id(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_reset_id(Context) ->
     ResetId = kz_json:get_ne_binary_value(?RESET_ID, cb_context:req_data(Context)),
@@ -534,7 +519,6 @@ maybe_load_user_doc_via_reset_id(Context) ->
             cb_context:add_validation_error(<<"user">>, <<"not_found">>, Msg, Context)
     end.
 
-%% @private
 -spec reset_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM)) ->
     <<Y1:1/binary, Y2:1/binary, Y3:1/binary, Y4:1/binary>> = YYYY,
@@ -558,7 +542,6 @@ reset_id(<<AccountId:32/binary,
     MM = <<M1/binary, M2/binary>>,
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM).
 
-%% @private
 -spec reset_link(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 reset_link(UIURL, ResetId) ->
     case binary:match(UIURL, <<$?>>) of
@@ -566,7 +549,6 @@ reset_link(UIURL, ResetId) ->
         _ -> <<UIURL/binary, "&recovery=", ResetId/binary>>
     end.
 
-%% @private
 -spec create_resetid_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 create_resetid_doc(ResetId, UserId) ->
     kz_json:from_list(
@@ -576,12 +558,10 @@ create_resetid_doc(ResetId, UserId) ->
       ,{<<"pvt_type">>, ?RESET_PVT_TYPE}
       ]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_account(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
                           {'ok', kz_term:ne_binary() | kz_term:ne_binaries()} |
                           {'error', cb_context:context()}.

@@ -1,12 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle various migrations that can be performed on accounts
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle various migrations that can be performed on accounts
+%%% @author Mark Magnusson
 %%% @end
-%%% @contributors
-%%%     Mark Magnusson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_migrations).
 
 -export([init/0

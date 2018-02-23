@@ -1,17 +1,16 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
-%%% @doc
-%%% Put the call on hold
+%%% @doc Put the call on hold
 %%% Data = {
 %%%   "moh_aleg":"media_id"
 %%%   ,"moh_bleg":"media_id"
 %%%   ,"unhold_key":"DTMF"
 %%% }
+%%%
+%%% @author James Aimonetti
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(konami_hold).
 
 -export([handle/2

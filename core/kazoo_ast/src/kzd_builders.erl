@@ -1,3 +1,9 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc Kazoo document accessors builder.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kzd_builders).
 
 -export([build_accessors/0
@@ -286,7 +292,15 @@ default_return_type(Type, _Default) -> Type.
 
 
 base_module(SchemaName) ->
-    ["-", "module(kzd_", clean_name(SchemaName), ").\n"].
+    Name = clean_name(SchemaName),
+    module_comment(Name) ++ ["-", "module(kzd_"] ++ [Name] ++ [").\n"].
+
+module_comment(Name) ->
+    ["%%%-----------------------------------------------------------------------------\n"
+    ,"%%% @copyright (C) 2010-2018, 2600Hz\n"
+    ,"%%% @doc Accessors for `" ++ [Name] ++ "' document.\n"
+    ,"%%% @end\n"
+    ,"%%%-----------------------------------------------------------------------------\n"].
 
 clean_name([]) -> [];
 clean_name([_|_]=Names) ->

@@ -19,16 +19,16 @@
 
 -type mime_tuples() :: [mimemail:mimetuple()].
 
-%% {ContentType, Filename, Content}
 -type attachment() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+%% `{ContentType, Filename, Content}'
 -type attachments() :: [attachment()].
 
-%% {ContentType, Content}
 -type rendered_template() :: {kz_term:ne_binary(), iolist()}.
+%% `{ContentType, Content}'
 -type rendered_templates() :: [rendered_template()].
 
-%% {"to"/"cc"/etc, [Address,...]}
 -type email_map() :: [{kz_term:ne_binary(), kz_term:api_ne_binaries()}].
+%% `{"to"/"cc"/etc, [Address,...]}'
 
 -type init_param() :: {'macros', kz_json:object()} |
                       {'subject', kz_term:ne_binary()} |

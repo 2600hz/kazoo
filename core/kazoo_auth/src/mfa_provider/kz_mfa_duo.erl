@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz, INC
-%%% @doc
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Kazoo Duo multi factor authenticator.
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_mfa_duo).
 
 -export([authenticate/2]).
@@ -39,11 +38,12 @@
 -define(VAL_PART_SEP, <<"|">>).
 -define(AUTH_PART_SEP, <<":">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
+%%------------------------------------------------------------------------------
+%% @doc Takes the Duo configuration and authenticate the `Claims'.
+%% First request is always result in a signed signature response. When `Claims'
+%% has the Duo response to the sign signature, it will verifies this Duo's response.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(kz_term:proplist(), kz_json:object()) -> mfa_result().
 authenticate(Claims, JObj) ->
     Identity = map_config(Claims, JObj),
@@ -55,11 +55,10 @@ authenticate(Claims, JObj) ->
         SigResponse -> verify_response(Identity, SigResponse)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec sign_request(map()) -> mfa_result().
 sign_request(#{<<"user_name">> := UserId
               ,<<"integration_key">> := IKey
@@ -99,11 +98,10 @@ sign_value(Key, Value, Prefix, Exp) ->
 signature(Key, Cookie) ->
     kz_binary:hexencode(crypto:hmac('sha', Key, Cookie)).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec verify_response(map(), kz_term:ne_binary()) -> mfa_result().
 verify_response(#{<<"integration_key">> := IKey
                  ,<<"secret_key">> := SKey
@@ -235,11 +233,10 @@ is_user_name(Maps) ->
     Maps#{verify_result => 'false'}.
 
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec map_config(kz_term:proplist(), kz_json:object()) ->
                         map() |
                         {'error', kz_term:ne_binary()}.
@@ -258,11 +255,10 @@ map_config(Claims, JObj) ->
         KeyError -> {'error', <<"invalid duo configuration, ", KeyError/binary>>}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_values(map()) -> 'true' | kz_term:ne_binary().
 validate_values(Identity) ->
     try lists:all(fun(ReqV) ->

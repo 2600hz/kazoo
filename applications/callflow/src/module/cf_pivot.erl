@@ -1,19 +1,31 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Accept third-party dialplan
-%%% "data":{
-%%%   "voice_url":"http://your.pivot.server/path/to/pivot/dialplan"
-%%%   ,"cdr_url":"http://your.pivot.server/path/to/cdr/receiver"
-%%%   ,"req_format":"kazoo" // or "twiml"
-%%%   ,"req_body_format":"form" // or "json"
-%%%   ,"method":"get" // or "post"
-%%%   ,"debug":false // or true
-%%% }
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Accept third-party `dialplan'.
+%%%
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`voice_url'</dt>
+%%%   <dd>Voice URL.</dd>
+%%%
+%%%   <dt>`cdr_url'</dt>
+%%%   <dd>CDR URL.</dd>
+%%%
+%%%   <dt>`req_format'</dt>
+%%%   <dd>`kazoo' or `twiml'.</dd>
+%%%
+%%%   <dt>`req_body_format'</dt>
+%%%   <dd>`form' or `json'.</dd>
+%%%
+%%%   <dt>`method'</dt>
+%%%   <dd>`get' or `post'.</dd>
+%%%
+%%%   <dt>`debug'</dt>
+%%%   <dd>`boolean()'</dd>
+%%% </dl>
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_pivot).
 
 -behaviour(gen_cf_action).
@@ -24,10 +36,8 @@
 
 -define(DEFAULT_EVENT_WAIT, 10000).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %%
@@ -39,7 +49,7 @@
 %%     formats: twiml, kazoo
 %%   cdr_url: string(), url to POST the CDR
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Prop = props:filter_empty(

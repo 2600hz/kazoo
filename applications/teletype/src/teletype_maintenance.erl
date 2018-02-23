@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(teletype_maintenance).
 
 -export([receipts/0
@@ -126,12 +124,10 @@ list_templates_from_db(Db) ->
             []
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Remove Template Customization from an account
+%%------------------------------------------------------------------------------
+%% @doc Remove Template Customization from an account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_customization(kz_term:ne_binary()) -> 'no_return'.
 remove_customization(Account) ->
     remove_customization(Account, list_templates_from_db(kz_util:format_account_db(Account))).
@@ -155,14 +151,12 @@ remove_customization(Account, Ids) ->
             'no_return'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Forcing System's Templates to an account by first removing
+%%------------------------------------------------------------------------------
+%% @doc Forcing System's Templates to an account by first removing
 %% account's customization and then copy the templates from
 %% system_config to account's db.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec force_system_default(kz_term:ne_binary()) -> 'no_return'.
 force_system_default(Account) ->
     force_system_default(Account, list_templates_from_db(?KZ_CONFIG_DB)).

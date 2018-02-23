@@ -1,14 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Sponsored by Conversant Ltd,
-%%%     implemented by SIPLABS, LLC (Ilya Ashchepkov)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_util).
 
 -export([presence_probe/2]).
@@ -60,12 +57,10 @@
 
 -define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec presence_probe(kz_json:object(), kz_term:proplist()) -> any().
 presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
@@ -153,12 +148,10 @@ manual_presence_resp(Username, Realm, JObj) ->
         State -> kapps_call_command:presence(State, PresenceId)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec presence_mwi_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
     'true' = kapi_presence:mwi_query_v(JObj),
@@ -197,12 +190,10 @@ mwi_resp(Username, _Realm, AccountDb, _JObj) ->
         _Else -> 'ok'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec unsolicited_owner_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
                                           'ok' |
                                           {'error', atom()} |
@@ -215,33 +206,27 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     kvm_mwi:notify_endpoint(AccountDb, EndpointId).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec alpha_to_dialpad(kz_term:ne_binary()) -> kz_term:ne_binary().
 alpha_to_dialpad(Value) ->
     << <<(dialpad_digit(C))>> || <<C>> <= kz_term:to_lower_binary(Value), is_alpha(C) >>.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_alpha(char()) -> boolean().
 is_alpha(Char) ->
     Char =< $z
         andalso Char >= $a.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec dialpad_digit(97..122) -> 50..57.
 dialpad_digit(ABC) when ABC =:= $a
                         orelse ABC =:= $b
@@ -270,12 +255,10 @@ dialpad_digit(WXYZ) when WXYZ =:= $w
                          orelse WXYZ =:= $y
                          orelse WXYZ =:= $z -> $9.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec owner_ids_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                        {'ok', kz_term:ne_binaries()} |
                                        {'error', any()}.
@@ -303,12 +286,10 @@ get_owner_ids_by_sip_username(AccountDb, Username) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec endpoint_id_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                          {'ok', kz_term:ne_binary()} |
                                          {'error', 'not_found'}.
@@ -335,12 +316,10 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
             {'error', 'not_found'}
     end.
 
-%%-----------------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_operator_callflow(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                                     kz_datamgr:data_error().
 get_operator_callflow(Account) ->
@@ -357,13 +336,11 @@ get_operator_callflow(Account) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Look for children branches to handle the failure replies of
-%% certain actions, like cf_offnet and cf_resources
+%%------------------------------------------------------------------------------
+%% @doc Look for children branches to handle the failure replies of
+%% certain actions, like {@link cf_offnet} and {@link cf_resources}.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_bridge_failure({'fail', kz_json:object()} | kz_term:api_binary(), kapps_call:call()) ->
                                    'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
@@ -391,12 +368,10 @@ handle_bridge_failure(Cause, Code, Call) ->
         'false' -> 'not_found'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Send and wait for a call failure cause response
+%%------------------------------------------------------------------------------
+%% @doc Send and wait for a call failure cause response.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_default_response(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 send_default_response(Cause, Call) ->
     case cf_exe:wildcard_is_empty(Call) of
@@ -671,11 +646,10 @@ start_task(Fun, Args, Call) ->
     SpawnInfo = {'cf_task', [Fun, Args]},
     cf_exe:add_event_listener(Call, SpawnInfo).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec mailbox(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                                            {'error', any()}.
 mailbox(AccountDb, VMNumber) ->

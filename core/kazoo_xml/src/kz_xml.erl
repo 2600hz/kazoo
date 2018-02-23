@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2014-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_xml).
 
 -export([elements/1, elements/2
@@ -57,12 +55,10 @@ filter_empty_text([_|_]=Els) ->
 is_empty_text(#xmlText{value=" "}) -> 'true';
 is_empty_text(_El) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generic helper to get the text value of a XML path
+%%------------------------------------------------------------------------------
+%% @doc Generic helper to get the text value of a XML path
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_value(kz_term:deeplist(), kz_types:xml_el() | string()) -> kz_term:api_binary().
 get_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
@@ -76,7 +72,6 @@ get_value(Paths, Xml) ->
     end.
 
 
-%% @private
 -spec extract_values(kz_types:xml_els()) -> kz_term:api_binary().
 extract_values([]) -> 'undefined';
 extract_values(Elements) ->

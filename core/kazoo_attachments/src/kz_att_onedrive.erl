@@ -1,18 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Google Drive for attachments
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Google Drive for attachments.
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
-
 -module(kz_att_onedrive).
 -behaviour(gen_attachment).
 
 -include("kz_att.hrl").
 
-%% `gen_attachment' behaviour callbacks (API)
+%% gen_attachment behaviour callbacks (API)
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
@@ -54,9 +51,14 @@
                                 ,http_options => ?GRAPH_HTTP_OPTIONS
                                 }).
 
-%% ====================================================================
-%% `gen_attachment' behaviour callbacks (API)
-%% ====================================================================
+%%%=============================================================================
+%%% gen_attachment behaviour callbacks (API)
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -151,9 +153,14 @@ do_fetch_attachment({'error', _}, _, _, HandlerProps, DbName, DocId, AName) ->
     Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
     kz_att_error:new('oauth_failure', Routines).
 
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec resolve_put_url(map(), attachment_info()) -> kz_term:ne_binary().
 resolve_put_url(Settings, AttInfo) ->
     Url = onedrive_format_url(Settings, AttInfo),

@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc HTTP helper functions for Kazoo
-%%%
-%%% @contributors
-%%%     Mark Magnusson
-%%%-------------------------------------------------------------------
+%%% @author Mark Magnusson
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_http_util).
 
 -export([urldecode/1
@@ -19,9 +18,10 @@
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
-%%--------------------------------------------------------------------
-%% @doc URL decodes a URL encoded string
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc URL decodes a URL encoded string.
+%% @end
+%%------------------------------------------------------------------------------
 -spec urldecode(binary()) -> binary().
 urldecode(Source) ->
     urldecode(Source, <<>>).
@@ -42,9 +42,10 @@ urldecode(<<$%, H, L, R/binary>>, Acc) ->
 urldecode(<<H, R/binary>>, Acc) ->
     urldecode(R, <<Acc/binary, H>>).
 
-%%--------------------------------------------------------------------
-%% @doc URL encodes a string
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc URL encodes a string.
+%% @end
+%%------------------------------------------------------------------------------
 -spec urlencode(binary() | atom() | integer() | float() | string()) -> binary().
 urlencode(Source) when is_binary(Source) ->
     urlencode(Source, <<>>);
@@ -91,10 +92,10 @@ urlencode(<<C, R/binary>>, Acc) ->
             urlencode(R, <<Acc/binary, "%", SafeChar/binary>>)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Converts a single character to its base-16 %-encoded form
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Converts a single character to its base-16 %-encoded form.
+%% @end
+%%------------------------------------------------------------------------------
 -spec encode_char(integer()) -> binary().
 encode_char(Char) ->
     case integer_to_list(Char, 16) of
@@ -102,12 +103,13 @@ encode_char(Char) ->
         ProperLen                -> list_to_binary(ProperLen)
     end.
 
-%%--------------------------------------------------------------------
-%% @doc Parses a query string and returns a list of key->value pairs.
-%% If the input string contains a ? then everything after the ? will
+%%------------------------------------------------------------------------------
+%% @doc Parses a query string and returns a list of key-value pairs.
+%% If the input string contains a `?' then everything after the `?' will
 %% be treated as the query string, otherwise the entire input is treated
-%% as the query string. The return key->value pairs will be urldecoded.
-%%--------------------------------------------------------------------
+%% as the query string. The return key-value pairs will be URL decoded.
+%% @end
+%%------------------------------------------------------------------------------
 -spec parse_query_string(binary()) -> [{binary(), binary()}].
 parse_query_string(Source) ->
     parse_query_string('key', Source, <<>>, <<>>, []).
@@ -156,9 +158,10 @@ parse_query_string('key', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
 parse_query_string('val', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
     parse_query_string('val', R, KeyAcc, <<ValAcc/binary, C>>, RetAcc).
 
-%%--------------------------------------------------------------------
-%% @doc Splits a URL into scheme, location, path, query, and fragment parts
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Splits a URL into scheme, location, path, query, and fragment parts.
+%% @end
+%%------------------------------------------------------------------------------
 -spec urlsplit(binary()) -> {binary(), binary(), binary(), binary(), binary()}.
 urlsplit(Source) ->
     {Scheme, Url1}      = urlsplit_s(Source),
@@ -167,10 +170,10 @@ urlsplit(Source) ->
 
     {Scheme, Location, Path, Query, Frag}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Splits out the scheme portion of the URL (if present)
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Splits out the scheme portion of the URL (if present).
+%% @end
+%%------------------------------------------------------------------------------
 -spec urlsplit_s(binary()) -> {binary(), binary()}.
 urlsplit_s(Source) ->
     case urlsplit_s(Source, <<>>) of
@@ -200,10 +203,10 @@ urlsplit_s(<<C, R/binary>>, Acc) ->
         _NoScheme -> 'no_scheme'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Splits out the location portion of the URL
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Splits out the location portion of the URL.
+%% @end
+%%------------------------------------------------------------------------------
 -spec urlsplit_l(binary()) -> {binary(), binary()}.
 urlsplit_l(<<"//", R/binary>>) ->
     urlsplit_l(R, <<>>);
@@ -227,11 +230,11 @@ urlsplit_l(<<$#, _I/binary>> = R, Acc) ->
 urlsplit_l(<<C, R/binary>>, Acc) ->
     urlsplit_l(R, <<Acc/binary, C>>).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc Splits and returns the path, query string, and fragment portions
-%% of the URL
-%%--------------------------------------------------------------------
+%% of the URL.
+%% @end
+%%------------------------------------------------------------------------------
 -spec urlsplit_p(binary(), binary()) -> {binary(), binary(), binary()}.
 urlsplit_p(<<>>, Acc) ->
     {Acc, <<>>, <<>>};
@@ -246,10 +249,10 @@ urlsplit_p(<<$#, R/binary>>, Acc) ->
 urlsplit_p(<<C, R/binary>>, Acc) ->
     urlsplit_p(R, <<Acc/binary, C>>).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Splits the query string and fragment parts of the URL
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Splits the query string and fragment parts of the URL.
+%% @end
+%%------------------------------------------------------------------------------
 -spec urlsplit_q(binary(), binary()) -> {binary(), binary()}.
 urlsplit_q(<<>>, Acc) ->
     {Acc, <<>>};
@@ -260,9 +263,10 @@ urlsplit_q(<<$#, R/binary>>, Acc) ->
 urlsplit_q(<<C, R/binary>>, Acc) ->
     urlsplit_q(R, <<Acc/binary, C>>).
 
-%%--------------------------------------------------------------------
-%% @doc Joins the elements of a URL together
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Joins the elements of a URL together.
+%% @end
+%%------------------------------------------------------------------------------
 -spec urlunsplit({binary(), binary(), binary(), binary(), binary()}) -> binary().
 urlunsplit({S, N, P, Q, F}) ->
     Us = case S of <<>> -> <<>>; _ -> [S, "://"] end,
@@ -271,8 +275,15 @@ urlunsplit({S, N, P, Q, F}) ->
 
     iolist_to_binary([Us, N, P, Uq, Uf]).
 
-%% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
-%%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
+%%------------------------------------------------------------------------------
+%% @doc Convert JSON object to encoded query string.
+%%
+%% Example: take JObj
+%% `{key1: val1, key2: [v2_1, v2_2], key3: {k3_1: v3_1}}'
+%% will returns:
+%% `key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1'
+%% @end
+%%------------------------------------------------------------------------------
 -spec json_to_querystring(object()) -> iolist().
 json_to_querystring(JObj) -> json_to_querystring(JObj, <<>>).
 
@@ -330,6 +341,10 @@ encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
     encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, urlencode(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
+%%------------------------------------------------------------------------------
+%% @doc Converts HTTP status code to reason.
+%% @end
+%%------------------------------------------------------------------------------
 -spec http_code_to_status_line(atom() | pos_integer()) -> kz_term:ne_binary().
 %% 4×× Client Error
 http_code_to_status_line(400) -> <<"Bad Request">>;

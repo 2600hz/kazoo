@@ -1,13 +1,14 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz INC
-%%% @doc
-%%%   Bulk operations on numbers.
-%%%   Note: functions should not `throw`, instead return `ret()`.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Bulk operations on numbers.
+%%%
+%%% <div class="notice">Functions should not throw, instead should return
+%%% {@link ret()}.</div>
+%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_numbers).
 
 -export([todo/1
@@ -51,7 +52,7 @@
 
 -type num() :: kz_term:ne_binary().  %%TODO: support ranges?
 -type nums() :: [num()].
--type ok() :: knm_number:knm_number().
+-type ok() :: knm_number:knm_number() | knm_phone_number:knm_phone_number().
 -type oks() :: [ok()].
 -type ko() :: knm_errors:error() | atom().
 -type kos() :: #{num() => ko()}.
@@ -106,26 +107,21 @@
 -type appliers() :: [applier()].
 -type appliers(A) :: [applier(A)].
 
-%% @private
 -spec num(knm_number:knm_number()) -> num().
 num(N) ->
     knm_phone_number:number(knm_number:phone_number(N)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Either `nums()' xor `oks()'.
+%%------------------------------------------------------------------------------
+%% @doc Returns either {@link nums()} `xor' {@link oks()}.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec todo(t()) -> nums() | oks().
 todo(#{todo := ToDo}) -> ToDo.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set of numbers' assigned_to fields.
+%%------------------------------------------------------------------------------
+%% @doc Set of numbers' `assigned_to' fields.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec assigned_to(t()) -> kz_term:api_ne_binary().
 assigned_to(#{todo := Ns}) ->
     F = fun (N, S) ->
@@ -139,12 +135,10 @@ assigned_to(#{todo := Ns}) ->
         [AccountId] -> AccountId
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set of numbers' prev_assigned_to fields.
+%%------------------------------------------------------------------------------
+%% @doc Set of numbers' `prev_assigned_to' fields.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec prev_assigned_to(t()) -> kz_term:api_ne_binary().
 prev_assigned_to(#{todo := Ns}) ->
     F = fun (N, S) ->
@@ -158,7 +152,6 @@ prev_assigned_to(#{todo := Ns}) ->
         [AccountId] -> AccountId
     end.
 
-%% @public
 
 -spec options(t()) -> options().
 options(#{options := V}) -> V.
@@ -166,7 +159,6 @@ options(#{options := V}) -> V.
 -spec options(options(), t()) -> t().
 options(V, T) -> T#{options => V}.
 
-%% @public
 
 -spec plan(t()) -> plan().
 plan(#{plan := V}) -> V.
@@ -174,7 +166,6 @@ plan(#{plan := V}) -> V.
 -spec plan(plan(), t()) -> t().
 plan(V, T) -> T#{plan => V}.
 
-%% @public
 
 -spec services(t()) -> services().
 services(#{services := V}) -> V.
@@ -182,7 +173,6 @@ services(#{services := V}) -> V.
 -spec services(services(), t()) -> t().
 services(V, T) -> T#{services => V}.
 
-%% @public
 
 -spec transactions(t()) -> transactions().
 transactions(#{transactions := V}) -> V.
@@ -190,11 +180,9 @@ transactions(#{transactions := V}) -> V.
 -spec transactions(transactions(), t()) -> t().
 transactions(V, T) -> T#{transactions => V}.
 
-%% @public
 -spec transaction(kz_transaction:transaction(), t()) -> t().
 transaction(V, T=#{transactions := Vs}) -> T#{transactions => [V | Vs]}.
 
-%% @public
 
 -spec charges(t()) -> charges().
 charges(#{charges := V}) -> V.
@@ -202,7 +190,6 @@ charges(#{charges := V}) -> V.
 -spec charges(charges(), t()) -> t().
 charges(V, T) -> T#{charges => V}.
 
-%% @public
 
 -spec charge(kz_term:ne_binary(), t()) -> non_neg_integer().
 charge(K, #{charges := Vs}) -> props:get_value(K, Vs, 0).
@@ -210,19 +197,16 @@ charge(K, #{charges := Vs}) -> props:get_value(K, Vs, 0).
 -spec charge(kz_term:ne_binary(), non_neg_integer(), t()) -> t().
 charge(K, V, T=#{charges := Vs}) -> T#{charges => [{K, V} | Vs]}.
 
-%% @public
 -spec ok(ok() | oks(), t()) -> t().
 ok(Numbers, T) when is_list(Numbers) -> T#{ok => Numbers};
 ok(Number, T) when not is_list(Number) ->
     T#{ok => [Number | maps:get(ok, T)]}.
 
-%% @public
 -spec add_oks(oks(), t()) -> t().
 %%FIXME: unify with ok/2.
 add_oks(Numbers, T=#{ok := OKs}) when is_list(Numbers) ->
     T#{ok => Numbers ++ OKs}.
 
-%% @public
 -spec ko(num() | knm_number:knm_number() | nums() | [knm_number:knm_number()], ko(), t()) -> t().
 ko(?NE_BINARY=Num, Reason, T) ->
     lager:debug("number ~s error: ~p", [Num, Reason]),
@@ -237,13 +221,12 @@ ko(N, Reason, T) ->
     lager:debug("number ~s state: ~s", [Num, knm_phone_number:state(PN)]),
     ko(Num, Reason, T).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Attempts to get numbers from DB.
-%% Note: each number in `Nums' has to be normalized.
+%%------------------------------------------------------------------------------
+%% @doc Attempts to get numbers from DB.
+%%
+%% <div class="notice">Each number in `Nums' has to be normalized.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get(kz_term:ne_binaries()) -> ret().
 get(Nums) -> get(Nums, knm_number_options:default()).
@@ -269,7 +252,6 @@ do_get_pn(Nums, Options, Error) ->
     {Yes, No} = are_reconcilable(Nums),
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)).
 
-%% @public (used by knm_number_crawler)
 -spec from_jobjs(kz_json:objects()) -> t().
 from_jobjs(JObjs) ->
     Options = knm_number_options:default(),
@@ -299,15 +281,15 @@ from_jobjs(JObjs) ->
         end).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Attempts to create new numbers in DB or modify existing ones.
-%% Note: `assign_to' number option MUST be set.
-%% Note: creating numbers with `ported_in` option set to true will
-%%   attempt to create them with state in_service.
+%%------------------------------------------------------------------------------
+%% @doc Attempts to create new numbers in DB or modify existing ones.
+%%
+%% <div class="notice">`assign_to' number option MUST be set.</div>
+%%
+%% <div class="notice">Creating numbers with `ported_in' option set to true will
+%% attempt to create them with state `in_service'.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
     T0 = pipe(do_get_pn(Nums
@@ -336,11 +318,10 @@ create(Nums, Options) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec move(kz_term:ne_binaries(), kz_term:ne_binary()) -> ret().
 move(Nums, MoveTo) ->
@@ -356,13 +337,12 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     T = merge_okkos(TUpdated, TDiscovered),
     ret(do(fun move_to/1, T)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Attempts to update some phone_number fields.
-%% Note: will always result in a phone_number save.
+%%------------------------------------------------------------------------------
+%% @doc Attempts to update some phone_number fields.
+%%
+%% <div class="notice">Will always result in a phone_number save.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec update(kz_term:ne_binaries(), knm_phone_number:set_functions()) -> ret().
 update(Nums, Routines) ->
@@ -397,11 +377,10 @@ do_update(T0, Routines) ->
              ,fun save_numbers/1
              ])).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec release(kz_term:ne_binaries()) -> ret().
 release(Nums) ->
@@ -417,13 +396,11 @@ release(Nums, Options) ->
              ,fun save_phone_numbers/1
              ])).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Remove numbers from the system without doing any state checking.
+%%------------------------------------------------------------------------------
+%% @doc Remove numbers from the system without doing any state checking.
 %% Sounds too harsh for you? You are looking for release/1,2.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 delete(Nums, Options) ->
     case knm_phone_number:is_admin(knm_number_options:auth_by(Options)) of
@@ -437,12 +414,10 @@ delete(Nums, Options) ->
             ret(do_in_wrap(F2, do(F1, T0)))
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Note: option 'assign_to' needs to be set.
+%%------------------------------------------------------------------------------
+%% @doc Note: option `assign_to' needs to be set.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reconcile(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 reconcile(Nums, Options0) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY} | Options0],
@@ -455,12 +430,10 @@ reconcile(Nums, Options0) ->
     Tb = do(fun (T) -> reconcile_number(T, Options) end, T1),
     ret(merge_okkos(Ta, Tb)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Fetches then transitions existing numbers to the reserved state.
+%%------------------------------------------------------------------------------
+%% @doc Fetches then transitions existing numbers to the reserved state.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reserve(kz_term:ne_binaries(), knm_number_options:options()) -> ret().
 reserve(Nums, Options) ->
     ret(pipe(do_get(Nums, Options)
@@ -468,11 +441,10 @@ reserve(Nums, Options) ->
              ,fun to_reserved/1
              ])).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec assign_to_app(kz_term:ne_binaries(), kz_term:api_ne_binary()) -> ret().
 assign_to_app(Nums, App) ->
@@ -487,11 +459,10 @@ assign_to_app(Nums, App, Options) ->
              ,fun knm_number:new/1
              ])).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc Release all of an account's numbers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec free(kz_term:ne_binary()) -> 'ok'.
 free(Account=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
@@ -504,12 +475,10 @@ free(Account=?NE_BINARY) ->
                  ,maps:to_list(KOs)
                  ).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Find an account's phone numbers that have emergency services enabled
+%%------------------------------------------------------------------------------
+%% @doc Find an account's phone numbers that have emergency services enabled
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec emergency_enabled(kz_term:ne_binary()) -> kz_term:ne_binaries().
 emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     AccountDb = kz_util:format_account_db(AccountId),
@@ -518,13 +487,11 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
             lists:member(?FEATURE_E911, Features)
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% List an account's phone numbers & statuses.
+%%------------------------------------------------------------------------------
+%% @doc List an account's phone numbers and statuses.
 %% Does not go through sub accounts.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_listing(kz_term:ne_binary()) -> [{kz_term:ne_binary(), kz_json:object()}].
 account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
     case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>) of
@@ -544,11 +511,10 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
     end.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%% @private
 -type reason_t() :: atom() | fun((num())-> knm_errors:error()).
 
 -spec new(knm_number_options:options(), nums()) -> t().
@@ -573,13 +539,13 @@ new(Options, ToDos, KOs, Reason) ->
      ,charges => []
      }.
 
-%% @private
-%% @doc
-%% Apply something to "todo" if not empty,
-%% if empty use "ok" as the new "todo".
-%% If "ok" is empty, return.
+%%------------------------------------------------------------------------------
+%% @doc Apply something to `todo' if not empty
+%% If empty use `ok' as the new `todo'.
+%% If `ok' is empty, return.
 %% Exported ONLY for inside-app use.
 %% @end
+%%------------------------------------------------------------------------------
 -spec pipe(t(), appliers()) -> t();
           (t_pn(), appliers(t_pn())) -> t_pn().
 pipe(T, []) -> T;
@@ -593,9 +559,8 @@ pipe(T, [F|Fs]) ->
         NewT -> pipe(NewT, Fs)
     end.
 
-%% @private
 %% @doc
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for {@link knm_number_states} use.
 %% @end
 -spec do(applier(), t()) -> t().
 do(_, T=#{todo := [], ok := []}) -> T;
@@ -607,9 +572,7 @@ do(F, T) ->
     NewT = F(T),
     NewT#{todo => []}.
 
-%% @private
-%% @doc
-%% Exported ONLY for knm_number_states use.
+%% @doc Exported ONLY for `knm_number_states' use.
 %% @end
 -spec do_in_wrap(applier(t_pn()), t()) -> t().
 do_in_wrap(_, T=#{todo := [], ok := []}) -> T;
@@ -621,8 +584,7 @@ do_in_wrap(F, T0=#{todo := Ns}) ->
     T1 = do(F, T0#{todo => PNs}),
     rewrap_phone_numbers(NumsMap, T1).
 
-%% @private
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for `knm_number_states' use.
 -spec merge_okkos(t(), t()) -> t().
 merge_okkos(#{ok := OKa, ko := KOa}
            ,#{ok := OKb, ko := KOb} = B) ->
@@ -630,18 +592,15 @@ merge_okkos(#{ok := OKa, ko := KOa}
       ,ko => maps:merge(KOa, KOb)
       }.
 
-%% @private
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for `knm_number_states' use.
 -spec merge_okkos([t()]) -> t().
 merge_okkos([T]) -> T;
 merge_okkos([T0|Ts]) ->
     lists:foldl(fun merge_okkos/2, T0, Ts).
 
-%% @private
 -spec id(t()) -> t().
 id(T=#{todo := Todo}) -> ok(Todo, T).
 
-%% @private
 -spec ret(t()) -> ret().
 ret(#{ok := OKs
      ,ko := KOs
@@ -662,7 +621,6 @@ ret(#{ok := OKs
           end
      }.
 
-%% @public
 -spec to_json(ret()) -> kz_json:object().
 to_json(#{ok := Ns, ko := KOs}) ->
     Successes = [{num(N), knm_number:to_public_json(N)} || N <- Ns],
@@ -672,7 +630,6 @@ to_json(#{ok := Ns, ko := KOs}) ->
         ,{<<"error">>, kz_json:from_map(KOs)}
         ])).
 
-%% @private
 -spec unwrap_phone_numbers(knm_number:knm_numbers()) ->
                                   {#{num() => knm_number:knm_number()}
                                   ,knm_phone_number:knm_phone_numbers()
@@ -685,7 +642,6 @@ unwrap_phone_numbers(Ns) ->
         end,
     lists:foldl(F, {#{}, []}, Ns).
 
-%% @private
 -spec rewrap_phone_numbers(#{num() => knm_number:knm_number()}, t()) -> t().
 rewrap_phone_numbers(NumsMap, T=#{ok := PNs}) ->
     F = fun (PN, Ns) ->

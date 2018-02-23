@@ -1,12 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_vitelity_cnam).
 -behaviour(knm_gen_provider).
 
@@ -15,13 +12,11 @@
 
 -include("knm.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is saved, and will
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is saved, and will
 %% produce notifications if the cnam object changes
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(Number) ->
@@ -38,12 +33,10 @@ save(Number, ?NUMBER_STATE_PORT_IN) ->
 save(Number, _State) ->
     Number.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is called each time a number is deleted
+%%------------------------------------------------------------------------------
+%% @doc This function is called each time a number is deleted
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     _ = remove_inbound_cnam(Number),
@@ -54,16 +47,14 @@ delete(Number) ->
                                      ]
                                     ).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 handle_outbound_cnam(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
@@ -87,12 +78,10 @@ handle_outbound_cnam(Number) ->
             handle_inbound_cnam(Number1)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec try_update_outbound_cnam(knm_number:knm_number(), kz_term:ne_binary()) ->
                                       knm_number:knm_number().
 try_update_outbound_cnam(Number, NewCNAM) ->
@@ -108,12 +97,10 @@ try_update_outbound_cnam(Number, NewCNAM) ->
         {'ok', XML} -> process_outbound_xml_resp(Number, NewCNAM, XML)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec outbound_cnam_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                    knm_vitelity_util:query_options().
 outbound_cnam_options(DID, NewCNAM) ->
@@ -126,12 +113,10 @@ outbound_cnam_options(DID, NewCNAM) ->
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_outbound_xml_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_term:text()) ->
                                        knm_number:knm_number().
 process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
@@ -148,12 +133,10 @@ process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
             knm_errors:unspecified('invalid_resp_format', Number)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_outbound_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
                                    knm_number:knm_number().
 process_outbound_resp(Number, FeatureData, Children) ->
@@ -164,12 +147,10 @@ process_outbound_resp(Number, FeatureData, Children) ->
             knm_errors:unspecified(Msg, Number)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_outbound_response_tag(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
                                          knm_number:knm_number().
 check_outbound_response_tag(Number, NewCNAM, Children) ->
@@ -185,12 +166,10 @@ check_outbound_response_tag(Number, NewCNAM, Children) ->
             knm_errors:unspecified(Msg, Number)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec handle_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 handle_inbound_cnam(Number) ->
@@ -216,12 +195,10 @@ handle_inbound_cnam(Number, 'false') ->
         'true' -> add_inbound_cnam(Number)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 remove_inbound_cnam(Number) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
@@ -234,12 +211,10 @@ remove_inbound_cnam(Number) ->
                                              ,?CNAM_INBOUND_LOOKUP
                                              ]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_inbound_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 remove_inbound_options(Number) ->
     [{'qs', [{'did', knm_converters:to_npan(Number)}
@@ -250,12 +225,10 @@ remove_inbound_options(Number) ->
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_inbound_cnam(knm_number:knm_number()) ->
                               knm_number:knm_number().
 add_inbound_cnam(Number) ->
@@ -272,12 +245,10 @@ add_inbound_cnam(Number) ->
             knm_errors:unspecified('unknown_error', Number)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec inbound_options(kz_term:ne_binary()) -> knm_vitelity_util:query_options().
 inbound_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
@@ -288,12 +259,10 @@ inbound_options(DID) ->
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
                               knm_number:knm_number().
 process_xml_resp(Number, XML) ->
@@ -305,12 +274,10 @@ process_xml_resp(Number, XML) ->
             knm_errors:unspecified('invalid_resp_server', Number)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
                                      knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
@@ -326,12 +293,10 @@ process_xml_content_tag(Number, #xmlElement{name='content'
             knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish_cnam_update(knm_number:knm_number()) -> 'ok'.
 publish_cnam_update(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
