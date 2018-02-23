@@ -1,0 +1,607 @@
+#!/bin/sh
+
+set -e
+
+# http://erlang.org/doc/man/run_erl.html
+# If defined, disables input and output flow control for the pty
+# opend by run_erl. Useful if you want to remove any risk of accidentally
+# blocking the flow control by using Ctrl-S (instead of Ctrl-D to detach),
+# which can result in blocking of the entire Beam process, and in the case
+# of running heart as supervisor even the heart process becomes blocked
+# when writing log message to terminal, leaving the heart process unable
+# to do its work.
+RUN_ERL_DISABLE_FLOWCNTRL=${RUN_ERL_DISABLE_FLOWCNTRL:-true}
+export $RUN_ERL_DISABLE_FLOWCNTRL
+
+if [ "$TERM" = "dumb" -o -z "$TERM" ]; then
+  export TERM=screen
+fi
+
+# OSX does not support readlink '-f' flag, work
+# around that
+case $OSTYPE in 
+    darwin*)
+        SCRIPT=$(readlink $0 || true)
+    ;;
+    *)
+        SCRIPT=$(readlink -f $0 || true)
+    ;;
+esac
+[ -z $SCRIPT ] && SCRIPT=$0
+SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
+RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+# Make the value available to variable substitution calls below
+export REL_NAME="kazoo"
+REL_VSN="4.2.0"
+ERTS_VSN="9.2"
+CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
+REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
+ERL_OPTS=""
+RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-/tmp/log}"
+VM_NODE_FILES_DIR="${VM_NODE_FILES_DIR:-/tmp}"
+NAME_TYPE="${NODE_NAME_TYPE:--name}"
+
+# start/stop/install/upgrade pre/post hooks
+PRE_START_HOOKS=""
+POST_START_HOOKS=""
+PRE_STOP_HOOKS=""
+POST_STOP_HOOKS=""
+PRE_INSTALL_UPGRADE_HOOKS=""
+POST_INSTALL_UPGRADE_HOOKS=""
+STATUS_HOOK="hooks/builtin/status"
+
+relx_usage() {
+    command="$1"
+
+    case "$command" in
+        unpack)
+            echo "Usage: $REL_NAME unpack [VERSION]"
+            echo "Unpacks a release package VERSION, it assumes that this"
+            echo "release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            ;;
+        install)
+            echo "Usage: $REL_NAME install [VERSION]"
+            echo "Installs a release package VERSION, it assumes that this"
+            echo "release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
+            ;;
+        uninstall)
+            echo "Usage: $REL_NAME uninstall [VERSION]"
+            echo "Uninstalls a release VERSION, it will only accept"
+            echo "versions that are not currently in use"
+            ;;
+        upgrade)
+            echo "Usage: $REL_NAME upgrade [VERSION]"
+            echo "Upgrades the currently running release to VERSION, it assumes"
+            echo "that a release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
+            ;;
+        downgrade)
+            echo "Usage: $REL_NAME downgrade [VERSION]"
+            echo "Downgrades the currently running release to VERSION, it assumes"
+            echo "that a release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
+            ;;
+        status)
+            echo "Usage: $REL_NAME status"
+            echo "Obtains node status information."
+            ;;
+        *)
+            echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval|status}"
+            ;;
+    esac
+}
+
+find_erts_dir() {
+    __erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
+    if [ -d "$__erts_dir" ]; then
+        ERTS_DIR="$__erts_dir";
+        ROOTDIR="$RELEASE_ROOT_DIR"
+    else
+        __erl="$(which erl)"
+        code="io:format(\"~s\", [code:root_dir()]), halt()."
+        __erl_root="$("$__erl" -noshell -eval "$code")"
+        ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
+        ROOTDIR="$__erl_root"
+    fi
+}
+
+# Get node pid
+relx_get_pid() {
+    if output="$(relx_nodetool rpcterms os getpid)"
+    then
+        echo "$output" | sed -e 's/"//g'
+        return 0
+    else
+        echo "$output"
+        return 1
+    fi
+}
+
+relx_get_nodename() {
+    id="longname$(relx_gen_id)-${NAME}"
+    "$BINDIR/erl" -eval '[H]=tl(string:tokens(atom_to_list(node()),"@")), io:format("~s~n",[H]), halt()' \
+        -noshell ${NAME_TYPE} $id
+}
+
+# Connect to a remote node
+relx_rem_sh() {
+    # Generate a unique id used to allow multiple remsh to the same node
+    # transparently
+    id="remsh$(relx_gen_id)-${NAME}"
+
+    # Get the node's ticktime so that we use the same thing.
+    TICKTIME="$(relx_nodetool rpcterms net_kernel get_net_ticktime)"
+
+    # Setup remote shell command to control node
+    exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
+         -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+         -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
+}
+
+# Generate a random id
+relx_gen_id() {
+    od -t x -N 4 /dev/urandom | head -n1 | awk '{print $2}'
+}
+
+# Control a node
+relx_nodetool() {
+    command="$1"; shift
+
+    "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
+                                -setcookie "$COOKIE" "$command" $@
+}
+
+# Run an escript in the node's environment
+relx_escript() {
+    shift; scriptpath="$1"; shift
+    export RELEASE_ROOT_DIR
+
+    "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" $@
+}
+
+# Output a start command for the last argument of run_erl
+relx_start_command() {
+    printf "exec \"%s\" \"%s\"" "$RELEASE_ROOT_DIR/bin/$REL_NAME" \
+           "$START_OPTION"
+}
+
+relx_get_code_paths() {
+    code="{ok, [{release,_,_,Apps}]} = file:consult(\"$REL_DIR/$REL_NAME.rel\"),"\
+"lists:foreach(fun(A) ->"\
+"   io:fwrite(\"$ROOTDIR/lib/~p-~s/ebin \", [element(1, A), element(2, A)]) "\
+"end, Apps),"\
+"halt()."
+
+    "$BINDIR/erl" -noshell -boot start_clean -eval "$code"
+}
+
+make_out_file_path() {
+    # Use output directory provided in the RELX_OUT_FILE_PATH environment variable
+    # (default to the current location of vm.args and sys.config)
+    DIR=$(dirname $1)
+    [ -d "${RELX_OUT_FILE_PATH}" ] && DIR="${RELX_OUT_FILE_PATH}"
+    FILE=$(basename $1)
+    IN="${DIR}/${FILE}"
+
+    PFX=$(echo $IN   | awk '{sub(/\.[^.]+$/, "", $0)}1')
+    SFX=$(echo $FILE | awk -F . '{if (NF>1) print $NF}')
+    if [ $RELX_MULTI_NODE ]; then
+        echo "${PFX}.${NAME}.${SFX}"
+    else
+        echo "${PFX}.${SFX}"
+    fi
+}
+
+# Replace environment variables
+replace_os_vars() {
+    awk '{
+        while(match($0,"[$]{[^}]*}")) {
+            var=substr($0,RSTART+2,RLENGTH -3)
+            gsub("[$]{"var"}",ENVIRON[var])
+        }
+    }1' < "$1" > "$2"
+}
+
+add_path() {
+    # Use $CWD/$1 if exists, otherwise releases/VSN/$1
+    IN_FILE_PATH=$2
+    if [ -z "$IN_FILE_PATH" ]; then
+        if [ -f "$RELEASE_ROOT_DIR/$1" ]; then
+            IN_FILE_PATH="$RELEASE_ROOT_DIR/$1"
+        else
+            IN_FILE_PATH="$REL_DIR/$1"
+        fi
+    fi
+    echo $IN_FILE_PATH
+}
+
+check_replace_os_vars() {
+    IN_FILE_PATH=$(add_path $1 $2)
+    DIR=$(dirname $IN_FILE_PATH)
+    FILE=$(basename $IN_FILE_PATH)
+    BASE=${FILE%.*}
+    EXT=${FILE##*.} 
+    OUT_FILE_PATH="${VM_NODE_FILES_DIR}/${BASE}.$$.${EXT}"
+    if [ $RELX_REPLACE_OS_VARS ]; then
+        # apply the environment variable substitution to $IN_FILE_PATH
+        # the result is saved to $OUT_FILE_PATH
+        # if they are both the same, then ensure that we don't clobber
+        # the file by saving a backup with the .orig extension
+        replace_os_vars "$IN_FILE_PATH" "$OUT_FILE_PATH"
+    else
+        cp "$IN_FILE_PATH" "$OUT_FILE_PATH"
+    fi
+    echo $OUT_FILE_PATH
+}
+
+relx_run_hooks() {
+    HOOKS=$1
+    for hook in $HOOKS
+    do
+        # the scripts arguments at this point are separated
+        # from each other by | , we now replace these
+        # by empty spaces and give them to the `set`
+        # command in order to be able to extract them
+        # separately
+        set `echo "$hook" | sed -e 's/|/ /g'`
+        HOOK_SCRIPT=$1; shift
+        # all hook locations are expected to be
+        # relative to the start script location
+        [ "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" $@
+    done
+}
+
+find_erts_dir
+export ROOTDIR="$RELEASE_ROOT_DIR"
+export BINDIR="$ERTS_DIR/bin"
+export EMU="beam"
+export PROGNAME="erl"
+export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
+ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
+
+VMARGS_ORIG_PATH=$(add_path vm.args.orig)
+if [ -f "$VMARGS_ORIG_PATH" ]; then
+    VMARGS_PATH="$VMARGS_ORIG_PATH"
+else
+    VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
+fi
+
+
+KAZOO_NODE=${KAZOO_NODE:-kazoo_apps}
+NAME=$KAZOO_NODE
+NAME_ARG="$NAME_TYPE $NAME"
+
+# User can specify an sname without @hostname
+# This will fail when creating remote shell
+# So here we check for @ and add @hostname if missing
+case "${NAME}" in
+    *@*) ;;                             # Nothing to do
+    *)   NAME=${NAME}@$(relx_get_nodename);;  # Add @hostname
+esac
+
+# Export the variable so that it's available in the 'eval' calls
+export NAME
+
+VMARGS_PATH=$(check_replace_os_vars vm.args $VMARGS_PATH)
+RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
+
+# Make sure log directory exists
+mkdir -p "$RUNNER_LOG_DIR"
+
+PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
+
+# Extract the target cookie
+COOKIE_ARG=${KAZOO_COOKIE:-$(grep '^-setcookie' "$VMARGS_PATH" || true)}
+DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
+if [ -z "$COOKIE_ARG" ]; then
+    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
+        COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
+    else
+        echo "vm.args needs to have a -setcookie, or $DEFAULT_COOKIE_FILE (its permission must be 400) is required."
+        exit 1
+    fi
+else
+    # Extract cookie name from COOKIE_ARG
+    COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
+    if [ -z "$COOKIE" ]; then
+       COOKIE="$(echo "$COOKIE_ARG")"
+    fi
+fi
+
+cd "$ROOTDIR"
+
+# Check the first argument for instructions
+case "$1" in
+    start|start_boot)
+
+        # Make sure there is not already a node running
+        #RES=`$NODETOOL ping`
+        #if [ "$RES" = "pong" ]; then
+        #    echo "Node is already running!"
+        #    exit 1
+        #fi
+        # Save this for later.
+        CMD=$1
+        case "$1" in
+            start)
+                shift
+                START_OPTION="console"
+                HEART_OPTION="start"
+                ;;
+            start_boot)
+                shift
+                START_OPTION="console_boot"
+                HEART_OPTION="start_boot"
+                ;;
+        esac
+        RUN_PARAM="$@"
+
+        # Set arguments for the heart command
+        set -- "$SCRIPT_DIR/$REL_NAME" "$HEART_OPTION"
+        [ "$RUN_PARAM" ] && set -- "$@" "$RUN_PARAM"
+
+        # Export the HEART_COMMAND
+        HEART_COMMAND="$RELEASE_ROOT_DIR/bin/$REL_NAME $CMD"
+        export HEART_COMMAND
+
+        mkdir -p "$PIPE_DIR"
+
+        relx_run_hooks "$PRE_START_HOOKS"
+        "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
+                          "$(relx_start_command)"
+        relx_run_hooks "$POST_START_HOOKS"
+        ;;
+
+    stop)
+        relx_run_hooks "$PRE_STOP_HOOKS"
+        # Wait for the node to completely stop...
+        PID="$(relx_get_pid)"
+        if ! relx_nodetool "stop"; then
+            exit 1
+        fi
+        while $(kill -s 0 "$PID" 2>/dev/null);
+        do
+            sleep 1
+        done
+        relx_run_hooks "$POST_STOP_HOOKS"
+        ;;
+
+    restart)
+        ## Restart the VM without exiting the process
+        if ! relx_nodetool "restart"; then
+            exit 1
+        fi
+        ;;
+
+    reboot)
+        ## Restart the VM completely (uses heart to restart it)
+        if ! relx_nodetool "reboot"; then
+            exit 1
+        fi
+        ;;
+
+    pid)
+        ## Get the VM's pid
+        if ! relx_get_pid; then
+            exit 1
+        fi
+        ;;
+
+    ping)
+        ## See if the VM is alive
+        if ! relx_nodetool "ping"; then
+            exit 1
+        fi
+        ;;
+
+    escript)
+        ## Run an escript under the node's environment
+        if ! relx_escript $@; then
+            exit 1
+        fi
+        ;;
+
+    attach)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping"; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+        exec "$BINDIR/to_erl" "$PIPE_DIR"
+        ;;
+
+    remote_console)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+        relx_rem_sh
+        ;;
+
+    upgrade|downgrade|install|unpack|uninstall)
+        if [ -z "$2" ]; then
+            echo "Missing version argument"
+            echo "Usage: $REL_NAME $1 {version}"
+            exit 1
+        fi
+
+        COMMAND="$1"; shift
+
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        relx_run_hooks "$PRE_INSTALL_UPGRADE_HOOKS"
+
+        exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
+             "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
+
+        relx_run_hooks "$POST_INSTALL_UPGRADE_HOOKS"
+        ;;
+
+    versions)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        COMMAND="$1"; shift
+
+        exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
+             "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
+        ;;
+
+    console|console_clean|console_boot|foreground)
+        __code_paths=""
+        FOREGROUNDOPTIONS=""
+        # .boot file typically just $REL_NAME (ie, the app name)
+        # however, for debugging, sometimes start_clean.boot is useful.
+        # For e.g. 'setup', one may even want to name another boot script.
+        case "$1" in
+            console)
+                if [ -f "$REL_DIR/$REL_NAME.boot" ]; then
+                  BOOTFILE="$REL_DIR/$REL_NAME"
+                else
+                  BOOTFILE="$REL_DIR/start"
+                fi
+                ;;
+            foreground)
+                # start up the release in the foreground for use by runit
+                # or other supervision services
+                if [ -f "$REL_DIR/$REL_NAME.boot" ]; then
+                  BOOTFILE="$REL_DIR/$REL_NAME"
+                else
+                  BOOTFILE="$REL_DIR/start"
+                fi
+                FOREGROUNDOPTIONS="-noshell -noinput +Bd"
+                ;;
+            console_clean)
+                __code_paths=$(relx_get_code_paths)
+                BOOTFILE="$ROOTDIR/bin/start_clean"
+                ;;
+            console_boot)
+                shift
+                BOOTFILE="$1"
+                shift
+                ;;
+        esac
+        # Setup beam-required vars
+        EMU="beam"
+        PROGNAME="${0#*/}"
+
+        export EMU
+        export PROGNAME
+
+        # Store passed arguments since they will be erased by `set`
+        ARGS="$@"
+
+        # Build an array of arguments to pass to exec later on
+        # Build it here because this command will be used for logging.
+        set -- "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
+            -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
+            -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+            -config "$RELX_CONFIG_PATH" \
+             $NAME_ARG \
+            -args_file "$VMARGS_PATH" \
+            -pa ${__code_paths}
+
+        # Dump environment info for logging purposes
+        echo "Exec: $@" -- ${1+$ARGS}
+        echo "Root: $ROOTDIR"
+
+        # Log the startup
+        echo "$RELEASE_ROOT_DIR"
+        logger -t "$REL_NAME[$$]" "Starting up $NAME ($REL_NAME-$REL_VSN - Erts $ERTS_VSN)"
+
+        # Start the VM
+        exec "$@" -- ${1+$ARGS}
+        ;;
+    rpc)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+
+        relx_nodetool rpc $@
+        ;;
+    rpcterms)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+
+        relx_nodetool rpcterms $@
+        ;;
+    eval)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+        relx_nodetool "eval" $@
+        ;;
+    status)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
+        ;;
+    help)
+        if [ -z "$2" ]; then
+            relx_usage
+            exit 1
+        fi
+
+        TOPIC="$2"; shift
+        relx_usage $TOPIC
+        ;;
+    *)
+        relx_usage
+        exit 1
+        ;;
+esac
+
+exit 0
+

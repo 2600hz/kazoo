@@ -91,7 +91,10 @@
 -include("kapi_call.hrl").
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type discovery_req() :: kz_json:object().
+-export_type([doc/0
+             ,discovery_req/0
+             ]).
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [ [<<"Conference-ID">>, <<"Account-ID">>] ]).
@@ -509,7 +512,10 @@
 -define(CONFERENCE_ERROR_TYPES, []).
 
 -define(CONFIG_REQ_HEADERS, [<<"Request">>, <<"Profile">>]).
--define(OPTIONAL_CONFIG_REQ_HEADERS, [<<"Controls">>, <<"Conference-ID">>]).
+-define(OPTIONAL_CONFIG_REQ_HEADERS, [<<"Call-ID">>
+                                     ,<<"Conference-ID">>
+                                     ,<<"Controls">>
+                                     ]).
 -define(CONFIG_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                            ,{<<"Event-Name">>, <<"config_req">>}
                            ]).
@@ -1190,17 +1196,17 @@ bind_to_q(Q, ['event'|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event'),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['config'|T], Props) ->
-    Profile = props:get_value('profile', Props, <<"*">>),
+    'ok' = amqp_util:bind_q_to_conference(Q, 'config', <<"*">>),
+    bind_to_q(Q, T, Props);
+bind_to_q(Q, [{'config', Profile}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'config', Profile),
     bind_to_q(Q, T, Props);
-
 bind_to_q(Q, [{'event', {_ConfId, _CallId}=Key}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event', event_binding_key(Key)),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, [{'event', ConfIdOrProps}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event', event_binding_key(ConfIdOrProps)),
     bind_to_q(Q, T, Props);
-
 bind_to_q(Q, [{'command', ConfId}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'command', ConfId),
     bind_to_q(Q, T, Props);
@@ -1230,17 +1236,17 @@ unbind_from_q(Q, ['event'|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event'),
     unbind_from_q(Q, T, Props);
 unbind_from_q(Q, ['config'|T], Props) ->
-    Profile = props:get_value('profile', Props, <<"*">>),
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'config', <<"*">>),
+    unbind_from_q(Q, T, Props);
+unbind_from_q(Q, [{'config', Profile}|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'config', Profile),
     unbind_from_q(Q, T, Props);
-
 unbind_from_q(Q, [{'event', {_ConfId, _CallId}=Key}|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event', event_binding_key(Key)),
     unbind_from_q(Q, T, Props);
 unbind_from_q(Q, [{'event', ConfIdOrProps}|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event', event_binding_key(ConfIdOrProps)),
     unbind_from_q(Q, T, Props);
-
 unbind_from_q(Q, [{'command', ConfId}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'command', ConfId),
     bind_to_q(Q, T, Props);

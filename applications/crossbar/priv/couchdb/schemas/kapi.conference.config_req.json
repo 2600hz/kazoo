@@ -3,6 +3,9 @@
     "_id": "kapi.conference.config_req",
     "description": "AMQP API for conference.config_req",
     "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
         "Conference-ID": {
             "type": "string"
         },
