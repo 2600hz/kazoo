@@ -91,7 +91,10 @@
 -include("kapi_call.hrl").
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type discovery_req() :: kz_json:object().
+-export_type([doc/0
+             ,discovery_req/0
+             ]).
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [ [<<"Conference-ID">>, <<"Account-ID">>] ]).
