@@ -31,15 +31,16 @@ esac
 SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
 RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 # Make the value available to variable substitution calls below
-export REL_NAME="kazoo"
-REL_VSN="4.2.0"
-ERTS_VSN="9.2"
+export REL_NAME="{{ rel_name }}"
+REL_VSN="{{ rel_vsn }}"
+ERTS_VSN="{{ erts_vsn }}"
 CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
-ERL_OPTS=""
+ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-/tmp/log}"
 VM_NODE_FILES_DIR="${VM_NODE_FILES_DIR:-/tmp}"
 NAME_TYPE="${NODE_NAME_TYPE:--name}"
+
 
 # start/stop/install/upgrade pre/post hooks
 PRE_START_HOOKS=""

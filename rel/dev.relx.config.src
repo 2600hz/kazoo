@@ -33,9 +33,9 @@ Base = [runtime_tools
 ,{generate_start_script, false}
 ,{extended_start_script, false}
 
-,{overlay, [{copy, "kazoo", "{{output_dir}}/bin/"}
-           ,{copy, "../core/sup/sup", "{{output_dir}}/bin/"}
+,{overlay, [{copy, "../core/sup/sup", "{{output_dir}}/bin/"}
            ,{copy, "nodetool", "{{output_dir}}/bin/"}
+           ,{template, "kazoo", "{{output_dir}}/bin/kazoo"}
           ]}
             
 ,{default_release, kazoo, "4.2.0"}
