@@ -9,6 +9,18 @@
         "Device-ID": {
             "type": "string"
         },
+        "Event-Category": {
+            "enum": [
+                "navi"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "push_device"
+            ],
+            "type": "string"
+        },
         "Message": {
             "type": "string"
         },

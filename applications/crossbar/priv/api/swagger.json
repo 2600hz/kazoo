@@ -15317,16 +15317,13 @@
             ],
             "type": "object"
         },
-        "kapi.navi.push": {
-            "description": "AMQP API for navi.push",
+        "kapi.navi.push_device": {
+            "description": "AMQP API for navi.push_device",
             "properties": {
                 "Account-ID": {
                     "type": "string"
                 },
-                "App-Name": {
-                    "enum": [
-                        "mate"
-                    ],
+                "Device-ID": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -15337,38 +15334,8 @@
                 },
                 "Event-Name": {
                     "enum": [
-                        "push"
+                        "push_device"
                     ],
-                    "type": "string"
-                },
-                "Message": {
-                    "type": "string"
-                },
-                "Metadata": {
-                    "type": "string"
-                },
-                "Push-Topic": {
-                    "type": "string"
-                },
-                "User-ID": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Account-ID",
-                "Message",
-                "Push-Topic",
-                "User-ID"
-            ],
-            "type": "object"
-        },
-        "kapi.navi.push_device": {
-            "description": "AMQP API for navi.push_device",
-            "properties": {
-                "Account-ID": {
-                    "type": "string"
-                },
-                "Device-ID": {
                     "type": "string"
                 },
                 "Message": {
@@ -15386,6 +15353,45 @@
                 "Device-ID",
                 "Message",
                 "Push-Topic"
+            ],
+            "type": "object"
+        },
+        "kapi.navi.push_user": {
+            "description": "AMQP API for navi.push_user",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "navi"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "push_user"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Metadata": {
+                    "type": "object"
+                },
+                "Push-Topic": {
+                    "type": "string"
+                },
+                "User-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Message",
+                "Push-Topic",
+                "User-ID"
             ],
             "type": "object"
         },
