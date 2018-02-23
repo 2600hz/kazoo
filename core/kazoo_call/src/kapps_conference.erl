@@ -272,7 +272,6 @@ to_proplist(#kapps_conference{}=Conference) ->
 is_conference(#kapps_conference{}) -> 'true';
 is_conference(_) -> 'false'.
 
-
 -spec from_conference_doc(kzd_conferences:doc()) -> conference().
 from_conference_doc(JObj) ->
     from_conference_doc(JObj, #kapps_conference{}).
