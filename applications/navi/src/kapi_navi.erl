@@ -88,9 +88,9 @@ unbind_q(Q, Props) ->
     unbind_q_from(Q, props:get_value('restrict_to', Props)).
 
 unbind_q_from(Q, 'undefined') ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_NAVI_PUSH_DEVICE);
+    'ok' = amqp_util:unbind_q_from_kapps(Q, ?KEY_NAVI_PUSH_DEVICE);
 unbind_q_from(Q, ['push_device'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_NAVI_PUSH_DEVICE),
+    'ok' = amqp_util:unbind_q_from_kapps(Q, ?KEY_NAVI_PUSH_DEVICE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [_|T]) ->
     unbind_q_from(Q, T);

@@ -885,6 +885,7 @@ def_path_param(<<"{CDR_ID}">>=P) -> modb_id_path_param(P);
 def_path_param(<<"{RECORDING_ID}">>=P) -> modb_id_path_param(P);
 
 %% When you don't know (ideally you do know):
+def_path_param(<<"{APP}">>=P) -> base_path_param(P);
 def_path_param(<<"{ARGS}">>=P) -> base_path_param(P);
 def_path_param(<<"{ATTACHMENT_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{ATTEMPT_ID}">>=P) -> base_path_param(P);
@@ -896,6 +897,7 @@ def_path_param(<<"{INTERACTION_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{JOB_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{LANGUAGE}">>=P) -> base_path_param(P);
 def_path_param(<<"{LEDGER_ENTRY_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{MOBILE_DEVICE_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{PLAN_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{PROMPT_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{PROVIDER_ID}">>=P) -> base_path_param(P);

@@ -38,8 +38,8 @@
                     ,{{?MODULE, 'handle_push_request_device'}, [{<<"navi">>, <<"push_device">>}]}
                     ]).
 -define(QUEUE_NAME, <<"navi_listener">>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -177,7 +177,7 @@ handle_push_request_device(JObj, _Props) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     DeviceId = kz_json:get_value(<<"Device-ID">>, JObj),
     Msg = kz_json:get_value(<<"Message">>, JObj),
-    Metadata = kz_json:get_value(<<"Metadata">>, JObj),
+    Metadata = kz_json:get_value(<<"Metadata">>, JObj, kz_json:new()),
     Event = kz_json:get_value(<<"Push-Topic">>, JObj),
     ExtraParameters = [{<<"metadata">>, kz_json:normalize(Metadata)}],
     push_notifications_device(AccountId, DeviceId, Event, Msg, ExtraParameters).

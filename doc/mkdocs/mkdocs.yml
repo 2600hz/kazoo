@@ -312,6 +312,9 @@ pages:
     - 'applications/media_mgr/doc/README.md'
   - 'Milliwatt':
     - 'applications/milliwatt/doc/README.md'
+  - 'Navi':
+    - 'applications/navi/doc/README.md'
+    - 'applications/crossbar/doc/push_notification_subscriptions.md'
   - 'Notify':
     - 'applications/notify/doc/README.md'
   - 'Omnipresences':
@@ -361,6 +364,10 @@ pages:
     - 'core/kazoo_apps/doc/kapps_notify_publisher.md'
   - 'GCM':
     - 'core/gcm/README.md'
+  - 'FCM':
+    - 'core/fcm/README.md'
+  - 'APNS':
+    - 'core/inaka_apns/README.md'
   - 'Kazoo Translator':
     - 'core/kazoo_translator/doc/README.md'
   - 'Kazoo Number Manager':
