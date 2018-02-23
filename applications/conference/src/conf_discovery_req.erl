@@ -26,7 +26,7 @@ handle_req(DiscoveryReq, _Options) ->
 
 -spec create_conference(kapi_conference:discover_req(), kapps_call:call()) -> kapps_conference:conference().
 create_conference(DiscoveryReq, Call) ->
-    create_conference(DiscoveryReq, Call, kz_json:get_binary_ne_value(<<"Conference-ID">>, DiscoveryReq)).
+    create_conference(DiscoveryReq, Call, kz_json:get_ne_binary_value(<<"Conference-ID">>, DiscoveryReq)).
 
 -spec create_conference(kapi_conference:discovery_req(), kapps_call:call(), kz_term:api_ne_binary()) -> kapps_conference:conference().
 create_conference(DiscoveryReq, Call, 'undefined') ->
