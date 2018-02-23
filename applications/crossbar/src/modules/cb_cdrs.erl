@@ -360,11 +360,13 @@ load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
     of
         'false' -> Context;
         {'ok', Results} ->
+            HasFilters = crossbar_filter:is_defined(Context),
+
             JObjs = [kz_json:get_json_value(<<"doc">>, Result)
                      || Result <- Results,
                         %% if there are no filters, include doc
                         %% otherwise run filters against doc for inclusion
-                        (not crossbar_filter:is_defined(Context))
+                        (not HasFilters)
                             orelse crossbar_filter:by_doc(kz_json:get_json_value(<<"doc">>, Result), Context)
                     ],
             RespData = cb_context:resp_data(Context),
