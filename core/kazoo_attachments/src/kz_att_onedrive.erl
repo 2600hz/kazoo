@@ -1,18 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Google Drive for attachments
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Google Drive for attachments.
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
-
 -module(kz_att_onedrive).
 -behaviour(gen_attachment).
 
 -include("kz_att.hrl").
 
-%% `gen_attachment' behaviour callbacks (API)
+%% gen_attachment behaviour callbacks (API)
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
@@ -54,9 +51,14 @@
                                 ,http_options => ?GRAPH_HTTP_OPTIONS
                                 }).
 
-%% ====================================================================
-%% `gen_attachment' behaviour callbacks (API)
-%% ====================================================================
+%%%=============================================================================
+%%% gen_attachment behaviour callbacks (API)
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -64,8 +66,22 @@
                     ,gen_attachment:contents()
                     ,gen_attachment:options()
                     ) -> gen_attachment:put_response().
-put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
-    Authorization = onedrive_token(Settings, ?DRV_PUT_TOKEN_OPTIONS),
+put_attachment(#{'oauth_doc_id' := TokenDocId} = Settings,
+               DbName, DocId, AName, Contents, Options) ->
+    Authorization = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_PUT_TOKEN_OPTIONS),
+    do_put_attachment(Authorization, Settings, DbName, DocId, AName, Contents, Options).
+
+-spec do_put_attachment(kz_auth_client:token()
+                       ,gen_attachment:settings()
+                       ,gen_attachment:db_name()
+                       ,gen_attachment:doc_id()
+                       ,gen_attachment:att_name()
+                       ,gen_attachment:contents()
+                       ,gen_attachment:options()
+                       ) -> gen_attachment:put_response().
+do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
+                 ,Settings ,DbName, DocId, AName, Contents, Options) ->
+    Routines = kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options),
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, kz_mime:from_filename(AName)}
               ],
@@ -77,34 +93,74 @@ put_attachment(Settings, DbName, DocId, AName, Contents, _Options) ->
                                    ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
                                    ]}
                    ]};
-        Else -> Else
-    end.
+        Resp ->
+            handle_put_attachment_resp(Resp, Routines)
+    end;
+do_put_attachment({'error', _}, Settings, DbName, DocId, AName, Contents, Options) ->
+    Routines = kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options),
+    kz_att_error:new('oauth_failure', Routines).
+
+-spec handle_put_attachment_resp({'error', kz_term:ne_binary(), kz_http:ret() | atom()} |
+                                 gen_attachment:put_response()
+                                ,kz_att_error:update_routines()
+                                ) -> gen_attachment:put_response().
+handle_put_attachment_resp({'error', Url, Resp}, Routines) ->
+    NewRoutines = [{fun kz_att_error:set_req_url/2, Url}
+                   | Routines
+                  ],
+    handle_http_error_response(Resp, NewRoutines).
 
 -spec fetch_attachment(gen_attachment:handler_props()
                       ,gen_attachment:db_name()
                       ,gen_attachment:doc_id()
                       ,gen_attachment:att_name()
                       ) -> gen_attachment:fetch_response().
-fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
+fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     case kz_json:get_value(<<"onedrive">>, HandlerProps) of
-        'undefined' -> gen_attachment:error_response(400, 'invalid_data');
+        'undefined' ->
+            Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
+            kz_att_error:new('invalid_data', Routines);
         GData ->
-            {Settings, {DriveId, ContentId}} = binary_to_term(base64:decode(GData)),
-            Authorization = onedrive_token(Settings, ?DRV_GET_TOKEN_OPTIONS),
-            Headers = [{<<"Authorization">>, Authorization}],
-            Url = ?DRV_FETCH_URL(DriveId, ContentId),
-            lager:debug("getting ~p", [Url]),
-            case kz_http:get(Url, Headers, ?GRAPH_HTTP_OPTIONS) of
-                {'ok', 200, _ResponseHeaders, ResponseBody} ->
-                    {'ok', ResponseBody};
-                Resp ->
-                    kz_att_util:handle_http_error_response(Resp, "Graph fetch error", Url)
-            end
+            {#{oauth_doc_id := TokenDocId},
+             {DriveId, ContentId}} = binary_to_term(base64:decode(GData)),
+            Authorization = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_GET_TOKEN_OPTIONS),
+            do_fetch_attachment(Authorization, DriveId, ContentId, HandlerProps, DbName, DocId, AName)
     end.
 
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
+-spec do_fetch_attachment(kz_auth_client:token()
+                         ,kz_term:ne_binary()
+                         ,kz_term:ne_binary()
+                         ,gen_attachment:handler_props()
+                         ,gen_attachment:db_name()
+                         ,gen_attachment:doc_id()
+                         ,gen_attachment:att_name()
+                         ) -> gen_attachment:fetch_response().
+do_fetch_attachment({'ok', #{'token' := #{'authorization' := Authorization}}},
+                    DriveId, ContentId, HandlerProps, DbName, DocId, AName) ->
+    Headers = [{<<"Authorization">>, Authorization}],
+    Url = ?DRV_FETCH_URL(DriveId, ContentId),
+    lager:debug("getting ~p", [Url]),
+    case kz_http:get(Url, Headers, ?GRAPH_HTTP_OPTIONS) of
+        {'ok', 200, _ResponseHeaders, ResponseBody} ->
+            {'ok', ResponseBody};
+        Resp ->
+            Routines = [{fun kz_att_error:set_req_url/2, Url}
+                        | kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName)
+                       ],
+            handle_http_error_response(Resp, Routines)
+    end;
+do_fetch_attachment({'error', _}, _, _, HandlerProps, DbName, DocId, AName) ->
+    Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
+    kz_att_error:new('oauth_failure', Routines).
+
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec resolve_put_url(map(), attachment_info()) -> kz_term:ne_binary().
 resolve_put_url(Settings, AttInfo) ->
     Url = onedrive_format_url(Settings, AttInfo),
@@ -122,13 +178,9 @@ onedrive_default_fields() ->
 onedrive_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, onedrive_default_fields()).
 
--spec onedrive_token(map(), map()) -> kz_term:ne_binary().
-onedrive_token(#{oauth_doc_id := TokenDocId}, Options) ->
-    {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, Options),
-    Authorization.
-
 -spec onedrive_put(binary(), kz_term:proplist(), binary()) ->
-                          {'ok', tuple(), kz_term:proplist()} | gen_attachment:error_response().
+                          {'ok', {binary(), binary()}, kz_term:proplist()} |
+                          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 onedrive_put(Url, Headers, Body) ->
     case kz_http:put(Url, Headers, Body, ?GRAPH_HTTP_OPTIONS) of
         {'ok', Code, ResponseHeaders, ResponseBody}
@@ -139,11 +191,42 @@ onedrive_put(Url, Headers, Body) ->
             Id = kz_json:get_value(<<"id">>, BodyJObj),
             DriveId = kz_json:get_value([<<"parentReference">>, <<"driveId">>], BodyJObj),
             case {Id, DriveId} of
-                {undefined, undefined} -> gen_attachment:error_response(400, 'return_info_missing');
-                {undefined, _} -> gen_attachment:error_response(400, 'return_id_missing');
-                {_, undefined} -> gen_attachment:error_response(400, 'return_drive_missing');
+                {undefined, undefined} -> {'error', Url, 'return_info_missing'};
+                {undefined, _} -> {'error', Url, 'return_id_missing'};
+                {_, undefined} -> {'error', Url, 'return_drive_missing'};
                 _ -> {ok, {DriveId, Id}, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders)]}
             end;
         Resp ->
-            kz_att_util:handle_http_error_response(Resp, "Graph error", Url)
+            {'error', Url, Resp}
     end.
+
+%% OneDrive REST API errors reference: https://docs.microsoft.com/en-us/onedrive/developer/rest-api/concepts/errors
+-spec handle_http_error_response(kz_http:req(), kz_att_error:update_routines()) -> kz_att_error:error().
+handle_http_error_response({'ok', RespCode, RespHeaders, RespBody} = _E, Routines) ->
+    Reason = get_reason(RespCode, RespBody),
+    NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
+                  ,{fun kz_att_error:set_resp_headers/2, RespHeaders}
+                  ,{fun kz_att_error:set_resp_body/2, RespBody}
+                   | Routines
+                  ],
+    lager:error("onedrive error: ~p (code: ~p)", [_E, RespCode]),
+    kz_att_error:new(Reason, NewRoutines);
+handle_http_error_response({'error', {'failed_connect', Reason}} = _E, Routines) ->
+    lager:error("ondrive failed to connect: ~p", [_E]),
+    kz_att_error:new(Reason, Routines);
+handle_http_error_response({'error', {Reason, _}} = _E, Routines) when is_atom(Reason) ->
+    lager:error("ondrive request error: ~p", [_E]),
+    kz_att_error:new(Reason, Routines);
+handle_http_error_response(Reason, Routines) when is_atom(Reason) ->
+    lager:error("ondrive request error: ~p", [Reason]),
+    kz_att_error:new(Reason, Routines);
+handle_http_error_response(_E, Routines) ->
+    lager:error("dropbox request error: ~p", [_E]),
+    kz_att_error:new('request_error', Routines).
+
+-spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
+get_reason(RespCode, RespBody) when RespCode >= 400 ->
+    %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
+    kz_json:get_ne_binary_value([<<"error">>, <<"message">>], kz_json:decode(RespBody));
+get_reason(RespCode, _RespBody) ->
+    kz_http_util:http_code_to_status_line(RespCode).

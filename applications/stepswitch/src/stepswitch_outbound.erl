@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Handle offnet requests, including rating them
+%%% @doc Handle offnet requests, including rating them
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Ben Wann
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Ben Wann
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(stepswitch_outbound).
 
 -export([handle_req/2]).
@@ -16,13 +14,11 @@
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 -include_lib("kazoo/include/kz_api_literals.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% process an offnet resource request (outbound)
+%%------------------------------------------------------------------------------
+%% @doc process an offnet resource request (outbound)
 %% route
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(OffnetJObj, _Props) ->
     'true' = kapi_offnet_resource:req_v(OffnetJObj),
@@ -34,12 +30,10 @@ handle_req(OffnetJObj, _Props) ->
         ?RESOURCE_TYPE_SMS -> handle_sms_req(OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec handle_audio_req(kapi_offnet_resource:req()) -> any().
 handle_audio_req(OffnetReq) ->
@@ -54,12 +48,10 @@ handle_audio_req(Number, OffnetReq) ->
         _ -> maybe_bridge(Number, OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_originate_req(kapi_offnet_resource:req()) -> any().
 handle_originate_req(OffnetReq) ->
     Number = stepswitch_util:get_outbound_destination(OffnetReq),
@@ -91,12 +83,10 @@ maybe_force_originate_outbound(Props, OffnetReq) ->
         'true' -> maybe_originate(knm_number_options:number(Props), OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_sms_req(kapi_offnet_resource:req()) -> any().
 handle_sms_req(OffnetReq) ->
     Number = stepswitch_util:get_outbound_destination(OffnetReq),
@@ -107,12 +97,10 @@ handle_sms_req(OffnetReq) ->
         _ -> maybe_sms(Number, OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_force_outbound(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_outbound(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
@@ -123,12 +111,10 @@ maybe_force_outbound(Props, OffnetReq) ->
         'true' -> maybe_bridge(knm_number_options:number(Props), OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_force_outbound_sms(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_outbound_sms(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
@@ -139,12 +125,10 @@ maybe_force_outbound_sms(Props, OffnetReq) ->
         'true' -> maybe_sms(knm_number_options:number(Props), OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_bridge(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_bridge(Number, OffnetReq) ->
     RouteBy = stepswitch_util:route_by(),
@@ -167,12 +151,10 @@ maybe_correct_shortdial(Number, OffnetReq) ->
             handle_audio_req(CorrectedNumber, OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_sms(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_sms(Number, OffnetReq) ->
     RouteBy = stepswitch_util:route_by(),
@@ -181,33 +163,27 @@ maybe_sms(Number, OffnetReq) ->
         Endpoints -> stepswitch_request_sup:sms(Endpoints, OffnetReq)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
                              kz_types:sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     stepswitch_request_sup:local_extension(Props, OffnetReq).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec local_sms(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> 'ok'.
 local_sms(Props, OffnetReq) ->
     stepswitch_local_sms:local_message_handling(Props, OffnetReq).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_originate(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 maybe_originate(Number, OffnetReq) ->
     RouteBy = stepswitch_util:route_by(),
@@ -276,12 +252,10 @@ create_loopback_endpoint(Props, OffnetReq) ->
       ,{<<"To-DID">>, Number}
       ,{<<"To-Realm">>, Realm}
       ]).
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec publish_no_resources(kapi_offnet_resource:req()) -> 'ok'.
 publish_no_resources(OffnetReq) ->
     case kapi_offnet_resource:server_id(OffnetReq) of

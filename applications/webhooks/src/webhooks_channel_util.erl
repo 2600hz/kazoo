@@ -1,8 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%%
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(webhooks_channel_util).
 
 -export([handle_event/2]).
@@ -27,7 +27,6 @@ handle_event(JObj, _Props) ->
             maybe_handle_channel_event(AccountId, HookEvent, J)
     end.
 
-%% @public
 -spec maybe_handle_channel_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),

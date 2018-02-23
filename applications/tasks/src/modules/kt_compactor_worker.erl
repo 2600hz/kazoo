@@ -1,7 +1,6 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
-%%% @doc
-%%% Runs the compaction job which consists of:
+%%% @doc Runs the compaction job which consists of:
 %%%   1. The node to run it on (and API/Admin connections directly to the node
 %%%   2. The database to compact
 %%%   3. The heuristic to use
@@ -11,8 +10,7 @@
 %%% The list of shards on the node and the design documents in the db will be generated
 %%% and compaction will begin on those shards.
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kt_compactor_worker).
 
 -export([run_compactor/1]).
@@ -235,12 +233,12 @@ should_compact(Compactor, ?HEUR_RATIO) ->
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary()) ->
                                   {pos_integer(), pos_integer()} |
                                   'undefined' | 'not_found'.
--spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary(), 0..3) ->
-                                  {pos_integer(), pos_integer()} |
-                                  'undefined' | 'not_found'.
 get_db_disk_and_data(Conn, DbName) ->
     get_db_disk_and_data(Conn, DbName, 0).
 
+-spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary(), 0..3) ->
+                                  {pos_integer(), pos_integer()} |
+                                  'undefined' | 'not_found'.
 get_db_disk_and_data(_Conn, _DbName, 3=_N) ->
     lager:warning("getting db info for ~s failed ~b times", [_DbName, _N]),
     'undefined';

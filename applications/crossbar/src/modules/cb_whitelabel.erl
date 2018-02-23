@@ -1,12 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Account module
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Account module
+%%% @author Jon Blanton <jon@2600hz.com>
 %%% @end
-%%% @contributors
-%%%   Jon Blanton <jon@2600hz.com>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_whitelabel).
 
 -export([init/0
@@ -45,10 +42,14 @@
 
 -define(AGG_VIEW_WHITELABEL_DOMAIN, <<"accounts/list_by_whitelabel_domain">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     Bindings = [{<<"*.authenticate">>, 'authenticate'}
@@ -65,15 +66,13 @@ init() ->
     _ = cb_modules_util:bind(?MODULE, Bindings),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -99,14 +98,11 @@ allowed_methods(_WhitelabelDomain, ?ICON_REQ) ->
 allowed_methods(_WhitelabelDomain, ?WELCOME_REQ) ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -123,11 +119,10 @@ resource_exists(_, ?LOGO_REQ) -> 'true';
 resource_exists(_, ?WELCOME_REQ) -> 'true';
 resource_exists(_, ?ICON_REQ) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize(Context
@@ -150,11 +145,10 @@ authorize(_Context, [{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
 authorize(_Context, _Nouns, _Verb) ->
     'false'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     authenticate(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
@@ -171,13 +165,10 @@ authenticate([{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
 authenticate(_Nouns, _Verb) ->
     'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%%------------------------------------------------------------------------------
+%% @doc Add content types accepted and provided by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec acceptable_content_types() -> kz_term:proplist().
 acceptable_content_types() ->
@@ -256,15 +247,13 @@ content_types_accepted(Context, ?WELCOME_REQ, ?HTTP_POST) ->
 content_types_accepted(Context, _AttachType, _Verb) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate_whitelabel(Context, cb_context:req_verb(Context)).
@@ -627,12 +616,10 @@ post(Context, ?DOMAINS_REQ) ->
 delete(Context) ->
     maybe_cleanup_account_definition(crossbar_doc:delete(Context, ?HARD_DELETE)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load the binary attachment of a whitelabel doc (based on a domain)
+%%------------------------------------------------------------------------------
+%% @doc Load the binary attachment of a whitelabel doc (based on a domain)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_whitelabel(cb_context:context(), kz_term:ne_binary()) ->
                              cb_context:context().
 find_whitelabel(Context, Domain) ->
@@ -660,12 +647,10 @@ find_whitelabel(Context, Domain) ->
         _Status -> Context1
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a whitelabel document from the database
+%%------------------------------------------------------------------------------
+%% @doc Load a whitelabel document from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_whitelabel_meta(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_whitelabel_meta(Context, WhitelabelId) ->
     crossbar_doc:load(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
@@ -678,12 +663,10 @@ find_whitelabel_meta(Context, Domain) ->
         _Status -> Context1
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a whitelabel binary attachment from the database
+%%------------------------------------------------------------------------------
+%% @doc Load a whitelabel binary attachment from the database
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_whitelabel_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_whitelabel_binary(Context, AttachType) ->
     case whitelabel_binary_meta(Context, AttachType) of
@@ -762,12 +745,10 @@ update_response_with_attachment(Context, AttachmentId, JObj) ->
                                              ),
     cb_context:set_resp_etag(WithHeaders, 'undefined').
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate_request(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_request(Context, WhitelabelId) ->
     validate_unique_domain(Context, WhitelabelId).
@@ -804,19 +785,10 @@ on_successful_validation(Context, 'undefined') ->
 on_successful_validation(Context, WhitelabelId) ->
     crossbar_doc:load_merge(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load the binary attachment of a whitelabel doc
+%%------------------------------------------------------------------------------
+%% @doc Update the binary attachment of a whitelabel doc
 %% @end
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update the binary attachment of a whitelabel doc
-%% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_whitelabel_binary(kz_term:ne_binary(), path_token(), cb_context:context()) ->
                                       cb_context:context().
 update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
@@ -840,13 +812,11 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
                                 ,Opts
                                 ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
+%%------------------------------------------------------------------------------
+%% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec attachment_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 attachment_name(Filename, CT) ->
@@ -870,12 +840,10 @@ attachment_name(Filename, CT) ->
 attachment_name(AttachType, Filename, CT) ->
     <<AttachType/binary, "-", (attachment_name(Filename, CT))/binary>>.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_domain_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_domain_unique(AccountId, Domain) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Domain)}],
@@ -889,12 +857,10 @@ is_domain_unique(AccountId, Domain) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update_account_definition(cb_context:context()) -> cb_context:context().
 maybe_update_account_definition(Context) ->
     maybe_update_account_definition(Context, cb_context:resp_status(Context)).
@@ -911,12 +877,10 @@ maybe_update_account_definition(Context, 'success') ->
     end;
 maybe_update_account_definition(Context, _Status) -> Context.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_cleanup_account_definition(cb_context:context()) -> cb_context:context().
 maybe_cleanup_account_definition(Context) ->
     maybe_cleanup_account_definition(Context, cb_context:resp_status(Context)).

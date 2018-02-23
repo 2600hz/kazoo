@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Common functions for the provisioner modules
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Common functions for the provisioner modules
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%    Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(provisioner_v5).
 
 -export([update_device/2]).
@@ -20,12 +16,10 @@
 -include("crossbar.hrl").
 -include("provisioner_v5.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_device(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 update_device(JObj, AuthToken) ->
     AccountId = kz_doc:account_id(JObj),
@@ -110,12 +104,10 @@ get_model(JObj) ->
         Else -> Else
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 update_account(AccountId, JObj, AuthToken) ->
     send_req('accounts_update'
@@ -148,12 +140,10 @@ account_settings(JObj) ->
       [{<<"settings">>, settings(JObj)}
       ]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_user(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 update_user(AccountId, JObj, AuthToken) ->
     case kz_doc:type(JObj) of
@@ -192,13 +182,11 @@ save_device(AccountId, Device, Request, AuthToken) ->
             send_req('devices_post', Request, AuthToken, AccountId, MacAddress)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Use before a POST or PUT to a device.
+%%------------------------------------------------------------------------------
+%% @doc Use before a POST or PUT to a device.
 %% Return the account id a MAC address belongs to, `false' otherwise.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_MAC(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary() | 'false'.
 check_MAC(MacAddress, AuthToken) ->
     Headers = req_headers(AuthToken),
@@ -214,12 +202,10 @@ check_MAC(MacAddress, AuthToken) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_owner(kz_json:object()) -> kz_json:object().
 set_owner(JObj) ->
     OwnerId = kz_json:get_ne_value(<<"owner_id">>, JObj),
@@ -236,12 +222,10 @@ get_owner(OwnerId, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec settings(kz_json:object()) -> kz_json:object().
 settings(JObj) ->
     Props = props:filter_empty(
@@ -333,28 +317,23 @@ settings_keys(Assoc, KeyKind, JObj) ->
     Brand = get_brand(JObj),
     Family = get_family(JObj),
     AccountId = kz_doc:account_id(JObj),
-    Keys =
-        kz_json:foldl(
-          fun(Key, Value, Acc) ->
+
+    Fun = fun(Key, null, Acc) ->
+                  %% workaround since `kz_json:set_value/3' is removing key if the value is `null'.
+                  kz_json:from_list([{Key, null} | kz_json:to_proplist(Acc)]);
+             (Key, Value, Acc) ->
                   Type = kz_json:get_binary_value(<<"type">>, Value),
                   V = kz_json:get_binary_value(<<"value">>, Value),
                   FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId, Assoc),
                   maybe_add_feature_key(Key, FeatureKey, Acc)
-          end
-                     ,kz_json:new()
-                     ,FeatureKeys
-         ),
+          end,
+
+    Keys = kz_json:foldl(Fun, kz_json:new(), FeatureKeys),
+
     case get_line_key(Brand, Family) of
         'undefined' -> Keys;
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
-
--spec get_label(binary(), binary()) -> binary().
-get_label(AccountId, DocId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, DocId),
-
-    get_label(Doc).
 
 -spec get_label(kz_json:object()) -> binary().
 get_label(Doc) ->
@@ -379,7 +358,7 @@ get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
         'undefined' -> 'undefined';
         Presence ->
             kz_json:from_list(
-              [{<<"label">>, get_label(AccountId, Presence)}
+              [{<<"label">>, get_label(UserJObj)}
               ,{<<"value">>, Presence}
               ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
               ,{<<"account">>, get_line_key(Brand, Family)}
@@ -397,7 +376,7 @@ get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, As
     case kzd_devices:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
-            Label = <<"Park ", (get_label(AccountId, Presence))/binary>>,
+            Label = <<"Park ", (get_label(UserJObj))/binary>>,
             kz_json:from_list(
               [{<<"label">>, Label}
               ,{<<"value">>, <<"*3", Presence/binary>>}
@@ -479,12 +458,10 @@ settings_audio(_, [], JObj) -> JObj;
 settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
     settings_audio(Codecs, Keys, kz_json:set_value(Key, Codec, JObj)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Send provisioning request
+%%------------------------------------------------------------------------------
+%% @doc Send provisioning request
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_req(atom(), kz_term:api_object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = kz_json:encode(device_payload(JObj)),

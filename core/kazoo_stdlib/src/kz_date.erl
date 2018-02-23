@@ -1,11 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc Represent a date, and perform various manipulations on it.
-%%%
-%%% @contributors
-%%%     Mark Magnusson
-%%%     Karl Anderson
-%%%-------------------------------------------------------------------
+%%% @author Mark Magnusson
+%%% @author Karl Anderson
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_date).
 
 -include("kazoo_stdlib/include/kz_types.hrl").
@@ -34,10 +33,10 @@
         ,pad_day/1
         ]).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Convert a Gregorian seconds integer to kz_date taking into consideration timezone
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) -> kz_time:date().
 from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
     {Date, _} = localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Seconds)
@@ -45,11 +44,10 @@ from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
                                       ),
     Date.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Calculates the date of a given ISO 8601 week
+%%------------------------------------------------------------------------------
+%% @doc Calculates the date of a given ISO 8601 week
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec from_iso_week(kz_time:iso_week()) -> kz_time:date().
 from_iso_week({Year, Week}) ->
     Jan4 = calendar:date_to_gregorian_days(Year, 1, 4),
@@ -73,13 +71,12 @@ weekday_distance(D0, D1) when D0 =< 7, D1 =< 7 ->
 to_iso_week({_Year, _Month, _Day}=Date) ->
     calendar:iso_week_number(Date).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Normalizes dates, for example corrects for months that are given
+%%------------------------------------------------------------------------------
+%% @doc Normalizes dates, for example corrects for months that are given
 %% with more days then they have (i.e.: {2011, 1, 36} -> {2011, 2, 5}).
 %% I have been referring to this as 'spanning a month/year border'
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize(kz_time:date()) -> kz_time:date().
 normalize({Y, 0, D}) ->
     normalize({Y - 1, 12, D});
@@ -95,11 +92,11 @@ normalize({Y, M, D}=Date) ->
         _ -> Date
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Calculate when the second date is in time, relative to the first
 %% calendar:time_difference/2 is obsolete. Convert to gregorian seconds instead
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec relative_difference(kz_time:datetime(), kz_time:datetime()) -> 'future' | 'equal' | 'past'.
 relative_difference(Date1, Date2) ->
     case {calendar:datetime_to_gregorian_seconds(Date1)
@@ -111,15 +108,13 @@ relative_difference(Date1, Date2) ->
         {Future, Past} when Future > Past -> 'past'
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Calculates the date of the next occurrence of a weekday from the given
+%%------------------------------------------------------------------------------
+%% @doc Calculates the date of the next occurrence of a weekday from the given
 %% start date.
 %%
-%% NOTICE!
-%% It is possible for this function to cross month/year boundaries.
+%% <div class="notice">It is possible for this function to cross month/year boundaries.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_next_weekday(kz_time:date(), kz_term:ne_binary()) -> kz_time:date().
 find_next_weekday({Y, M, D}, Weekday) ->
     RefDOW = wday_to_dow(Weekday),
@@ -174,12 +169,11 @@ to_iso8601_extended({{_Y,_M,_D}=Date, _}) ->
 to_iso8601_extended(Timestamp) ->
     to_iso8601_extended(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Convert the ordinal words to cardinal numbers representing
+%%------------------------------------------------------------------------------
+%% @doc Convert the ordinal words to cardinal numbers representing
 %% the position
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec ordinal_to_position(kz_term:ne_binary()) -> 0..4.
 ordinal_to_position(<<"first">>) -> 0;
 ordinal_to_position(<<"second">>) -> 1;
@@ -187,12 +181,11 @@ ordinal_to_position(<<"third">>) -> 2;
 ordinal_to_position(<<"fourth">>) -> 3;
 ordinal_to_position(<<"fifth">>) -> 4.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Map the days of the week to cardinal numbers representing the
+%%------------------------------------------------------------------------------
+%% @doc Map the days of the week to cardinal numbers representing the
 %% position, in accordance with ISO 8601
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wday_to_dow(kz_term:ne_binary()) -> kz_time:daynum().
 wday_to_dow(<<"monday">>) -> 1;
 wday_to_dow(<<"tuesday">>) -> 2;
@@ -203,11 +196,10 @@ wday_to_dow(<<"friday">>) -> 5;
 wday_to_dow(<<"saturday">>) -> 6;
 wday_to_dow(<<"sunday">>) -> 7.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Map the position of a week day to its textual representation.
+%%------------------------------------------------------------------------------
+%% @doc Map the position of a week day to its textual representation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec dow_to_wday(kz_time:daynum()) -> kz_term:ne_binary().
 dow_to_wday(1) -> <<"monday">>;
 dow_to_wday(2) -> <<"tuesday">>;

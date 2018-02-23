@@ -1,16 +1,17 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% APIs for events concerning money (like credits, debits, and others)
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc APIs for events concerning money (like credits, debits, and others).
 %%%
 %%% Types of events known:
-%%%   credit - a credit has been added to account-id
-%%%   debit - a debit has been applied to account-id
-%%%   balance - a request for any whapp with the balance of account-id to reply
+%%% <dl>
+%%%   <dt>`credit'</dt><dd>A credit has been added to account-id</dd>
+%%%   <dt>`debit'</dt><dd>A debit has been applied to account-id</dd>
+%%%   <dt>`balance'</dt><dd>A request for any whapp with the balance of account-id to reply</dd>
+%%% </dl>
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_money).
 
 -export([credit/1, credit_v/1
@@ -58,11 +59,11 @@
                              ]).
 -define(BALANCE_RESP_TYPES, []).
 
-%%--------------------------------------------------------------------
-%% @doc Credit Update - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Credit Update.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec credit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 credit(Prop) when is_list(Prop) ->
     case credit_v(Prop) of
@@ -78,11 +79,11 @@ credit_v(Prop) when is_list(Prop) ->
 credit_v(JObj) ->
     credit_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Debit Update - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Debit Update.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec debit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 debit(Prop) when is_list(Prop) ->
     case debit_v(Prop) of
@@ -98,11 +99,11 @@ debit_v(Prop) when is_list(Prop) ->
 debit_v(JObj) ->
     debit_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Balance Request - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Balance Request.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec balance_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 balance_req(Prop) when is_list(Prop) ->
     case balance_req_v(Prop) of
@@ -118,11 +119,11 @@ balance_req_v(Prop) when is_list(Prop) ->
 balance_req_v(JObj) ->
     balance_req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc Balance Response - see wiki
-%% Takes kz_term:proplist(), creates JSON iolist or error
+%%------------------------------------------------------------------------------
+%% @doc Balance Response.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec balance_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 balance_resp(Prop) when is_list(Prop) ->
     case balance_resp_v(Prop) of
@@ -148,11 +149,10 @@ unbind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:unbind_q_from_configuration(Queue, Routing).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:configuration_exchange().

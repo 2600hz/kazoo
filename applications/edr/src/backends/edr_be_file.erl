@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% File backend module
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc File backend module
+%%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%% @author Max Lay
 %%% @end
-%%% @contributors
-%%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
-%%%    Max Lay
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(edr_be_file).
 
 -behaviour(gen_edr_backend).

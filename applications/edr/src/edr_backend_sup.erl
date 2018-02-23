@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%% @author Conversant Ltd (Max Lay)
 %%% @end
-%%% @contributors
-%%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
-%%%    Conversant Ltd (Max Lay)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(edr_backend_sup).
 
 -behaviour(supervisor).
@@ -22,9 +20,14 @@
 
 -define(SERVER, ?MODULE).
 
-%% ===================================================================
+%%==============================================================================
 %% API functions
-%% ===================================================================
+%%==============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_running_backends() -> [{Id :: kz_term:ne_binary(), pid(), [module()]}].
 get_running_backends() ->
     [{Id, Pid, Module} || {Id, Pid, _Type, Module} <- supervisor:which_children(?SERVER), Pid =/= 'undefined'].
@@ -57,29 +60,25 @@ startup_child(#backend{type=Type, name=Name}=Backend) ->
     Module = kz_term:to_atom("edr_be_" ++ binary_to_list(Type)),
     ?WORKER_NAME_ARGS_TYPE(Name, Module, [Backend], 'transient').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Starts the supervisor
+%%------------------------------------------------------------------------------
+%% @doc Starts the supervisor.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-%% ===================================================================
+%%==============================================================================
 %% Supervisor callbacks
-%% ===================================================================
+%%==============================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%%------------------------------------------------------------------------------
+%% @doc Whenever a supervisor is started using `supervisor:start_link/[2,3]',
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),

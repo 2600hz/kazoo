@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Mailbox messages operation
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Provide functions to create and manage a single voicemail message.
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kvm_message).
 
 -export([new/2, forward_message/4
@@ -23,34 +21,52 @@
 
 -export_type([vm_folder/0]).
 
--type new_msg_ret() :: {'ok', kapps_call:call()} | {'error', kapps_call:call(), any()}.
+-type new_msg_ret() :: {'ok', kapps_call:call()} | {'error', kapps_call:call(), kz_term:text()}.
+%% Result of storing message. If it's not successful element 3 of tuple has the error message.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc receive and store a new voicemail message
-%% expected options:
-%% [{<<"Attachment-Name">>, AttachmentName}
-%% ,{<<"Box-Id">>, BoxId}
-%% ,{<<"OwnerId">>, OwnerId}
-%% ,{<<"Length">>, Length}
-%% ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
-%% ,{<<"After-Notify-Action">>, Action}
-%% ,{<<"Attachment-Name">>, AttachmentName}
-%% ,{<<"Box-Num">>, BoxNum}
-%% ,{<<"Timezone">>, Timezone}
-%% ]
+%%------------------------------------------------------------------------------
+%% @doc Receives and stores a new voicemail message.
+%% Usually this function is called by {@link cf_voicemail} module to create message
+%% metadata and store the media file in the storage. This may results in
+%% sending a notification to the the owner of the mailbox or device if it was
+%% requested by mailbox owner by setting `delete_after_notify' or `save_after_notify' in
+%% the mailbox document.
+%%
+%% Options are:
+%%
+%% <dl>
+%%    <dt>`{<<"Attachment-Name">>, '{@link kz_term:ne_binary()}`}'</dt>
+%%    <dd>Media file name</dd>
+%%    <dt>`{<<"Box-Id">>, '{@link kz_term:ne_binary()}`}'</dt>
+%%    <dd>The mailbox ID the message is belong to</dd>
+%%    <dt>`{<<"OwnerId">>, '{@link kz_term:ne_binary()}`}'</dt>
+%%    <dd>The owner ID of the mailbox</dd>
+%%    <dt>`{<<"Length">>, integer()}'</dt>
+%%    <dd>Media file size (or audio duration?)</dd>
+%%    <dt>`{<<"Transcribe-Voicemail">>, boolean()}'</dt>
+%%    <dd>Should try to transcribe the message with external service</dd>
+%%    <dt>`{<<"After-Notify-Action">>, '{@link notify_action()}`}'</dt>
+%%    <dd>The action to execute if sending notification was successful</dd>
+%%    <dt>`{<<"Box-Num">>, '{@link kz_term:ne_binary()}`}'</dt>
+%%    <dd>Extension or phone number of the mailbox</dd>
+%%    <dt>`{<<"Timezone">>, '{@link kz_term:api_binary()}`}'</dt>
+%%    <dd>Configured timezone of the mailbox or device or user or account. If it
+%%    is `undefined' system default timezone will be used instead.</dd>
+%% </dl>
 %% @end
-%%--------------------------------------------------------------------
--spec new(kapps_call:call(), kz_term:proplist()) -> new_msg_ret().
-new(Call, Props) ->
-    BoxId = props:get_value(<<"Box-Id">>, Props),
+%%------------------------------------------------------------------------------
+-spec new(Call, Options) -> Result when Call::kapps_call:call(),
+                                        Options::kz_term:proplist(),
+                                        Result::new_msg_ret().
+new(Call, Options) ->
+    BoxId = props:get_value(<<"Box-Id">>, Options),
     %% FIXME: dis guy is file size not audio duration
-    Length = props:get_value(<<"Length">>, Props),
-    AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
+    Length = props:get_value(<<"Length">>, Options),
+    AttachmentName = props:get_value(<<"Attachment-Name">>, Options),
 
     lager:debug("saving new ~bms voicemail media and metadata", [Length]),
 
-    case create_new_message_doc(Call, Props) of
+    case create_new_message_doc(Call, Options) of
         {'error', _} ->
             Msg = io_lib:format("failed to create and save voicemail document for voicemail box ~s of account ~s"
                                ,[BoxId, kapps_call:account_id(Call)]
@@ -69,33 +85,52 @@ new(Call, Props) ->
             lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MessageId]),
             case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call), MessageId) of
                 'ok' ->
-                    notify_and_update_meta(Call, MessageId, Length, Props);
+                    notify_and_update_meta(Call, MessageId, Length, Options);
                 {'error', Call1} ->
                     lager:error(Msg),
                     {'error', Call1, Msg}
             end
     end.
 
--spec forward_message(kapps_call:call(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> new_msg_ret().
-forward_message(Call, Metadata, SrcBoxId, Props) ->
-    case props:get_value(<<"Attachment-Name">>, Props) of
+%%------------------------------------------------------------------------------
+%% @doc Forwards and stores a voicemail message from source mailbox into destination mailbox.
+%% Usually this function is called by {@link cf_voicemail} module to forward a message from its source
+%% mailbox into the destination mailbox. This may result in sending a notification as described in {@link new/2}.
+%%
+%% For `Options' description see {@link new/2}.
+%%
+%% If the callee did record a message (if `Attachment-Name' is present in the Options), it will tries to append
+%% the forwarding message to to the callee's message. If it failed the original forwarding message will be save
+%% into the destination mailbox.
+%%
+%% @see new/2
+%% @end
+%%------------------------------------------------------------------------------
+-spec forward_message(Call, Metadata, SrcBoxId, Options) ->
+                             Result when Call::kapps_call:call(),
+                                         Metadata::kz_json:object(),
+                                         SrcBoxId::kz_term:ne_binary(),
+                                         Options::kz_term:proplist(),
+                                         Result::new_msg_ret().
+forward_message(Call, Metadata, SrcBoxId, Options) ->
+    case props:get_value(<<"Attachment-Name">>, Options) of
         'undefined' ->
             %% user chose to forward without prepending
-            forward_to_vmbox(Call, Metadata, SrcBoxId, Props);
+            forward_to_vmbox(Call, Metadata, SrcBoxId, Options);
         _AttachmentName ->
             %% user chose to forward and prepend a message
-            new_forward_message(Call, Metadata, SrcBoxId, Props)
+            new_forward_message(Call, Metadata, SrcBoxId, Options)
     end.
 
 -spec new_forward_message(kapps_call:call(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> new_msg_ret().
-new_forward_message(Call, Metadata, SrcBoxId, Props) ->
-    DestBoxId = props:get_value(<<"Box-Id">>, Props),
-    Length = props:get_value(<<"Length">>, Props),
-    AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
+new_forward_message(Call, Metadata, SrcBoxId, Options) ->
+    DestBoxId = props:get_value(<<"Box-Id">>, Options),
+    Length = props:get_value(<<"Length">>, Options),
+    AttachmentName = props:get_value(<<"Attachment-Name">>, Options),
 
     lager:debug("saving new ~bms forward voicemail media and metadata", [Length]),
 
-    case create_forward_message_doc(Call, Metadata, SrcBoxId, Props) of
+    case create_forward_message_doc(Call, Metadata, SrcBoxId, Options) of
         {'error', _} ->
             Msg = io_lib:format("failed to create and save voicemail document for forwarded message ~s to voicemail box ~s of account ~s"
                                ,[kzd_box_message:media_id(Metadata), DestBoxId, kapps_call:account_id(Call)]
@@ -114,23 +149,30 @@ new_forward_message(Call, Metadata, SrcBoxId, Props) ->
             lager:debug("storing forward voicemail media recording ~s in doc ~s", [AttachmentName, ForwardId]),
             case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call), ForwardId) of
                 'ok' ->
-                    prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props);
+                    prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Options);
                 {'error', Call1} ->
                     lager:error(Msg),
                     {'error', Call1, Msg}
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc fetch message doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> db_ret().
+%% @equiv fetch(AccountId, MessageId, 'undefined')
+-spec fetch(AccountId, MessageId) -> db_ret() when AccountId::kz_term:ne_binary(), MessageId::kz_term:ne_binary().
 fetch(AccountId, MessageId) ->
     fetch(AccountId, MessageId, 'undefined').
 
--spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> db_ret().
+%%------------------------------------------------------------------------------
+%% @doc Fetch a message document while considering the retention policy.
+%% `MessageId` is in `MODB_PREFIX' format (`YYYYMM-...'). If the message is older than
+%% account's voicemail retention policy, it will marked as deleted.
+%%
+%% Since this function can be called by Crossbar, the message is checked that it is belonged
+%% to the specified mailbox ID or not. If not `{error, not_found}' will be returned.
+%% @end
+%%------------------------------------------------------------------------------
+-spec fetch(AccountId, MessageId, BoxId) -> db_ret() when AccountId::kz_term:ne_binary(),
+                                                          MessageId::kz_term:ne_binary(),
+                                                          BoxId::kz_term:api_ne_binary().
 fetch(AccountId, MessageId, BoxId) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     {_, DbRet} = do_fetch(AccountId, MessageId, BoxId, RetenTimestamp),
@@ -153,17 +195,21 @@ do_fetch(AccountId, MessageId, BoxId, RetenTimestamp) ->
             {'false', Error}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc fetch message metadata
-%% @end
-%%--------------------------------------------------------------------
-
--spec message(kz_term:ne_binary(), kz_term:ne_binary()) -> db_ret().
+%% @equiv message(AccountId, MessageId, 'undefined')
+-spec message(AccountId, MessageId) -> db_ret() when AccountId::kz_term:ne_binary(), MessageId::kz_term:ne_binary().
 message(AccountId, MessageId) ->
     message(AccountId, MessageId, 'undefined').
 
--spec message(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> db_ret().
+%%------------------------------------------------------------------------------
+%% @doc Fetch message metadata while considering the retention policy.
+%% See {@link fetch/2} for description about retention policy.
+%%
+%% @see fetch/2
+%% @end
+%%------------------------------------------------------------------------------
+-spec message(AccountId, MessageId, BoxId) -> db_ret() when AccountId::kz_term:ne_binary(),
+                                                            MessageId::kz_term:ne_binary(),
+                                                            BoxId::kz_term:api_ne_binary().
 message(AccountId, MessageId, BoxId) ->
     case fetch(AccountId, MessageId, BoxId) of
         {'ok', JObj} ->
@@ -171,15 +217,16 @@ message(AccountId, MessageId, BoxId) ->
         Error -> Error
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Set a message folder, returning the new updated message on success
-%% or the old message on failed update
+%%------------------------------------------------------------------------------
+%% @doc Change the message's folder.
+%% Returns the new updated message on success or the old message if update failed.
 %%
-%% Note: for use only by cf_voicemail
+%% <div class="notice">For use by {@link cf_voicemail} only.</div>
 %% @end
-%%--------------------------------------------------------------------
--spec set_folder(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> db_ret().
+%%------------------------------------------------------------------------------
+-spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::kz_term:ne_binary(),
+                                                              Message::kz_json:object(),
+                                                              AccountId::kz_term:ne_binary().
 set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_box_message:media_id(Message),
     FromFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
@@ -198,19 +245,27 @@ maybe_set_folder(FromFolder, FromFolder, _MessageId, _AccountId, Msg) ->
 maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
     change_folder(ToFolder, MessageId, AccountId, 'undefined').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Change message folder
-%%    Note: if folder is {?VM_FOLDER_DELETED, 'true'}, it would move to
-%%      deleted folder and marked as soft-deleted, otherwise it just move to deleted
-%%      folder(for recovering later by user)
-%% @end
-%%--------------------------------------------------------------------
--spec change_folder(vm_folder(), message(), kz_term:ne_binary(), kz_term:api_binary()) -> db_ret().
+%% @equiv change_folder(Folder, Message, AccountId, BoxId, [])
+-spec change_folder(Folder, Message, AccountId, BoxId) -> db_ret() when Folder::vm_folder(),
+                                                                        Message::message(),
+                                                                        AccountId::kz_term:ne_binary(),
+                                                                        BoxId::kz_term:api_binary().
 change_folder(Folder, Message, AccountId, BoxId) ->
     change_folder(Folder, Message, AccountId, BoxId, []).
 
--spec change_folder(vm_folder(), message(), kz_term:ne_binary(), kz_term:api_binary(), update_funs()) -> db_ret().
+%%------------------------------------------------------------------------------
+%% @doc Change the message's folder.
+%% <div class="notice">If `Folder' is `` {<<"deleted">>, 'true'} '', the message
+%% would move to deleted folder and and its document will marked as soft-deleted,
+%% otherwise it just move to deleted folder (for recovering later by user).</div>
+%% @end
+%%------------------------------------------------------------------------------
+-spec change_folder(Folder, Message, AccountId, BoxId, Functions) ->
+                           db_ret() when Folder::vm_folder(),
+                                         Message::message(),
+                                         AccountId::kz_term:ne_binary(),
+                                         BoxId::kz_term:api_binary(),
+                                         Functions::update_funs().
 change_folder(Folder, Message, AccountId, BoxId, Funs0) ->
     Funs = [fun(J) -> kzd_box_message:apply_folder(Folder, J) end
             | Funs0
@@ -223,17 +278,25 @@ change_folder(Folder, Message, AccountId, BoxId, Funs0) ->
             Error
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Update a single message doc
-%% @end
-%%--------------------------------------------------------------------
-
+%% @equiv update(AccountId, BoxId, Message, [])
 -spec update(kz_term:ne_binary(), kz_term:api_ne_binary(), message()) -> db_ret().
 update(AccountId, BoxId, Message) ->
     update(AccountId, BoxId, Message, []).
 
--spec update(kz_term:ne_binary(), kz_term:api_ne_binary(), message(), update_funs()) -> db_ret().
+%%------------------------------------------------------------------------------
+%% @doc Update the message document.
+%% It tries to fetch the message and applies provided function on the document. You can pass a JObj
+%% instead of `MessageId'.
+%%
+%% If the message is prior to retention policy the message is marked as deleted in database
+%% and error `{error, <<"prior_to_retention_duration">>}' will be returned instead.
+%% @end
+%%------------------------------------------------------------------------------
+-spec update(AccountId, BoxId, Message, Functions) ->
+                    db_ret() when AccountId::kz_term:ne_binary(),
+                                  BoxId::kz_term:api_ne_binary(),
+                                  Message::message(),
+                                  Functions::update_funs().
 update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     case do_fetch(AccountId, MsgId, BoxId, RetenTimestamp) of
@@ -265,16 +328,28 @@ do_update(JObj, Funs) ->
             Error
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Move a message to another vmbox
-%% @end
-%%--------------------------------------------------------------------
--spec move_to_vmbox(kz_term:ne_binary(), message(), kz_term:ne_binary(), kz_term:ne_binary()) -> db_ret().
+%% @equiv move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId, [])
+-spec move_to_vmbox(AccountId, Message, OldBoxId, NewBoxId) ->
+                           db_ret() when AccountId::kz_term:ne_binary(),
+                                         Message::message(),
+                                         OldBoxId::kz_term:ne_binary(),
+                                         NewBoxId::kz_term:ne_binary().
 move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId) ->
     move_to_vmbox(AccountId, Things, OldBoxId, NewBoxId, []).
 
--spec move_to_vmbox(kz_term:ne_binary(), message(), kz_term:ne_binary(), kz_term:ne_binary(), update_funs()) -> db_ret().
+%%------------------------------------------------------------------------------
+%% @doc Moves a message to another mailbox.
+%% It reads the mailbox document from database first, then calls {@link  maybe_do_move/7}.
+%%
+%% @see maybe_do_move/7
+%% @end
+%%------------------------------------------------------------------------------
+-spec move_to_vmbox(AccountId, Message, OldBoxId, NewBoxId, Functions) ->
+                           db_ret() when AccountId::kz_term:ne_binary(),
+                                         Message::message(),
+                                         OldBoxId::kz_term:ne_binary(),
+                                         NewBoxId::kz_term:ne_binary(),
+                                         Functions::update_funs().
 move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, NewBoxId) of
@@ -288,7 +363,22 @@ move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId, Funs) ->
 move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId, Funs) ->
     move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId, Funs).
 
--spec maybe_do_move(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), update_funs(), kz_time:gregorian_seconds()) -> db_ret().
+%%------------------------------------------------------------------------------
+%% @doc Moves a message to another mailbox.
+%% If the message is prior to retention policy it will marked as deleted and
+%% `{error, <<"prior_to_retention_duration">>}' will returned instead.
+%%
+%% It calls by {@link kvm_messages:move_to_vmbox/5}
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_do_move(AccountId, MessageId, OldBoxId, NewBoxId, NewBoxJObj, Functions, RetenTimestamp) ->
+                           db_ret() when AccountId::kz_term:ne_binary(),
+                                         MessageId::kz_term:ne_binary(),
+                                         OldBoxId::kz_term:ne_binary(),
+                                         NewBoxId::kz_term:ne_binary(),
+                                         NewBoxJObj::kz_json:object(),
+                                         Functions::update_funs(),
+                                         RetenTimestamp::kz_time:gregorian_seconds().
 maybe_do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs, RetenTimestamp) ->
     case do_fetch(AccountId, FromId, OldBoxId, RetenTimestamp) of
         {'true', {'ok', JObj}} ->
@@ -330,30 +420,66 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ, Funs) ->
             Error
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc copy a message to other vmbox(es)
-%% @end
-%%--------------------------------------------------------------------
--spec copy_to_vmboxes(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_json:object().
+%% @equiv copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds, [])
+-spec copy_to_vmboxes(AccountId, Message, OldBoxId, NewBoxIds) ->
+                             kz_json:object() when AccountId::kz_term:ne_binary(),
+                                                   Message::message(),
+                                                   OldBoxId::kz_term:ne_binary(),
+                                                   NewBoxIds::kz_term:ne_binary() | kz_term:ne_binaries().
 copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds) ->
     copy_to_vmboxes(AccountId, MsgThing, OldBoxId, NewBoxIds, []).
 
--spec copy_to_vmboxes(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries(), update_funs()) -> kz_json:object().
-copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
-    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId], Funs);
-copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds, Funs) ->
-    %% FIXME: maybe fetch message to make sure it's exists
+%%------------------------------------------------------------------------------
+%% @doc Copy a message to other mailbox(es)
+%% If the message is prior to retention policy it will marked as deleted and
+%% `{error, <<"prior_to_retention_duration">>}' will returned instead.
+%%
+%% Returns a JObj in the below form:
+%% ```
+%%    {[{<<"succeeded">>
+%%      ,[<<"some_id">>]
+%%      }
+%%     ,{<<"failed">>
+%%      ,[{<<"some_id">>, <<"some_reason">>}]
+%%      }
+%%    ]}
+%% '''
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_to_vmboxes(AccountId, MessageId, OldBoxId, NewBoxIds, Functions) ->
+                             kz_json:object() when AccountId::kz_term:ne_binary(),
+                                                   MessageId::message(),
+                                                   OldBoxId::kz_term:ne_binary(),
+                                                   NewBoxIds::kz_term:ne_binary() | kz_term:ne_binaries(),
+                                                   Functions::update_funs().
+copy_to_vmboxes(AccountId, MessageId, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
+    copy_to_vmboxes(AccountId, MessageId, OldBoxId, [NewBoxId], Funs);
+copy_to_vmboxes(AccountId, ?NE_BINARY = MessageId, OldBoxId, NewBoxIds, Funs) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     kz_json:from_list_recursive(
       maps:to_list(
-        maybe_copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, #{}, Funs, RetenTimestamp)
+        maybe_copy_to_vmboxes(AccountId, MessageId, OldBoxId, NewBoxIds, #{}, Funs, RetenTimestamp)
        )
      );
 copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, Funs) ->
     copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds, Funs).
 
--spec maybe_copy_to_vmboxes(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries(), bulk_map(), update_funs(), kz_time:gregorian_seconds()) -> bulk_map().
+%%------------------------------------------------------------------------------
+%% @doc Copy a message to other mailbox(es)
+%% If the message is prior to retention policy it will marked as deleted and
+%% `{error, <<"prior_to_retention_duration">>}' will returned instead.
+%%
+%% It calls by {@link kvm_messages:copy_to_vmboxes/5}
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, Acc, Functions, RetenTimestamp) ->
+                                   bulk_map() when AccountId::kz_term:ne_binary(),
+                                                   FromId::kz_term:ne_binary(),
+                                                   OldBoxId::kz_term:ne_binary(),
+                                                   NewBoxIds::kz_term:ne_binaries(),
+                                                   Acc::bulk_map(),
+                                                   Functions::update_funs(),
+                                                   RetenTimestamp::kz_time:gregorian_seconds().
 maybe_copy_to_vmboxes(AccountId, FromId, OldBoxId, NewBoxIds, CopyMap, Funs, RetenTimestamp) ->
     case do_fetch(AccountId, FromId, OldBoxId, RetenTimestamp) of
         {'true', {'ok', JObj}} ->
@@ -447,12 +573,11 @@ move_copy_final_check(AccountId, FromId, ToId) ->
             {'error', 'max_save_retries'}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
+%%------------------------------------------------------------------------------
+%% @doc Get Url of the media file from media server.
 %% @end
-%%--------------------------------------------------------------------
--spec media_url(kz_term:ne_binary(), message()) -> binary().
+%%------------------------------------------------------------------------------
+-spec media_url(AccountId, Message) -> binary() when AccountId::kz_term:ne_binary(), Message::message().
 media_url(AccountId, ?NE_BINARY = MessageId) ->
     case fetch(AccountId, MessageId) of
         {'ok', Message} ->
@@ -465,17 +590,16 @@ media_url(AccountId, ?NE_BINARY = MessageId) ->
 media_url(AccountId, Message) ->
     media_url(AccountId, kzd_box_message:media_id(Message)).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -type sotre_media_url() :: fun(() -> kz_term:ne_binary() | {'error', any()}).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_new_message_doc(kapps_call:call(), kz_term:proplist()) ->
                                     {kz_term:ne_binary(), sotre_media_url()} |
                                     {'error', any()}.
@@ -499,11 +623,6 @@ create_new_message_doc(Call, Props) ->
         {'error', _}=Error -> Error
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec create_forward_message_doc(kapps_call:call(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) ->
                                         {kz_term:ne_binary(), sotre_media_url()} |
                                         {'error', any()}.
@@ -554,9 +673,14 @@ try_save_document(Call, MsgJObj, Loop) ->
             Error
     end.
 
-%% create a fake Destination Box JObj to pass to change vmbox functions
-%% Note: set pvt_account_id and db just to make sure for case when timezone is not passed
-%% so kzd_voicemail_box can find timezone from vmbox the owner or account
+%%------------------------------------------------------------------------------
+%% @doc create a fake Destination Box JObj to pass to change vmbox functions
+%%
+%% <div class="notice">Set `pvt_account_id' and db just to make sure for case
+%% when timezone is not passed so {@link kzd_voicemail_box} can find
+%% timezone from vmbox the owner or account.</div>
+%% @end
+%%------------------------------------------------------------------------------
 -spec fake_vmbox_jobj(kapps_call:call(), kz_term:proplist()) -> kz_json:object().
 fake_vmbox_jobj(Call, Props) ->
     kz_json:from_list(
@@ -569,11 +693,6 @@ fake_vmbox_jobj(Call, Props) ->
       ]
      ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec store_recording(kz_term:ne_binary(), kz_term:ne_binary() | sotre_media_url(), kapps_call:call(), kz_term:ne_binary()) ->
                              'ok' |
                              {'error', kapps_call:call()}.
@@ -600,11 +719,6 @@ check_attachment_exists(Call, MessageId) ->
             {'error', Call}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec forward_to_vmbox(kapps_call:call(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> new_msg_ret().
 forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
     forward_to_vmbox(Call, Metadata, SrcBoxId, Props, []).
@@ -629,11 +743,6 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props, Funs) ->
         {[{_Id, Reason}], _} -> {'error', Call, Reason}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec prepend_and_notify(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> new_msg_ret().
 prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
     Length = props:get_value(<<"Length">>, Props),
@@ -734,11 +843,6 @@ remove_malform_vm(Call, ForwardId) ->
     _ = kz_datamgr:del_doc(AccountDb, ForwardId),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -type notify_action() :: 'save' | 'delete' | 'nothing'.
 
 -spec notify_and_update_meta(kapps_call:call(), kz_term:ne_binary(), integer(), kz_term:proplist()) -> {'ok', kapps_call:call()}.
@@ -760,12 +864,11 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
             maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc If notification was successfully processed return the NotifyAction.
 %% Otherwise return action 'nothing' to store the message as new voicemail.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_notified_successfully(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), notify_action()) -> notify_action().
 is_notified_successfully(Call, _MediaId, [], _) ->
     lager:debug("failed to send new voicemail notification for message ~s in account ~s: timeout", [_MediaId, kapps_call:account_id(Call)]),
@@ -812,14 +915,13 @@ update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
             {'ok', Call}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Double check document to make sure it's not exists in db
+%%------------------------------------------------------------------------------
+%% @doc Double check document to make sure it's not exists in db.
 %% Using `kz_datamgr:ensure_save` is more efficient here, but
 %% we're doing this fetch/retry for proof of concept whether document's id
 %% had collision or not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_retry_conflict(kapps_call:call() | 'undefined', kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
 maybe_retry_conflict(Call, JObj, DieAnotherDay) ->
     case fetch(kz_doc:account_id(JObj), kz_doc:id(JObj)) of

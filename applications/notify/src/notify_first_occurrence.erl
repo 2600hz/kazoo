@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Notification for 'first' registration and call
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Notification for 'first' registration and call
+%%% @author Karl Anderson <karl@2600hz.org>
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_first_occurrence).
 
 -include("notify.hrl").
@@ -24,12 +22,10 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".first_occurrence">>).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
@@ -72,12 +68,10 @@ handle_req(JObj, _Props) ->
     SendResult1 = build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props),
     notify_util:maybe_send_update(lists:flatten([SendResult0, SendResult1]), RespQ, MsgId).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create the props used by the template render function
+%%------------------------------------------------------------------------------
+%% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_term:ne_binary()) -> kz_term:proplist().
 create_template_props(Account, Occurrence) ->
     Admin = notify_util:find_admin(Account),
@@ -87,12 +81,10 @@ create_template_props(Account, Occurrence) ->
     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% process the AMQP requests
+%%------------------------------------------------------------------------------
+%% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:api_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];

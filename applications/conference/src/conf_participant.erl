@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018 2600Hz Inc
-%%% @doc
-%%% Conference participant process
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Conference participant process
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(conf_participant).
 -behaviour(gen_listener).
 
@@ -78,13 +76,14 @@
                      }).
 -type participant() :: #participant{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link(kapps_call:call()) -> kz_types:startlink_ret().
 start_link(Call) ->
     CallId = kapps_call:call_id(Call),
@@ -177,21 +176,14 @@ handle_conference_error(JObj, Props) ->
         _Else -> 'ok'
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {'ok', State} |
-%%                     {'ok', State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([kapps_call:call()]) -> {'ok', participant()}.
 init([Call]) ->
     process_flag('trap_exit', 'true'),
@@ -207,20 +199,10 @@ start_sanity_check_timer() ->
 start_sanity_check_timer(Timeout) ->
     erlang:send_after(Timeout, self(), 'sanity_check').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {'reply', Reply, State} |
-%%                                   {'reply', Reply, State, Timeout} |
-%%                                   {'noreply', State} |
-%%                                   {'noreply', State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), participant()) -> kz_types:handle_call_ret_state(participant()).
 handle_call({'get_conference'}, _, #participant{conference='undefined'}=P) ->
     {'reply', {'error', 'not_provided'}, P};
@@ -235,16 +217,10 @@ handle_call({'state'}, _, Participant) ->
 handle_call(_Request, _, P) ->
     {'reply', {'error', 'unimplemented'}, P}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {'noreply', State} |
-%%                                  {'noreply', State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), participant()) -> kz_types:handle_cast_ret_state(participant()).
 handle_cast('hungup', Participant) ->
     {'stop', {'shutdown', 'hungup'}, Participant};
@@ -322,16 +298,10 @@ handle_cast(_Cast, Participant) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', Participant}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {'noreply', State} |
-%%                                   {'noreply', State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), participant()) -> kz_types:handle_info_ret_state(participant()).
 handle_info({'EXIT', Consumer, _R}, #participant{call_event_consumers=Consumers}=P) ->
     lager:debug("call event consumer ~p died: ~p", [Consumer, _R]),
@@ -358,11 +328,10 @@ handle_info(_Msg, Participant) ->
     lager:debug("unhandled message ~p", [_Msg]),
     {'noreply', Participant}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), participant()) -> gen_listener:handle_event_return().
 handle_event(JObj, #participant{call_event_consumers=Consumers
                                ,call=Call
@@ -408,17 +377,14 @@ handle_channel_pivot(JObj, Call) ->
             gen_listener:cast(self(), 'pivoted')
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), participant()) -> 'ok'.
 terminate(_Reason, #participant{name_pronounced = Name}) ->
     maybe_clear(Name),
@@ -432,22 +398,22 @@ maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
     'ok';
 maybe_clear(_) -> 'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), participant(), any()) -> {'ok', participant()}.
 code_change(_OldVsn, Participant, _Extra) ->
     {'ok', Participant}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec log_conference_join(boolean(), non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 log_conference_join('true'=_Moderator, ParticipantId, Conference) ->
     lager:debug("caller has joined the local conference ~s as moderator ~p", [kapps_conference:name(Conference), ParticipantId]);
@@ -607,14 +573,12 @@ set_enter_exit_sounds({_, AccountId, MediaId}, #participant{conference=Conferenc
              ],
     kapps_call_command:media_macro(Sounds, Call).
 
-%% @private
 -spec play_exit_tone(boolean(), kapps_conference:conference()) -> kz_term:api_binary().
 play_exit_tone('false', Conference) ->
     play_exit_tone_media(?EXIT_TONE(kapps_conference:account_id(Conference)), Conference);
 play_exit_tone('true', Conference) ->
     play_exit_tone_media(?MOD_EXIT_TONE(kapps_conference:account_id(Conference)), Conference).
 
-%% @private
 -spec play_exit_tone_media(kz_term:ne_binary(), kapps_conference:conference()) -> kz_term:api_binary().
 play_exit_tone_media(Tone, Conference) ->
     case kapps_conference:play_exit_tone(Conference) of
@@ -623,7 +587,6 @@ play_exit_tone_media(Tone, Conference) ->
         _Else -> Tone
     end.
 
-%% @private
 -spec play_entry_tone(boolean(), kapps_conference:conference()) -> kz_term:api_binary().
 play_entry_tone('false', Conference) ->
     play_entry_tone_media(?ENTRY_TONE(kapps_conference:account_id(Conference)), Conference);

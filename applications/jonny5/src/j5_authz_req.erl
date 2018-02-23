@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%% Handlers for various AMQP payloads
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Handlers for various AMQP payloads
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(j5_authz_req).
 
 -export([handle_req/2]).
@@ -337,7 +335,6 @@ send_response(Request) ->
             j5_channels:authorized(kz_json:from_list(Resp))
     end.
 
-%% @private
 -spec trunk_usage(kz_term:ne_binary()) -> kz_term:ne_binary().
 trunk_usage(Id) ->
     Limits = j5_limits:get(Id),

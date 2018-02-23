@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_globals).
 -behaviour(gen_listener).
 
@@ -100,13 +98,14 @@
                }).
 -type globals_state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
@@ -130,7 +129,7 @@ flush() ->
 
 -spec send(kz_global:name(), term()) -> pid().
 send(Name, Msg) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> exit({'badarg', {Name, Msg}});
         Global ->
             kz_global_proxy:send(kz_global:pid(Global), Msg),
@@ -143,13 +142,13 @@ whereis_name(Name) ->
 
 -spec where_is(kz_global:name()) -> pid() | 'undefined'.
 where_is(Name) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> 'undefined';
         Global -> kz_global:pid(Global)
     end.
 
--spec where(kz_global:name()) -> kz_global:global() | 'undefined'.
-where(Name) ->
+-spec lookup_name(kz_global:name()) -> kz_global:global() | 'undefined'.
+lookup_name(Name) ->
     case ets:lookup(?TAB_NAME, Name) of
         [Global] -> Global;
         [] -> 'undefined'
@@ -157,7 +156,7 @@ where(Name) ->
 
 -spec register_name(kz_global:name(), pid()) -> 'yes' | 'no'.
 register_name(Name, Pid) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' ->
             gen_listener:call(?SERVER, {'register', Name, Pid}, ?MILLISECONDS_IN_DAY);
         _Pid -> 'no'
@@ -176,7 +175,7 @@ stats() ->
 
 -spec unregister_name(kz_global:name()) -> 'ok'.
 unregister_name(Name) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> 'ok';
         _Global ->
             gen_listener:call(?SERVER, {'unregister', Name}, ?MILLISECONDS_IN_DAY)
@@ -206,21 +205,14 @@ gift_data() -> 'ok'.
 find_me() ->
     whereis(?SERVER).
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', globals_state()}.
 init([]) ->
     process_flag('trap_exit', 'true'),
@@ -232,20 +224,10 @@ init([]) ->
     kz_nodes:notify_expire(),
     {'ok', #state{zone=Zone}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), globals_state()) -> kz_types:handle_call_ret_state(globals_state()).
 handle_call('flush', _From, State) ->
     ets:delete_all_objects(?TAB_NAME),
@@ -291,16 +273,10 @@ handle_call('is_ready', _From, State) ->
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), globals_state()) -> kz_types:handle_cast_ret_state(globals_state()).
 handle_cast({'amqp_delete', Global, 'undefined'}, State) ->
     kz_global_proxy:stop(kz_global:pid(Global)),
@@ -342,16 +318,10 @@ handle_cast({'kz_nodes', {'expire', #kz_node{node=Node}}}, State) ->
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {'noreply', State} |
-%%                                   {'noreply', State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), globals_state()) -> kz_types:handle_info_ret_state(globals_state()).
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     lager:debug("monitor ~p detected process ~p exited with reason ~p", [Ref, Pid, Reason]),
@@ -369,14 +339,10 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
+%%------------------------------------------------------------------------------
+%% @doc Allows listener to pass options to handlers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, State) ->
     case kz_api:node(JObj) =:= kz_term:to_binary(node()) of
@@ -386,37 +352,34 @@ handle_event(JObj, State) ->
                       ]}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), globals_state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), globals_state(), any()) -> {'ok', globals_state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_zone(kz_json:object(), globals_state()) -> atom().
 get_zone(JObj, State) ->
     case kz_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj) of
@@ -449,7 +412,7 @@ maybe_add_zone(Zone, #state{zones=Zones}) ->
 -spec amqp_register(kz_global:global(), term()) -> 'ok'.
 amqp_register(Global, From) ->
     Name = kz_global:name(Global),
-    case where(Name) of
+    case lookup_name(Name) of
         Global ->
             case do_amqp_register(Global) of
                 'yes' ->
@@ -534,7 +497,7 @@ amqp_register_check_pending(JObj, Global) ->
 
 -spec register_local(kz_global:global()) -> 'yes' | 'no'.
 register_local(Global) ->
-    case where(kz_global:name(Global)) of
+    case lookup_name(kz_global:name(Global)) of
         Global ->
             Updated = kz_global:register_local(?TAB_NAME, Global),
             advertise_register(Updated),
@@ -555,7 +518,7 @@ advertise_register(Global) ->
 
 -spec register_remote(kz_global:global(), term()) -> 'ok'.
 register_remote(Global, From) ->
-    register_remote(where(kz_global:name(Global)), Global, From).
+    register_remote(lookup_name(kz_global:name(Global)), Global, From).
 
 -spec register_remote(kz_global:global() | 'undefined', kz_global:global(), term()) -> 'ok'.
 register_remote('undefined', Global, From) ->
@@ -592,7 +555,7 @@ maybe_register_remote_reply(From, Pid) ->
 
 -spec amqp_unregister(kz_global:name()) -> 'ok'.
 amqp_unregister(Name) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> 'ok';
         Global ->
             (kz_global:is_local(Global)
@@ -615,7 +578,7 @@ do_amqp_unregister(Global, Reason) ->
 
 -spec maybe_amqp_query(kz_global:name(), term()) -> 'ok'.
 maybe_amqp_query(Name, From) ->
-    case where(Name) of
+    case lookup_name(Name) of
         'undefined' -> amqp_query(Name, From);
         Global -> gen_listener:reply(From, kz_global:pid(Global))
     end.
@@ -647,7 +610,7 @@ amqp_query(Name, From) ->
 
 -spec handle_amqp_call(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_call(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global ->
             maybe_handle_local_call(JObj
@@ -685,7 +648,7 @@ amqp_reply(JObj, Result) ->
 
 -spec handle_amqp_send(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_send(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global ->
             maybe_handle_local_send(JObj
@@ -703,7 +666,7 @@ maybe_handle_local_send(JObj, Global, 'true', 'true') ->
 
 -spec handle_amqp_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_query(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> amqp_query_empty_reply(JObj);
         Global ->
             maybe_handle_local_query(JObj
@@ -751,7 +714,7 @@ handle_amqp_register(JObj, _Props) ->
 
 -spec handle_amqp_register_state(kz_json:object(), kapi_globals:state()) -> 'ok'.
 handle_amqp_register_state(JObj, 'pending') ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> amqp_register_reply(JObj);
         Global ->
             maybe_handle_local_register(JObj, Global
@@ -799,7 +762,7 @@ amqp_register_reply(JObj, Global) ->
 
 -spec handle_amqp_unregister(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_amqp_unregister(JObj, _Props) ->
-    case where(kapi_globals:name(JObj)) of
+    case lookup_name(kapi_globals:name(JObj)) of
         'undefined' -> 'ok';
         Global -> maybe_unregister_remote(Global
                                          ,kapi_globals:reason(JObj)
@@ -936,4 +899,3 @@ is_ready() ->
         _T:_E -> lager:info("globals is_ready returned ~p : ~p", [_T,_E]),
                  false
     end.
-

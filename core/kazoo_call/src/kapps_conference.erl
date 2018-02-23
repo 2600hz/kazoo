@@ -1,11 +1,9 @@
-%%%============================================================================
-%%% @copyright (C) 2012-2018 2600Hz Inc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%============================================================================
+%%%-----------------------------------------------------------------------------
 -module(kapps_conference).
 
 -include("kapps_call_command.hrl").
@@ -285,6 +283,7 @@ from_conference_doc(JObj, Conference) ->
 -type updater_1() :: fun((conference()) -> conference()).
 -type updater_2() :: {fun((_, conference()) -> conference()), _}.
 -type updaters() :: [updater_1() | updater_2(),...].
+
 -spec update(updaters(), conference()) -> conference().
 update(Updaters, Conference) ->
     lists:foldl(fun update_fold/2, Conference, Updaters).
@@ -623,8 +622,6 @@ call(#kapps_conference{call=Call}) -> Call.
 set_call(Call, Conference) ->
     Conference#kapps_conference{call=Call}.
 
-
-%% @private
 -spec get_tone(any()) -> tone().
 get_tone(Thing) ->
     case kz_term:is_boolean(Thing) of

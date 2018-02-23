@@ -1,8 +1,6 @@
-%%%-------------------------------------------------------------------
-%%% @doc
-%%%
-%%% Read only access to ACDC stats docs
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Read only access to ACDC stats docs
 %%% This code is VERY similar to that in cb_cdrs. At some point code
 %%% that is used by both should be re-factored into a MODB utility
 %%% module.
@@ -10,10 +8,10 @@
 %%% This was initially developed on 3.22, and since modified to reflect
 %%% updates to cb_cdrs.
 %%%
+%%%
+%%% @author Sponsored by Raffel Internet B.V., Implemented by Conversant Ltd
 %%% @end
-%%% @contributors
-%%%   Sponsored by Raffel Internet B.V., implemented by Conversant Ltd
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_acdc_call_stats).
 
 -export([init/0
@@ -47,10 +45,14 @@
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
 -export_type([payload/0]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.acdc_call_stats">>, ?MODULE, 'allowed_methods'),
@@ -69,37 +71,29 @@ to_json({Req, Context}) ->
 to_csv({Req, Context}) ->
     {Req, cb_context:set_resp_data(Context, normalize_acdc_stats(Context, <<"csv">>))}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/acdc_call_stats/' can only accept GET
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> boolean().
 resource_exists() -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
+%%------------------------------------------------------------------------------
+%% @doc Add content types accepted and provided by this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
     cb_context:add_content_types_provided(Context
@@ -107,26 +101,22 @@ content_types_provided(Context) ->
                                           ,{'to_csv', ?CSV_CONTENT_TYPES}
                                           ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
 %% Failure here returns 400
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     load_stats_summary(Context, cb_context:req_nouns(Context)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load list of accounts, each summarized.  Or a specific
 %% account summary.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_stats_summary(cb_context:context(), req_nouns()) -> cb_context:context().
 load_stats_summary(Context, [_, {?KZ_ACCOUNTS_DB, [_]} | _]) ->
     lager:debug("loading call stats for account ~s", [cb_context:account_id(Context)]),
@@ -139,11 +129,10 @@ load_stats_summary(Context, _Nouns) ->
     lager:debug("invalid URL chain for stats summary request"),
     cb_context:add_system_error('faulty_request', Context).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec normalize_acdc_stats(cb_context:context(), kz_term:ne_binary()) -> kz_term:ne_binaries() | kz_json:objects().
 normalize_acdc_stats(Context, <<"csv">>) ->
     [normalize_stat_to_csv(Context, JObj) || JObj <- cb_context:resp_data(Context)];

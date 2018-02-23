@@ -1,9 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018 2600Hz
-%%% @doc
-%%% FS passthrough API
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc FreeSwitch `passthrough' API.
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_fs).
 
 -export([req/1, req_v/1]).
@@ -24,12 +23,11 @@
                                                    (App) -> lists:member(App, ?FS_COMMAND_WHITELIST)
                                                 end}]).
 
-%%--------------------------------------------------------------------
-%% @doc FS Request
-%%     Pass-through of FS dialplan commands
-%% Takes proplist, creates JSON string or error
+%%------------------------------------------------------------------------------
+%% @doc FreeSwitch Request, Pass-through of FreeSwitch dialplan commands.
+%% Takes proplist, creates JSON string or error.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
@@ -45,11 +43,10 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:callctl_exchange().

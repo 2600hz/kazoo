@@ -1,13 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
-%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_services).
 
 -export([activate_feature/2
@@ -24,11 +21,10 @@
 -define(KEY_NUMBER_ACTIVATION_CHARGES, <<"number_activation_charges">>).
 -define(KEY_NUMBERS_ACTIVATION_CHARGES, <<"numbers_activation_charges">>).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type set_feature() :: {kz_term:ne_binary(), kz_json:object()}.
 
 -spec activate_feature(knm_number:knm_number(), set_feature() | kz_term:ne_binary()) ->
@@ -88,11 +84,10 @@ maybe_create_activation_transaction(Number, Feature, Units, TotalCharges) ->
     knm_number:add_transaction(N, Transaction).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec deactivate_feature(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 deactivate_feature(Number, Feature) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -100,11 +95,10 @@ deactivate_feature(Number, Feature) ->
     PN = knm_phone_number:set_features(PhoneNumber, kz_json:delete_key(Feature, Features)),
     knm_number:set_phone_number(Number, PN).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec deactivate_features(knm_number:knm_number(), kz_term:ne_binaries()) -> knm_number:knm_number().
 deactivate_features(Number, Features) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -112,11 +106,10 @@ deactivate_features(Number, Features) ->
     PN = knm_phone_number:set_features(PhoneNumber, kz_json:delete_keys(Features, ExistingFeatures)),
     knm_number:set_phone_number(Number, PN).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_services(knm_numbers:collection()) -> knm_numbers:collection().
 -ifdef(TEST).
 update_services(T=#{todo := Ns}) -> knm_numbers:ok(Ns, T).
@@ -155,11 +148,10 @@ update_services(T=#{todo := Ns, options := Options}) ->
     end.
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec activate_phone_number(knm_numbers:collection()) -> knm_numbers:collection().
 activate_phone_number(T=#{services := undefined}) ->
     Services = do_fetch_services(knm_numbers:assigned_to(T)),
@@ -201,19 +193,17 @@ do_activate(T, ToActivate, BillingId, AssignedTo) ->
             knm_numbers:charge(Key, TotalCharges, knm_numbers:add_oks(Ns, T1))
     end.
 
-%% @public
 -spec phone_number_activation_charges(knm_numbers:collection()) -> non_neg_integer().
 phone_number_activation_charges(T) ->
     knm_numbers:charge(?KEY_NUMBER_ACTIVATION_CHARGES, T).
 
-%% @public
 -spec activation_charges(knm_numbers:collection()) -> non_neg_integer().
 activation_charges(T) ->
     knm_numbers:charge(<<"activation">>, T).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
 -ifdef(TEST).
 do_fetch_services(undefined) -> kz_services:new();
@@ -232,7 +222,6 @@ do_fetch_services(undefined) -> kz_services:new();
 do_fetch_services(?MATCH_ACCOUNT_RAW(AssignedTo)) -> kz_services:fetch(AssignedTo).
 -endif.
 
-%% @private
 -spec create_numbers_transaction(kz_term:ne_binaries(), pos_integer(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                         kz_transaction:transaction().
 create_numbers_transaction(Nums=[_|_], Units, BillingId, AccountId) ->

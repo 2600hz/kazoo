@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_storage).
 
 -include("kazoo_apps.hrl").
@@ -13,9 +11,10 @@
 -define(STORAGE_TIMEOUT(App), kapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, kz_term:to_binary(App), <<"save_timeout_ms">>], 5 * ?MILLISECONDS_IN_MINUTE, <<"default">>)).
 -define(STORAGE_RETRIES(App), kapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, kz_term:to_binary(App), <<"retries">>], 5, <<"default">>)).
 
-%% ====================================================================
+%%==============================================================================
 %% API functions
-%% ====================================================================
+%%==============================================================================
+
 -export([store_file/3, store_file/4]).
 
 -spec store_file(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | function()) -> 'ok' | {'error', any()}.
@@ -27,11 +26,14 @@ store_file(Node, Filename, Url, Map) ->
     App = kz_util:calling_app(),
     store_file(Filename, Url, storage_retries(App), storage_timeout(App), Map#{media_server => Node}).
 
-%% ====================================================================
+%%==============================================================================
 %% Internal functions
-%% ====================================================================
+%%==============================================================================
 
-
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec store_file_args(kz_term:ne_binary(), kz_term:ne_binary() | function()) -> kz_term:proplist().
 store_file_args(Filename, UrlFun) ->
     Url = case is_function(UrlFun, 0) of

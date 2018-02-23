@@ -1,3 +1,10 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Generic module to walk project, applications and module to read
+%%% create module's AST and do job various jobs on them.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kazoo_ast).
 
 -export([walk_project/1

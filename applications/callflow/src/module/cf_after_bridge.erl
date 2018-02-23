@@ -1,17 +1,20 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
-%%% set [park|transfer|hangup]_after_bridge variable
+%%% @doc Sets `[park|transfer|hangup]_after_bridge' variable.
 %%%
-%%% "data":{
-%%%   "action": "park" | "transfer" | "hangup",
-%%%   "data":"some_extension_number" // number to transfer to or bool
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`action'</dt>
+%%%   <dd> Possible values: `park', `transfer', `hangup'</dd>
+%%%
+%%%   <dt>`data'</dt>
+%%%   <dd>Some extension number, the number to transfer to, if the `action'
+%%%   is `transfer', otherwise a boolean indicating should do the action.</dd>
+%%% </dl>
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
-
+%%%-----------------------------------------------------------------------------
 -module(cf_after_bridge).
 
 -behaviour(gen_cf_action).
@@ -20,11 +23,10 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     PostBridgeAction = kz_json:get_value(<<"action">>, Data),

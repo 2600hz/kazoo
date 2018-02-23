@@ -1,9 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(braintree_descriptor).
 
 -export([get_name/1]).
@@ -14,25 +13,26 @@
 
 -include("bt.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec get_name(bt_descriptor()) -> kz_term:api_ne_binary().
 get_name(#bt_descriptor{name=Name}) ->
     Name.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert the given XML to a descriptor record
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/descriptor")
+
 -spec xml_to_record(bt_xml()) -> bt_descriptor().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/descriptor").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a descriptor record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_descriptor().
 xml_to_record(Xml, Base) ->
@@ -41,15 +41,17 @@ xml_to_record(Xml, Base) ->
                   ,url = kz_xml:get_value([Base, "/url/text()"], Xml)
                   }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert the given XML to a descriptor record
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv record_to_xml(Descriptor, 'false')
+
 -spec record_to_xml(bt_descriptor()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml(Descriptor) ->
     record_to_xml(Descriptor, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to a descriptor record. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_descriptor(), boolean()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml('undefined', _ToString) -> 'undefined';
@@ -63,12 +65,11 @@ record_to_xml(Descriptor, ToString) ->
         'false' -> Props
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert a given record into a json object
+%%------------------------------------------------------------------------------
+%% @doc Convert a given record into a JSON object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec record_to_json(bt_descriptor()) -> kz_json:object().
 record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
     kz_json:from_list([{<<"name">>, Name}
@@ -76,12 +77,11 @@ record_to_json(#bt_descriptor{name=Name, phone=Phone, url=Url}) ->
                       ,{<<"url">>, Url}
                       ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert a given json obj into a record
+%%------------------------------------------------------------------------------
+%% @doc Convert a given JSON obj into a record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec json_to_record(kz_term:api_object()) -> bt_descriptor() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->

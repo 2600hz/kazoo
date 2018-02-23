@@ -1,14 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%
-%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapps_call_command).
 
 -include("kapps_call_command.hrl").
@@ -251,6 +248,10 @@
 -define(EXTRA_BRIDGE_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, <<"bridge_timeout_extended_ms">>, 20 * ?MILLISECONDS_IN_SECOND)).
 -define(BRIDGE_DEFAULT_TIMEOUT, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S * ?MILLISECONDS_IN_SECOND).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
     ?DEFAULT_COLLECT_TIMEOUT.
@@ -279,12 +280,10 @@ storage_timeout(App) ->
 storage_retries(App) ->
     ?STORAGE_RETRIES(App).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec presence(kz_term:ne_binary(), kz_term:ne_binary() | kapps_call:call()) -> 'ok'.
 presence(State, <<_/binary>> = PresenceId) ->
     presence(State, PresenceId, 'undefined');
@@ -293,7 +292,7 @@ presence(State, Call) ->
 
 -spec presence(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary() | kapps_call:call()) -> 'ok'.
 presence(State, PresenceId, 'undefined') ->
-    presence(State, PresenceId, 'undefined', 'undefined');
+    presence(State, PresenceId, ?FAKE_CALLID(PresenceId), 'undefined');
 presence(State, PresenceId, <<_/binary>> = CallId) ->
     presence(State, PresenceId, CallId, 'undefined');
 presence(State, PresenceId, Call) ->
@@ -357,14 +356,11 @@ module_as_app(Call) ->
     JObj = kapps_call:kvs_fetch(<<"cf_flow">>, kz_json:new(), Call),
     kz_json:get_value(<<"module">>, JObj, ?APP_NAME).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to get the channel status.
-%% This request will execute immediately
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to get the channel status.
+%% This request will execute immediately.
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec channel_status(kz_term:api_binary(), kz_term:api_binary()) ->
                             'ok' | {'error', 'no_channel_id'}.
 channel_status('undefined', _) -> {'error', 'no_channel_id'};
@@ -423,12 +419,11 @@ channel_status_filter([JObj|JObjs]) ->
         'false' -> channel_status_filter(JObjs)
     end.
 
-%%--------------------------------------------------------------------
-%% @pubic
-%% @doc How amqp messages are sent to the mailboxes of processes waiting
-%%      for them in the receive blocks below.
+%%------------------------------------------------------------------------------
+%% @doc How AMQP messages are sent to the mailboxes of processes waiting
+%% for them in the receive blocks below.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type relay_fun() :: fun((pid() | atom(), any()) -> any()).
 
 -spec relay_event(pid(), kz_json:object()) -> any().
@@ -542,12 +537,10 @@ build_macro({'tts', Text, Voice, Lang, Terminators}, {Call, GroupId, Queue}) ->
     Command = tts_command(Text, Voice, Lang, Terminators, Call),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]}.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec response(kz_term:ne_binary(), kapps_call:call()) ->
                       {'ok', kz_term:ne_binary()} |
                       {'error', 'no_response'}.
@@ -566,12 +559,10 @@ response(Code, Cause, Call) ->
 response(Code, Cause, Media, Call) ->
     kz_call_response:send(Call, Code, Cause, Media).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec pickup(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
     Command = pickup_command(TargetCallId, Call),
@@ -654,12 +645,10 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec connect_leg(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 connect_leg(TargetCallId, Call) ->
     Command = connect_leg_command(TargetCallId, Call),
@@ -742,12 +731,10 @@ b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterP
     connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a redirect request to the Contact on Server
+%%------------------------------------------------------------------------------
+%% @doc Create a redirect request to the Contact on Server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec redirect(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 redirect(Contact, Call) ->
     redirect(Contact, 'undefined', Call).
@@ -763,12 +750,10 @@ redirect(Contact, Server, Call) ->
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a redirect request to Node
+%%------------------------------------------------------------------------------
+%% @doc Create a redirect request to Node.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec redirect_to_node(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 redirect_to_node(Contact, Node, Call) ->
     lager:debug("redirect ~s to ~s", [Contact, Node]),
@@ -780,11 +765,10 @@ redirect_to_node(Contact, Node, Call) ->
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec flush_dtmf(kapps_call:call()) -> kz_term:ne_binary().
 flush_dtmf(Call) -> play(<<"silence_stream://50">>, Call).
 
@@ -817,14 +801,13 @@ recv_dtmf_command(DTMFs) ->
       ,{<<"Application-Name">>, <<"recv_dtmf">>}
       ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to set channel/call vars
-%% NOTICE: These are 'custom' channel vars for state info only, and
-%%   can not be used to set system settings
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to set channel or call variables.
+%%
+%% <div class="notice">These are `custom' channel variables for state info only, and
+%% can not be used to set system settings</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec set(kz_term:api_object(), kz_term:api_object(), kapps_call:call()) -> 'ok'.
 set(ChannelVars, CallVars, Call) ->
@@ -856,14 +839,13 @@ set_terminators(Terminators, Call) ->
               ],
     send_command(Command, Call).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to fetch channe vars
-%% NOTICE: These are 'custom' channel vars for state info only, and
-%%   can not the switch vars
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to fetch channel variables.
+%%
+%% <div class="notice">These are `custom' channel variables for state `info'
+%% only, and can not be sued to get switch variables</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 
 -spec fetch(kapps_call:call()) -> 'ok'.
@@ -889,12 +871,10 @@ b_fetch(FromOtherLeg, Call) ->
         {'error', _}=E -> E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to ring the channel
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to ring the channel.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec ring(kapps_call:call()) -> 'ok'.
 ring(Call) ->
@@ -908,12 +888,10 @@ b_ring(Call) ->
     ring(Call),
     wait_for_message(Call, <<"ring">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Instructs the switch to expect to receive a fax
+%%------------------------------------------------------------------------------
+%% @doc Instructs the switch to expect to receive a fax.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec receive_fax(kapps_call:call()) -> 'ok'.
 receive_fax(Call) ->
@@ -954,12 +932,10 @@ get_default_t38_setting() ->
         Otherwise -> kz_term:is_true(Otherwise)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to answer the channel
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to answer the channel.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec answer(kapps_call:call()) -> 'ok'.
 answer(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}], Call).
@@ -976,12 +952,10 @@ b_answer(Call) ->
     answer(Call),
     wait_for_message(Call, <<"answer">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to echo the channel
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to echo the channel.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec echo(kapps_call:call()) -> 'ok'.
 echo(Call) -> send_command([{<<"Application-Name">>, <<"echo">>}], Call).
@@ -993,13 +967,11 @@ b_echo(Call) ->
     echo(Call),
     wait_for_message(Call, <<"echo">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to break the channel.
-%% This request will execute immediately
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to break the channel.
+%% This request will execute immediately.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec break(kapps_call:call()) -> 'ok'.
 break(Call) ->
     Command = [{<<"Application-Name">>, <<"break">>}
@@ -1007,13 +979,11 @@ break(Call) ->
               ],
     send_command(Command, Call).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to hangup the channel.
-%% This request will execute immediately
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to hangup the channel.
+%% This request will execute immediately.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 
 -spec hangup(kapps_call:call()) -> 'ok'.
@@ -1051,14 +1021,10 @@ b_hangup('true', Call) ->
     hangup('true', Call),
     wait_for_unbridge().
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to page the call
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to page the call.
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 -spec page(kz_json:objects(), kapps_call:call()) -> 'ok'.
 page(Endpoints, Call) ->
     page(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
@@ -1132,14 +1098,10 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call) 
     page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Options, Call),
     wait_for_application(Call, <<"page">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to bridge the call
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to bridge the call.
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 bridge_command(Endpoints, Call) ->
     bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
 bridge_command(Endpoints, Timeout, Call) ->
@@ -1328,15 +1290,10 @@ build_moh_keys(AMOH, BMOH) ->
     ,{<<"B-MOH">>, BMOH}
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to park the channel
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to park the channel.
 %% @end
-%%--------------------------------------------------------------------
-
-
-
+%%------------------------------------------------------------------------------
 -spec hold(kapps_call:call()) -> 'ok'.
 hold(Call) -> hold('undefined', Call).
 
@@ -1423,15 +1380,11 @@ park_command(CallId=?NE_BINARY) ->
 park_command(Call) ->
     park_command(kapps_call:call_id(Call)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to play media to the
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to play media to the
 %% caller.
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 -spec prompt(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 prompt(Prompt, Call) ->
     play(kapps_call:get_prompt(Call, Prompt), Call).
@@ -1448,17 +1401,12 @@ b_prompt(Prompt, Call) ->
 b_prompt(Prompt, Lang, Call) ->
     b_play(kapps_call:get_prompt(Call, Prompt, Lang), Call).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to play media to the
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to play media to the
 %% caller.  A list of terminators can be provided that the caller
 %% can use to skip playback.
 %% @end
-%%--------------------------------------------------------------------
-
-
-
+%%------------------------------------------------------------------------------
 -spec play_command(kz_term:ne_binary(), kapps_call:call() | kz_term:ne_binary()) ->
                           kz_json:object().
 play_command(Media, Call) ->
@@ -1546,15 +1494,11 @@ b_play(Media, Terminators, Leg, Call) ->
 b_play(Media, Terminators, Leg, Endless, Call) ->
     wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% requests the TTS engine to create an audio file to play the desired
+%%------------------------------------------------------------------------------
+%% @doc requests the TTS engine to create an audio file to play the desired
 %% text.
-%%
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec tts(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binary().
 tts(SayMe, Call) -> tts(SayMe, kazoo_tts:default_voice(), Call).
 
@@ -1649,15 +1593,11 @@ b_tts(SayMe, Voice, Lang, Terminators, Call) ->
 b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
     wait_for_noop(Call, tts(SayMe, Voice, Lang, Terminators, Engine, Call)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to record a file.
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to record a file.
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 -spec record(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
@@ -1782,12 +1722,10 @@ b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
     record_call(MediaName, Action, TimeLimit, Terminators, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to store the file
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to store the file.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type b_store_return() :: {'error', 'timeout' | kz_json:object()} |
                           {'ok', kz_json:object()}.
 
@@ -1863,19 +1801,16 @@ audio_level(Call, Mode, Action, Level) ->
     Command = audio_level_command(Call, Mode, Action, Level),
     send_command(Command, Call).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to store a fax document
-%% caller
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to store a fax document caller.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec store_fax(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 store_fax(URL, Call) ->
     store_fax(URL, 'undefined', Call).
+
 -spec store_fax(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
 store_fax(URL, LocalFile, Call) ->
-
     Command = props:filter_undefined([{<<"Application-Name">>, <<"store_fax">>}
                                      ,{<<"Media-Transfer-Method">>, <<"put">>}
                                      ,{<<"Media-Transfer-Destination">>, URL}
@@ -1889,13 +1824,10 @@ b_store_fax(URL, Call) ->
     store_fax(URL, Call),
     wait_for_headless_application(<<"store_fax">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to play tones to the
-%% caller
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to play tones to the caller.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec tones(kz_json:objects(), kapps_call:call()) -> 'ok'.
 tones(Tones, Call) ->
     Command = [{<<"Application-Name">>, <<"tones">>}
@@ -1911,15 +1843,11 @@ tones_command(Tones, Call) ->
                       ,{<<"Call-ID">>, CallId}
                       ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to prompt a
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to prompt a
 %% caller, and collect a number of DTMF events.
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 -spec prompt_and_collect_digit(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 prompt_and_collect_digit(Prompt, Call) ->
     prompt_and_collect_digits(1, 1, Prompt, Call).
@@ -2021,19 +1949,15 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
                              ,Call
                              ).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to play media to a
-%% caller, and collect a number of DTMF events.
-%% @end
-%%--------------------------------------------------------------------
 -type b_play_and_collect_digits_return() ::
         {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
         {'ok', binary()}.
 
-
-
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to play media to a
+%% caller, and collect a number of DTMF events.
+%% @end
+%%------------------------------------------------------------------------------
 -spec play_and_collect_digit(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(1, 1, Media, Call).
@@ -2151,14 +2075,10 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
         {'error', _}=Else -> Else
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to say text to a caller
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to say text to a caller.
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 -spec say(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
@@ -2257,15 +2177,11 @@ b_say(Say, Type, Method, Language, Gender, Call) ->
 wait_for_say(Call) ->
     wait_for_message(Call, <<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to bridge a caller
-%% with a conference, with optional entry flags
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to bridge a caller
+%% with a conference, with optional entry flags.
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 -spec conference(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 conference(ConfId, Call) ->
     conference(ConfId, 'false', Call).
@@ -2323,12 +2239,10 @@ b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call),
     wait_for_message(Call, <<"conference">>, <<"CHANNEL_EXECUTE">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to preform a noop
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to preform a `noop'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec noop_id() -> kz_term:ne_binary().
 noop_id() -> kz_datamgr:get_uuid().
 
@@ -2344,14 +2258,11 @@ noop(Call) ->
 -spec b_noop(kapps_call:call()) -> kapps_api_std_return().
 b_noop(Call) -> wait_for_noop(Call, noop(Call)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level kz_api request to flush the command
-%% queue
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to flush the command
+%% queue.
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec flush(kapps_call:call()) -> binary().
 flush(Call) ->
     NoopId = noop_id(),
@@ -2365,14 +2276,10 @@ flush(Call) ->
 -spec b_flush(kapps_call:call()) -> kapps_api_std_return().
 b_flush(Call) -> wait_for_noop(Call, flush(Call)).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
-
-
+%%------------------------------------------------------------------------------
 -spec privacy(kapps_call:call()) -> 'ok'.
 privacy(Call) -> privacy(<<"full">>, Call).
 
@@ -2397,26 +2304,26 @@ b_privacy(Mode, Call) ->
     privacy(Mode, Call),
     wait_for_message(Call, <<"privacy">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function is intended for use with audio_macro or manually started
-%% media playback queued with a NoOp as the final action.  This function
-%% will wait forever for the (or any) NoOp event, collecting digits
-%% while it does so.  When the NoOp comes in the Timeout timer is started
-%% (unless any digit has been pressed in which case the Interdigit
-%% timer is used). Once the timer has expired the collected digits are
+%%------------------------------------------------------------------------------
+%% @doc This function is intended for use with `audio_macro' or manually started
+%% media playback queued with a `noop' as the final action.
+%% This function will wait forever for the (or any) `noop' event,
+%% collecting digits while it does so.  When the `noop' comes in the Timeout
+%% timer is started (unless any digit has been pressed in which case the
+%% `Interdigit' timer is used).
+%%
+%% Once the timer has expired the collected digits are
 %% returned (possibly just an empty binary).  However, digits can
 %% be returned prior to the timer expiration if the last collected
 %% digit is in the list of terminators (no returned if so). Digits
 %% can also be returned if the number of collected digits exceeds the
-%% MaxDigits.
+%% `MaxDigits'.
 %%
-%% NOTICE: This function should NOT be called if ecallmgr control
-%% queue does not have a NoOp queued.  Otherwise this will block
-%% execution until the call is terminated.
+%% <div class="notice">This function should NOT be called if `ecallmgr' control
+%% queue does not have a `noop' queued.  Otherwise this will block execution until
+%% the call is terminated.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | kz_json:object()} |
                                  {'ok', binary()}.
 
@@ -2575,14 +2482,12 @@ handle_collect_digit_event(JObj, _NoopId, {<<"call_event">>, <<"DTMF">>, _}) ->
 handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
     {'decrement'}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Low level function to consume call events, looping until a specific
+%%------------------------------------------------------------------------------
+%% @doc Low level function to consume call events, looping until a specific
 %% one occurs.  If the channel is hungup or no call events are received
 %% for the optional timeout period then errors are returned.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec wait_for_message(kapps_call:call(), binary()) ->
                               kapps_api_std_return().
@@ -2620,13 +2525,11 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait for an application to complete, ignoring channel state.  This
+%%------------------------------------------------------------------------------
+%% @doc Wait for an application to complete, ignoring channel state.  This
 %% is only interested in events for the application.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type wait_for_application_return() :: {'error', 'timeout' | kz_json:object()} |
                                        {'ok', kz_json:object()}.
 
@@ -2666,13 +2569,11 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait for an application to complete, ignoring channel state.  This
+%%------------------------------------------------------------------------------
+%% @doc Wait for an application to complete, ignoring channel state.  This
 %% is only interested in events for the application.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type headless_event() :: kz_term:ne_binary() | %% STOP EVENT
                           {kz_term:ne_binary(), kz_term:ne_binary()}. %% {START, STOP}
 
@@ -2760,12 +2661,10 @@ wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
         {'error', _E}=E -> E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait for a DTMF event and extract the digits when it comes
+%%------------------------------------------------------------------------------
+%% @doc Wait for a DTMF event and extract the digits when it comes.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wait_for_dtmf(timeout()) ->
                            {'error', 'channel_hungup' | 'timeout' | kz_json:object()} |
                            {'ok', binary()}.
@@ -2790,12 +2689,10 @@ wait_for_dtmf(Timeout) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Waits for and determines the status of the bridge command
+%%------------------------------------------------------------------------------
+%% @doc Waits for and determines the status of the bridge command.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec wait_for_bridge(timeout(), kapps_call:call()) ->
                              kapps_api_bridge_return().
@@ -2853,12 +2750,10 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             wait_for_bridge(NewTimeout, Fun, Call, NewStart, receive_event(NewTimeout))
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait for a noop or a specific noop to occur
+%%------------------------------------------------------------------------------
+%% @doc Wait for a `noop' or a specific `noop' to occur.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wait_for_noop(kapps_call:call(), kz_term:api_binary()) -> kapps_api_std_return().
 wait_for_noop(Call, NoopId) ->
     case wait_for_message(Call, <<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity') of
@@ -2871,12 +2766,10 @@ wait_for_noop(Call, NoopId) ->
         Else -> Else
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait for a channel to be unbridged from (or destroyed)
+%%------------------------------------------------------------------------------
+%% @doc Wait for a channel to be unbridged from (or destroyed).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wait_for_channel_unbridge() -> {'ok', kz_json:object()}.
 wait_for_channel_unbridge() ->
     receive
@@ -2889,12 +2782,10 @@ wait_for_channel_unbridge() ->
         _ -> wait_for_channel_unbridge()
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait for a channel to be bridged to (or destroyed)
+%%------------------------------------------------------------------------------
+%% @doc Wait for a channel to be bridged to (or destroyed).
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wait_for_channel_bridge() -> {'ok', kz_json:object()}.
 wait_for_channel_bridge() ->
     case receive_event('infinity') of
@@ -2907,12 +2798,10 @@ wait_for_channel_bridge() ->
         _ -> wait_for_channel_bridge()
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait forever for the channel to hangup
+%%------------------------------------------------------------------------------
+%% @doc Wait forever for the channel to hangup.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec wait_for_hangup() -> {'ok', 'channel_hungup'} |
                            {'error', 'timeout'}.
@@ -2939,12 +2828,10 @@ wait_for_hangup(Timeout) ->
             {'error', 'timeout'}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Wait forever for the channel to hangup
+%%------------------------------------------------------------------------------
+%% @doc Wait forever for the channel to hangup.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec wait_for_unbridge() ->   {'ok', 'leg_hungup'} |
                                {'error', 'timeout'}.
@@ -2965,12 +2852,10 @@ wait_for_unbridge(Timeout) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Waits for and determines the status of the bridge command
+%%------------------------------------------------------------------------------
+%% @doc Waits for and determines the status of the bridge command.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec wait_for_application_or_dtmf(kz_term:ne_binary(), timeout()) ->
                                           kapps_api_std_return() |
                                           {'dtmf', binary()}.
@@ -3023,12 +2908,10 @@ wait_for_fax(Timeout) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% retrieves event category, type, application from amqp payload
+%%------------------------------------------------------------------------------
+%% @doc Retrieves event category, type, application from AMQP payload.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_event_type(kz_json:object()) -> {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_event_type(JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
@@ -3040,12 +2923,10 @@ get_app(JObj) ->
                               ,[<<"Request">>, <<"Application-Name">>]
                               ], JObj).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Sends call commands to the appropriate call control process
+%%------------------------------------------------------------------------------
+%% @doc Sends call commands to the appropriate call control process.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_command(kz_term:api_terms(), kapps_call:call()) -> 'ok'.
 send_command(Command, Call) when is_list(Command) ->
     'true' = kapps_call:is_call(Call),
@@ -3071,12 +2952,10 @@ send_command(Command, Call) when is_list(Command) ->
     end;
 send_command(JObj, Call) -> send_command(kz_json:to_proplist(JObj), Call).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get the t38 settings for an endpoint based on carrier and device
+%%------------------------------------------------------------------------------
+%% @doc Get the T38 settings for an endpoint based on carrier and device.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_outbound_t38_settings(boolean(), kz_term:api_binary() | boolean()) ->
                                        kz_term:proplist().
 get_outbound_t38_settings(CarrierFlag, <<"auto">>) ->
@@ -3124,12 +3003,10 @@ get_outbound_t38_settings('false') ->
     ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_inbound_t38_settings(boolean(), kz_term:api_binary() | boolean()) ->
                                       kz_term:proplist().
 get_inbound_t38_settings(CarrierFlag, <<"auto">>) ->
@@ -3257,15 +3134,12 @@ wait_for_fax_detection(Timeout, Call) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Low level function to consume call events, looping until a specific
+%%------------------------------------------------------------------------------
+%% @doc Low level function to consume call events, looping until a specific
 %% one occurs.  If the channel is hungup or no call events are received
 %% for the optional timeout period then errors are returned.
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec wait_for_unparked_call(kapps_call:call()) ->
                                     kapps_api_std_return().
 wait_for_unparked_call(Call) ->

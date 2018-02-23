@@ -1,13 +1,15 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
-%%% @doc
-%%% "data":{"language":"en"}
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Sets the language to use for the rest of the call.
 %%%
-%%% Sets the language to use for the rest of the call
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`language'</dt>
+%%%   <dd>Language to set. Default is `en'</dd>
+%%% </dl>
 %%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_language).
 
 -behaviour(gen_cf_action).
@@ -16,12 +18,10 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Lang = kz_json:get_value(<<"language">>, Data),

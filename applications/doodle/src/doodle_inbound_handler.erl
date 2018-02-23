@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Handler for sms inbound AMQP payload
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Handler for sms inbound AMQP payload
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(doodle_inbound_handler).
 
 -export([handle_req/3]).
@@ -91,12 +89,10 @@ send_route_win(FetchId, CallId, JObj) ->
     kz_amqp_worker:cast(Win, fun(Payload) -> kapi_route:publish_win(ServerQ, Payload) end),
     'ack'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% determine the e164 format of the inbound number
+%%------------------------------------------------------------------------------
+%% @doc determine the e164 format of the inbound number
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_account_id(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
                             kz_json:object().
 set_account_id(_Inception, NumberProps, JObj) ->

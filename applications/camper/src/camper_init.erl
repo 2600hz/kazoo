@@ -1,30 +1,28 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(camper_init).
 
 -include("camper.hrl").
 
 -export([start_link/0]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Starts the app for inclusion in a supervisor tree
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the application for inclusion in a supervisor tree.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     _ = declare_exchanges(),
     'ignore'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Ensures that all exchanges used are declared
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Ensures that all exchanges used are declared.
+%% @end
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     kapi_call:declare_exchanges(),

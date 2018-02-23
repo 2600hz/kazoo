@@ -1,6 +1,10 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
+%%% @doc Generate schema for conferences.
+%%% @author James Aimonetti
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(conference_schema_builder).
-
-%% Generate schema for conferences
 
 -export([process/0
         ,to_schema/0

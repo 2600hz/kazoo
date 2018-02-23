@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%%
-%%% Handle client requests for template documents
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Handle client requests for template documents
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_templates).
 
 -export([init/0
@@ -24,10 +20,14 @@
 
 -define(DB_PREFIX, "template/").
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.templates">>, ?MODULE, 'allowed_methods'),
@@ -38,44 +38,37 @@ init() ->
     _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'account_created'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_GET].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_TemplateName) -> [?HTTP_PUT, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -120,16 +113,15 @@ account_created(Context) ->
     AccountDb = cb_context:account_db(Context),
     import_template(kz_json:get_value(<<"template">>, JObj), AccountId, AccountDb).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     case kz_datamgr:db_info() of
@@ -141,13 +133,11 @@ summary(Context) ->
         _ -> cb_context:add_system_error('datastore_missing_view', Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will attempt to load the context with the db name of
+%%------------------------------------------------------------------------------
+%% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec load_template_db(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_template_db([TemplateName], Context) ->
     load_template_db(TemplateName, Context);
@@ -165,12 +155,10 @@ load_template_db(TemplateName, Context) ->
                                         ])
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Format the template/db name into a raw, unencoded or encoded form.
+%%------------------------------------------------------------------------------
+%% @doc Format the template/db name into a raw, unencoded or encoded form.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec format_template_name(kz_term:ne_binary(), 'encoded' | 'raw') -> kz_term:ne_binary().
 format_template_name(<<"template%2F", _/binary>> = TemplateName, 'encoded') ->
     TemplateName;
@@ -185,13 +173,11 @@ format_template_name(<<"template/", TemplateName/binary>>, 'raw') ->
 format_template_name(TemplateName, 'raw') ->
     TemplateName.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new template database and load it with views so it can be
+%%------------------------------------------------------------------------------
+%% @doc Create a new template database and load it with views so it can be
 %% used as an 'account'
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_db(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 create_template_db(TemplateName, Context) ->
     TemplateDb = format_template_name(TemplateName, 'encoded'),
@@ -206,13 +192,11 @@ create_template_db(TemplateName, Context) ->
             cb_context:set_resp_status(Context, 'success')
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If a valid template database is provided import the non-design
+%%------------------------------------------------------------------------------
+%% @doc If a valid template database is provided import the non-design
 %% documents into the account
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec import_template(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 import_template('undefined', _, _) -> 'ok';
 import_template(TemplateName, AccountId, AccountDb) ->
@@ -234,13 +218,11 @@ import_template(TemplateName, AccountId, AccountDb) ->
 is_design_doc_id(<<"_design/", _/binary>>) -> 'false';
 is_design_doc_id(_) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Given a list of IDs in the template database, import them into the
+%%------------------------------------------------------------------------------
+%% @doc Given a list of IDs in the template database, import them into the
 %% account database, correcting the pvt fields.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec import_template_docs(kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 import_template_docs([], _, _, _) -> 'ok';
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->

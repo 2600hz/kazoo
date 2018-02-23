@@ -1,9 +1,8 @@
-%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Globals API
+%%------------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Globals API,
 %%% @end
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_globals).
 
 -compile({'no_auto_import',[unregister/1]}).
@@ -44,6 +43,7 @@
 -include_lib("amqp_util.hrl").
 
 %% Types & Accessors
+
 -type state() :: 'none' | 'local' | 'pending' | 'remote' | 'registered'.
 -export_type([state/0]).
 
@@ -323,11 +323,10 @@ query_resp_v(Prop) when is_list(Prop) ->
 query_resp_v(JObj) ->
     query_resp_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:new_exchange(?GLOBALS_EXCHANGE, ?GLOBALS_EXCHANGE_TYPE).

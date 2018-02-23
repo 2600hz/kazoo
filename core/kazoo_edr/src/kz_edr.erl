@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% EDR in-core API
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc EDR in-core API
+%%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
+%%% @author Conversant Ltd (Max Lay)
 %%% @end
-%%% @contributors
-%%%    SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
-%%%    Conversant Ltd (Max Lay)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_edr).
 
 -include_lib("../include/edr.hrl").

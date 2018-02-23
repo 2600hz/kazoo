@@ -1,24 +1,31 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz, INC
-%%% @doc
-%%% Eacesdrop feature code
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Eavesdrop feature code
 %%%
-%%% data: {
-%%%   "group_id":"_group_id_"
-%%%   ,"approved_device_id":"_user_id_"
-%%%   ,"appoved_user_id":"_device_id_"
-%%%   ,"approved_group_id":"_group_id_"
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`group_id'</dt>
+%%%   <dd>Group ID.</dd>
 %%%
-%%% group_id defines list of eavesdrop's targets. If group_id is
-%%% undefined then anybody can be eavesdroped.
-%%% One of the approved_device_id, appoved_user_id, approved_group_id
+%%%   <dt>`approved_device_id'</dt>
+%%%   <dd>Device ID.</dd>
+%%%
+%%%   <dt>`approved_user_id'</dt>
+%%%   <dd>User ID.</dd>
+%%%
+%%%   <dt>`approved_group_id'</dt>
+%%%   <dd>Group ID.</dd>
+%%% </dl>
+%%%
+%%% `group_id' defines a list of eavesdrop targets. If `group_id' is
+%%% `undefined' then anybody can be eavesdropped.
+%%% One of the `approved_device_id', `appoved_user_id' or `approved_group_id'
 %%% must be defined to access feature code.
 %%%
+%%%
+%%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
 %%% @end
-%%% @contributors
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_eavesdrop_feature).
 
 -behaviour(gen_cf_action).
@@ -31,13 +38,11 @@
 
 -export_type([target/0]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Exten = kapps_call:kvs_fetch('cf_capture_group', Call),

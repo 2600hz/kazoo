@@ -1,27 +1,33 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
-%%% Pickup a call in the specified group
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Pickup a call in the specified group.
 %%%
-%%% data: {
-%%%   "group_id":"_group_id_"
-%%%   ,"user_id":"_user_id_"
-%%%   ,"device_id":"_device_id_"
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`approved_device_id'</dt>
+%%%   <dd>Device ID.</dd>
 %%%
-%%% One of the three - group_id, user_id, or owner_id - must be defined on
+%%%   <dt>`approved_user_id'</dt>
+%%%   <dd>User ID.</dd>
+%%%
+%%%   <dt>`approved_group_id'</dt>
+%%%   <dd>Group ID.</dd>
+%%% </dl>
+%%%
+%%% One of the three, `group_id', `user_id' or `owner_id', must be defined on
 %%% the data payload. Preference is given by most restrictive option set,
-%%% so device_id is checked for first, then user_id, and finally group_id.
+%%% so `device_id' is checked for first, then `user_id', and finally `group_id'.
 %%%
-%%% device_id will only steal a channel currently ringing that device
-%%% user_id will only steal a channel currently ringing any of the user's devices*
-%%% group_id will steal a channel from any devices/users in a group*
-%%%  * no guarantees on which if multiple inbound calls are ringing
+%%% `device_id' will only steal a channel currently ringing that device
+%%% `user_id' will only steal a channel currently ringing any of the user's devices*.
+%%% `group_id' will steal a channel from any devices or users in a group*.
 %%%
+%%%  * No guarantees on which if multiple inbound calls are ringing.
+%%%
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_group_pickup).
 
 -behaviour(gen_cf_action).
@@ -30,13 +36,11 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module sends an arbitrary response back to the
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module sends an arbitrary response back to the
 %% call originator.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     _ = case maybe_allowed_to_intercept(Data, Call) of

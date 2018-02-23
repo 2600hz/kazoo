@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @author Karl Anderson <karl@2600hz.org>
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
-%%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(braintree_addon).
 
 -export([get_quantity/1]).
@@ -16,26 +14,26 @@
 
 -include("bt.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
+%%------------------------------------------------------------------------------
+%% @doc Accessor to get add-on quantity from the given add-on record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec get_quantity(bt_addon()) -> integer().
 get_quantity(#bt_addon{quantity=Quantity}) ->
     Quantity.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Contert the given XML to a customer record
-%% @end
-%%--------------------------------------------------------------------
+%% equiv xml_to_record(Xml, "/add-on")
 
 -spec xml_to_record(bt_xml()) -> bt_addon().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/add-on").
+
+%%------------------------------------------------------------------------------
+%% @doc Converts the given XML to a add-on record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_addon().
 xml_to_record(Xml, Base) ->
@@ -47,16 +45,17 @@ xml_to_record(Xml, Base) ->
              ,quantity = kz_term:to_integer(kz_xml:get_value([Base, "/quantity/text()"], Xml))
              }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Contert the given XML to a customer record
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv record_to_xml(Addon, false)
 
 -spec record_to_xml(bt_addon()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Addon) ->
     record_to_xml(Addon, false).
+
+%%------------------------------------------------------------------------------
+%% @doc Converts the given add-on record to a XML document. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_addon(), boolean()) -> kz_term:proplist() | bt_xml().
 record_to_xml(Addon, ToString) ->
@@ -73,12 +72,11 @@ record_to_xml(Addon, ToString) ->
         false -> Props
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert a given record into a json object
+%%------------------------------------------------------------------------------
+%% @doc Convert a given record into a JSON object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec record_to_json(bt_addon()) -> kz_json:object().
 record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
@@ -87,12 +85,11 @@ record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
             ],
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert a given json obj into a record
+%%------------------------------------------------------------------------------
+%% @doc Convert a given JSON object into a record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec json_to_record(kz_term:api_object()) -> bt_addon() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->

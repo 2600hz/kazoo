@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%%
-%%% Handle client requests for onboard documents
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Handle client requests for onboard documents
+%%% @author Karl Anderson
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_onboard).
 
 -export([init/0
@@ -25,10 +21,14 @@
 -define(OB_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".onboard">>).
 -define(DEFAULT_FLOW, <<"{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -52,40 +52,33 @@ authenticate(Context) ->
 authenticate(?HTTP_PUT, [{<<"onboard">>,[]}]) -> 'true';
 authenticate(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_PUT].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() ->
     'true'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     validate(Context, cb_context:req_verb(Context)).
@@ -113,14 +106,12 @@ put(Context) ->
     Context1 = populate_new_account(Data, Context),
     create_response(Context1).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will loop over all the 'extensions' and collect
+%%------------------------------------------------------------------------------
+%% @doc This function will loop over all the 'extensions' and collect
 %% valid context's for users, voicemailboxes, devices, and callflows.
 %% Any errors will also be collected.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_extensions(kz_json:object(), cb_context:context(), {kz_term:proplist(), kz_json:object()}) -> {kz_term:proplist(), kz_json:object()}.
 create_extensions(JObj, Context, Results) ->
     Extensions = kz_json:get_value(<<"extensions">>, JObj, []),
@@ -143,14 +134,12 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
             create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will use the bindings to validate and create a context
+%%------------------------------------------------------------------------------
+%% @doc This function will use the bindings to validate and create a context
 %% record to generate an account.  Any failure will be added to the error
 %% json object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_account(kz_json:object(), cb_context:context(), {kz_term:proplist(), kz_json:object()}) ->
                             {kz_term:proplist(), kz_json:object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
@@ -168,14 +157,12 @@ create_account(JObj, Context, {Pass, Fail}) ->
         {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"account">>, Errors, Fail)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will use the bindings to validate and create a context
+%%------------------------------------------------------------------------------
+%% @doc This function will use the bindings to validate and create a context
 %% record to generate an account.  Any failure will be added to the error
 %% json object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_phone_numbers(kz_json:object(), cb_context:context(), {kz_term:proplist(), kz_json:object()}) ->
                                   {kz_term:proplist(), kz_json:object()}.
 create_phone_numbers(JObj, Context, Results) ->
@@ -199,14 +186,12 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
         {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"phone_numbers">>, Errors, Fail)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will use the bindings to validate and create a context
+%%------------------------------------------------------------------------------
+%% @doc This function will use the bindings to validate and create a context
 %% record to generate an braintree_customer.  Any failure will be added to the error
 %% json object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_braintree_cards(kz_json:object(), cb_context:context(), {kz_term:proplist(), kz_json:object()}) -> {kz_term:proplist(), kz_json:object()}.
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     Account = get_context_jobj(<<"accounts">>, Pass),
@@ -237,14 +222,12 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will use the bindings to validate and create a context
+%%------------------------------------------------------------------------------
+%% @doc This function will use the bindings to validate and create a context
 %% record to generate a user.  Any failure will be added to the error
 %% json object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_user(kz_json:object(), pos_integer(), cb_context:context(), {kz_term:proplist(), kz_json:object()})
                  -> {kz_term:proplist(), kz_json:object()}.
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
@@ -289,14 +272,12 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
         {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"users">>, Errors, Fail)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will use the bindings to validate and create a context
+%%------------------------------------------------------------------------------
+%% @doc This function will use the bindings to validate and create a context
 %% record to generate a device.  Any failure will be added to the error
 %% json object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_device(kz_json:object(), pos_integer(), cb_context:context(), {kz_term:proplist(), kz_json:object()})
                    -> {kz_term:proplist(), kz_json:object()}.
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
@@ -348,14 +329,12 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
         {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"devices">>, Errors, Fail)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will use the bindings to validate and create a context
+%%------------------------------------------------------------------------------
+%% @doc This function will use the bindings to validate and create a context
 %% record to generate a vmbox.  Any failure will be added to the error
 %% json object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_vmbox(kz_json:object(), pos_integer(), cb_context:context(), {kz_term:proplist(), kz_json:object()})
                   -> {kz_term:proplist(), kz_json:object()}.
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
@@ -398,14 +377,12 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
         {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"vmboxes">>, Errors, Fail)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will use the bindings to validate and create a context
+%%------------------------------------------------------------------------------
+%% @doc This function will use the bindings to validate and create a context
 %% record to generate a extension callflow.  Any failure will be added
 %% to the error json object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_exten_callflow(kz_json:object(), pos_integer(), cb_context:context(), {kz_term:proplist(), kz_json:object()})
                            -> {kz_term:proplist(), kz_json:object()}.
 create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
@@ -441,14 +418,12 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
         {'error', {_, _, Errors}} -> {Pass, kz_json:set_value(<<"callflows">>, Errors, Fail)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will loop over the prevously generated context records
+%%------------------------------------------------------------------------------
+%% @doc This function will loop over the prevously generated context records
 %% providing each to the respective 'put' binding in order to create
 %% the objects.  Starts with the account :)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec populate_new_account(kz_term:proplist(), cb_context:context()) -> cb_context:context().
 populate_new_account(Props, _) ->
@@ -546,13 +521,11 @@ prepare_props(Props) ->
                   (_, _) -> 'false'
                end, props:delete(?KZ_ACCOUNTS_DB, Props)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Helper function to get the create object out of the successful
+%%------------------------------------------------------------------------------
+%% @doc Helper function to get the create object out of the successful
 %% context records for a specific key.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_context_jobj(kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
 get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
@@ -560,12 +533,10 @@ get_context_jobj(Key, Pass) ->
         _ -> kz_json:new()
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
+%%------------------------------------------------------------------------------
+%% @doc Attempt to create a token and save it to the token db
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_response(cb_context:context()) -> cb_context:context().
 create_response(Context) ->
     JObj = cb_context:doc(Context),
@@ -594,12 +565,10 @@ create_response(Context) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
+%%------------------------------------------------------------------------------
+%% @doc Attempt to create a token and save it to the token db
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec notfy_new_account(kz_json:object()) -> 'ok'.
 notfy_new_account(JObj) ->
     Notify = [{<<"Account-Name">>, kzd_accounts:name(JObj)}

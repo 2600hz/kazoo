@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2015-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_number_options).
 
 -export([assign_to/1, assign_to/2
@@ -165,9 +163,9 @@ module_name(Options) ->
         ModuleName -> ModuleName
     end.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% Public get/set extra_options()
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec account_id(extra_options()) -> kz_term:ne_binary().
 account_id(Props) when is_list(Props) ->
     props:get_ne_binary_value('account_id', Props).
@@ -207,7 +205,7 @@ should_force_outbound(Props) when is_list(Props) ->
 -spec transfer_media_id(extra_options()) -> kz_term:api_binary().
 transfer_media_id(Props) when is_list(Props) ->
     props:get_value('transfer_media', Props).
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 
 -ifdef(TEST).

@@ -1,13 +1,12 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz
-%%% @doc
-%%% Renders a custom account email template, or the system default,
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with fax attachment to the user.
-%%% @end
 %%%
-%%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
-%%%-------------------------------------------------------------------
+%%%
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(notify_fax_outbound_error_to_email).
 
 -export([init/0, handle_req/2]).
@@ -96,12 +95,10 @@ is_notice_enabled(JObj) ->
 is_notice_enabled_default() ->
     kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'true').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create the props used by the template render function
+%%------------------------------------------------------------------------------
+%% @doc create the props used by the template render function
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:objects(), kz_json:object()) -> kz_term:proplist().
 create_template_props(Event, Docs, Account) ->
     Now = kz_time:now_s(),
@@ -146,12 +143,10 @@ fax_values(Event) ->
      || {<<"Fax-", K/binary>>, V} <- kz_json:to_proplist(Event)
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% process the AMQP requests
+%%------------------------------------------------------------------------------
+%% @doc process the AMQP requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) -> send_email_return().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
@@ -176,4 +171,3 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
              ]
             },
     notify_util:send_email(From, To, Email).
-

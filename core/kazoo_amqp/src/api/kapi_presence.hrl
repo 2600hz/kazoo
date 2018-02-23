@@ -83,6 +83,7 @@
                                   ,<<"Messages-Waiting">>
                                   ,<<"Call-ID">>, <<"Expires">>
                                   ,<<"Presence-ID">>
+                                  ,<<"Extended-Presence-ID">>
                                   ,<<"From">>, <<"From-User">>, <<"From-Realm">>
                                   ]).
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}

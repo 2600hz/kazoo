@@ -28,6 +28,9 @@
             "description": "callflow default use account caller id",
             "type": "boolean"
         },
+        "dialog_subscribed_mwi_prefix": {
+            "description": "callflow dialog_subscribed_mwi_prefix"
+        },
         "ensure_valid_caller_id": {
             "default": false,
             "description": "callflow ensure valid caller id",

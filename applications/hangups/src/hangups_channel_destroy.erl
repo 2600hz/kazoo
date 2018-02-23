@@ -1,13 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%%
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(hangups_channel_destroy).
 
 -include("hangups.hrl").
@@ -17,12 +14,10 @@
         ,start_meters/2
         ]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_req(kz_call_event:doc(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
@@ -48,12 +43,10 @@ alert_about_hangup(HangupCause, JObj) ->
                             ),
     add_to_meters(AccountId, HangupCause).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_add_hangup_specific(kz_term:ne_binary(), kz_call_event:doc()) -> kz_term:proplist().
 maybe_add_hangup_specific(<<"UNALLOCATED_NUMBER">>, JObj) ->
     maybe_add_number_info(JObj);
@@ -62,12 +55,10 @@ maybe_add_hangup_specific(<<"NO_ROUTE_DESTINATION">>, JObj) ->
 maybe_add_hangup_specific(_HangupCause, JObj) ->
     kz_json:recursive_to_proplist(JObj).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_add_number_info(kz_call_event:doc()) -> kz_term:proplist().
 maybe_add_number_info(JObj) ->
     Destination = find_destination(JObj),
@@ -83,12 +74,10 @@ maybe_add_number_info(JObj) ->
         _:_ -> Props
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec build_account_tree(kz_term:ne_binary()) -> kz_term:proplist().
 build_account_tree(AccountId) ->
     {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
@@ -96,12 +85,10 @@ build_account_tree(AccountId) ->
      || AncestorId <- kzd_accounts:tree(AccountDoc)
     ].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_realm(kz_call_event:doc(), kz_term:ne_binary()) -> kz_term:ne_binary().
 find_realm(JObj, <<_/binary>> = AccountId) ->
     case kz_call_event:account_id(JObj) of
@@ -113,12 +100,10 @@ find_realm(JObj, <<_/binary>> = AccountId) ->
         Realm -> Realm
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_destination(kz_call_event:doc()) -> kz_term:ne_binary().
 find_destination(JObj) ->
     case catch binary:split(kz_json:get_value(<<"Request">>, JObj), <<"@">>) of
@@ -134,12 +119,10 @@ use_to_as_destination(JObj) ->
         _ -> kz_json:get_value(<<"Callee-ID-Number">>, JObj,  kz_privacy:anonymous_caller_id_number(AccountId))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_source(kz_call_event:doc()) -> kz_term:ne_binary().
 find_source(JObj) ->
     AccountId = kz_call_event:account_id(JObj),
@@ -148,17 +131,14 @@ find_source(JObj) ->
         _ -> kz_json:get_value(<<"Caller-ID-Number">>, JObj,  kz_privacy:anonymous_caller_id_number(AccountId))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec find_direction(kz_call_event:doc()) -> kz_term:ne_binary().
 find_direction(JObj) ->
     kz_call_event:call_direction(JObj, <<"unknown">>).
 
-%% @public
 
 -spec start_meters(kz_term:ne_binary()) -> 'ok'.
 start_meters(HangupCause) ->
@@ -168,12 +148,10 @@ start_meters(HangupCause) ->
 start_meters(AccountId, HangupCause) ->
     folsom_metrics:new_meter(hangups_util:meter_name(HangupCause, AccountId)).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec add_to_meters(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 add_to_meters(AccountId, HangupCause) ->
     lager:debug("add to meter ~s/~s", [AccountId, HangupCause]),
@@ -185,12 +163,10 @@ add_to_meters(AccountId, HangupCause) ->
     notify_meters(AccountId, HangupCause),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec notify_meters(kz_term:ne_binary()) -> any().
 notify_meters(HangupCause) ->

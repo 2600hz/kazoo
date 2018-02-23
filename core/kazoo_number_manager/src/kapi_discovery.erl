@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Routing requests, responses, and wins!
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Routing requests, responses, and wins!
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kapi_discovery).
 
 -export([declare_exchanges/0
@@ -96,11 +94,11 @@
                               ]).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Number Request
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec number_req(kz_term:api_terms()) ->
                         {'ok', iolist()} |
                         {'error', string()}.
@@ -116,11 +114,11 @@ number_req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NUMBER_REQ_HEADERS, ?NUMBER_REQ_VALUES, ?NUMBER_REQ_TYPES);
 number_req_v(JObj) -> number_req_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Discovery Request
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
@@ -137,11 +135,11 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Discovery Response
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
@@ -158,11 +156,11 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Discovery Flush
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec flush(kz_term:api_terms()) ->
                    {'ok', iolist()} |
                    {'error', string()}.
@@ -178,10 +176,10 @@ flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DISCOVERY_FLUSH_HEADERS, ?DISCOVERY_FLUSH_VALUES, ?DISCOVERY_FLUSH_TYPES);
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Bind AMQP Queue for routing requests
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
@@ -190,11 +188,10 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_exchange(Queue, ?DISCOVERY_RK, ?DISCOVERY_EXCHANGE).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% declare the exchanges used by this API
+%%------------------------------------------------------------------------------
+%% @doc Declare the exchanges used by this API
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:new_exchange(?DISCOVERY_EXCHANGE, ?DISCOVERY_EXCHANGE_TYPE).

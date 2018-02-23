@@ -1,16 +1,12 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2018, 2600Hz
-%%% @doc
+%%% @doc Answers to the call and switches media off.
+%%% Could be useful for external calls/conferences recording over inbound leg.
 %%%
-%%% Answers to the call and switches media off
-%%% Could be useful for external calls/conferences recording over inbound leg
 %%%
-%%% "data":{}
-%%%
+%%% @author Kirill Sysoev github.com/onnet
 %%% @end
-%%% @contributors
-%%%   Kirill Sysoev github.com/onnet
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_dead_air).
 
 -behaviour(gen_cf_action).

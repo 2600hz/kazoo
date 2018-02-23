@@ -1,10 +1,8 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Simple Url Storage for attachments
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Simple URL Storage for attachments.
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
 -module(kz_att_ftp).
 -behaviour(gen_attachment).
@@ -15,9 +13,14 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
-%% ====================================================================
-%% `gen_attachment' behaviour callbacks (API)
-%% ====================================================================
+%%%=============================================================================
+%%% gen_attachment behaviour callbacks (API)
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec put_attachment(gen_attachment:settings()
                     ,gen_attachment:db_name()
                     ,gen_attachment:doc_id()
@@ -25,7 +28,7 @@
                     ,gen_attachment:contents()
                     ,gen_attachment:options()
                     ) -> gen_attachment:put_response().
-put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
+put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     #{url := BaseUrlParam} = Params,
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
     BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
@@ -37,11 +40,12 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
                        ,[AName, DocId, DbName, Url]
                        ),
             {'ok', url_fields(DocUrlField, Url)};
-        {'error', Err} ->
-            lager:debug("error '~p' uploading attachment ~s of document ~s/~s to ~s"
-                       ,[Err, AName, DocId, DbName, Url]
-                       ),
-            gen_attachment:error_response(400, Err)
+        Resp ->
+            Routines = [{fun kz_att_error:set_req_url/2, Url}
+                        | kz_att_error:put_routines(Params, DbName, DocId, AName,
+                                                    Contents, Options)
+                       ],
+            handle_ftp_error_response(Resp, Routines)
     end.
 
 -spec fetch_attachment(gen_attachment:handler_props()
@@ -49,29 +53,42 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
                       ,gen_attachment:doc_id()
                       ,gen_attachment:att_name()
                       ) -> gen_attachment:fetch_response().
-fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
+fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' ->
-            gen_attachment:error_response(400, 'invalid_data');
+            Routines = kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName),
+            kz_att_error:new('invalid_data', Routines);
         Url ->
             case fetch_attachment(Url) of
-                {'ok', _Bin} = Resp -> Resp;
-                {'error', Reason} -> gen_attachment:error_response(400, Reason)
+                {'ok', _Bin} = Resp ->
+                    Resp;
+                Resp ->
+                    Routines = [{fun kz_att_error:set_req_url/2, Url}
+                                | kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName)
+                               ],
+                    handle_ftp_error_response(Resp, Routines)
             end
     end.
 
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
--spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                          'ok' | {'error', binary(), binary() | atom() | term()}.
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
         {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
             send_request(Host, Port, UserPass, FullPath, Contents);
-        _ -> {'error', <<"error parsing url : ", Url/binary>>}
+        _ -> {'error', <<"error parsing url: ", Url/binary>>}
     end.
 
--spec send_request(string(), integer(), string(), string(), binary()) -> 'ok' | {'error', binary()}.
+-spec send_request(string(), integer(), string(), string(), binary()) ->
+                          'ok' | {'error', binary() | atom() | term()}.
 send_request(Host, Port, UserPass, FullPath, Contents) ->
     {User, Pass} = case string:tokens(UserPass, ":") of
                        [U, P] -> {U, P};
@@ -92,14 +109,14 @@ send_request(Host, Port, UserPass, FullPath, Contents) ->
                 catch(ftp:close(Pid)),
                 case Res of
                     'ok' -> 'ok';
-                    {'error', Error} -> {'error', term_to_binary(Error)}
+                    Resp -> Resp
                 end;
-            {'error', Error} -> {'error', term_to_binary(Error)}
+            Resp -> Resp
         end
     catch
         _Exc:Err ->
             lager:debug("error ~p / ~p sending file ~s to ~s", [_Exc, Err, FullPath, Host]),
-            {'error', term_to_binary(Err)}
+            {'error', Err}
     end.
 
 -spec ftp_cmds(list()) -> 'ok' | {'error', any()}.
@@ -122,17 +139,20 @@ url_fields(DocUrlField, Url) ->
     ,{'document', [{DocUrlField, Url}]}
     ].
 
--spec fetch_attachment(kz_term:ne_binary()) -> {'ok', binary()} | {'error', any()}.
+-spec fetch_attachment(kz_term:ne_binary()) -> {'ok', binary()} |
+                                               {'error', binary() | atom() | term()}.
 fetch_attachment(Url) ->
     {_, Host, File, _, _} = kz_http_util:urlsplit(Url),
     try ftp:open(kz_term:to_list(Host)) of
         {'ok', Pid} -> handle_fetch(Pid, ftp:recv_bin(Pid, kz_term:to_list(File)));
         {'error', _Reason}=Err ->
-            lager:debug("error '~p' opening ftp connection to ~s for saving ~s", [_Reason, Host, File]),
+            lager:debug("error '~p' opening ftp connection to ~s for saving ~s",
+                        [_Reason, Host, File]),
             Err
     catch
         _E:Reason ->
-            lager:debug("exception '~p/~p' opening ftp connection to ~s for saving ~s", [_E, Reason, Host, File]),
+            lager:debug("exception '~p/~p' opening ftp connection to ~s for saving ~s",
+                        [_E, Reason, Host, File]),
             {'error', Reason}
     end.
 
@@ -144,3 +164,13 @@ handle_fetch(Pid, {'error', _Reason}=Err) ->
     lager:debug("error transfering file from ftp server : ~p", [_Reason]),
     ftp:close(Pid),
     Err.
+
+-spec handle_ftp_error_response({'error', binary() | atom() | term()},
+                                kz_att_error:update_routines()) -> kz_att_error:error().
+handle_ftp_error_response({'error', Reason}, Routines)
+  when is_atom(Reason); is_binary(Reason) ->
+    lager:error("ftp error ~p", [Reason]),
+    kz_att_error:new(Reason, Routines);
+handle_ftp_error_response(_E, Routines) ->
+    lager:error("dropbox request error ~p", [_E]),
+    kz_att_error:new('request_error', Routines).

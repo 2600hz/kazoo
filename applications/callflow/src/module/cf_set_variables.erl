@@ -1,16 +1,19 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
-%%% @doc
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
+%%% @doc Set or export multiple Custom Channel variables.
 %%%
-%%% "data":{
-%%%   "custom_application_vars": {"key": "value", "key": "value"},
-%%%   "export": true
-%%% }
+%%% <h4>Data options:</h4>
+%%% <dl>
+%%%   <dt>`custom_application_vars'</dt>
+%%%   <dd>A JSON object of the Key/Value of the variable/value to set or export.</dd>
+%%%
+%%%   <dt>`export'</dt>
+%%%   <dd>`boolean()', should export instead of set or not.</dd>
+%%% </dl>
+%%%
 %%%
 %%% @end
-%%% @contributors
-%%%
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_set_variables).
 
 -behaviour(gen_cf_action).
@@ -19,12 +22,10 @@
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     JObj = get_custom_channel_vars(Data),

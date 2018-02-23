@@ -1,40 +1,60 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% The basic flow of a directory call:
-%%% 1) Prompt: Please enter the first few letters of the person's
-%%%  a) First entry in sort order (first or last name)
-%%% 2) Receive MIN_DTMF dtmf tones
-%%%  a) If timeout occurs:
-%%%   1) Prompt: You need to specify a minimum of
-%%%    a) MIN_DTMF
-%%%    b) Prompt: letters of the person's name
-%%%   2) go back into main #2
-%%% 3) After receiving MIN_DTMF, filter table
-%%% 4) Go into a next_dtmf wait loop
-%%%  a) if timeout, prompt with # of matches, option to hear matches or continue pressing keys
-%%%  b) if continue, go into next_dtmf wait loop
-%%%  c) else go to play_matches
-%%% 5) play_matches: play hd(matches), options to hear more or connect or continue pressing keys
+%%% @doc Present a directory menu to the caller.
 %%%
-%%% If the flag "asr_enabled" is set, send the asr AMQP request, wait for the ASR response, and use
-%%% that for finding matches. Its more an all-or-nothing situation.
+%%% <strong>Basic flow of a directory call:</strong>
+%%% <ol>
+%%%   <li>Prompt: Please enter the first few letters of the person's
+%%%     <ul><li>First entry in sort order (first or last name)</li></ul>
+%%%   </li>
 %%%
-%%% The asr_provider key has the following properties:
-%%%   "p_endpoint": "user_or_did@asr-server.com" %% The endpoint to bridge to
-%%%   "p_account_id":"you@xmpp-server.com" %% the client's account id for receiving the text back
-%%%   "p_account_pass":"secret" %% optional, password for the client's account
-%%%   "p_lang":"us-EN" %% the language code for the ASR provider, defaults to "us-EN"
+%%%   <li>Receive `MIN_DTMF' DTMF tones. If timeout occurs:
+%%%     <ol>
+%%%       <li>Prompt: You need to specify a minimum of
+%%%         <ul>
+%%%           <li>MIN_DTMF</li>
+%%%           <li>Prompt: letters of the person's name</li>
+%%%         </ul>
+%%%       </li>
+%%%       <li>Go back into main #2</li>
+%%%     </ol>
+%%%   </li>
+%%%
+%%%   <li>After receiving `MIN_DTMF', filter table</li>
+%%%
+%%%   <li>Go into a next DTMF wait loop:
+%%%     <ul>
+%%%       <li>If timeout, prompt with `#' of matches, option to hear matches or continue pressing keys</li>
+%%%       <li>If continue, go into next DTMF wait loop</li>
+%%%       <li>Else go to `play_matches'</li>
+%%%     </ul>
+%%%   </li>
+%%%
+%%%   <li>`play_matches': Plays `hd(matches)', options to hear more or connect or continue pressing keys</li>
+%%% </ol>
+%%%
+%%% If the flag `asr_enabled' is set, send the An ASR AMQP request, wait for the ASR response, and use
+%%% that for finding matches. It's more an all-or-nothing situation.
+%%%
+%%% The `asr_provider' key has the following properties:
+%%% <dl>
+%%%   <dt>`p_endpoint'</dt><dd>The endpoint to bridge to, e.g. `user_or_did@asr-server.com'</dd>
+%%%   <dt>`p_account_id'</dt><dd>The client's account id for receiving the text back, e.g. `you@xmpp-server.com'</dd>
+%%%   <dt>`p_account_pass'</dt><dd><strong>Optional: </strong>Password for the client's account</dd>
+%%%   <dt>`p_lang'</dt><dd>The language code for the ASR provider, defaults to `us-EN'</dd>
+%%% </dl>
 %%%
 %%% So, the process becomes:
-%%% 1) Prompt "Please say the name of the person you'd like to be connected to"
-%%% 2) Send ASR request with CallID, ControlQ, and a response Q
-%%% 3) Wait for ASR response with text of what was said
-%%% 4) Find matches and iterate through the list, or go back to 1.
+%%% <ol>
+%%%  <li>Prompt "Please say the name of the person you'd like to be connected to"</li>
+%%%  <li>Send ASR request with `CallID', `ControlQ', and a response `Q'</li>
+%%%  <li>Wait for ASR response with text of what was said</li>
+%%%  <li>Find matches and iterate through the list, or go back to 1</li>
+%%% </ol>
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cf_directory).
 
 -behaviour(gen_cf_action).
@@ -97,14 +117,12 @@
 
 -type dtmf_action() :: 'route' | 'next' | 'start_over' | 'invalid' | 'continue'.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
+%%------------------------------------------------------------------------------
+%% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
 %% stop when successful.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {'ok', DirJObj} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)

@@ -1,14 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Account IP auth module
-%%%
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Account IP auth module
+%%% @author Karl Anderson
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_ip_auth).
 
 -export([init/0
@@ -25,10 +21,14 @@
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_IP, <<"accounts/listing_by_ip">>).
 
-%%%===================================================================
+%%%=============================================================================
 %%% IP
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -39,35 +39,29 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.ip_auth">>, ?MODULE, 'put'),
     ok.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_PUT].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) ->
                           'false' |
                           {'true', cb_context:context()}.
@@ -113,11 +107,10 @@ authenticate_view(Context, 'success') ->
     end;
 authenticate_view(_Context, _Status) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize_nouns(cb_context:req_nouns(Context)).
@@ -128,11 +121,10 @@ authorize_nouns([{<<"ip_auth">>, []}]) ->
 authorize_nouns(_Nouns) ->
     'false'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     IpKey = cb_context:client_ip(Context),
@@ -148,19 +140,22 @@ validate(Context) ->
             on_successful_load(Context1, cb_context:resp_status(Context1), cb_context:doc(Context1))
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_auth:create_auth_token(Context, ?MODULE).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec on_successful_load(cb_context:context(), crossbar_status(), kz_json:objects()) -> cb_context:context().
 on_successful_load(Context, 'success', [Doc]) ->
     _AccountId = kz_json:get_value(<<"value">>, Doc),
@@ -170,12 +165,10 @@ on_successful_load(Context, 'success', [Doc]) ->
 on_successful_load(Context, _Status, _Doc) ->
     Context.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token
+%%------------------------------------------------------------------------------
+%% @doc Attempt to create a token
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec create_fake_token(cb_context:context()) -> cb_context:context().
 create_fake_token(Context) ->

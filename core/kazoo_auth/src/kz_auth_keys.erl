@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_auth_keys).
 
 -export([get_public_key_from_cert/1]).
@@ -26,10 +24,14 @@
 
 -type rsa_key() :: public_key:rsa_private_key() | public_key:rsa_public_key().
 
-%% ====================================================================
+%%==============================================================================
 %% API functions
-%% ====================================================================
+%%==============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_public_key_from_cert(file:filename_all()) -> public_key:rsa_public_key().
 get_public_key_from_cert(PathToCert) ->
     {ok, PemBin} = file:read_file(PathToCert),
@@ -98,9 +100,14 @@ from_token(#{}=Token) ->
             {'error', 'not_found'}
     end.
 
-%% ====================================================================
+%%==============================================================================
 %% Internal functions
-%% ====================================================================
+%%==============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec from_token_fold(map(), list()) -> map().
 from_token_fold(Token, []) -> Token;
 from_token_fold(#{key := _Key}=Token, _) -> Token;
@@ -320,19 +327,19 @@ gen_private_key() ->
 erlint(MPInts) when is_list(MPInts) -> [erlint(X) || X <- MPInts ];
 erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Reset Kazoo private key, first get KeyId by from config.
-%% * Check if the document exists, if not create it,
-%% * generate a new private key and put it in cache
-%% @end
-%%--------------------------------------------------------------------
+
+%% @equiv reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>))
 -spec reset_kazoo_private_key() -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 reset_kazoo_private_key() ->
     lager:warning("trying to reset kazoo private key"),
     reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
 
+%%------------------------------------------------------------------------------
+%% @doc Resets Kazoo private key. First get `KeyId' from config.
+%% Checks if the document exists, if not create it. Generate a new private key
+%% and put it in cache.
+%% @end
+%%------------------------------------------------------------------------------
 -spec reset_private_key(map() | kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 reset_private_key(#{pvt_server_key := KeyId}) ->
     reset_private_key(KeyId);

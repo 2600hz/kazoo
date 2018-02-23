@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(crossbar_services).
 
 -export([maybe_dry_run/2, maybe_dry_run/3
@@ -15,11 +13,10 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl"). %% FEATURE_PORT
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type callback() :: fun(() -> cb_context:context()).
 
 -spec maybe_dry_run(cb_context:context(), callback()) -> cb_context:context().
@@ -70,9 +67,14 @@ handle_dry_run_resp(Context, Callback, Services, RespJObj) ->
     end.
 
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec accepting_charges(cb_context:context(), kz_json:object()) -> kz_transaction:transactions().
 accepting_charges(Context, JObj) ->
     Items = extract_items(kz_json:delete_key(<<"activation_charges">>, JObj)),
@@ -87,11 +89,10 @@ commit_transactions(Context, Transactions, Services, Callback) ->
         'error' -> cb_context:add_system_error('datastore_fault', Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec extract_items(kz_json:object()) -> kz_json:objects().
 extract_items(JObj) ->
     kz_json:foldl(fun extract_items_from_category/3, [], JObj).
@@ -109,12 +110,10 @@ extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
                         ,{<<"item">>, ItemKey}
                         ], ItemJObj)|Acc].
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec create_transactions(cb_context:context()
                          ,kz_json:object()
                          ,kz_transaction:transactions()) -> kz_transaction:transactions().
@@ -162,12 +161,10 @@ dry_run(Services) ->
     lager:debug("updated services, checking for dry run"),
     kz_services:dry_run(Services).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
-
+%%------------------------------------------------------------------------------
 -spec calc_service_updates(cb_context:context(), kz_term:ne_binary()) ->
                                   kz_services:services() | 'undefined'.
 calc_service_updates(Context, <<"device">>) ->
@@ -237,11 +234,10 @@ create_port_number(Number, Features) ->
     PN = knm_phone_number:from_json_with_options(JObj, []),
     knm_phone_number:set_feature(PN, ?FEATURE_PORT, kz_json:new()).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fetch_service(cb_context:context()) -> kz_services:services().
 fetch_service(Context) ->
     kz_services:fetch(cb_context:account_id(Context)).

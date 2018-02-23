@@ -1,14 +1,13 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% data adapter behaviour
+%%% @doc data adapter behaviour
 %%% @end
-%%% @contributors
 %%%-----------------------------------------------------------------------------
 -module(kzs_attachments).
 
 %% Attachment-related
 -export([fetch_attachment/4
+        ,fetch_attachment/5
         ,stream_attachment/5
         ,put_attachment/6
         ,delete_attachment/5
@@ -23,23 +22,36 @@
 -spec fetch_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                               {'ok', binary()} |
                               data_error() |
-                              gen_attachment:error_response().
+                              kz_att_error:error().
 fetch_attachment(#{}=Server, DbName, DocId, AName) ->
+    fetch_attachment(Server, DbName, DocId, AName, []).
+
+-spec fetch_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) ->
+                              {'ok', binary()} |
+                              data_error() |
+                              kz_att_error:error().
+fetch_attachment(#{}=Server, DbName, DocId, AName, Options) ->
     case kzs_cache:open_cache_doc(Server, DbName, DocId, []) of
         {'ok', Doc} ->
             case kz_doc:attachment(Doc, AName) of
                 'undefined' -> {'error', 'not_found'};
-                Att -> do_fetch_attachment(Server, DbName, DocId, AName, Att)
+                Att -> do_fetch_attachment(Server, DbName, DocId, AName, Att, Options)
             end;
         {'error', _}=E -> E
     end.
 
-do_fetch_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att) ->
+do_fetch_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att, Options) ->
     AttHandler = maps:get('att_handler', Server, 'undefined'),
     case kz_json:get_value(<<"handler">>, Att) of
         'undefined' -> App:fetch_attachment(Conn, DbName, DocId, AName);
         Handler ->
-            do_fetch_attachment_from_handler(kz_json:to_proplist(Handler), AttHandler, DbName, DocId, AName)
+            HandlerPL = kz_json:to_proplist(Handler),
+            case do_fetch_attachment_from_handler(HandlerPL, AttHandler, DbName, DocId, AName) of
+                {'error', _Reason, _ExtendedError} = Error ->
+                    handle_attachment_handler_error(Error, Options);
+                Resp ->
+                    Resp
+            end
     end.
 
 do_fetch_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId, AName) ->
@@ -117,7 +129,7 @@ relay_stream_attachment(Caller, Ref, Bin) ->
                             {'ok', kz_json:object()} |
                             {'ok', kz_json:object(), kz_term:proplist()} |
                             data_error() |
-                            gen_attachment:error_response().
+                            kz_att_error:error().
 
 put_attachment(#{att_handler := {Handler, Params}}=Map
               ,DbName, DocId, AName, Contents, Options) ->
@@ -127,7 +139,8 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
             Size = size(Contents),
             Att = attachment_from_handler(AName, attachment_handler_jobj(Handler, Props), Size, CT),
             handle_put_attachment(Map, Att, DbName, DocId, AName, Contents, Options, Props);
-        {'error', _} = E -> E
+        {'error', _Reason, _ExtendedError} = E ->
+            handle_attachment_handler_error(E, Options)
     end;
 put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),
@@ -190,3 +203,15 @@ attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined
     App:attachment_url(Conn, DbName, DocId, AttachmentId, Options);
 attachment_url(_, DbName, DocId, AttachmentId, Handler, Options) ->
     {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler} | Options]}}.
+
+-spec handle_attachment_handler_error(kz_att_error:error(), kz_data:options()) ->
+                                             kz_att_error:error() | kz_datamgr:data_error().
+handle_attachment_handler_error({'error', Reason, _ExtendedError}, []) ->
+    {'error', Reason};
+handle_attachment_handler_error({'error', Reason, ExtendedError}, Options) ->
+    case lists:keyfind('error_verbosity', 1, Options) of
+        'false' ->
+            {'error', Reason};
+        {'error_verbosity', 'verbose'} ->
+            {'error', Reason, ExtendedError}
+    end.

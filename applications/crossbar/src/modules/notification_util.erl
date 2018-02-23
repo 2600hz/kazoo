@@ -1,10 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc Provide helper functions for firing notifications based on crossbar changes
+%%% @author Mark Magnusson
 %%% @end
-%%% @contributors
-%%%     Mark Magnusson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notification_util).
 
 -include("crossbar.hrl").

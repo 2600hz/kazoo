@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Hesaam Farhang
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Hesaam Farhang
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_command).
 
 -export([set/3, unset/3
@@ -20,12 +18,10 @@
 
 -define(FS_CMD_SET_MULTIVAR, 'kz_uuid_setvar_multi').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% set channel and call variables in FreeSWITCH
+%%------------------------------------------------------------------------------
+%% @doc set channel and call variables in FreeSWITCH
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 set(_, _, []) -> 'ok';
 set(_Node, 'undefined', _Props) ->
@@ -38,12 +34,10 @@ set(Node, UUID, Props) ->
             api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% set channel and call variables in FreeSWITCH (in background)
+%%------------------------------------------------------------------------------
+%% @doc set channel and call variables in FreeSWITCH (in background)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bg_set(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_set(_, _, []) -> 'ok';
 bg_set(_Node, 'undefined', _Props) ->
@@ -56,12 +50,10 @@ bg_set(Node, UUID, Props) ->
             bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% unset channel and call variables in FreeSWITCH
+%%------------------------------------------------------------------------------
+%% @doc unset channel and call variables in FreeSWITCH
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec unset(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 unset(_, _, []) -> 'ok';
 unset(_Node, 'undefined', _Props) ->
@@ -70,12 +62,10 @@ unset(Node, UUID, Props) ->
     AppArgs = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'unset'),
     api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% unset channel and call variables in FreeSWITCH (in background)
+%%------------------------------------------------------------------------------
+%% @doc unset channel and call variables in FreeSWITCH (in background)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bg_unset(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_unset(_, _, []) -> 'ok';
 bg_unset(_Node, 'undefined', _Props) ->
@@ -84,12 +74,10 @@ bg_unset(Node, UUID, Props) ->
     AppArgs = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'unset'),
     bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% export channel and call variables in FreeSWITCH
+%%------------------------------------------------------------------------------
+%% @doc export channel and call variables in FreeSWITCH
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec export(atom(), kz_term:api_ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
 export(_Node, 'undefined', _Props) ->
@@ -103,12 +91,10 @@ export(Node, UUID, Props) ->
                                        ]),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bridge_export(atom(), kz_term:ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 bridge_export(_, _, []) -> 'ok';
 bridge_export(_Node, 'undefined', _Props) ->
@@ -122,12 +108,10 @@ bridge_export(Node, UUID, Props) ->
                                         ]) || AppArg <- Exports],
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec record_call(atom(), kz_term:ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
 record_call(Node, UUID, Args) ->
     lager:debug("execute on node ~p: uuid_record(~p)", [Node, Args]),

@@ -1,14 +1,13 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Utilities to facilitate AMQP interaction
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Utilities to facilitate AMQP interaction.
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
+%%% @author Edouard Swiac
+%%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
 %%% @end
-%%% @contributions
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%   Edouard Swiac
-%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(amqp_util).
 
 -include("amqp_util.hrl").
@@ -175,9 +174,7 @@
 -type amqp_properties() :: [amqp_property()].
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Publish AMQP messages
+%% @doc Publish AMQP messages.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -249,7 +246,11 @@ sysconf_publish(Routing, Payload, ContentType) ->
 sysconf_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
 
-%% TODO: The routing key on this function should be the first argument for consistency
+%%------------------------------------------------------------------------------
+%% @doc
+%% @todo The routing key on this function should be the first argument for consistency.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec callmgr_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 callmgr_publish(Payload, ContentType, RoutingKey) ->
@@ -461,8 +462,11 @@ tasks_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_TASKS, Routing, Payload, ContentType, Opts).
 
 
-%% generic publisher for an Exchange.Queue
-%% Use <<"#">> for a default Queue
+%%------------------------------------------------------------------------------
+%% @doc Generic publisher for an `Exchange.Queue'.
+%% Use `<<"#">>' for a default Queue
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec basic_publish(kz_term:ne_binary(), binary(), amqp_payload()) -> 'ok'.
 basic_publish(Exchange, RoutingKey, Payload) ->
@@ -519,9 +523,7 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
     end.
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create AMQP exchanges
+%% @doc Create AMQP exchanges.
 %% @end
 %%------------------------------------------------------------------------------
 -spec kapps_exchange() -> 'ok'.
@@ -589,7 +591,10 @@ tasks_exchange() ->
     new_exchange(?EXCHANGE_TASKS, ?TYPE_TASKS).
 
 
-%% A generic Exchange maker
+%%------------------------------------------------------------------------------
+%% @doc A generic Exchange maker.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec new_exchange(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 new_exchange(Exchange, Type) ->
@@ -625,9 +630,7 @@ declare_exchange(Exchange, Type, Options) ->
                        }.
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create AMQP queues
+%% @doc Create AMQP queues.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -747,14 +750,24 @@ new_tasks_queue() -> new_tasks_queue(<<>>).
 new_tasks_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 
-%% Declare a queue and returns the queue Name
 -type new_queue_ret() :: kz_term:api_binary() | integer() |
                          {kz_term:ne_binary(), integer(), integer()} |
                          {'error', any()}.
 
+%%------------------------------------------------------------------------------
+%% @doc Declare a queue and returns the queue Name.
+%% It lets the client lib create a random queue name.
+%% @see new_queue/1
+%% @end
+%%------------------------------------------------------------------------------
 -spec new_queue() -> new_queue_ret().
-new_queue() -> new_queue(new_queue_name()). % lets the client lib create a random queue name
+new_queue() -> new_queue(new_queue_name()).
 
+%%------------------------------------------------------------------------------
+%% @doc Declare a queue and returns the queue Name.
+%% @see new_queue/0
+%% @end
+%%------------------------------------------------------------------------------
 -spec new_queue(binary()) -> new_queue_ret().
 new_queue(Queue) -> new_queue(Queue, []).
 
@@ -839,9 +852,7 @@ message_ttl(Args, Acc) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Delete AMQP queue
+%% @doc Delete AMQP queue.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -909,9 +920,7 @@ queue_delete(Queue, Prop) ->
     kz_amqp_channel:command(QD).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Bind a Queue to an Exchange (with optional Routing Key)
+%% @doc Bind a Queue to an Exchange (with optional Routing Key).
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1067,9 +1076,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     kz_amqp_channel:command(QB).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Unbind a Queue from an Exchange
+%% @doc Unbind a Queue from an Exchange.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1177,12 +1184,10 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
     kz_amqp_channel:command(UB).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Bind a Queue to an Exchange (with optional Routing Key)
+%% @doc Bind a Queue to an Exchange (with optional Routing Key).
+%% Creates a consumer for a Queue.
 %% @end
 %%------------------------------------------------------------------------------
-%% create a consumer for a Queue
 
 -spec basic_consume(kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 basic_consume(Queue) -> basic_consume(Queue, []).
@@ -1199,9 +1204,7 @@ basic_consume(Queue, Options) ->
     kz_amqp_channel:command(BC).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% This method cancels a consumer. This does not affect already delivered messages,
+%% @doc This method cancels a consumer. This does not affect already delivered messages,
 %% but it does mean the server will not send any more messages for that consumer.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1213,18 +1216,15 @@ basic_cancel() -> kz_amqp_channel:command(#'basic.cancel'{}).
 basic_cancel(ConsumerTag) -> kz_amqp_channel:command(#'basic.cancel'{consumer_tag=ConsumerTag}).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% This method sets confirmation from server
+%% @doc This method sets confirmation from server.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec confirm_select() -> 'ok'.
 confirm_select() -> kz_amqp_channel:command(#'confirm.select'{}).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% This method sets flow control
+%% @doc This method sets flow control.
 %% @end
 %%------------------------------------------------------------------------------
 
@@ -1240,14 +1240,13 @@ flow_control_reply(Active) ->
     kz_amqp_channel:command(#'channel.flow_ok'{active=Active}).
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
-%%
 %% @end
 %%------------------------------------------------------------------------------
 -spec access_request() -> #'access.request'{}.
--spec access_request(kz_term:proplist()) -> #'access.request'{}.
 access_request() -> access_request([]).
+
+-spec access_request(kz_term:proplist()) -> #'access.request'{}.
 access_request(Options) ->
     #'access.request'{realm = ?P_GET('realm', Options, <<"/data">>)
                      ,exclusive = ?P_GET('exclusive', Options, 'false')
@@ -1258,19 +1257,15 @@ access_request(Options) ->
                      }.
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Determines if the content is flaged as type JSON
+%% @doc Determines if the content is flagged as type JSON.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_json(#'P_basic'{}) -> boolean().
+-spec is_json(amqp_basic()) -> boolean().
 is_json(#'P_basic'{content_type=CT}) -> CT =:= ?DEFAULT_CONTENT_TYPE.
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% When sent by the client, this method acknowledges one or more messages
-%% delivered via the Deliver or Get-'Ok' methods.
+%% @doc When sent by the client, this method acknowledges one or more messages
+%% delivered via the Deliver or `Get-Ok' methods.
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_ack(integer() | #'basic.deliver'{}) -> 'ok'.
@@ -1278,10 +1273,9 @@ basic_ack(#'basic.deliver'{delivery_tag=DTag}) -> basic_ack(DTag);
 basic_ack(DTag) -> kz_amqp_channel:command(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% NOTE: THIS METHOD IS A RABBITMQ-SPECIFIC EXTENSION OF AMQP
-%% Reject one or more incoming messages.
+%% @doc  Reject one or more incoming messages.
+%%
+%% <div class="notice">This method is a RabbitMQ-specific extension of AMQP.</div>
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_nack(integer() | #'basic.deliver'{}) -> 'ok'.
@@ -1289,18 +1283,14 @@ basic_nack(#'basic.deliver'{delivery_tag=DTag}) -> basic_nack(DTag);
 basic_nack(DTag) -> kz_amqp_channel:command(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Determine if the AMQP host is currently reachable
+%% @doc Determine if the AMQP host is currently reachable.
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_host_available() -> boolean().
 is_host_available() -> kz_amqp_connections:is_available().
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Specify quality of service
+%% @doc Specify quality of service.
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_qos(non_neg_integer()) -> 'ok'.
@@ -1308,9 +1298,7 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
     kz_amqp_channel:command(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Encode a key so characters like dot won't interfere with routing separator
+%% @doc Encode a key so characters like dot won't interfere with routing separator.
 %% @end
 %%------------------------------------------------------------------------------
 -spec encode(binary()) -> binary().

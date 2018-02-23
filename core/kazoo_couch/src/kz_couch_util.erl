@@ -1,10 +1,8 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Util functions used by kazoo_couch
+%%% @doc Util functions used by kazoo_couch.
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(kz_couch_util).
 
@@ -26,9 +24,7 @@
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 %%------------------------------------------------------------------------------
-%% @private
-%% @doc
-%% Send the query function in an anon fun with arity 0; if it returns 504, retry
+%% @doc Send the query function in an anon fun with arity 0; if it returns 504, retry
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
@@ -41,9 +37,10 @@
 %% {'error', 'timeout'}.
 
 -spec retry504s(fun(() -> retry504_ret())) -> retry504_ret().
--spec retry504s(fun(() -> retry504_ret()), 0..3) -> retry504_ret().
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
+
+-spec retry504s(fun(() -> retry504_ret()), 0..3) -> retry504_ret().
 retry504s(_Fun, 3) ->
     lager:debug("504 retry failed"),
     kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
@@ -83,7 +80,6 @@ retry504s(Fun, Cnt) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @public
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -191,12 +187,9 @@ db_url(#server{}=Conn, DbName) ->
     list_to_binary([Server, "/", DbName]).
 
 %%------------------------------------------------------------------------------
-%% @private
-%% @doc
-%% returns the #db{} record
+%% @doc returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec get_db(kz_data:connection(), kz_term:ne_binary()) -> db().
 get_db(Conn, DbName) ->
     get_db(Conn, DbName, kazoo_couch:server_version(Conn)).

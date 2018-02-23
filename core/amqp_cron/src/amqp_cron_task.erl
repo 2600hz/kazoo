@@ -1,23 +1,21 @@
-%%==============================================================================
-%% @copyright (C) 2012, Jeremy Raymond
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%%
-%% http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
-%%==============================================================================
-
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-, Jeremy Raymond
+%%%
+%%% Licensed under the Apache License, Version 2.0 (the "License");
+%%% you may not use this file except in compliance with the License.
+%%% You may obtain a copy of the License at
+%%%
+%%% http://www.apache.org/licenses/LICENSE-2.0
+%%%
+%%% Unless required by applicable law or agreed to in writing, software
+%%% distributed under the License is distributed on an "AS IS" BASIS,
+%%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%%% See the License for the specific language governing permissions and
+%%% limitations under the License.
+%%%
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
-%%% @doc
-%%% The amqp_cron_task module provides different methods for scheduling
+%%%
+%%% @doc The amqp_cron_task module provides different methods for scheduling
 %%% a task to be executed periodically in the future. The supported methods
 %%% are one shot, sleeper, and cron mode.
 %%%
@@ -77,8 +75,7 @@
 %%% periods) the overlapped periods are skipped.
 %%%
 %%% @end
-%%% Created :  1 Feb 2012 by Jeremy Raymond <jeraymond@gmail.com>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(amqp_cron_task).
 -behaviour(gen_server).
 
@@ -150,18 +147,17 @@
 
 %% Date and time.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Creates a linked process which schedules the function in the
+%%------------------------------------------------------------------------------
+%% @doc Creates a linked process which schedules the function in the
 %% specified module with the given arguments to be run according
 %% to the given schedule.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link(Schedule, Exec) -> kz_types:startlink_ret() when
       Schedule :: schedule(),
       Exec :: execargs().
@@ -169,15 +165,14 @@
 start_link(Schedule, Exec) ->
     gen_server:start_link(?SERVER, [{Schedule, Exec}], []).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Gets the current status of the task and the trigger time. If running
+%%------------------------------------------------------------------------------
+%% @doc Gets the current status of the task and the trigger time. If running
 %% the trigger time denotes the time the task started. If waiting the
 %% time denotes the next time the task will run. If done the time the
 %% task ran. If error the cause of the error.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec status(pid()) -> {Status, ScheduleTime, TaskPid} when
       Status :: status(),
       ScheduleTime :: kz_time:datetime() | pos_integer() | {'error', Reason},
@@ -187,27 +182,22 @@ start_link(Schedule, Exec) ->
 status(Pid) ->
     gen_server:call(Pid, 'status').
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Stops the task.
-%%
+%%------------------------------------------------------------------------------
+%% @doc Stops the task.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec stop(pid()) -> 'ok'.
 stop(Pid) ->
     gen_server:cast(Pid, 'stop').
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([{schedule(), execargs()}]) -> {'ok', state()}.
 init([{Schedule, Exec}]) ->
     Self = self(),
@@ -224,13 +214,10 @@ init([{Schedule, Exec}]) ->
                  ,task_pid = Pid
                  }}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('status', _From, State) ->
     Status = State#state.status,
@@ -238,13 +225,10 @@ handle_call('status', _From, State) ->
     TaskPid = State#state.task_pid,
     {'reply', {Status, Next, TaskPid}, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'error', Message}, State) ->
     {'noreply', State#state{status = 'error', next = Message}};
@@ -257,43 +241,39 @@ handle_cast({'running', NextValidDateTime}, State) ->
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, State) ->
     exit(State#state.task_pid, 'kill'),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 oneshot({'oneshot', Millis}, Exec, ParentPid) when is_integer(Millis) ->
     gen_server:cast(ParentPid, {'waiting', Millis}),
     sleep_accounting_for_max(Millis),

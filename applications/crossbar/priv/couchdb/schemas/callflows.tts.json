@@ -4,7 +4,7 @@
     "description": "Validator for the TTS (Text-to-speech) callflow action",
     "properties": {
         "endless_playback": {
-            "description": "Loop the media until cancelled",
+            "description": "Loop the media until canceled",
             "type": "boolean"
         },
         "engine": {

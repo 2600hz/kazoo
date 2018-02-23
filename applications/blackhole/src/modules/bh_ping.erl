@@ -1,13 +1,12 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2017 Conversant Ltd
-%%% @doc
-%%% Recieves a ping, responds with a pong.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-, 2600Hz
+%%% @doc Receives a ping, responds with a pong.
 %%% Useful for both keeping a websocket connection up, and figuring
 %%% out if a websocket connection is still up
+%%%
+%%% @author Conversant Ltd (Max Lay)
 %%% @end
-%%% @contributors
-%%% Conversant Ltd (Max Lay)
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(bh_ping).
 
 -export([init/0
@@ -20,9 +19,9 @@
 
 -spec init() -> 'ok'.
 init() ->
-    blackhole_bindings:bind(<<"blackhole.authorize.ping">>, ?MODULE, 'authorize'),
-    blackhole_bindings:bind(<<"blackhole.validate.ping">>, ?MODULE, 'validate'),
-    blackhole_bindings:bind(<<"blackhole.command.ping">>, ?MODULE, 'ping'),
+    _ = blackhole_bindings:bind(<<"blackhole.authorize.ping">>, ?MODULE, 'authorize'),
+    _ = blackhole_bindings:bind(<<"blackhole.validate.ping">>, ?MODULE, 'validate'),
+    _ = blackhole_bindings:bind(<<"blackhole.command.ping">>, ?MODULE, 'ping'),
     'ok'.
 
 -spec authorize(bh_context:context(), kz_json:object()) -> bh_context:context().

@@ -1,12 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
+%%% @author Michael Dunton
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   Michael Dunton
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(notify_maintenance).
 
 -include("notify.hrl").
@@ -27,12 +25,10 @@
 -define(SYSTEM_CONFIG_DB, <<"system_config">>).
 -define(SMTP_CLIENT_DOC, <<"smtp_client">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns whether an account's initial call notification has been sent
+%%------------------------------------------------------------------------------
+%% @doc Returns whether an account's initial call notification has been sent
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_initial_call(kz_term:ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -46,12 +42,10 @@ check_initial_call(Account) when is_binary(Account) ->
             io:format("unable to open account doc ~s: ~p", [AccountId, _R])
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns whether the initial_registration notification has been sent
+%%------------------------------------------------------------------------------
+%% @doc Returns whether the initial_registration notification has been sent
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check_initial_registration(kz_term:ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -64,12 +58,10 @@ check_initial_registration(Account) when is_binary(Account) ->
         {'error', _R} ->
             io:format("unable to open account doc ~s: ~p", [AccountId, _R])
     end.
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Configures the Relay key of the SMTP_Client System Config document.
+%%------------------------------------------------------------------------------
+%% @doc Configures the Relay key of the SMTP_Client System Config document.
 %% @end
-%%---------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec configure_smtp_relay(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_relay(Value) ->
     case update_smtp_client_document(<<"relay">>, Value) of
@@ -78,12 +70,10 @@ configure_smtp_relay(Value) ->
         _Error ->
             'failed'
     end.
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Configures the username key of the SMTP_Client System Config document.
+%%------------------------------------------------------------------------------
+%% @doc Configures the username key of the SMTP_Client System Config document.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec configure_smtp_username(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_username(Value) ->
     case update_smtp_client_document(<<"username">>, Value) of
@@ -93,12 +83,10 @@ configure_smtp_username(Value) ->
             'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Configures the password key of the SMTP_Client System Config document.
+%%------------------------------------------------------------------------------
+%% @doc Configures the password key of the SMTP_Client System Config document.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec configure_smtp_password(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_password(Value) ->
     case update_smtp_client_document(<<"password">>, Value) of
@@ -108,12 +96,10 @@ configure_smtp_password(Value) ->
             'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Configures the username key of the SMTP_Client System Config document.
+%%------------------------------------------------------------------------------
+%% @doc Configures the username key of the SMTP_Client System Config document.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec configure_smtp_auth(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_auth(Value) ->
     case update_smtp_client_document(<<"auth">>, Value) of
@@ -123,12 +109,10 @@ configure_smtp_auth(Value) ->
             'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Configures the port key of the SMTP_Client System Config document.
+%%------------------------------------------------------------------------------
+%% @doc Configures the port key of the SMTP_Client System Config document.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec configure_smtp_port(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_port(Value) ->
     case update_smtp_client_document(<<"port">>, Value) of
@@ -138,11 +122,10 @@ configure_smtp_port(Value) ->
             'failed'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
     kz_datamgr:db_create(?KZ_ACCOUNTS_DB),
@@ -150,11 +133,10 @@ refresh() ->
     kapps_util:update_views(?KZ_ACCOUNTS_DB, Views),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec refresh_template() -> 'ok'.
 refresh_template() ->
     io:format("searching for docs in: ~p ~n", [?SYSTEM_CONFIG_DB]),
@@ -171,11 +153,10 @@ refresh_template() ->
 reload_smtp_configs() ->
     kapps_config:flush(<<"smtp_client">>),
     ok.
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec template_files() -> kz_term:ne_binaries().
 template_files() ->
     {'ok', Files} = file:list_dir(?TEMPLATE_PATH),
@@ -191,11 +172,10 @@ template_files() ->
                ,Files
      ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec template_ids() -> kz_term:ne_binaries().
 template_ids() ->
     {'ok', JObjs} =  kz_datamgr:all_docs(?SYSTEM_CONFIG_DB),
@@ -212,11 +192,10 @@ template_ids() ->
                ,JObjs
      ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec match_file_to_db(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:proplist().
 match_file_to_db(Files, Ids) ->
     lists:foldl(
@@ -246,11 +225,10 @@ match_file_to_db(Files, Ids) ->
                ,Files
      ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec module_exists(binary() | atom()) -> boolean().
 module_exists(Module) when is_atom(Module) ->
     try Module:module_info() of
@@ -261,11 +239,10 @@ module_exists(Module) when is_atom(Module) ->
 module_exists(Module) ->
     module_exists(kz_term:to_atom(Module, 'true')).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec compare_template_system_config(kz_term:proplist()) -> 'ok'.
 compare_template_system_config([]) -> 'ok';
@@ -343,11 +320,10 @@ compare_template_system_config(DefaultTemplates, DocTemplate, FileTemplate) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_template(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_template(Key, Template, JObj) ->
     Default = kz_json:get_value(<<"default">>, JObj),
@@ -357,11 +333,10 @@ set_template(Key, Template, JObj) ->
                      ,JObj
      ).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec open_file(list()) -> kz_term:proplist() | 'error'.
 open_file(File) ->
     case file:consult(File) of
@@ -369,11 +344,10 @@ open_file(File) ->
         {'error', _R} -> 'error'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec open_system_config(kz_term:ne_binary()) -> kz_json:object() | 'error' | 'not_found'.
 open_system_config(Id) ->
     case kz_datamgr:open_cache_doc(?SYSTEM_CONFIG_DB, Id) of
@@ -383,11 +357,10 @@ open_system_config(Id) ->
     end.
 
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_smtp_client_document(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {error, any()}.
 update_smtp_client_document(Key, Value) ->
     kapps_config:set(?SMTP_CLIENT_DOC, Key, Value).

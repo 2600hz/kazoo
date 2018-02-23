@@ -1,9 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% data connection with error
+%%% @doc data connection with error
 %%% @end
-%%% @contributors
 %%%-----------------------------------------------------------------------------
 -module(kazoo_dataconnection_error).
 -behaviour(kz_data).

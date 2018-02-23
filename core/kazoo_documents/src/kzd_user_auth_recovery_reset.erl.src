@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Accessors for `user_auth_recovery_reset' document.
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kzd_user_auth_recovery_reset).
 
 -export([new/0]).

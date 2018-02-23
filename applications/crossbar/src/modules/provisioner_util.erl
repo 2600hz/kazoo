@@ -1,13 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2018, 2600Hz INC
-%%% @doc
-%%%
-%%% Common functions for the provisioner modules
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-2018, 2600Hz
+%%% @doc Common functions for the provisioner modules
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(provisioner_util).
 
 -include("crossbar.hrl").
@@ -63,12 +59,10 @@ cleanse_mac_address(MACAddress) ->
         true -> undefined
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_provision(cb_context:context()) -> boolean().
 maybe_provision(Context) ->
@@ -120,12 +114,10 @@ maybe_provision_v5(Context, ?HTTP_POST) ->
     end,
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec maybe_delete_provision(cb_context:context()) -> boolean().
 maybe_delete_provision(Context) ->
@@ -150,12 +142,10 @@ maybe_delete_provision(Context, 'success') ->
     end;
 maybe_delete_provision(_Context, _Status) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_update_account(cb_context:context()) -> boolean().
 maybe_update_account(Context) ->
     case cb_context:is_context(Context)
@@ -171,12 +161,10 @@ maybe_update_account(Context) ->
         _ -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_delete_account(cb_context:context()) -> boolean().
 maybe_delete_account(Context) ->
     case cb_context:is_context(Context)
@@ -265,13 +253,11 @@ should_build_contact_list(Context) ->
                 kz_json:get_value([<<"contact_list">>, <<"exclude">>], OriginalJObj)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This doesn't belong here, needs to be in an external library. Make request to
+%%------------------------------------------------------------------------------
+%% @doc This doesn't belong here, needs to be in an external library. Make request to
 %% get provisioning defaults
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_provision_defaults(cb_context:context()) -> cb_context:context().
 get_provision_defaults(Context) ->
     JObj = cb_context:doc(Context),
@@ -304,12 +290,10 @@ get_provision_defaults(Context) ->
             crossbar_util:response('error', <<"Error retrieving content from external site">>, 500, Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_mac_address_in_use(cb_context:context(), kz_term:ne_binary()) -> boolean().
 is_mac_address_in_use(Context, MacAddress) ->
     case cb_context:is_context(Context)
@@ -322,12 +306,10 @@ is_mac_address_in_use(Context, MacAddress) ->
         _ -> 'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% post data to a provisiong server
+%%------------------------------------------------------------------------------
+%% @doc post data to a provisiong server
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec do_simple_provision(kz_term:ne_binary(), cb_context:context()) -> boolean().
 do_simple_provision(MACAddress, Context) ->
     JObj = cb_context:doc(Context),
@@ -351,12 +333,10 @@ do_simple_provision(MACAddress, Context) ->
             'true'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% post data to a provisiong server
+%%------------------------------------------------------------------------------
+%% @doc post data to a provisiong server
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec delete_account(kz_term:ne_binary() | cb_context:context()) -> boolean().
 delete_account(<<_/binary>> = AccountId) ->
     maybe_send_to_full_provisioner(AccountId);
@@ -444,12 +424,10 @@ do_awesome_provision(Context) ->
             'true'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_merged_device(kz_term:ne_binary(), cb_context:context()) ->
                                {'ok', cb_context:context()}.
 get_merged_device(MACAddress, Context) ->
@@ -485,12 +463,10 @@ get_owner(OwnerId, AccountId) ->
             kz_json:new()
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Do awesome provisioning
+%%------------------------------------------------------------------------------
+%% @doc Do awesome provisioning
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 send_provisioning_template(JObj, Context) ->
     %% TODO: theoretically this is the start of multiple line support....
     Line = <<"lineloop|line_1">>,
@@ -515,13 +491,11 @@ send_provisioning_template(JObj, Context) ->
     Template = kz_json:set_value([<<"data">>, <<"globals">>, <<"globals">>, Line], LineTemplate, DefaultTemplate),
     send_provisioning_request(Template, MAC).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If the device specifies a local template id then return that
+%%------------------------------------------------------------------------------
+%% @doc If the device specifies a local template id then return that
 %% template
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_template(cb_context:context()) ->
                           {'ok', kz_json:object()} |
                           {'error', any()}.
@@ -540,25 +514,21 @@ get_template(Context) ->
             {'ok', kz_json:decode(Attachment)}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% add the account_id to the root of the provisioning json
+%%------------------------------------------------------------------------------
+%% @doc add the account_id to the root of the provisioning json
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_account_id(cb_context:context()) ->
                             [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_id(Context) ->
     AccountId = cb_context:auth_account_id(Context),
     [fun(J) -> kz_json:set_value(<<"account_id">>, AccountId, J) end].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% get the settings from the account doc that should be used in the
+%%------------------------------------------------------------------------------
+%% @doc get the settings from the account doc that should be used in the
 %% base properties for the line
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_account_line_defaults(cb_context:context()) ->
                                        [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_line_defaults(Context) ->
@@ -580,13 +550,11 @@ set_account_line_defaults(Context) ->
      end
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% get the settings from the device doc that should be used in the
+%%------------------------------------------------------------------------------
+%% @doc get the settings from the device doc that should be used in the
 %% base properties for the line
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_device_line_defaults(cb_context:context()) ->
                                       [fun((kz_json:object()) -> kz_json:object()),...].
 set_device_line_defaults(Context) ->
@@ -623,12 +591,10 @@ set_device_line_defaults(Context) ->
      end
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% merge in any overrides from the global provisioning db
+%%------------------------------------------------------------------------------
+%% @doc merge in any overrides from the global provisioning db
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_global_overrides(cb_context:context()) ->
                                   [fun((kz_json:object()) -> kz_json:object()),...].
 set_global_overrides(_) ->
@@ -644,12 +610,10 @@ set_global_overrides(_) ->
      end
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% merge in any overrides from the account doc
+%%------------------------------------------------------------------------------
+%% @doc merge in any overrides from the account doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_account_overrides(cb_context:context()) ->
                                    [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_overrides(Context) ->
@@ -665,12 +629,10 @@ set_account_overrides(Context) ->
      end
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% merge in any overrides from the user doc
+%%------------------------------------------------------------------------------
+%% @doc merge in any overrides from the user doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_user_overrides(cb_context:context()) ->
                                 [fun((kz_json:object()) -> kz_json:object()),...].
 set_user_overrides(Context) ->
@@ -689,12 +651,10 @@ set_user_overrides(Context) ->
      end
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% merge in any overrides from the device doc
+%%------------------------------------------------------------------------------
+%% @doc merge in any overrides from the device doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_device_overrides(cb_context:context()) ->
                                   [fun((kz_json:object()) -> kz_json:object()),...].
 set_device_overrides(Context) ->
@@ -708,12 +668,10 @@ set_device_overrides(Context) ->
      end
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Send awesome provisioning request
+%%------------------------------------------------------------------------------
+%% @doc Send awesome provisioning request
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec send_provisioning_request(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_provisioning_request(Template, MACAddress) ->
     ProvisionRequest = kz_json:encode(Template),
@@ -729,11 +687,10 @@ send_provisioning_request(Template, MACAddress) ->
             lager:debug("ERROR! OH NO! ~p", [R])
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_provisioning_type() -> kz_term:api_ne_binary().
 get_provisioning_type() ->
     case kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
@@ -745,7 +702,6 @@ get_provisioning_type() ->
             Result
     end.
 
-%% @public
 
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
 maybe_sync_sip_data(Context, Type) ->
@@ -806,7 +762,6 @@ maybe_sync_sip_data(Context, 'user', 'force') ->
             'ok'
     end.
 
-%% @private
 -spec send_check_sync(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 send_check_sync('undefined', _Realm, _MsgId) ->
     lager:warning("did not send check sync: username is undefined");

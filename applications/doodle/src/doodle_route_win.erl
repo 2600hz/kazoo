@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% handler for route wins, bootstraps callflow execution
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc handler for route wins, bootstraps callflow execution
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(doodle_route_win).
 
 -include("doodle.hrl").
@@ -187,12 +185,10 @@ get_callee_extension_info(Call) ->
         'false' -> 'undefined'
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
@@ -202,23 +198,19 @@ bootstrap_callflow_executer(_JObj, Call) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec store_owner_id(kapps_call:call()) -> kapps_call:call().
 store_owner_id(Call) ->
     OwnerId = kz_attributes:owner_id(Call),
     kapps_call:kvs_store('owner_id', OwnerId, Call).
 
-%%-----------------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update_ccvs(kapps_call:call()) -> kapps_call:call().
 update_ccvs(Call) ->
     CallerIdType = case kapps_call:inception(Call) of
@@ -245,13 +237,11 @@ get_incoming_security(Call) ->
              )
     end.
 
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% executes the found call flow by starting a new doodle_exe process under the
+%%------------------------------------------------------------------------------
+%% @doc executes the found call flow by starting a new doodle_exe process under the
 %% doodle_exe_sup tree.
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec execute_callflow(kapps_call:call()) -> {'ok', pid()}.
 execute_callflow(Call) ->
     lager:info("message has been setup, beginning to process the message"),

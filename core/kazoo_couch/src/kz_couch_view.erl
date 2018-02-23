@@ -1,10 +1,8 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2018, 2600Hz
-%%% @doc
-%%% Util functions used by kazoo_couch
+%%% @doc Util functions used by kazoo_couch
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(kz_couch_view).
 

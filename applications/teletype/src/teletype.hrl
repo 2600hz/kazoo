@@ -19,16 +19,16 @@
 
 -type mime_tuples() :: [mimemail:mimetuple()].
 
-%% {ContentType, Filename, Content}
 -type attachment() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+%% `{ContentType, Filename, Content}'
 -type attachments() :: [attachment()].
 
-%% {ContentType, Content}
 -type rendered_template() :: {kz_term:ne_binary(), iolist()}.
+%% `{ContentType, Content}'
 -type rendered_templates() :: [rendered_template()].
 
-%% {"to"/"cc"/etc, [Address,...]}
 -type email_map() :: [{kz_term:ne_binary(), kz_term:api_ne_binaries()}].
+%% `{"to"/"cc"/etc, [Address,...]}'
 
 -type init_param() :: {'macros', kz_json:object()} |
                       {'subject', kz_term:ne_binary()} |
@@ -120,7 +120,7 @@
         ,?MACRO_VALUE(<<"port_request.comment.date.local">>, <<"comment.date_local">>, <<"Comment Local Timestamp">>, <<"Comment Local Timestamp">>)
         ,?MACRO_VALUE(<<"port_request.comment.date.utc">>, <<"comment.date_utc">>, <<"Comment UTC Timestamp">>, <<"Comment UTC Timestamp">>)
         ,?MACRO_VALUE(<<"port_request.comment.date.timezone">>, <<"comment.date_timezone">>, <<"Comment Local Timestamp">>, <<"Comment Timestamp Local Timezone">>)
-        ,?MACRO_VALUE(<<"port_request.customser_contact">>, <<"customser_contact">>, <<"Customser Email">>, <<"Customser Email">>)
+        ,?MACRO_VALUE(<<"port_request.customer_contact">>, <<"customer_contact">>, <<"Customer Email">>, <<"Customer Email">>)
         ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
         ,?MACRO_VALUE(<<"port_request.street_address">>, <<"street_address">>, <<"Bill Street Address">>, <<"Address on the bill">>)

@@ -1,10 +1,8 @@
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(crossbar_auth).
 
 -export([create_auth_token/2
@@ -177,24 +175,20 @@ authorize_auth_token(Token) ->
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Update pvt_signature_secret for user
+%%------------------------------------------------------------------------------
+%% @doc Update `pvt_signature_secret' for user
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec reset_identity_secret(cb_context:context()) -> cb_context:context().
 reset_identity_secret(Context) ->
     Doc = kz_auth_identity:reset_doc_secret(cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get merge result of account and its parents, reseller and system
-%% authentication configuration
+%%------------------------------------------------------------------------------
+%% @doc Get merge result of account and its parents, reseller and system
+%% authentication configuration.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_account_config(kz_term:api_ne_binary()) -> kz_json:object().
 get_account_config(AccountId) ->
     kapps_account_config:get_hierarchy(AccountId, ?AUTH_CONFIG_CAT, <<"auth_modules">>, ?DEFAULT_AUTH_CONFIG).
@@ -211,13 +205,17 @@ get_inherited_config(AccountId, 'false') ->
     ParentId = kzd_accounts:get_parent_account_id(AccountId),
     kapps_account_config:get_hierarchy(ParentId, ?AUTH_CONFIG_CAT, <<"auth_modules">>).
 
-%% @private
-%% Utility func to generate method's config path
+%%------------------------------------------------------------------------------
+%% @doc Utility func to generate method's config path
+%% @end
+%%------------------------------------------------------------------------------
 -spec method_config_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
 method_config_path(Method, Key) -> [Method, Key].
 
-%% @private
-%% Utility func to generate method's multi-factor config path
+%%------------------------------------------------------------------------------
+%% @doc Utility func to generate method's multi-factor config path
+%% @end
+%%------------------------------------------------------------------------------
 -spec method_mfa_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
 method_mfa_path(Method, Key) -> [Method, <<"multi_factor">>, Key].
 
@@ -235,22 +233,18 @@ token_auth_expiry(Method, AuthConfig) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check if is authenticator module is enabled or not
+%%------------------------------------------------------------------------------
+%% @doc Check if is authenticator module is enabled or not.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_auth_module_enabled(kz_term:ne_binary(), kz_json:object()) -> boolean().
 is_auth_module_enabled(Method, Config) ->
     kz_json:is_true(method_config_path(Method, <<"enabled">>), Config, 'true').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Checks if authenticator module is configured to do multi factor auth
+%%------------------------------------------------------------------------------
+%% @doc Checks if authenticator module is configured to do multi factor auth.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_multi_factor_enabled(kz_term:proplist(), kz_json:object()) -> boolean().
 is_multi_factor_enabled(Claims, AuthConfig) ->
     MasterId = master_account_id(),
@@ -262,12 +256,11 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
     kz_json:is_true(method_mfa_path(Method, <<"enabled">>), AuthConfig)
         andalso multi_factor_allowed_for_account(MasterId, ClaimAccountId, MFAAccountId, IncludeSubAccounts).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
+%%------------------------------------------------------------------------------
+%% @doc Checks if multi factor is enabled by looking at system, account and hierarchy.
 %% If the configuration comes from a parent account
-%% then we should look for property 'multi_factor.include_subaccounts'.
-%% If it's 'false' then authentication should to proceed normally
+%% then we should look for property `multi_factor.include_subaccounts'.
+%% If it's `false' then authentication should to proceed normally
 %% without multi factor.
 %%
 %% * If account is master, allow
@@ -275,7 +268,7 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
 %% * If there is no account in mfa, return allow
 %% * If account ids are not same, return 'include_subaccounts' boolean
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec multi_factor_allowed_for_account(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), boolean()) -> boolean().
 multi_factor_allowed_for_account(?NE_BINARY=Master, ?NE_BINARY=Master, _, _) -> 'true';
 multi_factor_allowed_for_account(_Master, _ClaimAccountId, 'undefined', _) -> 'true';
@@ -291,12 +284,10 @@ master_account_id() ->
             'undefined'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Log successful authentication if configured to do so
+%%------------------------------------------------------------------------------
+%% @doc Log successful authentication if configured to do so.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec log_success_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.
 log_success_auth(AuthModule, AuthType, Reason, Context) ->
     log_success_auth(AuthModule, AuthType, Reason, Context, 'undefined', 'undefined').
@@ -321,12 +312,10 @@ log_success_auth(AuthModule, AuthType, Reason, Context, AccountId, AuthConfig) -
             log_attempts(Context, AccountId, Method, <<"success">>, AuthType, Reason)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Log failed authentication if configured to do so
+%%------------------------------------------------------------------------------
+%% @doc Log failed authentication if configured to do so.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec log_failed_auth(atom() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.
 log_failed_auth(AuthModule, AuthType, Reason, Context) ->
     log_failed_auth(AuthModule, AuthType, Reason, Context, 'undefined', 'undefined').

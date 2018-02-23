@@ -1,12 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Handle AMQP requests to write system configuration data.
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Handle AMQP requests to write system configuration data.
 %%% Support nested keys like key#subkey#subsubkey
+%%%
+%%% @author Edouard Swiac
 %%% @end
-%%% @contributors
-%%%   Edouard Swiac
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(sysconf_set).
 
 -export([init/0

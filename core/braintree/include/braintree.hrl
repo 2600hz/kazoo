@@ -4,7 +4,8 @@
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type bt_result() :: {'ok', any()}.
--type bt_xml() :: any(). %%  record_proplist() | braintree_util:char_to_bin_res().
+-type bt_xml() :: any().
+%%  `record_proplist()' | {@link braintree_util:char_to_bin_res()}.
 
 -type braintree_failures() :: 'no_payment_token' |
                               'authentication' |

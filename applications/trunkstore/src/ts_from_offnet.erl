@@ -1,13 +1,12 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Calls coming from offnet (in this case, likely stepswitch) potentially
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Calls coming from offnet (in this case, likely stepswitch) potentially
 %%% destined for a trunkstore client, or, if the account exists and
 %%% failover is configured, to an external DID or SIP URI
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(ts_from_offnet).
 
 -export([start_link/1, init/2]).
@@ -247,9 +246,9 @@ try_failover_e164(State, ToDID) ->
                             ),
     wait_for_bridge(ts_callflow:set_failover(State, kz_json:new()), Timeout).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% Out-of-band functions
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_endpoint_data(ts_callflow:state()) -> {'endpoint', kz_json:object()}.
 get_endpoint_data(State) ->
     JObj = ts_callflow:get_request_data(State),

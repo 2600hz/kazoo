@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(braintree_address).
 
 -export([url/1, url/2]).
@@ -20,12 +18,10 @@
 
 -include("bt.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create the partial url for this module
+%%------------------------------------------------------------------------------
+%% @doc Create the partial URL for Braintree.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec url(kz_term:ne_binary()) -> string().
 url(CustomerId) ->
@@ -35,24 +31,21 @@ url(CustomerId) ->
 url(CustomerId, AddressId) ->
     lists:append(["/customers/", kz_term:to_list(CustomerId), "/addresses/", kz_term:to_list(AddressId)]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Find a customer by id
+%%------------------------------------------------------------------------------
+%% @doc Find an address by ID.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec find(kz_term:ne_binary() | nonempty_string(), kz_term:ne_binary() | nonempty_string()) -> bt_address().
 find(CustomerId, AddressId) ->
     Url = url(CustomerId, AddressId),
     Xml = braintree_request:get(Url),
     xml_to_record(Xml).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Creates a new customer using the given record
+%%------------------------------------------------------------------------------
+%% @doc Creates a new address using the given record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec create(bt_address()) -> bt_address().
 create(#bt_address{customer_id=CustomerId}=Address) ->
@@ -61,16 +54,19 @@ create(#bt_address{customer_id=CustomerId}=Address) ->
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
+%%------------------------------------------------------------------------------
+%% @doc Creates a new address with the given costumer ID and billing address.
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec create(nonempty_string() | kz_term:ne_binary(), bt_address()) -> bt_address().
 create(CustomerId, Address) ->
     create(Address#bt_address{customer_id=CustomerId}).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Updates a customer with the given record
+%%------------------------------------------------------------------------------
+%% @doc Updates an address with the given record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec update(bt_address()) -> bt_address().
 update(#bt_address{id=AddressId
                   ,customer_id=CustomerId
@@ -80,12 +76,10 @@ update(#bt_address{id=AddressId
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Deletes a customer id from braintree's system
+%%------------------------------------------------------------------------------
+%% @doc Deletes an address ID from Braintree's system.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec delete(bt_address()) -> bt_address().
 delete(#bt_address{customer_id=CustomerId
@@ -99,16 +93,17 @@ delete(CustomerId, AddressId) ->
     _ = braintree_request:delete(Url),
     #bt_address{}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Contert the given XML to a customer record
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv xml_to_record(Xml, "/address")
 
 -spec xml_to_record(bt_xml()) -> bt_address().
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the given XML to an address record. Uses `Base' as base path
+%% to get values from XML.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec xml_to_record(bt_xml(), kz_term:deeplist()) -> bt_address().
 xml_to_record(Xml, Base) ->
@@ -130,16 +125,17 @@ xml_to_record(Xml, Base) ->
                ,updated_at = kz_xml:get_value([Base, "/updated-at/text()"], Xml)
                }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Contert the given XML to a customer record
-%% @end
-%%--------------------------------------------------------------------
+%% @equiv record_to_xml(Address, 'false')
 
 -spec record_to_xml(bt_address()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml(Address) ->
     record_to_xml(Address, 'false').
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the give address record to a XML document. If `ToString' is
+%% `true' returns exported XML as string binary.
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec record_to_xml(bt_address(), boolean()) -> kz_term:proplist() | bt_xml() | 'undefined'.
 record_to_xml('undefined', _ToString) -> 'undefined';
@@ -166,12 +162,11 @@ record_to_xml(Address, ToString) ->
         'false' -> Props1
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert a given json object into a record
+%%------------------------------------------------------------------------------
+%% @doc Convert a given JSON object into a record.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec json_to_record(kz_term:api_object()) -> bt_address() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
@@ -191,12 +186,11 @@ json_to_record(JObj) ->
                ,update_existing = kz_json:is_true(<<"update_existing">>, JObj)
                }.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert a given record into a json object
+%%------------------------------------------------------------------------------
+%% @doc Convert a given record into a JSON object.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec record_to_json(bt_address() | 'undefined') -> kz_term:api_object().
 record_to_json('undefined') -> 'undefined';
 record_to_json(#bt_address{}=Address) ->
@@ -219,13 +213,12 @@ record_to_json(#bt_address{}=Address) ->
       ,{<<"updated_at">>, Address#bt_address.updated_at}
       ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the object exists in but no id has been provided then generate
-%% a uuid to use during creation.
+%%------------------------------------------------------------------------------
+%% @doc If the object exists in but no id has been provided then generate
+%% a UUID to use during creation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+
 -spec create_or_get_json_id(kz_json:object()) ->  kz_term:api_binary().
 create_or_get_json_id(JObj) ->
     case kz_json:get_value(<<"street_address">>, JObj) of

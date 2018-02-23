@@ -1,15 +1,12 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Functions shared between crossbar modules
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Functions shared between crossbar modules
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(cb_modules_util).
 
 -export([pass_hashes/2
-        ,update_mwi/2
         ,get_devices_owned_by/2
         ,cavs_from_context/1
 
@@ -53,37 +50,6 @@ pass_hashes(Username, Password) ->
     MD5 = kz_term:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
--spec update_mwi(kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
-update_mwi(BoxId, AccountId) ->
-    kz_util:spawn(fun() -> send_mwi_update(BoxId, AccountId) end).
-
--spec send_mwi_update(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_mwi_update(BoxId, AccountId) ->
-    timer:sleep(?MILLISECONDS_IN_SECOND),
-
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    {'ok', BoxJObj} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
-    OwnerId = kzd_voicemail_box:owner_id(BoxJObj),
-    BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
-
-    _ = kz_util:spawn(fun kz_endpoint:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    {New, Saved} = kvm_messages:count_non_deleted(AccountId, BoxId),
-    _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
-    lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
-
--spec send_mwi_update(non_neg_integer(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_mwi_update(New, Saved, BoxNumber, AccountId) ->
-    Realm = kzd_accounts:fetch_realm(AccountId),
-    To = <<BoxNumber/binary, "@", Realm/binary>>,
-    Command = [{<<"To">>, To}
-              ,{<<"Messages-New">>, New}
-              ,{<<"Messages-Saved">>, Saved}
-              ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("updating MWI for vmbox ~s@~s (~b/~b)", [BoxNumber, Realm, New, Saved]),
-    kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
-
 -spec get_devices_owned_by(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
     case kz_datamgr:get_results(DB
@@ -116,13 +82,11 @@ cavs_from_request(ReqData, QueryString) ->
     CAVs = kz_json:get_json_value(<<"custom_application_vars">>, ReqData, kz_json:new()),
     kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
+%%------------------------------------------------------------------------------
+%% @doc Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec attachment_name(binary(), kz_term:text()) -> kz_term:ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
@@ -222,7 +186,6 @@ get_token_cost(JObj, Default, Keys) ->
         V -> kz_term:to_integer(V)
     end.
 
-%% @public
 -spec take_sync_field(cb_context:context()) -> cb_context:context().
 take_sync_field(Context) ->
     Doc = cb_context:doc(Context),
@@ -232,7 +195,6 @@ take_sync_field(Context) ->
                                 ,{fun cb_context:set_doc/2, CleansedDoc}
                                 ]).
 
-%% @public
 -spec remove_plaintext_password(cb_context:context()) -> cb_context:context().
 remove_plaintext_password(Context) ->
     Doc = kz_json:delete_keys([<<"password">>
@@ -242,7 +204,6 @@ remove_plaintext_password(Context) ->
                              ),
     cb_context:set_doc(Context, Doc).
 
-%% @public
 -spec validate_number_ownership(kz_term:ne_binaries(), cb_context:context()) ->
                                        cb_context:context().
 validate_number_ownership(Numbers, Context) ->
@@ -286,15 +247,13 @@ apply_assignment_updates(Updates, Context) ->
     AssignResults = maybe_assign_to_app(NumUpdates, AccountId),
     PortAssignResults ++ AssignResults.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Split a list of assignment updates into a 2-element tuple; element
+%%------------------------------------------------------------------------------
+%% @doc Split a list of assignment updates into a 2-element tuple; element
 %% 1 is a list of port requests, element 2 is a list of numbers that
 %% are already active.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec split_port_requests(assignment_to_apply(), {port_req_assignments(), assignments_to_apply()}) ->
                                  {port_req_assignments(), assignments_to_apply()}.
 split_port_requests({DID, Assign}=ToApply, {PRUpdates, NumUpdates}) ->

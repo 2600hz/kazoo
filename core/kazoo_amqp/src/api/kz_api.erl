@@ -1,22 +1,20 @@
-%%%-------------------------------------------------------------------
-%%% @Copyright (C) 2010-2016, 2600Hz
-%%% @doc
-%%% Kazoo API Helpers
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Kazoo API Helpers.
 %%% Most API functions take a proplist, filter it against required headers
 %%% and optional headers, and return either the JSON string if all
 %%% required headers (default AND API-call-specific) are present, or an
 %%% error if some headers are missing.
 %%%
-%%% To only check the validity, use the api call's corresponding *_v/1 function.
+%%% To only check the validity, use the API call's corresponding *_v/1 function.
 %%% This will parse the proplist and return a boolean()if the proplist is valid
 %%% for creating a JSON message.
 %%%
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_api).
 
 %% API
@@ -69,9 +67,14 @@
 -export([has_any/2, has_all/2]).
 -endif.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec server_id(kz_json:object()) -> kz_term:api_binary().
 server_id(JObj) ->
     kz_json:get_ne_binary_value(?KEY_SERVER_ID, JObj).
@@ -142,14 +145,12 @@ reply_to(Props) when is_list(Props) ->
 reply_to(JObj) ->
     kz_json:get_value(?KEY_REPLY_TO_PID, JObj).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki
 %% Creates the seed proplist for the eventual message to be sent
 %% All fields are required general headers.
 %% @end
-%%--------------------------------------------------------------------
--spec default_headers_v(kz_term:api_terms()) -> boolean().
-
+%%------------------------------------------------------------------------------
 
 -spec default_headers(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(AppName, AppVsn) ->
@@ -177,6 +178,9 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     ,{?KEY_NODE, kz_term:to_binary(node())}
     ].
 
+-spec default_headers_v(kz_term:api_terms()) -> boolean().
+
+
 default_headers_v(Props) when is_list(Props) ->
     Filtered = props:filter_empty(Props),
     lists:all(fun(K) -> default_header_v(K, Filtered) end, ?DEFAULT_HEADERS);
@@ -193,12 +197,11 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     ApiMod = kz_term:to_atom(Wapi),
     ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Set any missing defaults with the values defined in the by the
+%%------------------------------------------------------------------------------
+%% @doc Set any missing defaults with the values defined in the by the
 %% validation definitions and remove any empty values
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type api_formatter_fun() :: fun((kz_term:api_terms()) -> api_formatter_return()).
 -type prepare_option_el() :: {'formatter', api_formatter_fun()} |
                              {'remove_recursive', boolean()}.
@@ -223,12 +226,11 @@ prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
 prepare_api_payload(JObj, HeaderValues, Options) ->
     prepare_api_payload(kz_json:to_proplist(JObj), HeaderValues, Options).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Set any missing defaults with the values defined in the by the
+%%------------------------------------------------------------------------------
+%% @doc Set any missing defaults with the values defined in the by the
 %% validation definitions
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec set_missing_values(kz_term:api_terms(), kz_term:proplist()) -> kz_term:api_terms().
 set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
     lists:foldl(fun({_, V}, PropAcc) when is_list(V) ->
@@ -242,12 +244,11 @@ set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
 set_missing_values(JObj, HeaderValues) ->
     kz_json:from_list(set_missing_values(kz_json:to_proplist(JObj), HeaderValues)).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Recursively cleans a proplist or json object, returning the same
+%%------------------------------------------------------------------------------
+%% @doc Recursively cleans a proplist or json object, returning the same
 %% type given
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_empty_values(kz_term:api_terms()) -> kz_term:api_terms().
 remove_empty_values(API) ->
     remove_empty_values(API, 'true').
@@ -287,10 +288,10 @@ is_empty([]) -> 'true';
 is_empty(<<>>) -> 'true';
 is_empty(_) -> 'false'.
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Extract just the default headers from a message
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec extract_defaults(kz_term:api_terms()) -> kz_term:proplist().
 extract_defaults(Prop) when is_list(Prop) ->
     %% not measurable faster over the foldl, but cleaner (imo)
@@ -310,11 +311,11 @@ remove_defaults(JObj) ->
                        ,kz_json:delete_keys(?DEFAULT_HEADERS, JObj)
                        ).
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Format an error event
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec error_resp(kz_term:api_terms()) -> api_formatter_return().
 error_resp(Prop) when is_list(Prop) ->
     case error_resp_v(Prop) of
@@ -339,9 +340,14 @@ publish_error(TargetQ, Error, ContentType) ->
     {'ok', Payload} = prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun error_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec validate(kz_term:api_terms(), api_headers(), api_valid_values(), api_types()) -> boolean().
 validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
     case has_all(Prop, ?DEFAULT_HEADERS)

@@ -1,23 +1,21 @@
-%%==============================================================================
-%% @copyright (C) 2012, Jeremy Raymond
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%%
-%% http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
-%%==============================================================================
-
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2012-, Jeremy Raymond
+%%%
+%%% Licensed under the Apache License, Version 2.0 (the "License");
+%%% you may not use this file except in compliance with the License.
+%%% You may obtain a copy of the License at
+%%%
+%%% http://www.apache.org/licenses/LICENSE-2.0
+%%%
+%%% Unless required by applicable law or agreed to in writing, software
+%%% distributed under the License is distributed on an "AS IS" BASIS,
+%%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%%% See the License for the specific language governing permissions and
+%%% limitations under the License.
+%%%
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
-%%% @doc
-%%% The amqp_cron module provides a distrubuted task scheduler for
+%%%
+%%% @doc The amqp_cron module provides a distributed task scheduler for
 %%% executing tasks periodically. The connected nodes elect a leader
 %%% to manage task scheduling and execution. Should the current leader
 %%% become unavailable a new leader node is elected who resumes task
@@ -34,10 +32,8 @@
 %%% currently are not supported.
 %%%
 %%% @see amqp_cron_task
-%%%
 %%% @end
-%%% Created : 31 Jan 2012 by Jeremy Raymond <jeraymond@gmail.com>
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(amqp_cron).
 
 %% API
@@ -87,59 +83,55 @@
                }).
 -type state() :: #state{}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Creates a linked process to manage scheduled tasks in coordination
+%%------------------------------------------------------------------------------
+%% @doc Creates a linked process to manage scheduled tasks in coordination
 %% with the given nodes. The current node must be part of the node
 %% list. Each amqp_cron node must be working with the same list of
 %% nodes to coordinate correctly.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec start_link([node()]) -> kz_types:startlink_ret().
 start_link(Nodes) ->
     Opts = [],
     amqp_leader:start_link(?SERVER, Nodes, Opts, ?MODULE, [], []).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Gets the status of this scheduler.
-%%
+%%------------------------------------------------------------------------------
+%% @doc Gets the status of this scheduler.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec status() -> Status when
       Status :: {[any()]}.
 status() ->
     amqp_leader_proc:call(?SERVER, 'status').
 
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc
 %% Schedules a task. See {@link amqp_cron_task} for scheduling
 %% details.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec schedule_task(Schedule, Exec) -> {'ok', pid()} | {'error', any()} when
       Schedule :: amqp_cron_task:schedule(),
       Exec :: amqp_cron_task:execargs().
 schedule_task(Schedule, Exec) ->
     amqp_leader_proc:leader_call(?SERVER, {'schedule', {'undefined', Schedule, Exec}}).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Schedules a named task. There cannot be more than one task with
+%%------------------------------------------------------------------------------
+%% @doc Schedules a named task. There cannot be more than one task with
 %% a given name at any one time. See {@link amqp_cron_task} for
 %% scheduling details.
 %%
-%% The name 'undefined' is reserved for all unnamed tasks and cannot
+%% The name `undefined' is reserved for all unnamed tasks and cannot
 %% be used.
 %%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec schedule_task(ident(), Schedule, Exec) ->
                            {'ok', pid()} | {'error', any()} when
       Schedule :: amqp_cron_task:schedule(),
@@ -148,23 +140,19 @@ schedule_task(Name, Schedule, Exec) when
       is_binary(Name); is_atom(Name), Name =/= 'undefined' ->
     amqp_leader_proc:leader_call(?SERVER, {'schedule', {Name, Schedule, Exec}}).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Cancels a task.
-%%
+%%------------------------------------------------------------------------------
+%% @doc Cancels a task.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec cancel_task(ident()) -> 'ok' | {'error', Reason} when
       Reason :: any().
 cancel_task(Ident) ->
     amqp_leader_proc:leader_call(?SERVER, {'cancel', Ident}).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Gets the status of a task.
-%%
+%%------------------------------------------------------------------------------
+%% @doc Gets the status of a task.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec task_status(ident()) -> {Status, ScheduleTime, TaskPid} when
       Status :: amqp_cron_task:status(),
       ScheduleTime :: amqp_cron_task:datetime(),
@@ -172,30 +160,30 @@ cancel_task(Ident) ->
 task_status(Ident) ->
     amqp_leader_proc:leader_call(?SERVER, {'task_status', Ident}).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Gets the list of tasks.
-%%
+%%------------------------------------------------------------------------------
+%% @doc Gets the list of tasks.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec task_list() -> [task()].
 task_list() ->
     amqp_leader_proc:leader_call(?SERVER, 'task_list').
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Remove tasks with a status of done.
-%%
+%%------------------------------------------------------------------------------
+%% @doc Remove tasks with a status of done.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec remove_done_tasks() -> 'ok'.
 remove_done_tasks() ->
     amqp_leader_proc:leader_call(?SERVER, 'remove_done_tasks').
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_leader callbacks
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{}}.
@@ -325,10 +313,14 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Election, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 save_tasks(State, Tasks) ->
     State#state{tasks = Tasks}.
 

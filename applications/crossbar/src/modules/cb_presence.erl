@@ -1,11 +1,8 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2013-2018, 2600Hz
 %%% @doc
-%%%
 %%% @end
-%%% @contributors
-
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module('cb_presence').
 
 -export([init/0
@@ -46,10 +43,14 @@
 
 -type search_result() :: {'ok', kz_json:object()} | {'error', any()}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
     Bindings = [{<<"*.allowed_methods.presence">>, 'allowed_methods'}
@@ -72,11 +73,10 @@ authenticate(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
     cb_context:magic_pathed(Context);
 authenticate(_Context, _Nouns, _Verb) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
@@ -86,15 +86,13 @@ authorize(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
     cb_context:magic_pathed(Context);
 authorize(_Context, _Nouns, _Verb) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%------------------------------------------------------------------------------
+%% @doc This function determines the verbs that are appropriate for the
+%% given Nouns. For example `/accounts/' can only accept `GET' and `PUT'.
 %%
-%% Failure here returns 405
+%% Failure here returns `405 Method Not Allowed'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -106,14 +104,11 @@ allowed_methods(?MATCH_REPORT_PREFIX) ->
 allowed_methods(_Extension) ->
     [?HTTP_GET, ?HTTP_POST].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the provided list of Nouns are valid.
+%% Failure here returns `404 Not Found'.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -121,13 +116,10 @@ resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_Extension) -> 'true'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function allows report to be downloaded.
-%%
+%%------------------------------------------------------------------------------
+%% @doc This function allows report to be downloaded.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(Context, ?MATCH_REPORT_PREFIX(Report)) ->
     content_types_provided_for_report(Context, Report);
@@ -141,15 +133,13 @@ content_types_provided_for_report(Context, Report) ->
         'true' -> cb_context:set_content_types_provided(Context, ?REPORT_CONTENT_TYPE)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the parameters and content are correct
+%%------------------------------------------------------------------------------
+%% @doc This function determines if the parameters and content are correct
 %% for this request
 %%
-%% Failure here returns 400
+%% Failure here returns 400.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
                       cb_context:context().

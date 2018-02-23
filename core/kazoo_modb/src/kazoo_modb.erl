@@ -1,11 +1,9 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz, INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Peter Defebvre
 %%% @end
-%%% @contributors
-%%% Peter Defebvre
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kazoo_modb).
 
 -include("kazoo_modb.hrl").
@@ -37,12 +35,10 @@
 
 -export_type([view_options/0]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get_results(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
                          {'ok', kz_json:objects()} |
@@ -103,12 +99,10 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
             {'ok', []}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec open_doc(kz_term:ne_binary(), kazoo_data:docid()) ->
                       {'ok', kz_json:object()} |
@@ -158,12 +152,10 @@ couch_open(AccountMODb, DocId, Options) ->
         Error -> Error
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec save_doc(kz_term:ne_binary(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
@@ -233,15 +225,14 @@ couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
 save_fun('false') -> fun kz_datamgr:save_doc/3;
 save_fun('true') -> fun kz_datamgr:ensure_saved/3.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Move a document from source to destination with attachments,
-%% optionally applies a transform function on the document
-%% Note: Caller is responsible to format both source and destination
-%% databases!
+%%------------------------------------------------------------------------------
+%% @doc Move a document from source to destination with attachments,
+%% optionally applies a transform function on the document.
+%%
+%% <div class="notice">Caller is responsible to format both source and destination
+%% databases!</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec move_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kazoo_data:docid()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
@@ -282,15 +273,14 @@ move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
         Error -> Error
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Copy a document from source to destination with attachments,
-%% optionally applies a transform function on the document
-%% Note: Caller is responsible to format both source and destination
-%% databases!
+%%------------------------------------------------------------------------------
+%% @doc Copy a document from source to destination with attachments,
+%% optionally applies a transform function on the document.
+%%
+%% <div class="notice">Caller is responsible to format both source and destination
+%% databases!</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec copy_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kazoo_data:docid()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
@@ -353,12 +343,10 @@ maybe_create_destination_db(FromDb, FromId, ToDb, Options) ->
             'source_not_exists'
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get_modb(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb) ->
@@ -403,12 +391,10 @@ get_modb(Account, Year, Month) ->
     AccountDb = kz_util:format_account_db(Account),
     kz_util:format_account_mod_id(AccountDb, Year, Month).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_create_current_modb(kz_term:ne_binary(), kz_term:proplist()) -> 'too_old' | boolean().
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb, Options) ->
     {Y, M, _} = erlang:date(),
@@ -480,12 +466,10 @@ refresh_views(AccountMODb) ->
     _ = kz_datamgr:refresh_views(EncodedMODb),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec run_routines(kz_term:ne_binary()) -> 'ok'.
 run_routines(AccountMODb) ->
     Routines = kapps_config:get_ne_binaries(?CONFIG_CAT, <<"routines">>, []),
@@ -519,12 +503,10 @@ migrate_routines([<<"wh_", Rest/binary>> | Rs], Acc) ->
 migrate_routines([R | Rs], Acc) ->
     migrate_routines(Rs, [R | Acc]).
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_archive_modb(kz_term:ne_binary()) -> 'ok'.
 maybe_archive_modb(AccountMODb) ->
     {Year, Month, _} = erlang:date(),
@@ -549,15 +531,14 @@ should_archive(AccountMODb, Year, Month) ->
             (Months - ModbMonths) > kapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
     end.
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Delete an modb if it is no longer associated with its account.
+%%------------------------------------------------------------------------------
+%% @doc Delete an modb if it is no longer associated with its account.
 %% (That is: orphaned).
 %% AccountMODb must be 'encoded' otherwise kz_datamgr:db_delete/1 will fail.
 %% AccountIds should be kapps_util:get_all_accounts('raw').
 %% Returns whether AccountMODb has been deleted.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec maybe_delete(kz_term:ne_binary(), [kz_term:ne_binary()]) -> boolean().
 maybe_delete(AccountMODb, AccountIds) ->
     AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
@@ -572,7 +553,6 @@ delete_if_orphaned(AccountMODb, 'true') ->
     Succeeded.
 
 
-%% @public
 
 -spec get_range(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                        kz_term:ne_binaries().
@@ -594,13 +574,11 @@ get_range(Type, AccountId, From, To) ->
 
 -type year_month_tuple() :: {kz_time:year(), kz_time:month()}.
 
-%% @public
 -spec get_year_month_sequence(kz_term:ne_binary(), year_month_tuple(), year_month_tuple()) ->
                                      kz_term:ne_binaries().
 get_year_month_sequence(Account, From, To) ->
     get_year_month_sequence(Account, From, To, []).
 
-%% @public
 -spec get_year_month_sequence(kz_term:ne_binary(), year_month_tuple(), year_month_tuple(), kz_term:proplist()) ->
                                      kz_term:ne_binaries().
 get_year_month_sequence(Account, Tuple, Tuple, Range) ->

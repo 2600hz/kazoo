@@ -1,10 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz INC
-%%% @doc
-%%% Store routing keys/pid bindings. When a binding is fired,
-%%% pass the payload to the pid for evaluation, accumulating
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
+%%% @doc Store routing keys/`pid' bindings. When a binding is fired,
+%%% pass the payload to the `pid' for evaluation, accumulating
 %%% the results for the response to the running process.
 %%%
+%%% ```
 %%% foo.erl -> bind("module.init").
 %%% *** Later ***
 %%% module.erl
@@ -13,11 +13,12 @@
 %%%                receive -> Resp
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
+%%% '''
+%%%
+%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kazoo_bindings).
 -behaviour(gen_server).
 
@@ -118,17 +119,17 @@
              ,kz_rt_options/0
              ]).
 
-%%%===================================================================
+%%%=============================================================================
 %%% API
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% return [ {Result, Payload1} ], a list of tuples, the first element
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Map Payload over bound handlers.
+%% Return `[{Result, Payload1}]', a list of tuples, the first element
 %% of which is the result of the bound handler, and the second element
-%% is the payload, possibly modified
+%% is the payload, possibly modified.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
@@ -175,13 +176,12 @@ get_binding_candidates(Vsn, Action) ->
                             ,['$_']
                             }]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% return the modified Payload after it has been threaded through
-%% all matching bindings
+%%------------------------------------------------------------------------------
+%% @doc Fold over bound handlers.
+%% Return the modified Payload after it has been threaded through
+%% all matching bindings.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     fold_processor(Routing, Payload, rt_options()).
@@ -190,11 +190,10 @@ fold(Routing, Payload) ->
 fold(Routing, Payload, Options) ->
     fold_processor(Routing, Payload, rt_options(Options)).
 
-%%-------------------------------------------------------------------
-%% @doc
-%% Helper functions for working on a result set of bindings
+%%------------------------------------------------------------------------------
+%% @doc Helper functions for working on a result set of bindings.
 %% @end
-%%-------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec any(kz_term:proplist(), function()) -> boolean().
 any(Res, F) when is_list(Res),
                  is_function(F, 1)
@@ -219,20 +218,17 @@ succeeded(Res, F) when is_list(Res),
                        ->
     [R || R <- Res, F(R)].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Match routing patterns. * matches 1 slot, # 0 or more.
-%% Note: matching only accepts wilcards on first argument (asymetric).
+%%------------------------------------------------------------------------------
+%% @doc Match routing patterns. `*' matches one slot, `#' matches zero or more.
+%% For example `<<"#.6.*.1.4.*">>' can match `<<"6.a.a.6.a.1.4.a">>'.
+%%
+%% <div class="notice">Matching only accepts wild-cards on first argument
+%% (asymmetric).</div>
 %% @end
-%%
-%% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
-%%
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec matches(kz_term:ne_binaries(), kz_term:ne_binaries()) -> boolean().
 
-%% if both are empty, we made it!
-matches([], []) -> 'true';
+matches([], []) -> 'true'; %% if both are empty, we made it!
 matches([<<"#">>], []) -> 'true';
 
 matches([<<"#">>, <<"*">>], []) -> 'false';
@@ -287,9 +283,10 @@ matches([B | Bs], [B | Rs]) ->
 %% otherwise no match
 matches(_, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @doc Starts the server
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @doc Starts the server.
+%% @end
+%%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
@@ -373,41 +370,24 @@ find_me_function() ->  whereis(?SERVER).
 -spec gift_data() -> 'ok'.
 gift_data() -> 'ok'.
 
-%%%===================================================================
+%%%=============================================================================
 %%% gen_server callbacks
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
+%%------------------------------------------------------------------------------
+%% @doc Initializes the server.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("starting bindings server"),
     {'ok', #state{}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling call messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('is_ready', _From, #state{has_ets='true'}=State) ->
     {'reply', 'true', State};
@@ -504,16 +484,10 @@ add_binding(Binding, Responder, Pieces, Prefix) ->
                       },
     ets:insert_new(table_id(), Bind).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('flush', #state{}=State) ->
     ets:delete_all_objects(table_id()),
@@ -588,16 +562,10 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
                            )
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%%------------------------------------------------------------------------------
+%% @doc Handling all non call/cast messages.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER',_TableId, _From, _Gift}, State) ->
     lager:debug("recv transfer of control for ~s from ~p", [_TableId, _From]),
@@ -606,45 +574,37 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%%------------------------------------------------------------------------------
+%% @doc This function is called by a `gen_server' when it is about to
+%% terminate. It should be the opposite of `Module:init/1' and do any
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("bindings server terminating: ~p", [_Reason]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%%------------------------------------------------------------------------------
+%% @doc Convert process state when code is changed/
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If a binding_result uses 'eoq' for its response, the payload is
+%%------------------------------------------------------------------------------
+%% @doc Fold over responders and accumulate the responses.
+%% If a binding result uses `eoq' for its response, the payload is
 %% ignored and the subscriber is re-inserted into the queue, with the
 %% previous payload being passed to the next invocation.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec fold_bind_results(kz_responders(), any(), kz_term:ne_binary()) -> any().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
 fold_bind_results([], Payload, _Route) -> Payload;

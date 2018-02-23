@@ -1,8 +1,12 @@
-%%
-%% Simple (and mostly naive) script that connects to a remote Erlang node,
-%% fetches memory and process statistics and prints them in a Sensu compatible way
-%% for metrics gathering (great for Graphite)
-%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2017-2018, 2600Hz
+%%% @doc Simple (and mostly naive) script that connects to a remote Erlang node,
+%%% fetches memory and process statistics and prints them in a Sensu compatible way
+%%% for metrics gathering (great for Graphite)
+%%%
+%%% @author Pierre Fenoll
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kazoo_perf_maintenance).
 
 -export([graphite_metrics/3

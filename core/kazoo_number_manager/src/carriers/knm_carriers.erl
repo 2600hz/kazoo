@@ -1,13 +1,10 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2018, 2600Hz
 %%% @doc
-%%%
-%%%
+%%% @author Peter Defebvre
+%%% @author Pierre Fenoll
 %%% @end
-%%% @contributors
-%%%   Peter Defebvre
-%%%   Pierre Fenoll
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(knm_carriers).
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -81,12 +78,10 @@
 -export_type([option/0, options/0]).
 
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Normalize then query the various providers for available numbers.
+%%------------------------------------------------------------------------------
+%% @doc Normalize then query the various providers for available numbers.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec check(kz_term:ne_binaries()) -> kz_json:object().
 check(Numbers) ->
     Nums = lists:usort([knm_converters:normalize(Num) || Num <- Numbers]),
@@ -114,12 +109,10 @@ check_numbers(Module, Nums) ->
             {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create a list of all carrier modules available to a subaccount.
+%%------------------------------------------------------------------------------
+%% @doc Create a list of all carrier modules available to a subaccount.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec available_carriers(options()) -> kz_term:atoms().
 -ifdef(TEST).
 available_carriers(Options) ->
@@ -152,12 +145,10 @@ default_carriers() ->
 default_carrier() ->
     ?DEFAULT_CARRIER_MODULE.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% List all carrier modules.
+%%------------------------------------------------------------------------------
+%% @doc List all carrier modules.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec all_modules() -> kz_term:ne_binaries().
 all_modules() ->
     [<<"knm_bandwidth2">>
@@ -176,12 +167,10 @@ all_modules() ->
     ,<<"knm_voip_innovations">>
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get information on the available carriers
+%%------------------------------------------------------------------------------
+%% @doc Get information on the available carriers
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec info(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
 info(AuthAccountId, AccountId, ResellerId) ->
     AvailableCarriers = available_carriers([{account_id, AccountId}
@@ -230,12 +219,10 @@ allowed_creation_states(AccountId) ->
     knm_number:allowed_creation_states(AccountId).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Buy a number from its carrier module
+%%------------------------------------------------------------------------------
+%% @doc Buy a number from its carrier module
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec acquire(knm_number:knm_number()) -> knm_number:knm_number();
              (knm_numbers:collection()) -> knm_numbers:collection().
 acquire(T0=#{todo := Ns}) ->
@@ -266,11 +253,10 @@ acquire(Number, ?NE_BINARY=Mod, 'false') ->
             Number
     end.
 
-%%--------------------------------------------------------------------
-%% @public
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec disconnect(knm_number:knm_number()) -> knm_number:knm_number();
                 (knm_numbers:collection()) -> knm_numbers:collection().
 disconnect(T0=#{todo := Ns}) ->
@@ -330,12 +316,10 @@ account_id(Options) ->
 reseller_id(Options) ->
     props:get_value('reseller_id', Options).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns whether carrier handles numbers local to the system.
+%%------------------------------------------------------------------------------
+%% @doc Returns whether carrier handles numbers local to the system.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(PhoneNumber) ->
     Carrier = knm_phone_number:module_name(PhoneNumber),
@@ -344,17 +328,16 @@ is_number_billable(PhoneNumber) ->
         'error':_R -> 'true'
     end.
 
-%%%===================================================================
+%%%=============================================================================
 %%% Internal functions
-%%%===================================================================
+%%%=============================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns whether carrier handles numbers local to the system.
-%% Note: a non-local (foreign) carrier module makes HTTP requests.
+%%------------------------------------------------------------------------------
+%% @doc Returns whether carrier handles numbers local to the system.
+%%
+%% <div class="notice">A non-local (foreign) carrier module makes HTTP requests.</div>
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec is_local(kz_term:ne_binary()) -> boolean().
 is_local(Carrier) ->
     try apply(Carrier, is_local, [])
@@ -364,11 +347,10 @@ is_local(Carrier) ->
             true
     end.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec apply(module() | kz_term:ne_binary() | knm_number:knm_number(), atom(), list()) -> any().
 apply(Module, FName, Args) when is_atom(Module), Module =/= undefined ->
     lager:debug("contacting carrier ~s for ~s", [Module, FName]),
@@ -380,11 +362,10 @@ apply(Number, FName, Args) ->
     Carrier = knm_phone_number:module_name(knm_number:phone_number(Number)),
     apply(Carrier, FName, Args).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec keep_only_reachable([kz_term:ne_binary()]) -> kz_term:atoms().
 keep_only_reachable(ModuleNames) ->
     ?LOG_DEBUG("resolving carrier modules: ~p", [ModuleNames]),

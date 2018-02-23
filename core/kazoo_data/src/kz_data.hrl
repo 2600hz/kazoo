@@ -40,6 +40,7 @@
                   }).
 -type copy_doc() :: #copy_doc{}.
 
+-type error_verbosity() :: 'default' | 'verbose'.
 -type data_errors() :: 'conflict' |
                        'db_not_found' |
                        'db_not_reachable' |

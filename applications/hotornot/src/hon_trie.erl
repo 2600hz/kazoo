@@ -1,20 +1,23 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
-%%% @doc
-%%% Rater whapp; send me a DID, get a rate back
-%%%
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
+%%% @doc Rater whapp; send me a DID, get a rate back.
+%%% ```
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix
 %%% (1127494 * 8) div 78009 = 115
+%%% '''
 %%%
 %%% Processing:
+%%%
+%%% ```
 %%% timer:tc(hon_trie, match_did, [<<"53341341354">>]).
 %%%  {132,...}
 %%% timer:tc(hon_util, candidate_rates, [<<"53341341354">>]).
 %%%  {16989,...}
+%%% '''
+%%%
+%%% @author James Aimonetti
 %%% @end
-%%% @contributors
-%%%   James Aimonetti
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(hon_trie).
 -behaviour(gen_server).
 

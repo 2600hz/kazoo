@@ -1,18 +1,21 @@
-%%
-%% REMOVE THIS FILE WHEN KZ_UTIL IS FIXED
-%%
-%% @copyright 2007 Mochi Media, Inc.
-%% @author Bob Ippolito <bob@mochimedia.com>
+%%%-----------------------------------------------------------------------------
+%%% @copyright 2007 Mochi Media, Inc.
+%%% @doc Useful numeric algorithms for floats that cover some deficiencies
+%%% in the math module.
+%%%
+%%% More interesting is digits/1, which implements the algorithm from:
+%%% http://www.cs.indiana.edu/~burger/fp/index.html
+%%% See also "Printing Floating-Point Numbers Quickly and Accurately"
+%%% in Proceedings of the SIGPLAN '96 Conference on Programming Language
+%%% Design and Implementation.
+%%% module renamed due to conflicts with rabbitmq_common
+%%%
+%%% TODO: REMOVE THIS FILE WHEN {@link kz_util} IS FIXED!
+%%%
+%%% @author Bob Ippolito <bob@mochimedia.com>
+%%% @end
+%%%-----------------------------------------------------------------------------
 
-%% @doc Useful numeric algorithms for floats that cover some deficiencies
-%% in the math module. More interesting is digits/1, which implements
-%% the algorithm from:
-%% http://www.cs.indiana.edu/~burger/fp/index.html
-%% See also "Printing Floating-Point Numbers Quickly and Accurately"
-%% in Proceedings of the SIGPLAN '96 Conference on Programming Language
-%% Design and Implementation.
-
-%% module renamed due to conflicts with rabbitmq_common
 
 -module(kz_mochinum).
 -author("Bob Ippolito <bob@mochimedia.com>").
@@ -26,7 +29,7 @@
 %% External API
 
 -spec digits(number()) -> string().
-%% @doc  Returns a string that accurately represents the given integer or float
+%% @doc Returns a string that accurately represents the given integer or float
 %%       using a conservative amount of digits. Great for generating
 %%       human-readable output, or compact ASCII serializations for floats.
 digits(N) when is_integer(N) ->
@@ -46,14 +49,14 @@ digits(Float) ->
     end.
 
 -spec frexp(F::number()) -> {Frac::float(), Exp::integer()}.
-%% @doc  Return the fractional and exponent part of an IEEE 754 double,
+%% @doc Return the fractional and exponent part of an IEEE 754 double,
 %%       equivalent to the libc function of the same name.
 %%       F = Frac * pow(2, Exp).
 frexp(F) ->
     frexp1(unpack(F)).
 
 -spec int_pow(X::integer(), N::integer()) -> Y::integer().
-%% @doc  Moderately efficient way to exponentiate integers.
+%% @doc Moderately efficient way to exponentiate integers.
 %%       int_pow(10, 2) = 100.
 int_pow(_X, 0) ->
     1;
@@ -61,7 +64,7 @@ int_pow(X, N) when N > 0 ->
     int_pow(X, N, 1).
 
 -spec int_ceil(F::float()) -> integer().
-%% @doc  Return the ceiling of F as an integer. The ceiling is defined as
+%% @doc Return the ceiling of F as an integer. The ceiling is defined as
 %%       F when F == trunc(F);
 %%       trunc(F) when F &lt; 0;
 %%       trunc(F) + 1 when F &gt; 0.

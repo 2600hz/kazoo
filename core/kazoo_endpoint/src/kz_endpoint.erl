@@ -1,13 +1,11 @@
-%%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz INC
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2018, 2600Hz
 %%% @doc
-%%%
+%%% @author Karl Anderson
+%%% @author James Aimonetti
+%%% @author Luis Azedo
 %%% @end
-%%% @contributors
-%%%   Karl Anderson
-%%%   James Aimonetti
-%%%   Luis Azedo
-%%%-------------------------------------------------------------------
+%%%-----------------------------------------------------------------------------
 -module(kz_endpoint).
 
 -export([get/1, get/2]).
@@ -20,11 +18,6 @@
         ,get_sip_realm/2, get_sip_realm/3
         ]).
 
--export([unsolicited_owner_mwi_update/2
-        ,unsolicited_endpoint_mwi_update/2
-        ,send_mwi_update/5
-        ]).
-
 -ifdef(TEST).
 -export([attributes_keys/0]).
 -endif.
@@ -32,8 +25,6 @@
 -include("kazoo_endpoint.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
--define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 
 -define(NON_DIRECT_MODULES, [<<"cf_ring_group">>, <<"acdc_util">>]).
 
@@ -92,12 +83,10 @@
                           {'error', 'invalid_endpoint_id'} |
                           kz_datamgr:data_error().
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Fetches a endpoint defintion from the database or cache
+%%------------------------------------------------------------------------------
+%% @doc Fetches a endpoint defintion from the database or cache
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec get(kapps_call:call()) -> api_std_return().
 get(Call) -> get(kapps_call:authorizing_id(Call), Call).
@@ -214,16 +203,11 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
                         end, Props, OwnerIds)
     end.
 
--spec maybe_format_endpoint(kz_json:object(), boolean()) -> kz_json:object().
-maybe_format_endpoint(Endpoint, 'true') ->
-    lager:debug("no formatters defined"),
+-spec maybe_format_endpoint(kz_json:object(), kz_term:api_object()) -> kz_json:object().
+maybe_format_endpoint(Endpoint, 'undefined') ->
     Endpoint;
-maybe_format_endpoint(Endpoint, 'false') ->
-    Formatters = kz_json:get_json_value(<<"formatters">>, Endpoint),
-    Formatted = kz_formatters:apply(Endpoint, Formatters, 'outbound'),
-    lager:debug("with ~p formatted ~p", [Formatters, Endpoint]),
-    lager:debug("formatted as ~p", [Formatted]),
-    Formatted.
+maybe_format_endpoint(Endpoint, Formatters) ->
+    kz_formatters:apply(Endpoint, Formatters, 'outbound').
 
 -spec merge_attributes(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 merge_attributes(Endpoint, Type) ->
@@ -603,12 +587,10 @@ create_endpoint_name(First, 'undefined', _, _) -> First;
 create_endpoint_name('undefined', Last, _, _) -> Last;
 create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Flush the callflow cache
+%%------------------------------------------------------------------------------
+%% @doc Flush the callflow cache
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec flush_account(kz_term:ne_binary()) -> 'ok'.
 flush_account(AccountDb) ->
@@ -641,16 +623,14 @@ flush(Db, Id) ->
 
     'ok' = kz_amqp_worker:cast(Props, Fun).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Creates one or more kazoo API endpoints for use in a bridge string.
+%%------------------------------------------------------------------------------
+%% @doc Creates one or more kazoo API endpoints for use in a bridge string.
 %% Takes into account settings on the callflow, the endpoint, call
 %% forwarding, and ringtones.  More functionality to come, but as it is
 %% added it will be implicit in all functions that 'ring an endpoing'
 %% like devices, ring groups, and resources.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -type build_errors() :: 'db_not_reachable' | 'endpoint_disabled'
                       | 'endpoint_called_self' | 'endpoint_id_undefined'
                       | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
@@ -853,13 +833,11 @@ maybe_exclude_from_queues(Endpoint, _Properties, Call) ->
         'true' -> {'error', 'exclude_from_queues'}
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% creates the actual endpoint json objects for use in the kazoo
+%%------------------------------------------------------------------------------
+%% @doc creates the actual endpoint json objects for use in the kazoo
 %% bridge API.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_endpoints(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                               {'ok', kz_json:objects()} |
                               {'error', 'no_endpoints'}.
@@ -1052,14 +1030,12 @@ guess_endpoint_type(Endpoint, []) ->
         _Else -> <<"sip">>
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Creates the kazoo API endpoint for a bridge call command. This
-%% endpoint is comprised of the endpoint definition (commonally a
+%%------------------------------------------------------------------------------
+%% @doc Creates the kazoo API endpoint for a bridge call command. This
+%% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -record(clid, {caller_number :: kz_term:api_binary()
               ,caller_name :: kz_term:api_binary()
               ,callee_name :: kz_term:api_binary()
@@ -1154,7 +1130,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
                        | maybe_get_t38(Endpoint, Call)
                       ])),
-    maybe_format_endpoint(SIPEndpoint, kz_term:is_empty(kz_json:get_json_value(<<"formatters">>, Endpoint))).
+    maybe_format_endpoint(SIPEndpoint, kz_json:get_json_value(<<"formatters">>, Endpoint)).
 
 -spec maybe_get_t38(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
 maybe_get_t38(Endpoint, Call) ->
@@ -1246,11 +1222,10 @@ push_headers(PushJObj) ->
                         {<<"X-KAZOO-PUSHER-", K/binary>>, V}
                 end, PushJObj).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_sip_transport(kz_json:object()) -> kz_term:api_binary().
 get_sip_transport(SIPJObj) ->
     case validate_sip_transport(kz_json:get_value(<<"transport">>, SIPJObj)) of
@@ -1266,11 +1241,10 @@ validate_sip_transport(<<"tls">>) -> <<"tls">>;
 validate_sip_transport(<<"sctp">>) -> <<"sctp">>;
 validate_sip_transport(_) -> 'undefined'.
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_custom_sip_interface(kz_json:object()) -> kz_term:api_ne_binary().
 get_custom_sip_interface(JObj) ->
     case kz_json:get_value(<<"custom_sip_interface">>, JObj) of
@@ -1279,14 +1253,12 @@ get_custom_sip_interface(JObj) ->
         Else -> Else
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Creates the kazoo API endpoint for a bridge call command. This
-%% endpoint is comprised of the endpoint definition (commonally a
+%%------------------------------------------------------------------------------
+%% @doc Creates the kazoo API endpoint for a bridge call command. This
+%% endpoint is comprised of the endpoint definition (commonly a
 %% device) and the properties of this endpoint in the callflow.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_skype_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                    kz_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->
@@ -1299,16 +1271,14 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
       ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
       ]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Creates the Kazoo API endpoint for a bridge call command when
+%%------------------------------------------------------------------------------
+%% @doc Creates the Kazoo API endpoint for a bridge call command when
 %% the device (or owner) has forwarded their phone.  This endpoint
 %% is comprised of a route based on CallFwd, the relevant settings
-%% from the actuall endpoint, and the properties of this endpoint in
+%% from the actually endpoint, and the properties of this endpoint in
 %% the callflow.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_call_fwd_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                       kz_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, Call) ->
@@ -1345,12 +1315,10 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
       ]).
 
-%%--------------------------------------------------------------------
-%% @private
+%%------------------------------------------------------------------------------
 %% @doc
-%%
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec create_mobile_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                     kz_json:object() |
                                     {'error', kz_term:ne_binary()}.
@@ -1427,13 +1395,11 @@ maybe_add_mobile_path(Route) ->
         'true' -> Route
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will return the sip headers that should be set for
+%%------------------------------------------------------------------------------
+%% @doc This function will return the sip headers that should be set for
 %% the endpoint
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec generate_sip_headers(kz_json:object(), kapps_call:call()) ->
                                   kz_json:object().
 generate_sip_headers(Endpoint, Call) ->
@@ -1530,14 +1496,12 @@ maybe_add_aor(JObj, _, 'undefined', _Realm) -> JObj;
 maybe_add_aor(JObj, _, Username, Realm) ->
     kz_json:set_value(<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>> , JObj).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will return the custom channel vars that should be
+%%------------------------------------------------------------------------------
+%% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec generate_ccvs(kz_json:object(), kapps_call:call()) -> kz_json:object().
 generate_ccvs(Endpoint, Call) ->
@@ -1903,12 +1867,10 @@ build_mobile_sms_amqp_route_options(JObj) ->
     ,{<<"Exchange-Options">>, kz_json:get_json_value(<<"options">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS)}
     ].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Get the sip realm
+%%------------------------------------------------------------------------------
+%% @doc Get the sip realm
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec get_sip_realm(kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
 get_sip_realm(SIPJObj, AccountId) ->
     get_sip_realm(SIPJObj, AccountId, 'undefined').
@@ -1924,14 +1886,12 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
         Realm -> Realm
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will return the custom channel vars that should be
+%%------------------------------------------------------------------------------
+%% @doc This function will return the custom channel vars that should be
 %% set for this endpoint depending on its settings, and the current
 %% call.
 %% @end
-%%--------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 
 -spec endpoint_actions(kz_json:object(), kapps_call:call()) -> kz_json:object().
 endpoint_actions(Endpoint, Call) ->
@@ -1966,158 +1926,3 @@ maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
                     {Endpoint, Call, CallFwd, NewActions}
             end
     end.
-
--type mwi_update_return() :: 'missing_account_db' |
-                             'missing_owner_id'.
-
--spec unsolicited_owner_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
-                                          'ok' |
-                                          {'error', mwi_update_return()} |
-                                          kz_datamgr:data_error().
-unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
-unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
-unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
-    unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
-
--spec unsolicited_owner_mwi_update(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
-                                          'ok' |
-                                          {'error', mwi_update_return()} |
-                                          kz_datamgr:data_error().
-unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
-    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
-unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
-    ViewOptions = [{'key', [OwnerId, <<"device">>]}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-            lists:foreach(
-              fun(JObj) -> maybe_send_mwi_update(JObj, AccountId, New, Saved) end
-                         ,JObjs
-             );
-        {'error', _R}=E ->
-            lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
-            E
-    end.
-
--spec maybe_send_mwi_update(kz_json:object(), kz_term:ne_binary(), integer(), integer()) -> 'ok'.
-maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
-    J = kz_json:get_value(<<"doc">>, JObj),
-    Username = kzd_devices:sip_username(J),
-    Realm = get_sip_realm(J, AccountId),
-    OwnerId = get_endpoint_owner(J),
-    case <<"password">> =:= kzd_devices:sip_method(J)
-        andalso 'undefined' =/= Username
-        andalso 'undefined' =/= Realm
-        andalso 'undefined' =/= OwnerId
-        andalso kzd_devices:mwi_unsolicitated_updates(J)
-    of
-        'true' -> send_mwi_update(New, Saved, Username, Realm);
-        'false' -> 'ok'
-    end.
-
-
--spec unsolicited_endpoint_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
-                                             'ok' | {'error', any()}.
-unsolicited_endpoint_mwi_update('undefined', _) ->
-    {'error', 'missing_account_db'};
-unsolicited_endpoint_mwi_update(_, 'undefined') ->
-    {'error', 'missing_owner_id'};
-unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
-    unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
-
--spec unsolicited_endpoint_mwi_update(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
-                                             'ok' | {'error', any()}.
-unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
-    lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
-unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
-    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
-        {'error', _}=E -> E;
-        {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
-    end.
-
-
--spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object()) ->
-                                            'ok' | {'error', 'not_appropriate'}.
-maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
-    maybe_send_endpoint_mwi_update(AccountDb, JObj, kzd_devices:mwi_unsolicitated_updates(JObj)).
-
--spec maybe_send_endpoint_mwi_update(kz_term:ne_binary(), kz_json:object(), boolean()) ->
-                                            'ok' | {'error', 'not_appropriate'}.
-maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
-    lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
-maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    Username = kzd_devices:sip_username(JObj),
-    Realm = get_sip_realm(JObj, AccountId),
-    OwnerId = get_endpoint_owner(JObj),
-    case <<"password">> =:= kzd_devices:sip_method(JObj)
-        andalso 'undefined' =/= Username
-        andalso 'undefined' =/= Realm
-    of
-        'false' -> {'error', 'not_appropriate'};
-        'true' ->
-            {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            send_mwi_update(New, Saved, Username, Realm)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--type vm_count() :: non_neg_integer().
--spec send_mwi_update(vm_count(), vm_count(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm) ->
-    send_mwi_update(New, Saved, Username, Realm, kz_json:new()).
-
--spec send_mwi_update(vm_count(), vm_count(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm, JObj) ->
-    Command = [{<<"To">>, <<Username/binary, "@", Realm/binary>>}
-              ,{<<"Messages-New">>, New}
-              ,{<<"Messages-Saved">>, Saved}
-              ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("updating MWI for ~s@~s (~p/~p)", [Username, Realm, New, Saved]),
-    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
-
-
--spec is_unsolicited_mwi_enabled(kz_term:ne_binary()) -> boolean().
-is_unsolicited_mwi_enabled(AccountId) ->
-    kapps_config:get_is_true(<<"callflow">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
-        andalso kz_term:is_true(kapps_account_config:get(AccountId, <<"callflow">>, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
-
--spec vm_count_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
-vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
-    kvm_messages:count_by_owner(AccountDb, OwnerId).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoint_owner(kz_json:object()) -> kz_term:api_ne_binary().
-get_endpoint_owner(JObj) ->
-    maybe_get_endpoint_hotdesk_owner(JObj).
-
--spec maybe_get_endpoint_hotdesk_owner(kz_json:object()) -> kz_term:api_ne_binary().
-maybe_get_endpoint_hotdesk_owner(JObj) ->
-    case kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
-        [] -> maybe_get_endpoint_assigned_owner(JObj);
-        [OwnerId] -> OwnerId;
-        [_|_] -> 'undefined'
-    end.
-
--spec maybe_get_endpoint_assigned_owner(kz_json:object()) -> kz_term:api_ne_binary().
-maybe_get_endpoint_assigned_owner(JObj) ->
-    kz_json:get_ne_binary_value(<<"owner_id">>, JObj).
