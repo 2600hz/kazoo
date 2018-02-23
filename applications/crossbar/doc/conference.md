@@ -30,6 +30,7 @@ Key | Description | Type | Default | Required | Support Level
 `member.numbers` | Defines the conference (call in) number(s) for members | `array(string())` | `[]` | `false` |  
 `member.pins.[]` |   | `string()` |   | `false` |  
 `member.pins` | Defines the pin number(s) for members | `array(string())` | `[]` | `false` |  
+`member.play_entry_prompt` | Whether to play the entry prompt on member join | `boolean()` |   | `false` |  
 `member` | Defines the discovery (call in) properties for a member | `object()` | `{}` | `false` |  
 `moderator.join_deaf` | Determines if a moderator will join deaf | `boolean()` | `false` | `false` |  
 `moderator.join_muted` | Determines if a moderator will join muted | `boolean()` | `false` | `false` |  

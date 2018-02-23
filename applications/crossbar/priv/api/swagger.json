@@ -4006,6 +4006,10 @@
                                 "type": "string"
                             },
                             "type": "array"
+                        },
+                        "play_entry_prompt": {
+                            "description": "Whether to play the entry prompt on member join",
+                            "type": "boolean"
                         }
                     },
                     "type": "object"
