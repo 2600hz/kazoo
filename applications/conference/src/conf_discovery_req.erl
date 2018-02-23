@@ -45,20 +45,25 @@ create_conference(DiscoveryReq, Call, ConferenceId) ->
 -spec maybe_welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
 maybe_welcome_to_conference(Srv, Conference) ->
     case kapps_conference:play_welcome(Conference) of
-        'false' -> maybe_collect_conference_id(Srv, Conference);
+        'false' ->
+            lager:debug("not playing welcome prompt"),
+            maybe_collect_conference_id(Srv, Conference);
         'true' -> welcome_to_conference(Srv, Conference)
     end.
 
 -spec welcome_to_conference(pid(), kapps_conference:conference()) -> 'ok'.
 welcome_to_conference(Srv, Conference) ->
     Call = kapps_conference:call(Conference),
-    %%case kapps_conference:welcome_media(Conference) of
+
     DiscoveryJObj = kapps_conference:discovery_request(Conference),
-    _ = case kz_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
-            'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
-            Media -> kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call))
-                                            ,Call
-                                            )
+
+    _ = case kz_json:get_ne_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
+            'undefined' ->
+                lager:debug("no welcome media on discovery, using prompt"),
+                kapps_call_command:prompt(<<"conf-welcome">>, Call);
+            Media ->
+                lager:debug("playing welcome media from discovery: ~s", [Media]),
+                kapps_call_command:play(kz_media_util:media_path(Media, kapps_call:account_id(Call)), Call)
         end,
     maybe_collect_conference_id(Srv, Conference).
 
@@ -401,11 +406,17 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
                                             {'ok', kapps_conference:conference()} |
                                             {'error', any()}.
 validate_collected_member_pins(Conference, Call, Loop, Digits) ->
-    Pins = kapps_conference:member_pins(Conference),
-    case lists:member(Digits, Pins)
-        orelse (Pins =:= []
-                andalso Digits =:= <<>>)
-    of
+    validate_collected_member_pins(Conference, Call, Loop, Digits, kapps_conference:member_pins(Conference)).
+
+-spec validate_collected_member_pins(kapps_conference:conference(), kapps_call:call(), non_neg_integer(), binary(), kz_term:ne_binaries()) ->
+                                            {'ok', kapps_conference:conference()} |
+                                            {'error', any()}.
+validate_collected_member_pins(Conference, _Call, _Loop, <<>>, []) ->
+    lager:info("no member pins configured or necessary and empty collection"),
+    {'ok', Conference};
+validate_collected_member_pins(Conference, Call, Loop, Digits, Pins) ->
+    lager:debug("checking pin ~s against configured pins ~p", [Digits, Pins]),
+    case lists:member(Digits, Pins) of
         'true' ->
             lager:debug("caller entered a valid member pin"),
             {'ok', Conference};
@@ -436,9 +447,11 @@ validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
 -spec get_pin_timeout(kapps_conference:conference()) -> pos_integer().
 get_pin_timeout(Conference) ->
     AccountId = kapps_conference:account_id(Conference),
-    lager:debug("pin timeout request account:~p conference:~p", [AccountId, kapps_conference:id(Conference)]),
+    lager:debug("finding pin timeout for account '~s' conference '~s'"
+               ,[AccountId, kapps_conference:id(Conference)]
+               ),
     JObj = kapps_conference:conference_doc(Conference),
-    kz_json:get_value(<<"pin_timeout">>, JObj, get_account_pin_timeout(AccountId)).
+    kz_json:get_integer_value(<<"pin_timeout">>, JObj, get_account_pin_timeout(AccountId)).
 
 -spec get_account_pin_timeout(kz_term:ne_binary()) -> pos_integer().
 get_account_pin_timeout(AccountId) ->
