@@ -84,15 +84,21 @@ is_defined(Context) ->
 %%--------------------------------------------------------------------
 -spec is_only_time_filter(cb_context:context(), kz_term:ne_binary()) -> boolean().
 is_only_time_filter(Context, FilterKey) ->
-    Fun = fun({<<"created_from">>, _}) -> 'true';
-             ({<<"created_to">>, _}) -> 'true';
-             ({<<"modified_from">>, _}) -> 'true';
-             ({<<"modified_to">>, _}) -> 'true';
-             ({Key, _}) ->
-                  Key =/= <<FilterKey/binary, "_from">>
-                      andalso Key =/= <<FilterKey/binary, "_to">>
-          end,
-    kz_json:all(Fun, cb_context:query_string(Context)).
+    QueryString = cb_context:query_string(Context),
+
+    case kz_term:is_empty(QueryString) of
+        'true' -> 'false';
+        'false' ->
+            Fun = fun({<<"created_from">>, _}) -> 'true';
+                     ({<<"created_to">>, _}) -> 'true';
+                     ({<<"modified_from">>, _}) -> 'true';
+                     ({<<"modified_to">>, _}) -> 'true';
+                     ({Key, _}) ->
+                          Key =:= <<FilterKey/binary, "_from">>
+                              orelse Key =:= <<FilterKey/binary, "_to">>
+                  end,
+            kz_json:all(Fun, cb_context:query_string(Context))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,6 +112,7 @@ by_doc(Doc, Context) ->
 
 -spec by_doc(kz_term:api_object(), cb_context:context(), boolean()) -> boolean().
 by_doc(_, _, 'false') ->
+    lager:debug("no filters defined"),
     'true';
 by_doc('undefined', _, 'true') ->
     lager:debug("no doc was returned (no include_docs?)"),
@@ -193,8 +200,15 @@ filter_doc_by_querystring(Doc, QueryString) ->
 -spec should_filter_doc(kz_json:object(), kz_term:ne_binary(), kz_json:json_term()) -> boolean().
 should_filter_doc(Doc, K, V) ->
     try filter_prop(Doc, K, V) of
-        'undefined' -> 'true';
-        Bool -> Bool
+        'undefined' ->
+            lager:debug("should include doc based on key: ~s value: ~p", [K, V]),
+            'true';
+        'true' ->
+            lager:debug("should include doc based on key: ~s value: ~p", [K, V]),
+            'true';
+        'false' ->
+            lager:debug("should not include doc based on key: ~s value: ~p", [K, V]),
+            'false'
     catch
         _E:_R ->
             lager:debug("failed to process filter ~s: ~s:~p", [K, _E, _R]),
