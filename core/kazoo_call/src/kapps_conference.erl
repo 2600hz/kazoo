@@ -78,7 +78,6 @@
 -define(BRIDGE_USER, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_username">>, kz_binary:rand_hex(12))).
 -define(BRIDGE_PWD, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_password">>, kz_binary:rand_hex(12))).
 
-
 %%%% conference record %%%%%%%%
 %%
 %%  id                       the conference id
@@ -118,7 +117,7 @@
                           ,focus :: kz_term:api_ne_binary()
                           ,language :: kz_term:api_ne_binary()
                           ,domain :: kz_term:api_ne_binary()
-                          ,profile_name = 'undefined' :: kz_term:api_binary()
+                          ,profile_name = 'undefined' :: kz_term:api_ne_binary()
                           ,profile = 'undefined' :: kz_term:api_object()
                           ,controller_q :: kz_term:api_ne_binary()
                           ,bridge_username = ?BRIDGE_USER :: kz_term:ne_binary()
@@ -327,10 +326,10 @@ update_fold({Fun, Value}, Conference) when is_function(Fun, 2) ->
 update_fold(Fun, Conference) when is_function(Fun, 1) ->
     Fun(Conference).
 
--spec id(conference()) -> kz_term:api_binary().
+-spec id(conference()) -> kz_term:api_ne_binary().
 id(#kapps_conference{id=Id}) -> Id.
 
--spec set_id(kz_term:api_binary(), conference()) -> conference().
+-spec set_id(kz_term:api_ne_binary(), conference()) -> conference().
 set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#kapps_conference{id=Id}.
 
@@ -397,62 +396,88 @@ set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 
--spec profile_name(conference()) -> kz_term:api_binary().
+-spec profile_name(conference()) -> kz_term:api_ne_binary().
+profile_name(#kapps_conference{profile_name='undefined'}) -> ?DEFAULT_PROFILE_NAME;
 profile_name(#kapps_conference{profile_name=Profile}) -> Profile.
 
--spec set_profile_name(kz_term:api_binary(), conference()) -> conference().
+-spec set_profile_name(kz_term:api_ne_binary(), conference()) -> conference().
 set_profile_name(P, Conference) when is_binary(P); P =:= 'undefined' ->
     Conference#kapps_conference{profile_name=P}.
 
 -spec profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
-profile(#kapps_conference{profile=Profile}=Conference) when Profile =/= 'undefined' ->
+profile(#kapps_conference{profile='undefined'}=Conference) ->
+    build_conference_profile(Conference);
+profile(#kapps_conference{profile=Profile}=Conference) ->
     case profile_name(Conference) of
         'undefined' -> {id(Conference), Profile};
         Name -> {Name, Profile}
-    end;
-profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
-                         ,account_id='undefined'
-                         }=Conference) ->
-    Language = language(Conference),
-    Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT
-                                   ,[<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME]
-                                   ,default_profile(Language, 'undefined')
-                                   ),
-    {?DEFAULT_PROFILE_NAME, Profile};
-profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
-                         ,account_id=AccountId
-                         }=Conference) ->
-    Language = language(Conference),
-    DefaultProfile = default_profile(Language, AccountId),
+    end.
 
-    case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?DEFAULT_PROFILE_NAME]) of
-        'undefined' -> {?DEFAULT_PROFILE_NAME, DefaultProfile};
-        Profile -> {?DEFAULT_PROFILE_NAME, Profile}
-    end;
-profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id='undefined'}=Conference) ->
+-spec build_conference_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
+build_conference_profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME
+                                          ,account_id='undefined'
+                                          }=Conference) ->
+    build_system_profile(Conference);
+build_conference_profile(#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME}=Conference) ->
+    build_account_profile(Conference);
+
+build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id='undefined'}=Conference) ->
     Language = language(Conference),
     Profile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME], default_page_profile(Language, 'undefined')),
-    [{?PAGE_PROFILE_NAME, Profile}];
-profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id=AccountId}=Conference) ->
+    {?PAGE_PROFILE_NAME, Profile};
+build_conference_profile(#kapps_conference{profile_name=?PAGE_PROFILE_NAME, account_id=AccountId}=Conference) ->
     Language = language(Conference),
     DefaultPageProfile = default_page_profile(Language, AccountId),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ?PAGE_PROFILE_NAME]) of
         'undefined' -> {?PAGE_PROFILE_NAME, DefaultPageProfile};
         Profile -> {?PAGE_PROFILE_NAME, Profile}
     end;
-profile(#kapps_conference{profile_name='undefined'}=Conference) ->
-    profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
-profile(#kapps_conference{profile_name=ProfileName, account_id='undefined'}=Conference) ->
+build_conference_profile(#kapps_conference{profile_name='undefined'}=Conference) ->
+    build_conference_profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
+build_conference_profile(#kapps_conference{profile_name=ProfileName, account_id='undefined'}=Conference) ->
     Language = language(Conference),
     case kapps_config:get_json(?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
         'undefined' -> profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
         Profile -> {ProfileName, Profile}
     end;
-profile(#kapps_conference{profile_name=ProfileName, account_id=AccountId}=Conference) ->
+build_conference_profile(#kapps_conference{profile_name=ProfileName, account_id=AccountId}=Conference) ->
     Language = language(Conference),
     case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
-        'undefined' -> profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
+        'undefined' -> build_conference_profile(Conference#kapps_conference{profile_name=?DEFAULT_PROFILE_NAME});
         Profile -> {ProfileName, Profile}
+    end.
+
+-spec build_account_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
+build_account_profile(Conference) ->
+    ProfileName = profile_name(Conference),
+    AccountId = account_id(Conference),
+    Language = language(Conference),
+
+    DefaultProfile = default_profile(Language, AccountId),
+
+    LanguageProfile = kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName], DefaultProfile),
+
+    case kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName]) of
+        'undefined' -> {ProfileName, LanguageProfile};
+        Profile -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
+    end.
+
+-spec build_system_profile(conference()) -> {kz_term:ne_binary(), kz_json:object()}.
+build_system_profile(Conference) ->
+    ProfileName = profile_name(Conference),
+    Language = language(Conference),
+
+    LanguageProfile = kapps_config:get_json(?CONFERENCE_CONFIG_CAT
+                                           ,[<<"profiles">>, Language, ProfileName]
+                                           ,default_profile(Language, 'undefined')
+                                           ),
+    
+    case kapps_config:get_json(?CONFERENCE_CONFIG_CAT
+                                          ,[<<"profiles">>, ProfileName]
+                                          )
+    of
+        'undefined' -> {ProfileName, LanguageProfile};
+        Profile -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
     end.
 
 -spec raw_profile(conference()) -> kz_term:api_object().
@@ -507,7 +532,7 @@ application_version(#kapps_conference{app_version=AppVersion}) ->
 set_application_version(AppVersion, #kapps_conference{}=Conference) when is_binary(AppVersion) ->
     Conference#kapps_conference{app_version=AppVersion}.
 
--spec focus(conference()) -> kz_term:api_binary().
+-spec focus(conference()) -> kz_term:api_ne_binary().
 focus(#kapps_conference{focus=Focus}) ->
     Focus.
 
@@ -515,7 +540,7 @@ focus(#kapps_conference{focus=Focus}) ->
 set_focus(Focus, Conference) when is_binary(Focus) ->
     Conference#kapps_conference{focus=Focus}.
 
--spec language(conference()) -> kz_term:api_binary().
+-spec language(conference()) -> kz_term:api_ne_binary().
 language(#kapps_conference{language='undefined'
                           ,account_id=AccountId
                           }) ->
@@ -527,7 +552,7 @@ language(#kapps_conference{language='undefined'
 language(#kapps_conference{language=Language}) ->
     Language.
 
--spec raw_language(conference()) -> kz_term:api_binary().
+-spec raw_language(conference()) -> kz_term:api_ne_binary().
 raw_language(#kapps_conference{language=Language}) ->
     Language.
 
@@ -535,7 +560,7 @@ raw_language(#kapps_conference{language=Language}) ->
 set_language(Language, Conference) when is_binary(Language) ->
     Conference#kapps_conference{language=Language}.
 
--spec domain(conference()) -> kz_term:api_binary().
+-spec domain(conference()) -> kz_term:api_ne_binary().
 domain(#kapps_conference{domain='undefined', account_id=AccountId}) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', Account} -> kzd_accounts:realm(Account);
@@ -544,7 +569,7 @@ domain(#kapps_conference{domain='undefined', account_id=AccountId}) ->
 domain(#kapps_conference{domain=Domain}) ->
     Domain.
 
--spec raw_domain(conference()) -> kz_term:api_binary().
+-spec raw_domain(conference()) -> kz_term:api_ne_binary().
 raw_domain(#kapps_conference{domain=Domain}) ->
     Domain.
 
@@ -552,7 +577,7 @@ raw_domain(#kapps_conference{domain=Domain}) ->
 set_domain(Domain, Conference) when is_binary(Domain) ->
     Conference#kapps_conference{domain=Domain}.
 
--spec controller_queue(conference()) -> kz_term:api_binary().
+-spec controller_queue(conference()) -> kz_term:api_ne_binary().
 controller_queue(#kapps_conference{controller_q=ControllerQ}) ->
     ControllerQ.
 
@@ -642,7 +667,7 @@ max_participants(#kapps_conference{max_participants=MaxParticipants}) ->
 set_max_participants(MaxParticipants, Conference) when is_integer(MaxParticipants) ->
     Conference#kapps_conference{max_participants=MaxParticipants}.
 
--spec max_members_media(conference()) -> kz_term:api_binary().
+-spec max_members_media(conference()) -> kz_term:api_ne_binary().
 max_members_media(#kapps_conference{max_members_media = Value}) -> Value.
 
 -spec set_max_members_media(kz_term:ne_binary(), conference()) -> conference().
