@@ -38,8 +38,8 @@
 -define(REGEX_COMMENT_BLOCK_WITH_NO_END, "ag '^%%*[ ]*@doc[^\\n]*$(\\n^(?!(%%* *@end|%%* ?--+$|%%* ?==+$))^%%[^\\n]*$)*(\\n%%* ?(--+|==+)$)' core/ applications/").
 
 %% regex for separator lines with length lower than 78 (for %%) or 77 (for %%%).
--define(REGEX_INCREASE_SEP_LENGTH_2, "ag -G '(erl|erl.src|hrl|hrl.src)$' '^%% *-{50,77}$' applications/*/{include,src}/** core/*/{include,src}/**").
--define(REGEX_INCREASE_SEP_LENGTH_3, "ag -G '(erl|erl.src|hrl|hrl.src)$' '^%%%+ *={50,76}$' applications/*/{include,src}/** core/*/{include,src}/**").
+-define(REGEX_INCREASE_SEP_LENGTH_2, "ag -G '(applications|core)/.*/src/.*.(erl|erl.src|hrl|hrl.src)$' '^%% *-{50,77}$'").
+-define(REGEX_INCREASE_SEP_LENGTH_3, "ag -G '(applications|core)/.*/src/.*.(erl|erl.src|hrl|hrl.src)$' '^%%%+ *={50,76}$'").
 
 %% regex for finding first comment line after `@doc'
 -define(REGEX_TO_DOC_LINE, "ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/").
@@ -52,6 +52,7 @@ main(_) ->
     check_ag_available(),
     ScriptsDir = filename:dirname(escript:script_name()),
     ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
+    io:format("cwd: ~p~n", [file:get_cwd()]),
 
     {Year, _, _} = erlang:date(),
 
@@ -286,11 +287,14 @@ move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length 
 bump_copyright(Result, Year) ->
     Files = [F
              || F <- binary:split(Result, <<"\n">>, [global]),
-                     F =/= <<>>,
-                     not lists:member(F, ?DONT_BUMP)
+                F =/= <<>>,
+                not lists:member(F, ?DONT_BUMP)
             ],
     _ = [bump_copyright_file(F, integer_to_binary(Year)) || F <- Files],
-    'ok'.
+    case Files of
+        [] -> 0;
+        _ -> 1
+    end.
 
 bump_copyright_file(File, Year) ->
     io:format("."),
