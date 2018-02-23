@@ -16,6 +16,7 @@
 -export([member_join_muted/1, member_join_muted/2, set_member_join_muted/2]).
 -export([member_numbers/1, member_numbers/2, set_member_numbers/2]).
 -export([member_pins/1, member_pins/2, set_member_pins/2]).
+-export([member_play_entry_prompt/1, member_play_entry_prompt/2, set_member_play_entry_prompt/2]).
 -export([moderator/1, moderator/2, set_moderator/2]).
 -export([moderator_join_deaf/1, moderator_join_deaf/2, set_moderator_join_deaf/2]).
 -export([moderator_join_muted/1, moderator_join_muted/2, set_moderator_join_muted/2]).
@@ -224,6 +225,18 @@ member_pins(Doc, Default) ->
 -spec set_member_pins(doc(), kz_term:ne_binaries()) -> doc().
 set_member_pins(Doc, MemberPins) ->
     kz_json:set_value([<<"member">>, <<"pins">>], MemberPins, Doc).
+
+-spec member_play_entry_prompt(doc()) -> kz_term:api_boolean().
+member_play_entry_prompt(Doc) ->
+    member_play_entry_prompt(Doc, 'undefined').
+
+-spec member_play_entry_prompt(doc(), Default) -> boolean() | Default.
+member_play_entry_prompt(Doc, Default) ->
+    kz_json:get_boolean_value([<<"member">>, <<"play_entry_prompt">>], Doc, Default).
+
+-spec set_member_play_entry_prompt(doc(), boolean()) -> doc().
+set_member_play_entry_prompt(Doc, MemberPlayEntryPrompt) ->
+    kz_json:set_value([<<"member">>, <<"play_entry_prompt">>], MemberPlayEntryPrompt, Doc).
 
 -spec moderator(doc()) -> kz_json:object().
 moderator(Doc) ->
