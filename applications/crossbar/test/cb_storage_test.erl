@@ -7,7 +7,8 @@
 %% Generators
 %% =======================================================================================
 maybe_check_storage_settings_test_() ->
-    Context = cb_context:new(), %% By default context.resp_status = error.
+    %% By default context.resp_status = error.
+    Context = cb_context:new(),
     SuccessContext = cb_context:set_resp_status(Context, 'success'),
 
     [{"Skip check if context's `resp_status /= success`"
@@ -22,7 +23,7 @@ maybe_check_storage_settings_test_() ->
     ].
 
 %% =======================================================================================
-%% Private functions
+%% Helper functions
 %% =======================================================================================
 maybe_check(Context, HTTPVerb) ->
     cb_storage:maybe_check_storage_settings(Context, HTTPVerb).

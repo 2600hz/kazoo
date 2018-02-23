@@ -11,6 +11,9 @@
 
 -define(AUTH_BY_SYSTEM_IDS, <<"auth/auth_by_system_ids">>).
 
+-type token() :: {ok | error, map()}.
+-export_type([token/0]).
+
 %% ====================================================================
 %% API functions
 %% ====================================================================

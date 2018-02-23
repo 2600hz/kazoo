@@ -452,15 +452,24 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
     Random = kz_binary:rand_hex(16),
     Content = <<"some random content: ", Random/binary>>,
     AName = <<Random/binary, "_test_credentials_file.txt">>,
-    DbName = cb_context:account_db(ContextAcc),
-    DocId = doc_id(ContextAcc),
+    AccountId = cb_context:account_id(ContextAcc),
+    %% Create dummy document where the attachment(s) will be attached to.
+    %% TODO: move this tmpdoc creation to maybe_check_storage_settings function.
+    TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
+                               ,<<"pvt_type">> => <<"storage_settings_probe">>
+                               }),
+    {ok, Doc} = kazoo_modb:save_doc(AccountId, TmpDoc),
+    DbName = kazoo_modb:get_modb(AccountId),
+    DocId = kz_json:get_value(<<"_id">>, Doc),
     Handler = kz_json:get_ne_binary_value(<<"handler">>, Att),
     Settings = kz_json:get_json_value(<<"settings">>, Att),
     AttHandler = kz_term:to_atom(<<"kz_att_", Handler/binary>>, 'true'),
     AttSettings = kz_maps:keys_to_atoms(kz_json:to_map(Settings)),
     Opts = [{'plan_override', #{'att_handler' => {AttHandler, AttSettings}
                                ,'att_post_handler' => 'external'
-                               }}],
+                               }}
+           ,{'error_verbosity', 'verbose'}
+           ],
     %% Check the storage settings have permissions to create files
     case kz_datamgr:put_attachment(DbName, DocId, AName, Content, Opts) of
         {'ok', _CreatedDoc, _CreatedProps} ->
@@ -485,12 +494,12 @@ add_datamgr_error(AttId, Error, Context) ->
     crossbar_doc:handle_datamgr_errors(Error, AttId, Context).
 
 -spec add_att_settings_validation_error(kz_term:ne_binary()
-                                       ,gen_attachment:error_response()
+                                       ,kz_att_error:error()
                                        ,cb_context:context()
                                        ) -> cb_context:context().
-add_att_settings_validation_error(AttId, ErrorResponse, Context) ->
-    ErrorCode = gen_attachment:error_code(ErrorResponse),
-    ErrorBody = gen_attachment:error_body(ErrorResponse),
+add_att_settings_validation_error(AttId, {'error', Reason, ExtendedError}, Context) ->
+    ErrorCode = kz_att_error:resp_code(ExtendedError),
+    ErrorBody = kz_att_error:resp_body(ExtendedError),
     EmptyJObj = kz_json:new(),
     %% Some attachment handlers return a bitstring as the value for `ErrorBody` variable,
     %% some other return an encoded JSON object which is also a binary value but
@@ -499,10 +508,13 @@ add_att_settings_validation_error(AttId, ErrorResponse, Context) ->
                        EmptyJObj -> ErrorBody;
                        DecodedErrorBody -> DecodedErrorBody
                    end,
-    Error = [{<<"error_code">>, ErrorCode}, {<<"error_body">>, NewErrorBody}],
-    Reason = kz_json:insert_values(Error, kz_json:new()),
+    Error = [{<<"error_code">>, ErrorCode}
+            ,{<<"error_body">>, NewErrorBody}
+            ,{<<"message">>, Reason}
+            ],
+    ErrorObj = kz_json:insert_values(Error, kz_json:new()),
     cb_context:add_validation_error([<<"attachments">>, AttId]
                                    ,<<"invalid">>
-                                   ,Reason
+                                   ,ErrorObj
                                    ,Context
                                    ).
