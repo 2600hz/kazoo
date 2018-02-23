@@ -99,7 +99,7 @@ build-dev-release: $(RELX) clean-release rel/dev.relx.config rel/dev.vm.args rel
 	$(RELX) --dev-mode true --config rel/dev.relx.config -V 2 release --relname 'kazoo' --sys_config rel/dev.sys.config --vm_args rel/dev.vm.args
 #	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
-	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
+	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config --vm_args rel/vm.args
 #	patch _rel/kazoo/bin/kazoo -i rel/relx.patch
 tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
