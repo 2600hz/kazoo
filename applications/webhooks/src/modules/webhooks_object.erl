@@ -150,6 +150,7 @@ format_event(JObj, AccountId) ->
     kz_json:from_list(
       [{<<"id">>, kapi_conf:get_id(JObj)}
       ,{<<"account_id">>, AccountId}
+      ,{<<"account_name">>, kz_account:fetch_name(AccountId)}
       ,{<<"action">>, kz_api:event_name(JObj)}
       ,{<<"type">>, kapi_conf:get_type(JObj)}
       ]).
