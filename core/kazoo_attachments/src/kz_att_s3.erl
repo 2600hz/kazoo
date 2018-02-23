@@ -16,7 +16,6 @@
 
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 
-<<<<<<< HEAD
 -type s3_error() :: {'aws_error'
                     ,{'socket_error', binary()} |
                      {'http_error', pos_integer(), string(), binary()}
