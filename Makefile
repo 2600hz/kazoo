@@ -277,6 +277,7 @@ endif
 
 circle-docs:
 	@./scripts/state-of-docs.sh || true
+	@$(ROOT)/scripts/state-of-edoc.escript
 	@$(MAKE) apis
 	@$(MAKE) docs
 
