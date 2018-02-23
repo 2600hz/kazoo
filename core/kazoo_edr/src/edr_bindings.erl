@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017 Conversant Ltd
+%%% @copyright (C) 2018-, 2600Hz
 %%% @doc EDR event distribution bindings
 %%% @author Conversant Ltd (Max Lay)
 %%% @end

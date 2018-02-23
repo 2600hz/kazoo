@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017, Voxter Communications
+%%% @copyright (C) 2018-, 2600Hz
 %%% @doc
 %%% @author Daniel Finke
 %%% @end

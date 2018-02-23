@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2018, Conversant Ltd
+%%% @copyright (C) 2016-2018, 2600Hz
 %%% @doc JSON formatter module.
 %%% @author Max Lay
 %%% @end

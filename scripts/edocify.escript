@@ -14,6 +14,8 @@
 %% regex to find contributors tag.
 -define(REGEX_HAS_CONTRIBUTORS, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/").
 
+-define(REGEX_BUMP_COPYRIGHT(Year), "ag -LG '(applications|core)/.*/src/.*.(erl|erl.src)$' '^%%% @copyright \\(C\\) 20[0-9]{2}-(" ++ Year ++ ")?, 2600Hz$'").
+
 %% regex to find `@public' tag.
 %% TODO: remove private tag from this regex in a distant future.
 -define(REGEX_PUBLIC_TAG, "ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public|private)' core/ applications/").
@@ -51,9 +53,12 @@ main(_) ->
     ScriptsDir = filename:dirname(escript:script_name()),
     ok = file:set_cwd(filename:absname(ScriptsDir ++ "/..")),
 
+    {Year, _, _} = erlang:date(),
+
     io:format("Edocify Kazoo...~n~n"),
 
     Run = [{?REGEX_SPECSPEC, "removing evil sepc+specs", fun evil_specs/1}
+          ,{?REGEX_BUMP_COPYRIGHT(integer_to_list(Year)), "bump/fix copyright", fun(R) -> bump_copyright(R, Year) end}
           ,{?REGEX_HAS_CONTRIBUTORS, "rename and fix `@contributors' tags to '@author'", fun edocify_headers/1}
           ,{?REGEX_PUBLIC_TAG, "remove @public tag", fun remove_public_tag/1}
           ,{?REGEX_COMMENT_SPEC, "removing @spec from comments", fun remove_comment_specs/1}
@@ -100,9 +105,14 @@ edocify([{Cmd, Desc, Fun}|Rest], Ret) ->
     case check_result(list_to_binary(run_ag(Cmd))) of
         ok -> edocify(Rest, Ret);
         AgResult ->
-            _ = Fun(AgResult),
-            io:format(" done~n"),
-            edocify(Rest, 1)
+            case Fun(AgResult) of
+                ok ->
+                    io:format(" done~n"),
+                    edocify(Rest, 1);
+                NewRet ->
+                    io:format(" done~n"),
+                    edocify(Rest, NewRet)
+            end
     end.
 
 check_result(<<>>) ->
@@ -245,6 +255,91 @@ move_file_specs(Lines, LinesAdded, [#{fun_pos := Pos, spec := Spec, spec_length 
                    ).
 
 %%------------------------------------------------------------------------------
+%% @doc Bump copyright year. Also add module header if it is missing (obviously only
+%% for files returned by `ag' not all other files).
+%%
+%% Ag sample output:
+%% ```
+%% core/kazoo_apps/src/kapps_util.erl
+%% core/kazoo_voicemail/src/kvm_message.erl
+%% '''
+%%
+%% Expected outcome:
+%% * Bump the year to current year
+%% * Have formal format of copyright line
+%% * Add blank module header if it is missing
+%% @end
+%%------------------------------------------------------------------------------
+
+-define(DONT_BUMP, [<<"core/kazoo_stdlib/src/kz_mochinum.erl">>
+                   ,<<"core/gcm/src/gcm.erl">>
+                   ,<<"core/gcm/src/gcm_api.erl">>
+                   ,<<"core/gcm/src/gcm_sup.erl">>
+                   ,<<"core/gcm/src/gcm_app.erl">>
+                   ,<<"core/amqp_cron/src/amqp_cron_sup.erl">>
+                   ,<<"core/amqp_cron/src/amqp_cron_app.erl">>
+                   ,<<"core/amqp_cron/src/amqp_cron_task.erl">>
+                   ,<<"core/amqp_cron/src/amqp_cron.erl">>
+                   ,<<"core/kazoo_ast/src/kz_edoc_layout.erl">>
+                   ]).
+
+bump_copyright(Result, Year) ->
+    Files = [F
+             || F <- binary:split(Result, <<"\n">>, [global]),
+                     F =/= <<>>,
+                     not lists:member(F, ?DONT_BUMP)
+            ],
+    _ = [bump_copyright_file(F, integer_to_binary(Year)) || F <- Files],
+    'ok'.
+
+bump_copyright_file(File, Year) ->
+    io:format("."),
+    Lines = read_lines(File, false),
+    {Module, Header, OtherLines} = get_module_header_comments(Lines, [], []),
+    save_lines(File, bump_copyright(Module, Header, [], [], Year) ++ OtherLines).
+
+bump_copyright(Module, [], Copyright, [], Year) ->
+    bump_copyright(Module, [], Copyright, [<<"@doc">>], Year);
+
+bump_copyright(Module, [], [], Header, Year) ->
+    bump_copyright(Module, [], generate_copyright_line(Year, <<>>), Header, Year);
+
+bump_copyright(Module, [], Copyright, Header, _) ->
+    [?SEP(3, <<$->>, 77)] ++ Copyright ++ Header ++ [<<"%%% @end">>, ?SEP(3, <<$->>, 77)] ++ Module;
+
+bump_copyright(Module, [<<"@copyright", Rest/binary>>|T], _, Header, Year) ->
+    bump_copyright(Module, T, do_bump_copyright(Rest, Year), Header, Year);
+
+bump_copyright(Module, [H|T], Copyright, Header, Year) ->
+    Striped = strip_right_spaces(strip_left_spaces(H)),
+    case Striped =/= <<"@end">>
+        andalso is_seprator_chars(Striped, [<<$=>>, <<$->>])
+    of
+        false ->
+            %% removing end tag to add it later
+            bump_copyright(Module, T, Copyright, Header, Year);
+        {true, _} ->
+            %% removing separator to replace later
+            bump_copyright(Module, T, Copyright, Header, Year);
+        {false, _} when H =:= <<>> ->
+            %% to avoid add whitespace if it is an empty comment line.
+            bump_copyright(Module, T, Copyright, Header ++ [<<"%%%">>], Year);
+        {false, _} ->
+            bump_copyright(Module, T, Copyright, Header ++ [<<"%%% ", H/binary>>], Year)
+    end.
+
+do_bump_copyright(C, Year) ->
+    Nums = re:replace(C, "([a-zA-Z().,!?~#@$%$'`\"_=&/\\^+* ]*|2600)", <<>>, [global, {return, binary}]),
+    case lists:usort([B || B <- binary:split(Nums, <<"-">>, [global]), B =/= <<>>]) of
+        [Y, Year] -> generate_copyright_line(Y, Year);
+        [Y, _] -> generate_copyright_line(Y, Year);
+        _ -> generate_copyright_line(Year, <<>>)
+    end.
+
+generate_copyright_line(StartY, EndY) ->
+    [<<"%%% @copyright (C) ", StartY/binary, "-", EndY/binary, ", 2600Hz">>].
+
+%%------------------------------------------------------------------------------
 %% @doc
 %% Edocify Header by rename @contributors to @author.
 %% Ag will return a list of files and then we open each file and fix their
@@ -274,7 +369,7 @@ edocify_headers(Result) ->
 edocify_header(File) ->
     io:format("."),
     Lines = read_lines(File, false),
-    {Module, Header, OtherLines} = find_header_comments(Lines, [], []),
+    {Module, Header, OtherLines} = get_module_header_comments(Lines, [], []),
     save_lines(File, edocify_header(Module, Header, []) ++ OtherLines).
 
 edocify_header(Module, [], Header) ->
@@ -309,19 +404,19 @@ edocify_header(Module, [H|T], Header) ->
             edocify_header(Module, T, Header ++ [<<"%%% ", H/binary>>])
     end.
 
-find_header_comments([], Module, Header) ->
+get_module_header_comments([], Module, Header) ->
     {Module, Header};
 
-find_header_comments([<<"%", _/binary>>=H | Lines], Module, Header) ->
-    find_header_comments(Lines, Module, Header ++ [strip_right_spaces(strip_comment(H))]);
+get_module_header_comments([<<"%", _/binary>>=H | Lines], Module, Header) ->
+    get_module_header_comments(Lines, Module, Header ++ [strip_right_spaces(strip_comment(H))]);
 
-find_header_comments([<<"-module", _/binary>>=Mod | Lines], _, Header) ->
-    find_header_comments(Lines, [Mod], Header);
+get_module_header_comments([<<"-module", _/binary>>=Mod | Lines], _, Header) ->
+    get_module_header_comments(Lines, [Mod], Header);
 
-find_header_comments([<<>>,  <<"-module", _/binary>>=Mod| Lines], _, Header) ->
-    find_header_comments(Lines, [Mod], Header);
+get_module_header_comments([<<>>,  <<"-module", _/binary>>=Mod| Lines], _, Header) ->
+    get_module_header_comments(Lines, [Mod], Header);
 
-find_header_comments(Lines, Module, Header) ->
+get_module_header_comments(Lines, Module, Header) ->
     {Module, Header, Lines}.
 
 %%------------------------------------------------------------------------------
