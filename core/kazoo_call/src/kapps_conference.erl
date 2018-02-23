@@ -473,8 +473,8 @@ build_system_profile(Conference) ->
                                            ),
 
     case kapps_config:get_json(?CONFERENCE_CONFIG_CAT
-                                          ,[<<"profiles">>, ProfileName]
-                                          )
+                              ,[<<"profiles">>, ProfileName]
+                              )
     of
         'undefined' -> {ProfileName, LanguageProfile};
         Profile -> {ProfileName, kz_json:merge(LanguageProfile, Profile)}
