@@ -451,7 +451,7 @@ build_account_profile(Conference) ->
     AccountId = account_id(Conference),
     Language = language(Conference),
 
-    {_, DefaultProfile} = buil_system_profile(Conference),
+    {_, DefaultProfile} = build_system_profile(Conference),
 
     LanguageProfile = kapps_account_config:get_global(AccountId, ?CONFERENCE_CONFIG_CAT, [<<"profiles">>, Language, ProfileName], DefaultProfile),
 
