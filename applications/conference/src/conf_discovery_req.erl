@@ -143,6 +143,7 @@ valid_conference_id(Srv, Conference, Digits) ->
         %% the conference number is ambiguous regarding member: either both have the same number
         %%   or they joined by the discovery event having the conference id
         _Else ->
+            lager:debug("the digits used were ambiguous whether the caller is member or moderator"),
             Conference1 = maybe_set_conference_tones(Conference, JObj),
             Call = kapps_conference:call(Conference1),
             maybe_collect_conference_pin(Conference1, Call, Srv)
@@ -161,10 +162,13 @@ maybe_set_conference_tones(Conference, JObj) ->
 maybe_collect_conference_pin(Conference, Call, Srv) ->
     case kapps_conference:moderator(Conference) of
         'true' ->
+            lager:debug("caller is expected to enter moderator pin"),
             maybe_collect_moderator_pin(Conference, Call, Srv);
         'false' ->
+            lager:debug("caller is expected to enter member pin"),
             maybe_collect_member_pin(Conference, Call, Srv);
         _Else ->
+            lager:debug("not sure if caller is moderator/member, asking for a pin"),
             maybe_collect_pin(Conference, Call, Srv)
     end.
 
@@ -176,6 +180,7 @@ maybe_collect_pin(Conference, Call, Srv) ->
         'false' ->
             collect_conference_pin('undefined', Conference, Call, Srv);
         'true' ->
+            lager:debug("no member or moderator pins set, assuming caller is a member"),
             C = kapps_conference:set_moderator('false', Conference),
             prepare_kapps_conference(C, Call, Srv)
     end.
@@ -351,28 +356,29 @@ validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     {'error', 'too_many_attempts'};
 validate_conference_pin('true', Conference, Call, Loop) ->
     lager:debug("requesting moderator pin from caller"),
-    Timeout = get_pin_timeout(Conference),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call) of
+    case collect_pin(Conference, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             validate_collected_conference_pin(Conference, Call, Loop, Digits)
     end;
 validate_conference_pin('false', Conference, Call, Loop) ->
     lager:debug("requesting member pin from caller"),
-    Timeout = get_pin_timeout(Conference),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call) of
+    case collect_pin(Conference, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             validate_collected_member_pins(Conference, Call, Loop, Digits)
     end;
 validate_conference_pin(_, Conference, Call, Loop) ->
     lager:debug("requesting conference pin from caller, which will be used to disambiguate member/moderator"),
-    Timeout = get_pin_timeout(Conference),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call) of
+    case collect_pin(Conference, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits)
     end.
+
+collect_pin(Conference, Call) ->
+    Timeout = get_pin_timeout(Conference),
+    kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call).
 
 -spec validate_if_pin_is_for_moderator(kapps_conference:conference(), kapps_call:call(), non_neg_integer(), binary()) ->
                                               {'ok', kapps_conference:conference()} |
@@ -430,11 +436,17 @@ validate_collected_member_pins(Conference, Call, Loop, Digits, Pins) ->
                                                {'ok', kapps_conference:conference()} |
                                                {'error', any()}.
 validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
-    Pins = kapps_conference:moderator_pins(Conference),
-    case lists:member(Digits, Pins)
-        orelse (Pins =:= []
-                andalso Digits =:= <<>>)
-    of
+    validate_collected_conference_pin(Conference, Call, Loop, Digits, kapps_conference:moderator_pins(Conference)).
+
+-spec validate_collected_conference_pin(kapps_conference:conference(), kapps_call:call(), pos_integer(), binary(), kz_term:ne_binaries()) ->
+                                               {'ok', kapps_conference:conference()} |
+                                               {'error', any()}.
+validate_collected_conference_pin(Conference, _Call, _Loop, <<>>, []) ->
+    lager:info("no moderator pins configured or necessary and empty collection"),
+    {'ok', Conference};
+validate_collected_conference_pin(Conference, Call, Loop, Digits, Pins) ->
+    lager:debug("checking pin ~s against configured pins ~p", [Digits, Pins]),
+    case lists:member(Digits, Pins) of
         'true' ->
             lager:debug("caller entered a valid moderator pin"),
             {'ok', Conference};
