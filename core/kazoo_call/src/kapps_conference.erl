@@ -200,7 +200,7 @@ do_from_json(JObj, Conference) ->
                                ,play_welcome = kz_json:is_true(<<"Play-Welcome">>, JObj, play_welcome(Conference))
                                ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#kapps_conference.kvs, KVS)
                                ,call = load_call(JObj, call(Conference))
-                               ,account_id = kz_json:get_value(<<"Account-ID">>, JObj, account_id(Conference))
+                               ,account_id = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj, account_id(Conference))
                                ,controls = kz_json:get_json_value(<<"Controls">>, JObj, raw_controls(Conference))
                                ,moderator_controls = kz_json:get_ne_binary_value(<<"Moderator-Controls">>, JObj, moderator_controls(Conference))
                                ,caller_controls = kz_json:get_ne_binary_value(<<"Caller-Controls">>, JObj, caller_controls(Conference))
@@ -273,42 +273,40 @@ is_conference(#kapps_conference{}) -> 'true';
 is_conference(_) -> 'false'.
 
 
--spec from_conference_doc(kz_json:object()) -> conference().
+-spec from_conference_doc(kzd_conferences:doc()) -> conference().
 from_conference_doc(JObj) ->
     from_conference_doc(JObj, #kapps_conference{}).
 
--spec from_conference_doc(kz_json:object(), conference()) -> conference().
+-spec from_conference_doc(kzd_conferences:doc(), conference()) -> conference().
 from_conference_doc(JObj, Conference) ->
-    Member = kz_json:get_json_value(<<"member">>, JObj),
-    Moderator = kz_json:get_json_value(<<"moderator">>, JObj),
     Conference#kapps_conference{id = kz_doc:id(JObj, kz_binary:rand_hex(8))
-                               ,name = kz_json:get_ne_binary_value(<<"name">>, JObj, name(Conference))
-                               ,account_id = kz_json:get_ne_binary_value(<<"pvt_account_id">>, JObj, account_id(Conference))
-                               ,profile_name = kz_json:get_ne_binary_value(<<"profile_name">>, JObj, profile_name(Conference))
-                               ,profile = kz_json:get_json_value(<<"profile">>, JObj, raw_profile(Conference))
-                               ,focus = kz_json:get_ne_binary_value(<<"focus">>, JObj, focus(Conference))
-                               ,language = kz_json:get_ne_binary_value(<<"language">>, JObj, raw_language(Conference))
-                               ,domain = kz_json:get_ne_binary_value(<<"domain">>, JObj, raw_domain(Conference))
-                               ,bridge_username = kz_json:get_ne_binary_value(<<"bridge_username">>, JObj, bridge_username(Conference))
-                               ,bridge_password = kz_json:get_ne_binary_value(<<"bridge_password">>, JObj, bridge_password(Conference))
-                               ,member_pins = kz_json:get_list_value(<<"pins">>, Member, member_pins(Conference))
-                               ,moderator_pins = kz_json:get_list_value(<<"pins">>, Moderator, moderator_pins(Conference))
-                               ,member_join_muted = kz_json:is_true(<<"join_muted">>, Member, member_join_muted(Conference))
-                               ,member_join_deaf = kz_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
-                               ,play_name_on_join = kz_json:is_true(<<"play_name">>, JObj, play_name_on_join(Conference))
-                               ,play_entry_prompt = kz_json:is_true(<<"play_entry_prompt">>, Member, play_entry_prompt(Conference))
-                               ,play_exit_tone = get_tone(kz_json:get_value(<<"play_exit_tone">>, JObj, play_exit_tone(Conference)))
-                               ,play_entry_tone = get_tone(kz_json:get_value(<<"play_entry_tone">>, JObj, play_entry_tone(Conference)))
-                               ,play_welcome = kz_json:is_true(<<"play_welcome">>, JObj, play_welcome(Conference))
-                               ,moderator_join_muted = kz_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
-                               ,moderator_join_deaf = kz_json:is_true(<<"join_deaf">>, Moderator, moderator_join_deaf(Conference))
-                               ,max_participants = kz_json:get_integer_value(<<"max_participants">>, JObj, max_participants(Conference))
-                               ,max_members_media = kz_json:get_ne_binary_value(<<"max_members_media">>, JObj, max_members_media(Conference))
-                               ,require_moderator = kz_json:is_true(<<"require_moderator">>, JObj, require_moderator(Conference))
-                               ,wait_for_moderator = kz_json:is_true(<<"wait_for_moderator">>, JObj, wait_for_moderator(Conference))
-                               ,controls = kz_json:get_json_value(<<"controls">>, JObj, raw_controls(Conference))
-                               ,moderator_controls = kz_json:get_ne_binary_value(<<"moderator_controls">>, JObj, moderator_controls(Conference))
-                               ,caller_controls = kz_json:get_ne_binary_value(<<"caller_controls">>, JObj, caller_controls(Conference))
+                               ,name = kzd_conferences:name(JObj, name(Conference))
+                               ,account_id = kz_doc:account_id(JObj, account_id(Conference))
+                               ,profile_name = kzd_conferences:name(JObj, profile_name(Conference))
+                               ,profile = kzd_conferences:profile(JObj, raw_profile(Conference))
+                               ,focus = kzd_conferences:focus(JObj, focus(Conference))
+                               ,language = kzd_conferences:language(JObj, raw_language(Conference))
+                               ,domain = kzd_conferences:domain(JObj, raw_domain(Conference))
+                               ,bridge_username = kzd_conferences:bridge_username(JObj, bridge_username(Conference))
+                               ,bridge_password = kzd_conferences:bridge_password(JObj, bridge_password(Conference))
+                               ,member_pins = kzd_conferences:member_pins(JObj, member_pins(Conference))
+                               ,moderator_pins = kzd_conferences:moderator_pins(JObj, moderator_pins(Conference))
+                               ,member_join_muted = kzd_conferences:member_join_muted(JObj, member_join_muted(Conference))
+                               ,member_join_deaf = kzd_conferences:member_join_deaf(JObj, member_join_deaf(Conference))
+                               ,play_name_on_join = kzd_conferences:play_name(JObj, play_name_on_join(Conference))
+                               ,play_entry_prompt = kzd_conferences:member_play_entry_prompt(JObj, play_entry_prompt(Conference))
+                               ,play_exit_tone = get_tone(kzd_conferences:play_exit_tone(JObj, play_exit_tone(Conference)))
+                               ,play_entry_tone = get_tone(kzd_conferences:play_entry_tone(JObj, play_entry_tone(Conference)))
+                               ,play_welcome = kzd_conferences:play_welcome(JObj, play_welcome(Conference))
+                               ,moderator_join_muted = kzd_conferences:moderator_join_muted(JObj, moderator_join_muted(Conference))
+                               ,moderator_join_deaf = kzd_conferences:moderator_join_deaf(JObj, moderator_join_deaf(Conference))
+                               ,max_participants = kzd_conferences:max_participants(JObj, max_participants(Conference))
+                               ,max_members_media = kzd_conferences:max_members_media(JObj, max_members_media(Conference))
+                               ,require_moderator = kzd_conferences:require_moderator(JObj, require_moderator(Conference))
+                               ,wait_for_moderator = kzd_conferences:wait_for_moderator(JObj, wait_for_moderator(Conference))
+                               ,controls = kzd_conferences:controls(JObj, raw_controls(Conference))
+                               ,moderator_controls = kzd_conferences:moderator_controls(JObj, moderator_controls(Conference))
+                               ,caller_controls = kzd_conferences:caller_controls(JObj, caller_controls(Conference))
                                ,conference_doc = JObj
                                }.
 
@@ -345,7 +343,7 @@ name(#kapps_conference{name=Name}) ->
 set_account_id(AccountId, Conference) when is_binary(AccountId) ->
     Conference#kapps_conference{account_id=AccountId}.
 
--spec account_id(conference()) -> kz_term:ne_binary().
+-spec account_id(conference()) -> kz_term:api_ne_binary().
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
